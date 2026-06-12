@@ -1,0 +1,93 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Node and frontend
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Java, Gradle, and mobile builds
+.gradle/
+target/
+out/
+*.class
+*.jar
+*.war
+*.apk
+*.aab
+
+# IDE and local agent/runtime data
+.agent/
+.agents/
+.claude/
+.github/agents/
+_bmad/
+_bmad-output/
+
+# Local helper scripts and one-off tools
+scripts/
+tools/
+
+# Generated document artifacts
+~$*
+*.docx.tmp
+*.pdf.tmp
+
+# Machine learning datasets and generated models
+03_MachineLearning/Dataset/*
+!03_MachineLearning/Dataset/.gitkeep
+03_MachineLearning/Training/*
+!03_MachineLearning/Training/.gitkeep
+03_MachineLearning/Evaluation/*
+!03_MachineLearning/Evaluation/.gitkeep
+03_MachineLearning/Models/*
+!03_MachineLearning/Models/.gitkeep
+!03_MachineLearning/Models/model_v1.h5
+!03_MachineLearning/Models/model_v2.h5
+!03_MachineLearning/Models/best_model.h5
+
+# Keep empty project structure markers
+!.gitkeep
