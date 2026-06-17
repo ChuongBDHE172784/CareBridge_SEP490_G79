@@ -1,4 +1,4 @@
----
+﻿---
 title: CareBridge Project Structure Design
 project: CareBridge_SEP490_G79
 source_documents:
@@ -590,110 +590,113 @@ Use feature-based Flutter structure with simple UI, service, model, and reposito
 
 ```text
 04_SourceCode/MobileApp/
-└── carebridge_mobile/
-    ├── pubspec.yaml
-    └── lib/
-        ├── main.dart
-        ├── app/
-        │   ├── router/
-        │   ├── theme/
-        │   ├── localization/
-        │   └── environment/
-        ├── core/
-        │   ├── network/
-        │   ├── storage/
-        │   ├── auth/
-        │   ├── permissions/
-        │   ├── errors/
-        │   ├── widgets/
-        │   ├── utils/
-        │   └── constants/
-        ├── shared/
-        │   ├── components/
-        │   ├── models/
-        │   └── services/
-        ├── features/
-        │   ├── onboarding/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── auth/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── motherJourney/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── babyCare/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── healthRecords/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── familySync/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── community/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── consultation/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── aiTriage/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── emergencyMap/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   ├── safetyMonitoring/
-        │   │   ├── screens/
-        │   │   ├── widgets/
-        │   │   ├── services/
-        │   │   ├── repositories/
-        │   │   └── models/
-        │   └── pregnancyExercise/
-        │       ├── screens/
-        │       ├── widgets/
-        │       ├── services/
-        │       ├── repositories/
-        │       └── models/
-        ├── integrations/
-        │   ├── firebaseMessaging/
-        │   ├── firebaseStorage/
-        │   ├── trackasia/
-        │   ├── zegocloud/
-        │   ├── mediapipe/
-        │   ├── imuSensor/
-        │   └── wearable/
-        └── l10n/
+├── pubspec.yaml
+├── android/
+├── ios/
+├── web/
+├── test/
+└── lib/
+    ├── main.dart
+    ├── app/
+    │   ├── router/
+    │   ├── theme/
+    │   ├── localization/
+    │   └── environment/
+    ├── core/
+    │   ├── network/
+    │   ├── storage/
+    │   ├── auth/
+    │   ├── permissions/
+    │   ├── errors/
+    │   ├── widgets/
+    │   ├── utils/
+    │   └── constants/
+    ├── shared/
+    │   ├── components/
+    │   ├── models/
+    │   └── services/
+    ├── features/
+    │   ├── onboarding/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── auth/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── motherJourney/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── babyCare/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── healthRecords/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── familySync/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── community/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── consultation/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── aiTriage/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── emergencyMap/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   ├── safetyMonitoring/
+    │   │   ├── screens/
+    │   │   ├── widgets/
+    │   │   ├── services/
+    │   │   ├── repositories/
+    │   │   └── models/
+    │   └── pregnancyExercise/
+    │       ├── screens/
+    │       ├── widgets/
+    │       ├── services/
+    │       ├── repositories/
+    │       └── models/
+    ├── integrations/
+    │   ├── firebaseMessaging/
+    │   ├── firebaseStorage/
+    │   ├── trackasia/
+    │   ├── zegocloud/
+    │   ├── mediapipe/
+    │   ├── imuSensor/
+    │   └── wearable/
+    └── l10n/
 ```
 
 Flutter rule:
@@ -846,3 +849,4 @@ Minimum gates:
 | Data architecture | PostgreSQL plus MongoDB plus object storage | Matches structured workflows, flexible content/logs, and file uploads. |
 | Integration strategy | Dedicated integration services with fallback behavior | Reduces schedule risk and supports demo mode. |
 | Safety strategy | Centralized consent, audit, RBAC, and triage policies | Required by healthcare-safe positioning and sensitive data handling. |
+
