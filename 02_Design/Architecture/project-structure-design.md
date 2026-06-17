@@ -496,84 +496,122 @@ ConsultationBookingService
 
 ## 9. Web Portal Structure
 
-Use feature-based folders with a practical layered split.
+Use one Vite React TypeScript application initialized directly under `04_SourceCode/Frontend`. Keep Vite project files at the frontend root, then organize application code with feature-based folders inside `src/`.
+
+Current frontend baseline:
+
+- React application root: `04_SourceCode/Frontend`
+- Build tool: Vite
+- Language: TypeScript
+- Entry point: `src/main.tsx`
+- Root component: `src/App.tsx`
+- Package/dependency files: `package.json`, `package-lock.json`
+- Generated/local folders such as `node_modules/` and `dist/` are excluded by `.gitignore`.
+
+Primary frontend dependencies:
+
+- `react`, `react-dom`
+- `react-router-dom`
+- `@tanstack/react-query`
+- `axios`
+- `zustand`
+- `react-hook-form`, `@hookform/resolvers`, `zod`
+- `dayjs`
+- `lucide-react`
+
+Recommended structure:
 
 ```text
 04_SourceCode/Frontend/
-    ├── package.json
-    ├── vite.config.ts
-    └── src/
-        ├── app/
-        │   ├── router/
-        │   ├── providers/
-        │   ├── layouts/
-        │   └── guards/
-        ├── shared/
-        │   ├── api/
-        │   ├── auth/
+├── .gitignore
+├── README.md
+├── eslint.config.js
+├── index.html
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+├── public/
+└── src/
+    ├── main.tsx
+    ├── App.tsx
+    ├── App.css
+    ├── index.css
+    ├── vite-env.d.ts
+    ├── assets/
+    ├── app/
+    │   ├── router/
+    │   ├── providers/
+    │   ├── layouts/
+    │   └── guards/
+    ├── shared/
+    │   ├── api/
+    │   ├── auth/
+    │   ├── components/
+    │   ├── forms/
+    │   ├── tables/
+    │   ├── charts/
+    │   ├── hooks/
+    │   ├── utils/
+    │   └── constants/
+    └── features/
+        ├── auth/
+        │   ├── pages/
         │   ├── components/
-        │   ├── forms/
-        │   ├── tables/
-        │   ├── charts/
-        │   ├── hooks/
-        │   ├── utils/
-        │   └── constants/
-        └── features/
-            ├── auth/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── dashboard/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── expertVerification/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── moderation/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── contentManagement/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── partnerGovernance/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── consultationManagement/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── paymentRefunds/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── auditSecurity/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            ├── aiRuleManagement/
-            │   ├── pages/
-            │   ├── components/
-            │   ├── services/
-            │   └── models/
-            └── postureConfiguration/
-                ├── pages/
-                ├── components/
-                ├── services/
-                └── models/
+        │   ├── services/
+        │   └── models/
+        ├── dashboard/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── expertVerification/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── moderation/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── contentManagement/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── partnerGovernance/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── consultationManagement/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── paymentRefunds/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── auditSecurity/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        ├── aiRuleManagement/
+        │   ├── pages/
+        │   ├── components/
+        │   ├── services/
+        │   └── models/
+        └── postureConfiguration/
+            ├── pages/
+            ├── components/
+            ├── services/
+            └── models/
 ```
 
 Web route groups:
