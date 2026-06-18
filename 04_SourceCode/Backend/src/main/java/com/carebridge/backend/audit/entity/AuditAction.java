@@ -1,0 +1,18 @@
+package com.carebridge.backend.audit.entity;
+
+public enum AuditAction {
+    LOGIN,
+    LOGOUT,
+    OTP_SENT,
+    OTP_VERIFIED,
+    CONSENT_GRANTED,
+    CONSENT_REVOKED,
+    CREATE_HEALTH_RECORD,
+    VIEW_HEALTH_RECORD,
+    EXPERT_VERIFICATION,
+    MODERATION_ACTION,
+    AI_TRIAGE,
+    PAYMENT,
+    SECURITY_EVENT,
+    VIEW_AUDIT_LOG
+}
