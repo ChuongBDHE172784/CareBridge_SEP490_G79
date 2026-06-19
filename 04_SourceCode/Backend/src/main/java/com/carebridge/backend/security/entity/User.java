@@ -9,7 +9,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,34 +30,48 @@ import org.hibernate.annotations.UpdateTimestamp;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "user_id")
+    private UUID id;
 
-    @Column(nullable = false, unique = true, length = 20)
-    private String phone;
-
-    @Column(length = 255)
+    @Column(name = "email", unique = true, length = 255)
     private String email;
+
+    @Column(name = "phone", length = 30)
+    private String phone;
 
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
-    @Column(name = "full_name", length = 120)
-    private String name;
+    @Column(name = "full_name", length = 150)
+    private String fullName;
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private Role role;
+    @Column(name = "account_status", length = 30)
+    private String accountStatus;
+
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
+
+    @Column(name = "phone_verified")
+    private Boolean phoneVerified;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Transient
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.MOTHER;
+
+    @Builder.Default
+    @Transient
     private boolean enabled = true;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Transient
     private boolean locked = false;
 
     @CreationTimestamp
@@ -65,4 +81,12 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    public String getName() {
+        return fullName;
+    }
+
+    public void setName(String name) {
+        this.fullName = name;
+    }
 }
