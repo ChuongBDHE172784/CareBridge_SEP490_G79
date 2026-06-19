@@ -33,8 +33,7 @@ Recommended shape:
 - Each backend domain follows `controller`, `service`, `repository`, `entity`, `dto`, `mapper`, and optional `policy`.
 - Flutter mobile app organized by feature and simple UI/API/state layers.
 - Web portal organized by feature and simple page/service/API layers.
-- PostgreSQL for structured relational data.
-- MongoDB for flexible content, logs, RAG chunks, and metadata-heavy records.
+- PostgreSQL for structured relational data, including JSONB columns for flexible and semi-structured content.
 - Firebase Storage or compatible object storage for uploaded files.
 - Integration services for Gemini, TrackAsia, Firebase, ZegoCloud, VNPay, wearable/smartwatch, and MediaPipe-related data.
 
@@ -44,8 +43,8 @@ Recommended shape:
 | --- | --- | --- |
 | Presentation Layer | `controller`, `dto.request`, `dto.response` | Receive API requests, validate input shape, call services, return responses |
 | Business Layer | `service`, `policy` | Implement business workflows, healthcare safety rules, consent checks, RBAC decisions, audit triggers |
-| Data Access Layer | `repository` | Query and persist data through Spring Data JPA/Mongo repositories |
-| Persistence Model | `entity`, `document` | Represent database tables/collections |
+| Data Access Layer | `repository` | Query and persist data through Spring Data JPA repositories |
+| Persistence Model | `entity` | Represent database tables |
 | Mapping Layer | `mapper` | Convert request/response/entity objects |
 | Integration Layer | `integration`, external service clients | Wrap Firebase, Gemini, TrackAsia, ZegoCloud, VNPay, storage, wearable APIs |
 | Shared Layer | `shared`, `common` | Exceptions, constants, response wrappers, validation helpers, utilities |
@@ -814,10 +813,6 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 │   ├── views/
 │   ├── functions/
 │   └── indexes/
-├── mongodb/
-│   ├── collections/
-│   ├── indexes/
-│   └── seeds/
 ├── sample-data/
 └── docs/
 
@@ -844,8 +839,8 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 
 Recommended data split:
 
-- PostgreSQL: identity, RBAC, consent, care journey, baby profile, health metadata, care coordination groups, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes.
-- MongoDB: community post bodies, content versions, FAQ/checklist rich content, AI prompt/response metadata, flexible safety logs, RAG document chunks, device raw metadata.
+- PostgreSQL (relational tables): identity, RBAC, consent, care journey, baby profile, health metadata, care coordination groups, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes.
+- PostgreSQL (JSONB columns): community post bodies, content versions, FAQ/checklist rich content, AI prompt/response metadata, flexible safety logs, RAG document chunks, device raw metadata.
 - Object storage: health record files, credential documents, content media, exercise media.
 
 ## 13. Cross-Cutting Policies
@@ -945,7 +940,7 @@ Minimum gates:
 | Backend module structure | `controller/service/repository/entity/dto/mapper/policy` | Directly matches common Spring Boot practice. |
 | Frontend architecture | Feature-based pages/components/services/models | Practical for admin/expert/partner portal development. |
 | Mobile architecture | Feature-based screens/widgets/services/repositories/models | Practical for Flutter team implementation. |
-| Data architecture | PostgreSQL plus MongoDB plus object storage | Matches structured workflows, flexible content/logs, and file uploads. |
+| Data architecture | PostgreSQL plus object storage | Single relational database with JSONB for flexible content reduces infrastructure complexity for MVP scope. MongoDB removed. |
 | Integration strategy | Dedicated integration services with fallback behavior | Reduces schedule risk and supports demo mode. |
 | Safety strategy | Centralized consent, audit, RBAC, and triage policies | Required by healthcare-safe positioning and sensitive data handling. |
 
