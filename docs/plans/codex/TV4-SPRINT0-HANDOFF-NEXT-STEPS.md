@@ -1,4 +1,4 @@
-# TV4 Sprint 0 - Handoff & Next Steps
+﻿# TV4 Sprint 0 - Handoff & Next Steps
 
 **Prepared for:** TV4 (Expert Consultation Domain)  
 **Date:** 2026-06-20  
@@ -86,7 +86,7 @@
 ### 4. Kiểm tra backend hiện tại (Bắt buộc trước khi code)
 ```bash
 # Mở terminal, vào thư mục backend:
-cd D:\CareBridge-SEP490-G79\04_SourceCode\Backend
+cd D:\CareBridge-SEP490-G79\04_SourceCode\CamBridge-API
 
 # Kiểm tra entities hiện có:
 find src/main/java/com/carebridge/backend/expert/entity -name "*.java"
@@ -113,7 +113,7 @@ ls src/main/resources/db/migration/
 
 **Bước 1: Tạo/Verify Flyway Migration**
 ```bash
-# File: 04_SourceCode/Backend/src/main/resources/db/migration/V20260621_1200__tv4_expert_profile_tables.sql
+# File: 04_SourceCode/CamBridge-API/src/main/resources/db/migration/V20260621_1200__tv4_expert_profile_tables.sql
 
 # Copy SQL từ Implementation Plan Section 4
 # (Đã có sẵn trong file plan, chỉ cần tạo file mới)
@@ -122,9 +122,9 @@ ls src/main/resources/db/migration/
 **Bước 2: Review và cập nhật Entities (nếu cần)**
 ```bash
 # Mở các file:
-04_SourceCode/Backend/src/main/java/com/carebridge/backend/expert/entity/ExpertProfile.java
-04_SourceCode/Backend/src/main/java/com/carebridge/backend/expert/entity/ExpertCredential.java
-04_SourceCode/Backend/src/main/java/com/carebridge/backend/expert/entity/ExpertAvailability.java
+04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/expert/entity/ExpertProfile.java
+04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/expert/entity/ExpertCredential.java
+04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/expert/entity/ExpertAvailability.java
 
 # Kiểm tra:
 # - Có @Entity, @Table annotation không?
@@ -135,7 +135,7 @@ ls src/main/resources/db/migration/
 
 **Bước 3: Chạy migration để tạo bảng**
 ```bash
-cd 04_SourceCode/Backend
+cd 04_SourceCode/CamBridge-API
 ./mvnw flyway:migrate
 # Lưu ý: Cần database đang chạy (docker-compose up -d postgres)
 ```
@@ -290,7 +290,7 @@ Tôi cần tạo ExpertProfileController.java cho STORY-401.
 - Architecture doc (layered architecture rules)
 
 Yêu cầu:
-1. File: 04_SourceCode/Backend/src/main/java/com/carebridge/backend/expert/controller/ExpertProfileController.java
+1. File: 04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/expert/controller/ExpertProfileController.java
 2. Controllers có:
    - @RestController
    - @RequestMapping("/api/v1/expert")
@@ -359,7 +359,7 @@ Requirements from plan:
 - findByUserId(UUID userId): Optional<ExpertProfile>
 - existsByUserId(UUID userId): boolean
 
-Place: 04_SourceCode/Backend/src/main/java/com/carebridge/backend/expert/repository/ExpertProfileRepository.java
+Place: 04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/expert/repository/ExpertProfileRepository.java
 
 Use Spring Data JPA, no custom implementation needed."
 ```
@@ -474,7 +474,7 @@ git push origin LamVH
 ```
 Đọc:
 - docs/stories/STORY-002-backend-shared-domain-scaffold.md
-- 04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/
+- 04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/
 
 Tìm:
 - AuditService (audit.logAction())
@@ -494,7 +494,7 @@ Xem migration error, sửa entity cho khớp.
 ### **Vấn đề 3: Không biết viết test**
 ```
 Đọc file mẫu:
-04_SourceCode/Backend/src/test/java/com/carebridge/backend/audit/service/AuditServiceTests.java
+04_SourceCode/CamBridge-API/src/test/java/com/carebridge/backend/audit/service/AuditServiceTests.java
 
 Copy pattern, thay đổi cho service của bạn.
 ```

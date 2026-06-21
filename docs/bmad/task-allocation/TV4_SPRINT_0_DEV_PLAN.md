@@ -1,4 +1,4 @@
-# TV4 Sprint 0 Development Plan - Expert Consultation Domain
+﻿# TV4 Sprint 0 Development Plan - Expert Consultation Domain
 
 **Owner:** TV4 (Expert Consultation Domain)
 **Sprint:** Sprint 0 - Foundation And Module Skeletons
@@ -316,7 +316,7 @@ src/features/
 #### Week 2 (Days 8-10): UI Skeleton + Integration
 
 **Day 8: Mobile Feature Folders (Flutter)**
-- Create folder structure in `04_SourceCode/MobileApp/lib/features/expert/`
+- Create folder structure in `04_SourceCode/CareBridgeMobileApp/lib/features/expert/`
 - Create dummy screens (placeholder widgets):
   * `ExpertProfileScreen.dart`
   * `ExpertVerificationScreen.dart`
@@ -327,7 +327,7 @@ src/features/
 - Use mock data services (return hardcoded JSON)
 
 **Day 9: Web Portal (React + Vite)**
-- Create feature folders in `04_SourceCode/Frontend/src/features/expertManagement/`
+- Create feature folders in `04_SourceCode/CareBridgeWebApp/src/features/expertManagement/`
 - Create dummy pages (functional components with placeholder UI):
   * `ExpertProfilePage.tsx`
   * `ExpertVerificationQueuePage.tsx`

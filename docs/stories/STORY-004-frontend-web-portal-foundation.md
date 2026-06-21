@@ -1,4 +1,4 @@
-# Story: Frontend web portal foundation
+﻿# Story: Frontend web portal foundation
 
 **Story ID**: STORY-004  
 **Status**: DRAFT  
@@ -13,7 +13,7 @@
 
 ### 4.1 Project Structure
 
-Ensure `04_SourceCode/Frontend/` follows this structure:
+Ensure `04_SourceCode/CareBridgeWebApp/` follows this structure:
 
 ```
 src/
@@ -333,7 +333,7 @@ And on mobile (≤768px), the sidebar is hidden behind a hamburger menu
 **New files** (non-exhaustive):
 
 ```
-04_SourceCode/Frontend/
+04_SourceCode/CareBridgeWebApp/
 ├── public/ (existing)
 ├── src/
 │   ├── main.tsx

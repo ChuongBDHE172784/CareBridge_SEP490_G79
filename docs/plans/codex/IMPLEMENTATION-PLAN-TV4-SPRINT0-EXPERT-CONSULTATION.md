@@ -1,4 +1,4 @@
-# TV4 Sprint 0 Implementation Plan - Expert Consultation Foundation
+﻿# TV4 Sprint 0 Implementation Plan - Expert Consultation Foundation
 
 **Owner:** TV4 (Expert Consultation Domain)  
 **Sprint:** Sprint 0 - Foundation (2 weeks)  
@@ -40,7 +40,7 @@ TV4 owns Expert Consultation domain. Sprint 0 goal: create skeleton APIs and UI 
 ## 3. Backend Package Structure
 
 ```
-04_SourceCode/Backend/src/main/java/com/carebridge/backend/
+04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/
 ├── expert/                    (STORY-401, 402, 403, 409, 410)
 │   ├── controller/
 │   │   ├── ExpertProfileController.java

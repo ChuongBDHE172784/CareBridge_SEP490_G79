@@ -1,4 +1,4 @@
-# Sprint 0 TV1 Code Implementation Workflow
+﻿# Sprint 0 TV1 Code Implementation Workflow
 
 | Field | Value |
 |---|---|
@@ -270,7 +270,7 @@ Required Test Spec content:
 
 #### CareBridge Adaptation Rules for the Test Template
 
-- Backend test files use `*Test.java` under `04_SourceCode/Backend/src/test/java`.
+- Backend test files use `*Test.java` under `04_SourceCode/CamBridge-API/src/test/java`.
 - Backend commands use Maven Wrapper, not `npm test`.
 - Spring MVC/security tests use the Spring Boot test dependencies already configured.
 - Persistence tests must use PostgreSQL-compatible behavior; do not assume H2 equivalence.
@@ -383,7 +383,7 @@ Run validation from each affected application directory.
 Backend:
 
 ```powershell
-cd 04_SourceCode/Backend
+cd 04_SourceCode/CamBridge-API
 .\mvnw.cmd test
 .\mvnw.cmd clean package
 ```
@@ -391,7 +391,7 @@ cd 04_SourceCode/Backend
 Frontend:
 
 ```powershell
-cd 04_SourceCode/Frontend
+cd 04_SourceCode/CareBridgeWebApp
 npm run lint
 npm run build
 ```
@@ -399,7 +399,7 @@ npm run build
 Mobile:
 
 ```powershell
-cd 04_SourceCode/MobileApp
+cd 04_SourceCode/CareBridgeMobileApp
 dart format lib test
 flutter test
 flutter analyze

@@ -1,4 +1,4 @@
-# GIT-PUSH-PLAN-STORY-002-backend-shared-domain-scaffold
+﻿# GIT-PUSH-PLAN-STORY-002-backend-shared-domain-scaffold
 
 Status:
 Approval Required: YES
@@ -57,25 +57,25 @@ Allowed git operations after approval:
 
 Allowed STORY-002 paths to stage and commit:
 
-- `04_SourceCode/Backend/pom.xml`
-- `04_SourceCode/Backend/src/main/resources/application.yaml`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/BackendApplication.java`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/config/JacksonConfig.java`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/config/WebMvcConfig.java`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/config/SpringDocConfig.java`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/exception/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/response/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/constants/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/validation/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/common/util/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/security/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/consent/`
-- `04_SourceCode/Backend/src/main/java/com/carebridge/backend/audit/`
-- `04_SourceCode/Backend/src/main/resources/db/migration/V1__create_user_table.sql`
-- `04_SourceCode/Backend/src/main/resources/db/migration/V2__create_otp_verification_table.sql`
-- `04_SourceCode/Backend/src/main/resources/db/migration/V3__create_consent_grants_table.sql`
-- `04_SourceCode/Backend/src/main/resources/db/migration/V4__create_audit_logs_table.sql`
-- `04_SourceCode/Backend/src/main/resources/db/migration/V5__create_security_events_table.sql`
+- `04_SourceCode/CamBridge-API/pom.xml`
+- `04_SourceCode/CamBridge-API/src/main/resources/application.yaml`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/BackendApplication.java`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/JacksonConfig.java`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/WebMvcConfig.java`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/SpringDocConfig.java`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/response/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/constants/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/validation/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/util/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/`
+- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/`
+- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V1__create_user_table.sql`
+- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V2__create_otp_verification_table.sql`
+- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V3__create_consent_grants_table.sql`
+- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V4__create_audit_logs_table.sql`
+- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V5__create_security_events_table.sql`
 - `docs/plans/codex/IMPLEMENTATION-PLAN-STORY-002-backend-shared-domain-scaffold.md`
 - `docs/qa/codex-handoff-STORY-002-backend-shared-domain-scaffold.md`
 - `docs/plans/codex/GIT-PUSH-PLAN-STORY-002-backend-shared-domain-scaffold.md`
@@ -121,14 +121,14 @@ Allowed To Execute: YES
 5. Run compile check:
 
 ```powershell
-cd 04_SourceCode/Backend
+cd 04_SourceCode/CamBridge-API
 .\mvnw.cmd -q -DskipTests compile
 ```
 
 6. Run existing tests only:
 
 ```powershell
-cd 04_SourceCode/Backend
+cd 04_SourceCode/CamBridge-API
 .\mvnw.cmd test
 ```
 

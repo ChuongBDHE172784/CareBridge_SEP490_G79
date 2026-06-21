@@ -1,4 +1,4 @@
-
+﻿
 # Function Spec Task Allocation
 
 Source: `01_Requirements/SRS/Report3_Software Requirement Specification.docx.md`, section `3. Functional Specifications`.
@@ -705,9 +705,9 @@ Task: stop adding large features, stabilize demo paths, and reduce merge risk.
 
 Required checks:
 
-- Backend: run tests/build from `04_SourceCode/Backend`.
-- Frontend: run lint/build from `04_SourceCode/Frontend`.
-- Mobile: run analyze/test from `04_SourceCode/MobileApp`.
+- Backend: run tests/build from `04_SourceCode/CamBridge-API`.
+- Frontend: run lint/build from `04_SourceCode/CareBridgeWebApp`.
+- Mobile: run analyze/test from `04_SourceCode/CareBridgeMobileApp`.
 - Verify `.env.example` documents every required new environment variable.
 - Verify every PR references SRS function IDs.
 - Verify every integration has fallback behavior.
