@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,7 +37,7 @@ public class SecurityEvent {
     private SecurityEventType eventType;
 
     @Column(name = "user_id")
-    private Long userId;
+    private UUID userId;
 
     @Column(name = "ip_address", length = 80)
     private String ipAddress;
