@@ -1,0 +1,261 @@
+<mxfile host="65bd71144e" modified="2026-06-11T18:26:59.000Z" agent="Antigravity" version="21.6.6" type="device">
+  <diagram id="ModeratorWebPortalFlow" name="Moderator Web Portal Screens Flow">
+    <mxGraphModel dx="2400" dy="1800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4200" pageHeight="2200" shadow="0">
+      <root>
+        <!-- Canvas Root Elements -->
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- System Boundary / Outer Frame -->
+        <mxCell id="sys_boundary" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;strokeWidth=1.5;strokeDasharray=3 3;align=left;verticalAlign=top;pointerEvents=0;" parent="1" vertex="1">
+          <mxGeometry x="40" y="80" width="4120" height="2040" as="geometry" />
+        </mxCell>
+
+        <!-- Diagram Title -->
+        <mxCell id="diagram_title" value="CareBridge - Moderator Web Portal Screens Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#5F4900;fontFamily=Arial;" parent="1" vertex="1">
+          <mxGeometry x="40" y="30" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========================================== -->
+        <!--                   EXPLAIN                  -->
+        <!-- ========================================== -->
+        <mxCell id="explain_box" value="&lt;b&gt;Explain&lt;/b&gt;" style="swimlane;fontFamily=Arial;fontSize=12;align=left;whiteSpace=wrap;html=1;strokeColor=#8C8C8C;fillColor=#FFFFFF;fontColor=#333333;startSize=24;horizontal=1;childLayout=flowLayout;flowOrientation=north;resizable=0;collapsible=0;" parent="1" vertex="1">
+          <mxGeometry x="60" y="110" width="280" height="90" as="geometry" />
+        </mxCell>
+        <!-- Moderator row -->
+        <mxCell id="exp_moderator_label" value="Moderator" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Arial;fontColor=#333333;" parent="explain_box" vertex="1">
+          <mxGeometry x="10" y="45" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="exp_mod_color1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#8C8C8C;" parent="explain_box" vertex="1">
+          <mxGeometry x="120" y="47" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="exp_mod_color2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DDEBF7;strokeColor=#5B9BD5;" parent="explain_box" vertex="1">
+          <mxGeometry x="150" y="47" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="exp_mod_color3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;" parent="explain_box" vertex="1">
+          <mxGeometry x="180" y="47" width="20" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- ========================================== -->
+        <!--                AUTHENTICATION              -->
+        <!-- ========================================== -->
+        <mxCell id="mod_login" value="Moderator Login" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#F2F2F2;strokeColor=#8C8C8C;fontColor=#333333;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="60" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="forgot_password" value="Forgot Password" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#F2F2F2;strokeColor=#8C8C8C;fontColor=#333333;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="300" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="reset_password" value="Reset Password" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#F2F2F2;strokeColor=#8C8C8C;fontColor=#333333;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="540" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mod_dashboard" value="Moderator Dashboard" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="780" y="280" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ========================================== -->
+        <!--             MODERATION WORKSPACE           -->
+        <!-- ========================================== -->
+        <mxCell id="moderation_queue" value="Moderation Queue&lt;br/&gt;&lt;span style=&quot;font-size: 10px;&quot;&gt;[Questions, Answers, Reports, Safety Flags]&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1060" y="280" width="250" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="moderation_item_detail" value="Moderation Item Detail" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1380" y="200" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="content_report_detail" value="Content Report Detail" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1380" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="account_report_detail" value="Account Report Detail" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1380" y="360" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="violation_history" value="Violation History" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="360" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="escalated_safety_case" value="Escalated Safety Case" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1380" y="440" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Allowed Action Modals -->
+        <mxCell id="approve_content" value="Approve Content" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="120" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hide_lock_content" value="Hide or Lock Content" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="200" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="request_content_revision" value="Request Content Revision" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="resolve_report" value="Resolve Report" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1880" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="warn_account" value="Warn Account" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1880" y="360" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="suspend_account" value="Suspend Account" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2120" y="360" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="escalate_to_admin" value="Escalate to Admin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFF4B8;strokeColor=#B58A00;fontColor=#5F4900;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="440" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ========================================== -->
+        <!--           SHARED ACCOUNT SCREENS           -->
+        <!-- ========================================== -->
+        <mxCell id="notification_center" value="Notification Center&lt;br/&gt;&lt;span style=&quot;font-size: 10px;&quot;&gt;[Community Replies, Moderation and System Notices]&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2600" y="110" width="250" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="notification_detail" value="Notification Detail" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="110" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="account_profile" value="Account Profile" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2600" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edit_account_profile" value="Edit Account Profile" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="200" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="change_password" value="Change Password" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="280" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="notification_preferences" value="Notification Preferences" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="360" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="privacy_settings" value="Privacy Settings" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="440" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="login_sessions" value="Login Sessions" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="520" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="revoke_session_conf" value="Revoke Session Confirmation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="3200" y="520" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="deactivate_account_conf" value="Deactivate Account Confirmation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="600" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="delete_account_conf" value="Delete Account Confirmation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="680" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="logout_conf" value="Logout Confirmation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#DDEBF7;strokeColor=#5B9BD5;fontColor=#1F4E79;fontFamily=Arial;fontSize=12;strokeWidth=1.5;" parent="1" vertex="1">
+          <mxGeometry x="2920" y="760" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ========================================== -->
+        <!--                  CONNECTORS                -->
+        <!-- ========================================== -->
+        <!-- Authentication & Dash -->
+        <mxCell id="e_log_for" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="mod_login" target="forgot_password" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_for_res" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="forgot_password" target="reset_password" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_res_log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="reset_password" target="mod_login" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_log_dsh" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="mod_login" target="mod_dashboard" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Dashboard to Modules -->
+        <mxCell id="e_dsh_que" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="mod_dashboard" target="moderation_queue" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dsh_not" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="mod_dashboard" target="notification_center" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dsh_acc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="mod_dashboard" target="account_profile" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Moderation Queue details -->
+        <mxCell id="e_que_itm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_queue" target="moderation_item_detail" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_que_rep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_queue" target="content_report_detail" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_que_acc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_queue" target="account_report_detail" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_que_saf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_queue" target="escalated_safety_case" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Moderation Item Actions -->
+        <mxCell id="e_itm_app" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_item_detail" target="approve_content" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_itm_hid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_item_detail" target="hide_lock_content" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_itm_rev" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="moderation_item_detail" target="request_content_revision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Content Report Actions -->
+        <mxCell id="e_rep_res" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="content_report_detail" target="resolve_report" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Account Report Actions & History -->
+        <mxCell id="e_ard_his" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_report_detail" target="violation_history" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ard_wrn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_report_detail" target="warn_account" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ard_sus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_report_detail" target="suspend_account" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_his_wrn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="violation_history" target="warn_account" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_his_sus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="violation_history" target="suspend_account" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Safety Case Actions -->
+        <mxCell id="e_saf_adm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="escalated_safety_case" target="escalate_to_admin" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Shared Account & Notifications -->
+        <mxCell id="e_not_det" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="notification_center" target="notification_detail" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_acc_edt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="edit_account_profile" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_pwd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="change_password" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_ntp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="notification_preferences" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_prv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="privacy_settings" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_ses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="login_sessions" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ses_rvk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="login_sessions" target="revoke_session_conf" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_dea" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="deactivate_account_conf" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_del" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="delete_account_conf" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_acc_out" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="account_profile" target="logout_conf" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_out_log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#808080;strokeWidth=1;endArrow=block;endFill=1;" parent="1" source="logout_conf" target="mod_login" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

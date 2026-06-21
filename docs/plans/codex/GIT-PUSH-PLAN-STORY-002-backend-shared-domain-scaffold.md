@@ -1,8 +1,8 @@
 # GIT-PUSH-PLAN-STORY-002-backend-shared-domain-scaffold
 
-Status: DONE
-Approval Required: NO
-Allowed To Execute: NO
+Status:
+Approval Required: YES
+Allowed To Execute: YEs
 
 ## Agent Role
 
@@ -107,7 +107,7 @@ Forbidden current worktree changes to exclude:
 
 ```text
 Status: APPROVED_BY_USER
-Approval Required: NO
+Approval Required: Yes
 Allowed To Execute: YES
 ```
 
@@ -157,8 +157,8 @@ git push origin lam-branch-code
 
 ```text
 Status: DONE
-Approval Required: NO
-Allowed To Execute: NO
+Approval Required: Yes
+Allowed To Execute: Yes
 ```
 
 13. Stop and report push result.

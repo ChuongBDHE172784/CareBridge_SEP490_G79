@@ -8,6 +8,7 @@ import com.carebridge.backend.consent.service.ConsentService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,13 +30,13 @@ public class ConsentController {
     public ResponseEntity<ApiResponse<ConsentGrantResponse>> grant(
             Principal principal,
             @Valid @RequestBody GrantConsentRequest request) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.grantConsent(userId, request), "Consent granted"));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ConsentGrantResponse>>> list(Principal principal) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.listConsents(userId)));
     }
 
@@ -43,7 +44,7 @@ public class ConsentController {
     public ResponseEntity<ApiResponse<ConsentGrantResponse>> revoke(
             Principal principal,
             @PathVariable Long consentId) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.revokeConsent(userId, consentId), "Consent revoked"));
     }
 }

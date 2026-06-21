@@ -1,0 +1,198 @@
+<mxfile host="app.diagrams.net" modified="2026-06-18T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="backend-package-diagram" name="Backend Package Diagram">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareBridge Backend Package Diagram" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="520" y="30" width="760" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Base package: com.carebridge.backend | Spring Boot 4.1.0 | Java 17" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="520" y="80" width="760" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="Package convention inside most domain modules:&lt;br&gt;controller - dto.request/response - service - repository - entity - mapper - policy" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8F9FA;strokeColor=#DADCE0;fontSize=13;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="520" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeLegend1" value="solid: direct application dependency" style="text;html=1;strokeColor=none;fillColor=none;fontSize=12;align=left;fontColor=#3C4043;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1025" width="260" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeLegend2" value="dashed: cross-cutting/shared dependency" style="text;html=1;strokeColor=none;fillColor=none;fontSize=12;align=left;fontColor=#3C4043;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1050" width="280" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rootPkg" value="&lt;b&gt;backend&lt;/b&gt;&lt;br&gt;BackendApplication" style="shape=folder;tabWidth=70;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=14;fontStyle=0;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="760" y="130" width="280" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="api" value="&lt;b&gt;API Boundary&lt;/b&gt;&lt;br&gt;REST controllers&lt;br&gt;request/response DTOs" style="shape=folder;tabWidth=75;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#188038;fontSize=13;align=center;" vertex="1" parent="1">
+          <mxGeometry x="90" y="250" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="domain" value="&lt;b&gt;Domain Modules&lt;/b&gt;&lt;br&gt;business capabilities and policies" style="shape=folder;tabWidth=85;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#F9AB00;fontSize=13;align=center;" vertex="1" parent="1">
+          <mxGeometry x="520" y="250" width="760" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="data" value="&lt;b&gt;Persistence&lt;/b&gt;&lt;br&gt;repositories&lt;br&gt;JPA entities" style="shape=folder;tabWidth=85;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#D93025;fontSize=13;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="250" width="250" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="groupUser" value="User, Identity &amp; Access" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="400" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="identity" value="identity" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupUser">
+          <mxGeometry x="25" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="security" value="security&lt;br&gt;jwt, otp, rbac, session" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=12;" vertex="1" parent="groupUser">
+          <mxGeometry x="215" y="55" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="family" value="family" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupUser">
+          <mxGeometry x="25" y="145" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="consent" value="consent" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupUser">
+          <mxGeometry x="215" y="145" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="groupCare" value="Care Operations" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="390" width="520" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="healthrecord" value="healthrecord" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="25" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="carejourney" value="carejourney" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="185" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="reminder" value="reminder" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="345" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="consultation" value="consultation" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="25" y="140" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="triage" value="triage" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="185" y="140" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="emergency" value="emergency" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="345" y="140" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="safety" value="safety" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="25" y="225" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="exercise" value="exercise" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="185" y="225" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" value="audit" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupCare">
+          <mxGeometry x="345" y="225" width="150" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="groupEngagement" value="Community, Content &amp; Services" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="390" width="400" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="content" value="content" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupEngagement">
+          <mxGeometry x="25" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="community" value="community" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupEngagement">
+          <mxGeometry x="225" y="55" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="expert" value="expert" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupEngagement">
+          <mxGeometry x="25" y="140" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="partner" value="partner" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupEngagement">
+          <mxGeometry x="225" y="140" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="payment" value="payment" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" vertex="1" parent="groupEngagement">
+          <mxGeometry x="25" y="225" width="150" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="platform" value="Shared Platform Packages" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="390" width="280" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="common" value="common&lt;br&gt;config, constants, exception, pagination, response, util, validation" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" vertex="1" parent="platform">
+          <mxGeometry x="35" y="55" width="210" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="integration" value="integration&lt;br&gt;firebase, storage, gemini, trackasia, vnpay, wearable, zegocloud" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" vertex="1" parent="platform">
+          <mxGeometry x="35" y="170" width="210" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="external" value="External services&lt;br&gt;Firebase | Gemini | TrackAsia | VNPay | Wearable | ZEGOCLOUD" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5F6368;fontSize=12;" vertex="1" parent="platform">
+          <mxGeometry x="35" y="285" width="210" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db" value="PostgreSQL&lt;br&gt;via Spring Data JPA" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FCE8E6;strokeColor=#D93025;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="760" y="835" width="220" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeRootApi" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" edge="1" parent="1" source="rootPkg" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeRootDomain" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" edge="1" parent="1" source="rootPkg" target="domain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeRootData" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" edge="1" parent="1" source="rootPkg" target="data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeApiUser" value="REST endpoints" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" edge="1" parent="1" source="api" target="groupUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeApiCare" value="REST endpoints" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" edge="1" parent="1" source="api" target="groupCare">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeApiEngagement" value="REST endpoints" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" edge="1" parent="1" source="api" target="groupEngagement">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeUserCare" value="patient/caregiver context" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="groupUser" target="groupCare">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeCareEngagement" value="care content and expert services" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="groupCare" target="groupEngagement">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeEngagementPayment" value="booking/payment flow" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="expert" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeConsultationExpert" value="consults expert" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="consultation" target="expert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeTriageEmergency" value="escalates" style="endArrow=block;html=1;rounded=0;strokeColor=#D93025;fontSize=11;" edge="1" parent="1" source="triage" target="emergency">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeHealthSafety" value="health signals" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="healthrecord" target="safety">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeGroupsCommon1" value="shared responses, exceptions, validation" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" edge="1" parent="1" source="groupUser" target="common">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeGroupsCommon2" value="shared responses, exceptions, validation" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" edge="1" parent="1" source="groupCare" target="common">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeGroupsCommon3" value="shared responses, exceptions, validation" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" edge="1" parent="1" source="groupEngagement" target="common">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeSecurityCommon" value="auth filters and access checks" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" edge="1" parent="1" source="security" target="common">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeCareIntegration" value="AI, maps, video, wearable integrations" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="groupCare" target="integration">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeEngagementIntegration" value="payment, storage, video integrations" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" edge="1" parent="1" source="groupEngagement" target="integration">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeIntegrationExternal" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" edge="1" parent="1" source="integration" target="external">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edgeDataDb" value="repositories persist entities" style="endArrow=block;html=1;rounded=0;strokeColor=#D93025;fontSize=11;" edge="1" parent="1" source="data" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeUserDb" value="repository/entity packages" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;" edge="1" parent="1" source="groupUser" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeCareDb" value="repository/entity packages" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;" edge="1" parent="1" source="groupCare" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeEngagementDb" value="repository/entity packages" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;" edge="1" parent="1" source="groupEngagement" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

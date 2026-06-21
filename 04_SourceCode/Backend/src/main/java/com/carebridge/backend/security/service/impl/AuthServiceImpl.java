@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -140,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String refreshToken, Long userId) {
+    public void logout(String refreshToken, UUID userId) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             refreshTokenRepository.findByTokenAndRevokedFalse(refreshToken)
                     .ifPresent(token -> {
@@ -163,14 +164,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(Long userId) {
+    public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toProfileResponse(user);
     }
 
     @Override
-    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+    public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setName(StringUtils.sanitizeBasicText(request.getName()));
@@ -189,6 +190,8 @@ public class AuthServiceImpl implements AuthService {
                 .role(role)
                 .enabled(true)
                 .locked(false)
+                .accountStatus("ACTIVE")
+                .phoneVerified(true)
                 .passwordHash(passwordEncoder.encode(generateOpaqueSecret()))
                 .build();
         return userRepository.save(user);
