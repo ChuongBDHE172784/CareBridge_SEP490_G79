@@ -270,7 +270,7 @@ Required Test Spec content:
 
 #### CareBridge Adaptation Rules for the Test Template
 
-- Backend test files use `*Test.java` under `04_SourceCode/CamBridge-API/src/test/java`.
+- Backend test files use `*Test.java` under `04_SourceCode/CamBridgeAPI/src/test/java`.
 - Backend commands use Maven Wrapper, not `npm test`.
 - Spring MVC/security tests use the Spring Boot test dependencies already configured.
 - Persistence tests must use PostgreSQL-compatible behavior; do not assume H2 equivalence.
@@ -383,7 +383,7 @@ Run validation from each affected application directory.
 Backend:
 
 ```powershell
-cd 04_SourceCode/CamBridge-API
+cd 04_SourceCode/CamBridgeAPI
 .\mvnw.cmd test
 .\mvnw.cmd clean package
 ```

@@ -40,7 +40,7 @@ After approval, implement the backend shared scaffold for:
 This plan preserves the current layered architecture organized by business domain under:
 
 ```text
-04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/<domain>/
+04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/<domain>/
 ```
 
 ## Input Files
@@ -52,15 +52,15 @@ Read during PLAN_ONLY:
 - `docs/bmad/architecture.md`
 - `docs/bmad/coding-standards.md`
 - `docs/stories/STORY-002-backend-shared-domain-scaffold.md`
-- `04_SourceCode/CamBridge-API` backend structure only, checked by file and directory listing
+- `04_SourceCode/CamBridgeAPI` backend structure only, checked by file and directory listing
 
 Backend structure checked:
 
-- Backend root exists at `04_SourceCode/CamBridge-API`.
-- Maven wrapper exists: `04_SourceCode/CamBridge-API/mvnw`, `04_SourceCode/CamBridge-API/mvnw.cmd`.
-- Backend build file exists: `04_SourceCode/CamBridge-API/pom.xml`.
-- Backend application config exists: `04_SourceCode/CamBridge-API/src/main/resources/application.yaml`.
-- Main Java package root exists: `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend`.
+- Backend root exists at `04_SourceCode/CamBridgeAPI`.
+- Maven wrapper exists: `04_SourceCode/CamBridgeAPI/mvnw`, `04_SourceCode/CamBridgeAPI/mvnw.cmd`.
+- Backend build file exists: `04_SourceCode/CamBridgeAPI/pom.xml`.
+- Backend application config exists: `04_SourceCode/CamBridgeAPI/src/main/resources/application.yaml`.
+- Main Java package root exists: `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend`.
 - `BackendApplication.java` exists under the main package root.
 - Domain-first directories already exist for `audit`, `carejourney`, `common`, `community`, `consent`, `consultation`, `content`, `emergency`, `exercise`, `expert`, `family`, `healthrecord`, `identity`, `integration`, `partner`, `payment`, `reminder`, `safety`, `security`, and `triage`.
 - `common` already contains empty scaffold directories: `config`, `constants`, `exception`, `pagination`, `response`, `util`, and `validation`.
@@ -101,162 +101,162 @@ Plan status file:
 
 Build and application configuration:
 
-- `04_SourceCode/CamBridge-API/pom.xml`
-- `04_SourceCode/CamBridge-API/src/main/resources/application.yaml`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/BackendApplication.java`
+- `04_SourceCode/CamBridgeAPI/pom.xml`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/application.yaml`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/BackendApplication.java`
 
 Common config:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/JacksonConfig.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/WebMvcConfig.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/config/SpringDocConfig.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/config/JacksonConfig.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/config/WebMvcConfig.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/config/SpringDocConfig.java`
 
 Common exception:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/ResourceNotFoundException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/ValidationException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/ConsentException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/AuthenticationException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/AuthorizationException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/AccessDeniedBusinessException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/RedFlagException.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/exception/GlobalExceptionHandler.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/ResourceNotFoundException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/ValidationException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/ConsentException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/AuthenticationException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/AuthorizationException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/AccessDeniedBusinessException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/RedFlagException.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/exception/GlobalExceptionHandler.java`
 
 Common response:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/response/ApiResponse.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/response/PaginatedResponse.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/response/ErrorResponse.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/response/ErrorDetail.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/response/ApiResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/response/PaginatedResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/response/ErrorResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/response/ErrorDetail.java`
 
 Common constants:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/constants/AppConstants.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/constants/SecurityConstants.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/constants/ConsentConstants.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/constants/AppConstants.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/constants/SecurityConstants.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/constants/ConsentConstants.java`
 
 Common validation:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/validation/VietnamesePhoneNumber.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/validation/VietnamesePhoneNumberValidator.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/validation/VietnamesePhoneNumber.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/validation/VietnamesePhoneNumberValidator.java`
 
 Common util:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/util/DateUtils.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/util/StringUtils.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/common/util/SecurityUtils.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/util/DateUtils.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/util/StringUtils.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/common/util/SecurityUtils.java`
 
 Security config:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java`
 
 Security entity:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/entity/User.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/entity/RefreshToken.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/entity/OtpVerification.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/entity/User.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/entity/RefreshToken.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/entity/OtpVerification.java`
 
 Security repository:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/repository/UserRepository.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/repository/RefreshTokenRepository.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/repository/OtpVerificationRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/repository/UserRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/repository/RefreshTokenRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/repository/OtpVerificationRepository.java`
 
 Security DTO request:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/RegisterRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/LoginRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/VerifyOtpRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/RefreshTokenRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/ChangePasswordRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/request/UpdateProfileRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/RegisterRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/LoginRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/VerifyOtpRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/RefreshTokenRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/ChangePasswordRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/UpdateProfileRequest.java`
 
 Security DTO response:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/response/AuthResponse.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/response/UserProfileResponse.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/dto/response/OtpSendResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/response/AuthResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/response/UserProfileResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/dto/response/OtpSendResponse.java`
 
 Security controller:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/controller/AuthController.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/controller/AuthController.java`
 
 Security service:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/AuthService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/OtpService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/CustomUserDetailsService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/impl/AuthServiceImpl.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/impl/OtpServiceImpl.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/service/impl/CustomUserDetailsServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/AuthService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/OtpService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/CustomUserDetailsService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/impl/AuthServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/impl/OtpServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/service/impl/CustomUserDetailsServiceImpl.java`
 
 Security policy, JWT, RBAC, OTP, mapper:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/policy/AuthenticationPolicy.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/rbac/Role.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/otp/OtpGenerator.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/security/mapper/UserMapper.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/policy/AuthenticationPolicy.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/rbac/Role.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/otp/OtpGenerator.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/security/mapper/UserMapper.java`
 
 Consent entity:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/entity/ConsentGrant.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/entity/ConsentDataType.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/entity/ConsentPurpose.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/entity/ConsentGrant.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/entity/ConsentDataType.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/entity/ConsentPurpose.java`
 
 Consent repository:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/repository/ConsentGrantRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/repository/ConsentGrantRepository.java`
 
 Consent DTO:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/dto/request/GrantConsentRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/dto/request/RevokeConsentRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/dto/response/ConsentGrantResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/dto/request/GrantConsentRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/dto/request/RevokeConsentRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/dto/response/ConsentGrantResponse.java`
 
 Consent controller, service, policy, mapper:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/controller/ConsentController.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/service/ConsentService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/service/impl/ConsentServiceImpl.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/policy/ConsentCheckPolicy.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/consent/mapper/ConsentGrantMapper.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/controller/ConsentController.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/service/ConsentService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/service/impl/ConsentServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/policy/ConsentCheckPolicy.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/consent/mapper/ConsentGrantMapper.java`
 
 Audit entity:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/entity/AuditLog.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/entity/SecurityEvent.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/entity/AuditAction.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/entity/SecurityEventType.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/entity/AuditLog.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/entity/SecurityEvent.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/entity/AuditAction.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/entity/SecurityEventType.java`
 
 Audit repository:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/repository/AuditLogRepository.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/repository/SecurityEventRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/repository/AuditLogRepository.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/repository/SecurityEventRepository.java`
 
 Audit DTO:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/dto/request/AuditQueryRequest.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/dto/response/AuditLogResponse.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/AuditQueryRequest.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/response/AuditLogResponse.java`
 
 Audit controller, service, policy, mapper:
 
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/controller/AuditController.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/service/AuditService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/service/SecurityEventService.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/service/impl/SecurityEventServiceImpl.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/policy/AuditEligibilityPolicy.java`
-- `04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/audit/mapper/AuditLogMapper.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/service/AuditService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/service/SecurityEventService.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityEventServiceImpl.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/policy/AuditEligibilityPolicy.java`
+- `04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/audit/mapper/AuditLogMapper.java`
 
 Database migrations:
 
-- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V1__create_user_table.sql`
-- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V2__create_otp_verification_table.sql`
-- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V3__create_consent_grants_table.sql`
-- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V4__create_audit_logs_table.sql`
-- `04_SourceCode/CamBridge-API/src/main/resources/db/migration/V5__create_security_events_table.sql`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/db/migration/V1__create_user_table.sql`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/db/migration/V2__create_otp_verification_table.sql`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/db/migration/V3__create_consent_grants_table.sql`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/db/migration/V4__create_audit_logs_table.sql`
+- `04_SourceCode/CamBridgeAPI/src/main/resources/db/migration/V5__create_security_events_table.sql`
 
 Handoff:
 
@@ -271,7 +271,7 @@ Handoff:
 - `docs/stories/`
 - `05_Testing/`
 - `tests/`
-- `04_SourceCode/CamBridge-API/src/test/`
+- `04_SourceCode/CamBridgeAPI/src/test/`
 - `.env`
 - credentials
 - tokens
@@ -498,7 +498,7 @@ Forbidden package structures:
 Run from:
 
 ```text
-04_SourceCode/CamBridge-API
+04_SourceCode/CamBridgeAPI
 ```
 
 Build and compile:

@@ -40,7 +40,7 @@ TV4 owns Expert Consultation domain. Sprint 0 goal: create skeleton APIs and UI 
 ## 3. Backend Package Structure
 
 ```
-04_SourceCode/CamBridge-API/src/main/java/com/carebridge/backend/
+04_SourceCode/CamBridgeAPI/src/main/java/com/carebridge/backend/
 ├── expert/                    (STORY-401, 402, 403, 409, 410)
 │   ├── controller/
 │   │   ├── ExpertProfileController.java

@@ -705,7 +705,7 @@ Task: stop adding large features, stabilize demo paths, and reduce merge risk.
 
 Required checks:
 
-- Backend: run tests/build from `04_SourceCode/CamBridge-API`.
+- Backend: run tests/build from `04_SourceCode/CamBridgeAPI`.
 - Frontend: run lint/build from `04_SourceCode/CareBridgeWebApp`.
 - Mobile: run analyze/test from `04_SourceCode/CareBridgeMobileApp`.
 - Verify `.env.example` documents every required new environment variable.

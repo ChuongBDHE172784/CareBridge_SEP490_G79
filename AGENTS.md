@@ -12,7 +12,7 @@ Application code is under `04_SourceCode/`:
 
 ## Build, Test, and Development Commands
 
-- Backend: from `04_SourceCode/CamBridge-API`, run `.\mvnw.cmd spring-boot:run` to start locally, `.\mvnw.cmd test` for tests, and `.\mvnw.cmd clean package` for a full build.
+- Backend: from `04_SourceCode/CamBridgeAPI`, run `.\mvnw.cmd spring-boot:run` to start locally, `.\mvnw.cmd test` for tests, and `.\mvnw.cmd clean package` for a full build.
 - Frontend: from `04_SourceCode/CareBridgeWebApp`, run `npm install`, `npm run dev`, `npm run build`, `npm run lint`, and `npm run preview`.
 - Mobile: from `04_SourceCode/CareBridgeMobileApp`, run `flutter pub get`, `flutter run`, `flutter test`, and `flutter analyze`.
 

@@ -116,11 +116,11 @@ CareBridge_SEP490_G79/
 
 Use one Spring Boot application. Organize packages by domain first, then by layer inside each domain. This is easier to maintain than putting all controllers in one global folder and all services in another global folder.
 
-The backend project has already been initialized directly under `04_SourceCode/CamBridge-API` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below reflect the current package ownership under the existing package root `com.carebridge.backend`.
+The backend project has already been initialized directly under `04_SourceCode/CamBridgeAPI` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below reflect the current package ownership under the existing package root `com.carebridge.backend`.
 
 Current backend baseline:
 
-- Spring Boot application root: `04_SourceCode/CamBridge-API`
+- Spring Boot application root: `04_SourceCode/CamBridgeAPI`
 - Java package root: `com.carebridge.backend`
 - Main class: `BackendApplication`
 - Build tool: Maven
@@ -137,7 +137,7 @@ Current entity ownership rule:
 - ERD entity packages must not use a catch-all package such as `database.entity`.
 
 ```text
-04_SourceCode/CamBridge-API/
+04_SourceCode/CamBridgeAPI/
 ├── .mvn/
 │   └── wrapper/
 ├── .gitattributes
