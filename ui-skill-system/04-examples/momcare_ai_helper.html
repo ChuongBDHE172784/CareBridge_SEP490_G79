@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trợ lý AI Momcare - Premium Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        surface: '#F2EAE4',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        expert: '#81C784'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 8px 32px rgba(90, 70, 63, 0.04)',
+                        'floating': '0 24px 64px rgba(90, 70, 63, 0.12)',
+                        'pressed': 'inset 0 4px 8px rgba(90, 70, 63, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .bubble-ai {
+            background: #FFFFFF;
+            border-radius: 24px 24px 24px 4px;
+            box-shadow: 0 8px 16px rgba(90, 70, 63, 0.04);
+            transition: all 0.3s ease;
+        }
+
+        .bubble-user {
+            background: #C98C7B;
+            color: white;
+            border-radius: 24px 24px 4px 24px;
+            box-shadow: 0 8px 20px rgba(201, 140, 123, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        @keyframes bounce-subtle {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-4px);
+            }
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #9C857C;
+            border-radius: 50%;
+            animation: bounce-subtle 1s infinite ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans h-screen flex flex-col md:flex-row overflow-hidden p-4 md:p-6 gap-6">
+
+    <!-- SIDEBAR: THREADS -->
+    <aside class="hidden md:flex flex-col w-80 bg-card rounded-[32px] p-6 shadow-soft shrink-0">
+        <div class="flex items-center gap-3 mb-8 px-2">
+            <div class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center shrink-0">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight">Momcare AI</h1>
+        </div>
+
+        <button
+            class="flex items-center justify-center gap-2 p-4 bg-bg hover:bg-surface rounded-2xl transition-all font-bold text-sm mb-6 border border-transparent active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4 text-primary"></i> Chat mới
+        </button>
+
+        <div class="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-2">
+            <p class="text-[10px] font-bold text-textSecondary uppercase tracking-widest px-4 mb-2">Hôm nay</p>
+            <div
+                class="p-4 bg-surface rounded-2xl flex items-center gap-3 border border-primary/5 cursor-pointer group">
+                <i data-lucide="message-square" class="w-4 h-4 text-primary"></i>
+                <span class="text-xs font-bold truncate">Dị ứng cà rốt ở trẻ...</span>
+                <i data-lucide="more-horizontal"
+                    class="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            <div
+                class="p-4 hover:bg-surface/50 rounded-2xl flex items-center gap-3 text-textSecondary cursor-pointer transition-all group">
+                <i data-lucide="message-square" class="w-4 h-4"></i>
+                <span class="text-xs font-bold truncate">Lịch tiêm chủng Phế cầu...</span>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-6 border-t border-bg flex items-center gap-3">
+            <div class="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm">
+                <img src="https://i.pravatar.cc/100?u=mom" class="absolute inset-0 w-full h-full object-cover">
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-bold">Mẹ Bé Táo</p>
+                <p class="text-[10px] font-bold text-expert">Premium</p>
+            </div>
+            <i data-lucide="settings"
+                class="w-5 h-5 text-textSecondary cursor-pointer hover:text-primary transition-colors"></i>
+        </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 flex flex-col bg-card rounded-[32px] shadow-soft overflow-hidden relative">
+
+        <!-- HEADER -->
+        <header class="p-6 border-b border-bg flex items-center justify-between bg-white/50 backdrop-blur-md">
+            <div class="flex items-center gap-4">
+                <div class="relative w-12 h-12 rounded-full overflow-hidden shrink-0 shadow-inner">
+                    <img src="https://i.pravatar.cc/100?u=doc" class="absolute inset-0 w-full h-full object-cover">
+                    <span
+                        class="absolute bottom-0 right-0 w-3 h-3 bg-expert rounded-full border-2 border-white animate-pulse"></span>
+                </div>
+                <div>
+                    <h2 class="font-bold">BS. AI Lan Anh</h2>
+                    <p class="text-xs text-expert font-bold">Tư vấn chuyên sâu • Đang trực</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button
+                    class="w-10 h-10 rounded-full hover:bg-bg flex items-center justify-center text-textSecondary transition-colors"><i
+                        data-lucide="phone" class="w-5 h-5"></i></button>
+                <button
+                    class="w-10 h-10 rounded-full hover:bg-bg flex items-center justify-center text-textSecondary transition-colors"><i
+                        data-lucide="share-2" class="w-5 h-5"></i></button>
+            </div>
+        </header>
+
+        <!-- CHAT AREA -->
+        <div class="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col gap-6 hide-scrollbar">
+
+            <!-- AI -->
+            <div class="flex gap-4 max-w-[85%]">
+                <div
+                    class="w-10 h-10 bg-expert/10 text-expert rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                </div>
+                <div class="bubble-ai p-5 text-sm font-medium leading-relaxed">
+                    Chào Mẹ! Bác sĩ đã nhận được câu hỏi về tình trạng **đi ngoài có nhầy** của bé Bún. Mẹ đừng quá lo
+                    lắng, hãy cùng kiểm tra một vài chi tiết nhé.
+                </div>
+            </div>
+
+            <!-- User -->
+            <div class="flex gap-4 max-w-[85%] self-end">
+                <div class="bubble-user p-5 text-sm font-medium leading-relaxed">
+                    Chào bác sĩ, bé nhà mình bắt đầu ăn cà rốt từ thứ 2, đến hôm nay thấy phân có nhầy và bé quấy khóc
+                    nhiều hơn. Có phải do dị ứng không ạ?
+                </div>
+                <div
+                    class="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm self-end mb-1">
+                    <img src="https://i.pravatar.cc/100?u=mom" class="absolute inset-0 w-full h-full object-cover">
+                </div>
+            </div>
+
+            <!-- AI Logic Block -->
+            <div class="flex gap-4 max-w-[90%]">
+                <div
+                    class="w-10 h-10 bg-expert/10 text-expert rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                </div>
+                <div class="bubble-ai p-4 border-l-4 border-expert">
+                    <div class="bg-bg rounded-2xl p-4 mb-4">
+                        <h4
+                            class="text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <i data-lucide="activity" class="w-3 h-3"></i> Tóm tắt phân tích
+                        </h4>
+                        <p class="text-sm font-bold leading-relaxed mb-3">Dựa trên nhật ký của Mẹ, có 2 khả năng:</p>
+                        <ul class="space-y-2 text-sm font-medium">
+                            <li class="flex gap-2"><span class="text-expert">●</span> Hệ tiêu hóa đang thích nghi (Phổ
+                                biến)</li>
+                            <li class="flex gap-2"><span class="text-expert">●</span> Phản ứng nhẹ với Beta-carotene
+                                trong cà rốt</li>
+                        </ul>
+                    </div>
+                    <p class="text-sm font-medium leading-relaxed px-2">Mẹ hãy thử tạm dừng cà rốt trong 48h tới và theo
+                        dõi thêm nhé. Nếu bé có sốt trên 38°C thì cần đặt lịch khám video ngay.</p>
+                    <div class="mt-6 flex gap-3 px-2">
+                        <button
+                            class="bg-expert text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-soft hover:scale-105 active:scale-95 transition-all">Đặt
+                            lịch khám</button>
+                        <button
+                            class="bg-surface text-textPrimary px-6 py-2.5 rounded-full text-xs font-bold hover:bg-bg transition-all">Nhắc
+                            tôi theo dõi</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thinking -->
+            <div class="flex gap-4 animate-pulse">
+                <div class="w-10 h-10 bg-bg text-textSecondary rounded-full flex items-center justify-center shrink-0">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                </div>
+                <div class="bubble-ai px-6 py-4 flex gap-1.5 items-center">
+                    <div class="typing-dot" style="animation-delay: 0s"></div>
+                    <div class="typing-dot" style="animation-delay: 0.2s"></div>
+                    <div class="typing-dot" style="animation-delay: 0.4s"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INPUT AREA -->
+        <footer class="p-6 pt-0">
+            <div class="bg-bg p-2 rounded-2xl shadow-pressed flex items-center gap-2 border border-white/50">
+                <button
+                    class="w-10 h-10 rounded-xl hover:bg-white/50 flex items-center justify-center text-textSecondary transition-all">
+                    <i data-lucide="paperclip" class="w-5 h-5"></i>
+                </button>
+                <input type="text" placeholder="Hỏi bác sĩ AI..."
+                    class="flex-1 bg-transparent py-3 px-2 outline-none font-bold text-sm text-textPrimary placeholder-textSecondary">
+                <button
+                    class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all">
+                    <i data-lucide="arrow-up" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </footer>
+
+        <!-- BACK BTN MOBILE -->
+        <div class="md:hidden fixed bottom-10 right-6 z-50">
+            <a href="momcare_index.html"
+                class="w-14 h-14 bg-white rounded-full shadow-floating flex items-center justify-center text-primary border-4 border-primary/5">
+                <i data-lucide="home" class="w-6 h-6"></i>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

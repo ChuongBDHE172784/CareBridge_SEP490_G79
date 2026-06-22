@@ -232,7 +232,7 @@ Required TDS content:
 #### CareBridge Adaptation Rules for the TDS Template
 
 - Replace Prisma examples with JPA entities and Flyway SQL.
-- Replace TypeScript service examples with Java 17 interfaces and DTOs for backend work.
+- Replace TypeScript service examples with Java 21 interfaces and DTOs for backend work.
 - Use `Instant` for persisted/API timestamps unless a domain requirement says otherwise.
 - Use `jakarta.*`, constructor injection, Spring Data JPA, and domain-first packages.
 - Do not assume Redis, MongoDB, or another technology unless approved by an ADR.
@@ -480,7 +480,7 @@ Every PR must state:
 Review Sprint 0 TV1 work package <WP-ID>. Use the SRS functional specifications,
 task allocation, project structure design, ERD data dictionary, existing code,
 migrations, project-context.md, and PHASE-3_TDS.md. Create the work-package TDS,
-resolve every code-affecting conflict through an ADR, adapt examples to Java 17,
+resolve every code-affecting conflict through an ADR, adapt examples to Java 21,
 Spring Boot, JPA, Flyway, React, and Flutter, and stop for approval before coding.
 ```
 

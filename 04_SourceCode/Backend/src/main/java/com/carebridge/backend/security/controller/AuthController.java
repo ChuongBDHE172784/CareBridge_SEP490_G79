@@ -11,7 +11,6 @@ import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.RegisterResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
-import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,18 +60,20 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(
         summary = "User login with credentials",
-        description = "Authenticate user with email/phone and password. Returns OTP send confirmation. OTP must be verified to obtain access tokens.",
+        description = "Authenticate user with email/phone and password. Returns access and refresh tokens directly upon successful authentication. Rate limited: max 5 attempts per 15 minutes per account. Account will be temporarily locked for 15 minutes after exceeding attempts.",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Login credentials",
+            description = "Login credentials with password",
             content = @Content(schema = @Schema(implementation = LoginRequest.class))
         ),
         responses = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OTP sent", content = @Content(schema = @Schema(implementation = OtpSendResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid credentials or user not found")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid credentials or user not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account is disabled or locked"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Account temporarily locked due to multiple failed attempts")
         }
     )
-    public ResponseEntity<ApiResponse<OtpSendResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.login(request), "OTP sent"));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.login(request), "Login successful"));
     }
 
     @PostMapping("/verify-otp")

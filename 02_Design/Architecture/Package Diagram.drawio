@@ -7,7 +7,7 @@
         <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;" value="CareBridge Backend Package Diagram" vertex="1">
           <mxGeometry height="50" width="760" x="520" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" value="Base package: com.carebridge.backend | Spring Boot 4.1.0 | Java 17" vertex="1">
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" value="Base package: com.carebridge.backend | Spring Boot 4.1.0 | Java 21" vertex="1">
           <mxGeometry height="30" width="760" x="520" y="80" as="geometry" />
         </mxCell>
         <mxCell id="rootPkg" parent="1" style="shape=folder;tabWidth=70;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=14;fontStyle=0;align=center;verticalAlign=middle;" value="&lt;b&gt;backend&lt;/b&gt;&lt;br&gt;BackendApplication" vertex="1">

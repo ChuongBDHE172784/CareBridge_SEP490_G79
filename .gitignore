@@ -67,6 +67,28 @@ out/
 .github/agents/
 _bmad/
 _bmad-output/
+AGENTS.md
+CLAUDE.md
+
+# Share the ui-skill-system entrypoint across supported project agents
+!.agent/
+.agent/*
+!.agent/skills/
+.agent/skills/*
+!.agent/skills/ui-skill-system/
+!.agent/skills/ui-skill-system/SKILL.md
+!.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/ui-skill-system/
+!.agents/skills/ui-skill-system/SKILL.md
+!.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/ui-skill-system/
+!.claude/skills/ui-skill-system/SKILL.md
 
 # Local helper scripts and one-off tools
 scripts/

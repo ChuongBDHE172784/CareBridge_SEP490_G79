@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s ease;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(90, 70, 63, 0.1);
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-6 flex flex-col gap-10">
+
+        <!-- HEADER -->
+        <header class="flex justify-between items-center py-6">
+            <div>
+                <h1 class="text-3xl font-black">Chào Mẹ Bé Táo!</h1>
+                <p class="text-textSecondary font-bold">Thứ Ba, 15 Tháng 4, 2026</p>
+            </div>
+            <div class="flex gap-4">
+                <button class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                    <i data-lucide="bell"></i>
+                </button>
+                <div class="w-12 h-12 bg-primary rounded-2xl overflow-hidden shadow-sm">
+                    <img src="https://i.pravatar.cc/100?u=mom" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </header>
+
+        <!-- QUICK STATS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-card p-8 rounded-[32px] shadow-sm clay-card border border-white flex items-center gap-6">
+                <div class="w-14 h-14 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center shrink-0">
+                    <i data-lucide="baby"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-black text-textSecondary uppercase mb-1">Cân nặng</p>
+                    <p class="text-2xl font-black">7.5 kg</p>
+                </div>
+            </div>
+            <div class="bg-card p-8 rounded-[32px] shadow-sm clay-card border border-white flex items-center gap-6">
+                <div class="w-14 h-14 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center shrink-0">
+                    <i data-lucide="thermometer"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-black text-textSecondary uppercase mb-1">Chiều cao</p>
+                    <p class="text-2xl font-black">68 cm</p>
+                </div>
+            </div>
+            <div class="bg-card p-8 rounded-[32px] shadow-sm clay-card border border-white flex items-center gap-6">
+                <div
+                    class="w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center shrink-0">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-black text-textSecondary uppercase mb-1">Mốc phát triển</p>
+                    <p class="text-2xl font-black">Biết lẫy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div class="bg-card p-10 rounded-[40px] shadow-sm border border-white">
+                <h2 class="text-2xl font-black mb-6">Trợ lý AI Momcare</h2>
+                <div class="bg-bg p-6 rounded-3xl mb-6">
+                    <p class="text-sm font-bold leading-relaxed italic text-textSecondary">
+                        "Mẹ ơi, hôm nay bé Táo đạt 6 tháng 15 ngày rồi. Đừng quên chuẩn bị bữa ăn dặm đầu tiên với cà
+                        rốt nghiền nhé!"
+                    </p>
+                </div>
+                <button
+                    class="w-full py-5 bg-primary text-white rounded-3xl font-black hover:bg-primary-hover transition-all shadow-md">
+                    Hỏi Trợ lý ngay
+                </button>
+            </div>
+
+            <div class="bg-card p-10 rounded-[40px] shadow-sm border border-white">
+                <h2 class="text-2xl font-black mb-6">Nhật ký Hôm nay</h2>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-4 p-4 hover:bg-bg rounded-2xl transition-all">
+                        <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
+                            <i data-lucide="milk" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-black">Bú bình (Sữa công thức)</p>
+                            <p class="text-xs text-textSecondary font-bold">120ml • 10:30 sáng</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 p-4 hover:bg-bg rounded-2xl transition-all">
+                        <div
+                            class="w-10 h-10 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center">
+                            <i data-lucide="moon" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-black">Đi ngủ trưa</p>
+                            <p class="text-xs text-textSecondary font-bold">60 phút • 12:45 trưa</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NAVIGATION HUB LINK -->
+        <footer class="mt-10 mb-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="px-10 py-5 bg-white text-textPrimary rounded-full shadow-sm font-black hover:scale-105 transition-all">
+                Về Trang Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

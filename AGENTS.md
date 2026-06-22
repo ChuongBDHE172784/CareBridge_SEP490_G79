@@ -6,7 +6,7 @@ This repository follows an SDLC folder layout. Requirements and design live in `
 
 Application code is under `04_SourceCode/`:
 
-- `Backend/`: Spring Boot Java 17 service. Main code is in `src/main/java/com/carebridge/backend`, resources and Flyway migrations are in `src/main/resources`, and tests are in `src/test/java`.
+- `Backend/`: Spring Boot Java 21 service. Main code is in `src/main/java/com/carebridge/backend`, resources and Flyway migrations are in `src/main/resources`, and tests are in `src/test/java`.
 - `Frontend/`: Vite React TypeScript app. Use `src/app` for routing/providers/layouts, `src/features/<feature>` for feature modules, `src/shared` for reusable UI, API, hooks, and utilities.
 - `MobileApp/`: Flutter app. Use `lib/app`, `lib/core`, `lib/features/<feature>`, `lib/shared`, and `test/`.
 

@@ -74,6 +74,9 @@ public class User {
     @Column(name = "locked", nullable = false)
     private boolean locked = false;
 
+    @Column(name = "locked_at")
+    private Instant lockedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

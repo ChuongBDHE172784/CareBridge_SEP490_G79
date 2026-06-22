@@ -16,7 +16,6 @@ import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.RegisterResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
-import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.RefreshToken;
@@ -38,7 +37,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -193,58 +191,79 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public OtpSendResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
+        // 1. Normalize identifier (phone or email)
         String phone = normalizePhone(request.getPhone());
-        User user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String emailRaw = request.getEmail();
+        String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
+
+        // Validate exactly one identifier
+        boolean hasPhone = phone != null;
+        boolean hasEmail = email != null;
+        if (hasPhone == hasEmail) {
+            throw new AuthenticationException("Either phone or email must be provided (exactly one)");
+        }
+
+        // 2. Rate limiting: check if account is locked due to too many failed attempts
+        // Use user ID as rate limit key (will be known after fetching user)
+        User user = hasPhone
+                ? userRepository.findByPhone(phone).orElse(null)
+                : userRepository.findByEmailIgnoreCase(email).orElse(null);
+
+        if (user == null) {
+            // Generic message - don't leak user existence
+            throw new AuthenticationException("Invalid credentials");
+        }
+
+        // Check account status via policy (covers enabled/disabled/locked)
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // Check rate limit
-        if (!rateLimitPolicy.canAttempt(phone)) {
-            throw new ValidationException("Rate limit exceeded. Please try again later.");
+        // Rate limit key based on user ID (not identifier) to prevent account-wide lockout
+        String rateLimitKey = getRateLimitKey(user);
+
+        // Check rate limit - if exhausted, lock the account
+        if (!rateLimitPolicy.canAttempt(rateLimitKey)) {
+            // Lock the account for 15 minutes
+            user.setLocked(true);
+            user.setLockedAt(Instant.now());
+            userRepository.save(user);
+
+            long cooldown = rateLimitPolicy.getTimeUntilReset(rateLimitKey);
+            throw new AuthenticationException("Account temporarily locked due to multiple failed attempts. Please try again in " + cooldown + " seconds.");
         }
 
-        // Generate OTP
-        String otp = generate6DigitOtp();
-        String otpHash = hashOtpWithSha256(otp);
-
-        // Create or update OtpVerification
-        Optional<OtpVerification> existing = otpVerificationRepository
-                .findTopByPhoneAndUsedAtIsNullOrderByCreatedAtDesc(phone);
-
-        OtpVerification verification;
-        if (existing.isPresent()) {
-            verification = existing.get();
-            verification.setCodeHash(otpHash);
-            verification.setExpiresAt(Instant.now().plusSeconds(otpExpirationSeconds));
-            verification.setAttempts(5);
-            verification.setVerified(false);
-        } else {
-            verification = OtpVerification.builder()
-                    .user(user)
-                    .codeHash(otpHash)
-                    .phone(phone)
-                    .purpose(OtpVerification.OtpPurpose.LOGIN)
-                    .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
-                    .attempts(5)
-                    .verified(false)
-                    .build();
+        // 3. Verify password
+        String passwordHash = user.getPasswordHash();
+        if (passwordHash == null) {
+            throw new AuthenticationException("Invalid credentials");
         }
-        otpVerificationRepository.save(verification);
 
-        // Send OTP
-        smsService.sendOtpVerificationSms(phone, otp, (int) (otpExpirationSeconds / 60));
+        if (!passwordEncoder.matches(request.getPassword(), passwordHash)) {
+            // Password mismatch - rate limit counter already incremented by canAttempt()
+            throw new AuthenticationException("Invalid credentials");
+        }
+
+        // 4. Successful login - reset rate limit, unlock account, update last login
+        resetRateLimit(rateLimitKey);
+        user.setLocked(false);
+        user.setLockedAt(null);
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
+
+        // 5. Generate tokens and return response (reuse completeLogin logic)
+        RefreshToken refreshToken = createRefreshToken(user);
 
         auditService.log(
-                AuditAction.OTP_SENT,
+                AuditAction.LOGIN,
                 user.getId(),
-                "OtpVerification",
-                verification.getId().toString(),
-                Map.of("purpose", verification.getPurpose().name()));
+                "User",
+                user.getId().toString(),
+                null);
 
-        return OtpSendResponse.builder()
-                .message("OTP sent")
-                .expiresIn(otpExpirationSeconds)
+        return AuthResponse.builder()
+                .accessToken(jwtTokenProvider.generateAccessToken(user))
+                .refreshToken(refreshToken.getToken())
+                .user(userMapper.toProfileResponse(user))
                 .build();
     }
 
@@ -548,5 +567,15 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizePhone(String phone) {
         return StringUtils.trimToNull(phone);
+    }
+
+    // Helper để lấy identifier cho rate limiting (dùng user ID để thống nhất)
+    private String getRateLimitKey(User user) {
+        return user.getId().toString();
+    }
+
+    // Helper reset rate limit counter
+    private void resetRateLimit(String identifier) {
+        rateLimitPolicy.reset(identifier);
     }
 }

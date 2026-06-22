@@ -127,7 +127,7 @@ Yêu cầu:
 5. Xác định NFR có thể đo được; không sao chép SLA mẫu khi chưa có cơ sở.
 6. Viết implementation steps theo dependency và kèm file path cụ thể.
 7. Viết migration, verification, rollback và incident runbook.
-8. Điều chỉnh toàn bộ ví dụ template sang Java 17, Spring Boot, JPA,
+8. Điều chỉnh toàn bộ ví dụ template sang Java 21, Spring Boot, JPA,
    Flyway, PostgreSQL, React TypeScript và Flutter.
 9. Section không áp dụng phải ghi N/A và nêu lý do, không xóa im lặng.
 10. Không triển khai production code.
@@ -298,7 +298,7 @@ Triển khai theo Red-Green-Refactor:
 5. Cập nhật contracts, TDS/Test Spec changelog và traceability khi cần.
 
 Quy tắc bắt buộc:
-- Java 17, jakarta.*, constructor injection và domain-first packages.
+- Java 21, jakarta.*, constructor injection và domain-first packages.
 - Controller không chứa business logic và không trả JPA entity.
 - Service chịu transaction/authorization/consent boundary.
 - Endpoint /api/v1/** mặc định authenticated trừ khi TDS cho phép public.
