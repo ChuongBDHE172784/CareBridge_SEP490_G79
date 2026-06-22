@@ -1,10 +1,10 @@
-﻿---
+---
 title: CareBridge Project Structure Design
 project: CareBridge_SEP490_G79
 source_documents:
-  - 01_Requirements/SRS/Report1_Project Introduction.docx.md
-  - 01_Requirements/SRS/Report2_Project Management Plan.docx.md
-  - 01_Requirements/SRS/Report3_Software Requirement Specification.docx.md
+  - 02_Requirements/SRS/Report1_Project Introduction.docx.md
+  - 02_Requirements/SRS/Report2_Project Management Plan.docx.md
+  - 02_Requirements/SRS/Report3_Software Requirement Specification.docx.md
 created_by: bmad-create-architecture
 date: 2026-06-17
 status: draft
@@ -71,57 +71,67 @@ Rules:
 
 ## 4. Repository Structure
 
-Preserve the current SDLC folders. Expand implementation detail under `04_SourceCode`.
+This repository follows an SDLC folder layout reorganized to separate concerns cleanly.
 
 ```text
 CareBridge_SEP490_G79/
-├── 01_Requirements/
-│   ├── SRS/
-│   ├── UseCase/
+├── 01_Planning/
+│   ├── MeetingMinutes/
+│   ├── ProgressReports/
+│   ├── Risks/
+│   └── Schedule/
+├── 02_Requirements/
+│   ├── BusinessRules/
 │   ├── ContextDiagram/
 │   ├── DFD/
-│   ├── BusinessRules/
-│   └── RequirementTraceabilityMatrix/
-├── 02_Design/
+│   ├── RequirementTraceabilityMatrix/
+│   ├── SRS/
+│   └── UseCase/
+├── 03_Design/
+│   ├── ActivityDiagram/
+│   ├── APIDesign/
 │   ├── Architecture/
 │   │   ├── project-structure-design.md
 │   │   ├── system-architecture.md
 │   │   ├── integration-architecture.md
 │   │   └── security-consent-audit-architecture.md
-│   ├── Database/
-│   ├── UI_UX/
-│   ├── SequenceDiagram/
-│   ├── ActivityDiagram/
 │   ├── ClassDiagram/
-│   └── APIDesign/
-├── 03_MachineLearning/
-│   ├── Gemini_Triage/
-│   ├── RAG_Knowledge/
-│   ├── MediaPipe_Posture/
-│   ├── Safety_Rules/
-│   └── Evaluation/
-├── 04_SourceCode/
-│   ├── Backend/
-│   ├── Frontend/
-│   ├── MobileApp/
-│   ├── Database/
+│   ├── SequenceDiagram/
+│   ├── TechnicalDesign/
+│   └── UI_UX/
+├── 04_Implement/
+│   └── implement_artifacts/
+├── 05_Development/
+│   ├── CareBridgeAPI/
+│   ├── CareBridgeMobileApp/
+│   ├── CareBridgeWebApp/
 │   ├── Contracts/
-│   └── DevTools/
-├── 05_Testing/
-├── 06_Deployment/
-├── 07_ProjectManagement/
-└── 09_Archive/
+│   ├── Database/
+│   ├── Deployment/
+│   ├── DevTools/
+│   └── MachineLearning/
+├── 06_Testing/
+│   ├── AISafety/
+│   ├── Automation/
+│   ├── BugReports/
+│   ├── SecurityPrivacy/
+│   ├── TestCases/
+│   ├── TestReports/
+│   └── UAT/
+├── 07_Reports/
+└── 08_References/
+    └── Template/
 ```
 
 ## 5. Backend Structure
 
 Use one Spring Boot application. Organize packages by domain first, then by layer inside each domain. This is easier to maintain than putting all controllers in one global folder and all services in another global folder.
 
-The backend project has already been initialized directly under `04_SourceCode/Backend` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below reflect the current package ownership under the existing package root `com.carebridge.backend`.
+The backend project has already been initialized directly under `05_Development/CareBridgeAPI` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below reflect the current package ownership under the existing package root `com.carebridge.backend`.
 
 Current backend baseline:
 
-- Spring Boot application root: `04_SourceCode/Backend`
+- Spring Boot application root: `05_Development/CareBridgeAPI`
 - Java package root: `com.carebridge.backend`
 - Main class: `BackendApplication`
 - Build tool: Maven
@@ -138,7 +148,7 @@ Current entity ownership rule:
 - ERD entity packages must not use a catch-all package such as `database.entity`.
 
 ```text
-04_SourceCode/Backend/
+05_Development/CareBridgeAPI/
 ├── .mvn/
 │   └── wrapper/
 ├── .gitattributes
@@ -556,11 +566,11 @@ ConsultationBookingService
 
 ## 10. Web Portal Structure
 
-Use one Vite React TypeScript application initialized directly under `04_SourceCode/Frontend`. Keep Vite project files at the frontend root, then organize application code with feature-based folders inside `src/`.
+Use one Vite React TypeScript application initialized directly under `05_Development/CareBridgeWebApp`. Keep Vite project files at the frontend root, then organize application code with feature-based folders inside `src/`.
 
 Current frontend baseline:
 
-- React application root: `04_SourceCode/Frontend`
+- React application root: `05_Development/CareBridgeWebApp`
 - Build tool: Vite
 - Language: TypeScript
 - Entry point: `src/main.tsx`
@@ -583,7 +593,7 @@ Primary frontend dependencies:
 Recommended structure:
 
 ```text
-04_SourceCode/Frontend/
+05_Development/CareBridgeWebApp/
 ├── .gitignore
 ├── README.md
 ├── eslint.config.js
@@ -688,7 +698,7 @@ Web route groups:
 Use feature-based Flutter structure with simple UI, service, model, and repository folders.
 
 ```text
-04_SourceCode/MobileApp/
+05_Development/CareBridgeMobileApp/
 ├── pubspec.yaml
 ├── android/
 ├── ios/
@@ -807,7 +817,7 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 ## 12. Database and Contracts
 
 ```text
-04_SourceCode/Database/
+05_Development/Database/
 ├── postgres/
 │   ├── migrations/
 │   ├── seeds/
@@ -821,7 +831,7 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 ├── sample-data/
 └── docs/
 
-04_SourceCode/Contracts/
+05_Development/Contracts/
 ├── openapi/
 │   └── carebridge-api.yaml
 ├── events/
@@ -887,7 +897,7 @@ Integration reliability:
 ## 14. Testing Structure
 
 ```text
-05_Testing/
+06_Testing/
 ├── TestCases/
 │   ├── backend/
 │   ├── mobile/
@@ -939,7 +949,7 @@ Minimum gates:
 
 | Decision | Recommendation | Reason |
 | --- | --- | --- |
-| Repository shape | Preserve SDLC folders and expand `04_SourceCode` | Matches current repo and academic deliverable structure. |
+| Repository shape | Use the reorganized 8-folder SDLC structure and expand `05_Development` | Matches current repo and academic deliverable structure. |
 | Backend architecture | Layered Architecture using Controller-Service-Repository pattern | Familiar, simple, and suitable for Spring Boot MVP delivery. |
 | Backend package style | Package by domain, layer inside each domain | Keeps related code together while preserving layered responsibilities. |
 | Backend module structure | `controller/service/repository/entity/dto/mapper/policy` | Directly matches common Spring Boot practice. |
