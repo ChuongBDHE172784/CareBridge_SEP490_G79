@@ -62,16 +62,16 @@ public class User {
     private Instant lastLoginAt;
 
     @Builder.Default
-    @Transient
     @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 50, nullable = false)
     private Role role = Role.MOTHER;
 
     @Builder.Default
-    @Transient
+    @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
     @Builder.Default
-    @Transient
+    @Column(name = "locked", nullable = false)
     private boolean locked = false;
 
     @CreationTimestamp

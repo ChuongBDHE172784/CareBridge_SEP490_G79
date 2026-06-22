@@ -91,7 +91,8 @@ class AuthServiceResendOtpTest {
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        when(otpVerificationRepository.findByUserIdAndUsedAtIsNull(userId)).thenReturn(Optional.of(existingOtp));
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(userId))
+                .thenReturn(Optional.of(existingOtp));
         when(rateLimitPolicy.tryConsumeResend(userId.toString())).thenReturn(true);
 
         ResendOtpRequest request = new ResendOtpRequest();
@@ -131,7 +132,8 @@ class AuthServiceResendOtpTest {
                 .build();
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(otpVerificationRepository.findByUserIdAndUsedAtIsNull(userId)).thenReturn(Optional.of(existingOtp));
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(userId))
+                .thenReturn(Optional.of(existingOtp));
         when(rateLimitPolicy.tryConsumeResend(userId.toString())).thenReturn(true);
 
         ResendOtpRequest request = new ResendOtpRequest();
@@ -198,7 +200,8 @@ class AuthServiceResendOtpTest {
         User user = User.builder().id(UUID.randomUUID()).build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        when(otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId())).thenReturn(Optional.empty());
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId()))
+                .thenReturn(Optional.empty());
 
         ResendOtpRequest request = new ResendOtpRequest();
         request.setPhone(phone);
@@ -219,7 +222,8 @@ class AuthServiceResendOtpTest {
         OtpVerification otp = OtpVerification.builder().user(user).build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        when(otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId())).thenReturn(Optional.of(otp));
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId()))
+                .thenReturn(Optional.of(otp));
         when(rateLimitPolicy.tryConsumeResend(user.getId().toString())).thenReturn(false);
         when(rateLimitPolicy.getTimeUntilResendReset(user.getId().toString())).thenReturn(30L);
 
@@ -254,7 +258,7 @@ class AuthServiceResendOtpTest {
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(otpVerificationRepository.findByUserIdAndUsedAtIsNull(userId))
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(userId))
                 .thenReturn(Optional.of(existingOtp));
         when(rateLimitPolicy.tryConsumeResend(accountKey)).thenReturn(true, false);
         when(rateLimitPolicy.getTimeUntilResendReset(accountKey)).thenReturn(60L);

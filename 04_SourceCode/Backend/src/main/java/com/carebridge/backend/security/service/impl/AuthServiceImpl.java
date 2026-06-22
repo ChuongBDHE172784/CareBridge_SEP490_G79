@@ -311,7 +311,7 @@ public class AuthServiceImpl implements AuthService {
                         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         OtpVerification existingVerification = otpVerificationRepository
-                .findByUserIdAndUsedAtIsNull(user.getId())
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow(() -> new ValidationException(
                         "No pending OTP verification found. Please request a new OTP."));
 

@@ -24,9 +24,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -62,6 +64,9 @@ class RegistrationIntegrationTest {
 
     @Autowired
     private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -114,7 +119,8 @@ class RegistrationIntegrationTest {
         assertThat(user.getPasswordHash()).isNotNull();
 
         // Verify OTP was created
-        assertThat(otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId())).isPresent();
+        assertThat(otpVerificationRepository
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())).isPresent();
     }
 
     @Test
@@ -285,7 +291,8 @@ class RegistrationIntegrationTest {
         assertThat(activated.isEnabled()).isTrue();
         assertThat(activated.getAccountStatus()).isEqualTo("ACTIVE");
 
-        Optional<OtpVerification> otpAfter = otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId());
+        Optional<OtpVerification> otpAfter = otpVerificationRepository
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId());
         assertThat(otpAfter).isEmpty();
         var usedOtp = otpVerificationRepository.findAll().stream()
                 .filter(o -> o.getUser().getId().equals(user.getId()))
@@ -348,7 +355,8 @@ class RegistrationIntegrationTest {
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
 
-        var otpOpt = otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId());
+        var otpOpt = otpVerificationRepository
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId());
         assertThat(otpOpt).isPresent();
 
         // When: Submit wrong OTP
@@ -363,7 +371,8 @@ class RegistrationIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Invalid OTP"));
 
         // Then: Attempts should decrement
-        var updatedOtpOpt = otpVerificationRepository.findByUserIdAndUsedAtIsNull(user.getId());
+        var updatedOtpOpt = otpVerificationRepository
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId());
         assertThat(updatedOtpOpt).isPresent();
         var updatedOtp = updatedOtpOpt.get();
         assertThat(updatedOtp.getAttempts()).isEqualTo(4); // Started at 5, now 4
@@ -427,7 +436,7 @@ class RegistrationIntegrationTest {
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
         OtpVerification originalOtp = otpVerificationRepository
-                .findByUserIdAndUsedAtIsNull(user.getId())
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();
         long auditCountBefore = auditLogRepository.findAll().stream()
                 .filter(log -> log.getActorUserId().equals(user.getId()))
@@ -488,7 +497,7 @@ class RegistrationIntegrationTest {
 
         User user = userRepository.findByPhone(phone).orElseThrow();
         OtpVerification originalOtp = otpVerificationRepository
-                .findByUserIdAndUsedAtIsNull(user.getId())
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();
         long auditCountBefore = auditLogRepository.findAll().stream()
                 .filter(log -> log.getActorUserId().equals(user.getId()))
@@ -506,7 +515,7 @@ class RegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         OtpVerification pendingAfterRejection = otpVerificationRepository
-                .findByUserIdAndUsedAtIsNull(user.getId())
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();
         assertThat(pendingAfterRejection.getId()).isEqualTo(originalOtp.getId());
         assertThat(pendingAfterRejection.getCodeHash()).isEqualTo(originalOtp.getCodeHash());
@@ -579,6 +588,57 @@ class RegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(resendRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("No pending OTP verification found. Please request a new OTP."));
+    }
+
+    @Test
+    void resendOtp_WithMultiplePendingRows_ShouldInvalidateNewestOtp() throws Exception {
+        String phone = "+84933333333";
+        RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setPhone(phone);
+        registerRequest.setPassword("MyP@ssw0rd123");
+        registerRequest.setRole(Role.MOTHER);
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isCreated());
+
+        User user = userRepository.findByPhone(phone).orElseThrow();
+        OtpVerification olderPending = otpVerificationRepository
+                .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
+                .orElseThrow();
+        OtpVerification newerPending = otpVerificationRepository.saveAndFlush(
+                OtpVerification.builder()
+                        .user(user)
+                        .codeHash("newer_hash")
+                        .phone(phone)
+                        .purpose(OtpVerification.OtpPurpose.REGISTER)
+                        .expiresAt(Instant.now().plusSeconds(300))
+                        .attempts(5)
+                        .verified(false)
+                        .build());
+
+        jdbcTemplate.update(
+                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
+                olderPending.getId());
+        jdbcTemplate.update(
+                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
+                newerPending.getId());
+        clearInvocations(emailService, smsService);
+
+        ResendOtpRequest resendRequest = new ResendOtpRequest();
+        resendRequest.setPhone(phone);
+        mockMvc.perform(post("/api/v1/auth/resend-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isOk());
+
+        assertThat(otpVerificationRepository.findById(olderPending.getId()).orElseThrow().getUsedAt()).isNull();
+        assertThat(otpVerificationRepository.findById(newerPending.getId()).orElseThrow().getUsedAt()).isNotNull();
+        verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
+        verifyNoInteractions(emailService);
     }
 
     @Test

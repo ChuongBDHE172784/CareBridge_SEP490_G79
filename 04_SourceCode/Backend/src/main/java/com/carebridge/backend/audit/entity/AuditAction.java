@@ -5,6 +5,7 @@ public enum AuditAction {
     LOGOUT,
     OTP_SENT,
     OTP_VERIFIED,
+    OTP_RESENT,
     CONSENT_GRANTED,
     CONSENT_REVOKED,
     CREATE_HEALTH_RECORD,
@@ -14,5 +15,6 @@ public enum AuditAction {
     AI_TRIAGE,
     PAYMENT,
     SECURITY_EVENT,
-    VIEW_AUDIT_LOG
+    VIEW_AUDIT_LOG,
+    USER_REGISTRATION_COMPLETED
 }

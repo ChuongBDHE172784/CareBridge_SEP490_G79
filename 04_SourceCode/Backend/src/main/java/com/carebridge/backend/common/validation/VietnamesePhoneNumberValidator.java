@@ -9,6 +9,9 @@ public class VietnamesePhoneNumberValidator implements ConstraintValidator<Vietn
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        return value != null && value.matches(PHONE_PATTERN);
+        if (value == null || value.isBlank()) {
+            return true; // null/blank is acceptable here; use @NotNull/@NotBlank separately if required
+        }
+        return value.matches(PHONE_PATTERN);
     }
 }
