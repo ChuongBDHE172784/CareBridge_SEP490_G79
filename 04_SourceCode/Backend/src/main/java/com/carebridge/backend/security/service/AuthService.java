@@ -8,7 +8,6 @@ import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
-import java.util.UUID;
 
 public interface AuthService {
 
@@ -20,9 +19,9 @@ public interface AuthService {
 
     AuthResponse refresh(RefreshTokenRequest request);
 
-    void logout(String refreshToken, UUID userId);
+    void logout(String refreshToken, Long userId);
 
-    UserProfileResponse getProfile(UUID userId);
+    UserProfileResponse getProfile(Long userId);
 
-    UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request);
+    UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request);
 }
