@@ -35,26 +35,6 @@ class RateLimitPolicyTest {
     }
 
     @Test
-    void canAttempt_WithOtpHash_ShouldResetWhenOtpChanges() {
-        String phone = "+84901234567";
-        String otpHash1 = "hash1";
-        String otpHash2 = "hash2";
-
-        // First attempt with hash1
-        assertTrue(policy.canAttempt(phone, otpHash1));
-        // Second attempt with same hash should be allowed (2nd attempt)
-        assertTrue(policy.canAttempt(phone, otpHash1));
-        // New OTP hash should reset attempts (1st attempt with hash2)
-        assertTrue(policy.canAttempt(phone, otpHash2));
-        // Use up remaining attempts with hash2 (need MAX_ATTEMPTS - 1 more calls)
-        for (int i = 0; i < MAX_ATTEMPTS - 1; i++) {
-            assertTrue(policy.canAttempt(phone, otpHash2));
-        }
-        // Should be rate-limited now (all 5 attempts with hash2 used, 6th call denied)
-        assertFalse(policy.canAttempt(phone, otpHash2));
-    }
-
-    @Test
     void getRemainingAttempts_ShouldReturnMax_ForNewPhone() {
         assertEquals(MAX_ATTEMPTS, policy.getRemainingAttempts("+84901234567"));
     }

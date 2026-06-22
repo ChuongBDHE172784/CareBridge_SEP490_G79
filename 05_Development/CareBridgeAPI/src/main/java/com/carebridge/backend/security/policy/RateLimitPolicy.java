@@ -58,71 +58,33 @@ public class RateLimitPolicy {
     public boolean canAttempt(String phone) {
         cleanExpiredWindows();
 
-        AttemptInfo info = attemptMap.get(phone);
         Instant now = clock.instant();
+        AtomicBoolean allowed = new AtomicBoolean(false);
 
-        if (info == null) {
-            // First attempt in new window
-            attemptMap.put(phone, new AttemptInfo(1, now, null));
-            return true;
-        }
+        attemptMap.compute(phone, (key, existing) -> {
+            if (existing == null) {
+                allowed.set(true);
+                return new AttemptInfo(1, now, null);
+            }
 
-        // Check if window has expired
-        if (now.isAfter(info.windowStart.plusSeconds(ATTEMPT_WINDOW_SECONDS))) {
-            // Reset window
-            attemptMap.put(phone, new AttemptInfo(1, now, info.lastOtpHash));
-            return true;
-        }
+            // Check if window has expired - reset
+            if (now.isAfter(existing.windowStart.plusSeconds(ATTEMPT_WINDOW_SECONDS))) {
+                allowed.set(true);
+                return new AttemptInfo(1, now, existing.lastOtpHash);
+            }
 
-        // Within same window, check attempts
-        if (info.attempts < MAX_ATTEMPTS) {
-            info.attempts++;
-            return true;
-        }
+            // Within same window
+            if (existing.attempts < MAX_ATTEMPTS) {
+                existing.attempts++;
+                allowed.set(true);
+                return existing;
+            }
 
-        return false; // Rate limited
-    }
+            allowed.set(false);
+            return existing; // at limit
+        });
 
-    /**
-     * Kiểm tra xem có thể thực hiện attempt cho OTP cụ thể không.
-     * Đảm bảo OTP không đổi trong cùng một window để tránh bypass.
-     *
-     * @param phone phone number
-     * @param otpHash SHA256 hash của OTP
-     * @return true nếu hợp lệ, false nếu bị rate limited hoặc OTP đã thay đổi (reset window)
-     */
-    public boolean canAttempt(String phone, String otpHash) {
-        cleanExpiredWindows();
-
-        AttemptInfo info = attemptMap.get(phone);
-        Instant now = clock.instant();
-
-        if (info == null) {
-            attemptMap.put(phone, new AttemptInfo(1, now, otpHash));
-            return true;
-        }
-
-        // Check if window has expired
-        if (now.isAfter(info.windowStart.plusSeconds(ATTEMPT_WINDOW_SECONDS))) {
-            attemptMap.put(phone, new AttemptInfo(1, now, otpHash));
-            return true;
-        }
-
-        // If OTP changed, reset attempts (new OTP = new verification session)
-        if (!otpHash.equals(info.lastOtpHash)) {
-            info.attempts = 1;
-            info.lastOtpHash = otpHash;
-            info.windowStart = now;
-            return true;
-        }
-
-        // Within same window with same OTP, check attempts
-        if (info.attempts < MAX_ATTEMPTS) {
-            info.attempts++;
-            return true;
-        }
-
-        return false; // Rate limited
+        return allowed.get();
     }
 
     /**

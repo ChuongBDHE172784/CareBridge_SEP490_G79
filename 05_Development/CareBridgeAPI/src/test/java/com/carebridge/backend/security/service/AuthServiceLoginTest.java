@@ -1,6 +1,9 @@
 package com.carebridge.backend.security.service;
 
+import com.carebridge.backend.common.exception.AccountDisabledException;
+import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
@@ -227,7 +230,7 @@ class AuthServiceLoginTest {
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        doThrow(new AuthenticationException("Account is disabled"))
+        doThrow(new AccountDisabledException("Account is disabled"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
         LoginRequest request = new LoginRequest();
@@ -236,7 +239,7 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(AccountDisabledException.class)
                 .hasMessage("Account is disabled");
 
         verifyNoInteractions(rateLimitPolicy, passwordEncoder);
@@ -255,7 +258,7 @@ class AuthServiceLoginTest {
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        doThrow(new AuthenticationException("Account is locked"))
+        doThrow(new AccountLockedException("Account is locked"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
         LoginRequest request = new LoginRequest();
@@ -264,7 +267,7 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(AccountLockedException.class)
                 .hasMessage("Account is locked");
 
         verifyNoInteractions(rateLimitPolicy, passwordEncoder);
@@ -285,7 +288,6 @@ class AuthServiceLoginTest {
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(false);
-        when(rateLimitPolicy.getTimeUntilReset(userId.toString())).thenReturn(300L);
 
         LoginRequest request = new LoginRequest();
         request.setPhone(phone);
@@ -293,7 +295,7 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(AccountLockedException.class)
                 .hasMessageContaining("Account temporarily locked");
 
         // Verify account was locked and lockedAt was set
@@ -314,7 +316,7 @@ class AuthServiceLoginTest {
         request.setPassword("password");
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Either phone or email must be provided");
     }
 
@@ -326,7 +328,7 @@ class AuthServiceLoginTest {
         request.setPassword("password");
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Either phone or email must be provided");
     }
 
@@ -396,5 +398,80 @@ class AuthServiceLoginTest {
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessage("Invalid credentials");
+    }
+
+    @Test
+    void login_WhenLockedAccountAfterCooldown_ShouldSucceedAndUnlock() {
+        // Given - user locked 16 minutes ago (past 15 min cooldown)
+        String phone = "+84901234567";
+        String password = "MyP@ssw0rd123";
+        UUID userId = UUID.randomUUID();
+        Instant lockedAt = Instant.now().minus(16, java.time.temporal.ChronoUnit.MINUTES);
+        User user = User.builder()
+                .id(userId)
+                .phone(phone)
+                .email(null)
+                .passwordHash("$2a$12$hashedpassword")
+                .enabled(true)
+                .locked(true)
+                .lockedAt(lockedAt)
+                .role(Role.MOTHER)
+                .build();
+
+        when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
+        // Use real AuthenticationPolicy to test actual auto-unlock behavior
+        // (Other tests mock it, but this test specifically verifies the policy's unlock logic)
+        // We'll reconstruct authService with real policy
+        AuthenticationPolicy realPolicy = new AuthenticationPolicy();
+        // Set the user field via reflection? Actually policy.ensureCanAuthenticate modifies user directly
+        // We can't inject real policy easily because it's @Component but we can instantiate manually
+        // We'll just let the mocked service call the real policy method by not stubbing it
+        // Actually, since we're using mock(authenticationPolicy) in setUp, we need to override here
+        // Easiest: create a new AuthServiceImpl with real policy
+        AuthService realAuthService = new AuthServiceImpl(
+                userRepository,
+                refreshTokenRepository,
+                mock(com.carebridge.backend.security.repository.OtpVerificationRepository.class),
+                auditService,
+                jwtTokenProvider,
+                userMapper,
+                realPolicy, // real policy
+                passwordComplexityPolicy,
+                rateLimitPolicy,
+                mock(com.carebridge.backend.security.service.EmailService.class),
+                mock(com.carebridge.backend.security.service.SmsService.class),
+                passwordEncoder
+        );
+
+        when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
+        when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> {
+            RefreshToken token = invocation.getArgument(0);
+            if (token.getId() == null) {
+                token.setId(1L);
+            }
+            return token;
+        });
+        when(jwtTokenProvider.generateAccessToken(user)).thenReturn("access-token");
+        when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
+
+        LoginRequest request = new LoginRequest();
+        request.setPhone(phone);
+        request.setEmail(null);
+        request.setPassword(password);
+
+        // When
+        AuthResponse response = realAuthService.login(request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+
+        // Verify user was unlocked and persisted
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository, atLeastOnce()).save(userCaptor.capture());
+        User savedUser = userCaptor.getValue();
+        assertThat(savedUser.isLocked()).isFalse();
+        assertThat(savedUser.getLockedAt()).isNull();
     }
 }

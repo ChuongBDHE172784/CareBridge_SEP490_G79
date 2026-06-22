@@ -6,6 +6,7 @@ import com.carebridge.backend.common.exception.AuthenticationException;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
@@ -67,6 +68,23 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${carebridge.security.jwt.refresh-token-expiration-ms:604800000}")
     private long refreshTokenExpirationMs;
+
+    /**
+     * Constant-time comparison for hex-encoded hashes to prevent timing attacks.
+     */
+    private static boolean constantTimeHashEquals(String hash1, String hash2) {
+        if (hash1 == null || hash2 == null) {
+            return hash1 == hash2;
+        }
+        // Compare as UTF-8 bytes; both hashes are expected to be same length (64 for SHA256)
+        try {
+            byte[] bytes1 = hash1.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] bytes2 = hash2.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            return MessageDigest.isEqual(bytes1, bytes2);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @Override
     public RegisterResponse register(RegisterRequest request) {
@@ -190,6 +208,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Transactional(noRollbackFor = AccountLockedException.class)
     @Override
     public AuthResponse login(LoginRequest request) {
         // 1. Normalize identifier (phone or email)
@@ -201,7 +220,7 @@ public class AuthServiceImpl implements AuthService {
         boolean hasPhone = phone != null;
         boolean hasEmail = email != null;
         if (hasPhone == hasEmail) {
-            throw new AuthenticationException("Either phone or email must be provided (exactly one)");
+            throw new ValidationException("Either phone or email must be provided (exactly one)");
         }
 
         // 2. Rate limiting: check if account is locked due to too many failed attempts
@@ -228,8 +247,7 @@ public class AuthServiceImpl implements AuthService {
             user.setLockedAt(Instant.now());
             userRepository.save(user);
 
-            long cooldown = rateLimitPolicy.getTimeUntilReset(rateLimitKey);
-            throw new AuthenticationException("Account temporarily locked due to multiple failed attempts. Please try again in " + cooldown + " seconds.");
+            throw new AccountLockedException("Account temporarily locked due to multiple failed attempts");
         }
 
         // 3. Verify password
@@ -415,7 +433,7 @@ public class AuthServiceImpl implements AuthService {
     private AuthResponse completeRegistration(OtpVerification verification, User user, String otpInput) {
         // Hash input OTP and compare
         String inputHash = hashOtpWithSha256(otpInput);
-        if (!inputHash.equals(verification.getCodeHash())) {
+        if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
@@ -456,7 +474,7 @@ public class AuthServiceImpl implements AuthService {
     private AuthResponse completeLogin(OtpVerification verification, String phone, String otpInput) {
         // Hash input OTP and compare
         String inputHash = hashOtpWithSha256(otpInput);
-        if (!inputHash.equals(verification.getCodeHash())) {
+        if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
@@ -473,6 +491,9 @@ public class AuthServiceImpl implements AuthService {
 
         User user = verification.getUser();
         authenticationPolicy.ensureCanAuthenticate(user);
+
+        // If policy auto-unlocked the account, persist the change
+        userRepository.save(user);
 
         auditService.log(
                 AuditAction.OTP_VERIFIED,
@@ -494,7 +515,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse refresh(RefreshTokenRequest request) {
-        RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalse(request.getRefreshToken())
+        RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalseForUpdate(request.getRefreshToken())
                 .orElseThrow(() -> new AuthenticationException("Refresh token is invalid"));
         if (existing.getExpiresAt().isBefore(Instant.now())) {
             existing.setRevoked(true);
