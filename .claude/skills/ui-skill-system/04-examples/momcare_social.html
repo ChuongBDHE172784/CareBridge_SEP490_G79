@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cộng đồng Mẹ Bỉm - Momcare Horizontal Upgraded</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        surface: '#F2EAE4',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .clay-card {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: grab;
+        }
+
+        .clay-card:active {
+            cursor: grabbing;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 32px 64px rgba(90, 70, 63, 0.15);
+        }
+
+        .scroll-container {
+            cursor: grab;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .scroll-container:active {
+            cursor: grabbing;
+        }
+
+        /* Ambient backgrounds */
+        .ambient-blob {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(201, 140, 123, 0.08) 0%, rgba(246, 241, 236, 0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen relative overflow-x-hidden">
+    <!-- Ambient Blobs -->
+    <div class="ambient-blob -top-20 -right-20"></div>
+    <div class="ambient-blob top-1/2 -left-40"></div>
+
+    <div class="max-w-[1200px] mx-auto min-h-screen py-10 md:py-16 flex flex-col gap-12">
+
+        <!-- HEADER -->
+        <header class="px-8 md:px-12 flex flex-col md:flex-row justify-between items-end gap-6">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-black mb-3 tracking-tight">Cộng đồng của Mẹ</h1>
+                <p class="text-textSecondary font-bold text-lg">Nơi kết nối và sẻ chia yêu thương mỗi ngày</p>
+            </div>
+            <div class="flex gap-4">
+                <button class="p-4 bg-white rounded-full shadow-soft text-primary hover:scale-110 transition-transform">
+                    <i data-lucide="search" class="w-6 h-6"></i>
+                </button>
+                <button class="p-4 bg-primary text-white rounded-full shadow-soft hover:scale-110 transition-transform">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- HORIZONTAL SCROLL: MOMMY STORIES -->
+        <section class="flex flex-col gap-6">
+            <div class="px-8 md:px-12 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center shrink-0">
+                        <i data-lucide="camera" class="w-5 h-5"></i>
+                    </div>
+                    <h2 class="text-2xl font-black">Chuyện của Mẹ</h2>
+                </div>
+                <a href="#" class="text-primary font-bold hover:underline">Xem thêm</a>
+            </div>
+
+            <!-- THE UPGRADED HORIZONTAL CONTAINER -->
+            <div
+                class="scroll-container flex overflow-x-auto gap-8 px-8 md:px-12 py-4 hide-scrollbar snap-x snap-mandatory">
+
+                <!-- Story Item -->
+                <div class="w-24 shrink-0 flex flex-col items-center gap-3 snap-start group">
+                    <div
+                        class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-primary to-orange-300 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+                        <div class="w-full h-full rounded-full border-4 border-white overflow-hidden">
+                            <img src="https://i.pravatar.cc/100?u=1" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-textSecondary">Mẹ Bún</span>
+                </div>
+
+                <!-- Story Item -->
+                <div class="w-24 shrink-0 flex flex-col items-center gap-3 snap-start group">
+                    <div
+                        class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-[#81C784] to-[#A5D6A7] shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+                        <div class="w-full h-full rounded-full border-4 border-white overflow-hidden">
+                            <img src="https://i.pravatar.cc/100?u=2" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-textSecondary">Mẹ Su</span>
+                </div>
+
+                <!-- Story Item -->
+                <div class="w-24 shrink-0 flex flex-col items-center gap-3 snap-start group">
+                    <div
+                        class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-[#90CAF9] to-[#BBDEFB] shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+                        <div class="w-full h-full rounded-full border-4 border-white overflow-hidden">
+                            <img src="https://i.pravatar.cc/100?u=3" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-textSecondary">Mẹ Tép</span>
+                </div>
+
+                <!-- Story Item -->
+                <div class="w-24 shrink-0 flex flex-col items-center gap-3 snap-start group">
+                    <div
+                        class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-pink-400 to-rose-300 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+                        <div class="w-full h-full rounded-full border-4 border-white overflow-hidden">
+                            <img src="https://i.pravatar.cc/100?u=4" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-textSecondary">Mẹ Hanna</span>
+                </div>
+
+                <!-- Story Item -->
+                <div class="w-24 shrink-0 flex flex-col items-center gap-3 snap-start group">
+                    <div
+                        class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-primary to-orange-300 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+                        <div class="w-full h-full rounded-full border-4 border-white overflow-hidden">
+                            <img src="https://i.pravatar.cc/100?u=5" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-textSecondary">Mẹ Kem</span>
+                </div>
+
+                <!-- THE GHOST SPACING: Prevents clipping at the end -->
+                <div class="w-8 shrink-0"></div>
+            </div>
+        </section>
+
+        <!-- HORIZONTAL SCROLL: ACTIVITY CARDS (Heavy Shadows) -->
+        <section class="flex flex-col gap-6">
+            <div class="px-8 md:px-12">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-10 h-10 bg-[#81C784]/20 text-[#2E7D32] rounded-full flex items-center justify-center shrink-0">
+                        <i data-lucide="trending-up" class="w-5 h-5"></i>
+                    </div>
+                    <h2 class="text-2xl font-black">Top thảo luận thú vị</h2>
+                </div>
+            </div>
+
+            <!-- Container with high py to allow shadows to breathe -->
+            <div
+                class="scroll-container flex overflow-x-auto gap-10 px-8 md:px-12 py-12 hide-scrollbar snap-x snap-mandatory">
+
+                <!-- Card Item -->
+                <div
+                    class="w-[280px] md:w-[320px] bg-card rounded-[40px] p-6 shadow-[0_12px_32px_rgba(90,70,63,0.08)] shrink-0 snap-center clay-card border border-primary/5">
+                    <div class="flex gap-4 items-center mb-6">
+                        <div
+                            class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold text-textSecondary bg-surface px-4 py-1.5 rounded-full uppercase">Dinh
+                            dưỡng</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-4 leading-relaxed line-clamp-2">Bé 4 tháng tuổi lười bú bình thì
+                        phải làm sao hả các mẹ?</h3>
+                    <div class="flex justify-between items-center mt-auto">
+                        <div class="flex -space-x-3">
+                            <img src="https://i.pravatar.cc/100?u=10"
+                                class="w-8 h-8 rounded-full border-2 border-white">
+                            <img src="https://i.pravatar.cc/100?u=11"
+                                class="w-8 h-8 rounded-full border-2 border-white">
+                            <div
+                                class="w-8 h-8 rounded-full bg-surface border-2 border-white flex items-center justify-center text-[10px] font-bold">
+                                +12</div>
+                        </div>
+                        <span class="text-xs font-bold text-primary">24 phản hồi</span>
+                    </div>
+                </div>
+
+                <!-- Card Item -->
+                <div
+                    class="w-[280px] md:w-[320px] bg-card rounded-[40px] p-6 shadow-[0_12px_32px_rgba(90,70,63,0.08)] shrink-0 snap-center clay-card border border-primary/5">
+                    <div class="flex gap-4 items-center mb-6">
+                        <div
+                            class="w-10 h-10 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center shrink-0">
+                            <i data-lucide="star" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold text-textSecondary bg-surface px-4 py-1.5 rounded-full uppercase">Review</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-4 leading-relaxed line-clamp-2">Top 5 loại bỉm thấm hút tốt nhất cho
+                        mùa hè này!</h3>
+                    <div class="flex justify-between items-center mt-auto">
+                        <div class="flex -space-x-3">
+                            <img src="https://i.pravatar.cc/100?u=15"
+                                class="w-8 h-8 rounded-full border-2 border-white">
+                            <img src="https://i.pravatar.cc/100?u=16"
+                                class="w-8 h-8 rounded-full border-2 border-white">
+                        </div>
+                        <button class="bg-primary text-white px-4 py-2 rounded-full text-xs font-black shadow-btn">Đọc
+                            tiếp</button>
+                    </div>
+                </div>
+
+                <!-- Card Item -->
+                <div
+                    class="w-[280px] md:w-[320px] bg-card rounded-[40px] p-6 shadow-[0_12px_32px_rgba(90,70,63,0.08)] shrink-0 snap-center clay-card border border-primary/5">
+                    <div class="flex gap-4 items-center mb-6 text-[#E57373]">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                            <i data-lucide="heart" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold text-textSecondary bg-surface px-4 py-1.5 rounded-full uppercase">Cấp
+                            cứu</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-4 leading-relaxed line-clamp-2">Lưu ý khi cho trẻ đi bơi lần đầu
+                        tiên - Kinh nghiệm xương máu.</h3>
+                    <div class="flex justify-between items-center mt-auto">
+                        <span class="text-xs font-bold text-textSecondary">Đăng bởi Mẹ Ken</span>
+                        <div
+                            class="w-8 h-8 bg-surface rounded-full flex items-center justify-center text-textSecondary">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GHOST SPACING -->
+                <div class="w-8 shrink-0"></div>
+            </div>
+        </section>
+
+        <!-- BACK BUTTON (Pill shape as per upgraded rules) -->
+        <footer class="p-8 flex justify-center">
+            <a href="momcare_index.html"
+                class="bg-white px-10 py-5 rounded-full shadow-soft text-textPrimary font-black flex items-center gap-4 hover:-translate-y-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // DESKTOP SCROLL HELPER
+        const scrollContainers = document.querySelectorAll('.scroll-container');
+
+        scrollContainers.forEach(container => {
+            let isDown = false;
+            let sx;
+            let sl;
+
+            container.addEventListener('mousedown', (e) => {
+                isDown = true;
+                container.classList.add('active');
+                sx = e.pageX - container.offsetLeft;
+                sl = container.scrollLeft;
+            });
+
+            container.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+
+            container.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - sx) * 2; // scroll-fast
+                container.scrollLeft = sl - walk;
+            });
+        });
+    </script>
+</body>
+
+</html>

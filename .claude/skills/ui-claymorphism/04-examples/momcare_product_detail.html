@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết sản phẩm - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-6 flex flex-col items-center">
+
+        <header class="w-full flex justify-between items-center py-6 px-4">
+            <a href="momcare_marketplace.html"
+                class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-soft">
+                <i data-lucide="chevron-left"></i>
+            </a>
+            <h1 class="text-xl font-black">Chi tiết sản phẩm</h1>
+            <button class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-soft">
+                <i data-lucide="heart" class="text-red-400"></i>
+            </button>
+        </header>
+
+        <main class="w-full grid grid-cols-1 lg:grid-cols-2 gap-12 py-10">
+
+            <!-- IMAGE AREA -->
+            <div class="space-y-6">
+                <div class="aspect-square bg-white rounded-[40px] shadow-sm overflow-hidden border-8 border-white">
+                    <img src="https://images.unsplash.com/photo-1594411133917-8e6bfbb0db25?w=800"
+                        class="w-full h-full object-cover">
+                </div>
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="aspect-square rounded-2xl bg-white shadow-sm overflow-hidden border-2 border-primary">
+                        <img src="https://images.unsplash.com/photo-1594411133917-8e6bfbb0db25?w=200"
+                            class="w-full h-full object-cover">
+                    </div>
+                    <div
+                        class="aspect-square rounded-2xl bg-white shadow-sm overflow-hidden border-2 border-transparent">
+                        <img src="https://images.unsplash.com/photo-1519689689378-b01930bc5f9f?w=200"
+                            class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENT AREA -->
+            <div class="space-y-8 flex flex-col">
+                <div class="bg-card p-10 rounded-[40px] shadow-soft border border-white">
+                    <div class="flex justify-between items-start mb-6">
+                        <h2 class="text-3xl font-black leading-tight">Nôi Chilux 5-in-1<br>Bản Premium</h2>
+                        <span
+                            class="px-4 py-2 bg-green-100 text-green-600 rounded-full text-xs font-black uppercase">Mới
+                            95%</span>
+                    </div>
+                    <p class="text-4xl font-black text-gray-900 mb-8">1.200.000đ</p>
+                    <hr class="border-bg mb-8">
+
+                    <div class="flex items-center gap-4 cursor-pointer hover:bg-bg p-4 rounded-3xl transition-all mb-8">
+                        <div
+                            class="w-12 h-12 bg-primary/20 rounded-full overflow-hidden border-2 border-white shadow-sm">
+                            <img src="https://i.pravatar.cc/100?u=seller" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-black">Mẹ Bé Táo</p>
+                            <p class="text-xs text-textSecondary font-bold">⭐ 4.9 (24 đánh giá tốt)</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="text-textSecondary"></i>
+                    </div>
+
+                    <h3 class="text-lg font-black mb-4">Mô tả sản phẩm</h3>
+                    <p class="text-sm font-bold text-textSecondary leading-relaxed">
+                        Nôi còn rất mới, bé nhà mình chỉ dùng 3 tháng rồi chuyển sang giường lớn. Đầy đủ phụ kiện màn
+                        chụp, đệm xơ dừa và bộ ga nệm. Mẹ nào thiện chí mình tặng thêm 2 bộ đồ sơ sinh.
+                    </p>
+                </div>
+
+                <div class="mt-auto flex gap-4">
+                    <button
+                        class="flex-1 py-5 bg-textPrimary text-white rounded-3xl font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
+                        Nhắn tin cho Mẹ
+                    </button>
+                    <button
+                        class="px-8 py-5 bg-primary text-white rounded-3xl font-black shadow-lg hover:bg-primary-hover active:scale-95 transition-all">
+                        Mua ngay
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

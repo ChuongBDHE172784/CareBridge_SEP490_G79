@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinh dưỡng & Thực đơn - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        surface: '#F2EAE4',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        chef: '#81C784'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s ease;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 48px rgba(90, 70, 63, 0.1);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .recipe-badge {
+            background: rgba(129, 199, 132, 0.15);
+            color: #2E7D32;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-4 md:p-10 flex flex-col gap-10">
+
+        <!-- HEADER -->
+        <header
+            class="flex flex-col md:flex-row justify-between items-center bg-card rounded-[40px] px-10 py-8 shadow-soft gap-8">
+            <div class="flex items-center gap-6">
+                <div class="w-16 h-16 bg-chef/10 text-chef rounded-[24px] flex items-center justify-center shrink-0">
+                    <i data-lucide="soup" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black">Bếp của Bé</h1>
+                    <p class="text-textSecondary font-bold">Thực đơn ăn dặm cho bé 8 tháng tuổi</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button
+                    class="bg-chef text-white font-black px-10 py-4 rounded-full shadow-btn hover:bg-[#66BB6A] transition-all clay-btn">
+                    Gợi ý thực đơn AI
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+
+            <!-- LEFT: ALLERGY TRACKER -->
+            <aside class="flex flex-col gap-8">
+                <div class="bg-card rounded-[32px] p-8 shadow-soft border-t-8 border-orange-200">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div
+                            class="w-10 h-10 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center shrink-0">
+                            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-black text-xl">Kiểm tra Dị ứng</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-surface p-4 rounded-[24px] flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">🥚</span>
+                                <span class="font-bold">Lòng đỏ trứng</span>
+                            </div>
+                            <span class="bg-chef text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">An
+                                toàn</span>
+                        </div>
+                        <div
+                            class="bg-surface p-4 rounded-[24px] flex justify-between items-center border-2 border-sos/20">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">🦐</span>
+                                <span class="font-bold">Tôm đồng</span>
+                            </div>
+                            <span class="bg-sos text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">Dị
+                                ứng nhẹ</span>
+                        </div>
+                        <div class="bg-surface p-4 rounded-[24px] flex justify-between items-center opacity-60">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">🍓</span>
+                                <span class="font-bold">Dâu tây</span>
+                            </div>
+                            <button class="text-textSecondary text-[10px] font-black uppercase underline">Thêm
+                                log</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NUTRITION TIP -->
+                <div class="bg-primary text-white rounded-[32px] p-8 shadow-soft relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h4 class="text-xl font-black mb-2">Mẹo từ chuyên gia</h4>
+                        <p class="font-bold text-white/80 text-sm leading-relaxed mb-6">"Đừng ép bé ăn. Hãy tập cho bé
+                            làm quen với mùi vị tự nhiên của rau củ trước khi thêm gia vị."</p>
+                        <div class="flex items-center gap-3">
+                            <img src="https://i.pravatar.cc/100?u=dr"
+                                class="w-10 h-10 rounded-full border-2 border-white/30">
+                            <div>
+                                <p class="text-xs font-black">BS. Mai Anh</p>
+                                <p class="text-[10px] font-bold opacity-70">Chuyên gia Dinh dưỡng</p>
+                            </div>
+                        </div>
+                    </div>
+                    <i data-lucide="heart" class="absolute -right-6 -bottom-6 w-32 h-32 text-white/10 -rotate-12"></i>
+                </div>
+            </aside>
+
+            <!-- MAIN: DAILY MENU -->
+            <div class="lg:col-span-2 flex flex-col gap-8">
+                <div class="flex justify-between items-center px-4">
+                    <h2 class="text-2xl font-black">Thực đơn hôm nay</h2>
+                    <div class="flex gap-2">
+                        <button class="p-3 bg-card rounded-full shadow-soft text-textSecondary"><i
+                                data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <button class="p-3 bg-card rounded-full shadow-soft text-primary"><i data-lucide="chevron-right"
+                                class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-6">
+                    <!-- Meal Card -->
+                    <div
+                        class="bg-card rounded-[40px] p-6 shadow-soft clay-card flex flex-col md:flex-row gap-8 items-center border border-chef/5">
+                        <div class="w-32 h-32 md:w-40 md:h-40 bg-surface rounded-[32px] overflow-hidden shrink-0">
+                            <img src="https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400"
+                                class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 text-center md:text-left">
+                            <div class="flex flex-wrap gap-2 mb-3 justify-center md:justify-start">
+                                <span
+                                    class="px-3 py-1 rounded-full text-[10px] font-black uppercase text-chef bg-chef/10">Bữa
+                                    chính • 08:30</span>
+                                <span
+                                    class="px-3 py-1 rounded-full text-[10px] font-black uppercase text-textSecondary bg-surface">Dễ
+                                    • 15 phút</span>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Cháo rây cà rốt & Cá hồi</h3>
+                            <p class="text-textSecondary font-bold text-sm mb-6 leading-relaxed">Giàu Omega-3 và Vitamin
+                                A, hỗ trợ phát triển thị giác và trí não cho bé.</p>
+                            <div class="flex gap-4 justify-center md:justify-start">
+                                <button
+                                    class="px-6 py-2 bg-chef text-white font-black rounded-full text-xs clay-btn">Xem
+                                    công thức</button>
+                                <button
+                                    class="px-6 py-2 bg-surface text-textPrimary font-black rounded-full text-xs clay-btn">Đã
+                                    ăn xong</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meal Card (Snack) -->
+                    <div
+                        class="bg-card rounded-[40px] p-6 shadow-soft clay-card flex flex-col md:flex-row gap-8 items-center border border-primary/5">
+                        <div class="w-32 h-32 md:w-40 md:h-40 bg-surface rounded-[32px] overflow-hidden shrink-0">
+                            <img src="https://images.unsplash.com/photo-1618164436241-4473940d1f5c?w=400"
+                                class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 text-center md:text-left">
+                            <div class="flex flex-wrap gap-2 mb-3 justify-center md:justify-start">
+                                <span
+                                    class="px-3 py-1 rounded-full text-[10px] font-black uppercase text-primary bg-primary/10">Bữa
+                                    phụ • 15:00</span>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Sữa chua Hy Lạp mix Bơ</h3>
+                            <p class="text-textSecondary font-bold text-sm mb-6 leading-relaxed">Cung cấp lợi khuẩn cho
+                                đường tiêu hóa và chất béo tốt từ quả bơ sáp.</p>
+                            <div class="flex gap-4 justify-center md:justify-start">
+                                <button
+                                    class="px-6 py-2 bg-primary text-white font-black rounded-full text-xs clay-btn">Xem
+                                    công thức</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADD NEW CUSTOM RECIPE -->
+                <div
+                    class="bg-surface rounded-full p-6 border-4 border-dashed border-white flex flex-col md:flex-row justify-between items-center px-10 gap-4 mt-6">
+                    <p class="font-black text-textSecondary">Mẹ có công thức riêng muốn lưu lại?</p>
+                    <button class="bg-white text-textPrimary font-black px-10 py-3 rounded-full shadow-soft clay-btn">
+                        ➕ Tạo thực đơn mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER / HOME BUTTON -->
+        <footer class="mt-8 mb-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="flex items-center justify-center gap-4 py-5 px-12 bg-white text-textPrimary rounded-full shadow-soft font-black hover:-translate-y-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

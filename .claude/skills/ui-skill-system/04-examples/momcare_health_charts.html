@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theo dõi Tăng trưởng - Momcare Health</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        chartLine: '#C98C7B',
+                        chartFill: 'rgba(201, 140, 123, 0.1)',
+                        preterm: '#90CAF9'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s ease;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .line-chart {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 3s ease forwards;
+            will-change: stroke-dashoffset, transform;
+            transform: translateZ(0);
+        }
+
+        @keyframes draw {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .grid-line {
+            stroke: #E8DDD6;
+            stroke-width: 1;
+        }
+
+        .data-point {
+            fill: #C98C7B;
+            stroke: white;
+            stroke-width: 3;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-4 md:p-10 flex flex-col gap-10">
+
+        <!-- HEADER / MODE SWITCHER -->
+        <header
+            class="flex flex-col md:flex-row justify-between items-center gap-8 bg-card rounded-[40px] px-10 py-6 shadow-soft">
+            <div class="flex items-center gap-6">
+                <div
+                    class="w-16 h-16 bg-primary/10 text-primary rounded-[24px] flex items-center justify-center shrink-0">
+                    <i data-lucide="line-chart" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black">Biểu đồ Tăng trưởng</h1>
+                    <p class="text-textSecondary font-bold text-sm">WHO Standard • Bé Bún (6 tháng)</p>
+                </div>
+            </div>
+
+            <!-- THE CASE SWITCHER (SINH NON) -->
+            <div class="bg-surface p-2 rounded-full flex gap-2">
+                <button class="bg-white px-6 py-3 rounded-full font-black text-xs text-primary shadow-soft">Sơ sinh
+                    chuẩn</button>
+                <button
+                    class="px-6 py-3 rounded-full font-bold text-xs text-textSecondary hover:bg-white/50 transition-all flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4"></i> Bé Sinh Non
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+
+            <!-- LEFT: 3D PREVIEW CARD -->
+            <div class="flex flex-col gap-8">
+                <!-- 3D FOETUS / BABY SIM -->
+                <div
+                    class="bg-gradient-to-br from-primary/10 to-orange-100 rounded-[48px] p-8 shadow-soft flex flex-col items-center relative overflow-hidden h-[450px] justify-center text-center">
+                    <div class="relative z-10">
+                        <div
+                            class="relative w-56 h-56 rounded-full overflow-hidden border-4 border-white shadow-soft mx-auto mb-8 animate-float">
+                            <img src="https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?w=500"
+                                class="w-full h-full object-cover object-center">
+                        </div>
+                        <h3 class="text-2xl font-black mb-2">Bé đang như thế nào?</h3>
+                        <p class="text-textSecondary font-bold text-sm leading-relaxed mb-6">"Bé bằng quả đu đủ, biết
+                            mỉm cười và nhận diện giọng mẹ rồi đấy!"</p>
+                        <button
+                            class="bg-card text-textPrimary px-8 py-3 rounded-full font-black shadow-btn clay-btn text-sm">Xem
+                            chi tiết 3D</button>
+                    </div>
+                    <!-- Decorative shapes -->
+                    <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
+                </div>
+
+                <!-- QUICK STATS -->
+                <div class="bg-card rounded-[32px] p-8 shadow-soft">
+                    <h4 class="font-black text-lg mb-6">Chỉ số hiện tại</h4>
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center border-b border-surface pb-4">
+                            <span class="font-bold text-textSecondary">Cân nặng</span>
+                            <span class="text-xl font-black text-primary">7.5 kg <span
+                                    class="text-xs text-chef font-bold">↑ 0.5kg</span></span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-surface pb-4">
+                            <span class="font-bold text-textSecondary">Chiều cao</span>
+                            <span class="text-xl font-black text-primary">68 cm <span
+                                    class="text-xs text-chef font-bold">↑ 2cm</span></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-textSecondary">Vòng đầu</span>
+                            <span class="text-xl font-black text-primary">42 cm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: CHART SECTION -->
+            <div class="lg:col-span-2 flex flex-col gap-8">
+                <div class="bg-card rounded-[48px] p-10 shadow-soft">
+                    <div class="flex justify-between items-center mb-10">
+                        <h3 class="text-2xl font-black">Cân nặng theo độ tuổi (WFA)</h3>
+                        <div class="flex gap-4">
+                            <span class="flex items-center gap-2 text-xs font-bold text-textSecondary">
+                                <span class="w-3 h-3 rounded-full bg-primary/20 border border-primary"></span> WHO
+                                Standard
+                            </span>
+                            <span class="flex items-center gap-2 text-xs font-bold text-primary">
+                                <span class="w-3 h-3 rounded-full bg-primary shadow-sm"></span> Bé Bún
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- CSS/SVG CHART -->
+                    <div class="chart-container">
+                        <svg viewBox="0 0 600 300">
+                            <!-- Background Grid -->
+                            <line x1="50" y1="50" x2="550" y2="50" class="grid-line" />
+                            <line x1="50" y1="100" x2="550" y2="100" class="grid-line" />
+                            <line x1="50" y1="150" x2="550" y2="150" class="grid-line" />
+                            <line x1="50" y1="200" x2="550" y2="200" class="grid-line" />
+                            <line x1="50" y1="250" x2="550" y2="250" class="grid-line" />
+
+                            <!-- Standard Range (The "Cloud") - Removed per user request -->
+
+
+                            <!-- Baby Data Line (Main focus) -->
+                            <path d="M50,235 L150,215 L250,165 L350,145 L450,125 L550,100" fill="none" stroke="#C98C7B"
+                                stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="line-chart" />
+
+                            <!-- Data Points -->
+                            <circle cx="50" cy="235" r="5" class="data-point" />
+                            <circle cx="150" cy="215" r="5" class="data-point" />
+                            <circle cx="250" cy="165" r="5" class="data-point" />
+                            <circle cx="350" cy="145" r="5" class="data-point" />
+                            <circle cx="450" cy="125" r="5" class="data-point" />
+                            <circle cx="550" cy="100" r="5" class="data-point" />
+
+                            <!-- Labels -->
+                            <text x="50" y="280" font-size="10" font-weight="bold" fill="#9C857C">1 Th</text>
+                            <text x="150" y="280" font-size="10" font-weight="bold" fill="#9C857C">2 Th</text>
+                            <text x="250" y="280" font-size="10" font-weight="bold" fill="#9C857C">3 Th</text>
+                            <text x="350" y="280" font-size="10" font-weight="bold" fill="#9C857C">4 Th</text>
+                            <text x="450" y="280" font-size="10" font-weight="bold" fill="#9C857C">5 Th</text>
+                            <text x="520" y="280" font-size="10" font-weight="bold" fill="#9C857C">Hiện tại</text>
+                        </svg>
+                    </div>
+
+                    <div class="mt-10 p-6 bg-surface rounded-[24px] flex items-center gap-6">
+                        <div
+                            class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-chef shadow-sm">
+                            <i data-lucide="check-circle" class="w-6 h-6"></i>
+                        </div>
+                        <p class="font-bold text-sm leading-relaxed">Con đang phát triển đúng chuẩn theo thang WHO. Mẹ
+                            hãy duy trì chế độ dinh dưỡng hiện tại nhé!</p>
+                    </div>
+                </div>
+
+                <!-- PRETERM BIRTH SPECIAL CARE -->
+                <div
+                    class="bg-preterm/10 border-2 border-white rounded-[40px] p-8 shadow-soft flex flex-col md:flex-row gap-8 items-center bg-gradient-to-br from-white to-blue-50">
+                    <div
+                        class="w-20 h-20 bg-preterm text-white rounded-[32px] flex items-center justify-center shrink-0 shadow-lg">
+                        <i data-lucide="heart-handshake" class="w-10 h-10"></i>
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <h4 class="text-xl font-black mb-2 text-blue-800">Cộng đồng Bé Sinh Non</h4>
+                        <p class="text-textSecondary font-bold text-sm mb-4 leading-relaxed">Kangaroo, nhiệt độ phòng,
+                            và cách tính tuổi hiệu chỉnh cho các chiến binh tí hon.</p>
+                        <button
+                            class="bg-preterm text-white font-black px-6 py-2 rounded-full text-xs shadow-btn hover:bg-blue-600 transition-all">Tham
+                            gia cộng đồng Blue Heart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER / HOME BUTTON -->
+        <footer class="mt-8 mb-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="flex items-center justify-center gap-4 py-5 px-12 bg-white text-textPrimary rounded-full shadow-soft font-black hover:-translate-y-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bức tường Kỉ niệm - Momcare Premium Wall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        surface: '#F2EAE4',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 8px 24px rgba(90, 70, 63, 0.04)',
+                        'hover': '0 16px 40px rgba(90, 70, 63, 0.08)',
+                        'pin': '0 4px 12px rgba(90, 70, 63, 0.2)',
+                        'floating': '0 24px 48px rgba(90, 70, 63, 0.12)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .wall-grid {
+            background-image: radial-gradient(#C98C7B 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center;
+        }
+
+        .clay-polaroid {
+            background-color: white;
+            padding: 16px 16px 48px 16px;
+            border-radius: 32px;
+            box-shadow: 0 12px 32px rgba(90, 70, 63, 0.06);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            cursor: pointer;
+        }
+
+        .clay-polaroid:hover {
+            transform: scale(1.05) rotate(0deg) !important;
+            box-shadow: 0 24px 48px rgba(90, 70, 63, 0.12);
+            z-index: 50;
+        }
+
+        .pin {
+            width: 16px;
+            height: 16px;
+            background-color: #C98C7B;
+            border-radius: 50%;
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 60;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen relative flex flex-col overflow-x-hidden">
+
+    <!-- Header Section -->
+    <header class="p-8 md:p-12 text-center relative z-10">
+        <div
+            class="inline-flex items-center gap-6 bg-white/60 backdrop-blur-md px-10 py-5 rounded-full shadow-soft border border-white/40 mb-6">
+            <h1 class="text-3xl font-black tracking-tight">Thế giới của Bún</h1>
+            <div
+                class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-transform">
+                <i data-lucide="camera"></i>
+            </div>
+        </div>
+        <p class="text-textSecondary font-bold max-w-lg mx-auto uppercase tracking-widest text-[10px]">Lưu giữ kỉ niệm
+            mềm mại nhất • 14/14 Milestones</p>
+    </header>
+
+    <!-- The Wall Canvas -->
+    <main class="flex-1 wall-grid relative min-h-[800px] p-8 md:p-16">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12 max-w-7xl mx-auto">
+
+            <!-- Photo 1 -->
+            <div class="clay-polaroid -rotate-3 group">
+                <div class="pin"></div>
+                <div class="aspect-square bg-surface rounded-[24px] overflow-hidden mb-6 relative">
+                    <img src="https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?w=500"
+                        class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000">
+                </div>
+                <p class="text-center font-black text-primary">Lần đầu biết lẫy 👶</p>
+                <span
+                    class="block text-center text-[10px] font-bold text-textSecondary mt-2 uppercase">15.12.2025</span>
+            </div>
+
+            <!-- Photo 2 -->
+            <div class="clay-polaroid rotate-6 group mt-12 md:mt-0">
+                <div class="pin bg-[#5A463F]"></div>
+                <div class="aspect-square bg-surface rounded-[24px] overflow-hidden mb-6 relative">
+                    <img src="https://images.unsplash.com/photo-1544122159-39ed9ef97072?w=500"
+                        class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000">
+                </div>
+                <p class="text-center font-black text-textPrimary">Giấc mơ trưa • 01.26</p>
+            </div>
+
+            <!-- Note Card -->
+            <div
+                class="bg-[#FDF6E3] rounded-[40px] p-10 shadow-soft rotate-2 hover:scale-105 transition-transform flex flex-col gap-6 min-h-[300px] relative border-b-8 border-orange-200">
+                <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-14 h-7 bg-primary/30 rounded-full blur-md">
+                </div>
+                <h3 class="font-black text-xl text-primary">Ghi chú của Mẹ</h3>
+                <p class="text-sm font-bold leading-relaxed text-[#8B736A]">
+                    "Bún ơi, hôm nay con đã mọc cái răng đầu tiên rồi! Đau một tí nhưng con vẫn cười tươi lắm. Yêu con!"
+                </p>
+                <div class="mt-auto flex justify-between items-center">
+                    <span class="text-[10px] font-black uppercase tracking-widest text-[#9C857C]">#FirstTooth</span>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-[#9C857C]">13.04.2026</span>
+                </div>
+            </div>
+
+            <!-- Photo 3 -->
+            <div class="clay-polaroid -rotate-6 group md:mt-12 lg:mt-0">
+                <div class="pin bg-expert"></div>
+                <div class="aspect-square bg-surface rounded-[24px] overflow-hidden mb-6 relative">
+                    <img src="https://images.unsplash.com/photo-1618164436241-4473940d1f5c?w=500"
+                        class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000">
+                </div>
+                <p class="text-center font-black text-expert">First Carrot Test 🥕</p>
+            </div>
+
+            <!-- Small Avatar Photo -->
+            <div class="clay-polaroid rotate-12 w-56 mx-auto lg:mt-24 group">
+                <div class="pin bg-red-400"></div>
+                <div class="aspect-square bg-primary/10 rounded-full overflow-hidden p-1 shadow-inner relative">
+                    <img src="https://i.pravatar.cc/300?u=baby2"
+                        class="absolute inset-0 w-full h-full object-cover rounded-full">
+                </div>
+                <p class="text-center text-[10px] font-black mt-6 uppercase tracking-widest text-primary">Little Bún</p>
+            </div>
+
+            <!-- Photo 4 -->
+            <div class="clay-polaroid -rotate-1 group lg:mt-12">
+                <div class="pin"></div>
+                <div class="aspect-square bg-surface rounded-[24px] overflow-hidden mb-6 relative">
+                    <img src="https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=500"
+                        class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000">
+                </div>
+                <p class="text-center font-black text-textPrimary">Ba và con rể... nhầm, Ba và Bún!</p>
+            </div>
+
+        </div>
+
+        <!-- Floating Controls -->
+        <div class="fixed bottom-12 right-12 flex flex-col gap-4 z-50">
+            <button
+                class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-floating hover:scale-110 active:scale-95 transition-all text-primary border border-surface">
+                <i data-lucide="plus" class="w-8 h-8"></i>
+            </button>
+            <a href="momcare_index.html"
+                class="w-16 h-16 bg-[#5A463F] rounded-full flex items-center justify-center shadow-floating hover:scale-110 active:scale-95 transition-all text-white">
+                <i data-lucide="home" class="w-6 h-6"></i>
+            </a>
+        </div>
+    </main>
+
+    <footer class="p-8 text-center text-[10px] text-textSecondary font-black uppercase tracking-[0.3em] relative z-10">
+        © 2026 Momcare Memories • Designed for Love
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+{
+    "colors": {
+        "Primary": "#C98C7B",
+        "Primary Hover": "#B67868",
+        "Background": "#F6F1EC",
+        "Card": "#FFFFFF",
+        "Surface": "#F2EAE4",
+        "Border": "#E8DDD6",
+        "Text Primary": "#5A463F",
+        "Text Secondary": "#9C857C",
+        "Error": "#E57373",
+        "Success": "#81C784",
+        "Warning": "#FFB74D"
+    },
+    "radius": {
+        "sm": "8px",
+        "md": "16px",
+        "lg": "24px",
+        "xl": "32px",
+        "full": "9999px"
+    },
+    "shadow": {
+        "Soft": "0 8px 24px rgba(90, 70, 63, 0.04)",
+        "Hover": "0 12px 32px rgba(90, 70, 63, 0.08)",
+        "Floating": "0 24px 48px rgba(90, 70, 63, 0.12)",
+        "Inner_Pressed": "inset 0 4px 8px rgba(90, 70, 63, 0.1)"
+    }
+}

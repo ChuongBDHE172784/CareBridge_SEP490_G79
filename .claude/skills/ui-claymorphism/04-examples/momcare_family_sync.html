@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết nối Gia đình - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#FBF8F6',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        dad: '#5A8FBB',
+                        grandma: '#8B9B7E'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 20px 40px rgba(90, 70, 63, 0.05)',
+                        'clay': 'inset 0 2px 4px rgba(255,255,255,0.8), 0 10px 20px rgba(90, 70, 63, 0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            border-radius: 40px;
+            background: #ffffff;
+            box-shadow: 20px 20px 60px #d5d3d1, -20px -20px 60px #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 25px 25px 70px #cdcaca, -25px -25px 70px #ffffff;
+        }
+
+        .avatar-ring {
+            padding: 4px;
+            background: linear-gradient(45deg, #C98C7B, #5A8FBB, #8B9B7E);
+            border-radius: 50%;
+        }
+
+        .permission-toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #E5E1DE;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .permission-toggle.active {
+            background: #C98C7B;
+        }
+
+        .permission-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .permission-toggle.active::after {
+            left: 26px;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-6 md:p-12">
+
+        <!-- HEADER -->
+        <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-16">
+            <div class="flex items-center gap-6">
+                <a href="momcare_index.html"
+                    class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-soft hover:scale-110 transition-all">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </a>
+                <div>
+                    <h1 class="text-3xl font-black">Kết nối Gia đình</h1>
+                    <p class="text-textSecondary font-bold">Chia sẻ hành trình lớn khôn của bé</p>
+                </div>
+            </div>
+
+            <button
+                class="bg-primary text-white font-black px-8 py-4 rounded-3xl shadow-lg hover:shadow-primary/30 transition-all flex items-center gap-3">
+                <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                Mời thành viên mới
+            </button>
+        </header>
+
+        <!-- MAIN GRID: DIFFERENT MEMBER PERSPECTIVES -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+
+            <!-- LEFT: CURRENT MEMBERS -->
+            <div class="lg:col-span-8 space-y-8">
+                <h2 class="text-xl font-black px-2 flex items-center gap-3">
+                    <i data-lucide="users" class="text-primary"></i> Thành viên đang kết nối
+                </h2>
+
+                <!-- MEMBER CARD: DAD -->
+                <div
+                    class="bg-white p-8 rounded-[48px] shadow-soft border border-white flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-dad/10 rounded-bl-[100px] -mr-8 -mt-8"></div>
+                    <div class="avatar-ring shrink-0">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200"
+                            class="w-24 h-24 rounded-full object-cover border-4 border-white">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <h3 class="text-xl font-black">Bố Hoàng</h3>
+                            <span
+                                class="px-3 py-1 bg-dad/10 text-dad text-[10px] font-black uppercase rounded-full">Đang
+                                tham gia</span>
+                        </div>
+                        <p class="text-textSecondary text-sm font-bold mb-4 italic">"Bố muốn theo dõi cân nặng của Kem
+                            mỗi ngày"</p>
+
+                        <div class="flex flex-wrap gap-4">
+                            <div
+                                class="flex items-center gap-2 px-4 py-2 bg-bg rounded-2xl border border-white/50 text-xs font-bold">
+                                <i data-lucide="eye" class="w-4 h-4 text-green-500"></i> Xem dữ liệu
+                            </div>
+                            <div
+                                class="flex items-center gap-2 px-4 py-2 bg-bg rounded-2xl border border-white/50 text-xs font-bold">
+                                <i data-lucide="edit-3" class="w-4 h-4 text-dad"></i> Ghi nhật ký
+                            </div>
+                            <div
+                                class="flex items-center gap-2 px-4 py-2 bg-bg rounded-2xl border border-white/50 text-xs font-bold">
+                                <i data-lucide="credit-card" class="w-4 h-4 text-red-400"></i> Thanh toán
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        class="w-14 h-14 bg-bg rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
+                        <i data-lucide="settings-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- MEMBER CARD: GRANDMA -->
+                <div
+                    class="bg-white p-8 rounded-[48px] shadow-soft border border-white flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-grandma/10 rounded-bl-[100px] -mr-8 -mt-8"></div>
+                    <div class="avatar-ring shrink-0">
+                        <img src="https://images.unsplash.com/photo-1551847677-fc82d764426a?w=200"
+                            class="w-24 h-24 rounded-full object-cover border-4 border-white">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <h3 class="text-xl font-black">Bà Nội</h3>
+                            <span
+                                class="px-3 py-1 bg-grandma/10 text-grandma text-[10px] font-black uppercase rounded-full">Chỉ
+                                xem</span>
+                        </div>
+                        <p class="text-textSecondary text-sm font-bold mb-4 italic">"Bà chỉ cần ảnh Kem để khoe bạn bè
+                            thôi"</p>
+
+                        <div class="flex flex-wrap gap-4">
+                            <div
+                                class="flex items-center gap-2 px-4 py-2 bg-bg rounded-2xl border border-white/50 text-xs font-bold">
+                                <i data-lucide="camera" class="w-4 h-4 text-orange-400"></i> Xem kỉ niệm
+                            </div>
+                            <div
+                                class="flex items-center gap-2 px-4 py-2 bg-bg rounded-2xl border border-white/50 text-xs font-bold opacity-50">
+                                <i data-lucide="lock" class="w-4 h-4"></i> Dữ liệu y tế
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        class="w-14 h-14 bg-bg rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
+                        <i data-lucide="settings-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT: PERMISSIONS BOARD -->
+            <div class="lg:col-span-4 flex flex-col gap-8">
+                <div class="bg-white p-10 rounded-[48px] shadow-clay border border-white">
+                    <h3 class="text-xl font-black mb-8">Phân quyền thông minh</h3>
+
+                    <div class="space-y-8">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-black text-sm">Xem lịch sử y tế</p>
+                                <p class="text-[10px] text-textSecondary font-bold">Nhật ký triệu chứng & Vaccine</p>
+                            </div>
+                            <div class="permission-toggle active"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-black text-sm">Ghi nhật ký bú/ngủ</p>
+                                <p class="text-[10px] text-textSecondary font-bold">Dành cho người chăm sóc trực tiếp
+                                </p>
+                            </div>
+                            <div class="permission-toggle active"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-black text-sm">Quản lý Tài chính</p>
+                                <p class="text-[10px] text-textSecondary font-bold">Mua sắm & Thanh toán Premium</p>
+                            </div>
+                            <div class="permission-toggle"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-black text-sm">Định vị & SOS</p>
+                                <p class="text-[10px] text-textSecondary font-bold">Cảnh báo khẩn cấp & Tìm bệnh viện
+                                </p>
+                            </div>
+                            <div class="permission-toggle active"></div>
+                        </div>
+                    </div>
+
+                    <hr class="my-8 border-bg">
+
+                    <div class="p-6 bg-bg rounded-3xl border border-white/50">
+                        <div class="flex items-center gap-4 mb-4">
+                            <i data-lucide="shield-check" class="text-primary w-6 h-6"></i>
+                            <p class="font-black text-xs">An toàn là trên hết</p>
+                        </div>
+                        <p class="text-[10px] font-bold text-textSecondary leading-relaxed">
+                            Mọi thay đổi về quyền truy cập sẽ được thông báo ngay lập tức đến thiết bị của Mẹ (Admin
+                            chính).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FEATURE PREVIEW: FAMILY FEED -->
+                <div class="bg-primary/10 p-8 rounded-[40px] border border-primary/20">
+                    <h3 class="text-lg font-black text-primary mb-4">Gia đình đang nói gì?</h3>
+                    <div class="space-y-4">
+                        <div class="flex gap-4">
+                            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100"
+                                class="w-10 h-10 rounded-full object-cover shrink-0">
+                            <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm text-[10px] font-bold">
+                                Kem hôm nay bú giỏi quá, mẹ lưu kỷ lục mới chưa? 🍼
+                            </div>
+                        </div>
+                        <div class="flex gap-4 flex-row-reverse">
+                            <img src="https://images.unsplash.com/photo-1544122159-39ed9ef97072?w=100"
+                                class="w-10 h-10 rounded-full object-cover shrink-0">
+                            <div
+                                class="bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-sm text-[10px] font-bold">
+                                Con quay video rồi đó bố, mở "Bức tường kỉ niệm" xem nha!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FOOTER BRIDGE -->
+        <footer class="mt-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="px-10 py-5 bg-textPrimary text-white rounded-full font-black text-sm hover:scale-105 transition-all">
+                Về Trang Chủ
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        document.querySelectorAll('.permission-toggle').forEach(t => {
+            t.onclick = () => t.classList.toggle('active');
+        });
+    </script>
+</body>
+
+</html>

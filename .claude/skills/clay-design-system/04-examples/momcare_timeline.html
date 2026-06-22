@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hành trình làm Mẹ - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        surface: '#F2EAE4',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        pregnancy: '#F48FB1',
+                        postpartum: '#90CAF9',
+                        newborn: '#A5D6A7'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 12px 32px rgba(90, 70, 63, 0.06)',
+                        'hover': '0 16px 40px rgba(90, 70, 63, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clay-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(90, 70, 63, 0.08);
+        }
+
+        .timeline-line {
+            background: repeating-linear-gradient(to bottom, #E8DDD6 0%, #E8DDD6 50%, transparent 50%, transparent 100%);
+            background-size: 1px 16px;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="flex flex-col md:flex-row p-4 md:p-8 gap-8 max-w-[1200px] mx-auto min-h-screen">
+
+        <!-- ASIDE: Navigation (Pill buttons as per rules) -->
+        <aside
+            class="hidden md:flex flex-col w-20 bg-card rounded-full shadow-soft p-4 h-[calc(100vh-64px)] sticky top-8 items-center gap-8 py-10">
+            <a href="momcare_index.html"
+                class="w-12 h-12 flex-shrink-0 flex items-center justify-center text-textSecondary hover:text-primary transition-colors">
+                <i data-lucide="home" class="w-6 h-6"></i>
+            </a>
+            <a href="momcare_dashboard.html"
+                class="w-12 h-12 flex-shrink-0 flex items-center justify-center text-textSecondary hover:text-primary transition-colors">
+                <i data-lucide="layout-grid" class="w-6 h-6"></i>
+            </a>
+            <a href="momcare_timeline.html"
+                class="w-14 h-14 flex-shrink-0 flex items-center justify-center bg-primary text-white rounded-full shadow-btn">
+                <i data-lucide="milestone" class="w-6 h-6"></i>
+            </a>
+            <a href="momcare_emergency.html"
+                class="w-12 h-12 flex-shrink-0 flex items-center justify-center text-[#E57373]">
+                <i data-lucide="heart-pulse" class="w-6 h-6"></i>
+            </a>
+            <a href="momcare_marketplace.html"
+                class="w-12 h-12 flex-shrink-0 flex items-center justify-center text-textSecondary">
+                <i data-lucide="shopping-bag" class="w-6 h-6"></i>
+            </a>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col gap-10">
+
+            <header>
+                <div class="flex items-center gap-4 mb-2 shrink-0">
+                    <div class="bg-primary/10 text-primary p-3 rounded-full shrink-0">
+                        <i data-lucide="scroll-text" class="w-6 h-6"></i>
+                    </div>
+                    <h1 class="text-3xl font-black">Hành trình làm Mẹ</h1>
+                </div>
+                <p class="text-textSecondary font-bold">Theo sát từng cột mốc phát triển của cả Mẹ và Bé</p>
+            </header>
+
+            <!-- TIMELINE SECTION -->
+            <div class="relative pl-8 md:pl-20">
+                <!-- Vertical Line -->
+                <div class="absolute left-12 md:left-24 top-0 bottom-0 w-1 timeline-line opacity-30"></div>
+
+                <!-- PHASE 1: THAI KỲ -->
+                <div class="relative mb-20 shrink-0">
+                    <div
+                        class="absolute -left-14 top-0 w-12 h-12 bg-pregnancy text-white rounded-full flex items-center justify-center shadow-lg z-10 border-4 border-white shrink-0">
+                        <i data-lucide="baby" class="w-6 h-6"></i>
+                    </div>
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-black text-pregnancy uppercase tracking-tight">Giai đoạn Thai kỳ</h2>
+                        <p class="text-textSecondary font-bold text-sm">0 – 9 tháng • 40 tuần diệu kỳ</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Issue Card -->
+                        <div class="bg-card rounded-[32px] p-6 shadow-soft clay-card border-l-8 border-pregnancy/20">
+                            <div class="flex justify-between items-start mb-4">
+                                <span
+                                    class="bg-pregnancy/10 text-pregnancy px-4 py-1 rounded-full text-xs font-black uppercase">Tháng
+                                    1-3</span>
+                                <i data-lucide="alert-circle" class="text-pregnancy w-5 h-5"></i>
+                            </div>
+                            <h3 class="text-lg font-extrabold mb-1">Ốm nghén & Mệt mỏi</h3>
+                            <p class="text-textSecondary text-sm font-medium mb-4">Mẹ thường xuyên chóng mặt, buồn nôn
+                                vào buổi sáng. Hãy chia nhỏ bữa ăn nhé!</p>
+                            <button class="text-pregnancy font-black text-xs uppercase hover:underline">Xem mẹo xử lý
+                                →</button>
+                        </div>
+
+                        <!-- Milestone Card -->
+                        <div class="bg-card rounded-[32px] p-6 shadow-soft clay-card overflow-hidden relative">
+                            <img src="https://images.unsplash.com/photo-1559734840-f9509ee5677f?w=400&auto=format&fit=crop"
+                                class="absolute inset-0 w-full h-full object-cover opacity-10">
+                            <h3 class="text-lg font-extrabold mb-1">Tim thai đầu tiên</h3>
+                            <p class="text-textSecondary text-sm font-medium mb-4">Tuần 6: Mẹ đã nghe thấy nhịp đập bé
+                                bỏng. Thật kỳ diệu!</p>
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><i
+                                        data-lucide="mic" class="w-4 h-4 text-primary"></i></div>
+                                <span class="text-xs font-bold text-textPrimary">Bản ghi âm 0:15s</span>
+                            </div>
+                        </div>
+
+                        <!-- Tip Card -->
+                        <div
+                            class="bg-surface rounded-[32px] p-6 border-2 border-dashed border-pregnancy/30 md:col-span-2">
+                            <h4 class="font-black text-pregnancy mb-3 flex items-center gap-2">
+                                <i data-lucide="book-open" class="w-5 h-5"></i> KIẾN THỨC CẦN BIẾT
+                            </h4>
+                            <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <li class="flex items-center gap-3 text-sm font-bold text-textPrimary">
+                                    <div class="w-2 h-2 rounded-full bg-pregnancy"></div> Bổ sung Vitamin & Axit Folic
+                                </li>
+                                <li class="flex items-center gap-3 text-sm font-bold text-textPrimary">
+                                    <div class="w-2 h-2 rounded-full bg-pregnancy"></div> Theo dõi tiểu đường thai kỳ
+                                </li>
+                                <li class="flex items-center gap-3 text-sm font-bold text-textPrimary">
+                                    <div class="w-2 h-2 rounded-full bg-pregnancy"></div> Lập kế hoạch tài chính sinh
+                                    con
+                                </li>
+                                <li class="flex items-center gap-3 text-sm font-bold text-textPrimary">
+                                    <div class="w-2 h-2 rounded-full bg-pregnancy"></div> Chọn bệnh viện phù hợp
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHASE 2: SAU SINH -->
+                <div class="relative mb-20">
+                    <div
+                        class="absolute -left-14 top-0 w-12 h-12 bg-postpartum text-white rounded-full flex items-center justify-center shadow-lg z-10 border-4 border-white">
+                        <i data-lucide="heart" class="w-6 h-6"></i>
+                    </div>
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-black text-postpartum uppercase tracking-tight">Giai đoạn Sau sinh</h2>
+                        <p class="text-textSecondary font-bold text-sm">0 – 6 tuần • Phục hồi & Kết nối</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-card rounded-[32px] p-6 shadow-soft clay-card border-l-8 border-postpartum/20">
+                            <h3 class="text-lg font-extrabold mb-1">Tắc tia sữa & Viêm vú</h3>
+                            <p class="text-textSecondary text-sm font-medium mb-4">Vấn đề đau đầu nhất của 80% các mẹ.
+                                Đừng tự chữa, hãy hỏi AI tư vấn!</p>
+                            <button
+                                class="bg-postpartum text-white px-6 py-2 rounded-full font-bold text-xs clay-btn shadow-md">Chat
+                                bác sĩ ngay</button>
+                        </div>
+                        <div class="bg-card rounded-[32px] p-6 shadow-soft clay-card border-l-8 border-[#F06292]/20">
+                            <h3 class="text-lg font-extrabold mb-1 text-[#F06292]">Trầm cảm sau sinh</h3>
+                            <p class="text-textSecondary text-sm font-medium mb-4">Mẹ cảm thấy cô đơn, mệt mỏi? Hãy chia
+                                sẻ với cộng đồng Momcare.</p>
+                            <button class="text-[#F06292] font-black text-xs uppercase hover:underline">Gia nhập nhóm mẹ
+                                bỉm →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHASE 3: TRẺ SƠ SINH -->
+                <div class="relative pb-10">
+                    <div
+                        class="absolute -left-14 top-0 w-12 h-12 bg-newborn text-white rounded-full flex items-center justify-center shadow-lg z-10 border-4 border-white">
+                        <i data-lucide="smile" class="w-6 h-6"></i>
+                    </div>
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-black text-newborn uppercase tracking-tight">Trẻ sơ sinh</h2>
+                        <p class="text-textSecondary font-bold text-sm">0 – 3 tháng • Thế giới mới</p>
+                    </div>
+
+                    <div class="flex flex-col gap-6 ">
+                        <div
+                            class="bg-card rounded-[40px] p-8 shadow-soft clay-card flex flex-col md:flex-row gap-8 items-center bg-gradient-to-br from-white to-newborn/5">
+                            <div class="w-32 h-32 bg-newborn/10 rounded-full flex items-center justify-center shrink-0">
+                                <img src="../04-assets/clay_milk_bottle_1776092066697.png"
+                                    class="w-20 h-20 animate-float">
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-xl font-extrabold mb-2">Vấn đề: Nôn trớ & Trào ngược</h3>
+                                <p class="text-textSecondary text-sm font-medium mb-6">Trẻ sơ sinh thường bị trớ sữa sau
+                                    khi bú. Hãy bế đứng bé 20 phút và vỗ ợ hơi đúng cách.</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <span
+                                        class="bg-newborn/20 text-[#2E7D32] px-4 py-1.5 rounded-full text-xs font-black uppercase">🔥
+                                        30 Vấn đề đau đầu</span>
+                                    <span
+                                        class="bg-surface text-textSecondary px-4 py-1.5 rounded-full text-xs font-black uppercase">Xem
+                                        video hướng dẫn</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FLOATING ACTION: ADD MILESTONE -->
+            <div
+                class="bg-primary rounded-[32px] p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6 shadow-soft">
+                <div class="text-center md:text-left">
+                    <h3 class="text-2xl font-black mb-1">Ghi dấu thêm kỷ niệm?</h3>
+                    <p class="text-white/80 font-bold">Lưu lại ảnh hoặc nhật ký hôm nay của Bé.</p>
+                </div>
+                <button class="bg-white text-primary px-10 py-4 rounded-full font-black shadow-btn clay-btn text-lg">Lưu
+                    mốc mới</button>
+            </div>
+
+        </main>
+
+        <!-- MOBILE NAV -->
+        <nav
+            class="md:hidden fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-xl rounded-full py-4 px-8 flex justify-between items-center shadow-[0_24px_64px_rgba(90,70,63,0.15)] z-50 border border-white/50">
+            <a href="momcare_index.html" class="p-2 text-textSecondary"><i data-lucide="home" class="w-6 h-6"></i></a>
+            <a href="momcare_dashboard.html" class="p-2 text-textSecondary"><i data-lucide="layout-grid"
+                    class="w-6 h-6"></i></a>
+            <a href="momcare_timeline.html" class="p-2 text-primary bg-primary/10 rounded-full shadow-inner"><i
+                    data-lucide="milestone" class="w-6 h-6"></i></a>
+            <a href="momcare_emergency.html" class="p-2 text-[#E57373]"><i data-lucide="heart-pulse"
+                    class="w-6 h-6"></i></a>
+            <a href="momcare_marketplace.html" class="p-2 text-textSecondary"><i data-lucide="shopping-bag"
+                    class="w-6 h-6"></i></a>
+        </nav>
+
+        <div class="h-28 md:hidden w-full"></div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

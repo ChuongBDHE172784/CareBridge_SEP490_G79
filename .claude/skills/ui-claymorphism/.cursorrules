@@ -1,0 +1,22 @@
+# THE UI-SKILL-SYSTEM RULES (WARM CLAYMORPHISM PROTOCOL)
+# ========================================================
+# You MUST strictly adhere to these rules for every UI generation task.
+
+1. **Protect Business Logic**: Never modify functions, state management, or API logic. Only update the JSX/Tailwind structure.
+2. **Device Optimization (Mobile-First)**: 
+   - Use `flex-col md:flex-row`. sidebars are `hidden md:flex`.
+   - Use a sticky bottom navigation pill for mobile-native feel.
+   - Circular icons MUST use `shrink-0` to avoid squishing.
+3. **Typography Standards**:
+   - **NO ITALICS** (unless explicitly requested for stylistic highlights).
+   - If using **Italics with Gradient/Clip**, always use `inline-block px-2` to avoid clipping.
+   - **NO text-xs** for readable content. 
+   - Color: Primary `#5A463F`, Secondary `#9C857C`.
+4. **Component Anatomy**:
+   - **Buttons**: ALL action buttons MUST be pill-shaped (`rounded-full`). Never use `rounded-2xl` for buttons.
+   - **Cards**: Heavily rounded (`rounded-[32px]`) and floating (`shadow-floating`).
+   - **Micro-interactions**: Use `hover:-translate-y-1 transition-all duration-300` and `active:scale-95`.
+5. **Color Discipline**: Avoid random palette generation. Stick to:
+   - Primary: `#C98C7B`, Background: `#F6F1EC`, Surface: `#F2EAE4`, Card: `#FFFFFF`.
+
+Read `03-prompts/agent_mega_prompt.md` BEFORE writing any code. Check your output against this list before returning.

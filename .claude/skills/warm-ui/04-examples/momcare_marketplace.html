@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chợ Đồ Cũ & Cộng Đồng - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        surface: '#F2EAE4',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 12px 32px rgba(90, 70, 63, 0.06)',
+                        'floating': '0 24px 64px rgba(90, 70, 63, 0.12)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 24px 64px rgba(90, 70, 63, 0.12);
+        }
+
+        .tab-active {
+            background: white;
+            box-shadow: 0 12px 32px rgba(90, 70, 63, 0.06);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="flex flex-col p-4 md:p-10 max-w-[1440px] mx-auto min-h-screen gap-10">
+
+        <!-- HEADER & TABS -->
+        <header
+            class="flex flex-col md:flex-row justify-between items-center bg-card rounded-[40px] px-10 py-6 shadow-soft gap-8">
+            <div class="flex items-center gap-6 shrink-0">
+                <div
+                    class="w-16 h-16 bg-primary/10 text-primary rounded-[24px] flex items-center justify-center shrink-0">
+                    <i data-lucide="shopping-bag" class="w-8 h-8"></i>
+                </div>
+                <h1 class="text-3xl font-black">Mom Hub</h1>
+            </div>
+
+            <div class="bg-surface p-2 rounded-full flex gap-2">
+                <button class="bg-white px-8 py-3 rounded-full font-black shadow-soft text-primary transition-all">Chợ
+                    đồ cũ</button>
+                <button
+                    class="px-8 py-3 rounded-full font-bold text-textSecondary hover:bg-white/50 transition-all">Cộng
+                    đồng</button>
+                <button
+                    class="px-8 py-3 rounded-full font-bold text-textSecondary hover:bg-white/50 transition-all">Review
+                    đồ dùng</button>
+            </div>
+
+            <button class="bg-primary text-white font-black px-10 py-4 rounded-full shadow-btn clay-btn">
+                Đăng tin mới
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-10">
+
+            <!-- LEFT: FILTER -->
+            <aside class="hidden lg:flex flex-col gap-8">
+                <div class="bg-card rounded-[32px] p-8 shadow-soft">
+                    <h3 class="font-black text-xl mb-6">Danh mục</h3>
+                    <div class="flex flex-col gap-4">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-6 h-6 rounded-lg accent-primary border-surface">
+                            <span class="font-bold text-textSecondary group-hover:text-primary transition-colors">Nôi &
+                                Giường cũ</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-6 h-6 rounded-lg accent-primary border-surface">
+                            <span class="font-bold text-textSecondary group-hover:text-primary transition-colors">Xe đẩy
+                                & Ghế ngồi</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-6 h-6 rounded-lg accent-primary border-surface">
+                            <span class="font-bold text-textSecondary group-hover:text-primary transition-colors">Quần
+                                áo & Đồ dùng</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-6 h-6 rounded-lg accent-primary border-surface" checked>
+                            <span class="font-black text-primary">Đồ chơi phát triển</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-[#81C784] to-[#66BB6A] rounded-[32px] p-8 shadow-soft text-white relative overflow-hidden">
+                    <h4 class="text-2xl font-black mb-2">Đổi đồ miễn phí?</h4>
+                    <p class="font-bold text-white/80 text-sm mb-6">Góc trao đổi đồ dùng baby không mất tiền.</p>
+                    <button
+                        class="bg-white/20 border border-white/40 px-6 py-3 rounded-full font-black backdrop-blur-md hover:bg-white hover:text-[#2E7D32] transition-all">Khám
+                        phá ngay</button>
+                    <i data-lucide="refresh-cw" class="absolute -right-4 -bottom-4 w-24 h-24 opacity-10"></i>
+                </div>
+            </aside>
+
+            <!-- MAIN: PRODUCTS GRID -->
+            <div class="lg:col-span-3 flex flex-col gap-8">
+
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-black">Tin đăng mới nhất <span class="text-primary">(248)</span></h2>
+                    <div class="flex gap-4">
+                        <button
+                            class="w-12 h-12 bg-card rounded-full shadow-soft flex items-center justify-center text-textSecondary"><i
+                                data-lucide="grid" class="w-5 h-5"></i></button>
+                        <button
+                            class="w-12 h-12 bg-surface rounded-full flex items-center justify-center text-textSecondary"><i
+                                data-lucide="list" class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    <!-- Item Card -->
+                    <div class="bg-card rounded-[40px] p-4 shadow-soft clay-card flex flex-col group">
+                        <div class="relative w-full aspect-square rounded-[32px] overflow-hidden mb-6 bg-surface">
+                            <img src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=400"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <div
+                                class="absolute top-4 right-4 bg-white/60 backdrop-blur-md p-3 rounded-full text-primary hover:bg-primary hover:text-white transition-all">
+                                <i data-lucide="heart" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="absolute bottom-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full font-bold text-sm uppercase shadow-lg">
+                                New 95%</div>
+                        </div>
+                        <div class="px-2">
+                            <h4 class="font-bold text-lg mb-1 truncate text-primary">Xe đẩy Babyzen Yoyo 2nd</h4>
+                            <p class="text-textSecondary font-bold text-sm uppercase tracking-widest mb-4">Quận 7, HCM •
+                                2h trước</p>
+                            <div class="flex justify-between items-center">
+                                <p class="text-2xl font-black text-primary">2.500.000đ</p>
+                                <div
+                                    class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-textSecondary group-hover:bg-primary group-hover:text-white transition-all">
+                                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item Card -->
+                    <div class="bg-card rounded-[40px] p-4 shadow-soft clay-card flex flex-col group">
+                        <div class="relative w-full aspect-square rounded-[32px] overflow-hidden mb-6 bg-surface">
+                            <img src="https://images.unsplash.com/photo-1543327685-618476d05908?w=400"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <div
+                                class="absolute top-4 right-4 bg-white/60 backdrop-blur-md p-3 rounded-full text-primary">
+                                <i data-lucide="heart" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="px-2">
+                            <h4 class="font-bold text-lg mb-1 truncate text-primary">Nôi gỗ thông xuất khẩu</h4>
+                            <p class="text-textSecondary font-bold text-sm uppercase tracking-widest mb-4">Hồ Gươm, Hà
+                                Nội</p>
+                            <div class="flex justify-between items-center">
+                                <p class="text-2xl font-black text-primary">850.000đ</p>
+                                <div
+                                    class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-textSecondary">
+                                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item Card -->
+                    <div class="bg-card rounded-[40px] p-4 shadow-soft clay-card flex flex-col group">
+                        <div class="relative w-full aspect-square rounded-[32px] overflow-hidden mb-6 bg-surface">
+                            <img src="https://images.unsplash.com/photo-1515488764276-beab7607c1e6?w=400"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <div
+                                class="absolute bottom-4 left-4 bg-[#81C784] text-white px-4 py-1.5 rounded-full font-bold text-sm uppercase shadow-lg">
+                                Miễn phí</div>
+                        </div>
+                        <div class="px-2">
+                            <h4 class="font-bold text-lg mb-1 truncate text-primary">Túi trữ sữa Mama's (Còn 20 cái)
+                            </h4>
+                            <p class="text-textSecondary font-bold text-sm uppercase tracking-widest mb-4">Dĩ An, Bình
+                                Dương</p>
+                            <div class="flex justify-between items-center text-primary font-black uppercase text-sm">
+                                <span>Nhận tại nhà</span>
+                                <div
+                                    class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-textSecondary">
+                                    <i data-lucide="plus" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COMMUNITY PREVIEW -->
+                <div class="bg-surface rounded-[48px] p-10 mt-6 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-center mb-10">
+                            <h3 class="text-2xl font-black">Hỏi đáp Cộng đồng</h3>
+                            <button class="text-primary font-black text-sm">Xem tất cả thảo luận</button>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <!-- Question -->
+                            <div class="bg-white p-6 rounded-[32px] shadow-soft flex gap-6 items-start">
+                                <img src="https://i.pravatar.cc/100?u=mom2"
+                                    class="w-12 h-12 rounded-full border-2 border-surface">
+                                <div class="flex-1">
+                                    <h5
+                                        class="font-bold text-lg mb-1 leading-relaxed truncate md:whitespace-normal text-textPrimary">
+                                        Bé 4
+                                        tháng tuổi đêm thức giấc liên tục thì làm sao ạ?</h5>
+                                    <div class="flex items-center gap-4 text-sm font-bold text-textSecondary">
+                                        <span class="flex items-center gap-1"><i data-lucide="message-square"
+                                                class="w-4 h-4"></i> 48 bình luận</span>
+                                        <span class="flex items-center gap-1 text-primary"><i data-lucide="heart"
+                                                class="w-4 h-4"></i> 12 tim</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Question -->
+                            <div class="bg-white p-6 rounded-[32px] shadow-soft flex gap-6 items-start">
+                                <img src="https://i.pravatar.cc/100?u=mom3"
+                                    class="w-12 h-12 rounded-full border-2 border-surface">
+                                <div class="flex-1">
+                                    <h5 class="font-black text-lg mb-1 leading-snug">Review BS Dinh dưỡng giỏi khu vực
+                                        Quận 2?</h5>
+                                    <div class="flex items-center gap-4 text-xs font-bold text-textSecondary">
+                                        <span class="flex items-center gap-1"><i data-lucide="message-square"
+                                                class="w-4 h-4"></i> 12 bình luận</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- FOOTER / HOME BUTTON -->
+        <footer class="mt-10 mb-20">
+            <a href="momcare_index.html"
+                class="flex items-center justify-center gap-4 py-6 px-10 bg-card rounded-full shadow-soft text-textPrimary font-black hover:bg-surface transition-colors">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

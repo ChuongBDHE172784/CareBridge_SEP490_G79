@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhật ký 1-Chạm - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .log-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .log-card:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 20px 40px rgba(90, 70, 63, 0.1);
+        }
+
+        .log-card:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1000px] mx-auto p-6 flex flex-col items-center">
+
+        <header class="w-full max-w-[600px] text-center py-10">
+            <h1 class="text-3xl font-black mb-2">Nhật ký 1-Chạm</h1>
+            <p class="text-textSecondary font-bold italic">Tối ưu cho thao tác bằng một tay</p>
+        </header>
+
+        <div class="w-full max-w-[600px] grid grid-cols-2 gap-8 mb-16">
+
+            <button
+                class="bg-card p-10 rounded-[48px] shadow-soft log-card border border-white flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="baby" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-lg font-black uppercase tracking-widest">Bú sữa</h3>
+            </button>
+
+            <button
+                class="bg-card p-10 rounded-[48px] shadow-soft log-card border border-white flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-purple-100 text-purple-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="moon" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-lg font-black uppercase tracking-widest">Đi ngủ</h3>
+            </button>
+
+            <button
+                class="bg-card p-10 rounded-[48px] shadow-soft log-card border border-white flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="droplets" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-lg font-black uppercase tracking-widest">Thay tã</h3>
+            </button>
+
+            <button
+                class="bg-card p-10 rounded-[48px] shadow-soft log-card border border-white flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="plus" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-lg font-black uppercase tracking-widest">Ăn dặm</h3>
+            </button>
+
+        </div>
+
+        <div class="w-full max-w-[600px] bg-card p-10 rounded-[40px] shadow-soft border border-white">
+            <h2 class="text-xl font-black mb-6 flex items-center gap-3">
+                <i data-lucide="history" class="text-primary"></i> Lịch sử hôm nay
+            </h2>
+            <div class="space-y-6">
+                <div class="flex items-center gap-6">
+                    <div
+                        class="w-12 h-12 bg-blue-50 text-blue-400 rounded-full flex items-center justify-center shrink-0">
+                        <i data-lucide="baby" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-bold">120ml Sữa công thức</p>
+                        <p class="text-[10px] font-bold text-textSecondary uppercase tracking-widest">10:30 sáng</p>
+                    </div>
+                    <button class="text-textSecondary hover:text-red-500 transition-colors">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER HUB LINK -->
+        <footer class="mt-20 mb-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="px-10 py-5 bg-primary text-white rounded-full shadow-md font-black hover:scale-105 transition-all">
+                Quay lại Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

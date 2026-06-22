@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momcare Demo Hub - Skill System Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .launch-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .launch-card:hover {
+            transform: scale(1.05) translateY(-10px);
+            box-shadow: 0 32px 64px rgba(90, 70, 63, 0.15);
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-[1200px] w-full flex flex-col items-center">
+
+        <div
+            class="w-24 h-24 bg-primary text-white rounded-full flex items-center justify-center shadow-lg mb-8 animate-bounce">
+            <i data-lucide="sparkles" class="w-12 h-12"></i>
+        </div>
+
+        <h1 class="text-4xl md:text-5xl font-black text-center mb-4">Momcare Demo Hub</h1>
+        <p class="text-textSecondary font-bold text-center mb-16 max-w-[600px]">Trải nghiệm bộ kĩ năng UI Skill System
+            thông qua 14 kịch bản thiết thực nhất cho ứng dụng Mẹ & Bé.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-[1100px]">
+
+            <a href="momcare_dashboard.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="layout-grid"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Dashboard</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Màn hình chính, theo dõi hàng ngày và AI
+                    Bot.</p>
+            </a>
+
+            <a href="momcare_timeline.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="milestone"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Timeline</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Hành trình Thai kỳ, Sau sinh và Sơ sinh.
+                </p>
+            </a>
+
+            <a href="momcare_emergency.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="heart-pulse"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Cấp cứu / SOS</h3>
+                <h4
+                    class="px-3 py-1 bg-red-500 text-white rounded-full text-[10px] font-black uppercase mb-4 shadow-sm animate-pulse">
+                    Quan trọng</h4>
+                <p class="text-sm font-bold text-textSecondary text-balance">Tra cứu triệu chứng và Sơ cứu nhanh.</p>
+            </a>
+
+            <a href="momcare_marketplace.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="shopping-bag"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Chợ đồ cũ</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Marketplace và Cộng đồng hỏi đáp.</p>
+            </a>
+
+            <a href="momcare_social.html"
+                class="bg-card p-8 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-14 h-14 bg-purple-100 text-purple-500 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Cộng đồng</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Cuộn ngang Stories và Card chuẩn mobile.
+                </p>
+            </a>
+
+            <a href="momcare_nutrition.html"
+                class="bg-card p-8 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="soup" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Bếp của Bé</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Thực đơn ăn dặm & Kiểm tra dị ứng.</p>
+            </a>
+
+            <a href="momcare_health_charts.html"
+                class="bg-card p-8 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="line-chart" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Sức khỏe & 3D</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Biểu đồ WHO & Mô phỏng thai nhi.</p>
+            </a>
+
+            <a href="momcare_finance.html"
+                class="bg-card p-8 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Tài chính</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Quản lý chi phí bỉm sữa & dự báo.</p>
+            </a>
+
+            <a href="momcare_white_noise.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-slate-800 text-white rounded-full flex items-center justify-center mb-6 shadow-lg">
+                    <i data-lucide="moon" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">White Noise</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Tiếng ồn trắng & Thai giáo âm thanh.</p>
+            </a>
+
+            <a href="momcare_vaccine.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="syringe" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Tiêm chủng</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Quản lý lịch tiêm & cảnh báo trễ hạn.</p>
+            </a>
+
+            <a href="momcare_guides.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="book-heart" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Cẩm nang Mẹ</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Kho kiến thức nuôi con từ chuyên gia.</p>
+            </a>
+
+            <a href="momcare_ai_helper.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="sparkles" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Trợ lý AI</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Tư vấn nhi khoa & phân tích nhật ký.</p>
+            </a>
+
+            <a href="momcare_memory_wall.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Bức tường Kỉ niệm</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Lưu giữ ảnh cột mốc (Polaroid style).</p>
+            </a>
+
+            <a href="momcare_member_profile.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="user" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Hồ sơ & Cài đặt</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Quản lý bé, gói Premium & bảo mật.</p>
+            </a>
+
+            <a href="momcare_family_sync.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="users-2" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Kết nối Gia đình</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Phân quyền cho Bố, Bà & người thân xem bé.
+                </p>
+            </a>
+
+            <a href="momcare_ai_video_memories.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="clapperboard" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Phóng sự Hành trình</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Phim kỉ niệm tự động dựng bởi AI.</p>
+            </a>
+
+            <a href="momcare_quick_log.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="zap" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Nhật ký Một chạm</h3>
+                <h4
+                    class="px-3 py-1 bg-green-500 text-white rounded-full text-[10px] font-black uppercase mb-4 shadow-sm animate-pulse">
+                    DAU Engine</h4>
+                <p class="text-sm font-bold text-textSecondary text-balance">Ghi nhật ký bú, ngủ cực nhanh bằng 1 tay.
+                </p>
+            </a>
+
+            <a href="momcare_3d_fetus.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="eye" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Hành trình 3D</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Mô phỏng thai nhi & Thai giáo tương tác.
+                </p>
+            </a>
+
+            <a href="momcare_product_detail.html"
+                class="bg-card p-10 rounded-[40px] shadow-soft launch-card flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <i data-lucide="package" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-black mb-2">Chi tiết Thanh lý</h3>
+                <p class="text-sm font-bold text-textSecondary text-balance">Trang chi tiết sản phẩm tạo sự tin tưởng
+                    cao.</p>
+            </a>
+
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

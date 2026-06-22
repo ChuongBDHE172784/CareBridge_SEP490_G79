@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warm Claymorphism - Component Showcase</title>
+  <!-- Google Fonts: Quicksand for soft, rounded typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700;900&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Quicksand', 'sans-serif'],
+          },
+          colors: {
+            primary: '#C98C7B',
+            primaryHover: '#B67868',
+            bgBase: '#F6F1EC',
+            textMain: '#5A463F',
+            textSub: '#9C857C',
+            surface: '#FFFFFF',
+            surfaceNested: '#F2EAE4',
+            terracottaLight: '#E8DDD6',
+          },
+          boxShadow: {
+            clay: '0 12px 32px rgba(90, 70, 63, 0.06)',
+            clayHover: '0 20px 40px rgba(90, 70, 63, 0.12)',
+            clayInner: 'inset 0 4px 8px rgba(90, 70, 63, 0.05)',
+            toast: '0 16px 36px rgba(90, 70, 63, 0.15)',
+            modal: '0 24px 48px rgba(90, 70, 63, 0.12)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Premium custom scrollbar styling */
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Shimmer effect for skeleton loader */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .animate-shimmer {
+      background: linear-gradient(90deg, #E8DDD6 25%, #F2EAE4 50%, #E8DDD6 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite linear;
+    }
+  </style>
+</head>
+<body class="bg-bgBase text-textMain font-sans min-h-screen p-4 md:p-10 relative overflow-x-hidden">
+
+  <!-- Header Section -->
+  <header class="max-w-6xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-12 h-12 bg-primary/20 text-primary rounded-full flex items-center justify-center shrink-0 shadow-clay">
+          <i data-lucide="sparkles" class="w-6 h-6"></i>
+        </div>
+        <h1 class="text-3xl font-black tracking-tight">Claymorphism System</h1>
+      </div>
+      <p class="text-textSub font-bold">Interactive design system showcase for all upgraded components.</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="toggleModal('modal-demo')" class="h-12 rounded-full bg-primary text-white font-semibold py-3 px-6 shadow-[0_8px_24px_rgba(201,140,123,0.3)] transition-all duration-300 hover:bg-primaryHover hover:-translate-y-0.5 active:scale-95">
+        Open Modal
+      </button>
+      <button onclick="openBottomSheet()" class="h-12 rounded-full bg-white text-textMain font-semibold py-3 px-6 border border-terracottaLight shadow-clay transition-all duration-300 hover:-translate-y-0.5 active:scale-95">
+        Bottom Sheet
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+
+    <!-- 1. FEEDBACK & NOTIFICATION -->
+    <section class="bg-white rounded-[32px] shadow-clay border border-[#E8DDD6]/50 p-6 md:p-8 flex flex-col gap-6">
+      <div class="flex items-center gap-3 border-b border-terracottaLight/50 pb-4">
+        <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
+          <i data-lucide="bell" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-xl font-black">Feedback & Notification</h2>
+      </div>
+
+      <!-- Toast & Snackbar Triggers -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="showToast('Thông báo hệ thống đã được gửi thành công!')" class="h-11 rounded-full bg-[#5A463F] text-white text-sm font-bold px-5 active:scale-95 transition-all shadow-md">
+          Trigger Toast
+        </button>
+        <button onclick="showSnackbar('Đã lưu trữ cuộc hội thoại.', 'Undo')" class="h-11 rounded-full bg-primary text-white text-sm font-bold px-5 active:scale-95 transition-all shadow-md">
+          Trigger Snackbar
+        </button>
+      </div>
+
+      <!-- Inline Banner -->
+      <div class="bg-surfaceNested border-l-4 border-primary p-4 rounded-2xl flex items-start gap-3 relative">
+        <div class="text-primary mt-0.5"><i data-lucide="info" class="w-5 h-5"></i></div>
+        <div class="flex-1">
+          <h4 class="font-bold text-sm text-textMain">Hệ thống đang bảo trì</h4>
+          <p class="text-xs text-textSub font-semibold mt-0.5 leading-relaxed">Hệ thống đồng bộ dữ liệu sẽ tạm dừng từ 2:00 AM đến 4:00 AM ngày mai để cập nhật cơ sở dữ liệu.</p>
+        </div>
+        <button class="text-textSub hover:text-textMain transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <!-- Skeleton & Badge Row -->
+      <div class="flex items-center gap-6">
+        <div class="relative">
+          <div class="w-12 h-12 bg-white border border-terracottaLight rounded-full flex items-center justify-center shadow-clay">
+            <i data-lucide="shopping-bag" class="w-6 h-6 text-textMain"></i>
+          </div>
+          <!-- Badge -->
+          <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black border-2 border-white flex items-center justify-center">
+            3
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+          <!-- Skeleton loaders -->
+          <div class="h-4 w-32 rounded-full animate-shimmer"></div>
+          <div class="h-3 w-full rounded-full animate-shimmer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. INPUT & SELECTION -->
+    <section class="bg-white rounded-[32px] shadow-clay border border-[#E8DDD6]/50 p-6 md:p-8 flex flex-col gap-6">
+      <div class="flex items-center gap-3 border-b border-terracottaLight/50 pb-4">
+        <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
+          <i data-lucide="check-square" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-xl font-black">Input & Selection</h2>
+      </div>
+
+      <!-- Segmented Control -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-2 block text-textSub">Thời gian hiển thị</label>
+        <div class="bg-surfaceNested p-1 rounded-full flex">
+          <button onclick="toggleSegment(this)" class="segment-btn rounded-full text-center text-sm font-black py-2 px-4 flex-1 transition-all active:scale-95 bg-white text-textMain shadow-sm">Ngày</button>
+          <button onclick="toggleSegment(this)" class="segment-btn rounded-full text-center text-sm font-black py-2 px-4 flex-1 transition-all active:scale-95 text-textSub hover:text-textMain">Tuần</button>
+          <button onclick="toggleSegment(this)" class="segment-btn rounded-full text-center text-sm font-black py-2 px-4 flex-1 transition-all active:scale-95 text-textSub hover:text-textMain">Tháng</button>
+        </div>
+      </div>
+
+      <!-- Chips Section -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-2 block text-textSub">Bộ lọc nhanh</label>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="toggleChip(this)" class="chip-btn rounded-full px-4 py-1.5 text-sm font-semibold border-2 bg-primary text-white border-transparent shadow-sm active:scale-95 transition-all">Sức khỏe</button>
+          <button onclick="toggleChip(this)" class="chip-btn rounded-full px-4 py-1.5 text-sm font-semibold border-2 bg-surfaceNested text-textMain border-terracottaLight/50 hover:bg-terracottaLight/40 active:scale-95 transition-all">Dinh dưỡng</button>
+          <button onclick="toggleChip(this)" class="chip-btn rounded-full px-4 py-1.5 text-sm font-semibold border-2 bg-surfaceNested text-textMain border-terracottaLight/50 hover:bg-terracottaLight/40 active:scale-95 transition-all">Tiêm chủng</button>
+        </div>
+      </div>
+
+      <!-- Form Inputs -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-2 block text-textSub">Họ và Tên</label>
+        <input type="text" placeholder="Nhập tên của bạn..." class="w-full bg-bgBase rounded-full p-4 font-bold border-2 border-transparent focus:border-primary/20 focus:ring-4 focus:ring-primary/5 focus:outline-none text-textMain placeholder:text-textSub shadow-clayInner transition-all">
+      </div>
+    </section>
+
+    <!-- 3. CONTEXT & GUIDANCE (Accordion & Stepper) -->
+    <section class="bg-white rounded-[32px] shadow-clay border border-[#E8DDD6]/50 p-6 md:p-8 flex flex-col gap-6">
+      <div class="flex items-center gap-3 border-b border-terracottaLight/50 pb-4">
+        <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
+          <i data-lucide="compass" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-xl font-black">Context & Guidance</h2>
+      </div>
+
+      <!-- Stepper -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-4 block text-textSub">Các bước đăng ký</label>
+        <div class="flex items-center w-full justify-between">
+          <div class="flex flex-col items-center gap-1 flex-1">
+            <div class="w-8 h-8 rounded-full bg-textMain text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-md">1</div>
+            <span class="text-[11px] font-bold text-textMain">Tài khoản</span>
+          </div>
+          <div class="h-1 bg-textMain rounded-full flex-1 mb-4"></div>
+          <div class="flex flex-col items-center gap-1 flex-1">
+            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0 ring-4 ring-primary/20 shadow-md">2</div>
+            <span class="text-[11px] font-bold text-primary">Thông tin</span>
+          </div>
+          <div class="h-1 bg-terracottaLight rounded-full flex-1 mb-4"></div>
+          <div class="flex flex-col items-center gap-1 flex-1">
+            <div class="w-8 h-8 rounded-full bg-terracottaLight text-textSub flex items-center justify-center font-bold text-sm shrink-0">3</div>
+            <span class="text-[11px] font-bold text-textSub">Hoàn tất</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion -->
+      <div class="flex flex-col gap-3">
+        <div class="border border-terracottaLight/50 rounded-2xl overflow-hidden">
+          <button onclick="toggleAccordion('accordion-1')" class="w-full bg-surfaceNested hover:bg-terracottaLight/40 p-4 flex justify-between items-center cursor-pointer transition-all duration-300">
+            <span class="font-bold text-textMain text-sm">Phong cách Claymorphism là gì?</span>
+            <i id="accordion-icon-1" data-lucide="chevron-down" class="w-5 h-5 text-primary transition-transform duration-300"></i>
+          </button>
+          <div id="accordion-content-1" class="max-h-0 overflow-hidden transition-all duration-300 bg-white">
+            <p class="p-4 text-sm text-textSub font-semibold leading-relaxed">
+              Claymorphism là xu hướng thiết kế kết hợp giữa Neumorphism và phong cách hoạt hình 3D. Nó nổi bật với thiết kế tròn trịa, các nút dạng viên thuốc, cùng các lớp đổ bóng ngoài và trong mềm mại giống như các khối đất sét ấm áp.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. GESTURES & SCROLL NAVIGATION -->
+    <section class="bg-white rounded-[32px] shadow-clay border border-[#E8DDD6]/50 p-6 md:p-8 flex flex-col gap-6">
+      <div class="flex items-center gap-3 border-b border-terracottaLight/50 pb-4">
+        <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
+          <i data-lucide="navigation" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-xl font-black">Gestures & Scroll</h2>
+      </div>
+
+      <!-- TabBar Navigation -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-2 block text-textSub">Bộ điều hướng Tab</label>
+        <div class="bg-surfaceNested p-1.5 rounded-full flex gap-1">
+          <button class="bg-white text-textMain rounded-full shadow-sm px-5 py-2 font-bold text-sm transition-all flex-1">
+            Tổng quan
+          </button>
+          <button class="text-textSub hover:text-textMain px-5 py-2 font-bold text-sm flex-1 transition-all">
+            Lịch sử
+          </button>
+        </div>
+      </div>
+
+      <!-- Story scrolling / Horizontal Scroll -->
+      <div>
+        <label class="text-[10px] md:text-xs font-black uppercase tracking-widest px-2 mb-2 block text-textSub">Danh sách cuộn ngang (Shadow Safe)</label>
+        <div class="flex overflow-x-auto gap-4 py-4 px-2 hide-scrollbar snap-x">
+          <!-- Item 1 -->
+          <div class="w-40 bg-surfaceNested p-4 rounded-[24px] border border-terracottaLight/50 snap-start shrink-0 hover:-translate-y-1 transition-all duration-300 hover:shadow-md">
+            <div class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-3">
+              <i data-lucide="baby" class="w-5 h-5"></i>
+            </div>
+            <h5 class="font-bold text-xs text-textMain">Bé ăn ngoan</h5>
+            <p class="text-[10px] text-textSub font-semibold mt-1">Hôm nay 12:30</p>
+          </div>
+          <!-- Item 2 -->
+          <div class="w-40 bg-surfaceNested p-4 rounded-[24px] border border-terracottaLight/50 snap-start shrink-0 hover:-translate-y-1 transition-all duration-300 hover:shadow-md">
+            <div class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-3">
+              <i data-lucide="moon" class="w-5 h-5"></i>
+            </div>
+            <h5 class="font-bold text-xs text-textMain">Giấc ngủ ngon</h5>
+            <p class="text-[10px] text-textSub font-semibold mt-1">Hôm nay 14:00</p>
+          </div>
+          <!-- Ghost spacer to prevent clipping at end -->
+          <div class="w-8 shrink-0"></div>
+        </div>
+        <!-- Page Indicator -->
+        <div class="flex justify-center gap-1.5 mt-2">
+          <span class="bg-primary w-6 h-2 rounded-full transition-all duration-300"></span>
+          <span class="bg-terracottaLight w-2 h-2 rounded-full"></span>
+          <span class="bg-terracottaLight w-2 h-2 rounded-full"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FLOATING ACTION BUTTON (FAB) & SPEED DIAL -->
+  <div class="fixed bottom-6 right-6 z-40 flex flex-col items-end">
+    <!-- Speed Dial Buttons (Initially Hidden) -->
+    <div id="speed-dial" class="hidden flex flex-col gap-2 mb-3 items-end transition-all duration-300 scale-95 opacity-0 origin-bottom">
+      <button class="w-10 h-10 bg-textMain text-white rounded-full flex items-center justify-center hover:-translate-y-0.5 active:scale-95 transition-all shadow-md">
+        <i data-lucide="camera" class="w-5 h-5"></i>
+      </button>
+      <button class="w-10 h-10 bg-textMain text-white rounded-full flex items-center justify-center hover:-translate-y-0.5 active:scale-95 transition-all shadow-md">
+        <i data-lucide="edit-3" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <!-- Main FAB -->
+    <button onclick="toggleSpeedDial()" class="w-14 h-14 bg-primary hover:bg-primaryHover active:scale-90 text-white rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(201,140,123,0.3)] transition-all duration-300">
+      <i id="fab-icon" data-lucide="plus" class="w-6 h-6 transition-transform duration-300"></i>
+    </button>
+  </div>
+
+  <!-- OVERLAYS: MODAL & BOTTOM SHEET -->
+
+  <!-- Modal Overlay -->
+  <div id="modal-demo" class="fixed inset-0 z-50 flex items-center justify-center bg-textMain/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-white rounded-[32px] p-8 max-w-sm w-full mx-4 shadow-modal border border-terracottaLight/50 transform scale-90 transition-all duration-300">
+      <div class="w-12 h-12 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
+        <i data-lucide="check-circle" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-xl font-black mb-2">Đăng ký thành công!</h3>
+      <p class="text-sm text-textSub font-semibold mb-6 leading-relaxed">
+        Thông tin của bạn đã được ghi nhận. Hãy chuẩn bị hành trình chăm sóc gia đình cùng MomCare!
+      </p>
+      <div class="flex gap-2">
+        <button onclick="toggleModal('modal-demo')" class="flex-1 h-12 rounded-full bg-primary text-white font-bold transition-all active:scale-95 shadow-md">Đồng ý</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Sheet Overlay -->
+  <div id="bottom-sheet" class="fixed inset-0 z-50 bg-textMain/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 flex items-end">
+    <!-- Clickable backdrop wrapper -->
+    <div class="absolute inset-0 z-0" onclick="closeBottomSheet()"></div>
+    
+    <!-- Sheet Box -->
+    <div id="sheet-box" class="w-full bg-white rounded-t-[32px] p-6 shadow-[0_-12px_32px_rgba(90,70,63,0.08)] transform translate-y-full transition-transform duration-300 z-10 max-w-2xl mx-auto">
+      <div class="w-12 h-1.5 bg-terracottaLight rounded-full mx-auto mb-6 shrink-0 cursor-pointer" onclick="closeBottomSheet()"></div>
+      
+      <h3 class="text-lg font-black mb-4">Chọn hành động</h3>
+      <div class="flex flex-col gap-2">
+        <button onclick="closeBottomSheet(); showToast('Đã chia sẻ nhật ký thành công.')" class="w-full h-12 rounded-full bg-surfaceNested hover:bg-terracottaLight/40 text-[#5A463F] font-bold flex items-center gap-3 px-6 transition-all">
+          <i data-lucide="share-2" class="w-5 h-5 text-primary"></i>
+          Chia sẻ nhật ký
+        </button>
+        <button onclick="closeBottomSheet(); showSnackbar('Đã xóa dữ liệu.', 'Undo')" class="w-full h-12 rounded-full bg-surfaceNested hover:bg-terracottaLight/40 text-red-500 font-bold flex items-center gap-3 px-6 transition-all">
+          <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i>
+          Xóa bản ghi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST / SNACKBAR NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-6 left-6 right-6 md:left-6 md:right-auto z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Vanilla JS Interactive Controls -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Toggle Modal
+    function toggleModal(id) {
+      const modal = document.getElementById(id);
+      const isHidden = modal.classList.contains('pointer-events-none');
+      if (isHidden) {
+        modal.classList.remove('pointer-events-none', 'opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-90');
+        modal.querySelector('.transform').classList.add('scale-100');
+      } else {
+        modal.classList.add('pointer-events-none', 'opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-100');
+        modal.querySelector('.transform').classList.add('scale-90');
+      }
+    }
+
+    // Bottom Sheet Management
+    function openBottomSheet() {
+      const sheet = document.getElementById('bottom-sheet');
+      const box = document.getElementById('sheet-box');
+      sheet.classList.remove('pointer-events-none', 'opacity-0');
+      box.classList.remove('translate-y-full');
+    }
+
+    function closeBottomSheet() {
+      const sheet = document.getElementById('bottom-sheet');
+      const box = document.getElementById('sheet-box');
+      box.classList.add('translate-y-full');
+      setTimeout(() => {
+        sheet.classList.add('pointer-events-none', 'opacity-0');
+      }, 300);
+    }
+
+    // Toast Notification Creator
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = "bg-[#5A463F] text-white rounded-full px-6 py-3 shadow-toast flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-4 opacity-0 text-sm font-bold";
+      toast.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-primary shrink-0"></i> <span>${message}</span>`;
+      container.appendChild(toast);
+      
+      lucide.createIcons({node: toast});
+
+      // Slide up and Fade In
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      }, 10);
+
+      // Auto Dismiss
+      setTimeout(() => {
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Snackbar Notification Creator (With Action Button)
+    function showSnackbar(message, actionText) {
+      const container = document.getElementById('toast-container');
+      const snackbar = document.createElement('div');
+      snackbar.className = "bg-[#C98C7B] text-white rounded-full px-6 py-3 shadow-toast flex items-center justify-between gap-4 pointer-events-auto transition-all duration-300 transform translate-y-4 opacity-0 text-sm font-bold w-full max-w-sm";
+      snackbar.innerHTML = `
+        <span class="flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4 text-white shrink-0"></i>
+          <span>${message}</span>
+        </span>
+        <button class="bg-white/20 hover:bg-white/30 text-white rounded-full px-3 py-1 text-xs font-black active:scale-95 transition-all">${actionText}</button>
+      `;
+      container.appendChild(snackbar);
+      
+      lucide.createIcons({node: snackbar});
+
+      // Slide up and Fade In
+      setTimeout(() => {
+        snackbar.classList.remove('translate-y-4', 'opacity-0');
+      }, 10);
+
+      // Auto Dismiss
+      setTimeout(() => {
+        snackbar.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => snackbar.remove(), 4000);
+      }, 4000);
+    }
+
+    // Accordion Toggle
+    function toggleAccordion(id) {
+      const content = document.getElementById('accordion-content-1');
+      const icon = document.getElementById('accordion-icon-1');
+      if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+        icon.classList.remove('rotate-180');
+      } else {
+        content.style.maxHeight = content.scrollHeight + "px";
+        icon.classList.add('rotate-180');
+      }
+    }
+
+    // Toggle Segmented Control Button Active
+    function toggleSegment(button) {
+      const parent = button.parentNode;
+      parent.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.className = "segment-btn rounded-full text-center text-sm font-black py-2 px-4 flex-1 transition-all active:scale-95 text-textSub hover:text-textMain";
+      });
+      button.className = "segment-btn rounded-full text-center text-sm font-black py-2 px-4 flex-1 transition-all active:scale-95 bg-white text-textMain shadow-sm";
+    }
+
+    // Toggle Chip Active/Inactive
+    function toggleChip(button) {
+      const isActive = button.classList.contains('bg-primary');
+      if (isActive) {
+        button.className = "chip-btn rounded-full px-4 py-1.5 text-sm font-semibold border-2 bg-surfaceNested text-textMain border-terracottaLight/50 hover:bg-terracottaLight/40 active:scale-95 transition-all";
+      } else {
+        button.className = "chip-btn rounded-full px-4 py-1.5 text-sm font-semibold border-2 bg-primary text-white border-transparent shadow-sm active:scale-95 transition-all";
+      }
+    }
+
+    // Speed Dial Expand
+    let isSpeedDialOpen = false;
+    function toggleSpeedDial() {
+      const dial = document.getElementById('speed-dial');
+      const icon = document.getElementById('fab-icon');
+      isSpeedDialOpen = !isSpeedDialOpen;
+      if (isSpeedDialOpen) {
+        dial.classList.remove('hidden');
+        setTimeout(() => {
+          dial.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+        icon.classList.add('rotate-45');
+      } else {
+        dial.classList.add('scale-95', 'opacity-0');
+        icon.classList.remove('rotate-45');
+        setTimeout(() => {
+          dial.classList.add('hidden');
+        }, 300);
+      }
+    }
+  </script>
+</body>
+</html>
