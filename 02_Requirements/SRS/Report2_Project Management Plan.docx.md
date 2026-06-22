@@ -109,23 +109,26 @@ The MVP intentionally prioritizes safe and demonstrable functionality over comme
 **Figure 1\. Core CareBridge workflow and system boundary**  
 [Detail: Core CareBridge workflow and system boundary](https://drive.google.com/file/d/1z3MFuCc1sqXPdwaituZz_qyKD7F3NzLd/view?usp=drive_link)
 
-#### 
-
-#### 
-
-#### 
-
 #### ***1.1.3 Scope Assumptions***
 
-- Users in the pilot target group have access to smartphones and internet connectivity.  
-- The project team consists of five active members and follows the official SEP490 timeline.  
-- The MVP is piloted for Hanoi metropolitan users first; nationwide scaling is not part of MVP validation.  
-- Verified experts are manually reviewed and approved during the MVP phase.  
-- Third-party AI or rule-based services remain available during development, or can be replaced with mock/rule-based implementation for demonstration.  
-- Notification services are available for account, reminder, moderation, and family alert use cases.  
-- Mobile operating systems continue to provide motion sensor access under user permission and device limitations.  
-- Map and location services are used only when the user opens emergency/nearby-care support and grants location permission.  
-- Stakeholders and supervisors provide timely feedback during review sessions.  
+- Users in the pilot target group have access to smartphones and internet connectivity.
+
+- The project team consists of five active members and follows the official SEP490 timeline.
+
+- The MVP is piloted for Hanoi metropolitan users first; nationwide scaling is not part of MVP validation.
+
+- Verified experts are manually reviewed and approved during the MVP phase.
+
+- Third-party AI or rule-based services remain available during development, or can be replaced with mock/rule-based implementation for demonstration.
+
+- Notification services are available for account, reminder, moderation, and family alert use cases.
+
+- Mobile operating systems continue to provide motion sensor access under user permission and device limitations.
+
+- Map and location services are used only when the user opens emergency/nearby-care support and grants location permission.
+
+- Stakeholders and supervisors provide timely feedback during review sessions.
+
 - The team can use mock data where real integrations would exceed academic project feasibility.
 
 #### ***1.1.4 Scope Constraints***
@@ -143,13 +146,20 @@ The MVP intentionally prioritizes safe and demonstrable functionality over comme
 
 #### ***1.1.5 Scope Exclusions***
 
-- Official Electronic Medical Record interoperability and national healthcare database integration.  
-- Electronic prescription, medication dosage recommendation, clinical diagnosis, or treatment planning.  
-- Licensed telemedicine service positioning, official online medical examination, or emergency dispatch operation.  
-- Insurance claim processing, hospital resource scheduling, and hospital internal HIS/EMR workflow.  
-- Medical imaging analysis, clinical decision support systems, and regulated medical-device certification.  
-- Nationwide deployment infrastructure and commercial-scale operation during the academic MVP.  
-- Continuous background safety monitoring guarantee across all devices and operating systems.  
+- Official Electronic Medical Record interoperability and national healthcare database integration.
+
+- Electronic prescription, medication dosage recommendation, clinical diagnosis, or treatment planning.
+
+- Licensed telemedicine service positioning, official online medical examination, or emergency dispatch operation.
+
+- Insurance claim processing, hospital resource scheduling, and hospital internal HIS/EMR workflow.
+
+- Medical imaging analysis, clinical decision support systems, and regulated medical-device certification.
+
+- Nationwide deployment infrastructure and commercial-scale operation during the academic MVP.
+
+- Continuous background safety monitoring guarantee across all devices and operating systems.
+
 - Selling, sharing, or using personal health data for advertising or commercial targeting without explicit consent.
 
 ####  ***1.1.6 Work Breakdown Structure (WBS) & Estimation***
@@ -261,23 +271,36 @@ The primary objective of CareBridge is to deliver a secure, scalable, and health
 
 #### ***1.2.2 Business Objectives***
 
-- Improve access to trusted and actionable maternal and child-care information.  
-- Reduce misinformation and unsafe peer advice through moderation and expert verification.  
-- Promote preventive care behavior through reminders, checklist, health records and care tasks.  
-- Create a community-first product where users can receive support without being forced into paid consultation from the beginning.  
-- Enable verified experts to build reputation and provide safe educational guidance.  
-- Validate the Hanoi pilot model before any nationwide expansion.  
+- Improve access to trusted and actionable maternal and child-care information.
+
+- Reduce misinformation and unsafe peer advice through moderation and expert verification.
+
+- Promote preventive care behavior through reminders, checklist, health records and care tasks.
+
+- Create a community-first product where users can receive support without being forced into paid consultation from the beginning.
+
+- Enable verified experts to build reputation and provide safe educational guidance.
+
+- Validate the Hanoi pilot model before any nationwide expansion.
+
 - Establish a sustainable social-impact direction through optional expert marketplace, partner support, and CSR opportunities without selling personal health data.
 
 #### ***1.2.3 Technical Objectives***
 
-- Implement Flutter mobile application for the user-facing MVP.  
-- Implement modular backend services using Java Spring Boot with PostgreSQL and MongoDB where appropriate.  
-- Apply role-based access control, consent-driven data sharing, and audit logging for sensitive actions.  
-- Support structured AI/rule-based triage without allowing diagnosis or prescription behavior.  
-- Support notification flows for reminders, moderation updates, consultation requests, and family safety alerts.  
-- Support map/location integration only within consent-based emergency or nearby-care flows.  
-- Design IMU safety monitoring as optional, on-device-first, privacy-aware functionality.  
+- Implement Flutter mobile application for the user-facing MVP.
+
+- Implement modular backend services using Java Spring Boot with PostgreSQL and MongoDB where appropriate.
+
+- Apply role-based access control, consent-driven data sharing, and audit logging for sensitive actions.
+
+- Support structured AI/rule-based triage without allowing diagnosis or prescription behavior.
+
+- Support notification flows for reminders, moderation updates, consultation requests, and family safety alerts.
+
+- Support map/location integration only within consent-based emergency or nearby-care flows.
+
+- Design IMU safety monitoring as optional, on-device-first, privacy-aware functionality.
+
 - Maintain cloud-ready architecture and CI/CD workflow for academic deployment and demonstration.
 
 ####  ***1.2.4 Quality Objectives***
@@ -307,8 +330,6 @@ The project follows a 14-week working plan starting from 11/05/2026. Reports 1, 
 | Project Management	 | 10% | Planning, tracking, risk management, communication, configuration and final packaging. |
 
 **Table 6\. Effort Distribution by Activity Group** 
-
-#### 
 
 #### ***1.2.6 Pilot Success Metrics***
 
@@ -361,12 +382,6 @@ The CareBridge project adopts Agile Scrum as the primary development methodology
 
 ### 
 
-### 
-
-### 
-
-### 
-
 ### **2.1 Project Process** {#2.1-project-process}
 
 #### ***2.1.1 Development Methodology***
@@ -376,12 +391,6 @@ The project is implemented with iterative Scrum cycles. Each sprint produces a r
 **![][image4]**  
 **Figure 3\. Scrum process model applied in CareBridge**  
 [Detail Scrum process model applied in CareBridge](https://drive.google.com/file/d/1y-OpY4clypTxo1Vtzjk1sUWiuTfSeB8o/view?usp=drive_link)
-
-#### 
-
-#### 
-
-#### 
 
 #### ***2.1.2 Scrum Roles*** 
 
@@ -397,37 +406,43 @@ The project is implemented with iterative Scrum cycles. Each sprint produces a r
 
 #### ***2.1.3 Scrum Artifacts***
 
-- Product Backlog  
-- Sprint Backlog  
-- Sprint Goal  
-- Increment  
-- Sprint Burndown/Progress Tracking  
-- Defect Log  
-- Risk Register  
-- Requirement Traceability Matrix  
-- Change Log  
+- Product Backlog
+
+- Sprint Backlog
+
+- Sprint Goal
+
+- Increment
+
+- Sprint Burndown/Progress Tracking
+
+- Defect Log
+
+- Risk Register
+
+- Requirement Traceability Matrix
+
+- Change Log
+
 - Meeting Minutes
 
 #### ***2.1.4 Sprint Structure***
 
-- Sprint Planning  
-- Requirement Clarification  
-- Design and UI/API Planning  
-- Implementation  
-- Unit Testing  
-- Integration Testing  
-- Review and Demonstration  
+- Sprint Planning
+
+- Requirement Clarification
+
+- Design and UI/API Planning
+
+- Implementation
+
+- Unit Testing
+
+- Integration Testing
+
+- Review and Demonstration
+
 - Retrospective and Backlog Update
-
-#### 
-
-#### 
-
-#### 
-
-#### 
-
-#### 
 
 #### ***2.1.5   14-Week Project Roadmap*** 
 
@@ -452,17 +467,22 @@ The project is implemented with iterative Scrum cycles. Each sprint produces a r
 
 #### 
 
-#### 
-
 #### ***2.1.6 Definition of Done***
 
-- Requirement is linked to actor/use case or approved business rule.  
-- UI/API behavior is documented and reviewed by at least one team member.  
-- Implementation is committed to the repository with meaningful branch/commit history.  
-- Unit or integration test evidence is available for implemented logic where applicable.  
-- No critical or high-severity defect remains open for the completed scope.  
-- Healthcare safety boundary is checked: no diagnosis, no prescription, no treatment, no emergency replacement.  
-- Sensitive data access follows RBAC, consent and audit-log expectations.  
+- Requirement is linked to actor/use case or approved business rule.
+
+- UI/API behavior is documented and reviewed by at least one team member.
+
+- Implementation is committed to the repository with meaningful branch/commit history.
+
+- Unit or integration test evidence is available for implemented logic where applicable.
+
+- No critical or high-severity defect remains open for the completed scope.
+
+- Healthcare safety boundary is checked: no diagnosis, no prescription, no treatment, no emergency replacement.
+
+- Sensitive data access follows RBAC, consent and audit-log expectations.
+
 - Documentation and screenshots/evidence are updated for the sprint increment.
 
 #### ***2.1.7 Change Management***
@@ -475,15 +495,24 @@ Any major requirement change must be reviewed against impact on scope, schedule,
 
 #### ***2.2.2 Defect Prevention***
 
-- Requirement review sessions  
-- Design walkthroughs  
-- Coding standards enforcement  
-- Architecture review  
-- Peer review and Merge Request review  
-- Static analysis and linting  
-- CI/CD validation  
-- AI safety prompt testing  
-- Security and consent scenario review  
+- Requirement review sessions
+
+- Design walkthroughs
+
+- Coding standards enforcement
+
+- Architecture review
+
+- Peer review and Merge Request review
+
+- Static analysis and linting
+
+- CI/CD validation
+
+- AI safety prompt testing
+
+- Security and consent scenario review
+
 - Pre-defense document consistency audit
 
 #### ***2.2.3 Review Process*** 
@@ -518,7 +547,7 @@ Any major requirement change must be reviewed against impact on scope, schedule,
 
 UAT is conducted using representative scenarios: a mother creates a journey, records baby care data, asks a community question, receives moderated guidance, shares a summary with a verified expert, configures family access, receives reminders, and tests safety monitoring flow. The UAT also covers abnormal cases such as unsafe community advice, red-flag triage, permission revocation, and failed notification delivery.
 
-### **2.3 Training Plan**  {#2.3-training-plan}
+### **2.3 Training Plan** {#2.3-training-plan}
 
 | Training Area | Participants | When, Duration | Waiver Criteria |
 | :---- | :---- | :---- | :---- |
@@ -533,6 +562,8 @@ UAT is conducted using representative scenarios: a mother creates a journey, rec
 | Testing, Defect Management and UAT Evidence | QA \+ Development Team | Week 10-13 / 2 days | Mandatory for Reports 5 and final package. |
 
 **Table 13\. Project Training Plan** 
+
+## 
 
 ## **3\. Project Deliverables** {#3.-project-deliverables}
 
@@ -558,8 +589,10 @@ UAT is conducted using representative scenarios: a mother creates a journey, rec
 
 ## **4\. Responsibility Assignments** {#4.-responsibility-assignments}
 
-![][image5]  
-**Figure 4\. Responsibility Structure**  
+![][image5]
+
+**Figure 4\. Responsibility Structure**
+
 [Detail Responsibility Structure](https://drive.google.com/file/d/1Fzxwi_5v51DiD_PHUiJUtIET0IL7b0Uw/view?usp=drive_link)
 
 The responsibility assignment matrix uses D \= Do, R \= Review, S \= Support, I \= Informed. The matrix combines document ownership and technical module responsibility to improve traceability during defense.
@@ -617,19 +650,26 @@ Source code is managed through GitLab repositories using a Git-based version con
 
 | Category | Tools / Infrastructure | Usage |
 | ----- | ----- | ----- |
-| **Mobile Technology** | Flutter | Primary mobile application for care seekers, family members and community users. |
+| **Mobile Technology** | Flutter (Dart) | Primary mobile application for care seekers, family members and community users. |
+| **Web Technology** | React \+ TypeScript | Web portal development for Admin Portal, Expert Portal, Moderator and Partner management functions.  |
 | **Backend Technology** | Java Spring Boot | Backend APIs, business services, RBAC, consent, triage and governance logic, Spring Security. |
-| **Database** | PostgreSQL, MongoDB | Structured relational data and flexible document/log/content data as needed. |
+| **Security & Access Control** | Spring Security \+ JWT | User authentication, role-based authorization, session management and protected API access for different user roles. |
+| **Database** | PostgreSQL | Structured relational data and flexible document/log/content data as needed.Main relational database for user profiles, pregnancy records, baby information, expert profiles, consultation data, payment records and system transactions. |
+| **Document / Content Storage** | Firebase Storage / AWS S3 | Flexible storage for community content, uploaded documents, images, health records and unstructured data when required. |
 | **Caching / Performance** | Redis or lightweight caching strategy | Community feed, FAQ, checklist and read-heavy data optimization when implemented. |
-| **Notification** | Firebase Cloud Messaging or equivalent | Reminders, family alerts, moderation results and consultation updates. |
+| **Realtime Communication** | WebSocket / Firebase Realtime Database | Real-time messaging, consultation chat, live status updates and community interaction features. |
+| **Video Consultation** | ZegoCloud/ Agora SDK  | Supports online consultation through voice call and video call between users and verified experts. |
+| **Notification** | Firebase Cloud Messaging (FCM) | Push notifications for pregnancy reminders, baby care reminders, consultation updates, expert responses and safety alerts. |
+| **AI & Intelligent Support** | Python FastAPI, LangChain / LangGraph, LLM API | AI assistant, RAG-based FAQ retrieval, conversation summarization and safe support guidance. AI is used for assistance and information organization, not medical diagnosis. |
 | **Map / Location** | TrackAsia link/API or mock nearby-care dataset | Emergency map, nearby care search and routing support in Vietnam. |
 | **Sensor Prototype** | Phone accelerometer/gyroscope | Smart activity monitoring and suspected fall/impact detection demo. |
-| **IDEs / Editors** | Visual Studio Code, IntelliJ IDEA, Android Studio | Development and debugging. |
-| **Diagramming** | DrawIO, PlantUML, Mermaid | Use case, process, architecture, ERD and flow diagrams. |
-| **Documentation** | Microsoft Office, Google Docs/Sheets/Slides | Reports, schedules, meeting notes, slides and shared documents. |
-| **Version Control** | GitLab | Source code management, Merge Requests, issue tracking, repository management, CI/CD pipelines and release packaging. |
-| **Deployment** | GitLab CI/CD, AWS, Vercel | Build automation, deployment, MVP hosting, and demonstration environment management. |
-| **Project Management** | GitLab Boards, Google Sheets | Task planning, sprint tracking, issue management and progress reporting. |
+| **Payment Integration** | VNPay Sandbox / Payment Gateway API | Supports paid expert consultation transactions, payment verification and revenue sharing workflow demonstration. |
+| **IDEs / Editors** | Visual Studio Code, IntelliJ IDEA, Android Studio | Development environment for frontend, backend and mobile application coding, debugging and testing. |
+| **Diagramming** | DrawIO, PlantUML, Mermaid | Design use case diagrams, architecture diagrams, ERD, sequence diagrams and workflow documentation. |
+| **Documentation** | Microsoft Office, Google Docs/Sheets/Slides | Project reports, requirement documents, meeting notes, schedules and presentation materials. |
+| **Version Control** | GitLab | Source code management, repository hosting, Merge Requests, issue tracking, branch management and CI/CD integration. |
+| **Deployment** | Docker, GitLab CI/CD, AWS / Cloud Hosting, Vercel | Containerization, automated build pipeline, backend deployment, frontend hosting and MVP demonstration environment. |
+| **Project Management** | GitLab Boards, Google Sheets | Sprint planning, task assignment, progress tracking, issue management and project reporting. |
 
 **Table 17\. Development Tools and Infrastructure**
 
