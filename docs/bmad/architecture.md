@@ -81,26 +81,35 @@ com.carebridge.backend.
 
 ### 3.2 Domain Catalog
 
+Based on the **CareBridge ERD Logical Model** (`02_Design/Database/CareBridge_ERD_Logical_Model_Updated.puml`), the system is organized into **11 core domains** with **67 entities**:
+
 | Domain | Purpose | Key Entities | Key Policies |
 |--------|---------|--------------|--------------|
-| `security` | Authentication, sessions, JWT, OTP | User, Session, OTPVerification | AuthenticationPolicy, SessionPolicy |
-| `identity` | Profile management, role assignment | Profile, Role, Permission | ProfilePolicy, RoleAssignmentPolicy |
-| `consent` | Consent grants, revocation, scope | ConsentGrant, ConsentScope | ConsentCheckPolicy, ConsentValidityPolicy |
-| `audit` | Audit logging, security events | AuditLog, SecurityEvent | AuditEligibilityPolicy, RetentionPolicy |
-| `carejourney` | Mother journey stages, milestones | JourneyStage, Milestone, StageLog | JourneyTransitionPolicy, StageAccessPolicy |
-| `healthrecord` | Health measurements, files | HealthRecord, Measurement, FileAttachment | RecordAccessPolicy, FileUploadPolicy |
-| `reminder` | Reminders and notifications | Reminder, NotificationTemplate | ReminderEligibilityPolicy |
-| `family` | Family groups, invitations, sharing | FamilyGroup, FamilyMember, SharingGrant | InvitationPolicy, SharingScopePolicy |
-| `community` | Posts, comments, categories, reports | Post, Comment, Category, Report | PostingPolicy, ReportingPolicy |
-| `expert` | Expert profiles, credentials, verification | ExpertProfile, Credential, Verification | VerificationPolicy, ExpertAccessPolicy |
-| `consultation` | Booking, sessions, summaries | Consultation, ConsultationSession, Summary | BookingPolicy, PaymentCheckPolicy |
-| `content` | Articles, FAQ, exercises | Article, FAQ, Exercise, ContentVersion | ContentPublishPolicy, VersioningPolicy |
-| `triage` | Symptom intake, risk classification | TriageSession, SymptomLog, RiskLevel | TriagePolicy, RedFlagPolicy |
-| `emergency` | Emergency flows, contacts, location | EmergencyEvent, Contact, LocationSnapshot | EmergencyAccessPolicy, LocationConsentPolicy |
-| `safety` | Safety monitoring, IMU events | SafetyEvent, SafetySettings, FalsePositive | MonitoringPolicy, AlertPolicy |
-| `exercise` | Exercise library, posture feedback | Exercise, ExerciseSession, PostureFeedback | ExerciseSafetyPolicy |
-| `partner` | Partner profiles, sponsored content | Partner, SponsoredContent, Performance | PartnerApprovalPolicy, ContentGovernancePolicy |
-| `payment` | Transactions, refunds, commissions | Payment, Refund, Commission | PaymentPolicy, RefundPolicy |
+| **`identity-access`** | Authentication, RBAC, sessions, community profiles, notifications | `users`, `roles`, `user_roles`, `user_sessions`, `community_profiles`, `notification_preferences`, `notifications`, `data_permissions`, `audit_logs` | AuthenticationPolicy, RBACPolicy, SessionPolicy, NotificationPreferencePolicy |
+| **`care-journey`** | Mother journey tracking, maternal health metrics, postpartum recovery | `mother_journeys`, `maternal_health_metrics`, `postpartum_logs` | JourneyPolicy, MaternalMetricPolicy, PostpartumPolicy |
+| **`baby-care`** | Baby profiles, daily care logs, development milestones, growth tracking, vaccination | `baby_profiles`, `baby_daily_logs`, `development_milestones`, `growth_measurements`, `vaccination_records` | BabyProfilePolicy, DailyLogPolicy, MilestonePolicy, VaccinationPolicy |
+| **`health-record`** | Health document storage, summaries, device measurements | `health_records`, `health_summaries`, `device_measurements` (from `health_device_connections`) | RecordAccessPolicy, FileUploadPolicy, DeviceSyncPolicy |
+| **`care-coordination`** | Care groups, task assignment, reminders, expense tracking | `care_groups`, `care_group_members`, `care_tasks`, `reminders`, `expenses` | CareGroupPolicy, TaskAssignmentPolicy, ReminderPolicy, ExpensePolicy |
+| **`community`** | Topics, Q&A, content library, moderation, checklists | `community_topics`, `community_questions`, `community_answers`, `content_items`, `checklist_templates`, `checklist_items`, `content_reports`, `moderation_actions` | CommunityPolicy, ModerationPolicy, ContentPublishPolicy, ChecklistPolicy |
+| **`expert`** | Expert profiles, credentials, availability, location sharing, contribution points | `expert_profiles`, `expert_credentials`, `expert_availability`, `expert_location_shares`, `expert_consultation_prices`, `contribution_points` | VerificationPolicy, ExpertAccessPolicy, AvailabilityPolicy, PricingPolicy |
+| **`consultation`** | Booking flow, sessions, messaging, payments, reviews, disputes, settlements | `consultation_bookings`, `consultation_sessions`, `consultation_messages`, `payment_transactions`, `commission_records`, `expert_reviews`, `consultation_price_bands`, `consultation_disputes`, `refund_records`, `settlement_records` | BookingPolicy, PaymentPolicy, CommissionPolicy, DisputeResolutionPolicy |
+| **`ai-safety`** | AI triage assessment, safety monitoring, alerts | `triage_assessments`, `triage_answers`, `safety_monitoring_settings`, `safety_events`, `safety_alerts` | TriagePolicy, RedFlagPolicy, SafetyMonitoringPolicy, AlertPolicy |
+| **`partner-location`** | Partner organizations, services, campaigns, facilities, emergencies, location snapshots | `partner_organizations`, `partner_expert_links`, `partner_services`, `sponsored_campaigns`, `care_facilities`, `emergency_events`, `location_snapshots` | PartnerApprovalPolicy, EmergencyPolicy, LocationConsentPolicy |
+| **`exercise-posture`** | Pregnancy exercise library, safety checks, sessions, posture analysis, feedback | `pregnancy_exercises`, `exercise_safety_checks`, `exercise_sessions`, `posture_analysis_configs`, `posture_feedback_events` | ExerciseSafetyPolicy, PostureAnalysisPolicy, SessionPolicy |
+
+**Entity Count Summary**:
+- Identity & Access: **9 entities**
+- Care Journey: **4 entities**
+- Baby Care: **5 entities**
+- Health Records: **3 entities** (+ device measurements from health_device_connections)
+- Care Coordination: **5 entities**
+- Community & Content: **8 entities**
+- Expert: **6 entities**
+- Consultation: **10 entities**
+- AI & Safety: **5 entities**
+- Partner & Location: **7 entities**
+- Exercise & Posture: **5 entities**
+- **Total: 67 entities** (excluding `health_device_connections` which belongs to Device domain but measurements merged into Health Record)
 
 ---
 

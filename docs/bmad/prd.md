@@ -384,22 +384,66 @@ Refer to `AGENTS.md` for story structure and approval workflow.
 
 ---
 
-## 10. Traceability Matrix (Partial)
+## 10. Traceability Matrix (Complete per ERD)
 
-| SRS Section | PRD Requirement | Priority | Epic |
-|-------------|-----------------|----------|------|
-| Authentication | AUTH-001 through AUTH-004 | P1 | EPIC-001 (Story 005) |
-| Consent & Privacy | CONSENT-001 through CONSENT-003 | P1 | EPIC-001 (Story 005) |
-| Audit Logging | AUDIT-001, AUDIT-002, AUDIT-003 | P1 | EPIC-001 (Story 005) |
-| Mother Journey | CARE-001 through CARE-006 | P2 | Future Epic |
-| Baby Profile | CARE-002, CARE-004 | P2 | Future Epic |
-| Health Records | CARE-006, CONSENT-003 | P2 | Future Epic |
-| Family Sync | FAMILY-001 through FAMILY-003 | P2 | Future Epic |
-| Community Feed | COMM-001 through COMM-005 | P3 | Future Epic |
-| Expert Profile | EXPERT-001 through EXPERT-005 | P3 | Future Epic |
-| AI Triage | TRIAGE-001 through TRIAGE-006 | P4 | Future Epic |
-| Emergency Support | EMERG-001 through EMERG-004 | P4 | Future Epic |
-| Admin Portal | ADMIN-001 through ADMIN-006 | P5 | Future Epic |
+Based on the **CareBridge ERD Logical Model** (`02_Design/Database/CareBridge_ERD_Logical_Model_Updated.puml`) with 67 entities across 11 domains:
+
+| Domain (ERD Package) | PRD Requirement ID | Requirement Description | Priority | Epic |
+|----------------------|-------------------|-------------------------|----------|------|
+| **Identity & Access** | AUTH-001 through AUTH-004 | Authentication, registration, login | P1 | EPIC-001 |
+| | RBAC-001 through RBAC-004 | Role-based access control (9 roles) | P1 | EPIC-001 |
+| | PROFILE-001 | Community profiles (public display) | P2 | Future Epic |
+| | NOTIF-001 through NOTIF-003 | Notification preferences and delivery | P2 | Future Epic |
+| | PERM-001 through PERM-004 | Data permissions with scope, purpose, expiry | P1 | EPIC-001 |
+| | AUDIT-001 through AUDIT-003 | Immutable audit logging (audit_logs entity) | P1 | EPIC-001 |
+| **Care Journey** | CARE-001 through CARE-006 | Mother journey dashboard and tracking | P2 | EPIC-002 |
+| | MATERNAL-001 through MATERNAL-004 | Maternal health metrics recording | P2 | EPIC-002 |
+| | POSTPARTUM-001 through POSTPARTUM-004 | Postpartum recovery logs | P2 | EPIC-002 |
+| **Baby Care** | BABY-001 through BABY-004 | Baby profile management | P2 | EPIC-002 |
+| | DAILYLOG-001 through DAILYLOG-005 | Baby daily logs (feeding, sleep, diaper) | P2 | EPIC-002 |
+| | MILESTONE-001 through MILESTONE-003 | Development milestones tracking | P2 | EPIC-002 |
+| | GROWTH-001 through GROWTH-003 | Growth measurements and charts | P2 | EPIC-002 |
+| | VACCINE-001 through VACCINE-004 | Vaccination records and schedule | P2 | EPIC-002 |
+| **Health Records** | RECORD-001 through RECORD-005 | Health record file upload and management | P2 | EPIC-003 |
+| | SUMMARY-001 through SUMMARY-003 | Health summaries with time periods | P3 | Future Epic |
+| | DEVICE-001 through DEVICE-004 | Health device connections and measurements | P3 | Future Epic |
+| **Care Coordination** | GROUP-001 through GROUP-005 | Care groups creation and management | P3 | Future Epic |
+| | MEMBER-001 through MEMBER-004 | Care group members and invitations | P3 | Future Epic |
+| | TASK-001 through TASK-004 | Care task assignment and tracking | P3 | Future Epic |
+| | REMINDER-001 through REMINDER-005 | Reminder CRUD with recurrence rules | P2 | EPIC-002 |
+| | EXPENSE-001 through EXPENSE-004 | Expense tracking for care costs | P3 | Future Epic |
+| **Community & Content** | COMM-001 through COMM-005 | Community feed, posts, comments | P3 | EPIC-004 |
+| | TOPIC-001 through TOPIC-003 | Community topics and categorization | P3 | EPIC-004 |
+| | CONTENT-001 through CONTENT-006 | Content items (articles, FAQ) with versioning | P3 | EPIC-004 |
+| | CHECKLIST-001 through CHECKLIST-004 | Checklist templates and items | P3 | EPIC-004 |
+| | REPORT-001 through REPORT-004 | Content reporting and moderation | P3 | EPIC-004 |
+| | MOD-001 through MOD-004 | Moderation actions and audit | P3 | EPIC-004 |
+| **Expert Ecosystem** | EXPERT-001 through EXPERT-005 | Expert profiles and verification workflow | P3 | EPIC-005 |
+| | CRED-001 through CRED-004 | Expert credentials upload and review | P3 | EPIC-005 |
+| | AVAIL-001 through AVAIL-003 | Expert availability configuration | P3 | EPIC-005 |
+| | LOCSHARE-001 through LOCSHARE-003 | Expert location sharing with consent | P3 | Future Epic |
+| | POINTS-001 through POINTS-003 | Contribution points and reputation | P3 | Future Epic |
+| **Consultation** | BOOK-001 through BOOK-006 | Consultation booking with price lock | P3 | EPIC-005 |
+| | SESSION-001 through SESSION-004 | Consultation sessions and messaging | P3 | Future Epic |
+| | PAY-001 through PAY-007 | Payment transactions, refunds, commissions | P3 | EPIC-006 |
+| | REVIEW-001 through REVIEW-003 | Expert reviews and ratings | P3 | EPIC-005 |
+| | PRICE-001 through PRICE-005 | Consultation price bands and expert pricing | P3 | Future Epic |
+| | DISPUTE-001 through DISPUTE-005 | Consultation disputes and resolution | P4 | Future Epic |
+| | SETTLE-001 through SETTLE-004 | Settlement records for experts | P4 | Future Epic |
+| **AI & Safety** | TRIAGE-001 through TRIAGE-006 | Symptom intake and rule-based triage | P4 | EPIC-007 |
+| | SAFE-001 through SAFE-008 | Safety monitoring (IMU) and alerts | P4 | EPIC-008 |
+| **Partner & Location** | PARTNER-001 through PARTNER-005 | Partner organization registration | P3 | Future Epic |
+| | SERVICE-001 through SERVICE-004 | Partner services and campaigns | P3 | Future Epic |
+| | FACILITY-001 through FACILITY-004 | Care facilities directory | P3 | Future Epic |
+| | EMERG-001 through EMERG-004 | Emergency events and facility selection | P4 | EPIC-008 |
+| | LOC-001 through LOC-004 | Location snapshots with consent | P4 | EPIC-008 |
+| **Exercise & Posture** | EXERCISE-001 through EXERCISE-006 | Pregnancy exercise library (third trimester) | P3 | Future Epic |
+| | SAFETYCHECK-001 through SAFETYCHECK-004 | Exercise safety checks before session | P3 | Future Epic |
+| | EXSESSION-001 through EXSESSION-005 | Exercise session tracking and posture score | P3 | Future Epic |
+| | POSTURECFG-001 through POSTURECFG-004 | Posture analysis configuration (angle-based) | P3 | Future Epic |
+| | FEEDBACK-001 through FEEDBACK-004 | Real-time posture feedback events | P3 | Future Epic |
+
+**Note**: This matrix maps all 67 ERD entities to PRD requirements. Priorities align with MVP scope (P1-P4). Future Epic indicates post-MVP features.
 
 ---
 

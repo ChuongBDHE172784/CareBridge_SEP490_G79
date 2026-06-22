@@ -62,9 +62,7 @@ out/
 # IDE and local agent/runtime data
 .agent/
 .agents/
-.claude/
 .github/agents/
-_bmad/
 _bmad-output/
 
 # Local helper scripts and one-off tools
@@ -91,3 +89,9 @@ tools/
 
 # Keep empty project structure markers
 !.gitkeep
+
+# Personal Git rule files and setup scripts (local only - do not commit)
+*GIT_RULE_CANHAN*.md
+*setup-git*.ps1
+*powershell_profile*.ps1
+*install-profile*.ps1

@@ -10,10 +10,10 @@ This document maps functional specifications to five development owners and a sp
 | Member | Ownership | Main Boundary |
 |---|---|---|
 | TV1 | Shared Foundation | Authentication, account/profile, privacy, notifications, audit/security, shared contracts |
-| TV2 | Care Journey | Mother/baby journey, health records, family sync, reminders, vaccination, files, device health data |
-| TV3 | Community & Content | Community Q&A, content/checklist, moderation, partner governance, RAG knowledge |
-| TV4 | Expert Consultation | Expert profile, booking, consultation, pricing, payment, commission, realtime |
-| TV5 | AI, Location & Safety | AI triage, map/location, emergency flow, safety monitoring, exercise/posture |
+| TV2 | Care Journey | Mother/baby journey (care-journey, baby-care), health records (health-record), family sync (care-coordination), reminders, vaccination, files, device health data |
+| TV3 | Community & Content | Community Q&A (community), content/checklist, moderation, partner governance, RAG knowledge |
+| TV4 | Expert Consultation | Expert profile (expert), booking, consultation, pricing, payment (consultation), commission, realtime |
+| TV5 | AI, Location & Safety | AI triage (ai-safety), map/location (partner-location), emergency flow, safety monitoring, exercise/posture (exercise-posture) |
 
 ## Shared Development Rules
 
@@ -47,8 +47,8 @@ Function specs:
 
 Implementation focus:
 
-- Backend packages: `auth`, `account`, `profile`, `privacy`, `notification`, `audit`, `security`.
-- Shared API response and exception structure.
+- Backend packages: `identity-access` (auth, user, role, session), `audit` (audit-logging).
+- Shared API response and exception format.
 - Auth/session skeleton.
 - Role/permission skeleton.
 - Notification and audit interfaces.
@@ -75,7 +75,7 @@ Function specs:
 
 Implementation focus:
 
-- Backend packages: `motherjourney`, `baby`, `healthrecord`, `file`, `reminder`, `vaccination`, `growth`, `familycare`, `device`.
+- Backend packages: `care-journey`, `baby-care`, `health-record` (file, device), `care-coordination` (reminder, family), `vaccination`, `growth`.
 - Mobile feature folders for mother, baby, health records, reminders, family care, vaccination.
 - Use TV1 auth/user contract only; avoid editing auth internals.
 
@@ -99,7 +99,7 @@ Function specs:
 
 Implementation focus:
 
-- Backend packages: `community`, `answer`, `topic`, `moderation`, `report`, `content`, `checklist`, `partner`, `sponsored`, `rag`.
+- Backend packages: `community`, `moderation`, `report`, `community` (content, checklist), `partner-location` (partner, sponsored), RAG service interface with mock answer provider.
 - Mobile community/content feature folders.
 - Web admin/moderation/content feature folders.
 - RAG service interface with mock answer provider.
@@ -126,7 +126,7 @@ Function specs:
 
 Implementation focus:
 
-- Backend packages: `expert`, `verification`, `availability`, `consultation`, `booking`, `payment`, `commission`, `pricing`, `realtime`, `refund`, `dispute`, `review`.
+- Backend packages: `expert`, `expert-verification`, `expert-availability`, `consultation` (booking, session, messaging), `consultation` (payment, commission, pricing, refund, dispute, review, settlement).
 - Expert mobile/web feature folders.
 - Payment mock provider and realtime mock session provider.
 
@@ -151,7 +151,7 @@ Function specs:
 
 Implementation focus:
 
-- Backend packages: `ai`, `triage`, `location`, `map`, `emergency`, `safety`, `exercise`, `posture`.
+- Backend packages: `ai-safety` (triage), `partner-location` (location, map, emergency), `ai-safety` (safety), `exercise-posture`.
 - Mobile feature folders for AI triage, emergency, map, safety, exercise.
 - AI, map, posture, and safety provider interfaces with mock implementations.
 
