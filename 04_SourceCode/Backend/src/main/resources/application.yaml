@@ -1,72 +1,38 @@
-spring:
-  application:
-    name: backend
 
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/carebridge}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
-    driver-class-name: org.postgresql.Driver
+  spring:
+    application:
+      name: backend
 
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+    datasource:
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/carebridge}
+      username: ${SPRING_DATASOURCE_USERNAME:postgres}
+      password: ${SPRING_DATASOURCE_PASSWORD:password}
+      driver-class-name: org.postgresql.Driver
 
-  docker:
-    compose:
-      enabled: false
+    flyway:
+      enabled: true
+      locations: classpath:db/migration
+      baseline-on-migrate: true
 
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
+
+    docker:
+      compose:
+         enabled: false
+    jpa:
       hibernate:
-        format_sql: true
+        ddl-auto: validate
+      open-in-view: false
+      properties:
+        hibernate:
+          format_sql: true
 
-carebridge:
-  security:
-    jwt:
-      secret: ${JWT_SECRET:carebridge-local-dev-secret-key-must-be-at-least-32-characters}
-      access-token-expiration-ms: 900000
-      refresh-token-expiration-ms: 604800000
-    otp:
-      expiration-seconds: 300
-      max-attempts: 5
+  carebridge:
+    security:
+      jwt:
+        secret: ${JWT_SECRET:carebridge-local-dev-secret-key-must-be-at-least-32-characters}
+        access-token-expiration-ms: 900000
+        refresh-token-expiration-ms: 604800000
+      otp:
+        expiration-seconds: 300
+        max-attempts: 5
 
----
-spring:
-  config:
-    activate:
-      on-profile: supabase
-
-  datasource:
-    url: ${SUPABASE_DB_URL}
-    username: ${SUPABASE_DB_USERNAME}
-    password: ${SUPABASE_DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-
-  docker:
-    compose:
-      enabled: false
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
-
-carebridge:
-  supabase:
-    url: ${SUPABASE_URL}
-    anon-key: ${SUPABASE_ANON_KEY}
-    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
-    storage-bucket: ${SUPABASE_STORAGE_BUCKET:carebridge}

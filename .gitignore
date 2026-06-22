@@ -7,7 +7,6 @@ Desktop.ini
 *~
 .idea/
 .vscode/
-.$*.drawio.bkp
 
 # Local environment and secrets
 .env

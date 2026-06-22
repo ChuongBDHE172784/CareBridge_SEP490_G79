@@ -8,7 +8,6 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.audit.service.SecurityEventService;
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,7 @@ public class SecurityEventServiceImpl implements SecurityEventService {
     private final AuditService auditService;
 
     @Override
-    public void log(SecurityEventType eventType, UUID userId, String ipAddress, Object details) {
+    public void log(SecurityEventType eventType, Long userId, String ipAddress, Object details) {
         SecurityEvent event = SecurityEvent.builder()
                 .timestamp(Instant.now())
                 .eventType(eventType)
