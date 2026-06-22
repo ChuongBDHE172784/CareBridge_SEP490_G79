@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cấp cứu & Hỗ trợ SOS - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        surface: '#F2EAE4',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        sos: '#E57373',
+                        sosHover: '#D32F2F'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 12px 32px rgba(90, 70, 63, 0.06)',
+                        'sos': '0 12px 32px rgba(229, 115, 115, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clay-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(90, 70, 63, 0.08);
+        }
+
+        .clay-btn-sos {
+            background: #E57373;
+            color: white;
+            transition: all 0.2s;
+            box-shadow: 0 8px 24px rgba(229, 115, 115, 0.3);
+        }
+
+        .clay-btn-sos:active {
+            transform: scale(0.95);
+            background: #D32F2F;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="p-4 md:p-10 max-w-[1000px] mx-auto min-h-screen flex flex-col gap-10">
+
+        <!-- HEADER: URGENT -->
+        <header class="bg-sos text-white rounded-[40px] p-8 shadow-sos relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="flex items-center gap-4 mb-4 shrink-0">
+                    <div
+                        class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shrink-0">
+                        <i data-lucide="shield-alert" class="w-8 h-8"></i>
+                    </div>
+                    <h1 class="text-3xl font-black uppercase tracking-tighter">Trung tâm Cấp cứu</h1>
+                </div>
+                <p class="text-white/90 font-bold text-lg mb-8 max-w-[600px]">Trấn tĩnh mẹ nhé. Chúng mình ở đây để hỗ
+                    trợ mẹ xử lý các tình huống khẩn cấp của Bé ngay lập tức.</p>
+                <div class="flex flex-wrap gap-4">
+                    <button
+                        class="bg-white text-sos px-10 py-5 rounded-full font-black shadow-lg clay-btn flex items-center gap-3 text-xl">
+                        <i data-lucide="phone-call" class="w-6 h-6"></i> Bác sĩ trực 24/7
+                    </button>
+                    <button
+                        class="bg-black/20 text-white border border-white/30 px-10 py-5 rounded-full font-black backdrop-blur-md clay-btn text-xl">
+                        Tìm BV gần nhất
+                    </button>
+                </div>
+            </div>
+            <!-- Background Decorative Heart -->
+            <i data-lucide="heart-pulse" class="absolute -right-10 -bottom-10 w-64 h-64 text-white/10 -rotate-12"></i>
+        </header>
+
+        <!-- AI SYMPTOM CHECKER -->
+        <section class="bg-card rounded-[40px] shadow-soft p-10">
+            <div class="flex flex-col md:flex-row gap-8 items-center mb-10 shrink-0">
+                <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                    <i data-lucide="bot" class="w-12 h-12 text-primary"></i>
+                </div>
+                <div class="text-center md:text-left">
+                    <h2 class="text-2xl font-black mb-1">AI Tra cứu triệu chứng</h2>
+                    <p class="text-textSecondary font-bold">Mô tả triệu chứng của bé, AI sẽ gợi ý hướng xử lý sơ
+                        cứu đầu tiên.</p>
+                </div>
+            </div>
+
+            <div class="relative mb-6">
+                <input type="text" placeholder="Ví dụ: Bé bị sốt 39 độ, Bé bị hóc dị vật..."
+                    class="w-full bg-surface py-6 px-10 rounded-[30px] font-bold text-lg outline-none focus:ring-4 focus:ring-primary/20 transition-all">
+                <button
+                    class="absolute right-4 top-4 bottom-4 px-10 bg-primary text-white font-black rounded-[24px] shadow-btn clay-btn">
+                    Kiểm tra
+                </button>
+            </div>
+
+            <!-- Quick Chips -->
+            <div class="flex flex-wrap gap-3">
+                <span
+                    class="px-5 py-2 bg-sos/10 text-sos border border-sos/20 rounded-full text-sm font-black uppercase cursor-pointer hover:bg-sos hover:text-white transition-all">Bé
+                    Sốt cao</span>
+                <span
+                    class="px-5 py-2 bg-sos/10 text-sos border border-sos/20 rounded-full text-sm font-black uppercase cursor-pointer hover:bg-sos hover:text-white transition-all">Hóc
+                    dị vật</span>
+                <span
+                    class="px-5 py-2 bg-sos/10 text-sos border border-sos/20 rounded-full text-sm font-black uppercase cursor-pointer hover:bg-sos hover:text-white transition-all">Dị
+                    ứng thực phẩm</span>
+                <span
+                    class="px-5 py-2 bg-sos/10 text-sos border border-sos/20 rounded-full text-sm font-black uppercase cursor-pointer hover:bg-sos hover:text-white transition-all">Co
+                    giật</span>
+            </div>
+        </section>
+
+        <!-- EMERGENCY GUIDES GRID -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Fever Guide -->
+            <div class="bg-card rounded-[32px] p-8 shadow-soft clay-card border-t-8 border-sos/40">
+                <div
+                    class="w-16 h-16 bg-white shadow-soft rounded-[20px] flex items-center justify-center mb-6 text-sos">
+                    <i data-lucide="thermometer" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black mb-3">Xử lý Bé bị Sốt</h3>
+                <div class="space-y-4 mb-6">
+                    <div class="flex gap-4 items-start">
+                        <span
+                            class="w-8 h-8 bg-sos text-white rounded-full flex items-center justify-center shrink-0 font-bold text-sm shadow-sm">1</span>
+                        <p class="text-base font-bold text-textPrimary leading-relaxed">Kẹp nhiệt độ, lau mát vùng nách
+                            và bẹn cho bé.</p>
+                    </div>
+                    <div class="flex gap-4 items-start">
+                        <span
+                            class="w-8 h-8 bg-sos text-white rounded-full flex items-center justify-center shrink-0 font-bold text-sm shadow-sm">2</span>
+                        <p class="text-base font-bold text-textPrimary leading-relaxed">Uống thuốc hạ sốt theo cân nặng
+                            (Hapacol/Efferalgan).</p>
+                    </div>
+                </div>
+                <button
+                    class="w-full py-4 bg-surface text-sos font-black rounded-full clay-btn border border-sos/10">Chi
+                    tiết quy trình</button>
+            </div>
+
+            <!-- Choking Guide -->
+            <div class="bg-card rounded-[32px] p-8 shadow-soft clay-card border-t-8 border-orange-400/40">
+                <div
+                    class="w-16 h-16 bg-white shadow-soft rounded-[20px] flex items-center justify-center mb-6 text-orange-400">
+                    <i data-lucide="wind" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black mb-3">Hóc dị vật</h3>
+                <p class="text-textSecondary font-bold text-base mb-6 leading-relaxed">Thủ thuật Vỗ lưng Ấn ngực cho trẻ
+                    dưới 1 tuổi. Click để xem Video từng bước.</p>
+                <div
+                    class="aspect-video bg-surface rounded-[20px] flex flex-col items-center justify-center gap-2 group cursor-pointer overflow-hidden relative shadow-inner">
+                    <img src="https://images.unsplash.com/photo-1617191103505-090956ee937c?w=400"
+                        class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform">
+                    <div
+                        class="w-16 h-16 bg-white text-orange-400 rounded-full flex items-center justify-center shadow-lg relative z-10 group-hover:bg-orange-400 group-hover:text-white transition-all">
+                        <i data-lucide="play" class="w-6 h-6 fill-current"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Allergy Guide -->
+            <div class="bg-card rounded-[32px] p-8 shadow-soft clay-card border-t-8 border-purple-400/40">
+                <div
+                    class="w-16 h-16 bg-white shadow-soft rounded-[20px] flex items-center justify-center mb-6 text-purple-400">
+                    <i data-lucide="dna" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black mb-3">Dị ứng & Sốc phản vệ</h3>
+                <p class="text-textSecondary font-bold text-base mb-6 leading-relaxed">Các dấu hiệu nổi mề đay, khó thở
+                    sau khi ăn dặm hoặc dùng thuốc.</p>
+                <ul class="space-y-4 mb-6">
+                    <li class="flex items-start gap-4 text-base font-bold text-sos">
+                        <i data-lucide="x-circle" class="w-6 h-6 shrink-0 mt-0.5"></i>
+                        <span>KHÔNG tự cho bé uống thuốc chống dị ứng tại nhà</span>
+                    </li>
+                    <li class="flex items-start gap-4 text-base font-bold text-[#66BB6A]">
+                        <i data-lucide="check-circle" class="w-6 h-6 shrink-0 mt-0.5"></i>
+                        <span>Đưa bé đến trạm y tế gần nhất ngay lập tức</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- BACK TO DASHBOARD -->
+        <footer class="p-8 flex justify-center">
+            <a href="momcare_index.html"
+                class="bg-white px-10 py-5 rounded-full shadow-soft text-textPrimary font-black flex items-center gap-4 hover:-translate-y-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

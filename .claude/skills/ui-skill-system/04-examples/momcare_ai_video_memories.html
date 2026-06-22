@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phóng sự Hành trình - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#FF7E5F', hover: '#FEB47B' }, // Warm sunset for memories
+                        bg: '#121212', // Cinema dark
+                        card: '#1E1E1E',
+                        textPrimary: '#FFFFFF',
+                        textSecondary: '#A0A0A0'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .video-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+            cursor: pointer;
+        }
+
+        .video-card:hover {
+            transform: scale(1.05) translateY(-10px);
+            z-index: 10;
+        }
+
+        .video-card:hover .video-overlay {
+            opacity: 1;
+        }
+
+        .glass-blur {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px border rgba(255, 255, 255, 0.1);
+        }
+
+        .gradient-text {
+            background: linear-gradient(45deg, #FF7E5F, #FEB47B);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .glow-btn {
+            box-shadow: 0 0 20px rgba(255, 126, 95, 0.4);
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        .floating-element {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen overflow-x-hidden">
+
+    <!-- HERO SECTION: RECENT HIGHLIGHT -->
+    <header class="relative h-[80vh] w-full flex items-center justify-center overflow-hidden">
+        <!-- BACKGROUND VIDEO PLACEHOLDER GRID -->
+        <div class="absolute inset-0 z-0 flex flex-wrap opacity-30 grayscale blur-[100px]">
+            <img src="https://images.unsplash.com/photo-1519689689378-b01930bc5f9f?w=800"
+                class="w-1/2 h-1/2 object-cover">
+            <img src="https://images.unsplash.com/photo-1544122159-39ed9ef97072?w=800" class="w-1/2 h-1/2 object-cover">
+        </div>
+
+        <!-- OVERLAY GRADIENT -->
+        <div class="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-transparent z-10"></div>
+
+        <!-- CONTENT -->
+        <div class="relative z-20 text-center max-w-4xl px-6">
+            <div class="floating-element mb-10 inline-block">
+                <div
+                    class="w-32 h-32 bg-primary/20 rounded-full flex items-center justify-center p-4 backdrop-blur-xl border border-primary/30 mx-auto">
+                    <img src="https://images.unsplash.com/photo-1519689689378-b01930bc5f9f?w=200"
+                        class="w-full h-full rounded-full object-cover">
+                </div>
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">Phim Hành trình:<br><span
+                    class="gradient-text tracking-tighter italic inline-block px-2">Của Bé Kem</span></h1>
+            <p class="text-xl font-bold text-textSecondary mb-12 max-w-2xl mx-auto">AI của chúng tôi đã tự động tổng hợp
+                những khoảnh khắc đẹp nhất trong 03 tháng đầu đời của bé.</p>
+
+            <div class="flex flex-wrap items-center justify-center gap-6">
+                <button
+                    class="px-10 py-5 bg-primary text-white rounded-full font-black text-lg flex items-center gap-4 glow-btn hover:scale-105 transition-all">
+                    <i data-lucide="play" class="fill-current w-6 h-6"></i> XEM NGAY (03:45)
+                </button>
+                <button
+                    class="px-10 py-5 glass-blur text-white rounded-full font-black text-lg flex items-center gap-4 border border-white/20 hover:bg-white/20 transition-all">
+                    <i data-lucide="share-2" class="w-6 h-6"></i> CHIA SẺ
+                </button>
+            </div>
+        </div>
+
+        <a href="momcare_index.html"
+            class="absolute top-10 left-10 z-50 w-14 h-14 glass-blur rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all border border-white/10">
+            <i data-lucide="home" class="w-6 h-6"></i>
+        </a>
+    </header>
+
+    <!-- CONTENT ROWS -->
+    <main class="relative z-20 pb-32">
+
+        <!-- ROW 1: AI GENERATED COLLECTIONS -->
+        <section class="mb-20 px-6 md:px-16">
+            <h2 class="text-2xl font-black mb-10 flex items-center gap-4">
+                <span class="w-10 h-1 bg-primary"></span> Tuyển tập AI
+            </h2>
+
+            <div class="flex overflow-x-auto gap-8 hide-scrollbar pb-10 -mx-4 px-4">
+
+                <!-- MOVIE CARD 1 -->
+                <div class="video-card group w-[400px] shrink-0">
+                    <div class="relative aspect-video rounded-3xl overflow-hidden mb-4 shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=600"
+                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
+                        <div
+                            class="absolute bottom-6 left-6 right-6 flex justify-between items-end opacity-100 group-hover:opacity-0 transition-opacity">
+                            <div>
+                                <h3 class="text-xl font-black">Tuần đầu sau sinh</h3>
+                                <p class="text-xs font-bold text-white/70">12 khoảnh khắc • 2 Phút</p>
+                            </div>
+                            <div
+                                class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
+                                <i data-lucide="volume-2" class="w-4 h-4 text-white"></i>
+                            </div>
+                        </div>
+                        <div
+                            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div
+                                class="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
+                                <i data-lucide="play" class="w-10 h-10 fill-current ml-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOVIE CARD 2 -->
+                <div class="video-card group w-[400px] shrink-0">
+                    <div class="relative aspect-video rounded-3xl overflow-hidden mb-4 shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1544122159-39ed9ef97072?w=600"
+                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
+                        <div
+                            class="absolute bottom-6 left-6 right-6 flex justify-between items-end opacity-100 group-hover:opacity-0 transition-opacity">
+                            <div>
+                                <h3 class="text-xl font-black">Tiếng khóc chào đời</h3>
+                                <p class="text-xs font-bold text-white/70">Kỷ niệm phòng sinh • Tự động dựng</p>
+                            </div>
+                        </div>
+                        <div
+                            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div
+                                class="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
+                                <i data-lucide="play" class="w-10 h-10 fill-current ml-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOVIE CARD 3 -->
+                <div class="video-card group w-[400px] shrink-0">
+                    <div class="relative aspect-video rounded-3xl overflow-hidden mb-4 shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1510154221590-ff63e90a136f?w=600"
+                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
+                        <div
+                            class="absolute bottom-6 left-6 right-6 flex justify-between items-end opacity-100 group-hover:opacity-0 transition-opacity">
+                            <div>
+                                <h3 class="text-xl font-black">Những bước đi đầu tiên</h3>
+                                <p class="text-xs font-bold text-white/70">Sắp ra mắt • Dự báo tháng 12</p>
+                            </div>
+                        </div>
+                        <div
+                            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div
+                                class="w-20 h-20 bg-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md">
+                                <i data-lucide="lock" class="w-8 h-8"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ROW 2: TIME-LAPSE JOURNEY -->
+        <section class="mb-20 px-6 md:px-16">
+            <div class="flex justify-between items-end mb-10">
+                <h2 class="text-2xl font-black flex items-center gap-4">
+                    <span class="w-10 h-1 bg-yellow-400"></span> Hành trình Ảnh 365
+                </h2>
+                <a href="#" class="text-sm font-black text-primary hover:underline">Xem tất cả</a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                <!-- PHOTO THUMBNAILS -->
+                <div
+                    class="aspect-[3/4] rounded-2xl bg-card overflow-hidden border border-white/5 shadow-lg group hover:ring-2 hover:ring-primary transition-all">
+                    <img src="https://images.unsplash.com/photo-1544122159-39ed9ef97072?w=400"
+                        class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all">
+                </div>
+                <div
+                    class="aspect-[3/4] rounded-2xl bg-card overflow-hidden border border-white/5 shadow-lg group hover:ring-2 hover:ring-primary transition-all">
+                    <img src="https://images.unsplash.com/photo-1519689689378-b01930bc5f9f?w=400"
+                        class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all">
+                </div>
+                <div
+                    class="aspect-[3/4] rounded-2xl bg-card overflow-hidden border border-white/5 shadow-lg group hover:ring-2 hover:ring-primary transition-all">
+                    <img src="https://images.unsplash.com/photo-1510154221590-ff63e90a136f?w=400"
+                        class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all">
+                </div>
+                <div class="aspect-[3/4] rounded-2xl bg-card overflow-hidden border border-white/5 shadow-lg relative">
+                    <div class="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm">
+                        <i data-lucide="plus" class="w-10 h-10 text-white"></i>
+                    </div>
+                </div>
+                <div
+                    class="aspect-[3/4] rounded-2xl bg-card border border-dashed border-white/20 flex items-center justify-center group hover:bg-white/5 transition-all">
+                    <p class="text-[10px] font-black uppercase text-textSecondary text-center px-4">Ngày mai của bé...
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FLOATING FOOTER NAV -->
+    <div
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 px-8 py-5 glass-blur rounded-[32px] border border-white/10 shadow-2xl flex items-center gap-10">
+        <button class="text-white hover:text-primary transition-colors"><i data-lucide="film"
+                class="w-6 h-6"></i></button>
+        <button class="text-textSecondary hover:text-white transition-colors"><i data-lucide="music"
+                class="w-6 h-6"></i></button>
+        <button class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center -mt-10 glow-btn"><i
+                data-lucide="camera" class="w-8 h-8"></i></button>
+        <button class="text-textSecondary hover:text-white transition-colors"><i data-lucide="heart"
+                class="w-6 h-6"></i></button>
+        <button class="text-textSecondary hover:text-white transition-colors"><i data-lucide="settings"
+                class="w-6 h-6"></i></button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

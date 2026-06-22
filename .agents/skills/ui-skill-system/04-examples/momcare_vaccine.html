@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch tiêm chủng - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        surface: '#F2EAE4',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        success: '#81C784',
+                        danger: '#E57373'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.3s ease;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(90, 70, 63, 0.1);
+        }
+
+        .timeline-line {
+            background: linear-gradient(to bottom, #81C784 0%, #E8DDD6 50%, #E8DDD6 100%);
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1000px] mx-auto p-4 md:p-10 flex flex-col gap-10">
+
+        <!-- HEADER -->
+        <header
+            class="bg-card rounded-[40px] p-8 shadow-soft flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="flex items-center gap-6">
+                <div
+                    class="w-16 h-16 bg-primary/10 text-primary rounded-[24px] flex items-center justify-center shrink-0">
+                    <i data-lucide="syringe" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black">Lịch tiêm phòng</h1>
+                    <p class="text-textSecondary font-bold">Bé Bún • 6 tháng tuổi</p>
+                </div>
+            </div>
+            <button class="bg-primary text-white font-black px-10 py-4 rounded-full shadow-btn clay-btn">
+                ➕ Thêm mũi tiêm
+            </button>
+        </header>
+
+        <!-- STATUS BANNER -->
+        <div class="bg-danger/10 border-2 border-white rounded-[32px] p-6 flex items-center gap-6">
+            <div
+                class="w-12 h-12 bg-danger text-white rounded-full flex items-center justify-center shrink-0 shadow-lg animate-pulse">
+                <i data-lucide="alert-circle" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1">
+                <p class="font-black text-danger uppercase text-xs tracking-wider mb-1">Cảnh báo trễ lịch</p>
+                <p class="font-bold text-sm leading-relaxed">Mũi 2: Cúm mùa bị trễ 3 ngày. Mẹ hãy đăng ký tiêm sớm cho
+                    bé nhé!</p>
+            </div>
+            <button class="bg-white text-danger px-6 py-2 rounded-full font-black text-xs shadow-soft">Đăng ký
+                ngay</button>
+        </div>
+
+        <!-- VACCINE TIMELINE -->
+        <section class="relative pl-12 md:pl-20 mt-4">
+            <!-- Vertical Line -->
+            <div class="absolute left-6 md:left-10 top-0 bottom-0 w-1.5 timeline-line rounded-full opacity-30"></div>
+
+            <div class="flex flex-col gap-8">
+
+                <!-- COMPLETED -->
+                <div class="relative group">
+                    <div
+                        class="absolute -left-12 md:-left-20 top-0 w-12 h-12 md:w-20 md:h-20 flex items-center justify-center z-10">
+                        <div
+                            class="w-10 h-10 md:w-14 md:h-14 bg-success text-white rounded-full shadow-lg flex items-center justify-center border-4 border-white">
+                            <i data-lucide="check" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-card rounded-[32px] p-8 shadow-soft clay-card border border-success/10 grayscale opacity-70">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 mb-4">
+                            <h3 class="text-xl font-black">Lao (BCG) & Viêm gan B</h3>
+                            <span
+                                class="bg-success text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase">Đã
+                                hoàn thành</span>
+                        </div>
+                        <p class="text-textSecondary font-bold text-sm">Đã tiêm ngày 05/10/2025 tại BV Phụ sản TW.</p>
+                    </div>
+                </div>
+
+                <!-- OVERDUE -->
+                <div class="relative group">
+                    <div
+                        class="absolute -left-12 md:-left-20 top-0 w-12 h-12 md:w-20 md:h-20 flex items-center justify-center z-10">
+                        <div
+                            class="w-10 h-10 md:w-14 md:h-14 bg-danger text-white rounded-full shadow-lg flex items-center justify-center border-4 border-white animate-pulse">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="bg-[#FFF8F8] rounded-[48px] p-8 shadow-floating clay-card border-2 border-danger/20">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 mb-4">
+                            <h3 class="text-xl font-black text-danger">Mũi 2: Cúm & Phế cầu</h3>
+                            <span
+                                class="bg-danger text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase">Trễ
+                                3 ngày</span>
+                        </div>
+                        <p class="text-textSecondary font-bold text-sm mb-6 leading-relaxed">Đây là giai đoạn quan trọng
+                            để xây dựng hệ miễn dịch cho bé. Mẹ nên ưu tiên đi tiêm trong tuần này.</p>
+                        <div class="flex gap-4">
+                            <button
+                                class="bg-danger text-white px-8 py-3 rounded-full font-black text-sm shadow-btn clay-btn">Đặt
+                                lịch tiêm</button>
+                            <button
+                                class="bg-white text-textPrimary px-8 py-3 rounded-full font-black text-sm shadow-soft clay-btn">Đã
+                                tiêm xong</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FUTURE -->
+                <div class="relative group opacity-60">
+                    <div
+                        class="absolute -left-12 md:-left-20 top-0 w-12 h-12 md:w-20 md:h-20 flex items-center justify-center z-10">
+                        <div
+                            class="w-10 h-10 md:w-14 md:h-14 bg-surface text-textSecondary rounded-full shadow-soft flex items-center justify-center border-4 border-white">
+                            <span class="font-black">9T</span>
+                        </div>
+                    </div>
+                    <div class="bg-card rounded-[32px] p-8 shadow-soft clay-card">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 mb-2">
+                            <h3 class="text-xl font-black">Mũi 1: Sởi đơn & Quai bị</h3>
+                            <span
+                                class="bg-surface text-textSecondary px-4 py-1.5 rounded-full text-[10px] font-black uppercase">Dự
+                                kiến: Tháng 01/2026</span>
+                        </div>
+                        <p class="text-textSecondary font-bold text-sm">Giai đoạn bé bắt đầu ăn dặm thô và bò nhiều hơn.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="mt-8 mb-20 flex justify-center">
+            <a href="momcare_index.html"
+                class="flex items-center justify-center gap-4 py-5 px-12 bg-white text-textPrimary rounded-full shadow-soft font-black hover:-translate-y-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i> Quay lại Hub
+            </a>
+        </footer>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

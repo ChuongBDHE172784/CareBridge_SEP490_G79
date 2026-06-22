@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hành trình 3D - Momcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .fetus-box {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(2deg);
+            }
+        }
+
+        .hotspot {
+            transition: all 0.3s ease;
+        }
+
+        .hotspot:hover {
+            transform: scale(1.5);
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen">
+    <div class="max-w-[1200px] mx-auto p-6 flex flex-col items-center">
+
+        <header class="w-full flex justify-between items-center py-6 px-4">
+            <a href="momcare_index.html"
+                class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-soft">
+                <i data-lucide="chevron-left"></i>
+            </a>
+            <div class="text-center">
+                <h1 class="text-2xl font-black">Tuần thứ 24</h1>
+                <p class="text-[10px] font-bold text-textSecondary uppercase tracking-widest">Giai đoạn thai kỳ</p>
+            </div>
+            <button class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-soft">
+                <i data-lucide="sparkles" class="text-primary"></i>
+            </button>
+        </header>
+
+        <main class="w-full flex flex-col lg:flex-row items-center justify-center gap-16 py-10">
+
+            <!-- 3D AREA -->
+            <div
+                class="fetus-box relative w-full aspect-square max-w-[450px] bg-white rounded-full shadow-lg border-8 border-white flex items-center justify-center overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1519689689378-b01930bc5f9f?w=600"
+                    class="w-full h-full object-cover grayscale-[0.2] sepia-[0.3]">
+
+                <!-- HOTSPOTS -->
+                <div
+                    class="absolute top-[25%] right-[25%] hotspot w-8 h-8 bg-primary rounded-full border-4 border-white shadow-md cursor-pointer">
+                </div>
+                <div
+                    class="absolute bottom-[35%] left-[30%] hotspot w-8 h-8 bg-primary rounded-full border-4 border-white shadow-md cursor-pointer">
+                </div>
+            </div>
+
+            <!-- INFO PANEL -->
+            <div class="w-full max-w-[400px] space-y-8">
+                <div class="bg-card p-10 rounded-[40px] shadow-soft border border-white">
+                    <h2 class="text-xl font-black mb-6">Chỉ số tuần này</h2>
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center px-2">
+                            <span class="text-sm font-bold text-textSecondary">Kích thước</span>
+                            <span class="text-lg font-black tracking-tight">Trái Bắp (30cm)</span>
+                        </div>
+                        <div class="flex justify-between items-center px-2">
+                            <span class="text-sm font-bold text-textSecondary">Cân nặng</span>
+                            <span class="text-lg font-black tracking-tight">600 Gram</span>
+                        </div>
+                        <hr class="border-bg">
+                        <p class="text-sm font-bold leading-relaxed italic text-textSecondary">
+                            "Mẹ ơi, con đang bắt đầu cảm nhận được sự chuyển động của mẹ và ánh sáng bên ngoài rồi!"
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    class="w-full py-5 bg-primary text-white rounded-3xl font-black shadow-md hover:bg-primary-hover transition-all">
+                    Nghe nhạc thai giáo
+                </button>
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

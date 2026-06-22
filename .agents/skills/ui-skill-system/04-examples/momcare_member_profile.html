@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cài đặt tài khoản - Momcare Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#C98C7B', hover: '#B67868' },
+                        bg: '#F6F1EC',
+                        card: '#FFFFFF',
+                        surface: '#F2EAE4',
+                        textPrimary: '#5A463F',
+                        textSecondary: '#9C857C',
+                        premium: '#FFD54F',
+                        expert: '#81C784'
+                    },
+                    fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 8px 32px rgba(90, 70, 63, 0.04)',
+                        'floating': '0 24px 64px rgba(90, 70, 63, 0.12)',
+                        'pressed': 'inset 0 4px 10px rgba(90, 70, 63, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clay-card {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 12px 32px rgba(90, 70, 63, 0.06);
+        }
+
+        .toggle-bg {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #F2EAE4;
+            cursor: pointer;
+        }
+
+        .toggle-dot {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input:checked~.toggle-bg {
+            background: #C98C7B;
+        }
+
+        input:checked~.toggle-bg .toggle-dot {
+            transform: translateX(24px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-bg text-textPrimary font-sans min-h-screen p-6 md:p-12">
+
+    <div class="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-12 items-start">
+
+        <!-- SIDEBAR NAV -->
+        <aside class="w-full lg:w-80 flex flex-col gap-8 sticky top-12 shrink-0">
+            <div class="flex items-center gap-4 px-6">
+                <div class="w-12 h-12 bg-primary/10 text-primary rounded-[20px] flex items-center justify-center">
+                    <i data-lucide="baby" class="w-6 h-6"></i>
+                </div>
+                <h1 class="text-3xl font-black">Cài đặt</h1>
+            </div>
+
+            <nav class="clay-card p-4 flex flex-col gap-2">
+                <a href="#"
+                    class="p-5 bg-primary text-white rounded-[28px] font-black shadow-lg flex items-center gap-4 active:scale-95 transition-all">
+                    <i data-lucide="user" class="w-5 h-5"></i> Hồ sơ Mẹ
+                </a>
+                <a href="#"
+                    class="p-5 hover:bg-bg rounded-[28px] font-bold text-textSecondary flex items-center gap-4 transition-all">
+                    <i data-lucide="users" class="w-5 h-5"></i> Quản lý hồ sơ Bé
+                </a>
+                <a href="#"
+                    class="p-5 hover:bg-bg rounded-[28px] font-bold text-textSecondary flex items-center gap-4 transition-all">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i> Bảo mật & FaceID
+                </a>
+                <a href="#"
+                    class="p-5 hover:bg-bg rounded-[28px] font-bold text-textSecondary flex items-center gap-4 transition-all">
+                    <i data-lucide="crown" class="w-5 h-5 text-premium"></i> Gói Premium
+                </a>
+                <div class="h-px bg-surface my-4 mx-6"></div>
+                <a href="momcare_index.html"
+                    class="p-5 hover:bg-red-50 rounded-[28px] font-bold text-[#E57373] flex items-center gap-4 transition-all">
+                    <i data-lucide="log-out" class="w-5 h-5"></i> Thoát ra Hub
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 space-y-12 w-full">
+
+            <!-- PROFILE CARD -->
+            <section class="clay-card p-10 relative overflow-hidden group border-4 border-white">
+                <div class="flex flex-col md:flex-row items-center gap-10 relative z-10 text-center md:text-left">
+                    <div class="relative shrink-0 group/avatar">
+                        <img src="https://i.pravatar.cc/300?u=mom"
+                            class="w-32 h-32 rounded-full border-8 border-surface shadow-soft object-cover group-hover/avatar:scale-110 transition-all">
+                        <button
+                            class="absolute bottom-0 right-0 w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                            <i data-lucide="camera" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex flex-col md:flex-row items-center gap-4 mb-3">
+                            <h2 class="text-3xl font-black">Mẹ Bún</h2>
+                            <span
+                                class="bg-premium text-textPrimary px-4 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-2 shadow-sm">
+                                <i data-lucide="star" class="w-3 h-3"></i> Gold Member
+                            </span>
+                        </div>
+                        <p class="text-textSecondary font-bold text-sm mb-6 uppercase tracking-[0.2em]">Cùng bé lớn khôn
+                            từ tháng 10, 2025</p>
+                        <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+                            <span class="bg-primary/10 text-primary px-5 py-2 rounded-full text-xs font-black">Bim Sữa
+                                Expert</span>
+                            <span class="bg-surface text-textSecondary px-5 py-2 rounded-full text-xs font-black">Hà
+                                Nội, VN</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Deco -->
+                <i data-lucide="heart"
+                    class="absolute -top-10 -right-10 w-48 h-48 text-primary/5 -rotate-12 group-hover:scale-110 transition-transform"></i>
+            </section>
+
+            <!-- GENERAL INFO -->
+            <section class="clay-card p-10 flex flex-col gap-10">
+                <h3 class="text-xl font-black flex items-center gap-4">
+                    <i data-lucide="clipboard-list" class="text-primary"></i> Thông tin cá nhân
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="flex flex-col">
+                        <label
+                            class="text-[10px] font-black uppercase tracking-[0.2em] text-textSecondary px-4 mb-3">Tên
+                            hiển thị</label>
+                        <input type="text" value="Mẹ Bún"
+                            class="bg-bg p-5 rounded-full font-black text-sm outline-none border-2 border-transparent focus:border-primary/20 focus:ring-8 focus:ring-primary/5 transition-all">
+                    </div>
+                    <div class="flex flex-col">
+                        <label
+                            class="text-[10px] font-black uppercase tracking-[0.2em] text-textSecondary px-4 mb-3">Email
+                            liên hệ</label>
+                        <input type="email" value="mebun.care@gmail.com"
+                            class="bg-bg p-5 rounded-full font-black text-sm outline-none border-2 border-transparent focus:border-primary/20 focus:ring-8 focus:ring-primary/5 transition-all">
+                    </div>
+                    <div class="flex flex-col md:col-span-2">
+                        <label
+                            class="text-[10px] font-black uppercase tracking-[0.2em] text-textSecondary px-4 mb-3">Lời
+                            nhắn yêu thương cho Bé</label>
+                        <textarea rows="4"
+                            class="bg-bg p-8 rounded-[32px] font-bold text-sm outline-none border-2 border-transparent focus:border-primary/20 focus:ring-8 focus:ring-primary/5 transition-all resize-none">"Gửi Bún yêu thương của mẹ, mong con luôn ăn ngon, ngủ kỹ và lớn khôn trong sự bao bọc của cả gia đình chúng ta."</textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- APP PREFERENCES -->
+            <section class="clay-card p-10 flex flex-col gap-10">
+                <h3 class="text-xl font-black flex items-center gap-4">
+                    <i data-lucide="settings-2" class="text-primary"></i> Tùy chọn ứng dụng
+                </h3>
+
+                <div class="space-y-8">
+                    <div class="flex items-center justify-between group cursor-pointer">
+                        <div>
+                            <p class="font-black text-lg mb-1">Thông báo nhắc lịch tiêm</p>
+                            <p class="text-xs font-bold text-textSecondary">Chúng tôi sẽ báo trước 1 ngày để mẹ chuẩn bị
+                                cho bé.</p>
+                        </div>
+                        <label class="relative inline-block w-14 h-8 shrink-0">
+                            <input type="checkbox" class="sr-only" checked>
+                            <div class="toggle-bg absolute inset-0 rounded-full shadow-pressed p-1">
+                                <div class="toggle-dot w-6 h-6 bg-white rounded-full shadow-md"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="h-px bg-bg"></div>
+
+                    <div class="flex items-center justify-between group cursor-pointer">
+                        <div>
+                            <p class="font-black text-lg mb-1">Chế độ chăm sóc Preterm</p>
+                            <p class="text-xs font-bold text-textSecondary">Bật các chỉ số theo dõi đặc biệt cho bé sinh
+                                non.</p>
+                        </div>
+                        <label class="relative inline-block w-14 h-8 shrink-0">
+                            <input type="checkbox" class="sr-only">
+                            <div class="toggle-bg absolute inset-0 rounded-full shadow-pressed p-1">
+                                <div class="toggle-dot w-6 h-6 bg-white rounded-full shadow-md"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SAVE -->
+            <div class="flex justify-end items-center gap-6 pt-4">
+                <span class="text-xs font-bold text-textSecondary">Đã lưu tự động lúc 23:11</span>
+                <button
+                    class="bg-primary text-white px-12 py-5 rounded-full font-black text-lg shadow-floating hover:scale-110 active:scale-95 transition-all">Lưu
+                    thay đổi</button>
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
