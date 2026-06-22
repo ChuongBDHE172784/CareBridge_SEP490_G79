@@ -131,10 +131,14 @@ public class AuthServiceImpl implements AuthService {
         String otpHash = hashOtpWithSha256(otp);
 
         // 8. Create OtpVerification with 5-min expiry, 5 attempts
+        // Story 1.2 fix: persist .email(...) symmetric to .phone(...) so that
+        // email-channel verify-otp (which looks up by email) can find the row.
+        // Without this, email-registered users could never complete registration.
         OtpVerification otpVerification = OtpVerification.builder()
                 .user(user)
                 .codeHash(otpHash)
                 .phone(phone != null && !phone.isBlank() ? phone : null)
+                .email(identifier != null && identifier.contains("@") ? identifier : null)
                 .purpose(OtpVerification.OtpPurpose.REGISTER)
                 .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
                 .attempts(5) // remaining attempts
@@ -248,7 +252,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
         String phone = normalizePhone(request.getPhone());
-        String email = request.getEmail();
+        // Story 1.2 fix: normalize the email to match the canonical form used in
+        // register() and resendOtp(). Without this, "Test@Example.com " does not
+        // match the persisted lowercase trimmed value, and verify fails with a
+        // generic "Invalid or expired OTP" error.
+        String emailRaw = request.getEmail();
+        String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
         String otpInput = request.getOtp();
 
         // Find valid OtpVerification by phone or email
