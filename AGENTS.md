@@ -2,19 +2,34 @@
 
 ## Project Structure & Module Organization
 
-This repository follows an SDLC folder layout. Requirements and design live in `01_Requirements/` and `02_Design/`; machine-learning assets in `03_MachineLearning/`; testing artifacts in `05_Testing/`; deployment material in `06_Deployment/`.
+This repository follows an SDLC folder layout:
+- `01_Planning/` for project planning, meeting minutes, schedules, and risk tracking.
+- `02_Requirements/` for software requirements (SRS, Use Cases, DFD, Traceability Matrix, Business Rules).
+- `03_Design/` for system design (APIs, Architecture, Class/Activity/Sequence Diagrams, UI/UX).
+- `04_Implement/` for deployment/implementation plans and artifacts.
+- `05_Development/` for source code, database scripts, deployment, and tools:
+  - `CareBridgeAPI/` (Backend — Spring Boot)
+  - `CareBridgeMobileApp/` (Mobile — Flutter)
+  - `CareBridgeWebApp/` (Web Portal — React + Vite)
+  - `Database/` for ERD and SQL scripts.
+  - `Deployment/` for Docker and CI/CD configurations.
+  - `DevTools/` for development utilities.
+  - `MachineLearning/` for AI/ML preprocessing, training, models, and safety rules.
+- `06_Testing/` for all test plans, test cases, automation scripts, and UAT.
+- `07_Reports/` for university project submission reports.
+- `08_References/` for templates and reference materials.
 
-Application code is under `04_SourceCode/`:
+Application code is under `05_Development/`:
 
-- `Backend/`: Spring Boot Java 21 service. Main code is in `src/main/java/com/carebridge/backend`, resources and Flyway migrations are in `src/main/resources`, and tests are in `src/test/java`.
-- `Frontend/`: Vite React TypeScript app. Use `src/app` for routing/providers/layouts, `src/features/<feature>` for feature modules, `src/shared` for reusable UI, API, hooks, and utilities.
-- `MobileApp/`: Flutter app. Use `lib/app`, `lib/core`, `lib/features/<feature>`, `lib/shared`, and `test/`.
+- `CareBridgeAPI/`: Spring Boot Java 21 service. Main code is in `src/main/java/com/carebridge/backend`, resources and Flyway migrations are in `src/main/resources`, and tests are in `src/test/java`.
+- `CareBridgeWebApp/`: Vite React TypeScript app. Use `src/app` for routing/providers/layouts, `src/features/<feature>` for feature modules, `src/shared` for reusable UI, API, hooks, and utilities.
+- `CareBridgeMobileApp/`: Flutter app. Use `lib/app`, `lib/core`, `lib/features/<feature>`, `lib/shared`, and `test/`.
 
 ## Build, Test, and Development Commands
 
-- Backend: from `04_SourceCode/Backend`, run `.\mvnw.cmd spring-boot:run` to start locally, `.\mvnw.cmd test` for tests, and `.\mvnw.cmd clean package` for a full build.
-- Frontend: from `04_SourceCode/Frontend`, run `npm install`, `npm run dev`, `npm run build`, `npm run lint`, and `npm run preview`.
-- Mobile: from `04_SourceCode/MobileApp`, run `flutter pub get`, `flutter run`, `flutter test`, and `flutter analyze`.
+- Backend: from `05_Development/CareBridgeAPI`, run `.\mvnw.cmd spring-boot:run` to start locally, `.\mvnw.cmd test` for tests, and `.\mvnw.cmd clean package` for a full build.
+- Frontend: from `05_Development/CareBridgeWebApp`, run `npm install`, `npm run dev`, `npm run build`, `npm run lint`, and `npm run preview`.
+- Mobile: from `05_Development/CareBridgeMobileApp`, run `flutter pub get`, `flutter run`, `flutter test`, and `flutter analyze`.
 
 ## Coding Style & Naming Conventions
 
