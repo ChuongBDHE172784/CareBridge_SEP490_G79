@@ -34,4 +34,18 @@ public class ContentException extends RuntimeException {
                 "Topic not found: " + topicId,
                 HttpStatus.BAD_REQUEST);
     }
+
+    public static ContentException contentNotFound() {
+        return new ContentException(
+                "CNT-003",
+                "Content not found or not available",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ContentException validationFailed(String field, String message) {
+        return new ContentException(
+                "CNT-001",
+                "Validation failed: " + field + " - " + message,
+                HttpStatus.BAD_REQUEST);
+    }
 }
