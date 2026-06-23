@@ -1,0 +1,75 @@
+package com.carebridge.backend.content.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+@Entity
+@Table(name = "content_items")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ContentItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "content_item_id", updatable = false, nullable = false)
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_type", length = 30)
+    private ContentType type;
+
+    @Column(name = "title", length = 250)
+    private String title;
+
+    @Column(name = "body", columnDefinition = "TEXT")
+    private String body;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage", length = 30)
+    private ContentStage stage;
+
+    @Column(name = "topic_id")
+    private UUID topicId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private ContentStatus status;
+
+    @Column(name = "version_no")
+    private Integer versionNo;
+
+    @Column(name = "author_user_id")
+    private Long authorUserId;
+
+    @Column(name = "source_label", length = 255)
+    private String sourceLabel;
+
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+}

@@ -2,11 +2,14 @@ package com.carebridge.backend.common.exception;
 
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.community.exception.DuplicateTopicNameException;
+import com.carebridge.backend.content.exception.ContentException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,6 +36,12 @@ public class GlobalExceptionHandler {
                 .details(details)
                 .build();
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request body: " + ex.getMessage(), request);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -64,6 +73,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DuplicateTopicNameException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
+            DuplicateTopicNameException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-009", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ContentException.class)
+    public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(ConsentException.class)

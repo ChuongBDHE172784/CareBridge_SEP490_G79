@@ -7,6 +7,7 @@ Desktop.ini
 *~
 .idea/
 .vscode/
+.$*.drawio.bkp
 
 # Local environment and secrets
 .env
@@ -60,48 +61,9 @@ out/
 *.aab
 
 # IDE and local agent/runtime data
-# Keep local agent/runtime data ignored, except the shared dual-remote policy.
-.agent/*
-!.agent/rules/
-!.agent/skills/
-!.agent/workflows/
-.agent/rules/*
-.agent/skills/*
-.agent/workflows/*
-!.agent/rules/git-dual-remote.md
-!.agent/skills/git-dual-remote-handler.md
-!.agent/skills/ui-skill-system/
-!.agent/skills/ui-skill-system/**
-!.agent/workflows/start-day.md
-!.agent/workflows/end-day.md
-
-.agents/*
-!.agents/rules/
-!.agents/skills/
-!.agents/workflows/
-.agents/rules/*
-.agents/skills/*
-.agents/workflows/*
-!.agents/rules/git-dual-remote.md
-!.agents/skills/git-dual-remote-handler.md
-!.agents/skills/ui-skill-system/
-!.agents/skills/ui-skill-system/**
-!.agents/workflows/start-day.md
-!.agents/workflows/end-day.md
-
-.claude/*
-!.claude/rules/
-!.claude/skills/
-!.claude/workflows/
-.claude/rules/*
-.claude/skills/*
-.claude/workflows/*
-!.claude/rules/git-dual-remote.md
-!.claude/skills/git-dual-remote-handler.md
-!.claude/skills/ui-skill-system/
-!.claude/skills/ui-skill-system/**
-!.claude/workflows/start-day.md
-!.claude/workflows/end-day.md
+.agent/
+.agents/
+.claude/
 .github/agents/
 _bmad/
 _bmad-output/

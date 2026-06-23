@@ -14,5 +14,6 @@ public enum AuditAction {
     AI_TRIAGE,
     PAYMENT,
     SECURITY_EVENT,
-    VIEW_AUDIT_LOG
+    VIEW_AUDIT_LOG,
+    CONTENT_CREATED
 }
