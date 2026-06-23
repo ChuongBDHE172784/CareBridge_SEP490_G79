@@ -105,7 +105,7 @@ class AuthServiceLoginTest {
             }
             return token;
         });
-        when(jwtTokenProvider.generateAccessToken(user)).thenReturn("access-token");
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
         when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();
@@ -158,7 +158,7 @@ class AuthServiceLoginTest {
             }
             return token;
         });
-        when(jwtTokenProvider.generateAccessToken(user)).thenReturn("access-token");
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
         when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();
@@ -462,7 +462,7 @@ class AuthServiceLoginTest {
             }
             return token;
         });
-        when(jwtTokenProvider.generateAccessToken(user)).thenReturn("access-token");
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
         when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();

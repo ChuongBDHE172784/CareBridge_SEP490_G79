@@ -138,9 +138,9 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(
         summary = "User logout",
-        description = "Revoke the refresh token and invalidate the current session. Access token remains valid until expiry (short-lived).",
+        description = "Revoke the refresh token and invalidate the current session. If no refresh token is provided, logs out the current session using the JWT sid claim. Access token remains valid until expiry (short-lived).",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Optional refresh token (if null, uses token from SecurityContext)",
+            description = "Optional refresh token (if null, uses authenticated session's sid claim)",
             content = @Content(schema = @Schema(implementation = RefreshTokenRequest.class))
         ),
         responses = {
@@ -152,7 +152,7 @@ public class AuthController {
             @RequestBody(required = false) RefreshTokenRequest request,
             Principal principal,
             HttpServletRequest httpRequest) {
-        String refreshToken = request == null ? null : request.getRefreshToken();
+        String refreshToken = (request != null) ? request.getRefreshToken() : null;
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         String ipAddress = httpRequest.getRemoteAddr();
         sessionService.logout(refreshToken, userId, ipAddress);

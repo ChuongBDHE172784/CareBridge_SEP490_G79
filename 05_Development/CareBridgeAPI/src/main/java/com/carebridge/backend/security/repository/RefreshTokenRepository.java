@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -22,4 +23,10 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     Optional<RefreshToken> findByTokenAndRevokedFalseForUpdate(@Param("token") String token);
 
     List<RefreshToken> findByUser_IdAndRevokedFalse(UUID userId);
+
+    @Modifying
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.tokenHash = :tokenHash AND rt.user.id = :userId AND rt.revoked = false")
+    int revokeByTokenHashAndUserId(@Param("tokenHash") String tokenHash, @Param("userId") UUID userId);
+
+    Optional<RefreshToken> findByTokenHashAndRevokedFalse(String tokenHash, UUID userId);
 }

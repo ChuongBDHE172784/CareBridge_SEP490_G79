@@ -5,7 +5,9 @@ import com.carebridge.backend.identity.entity.TokenBlacklist;
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.security.repository.RefreshTokenRepository;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.jwt.JwtAuthenticationToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,10 +15,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,6 +41,9 @@ class SessionServiceImplTest {
     private TokenBlacklistRepository tokenBlacklistRepository;
 
     @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
     private AuditService auditService;
 
     @Mock
@@ -49,7 +57,7 @@ class SessionServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        sessionService = new SessionServiceImpl(sessionRepository, tokenProvider, auditService, tokenBlacklistRepository);
+        sessionService = new SessionServiceImpl(sessionRepository, tokenProvider, auditService, tokenBlacklistRepository, refreshTokenRepository);
         SecurityContextHolder.clearContext();
     }
 
@@ -78,6 +86,19 @@ class SessionServiceImplTest {
         when(authentication.getCredentials()).thenReturn(token);
         SecurityContext securityContext = mock(SecurityContext.class);
         when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+    }
+
+    private void mockJwtAuthenticationToken(UUID sessionId) {
+        var authorities = List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MOTHER"));
+        JwtAuthenticationToken jwtAuth = new JwtAuthenticationToken(
+                new org.springframework.security.core.userdetails.User("test", "pass", authorities),
+                null,
+                authorities,
+                sessionId
+        );
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(jwtAuth);
         SecurityContextHolder.setContext(securityContext);
     }
 
@@ -121,13 +142,11 @@ class SessionServiceImplTest {
 
     @Test
     void revokeSession_CurrentSession_ThrowsException() {
-        // Arrange
-        String currentToken = "current-refresh-token";
-        String currentTokenHash = hashToken(currentToken);
+        // Arrange: current authenticated session's sid equals the target sessionId
         UserSession session = createSession(false, Instant.now().plusSeconds(3600));
-        session.setRefreshTokenHash(currentTokenHash);
         when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
-        mockCurrentToken(currentToken);
+        // Mock JwtAuthenticationToken with sessionId equal to target
+        mockJwtAuthenticationToken(sessionId);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -262,8 +281,9 @@ class SessionServiceImplTest {
         UserSession session = createSession(false, Instant.now().plusSeconds(3600));
         session.setRefreshTokenHash(tokenHash);
         session.setSessionId(sessionId);
-        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(eq(tokenHash))).thenReturn(Optional.of(session));
         when(sessionRepository.revokeSession(eq(sessionId), eq(userId), any())).thenReturn(1);
+        when(refreshTokenRepository.revokeByTokenHashAndUserId(eq(tokenHash), eq(userId))).thenReturn(1);
         // No need to mock SecurityContext - logout uses direct token param
 
         // Act
@@ -290,7 +310,9 @@ class SessionServiceImplTest {
     void logout_Idempotent_WhenAlreadyLoggedOut() {
         // Arrange
         String token = "test-refresh-token";
-        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)).thenReturn(Optional.empty());
+        String tokenHash = hashToken(token);
+        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(eq(tokenHash))).thenReturn(Optional.empty());
+        when(refreshTokenRepository.revokeByTokenHashAndUserId(eq(tokenHash), eq(userId))).thenReturn(0);
         // No SecurityContext mock needed
 
         // Act - should not throw
@@ -324,8 +346,9 @@ class SessionServiceImplTest {
         UserSession session = createSession(false, Instant.now().plusSeconds(3600));
         session.setRefreshTokenHash(tokenHash);
         session.setSessionId(sessionId);
-        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(eq(tokenHash))).thenReturn(Optional.of(session));
         when(sessionRepository.revokeSession(eq(sessionId), eq(userId), any())).thenReturn(1);
+        when(refreshTokenRepository.revokeByTokenHashAndUserId(eq(tokenHash), eq(userId))).thenReturn(1);
 
         // Act
         sessionService.logout(token, userId, "127.0.0.1");
@@ -342,8 +365,9 @@ class SessionServiceImplTest {
         UserSession session = createSession(false, Instant.now().minusSeconds(3600)); // expired
         session.setRefreshTokenHash(tokenHash);
         session.setSessionId(sessionId);
-        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(eq(tokenHash))).thenReturn(Optional.of(session));
         when(sessionRepository.revokeSession(eq(sessionId), eq(userId), any())).thenReturn(1);
+        when(refreshTokenRepository.revokeByTokenHashAndUserId(eq(tokenHash), eq(userId))).thenReturn(1);
 
         // Act
         sessionService.logout(token, userId, "127.0.0.1");
@@ -363,5 +387,53 @@ class SessionServiceImplTest {
                 eq(sessionId.toString()),
                 contains("User logged out from IP: 127.0.0.1")
         );
+    }
+
+    @Test
+    void logout_WithNullToken_UsesSidToLogoutCurrentSession() {
+        // Arrange: no refresh token provided, but current session exists via sid
+        UserSession session = createSession(false, Instant.now().plusSeconds(3600));
+        // The session's refreshTokenHash is already set by createSession
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionRepository.revokeSession(eq(sessionId), eq(userId), any())).thenReturn(1);
+        when(refreshTokenRepository.revokeByTokenHashAndUserId(eq(refreshTokenHash), eq(userId))).thenReturn(1);
+        // Mock JwtAuthenticationToken with sessionId
+        mockJwtAuthenticationToken(sessionId);
+
+        // Act
+        sessionService.logout(null, userId, "127.0.0.1");
+
+        // Assert
+        verify(sessionRepository).revokeSession(eq(sessionId), eq(userId), any());
+        ArgumentCaptor<TokenBlacklist> blacklistCaptor = ArgumentCaptor.forClass(TokenBlacklist.class);
+        verify(tokenBlacklistRepository).save(blacklistCaptor.capture());
+        TokenBlacklist captured = blacklistCaptor.getValue();
+        assertEquals(refreshTokenHash, captured.getTokenHash());
+        assertEquals("logout_sid", captured.getReason());
+        verify(auditService).log(
+                eq(com.carebridge.backend.audit.entity.AuditAction.LOGOUT),
+                eq(userId),
+                eq("UserSession"),
+                eq(sessionId.toString()),
+                contains("User logged out current session via SID from IP: 127.0.0.1")
+        );
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void logout_WithNullToken_NoCurrentSession_ClearsContextOnly() {
+        // Arrange: no refresh token and no current session (sid null or not found)
+        // Don't mock JwtAuth - extractCurrentSessionId will return null
+        // No need to mock sessionRepository.findById because it won't be called
+
+        // Act - should not throw
+        sessionService.logout(null, userId, "127.0.0.1");
+
+        // Assert - only context cleared
+        verify(sessionRepository, never()).findById(any());
+        verify(sessionRepository, never()).revokeSession(any(), any(), any());
+        verify(tokenBlacklistRepository, never()).save(any());
+        verify(auditService, never()).log(any(), any(), any(), any(), any());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

@@ -6,9 +6,11 @@ import com.carebridge.backend.identity.entity.TokenBlacklist;
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.security.jwt.JwtAuthenticationToken;
+import com.carebridge.backend.security.repository.RefreshTokenRepository;
+import com.carebridge.backend.security.util.TokenUtils;
 import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
-import com.carebridge.backend.security.util.TokenUtils;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +30,7 @@ public class SessionServiceImpl implements SessionService {
     private final JwtTokenProvider tokenProvider;
     private final AuditService auditService;
     private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     private static final long INACTIVE_THRESHOLD_DAYS = 30;
     private static final long INACTIVE_THRESHOLD_SECONDS = INACTIVE_THRESHOLD_DAYS * 24 * 60 * 60;
@@ -37,7 +40,9 @@ public class SessionServiceImpl implements SessionService {
     public List<SessionInfo> getActiveSessions(UUID userId) {
         List<UserSession> sessions = sessionRepository.findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(userId);
         Instant now = Instant.now();
-        String currentToken = extractCurrentToken();
+
+        // Get current session ID from JWT sid claim
+        UUID currentSessionId = extractCurrentSessionId();
 
         return sessions.stream().map(session -> {
             SessionInfo.SessionInfoBuilder builder = SessionInfo.builder()
@@ -47,9 +52,7 @@ public class SessionServiceImpl implements SessionService {
                 .ipAddress(session.getIpAddress())
                 .location(session.getLocation())
                 .lastActivityAt(session.getLastActivityAt())
-                .isCurrent(currentToken != null && session.getRefreshTokenHash() != null &&
-                          tokenProvider.validateToken(currentToken) &&
-                          session.getRefreshTokenHash().equals(currentToken));
+                .isCurrent(currentSessionId != null && currentSessionId.equals(session.getSessionId()));
 
             // Determine status
             if (session.isRevoked()) {
@@ -67,13 +70,30 @@ public class SessionServiceImpl implements SessionService {
         }).toList();
     }
 
+    private UUID extractCurrentSessionId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        // If using JwtAuthenticationToken, get session ID directly
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getSessionId();
+        }
+        // Fallback: extract from credentials if it's a JWT token
+        if (auth.getCredentials() instanceof String token) {
+            return tokenProvider.getSessionId(token);
+        }
+        return null;
+    }
+
     @Override
     public SessionInfo getCurrentSession() {
         String token = extractCurrentToken();
         if (token == null) {
             return null;
         }
-        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)
+        String tokenHash = TokenUtils.hashSha256(token);
+        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
             .orElse(null);
         if (session == null) {
             return null;
@@ -96,13 +116,10 @@ public class SessionServiceImpl implements SessionService {
             throw new IllegalArgumentException("Session is already revoked");
         }
 
-        // Check if trying to revoke current session
-        String currentToken = extractCurrentToken();
-        if (currentToken != null && session.getRefreshTokenHash() != null) {
-            String currentTokenHash = TokenUtils.hashSha256(currentToken);
-            if (currentTokenHash.equals(session.getRefreshTokenHash())) {
-                throw new IllegalArgumentException("Please use Logout to sign out from this device");
-            }
+        // Check if trying to revoke current session using sid claim
+        UUID currentSessionId = extractCurrentSessionId();
+        if (currentSessionId != null && currentSessionId.equals(session.getSessionId())) {
+            throw new IllegalArgumentException("Please use Logout to sign out from this device");
         }
 
         int updated = sessionRepository.revokeSession(sessionId, requestingUserId, Instant.now());
@@ -145,34 +162,79 @@ public class SessionServiceImpl implements SessionService {
     @Override
     @Transactional
     public void logout(String refreshToken, UUID userId, String ipAddress) {
-        // If no token provided, treat as already logged out (idempotent)
-        if (refreshToken == null) {
-            log.debug("Logout called with null token - treating as already logged out");
+        // If no refresh token provided, try to logout current session via sid claim
+        if (refreshToken == null || refreshToken.isBlank()) {
+            UUID currentSessionId = extractCurrentSessionId();
+            if (currentSessionId != null) {
+                UserSession session = sessionRepository.findById(currentSessionId).orElse(null);
+                if (session != null && !session.isRevoked() && session.getUserId().equals(userId)) {
+                    // Revoke the session
+                    int updated = sessionRepository.revokeSession(currentSessionId, userId, Instant.now());
+                    if (updated > 0) {
+                        // Blacklist the refresh token hash if available
+                        if (session.getRefreshTokenHash() != null && session.getExpiresAt() != null) {
+                            TokenBlacklist blacklistEntry = TokenBlacklist.builder()
+                                    .tokenHash(session.getRefreshTokenHash())
+                                    .expiresAt(session.getExpiresAt())
+                                    .revokedAt(Instant.now())
+                                    .reason("logout_sid")
+                                    .build();
+                            tokenBlacklistRepository.save(blacklistEntry);
+                        }
+                        // Revoke any matching refresh token row
+                        if (session.getRefreshTokenHash() != null) {
+                            refreshTokenRepository.revokeByTokenHashAndUserId(session.getRefreshTokenHash(), userId);
+                        }
+                        auditService.log(
+                            com.carebridge.backend.audit.entity.AuditAction.LOGOUT,
+                            userId,
+                            "UserSession",
+                            currentSessionId.toString(),
+                            "User logged out current session via SID from IP: " + ipAddress
+                        );
+                        log.info("User logged out via SID: userId={}, sessionId={}, ip={}", userId, currentSessionId, ipAddress);
+                    }
+                }
+            }
+            // Always clear security context
+            SecurityContextHolder.clearContext();
             return;
         }
 
+        // Hash the raw refresh token for database lookup
+        String tokenHash = TokenUtils.hashSha256(refreshToken);
+
         // Find the active session by token hash
-        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(refreshToken)
+        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
             .orElse(null);
 
         // If session not found (already revoked/expired), treat as success - idempotent
         if (session == null) {
             log.debug("Logout called for non-existent or already revoked session: tokenHashPrefix={}",
-                      refreshToken.substring(0, Math.min(refreshToken.length(), 16)));
+                      tokenHash.substring(0, Math.min(tokenHash.length(), 16)));
+            // Still try to revoke any matching refresh token row if present
+            revokeRefreshTokenByHash(tokenHash, userId);
             return;
+        }
+
+        // Verify ownership: session must belong to the authenticated user
+        if (!session.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Cannot logout from another user's session");
         }
 
         // Check if already revoked (handles race condition where another thread revoked between find and update)
         if (session.isRevoked()) {
             log.debug("Session already revoked (concurrent logout): sessionId={}", session.getSessionId());
+            revokeRefreshTokenByHash(tokenHash, userId);
             return;
         }
 
-        // Mark session as revoked using existing revokeSession method
+        // Mark session as revoked
         int updated = sessionRepository.revokeSession(session.getSessionId(), userId, Instant.now());
         if (updated == 0) {
             // Race condition: session was revoked by another thread after our check
             log.debug("Session already revoked by concurrent request: sessionId={}", session.getSessionId());
+            revokeRefreshTokenByHash(tokenHash, userId);
             return;
         }
 
@@ -186,10 +248,11 @@ public class SessionServiceImpl implements SessionService {
                     .build();
             tokenBlacklistRepository.save(blacklistEntry);
         } else {
-            if (session.getRefreshTokenHash() == null) {
-                log.warn("Session has null refreshTokenHash - cannot blacklist: sessionId={}", session.getSessionId());
-            }
+            log.warn("Session has null refreshTokenHash - cannot blacklist: sessionId={}", session.getSessionId());
         }
+
+        // Revoke the matching refresh token row
+        revokeRefreshTokenByHash(tokenHash, userId);
 
         // Audit log
         auditService.log(
@@ -206,17 +269,26 @@ public class SessionServiceImpl implements SessionService {
         SecurityContextHolder.clearContext();
     }
 
+    private void revokeRefreshTokenByHash(String tokenHash, UUID userId) {
+        // Find and revoke any refresh token with this hash belonging to the user
+        int revokedCount = refreshTokenRepository.revokeByTokenHashAndUserId(tokenHash, userId);
+        if (revokedCount > 0) {
+            log.debug("Revoked {} refresh token(s) for userId={}", revokedCount, userId);
+        }
+    }
+
     @Override
     @Transactional
     public void updateLastActivity(String token, String ipAddress) {
-        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(token)
+        String tokenHash = TokenUtils.hashSha256(token);
+        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
             .orElse(null);
         if (session != null) {
             Instant now = Instant.now();
-            sessionRepository.updateActivity(now, ipAddress, token);
+            sessionRepository.updateActivity(now, ipAddress, tokenHash);
             session.setUpdatedAt(now);
-            log.debug("Updated last activity for session: tokenHash={}, ip={}",
-                     token.substring(0, Math.min(token.length(), 16)), ipAddress);
+            log.debug("Updated last activity for session: tokenHashPrefix={}, ip={}",
+                     tokenHash.substring(0, Math.min(tokenHash.length(), 16)), ipAddress);
         }
     }
 

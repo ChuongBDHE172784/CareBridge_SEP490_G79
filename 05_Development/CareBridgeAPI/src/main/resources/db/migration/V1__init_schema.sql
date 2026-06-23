@@ -1122,6 +1122,8 @@ create table token_blacklist (
         primary key (id)
     );
 
+    create index idx_token_blacklist_expires_at on token_blacklist(expires_at);
+
     
 
 create table triage_answers (
@@ -1173,22 +1175,34 @@ create table user_roles (
     
 
 create table user_sessions (
-        is_current boolean,
-        revoked boolean not null,
-        created_at timestamp(6) with time zone not null,
-        expires_at timestamp(6) with time zone,
-        last_activity_at timestamp(6) with time zone,
-        updated_at timestamp(6) with time zone,
         session_id uuid not null,
-        user_id uuid,
-        status varchar(20) not null,
+        user_id uuid not null,
+        refresh_token_hash varchar(255) not null,
+        device_name varchar(150),
         ip_address varchar(64),
         browser varchar(150),
-        device_name varchar(150),
         location varchar(200),
-        refresh_token_hash varchar(255),
+        last_activity_at timestamp(6) with time zone,
+        is_current boolean not null default false,
+        expires_at timestamp(6) with time zone not null,
+        revoked boolean not null default false,
+        status varchar(20) not null,
+        created_at timestamp(6) with time zone not null,
+        updated_at timestamp(6) with time zone,
         primary key (session_id)
     );
+
+    -- Enforce canonical status values
+    alter table if exists user_sessions
+       add constraint CHK_user_sessions_status
+       check (status in ('active', 'inactive', 'expired', 'revoked'));
+
+    -- Security indexes for user_sessions
+    create index idx_user_sessions_user_id on user_sessions(user_id);
+    create index idx_user_sessions_last_activity on user_sessions(last_activity_at);
+    create index idx_user_sessions_refresh_token_hash on user_sessions(refresh_token_hash);
+    create index idx_user_sessions_user_revoked on user_sessions(user_id, revoked) where not revoked;
+    create unique index idx_user_sessions_refresh_token_hash_unique on user_sessions(refresh_token_hash) where refresh_token_hash is not null;
 
     
 
@@ -1211,6 +1225,15 @@ create table users (
         role varchar(50) not null,
         primary key (user_id)
     );
+
+    -- Unique constraint for non-null phone numbers
+    create unique index idx_users_phone_unique on users(phone) where phone is not null;
+
+    -- Add FK from user_sessions to users (users table created after user_sessions)
+    alter table if exists user_sessions
+       add constraint FK_user_sessions_user_id
+       foreign key (user_id)
+       references users;
 
     
 

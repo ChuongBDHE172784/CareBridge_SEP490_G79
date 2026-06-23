@@ -180,3 +180,30 @@ cd 05_Development/CareBridgeAPI
 ---
 
 **Kết luận:** Tất cả 5 lỗi bảo mật nghiêm trọng đã được fix và test pass. Code đã sẵn sàng cho code review và merge.
+
+---
+
+## Review Findings — Codex (23/06/2026)
+
+**Verdict:** BLOCK — chưa sẵn sàng merge. Full build thành công và 86/86 test pass, nhưng test hiện tại chưa chứng minh các security fixes trọng yếu.
+
+- [x] [Review][Decision] Giữ chiến lược V1-only — đã xác nhận V4/V5 chưa từng được apply và mọi database có thể reset. V1 vẫn phải bổ sung constraint/index security trước merge.
+- [ ] [Review][Patch] Hash refresh token trước khi logout tra `refresh_token_hash`; hiện logout trả 200 nhưng thường không tìm thấy session và không revoke/blacklist. [`SessionServiceImpl.java:154`]
+- [ ] [Review][Patch] Không fail-open khi không tìm thấy active `UserSession`; token mồ côi phải bị từ chối theo plan và OpenAPI contract. [`AuthServiceImpl.java:576`]
+- [ ] [Review][Patch] Khi rotate refresh token, cập nhật atomically hash/expiry của `UserSession`; hiện token mới tách khỏi session và không thể revoke từ xa. [`AuthServiceImpl.java:601`]
+- [ ] [Review][Patch] Thiết kế lại current-session identification; JWT authentication có credentials null và code đang so access token với refresh-token hash. [`SessionServiceImpl.java:40`]
+- [ ] [Review][Patch] JWT secret rỗng/whitespace phải fail fast thay vì sinh random key theo từng instance. [`JwtTokenProvider.java:32`]
+- [ ] [Review][Patch] Hoàn tất claim thống nhất hashing và không log OTP: `OtpServiceImpl` vẫn tự hash và ghi plaintext OTP ở INFO. [`OtpServiceImpl.java:41`]
+- [ ] [Review][Patch] Bổ sung NOT NULL, FK và indexes bảo mật bị mất cho `user_sessions` và index expiry cho `token_blacklist` trong V1. [`V1__init_schema.sql:1116`]
+- [ ] [Review][Patch] Bổ sung test hành vi cho blacklist refresh, logout raw/hash, session missing/revoked, rotation linkage và principal wiring; các test sửa trong commit chủ yếu chỉ thêm constructor mock.
+- [ ] [Review][Patch] Bổ sung PostgreSQL/Flyway migration test với `ddl-auto=validate`; suite hiện dùng H2, tắt Flyway và không thể phát hiện schema drift.
+- [x] [Review][Defer] Hoàn thiện toàn bộ FK cho các domain ngoài Epic 1 trong monolithic V1 — deferred sang một database-integrity task riêng, nhưng các bảng security phải sửa trước merge.
+- [x] [Review][Defer] Bổ sung bounded lock timeout/outbox cho OTP delivery — deferred sau khi có concurrency test chứng minh replay đã được serialize.
+
+### Verification Evidence
+
+- Commit reviewed: `f215bbe..0dfcc2b`
+- `mvnw.cmd clean package`: **BUILD SUCCESS**
+- Tests: **86 passed, 0 failed, 0 errors, 0 skipped**
+- Test limitation: H2 `create-drop`, Flyway disabled; chưa có PostgreSQL migration execution evidence.
+- Triage correction: `AuthServiceImpl` có `@Transactional` ở cấp class; finding “refresh không có transaction” đã được loại là false positive.

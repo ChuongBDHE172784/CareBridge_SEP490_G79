@@ -29,4 +29,8 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     @Modifying
     @Query("UPDATE UserSession us SET us.isCurrent = false WHERE us.userId = :userId AND us.isCurrent = true AND us.sessionId != :newSessionId")
     int clearCurrentSessions(@Param("userId") UUID userId, @Param("newSessionId") UUID newSessionId);
+
+    @Modifying
+    @Query("UPDATE UserSession us SET us.refreshTokenHash = :newHash, us.expiresAt = :newExpiry, us.updatedAt = :now WHERE us.sessionId = :sessionId")
+    int updateSessionForRotation(@Param("sessionId") UUID sessionId, @Param("newHash") String newHash, @Param("newExpiry") Instant newExpiry, @Param("now") Instant now);
 }

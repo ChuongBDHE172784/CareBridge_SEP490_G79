@@ -24,14 +24,13 @@ import lombok.Setter;
 public class UserSession {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "session_id")
+    @Column(name = "session_id", nullable = false)
     private UUID sessionId;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "refresh_token_hash", length = 255)
+    @Column(name = "refresh_token_hash", nullable = false, length = 255)
     private String refreshTokenHash;
 
     @Column(name = "device_name", length = 150)
@@ -49,10 +48,11 @@ public class UserSession {
     @Column(name = "last_activity_at")
     private Instant lastActivityAt;
 
-    @Column(name = "is_current")
-    private boolean isCurrent;
+    @Builder.Default
+    @Column(name = "is_current", nullable = false)
+    private boolean isCurrent = false;
 
-    @Column(name = "expires_at")
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     @Builder.Default

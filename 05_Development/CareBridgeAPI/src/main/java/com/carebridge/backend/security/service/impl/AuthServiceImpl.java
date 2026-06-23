@@ -3,8 +3,11 @@ package com.carebridge.backend.security.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AuthenticationException;
+import com.carebridge.backend.common.exception.InvalidRefreshTokenException;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.RevokedSessionException;
+import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.util.StringUtils;
@@ -288,11 +291,13 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
-        // 5. Generate tokens and create session record
+        // 5. Generate refresh token first
         RefreshToken refreshToken = createRefreshToken(user);
+        String rawRefreshToken = refreshToken.getToken();
+        String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
 
-        // Create user session record
-        String refreshTokenHash = TokenUtils.hashSha256(refreshToken.getToken());
+        // 6. Create user session record with a unique session ID BEFORE issuing tokens
+        UUID sessionId = UUID.randomUUID();
         String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
         String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
         String deviceName = extractDeviceName(userAgent);
@@ -300,6 +305,7 @@ public class AuthServiceImpl implements AuthService {
 
         com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
                 .userId(user.getId())
+                .sessionId(sessionId)
                 .refreshTokenHash(refreshTokenHash)
                 .deviceName(deviceName)
                 .browser(browser)
@@ -314,7 +320,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         sessionRepository.save(session);
         // Clear current flag on other sessions for this user
-        sessionRepository.clearCurrentSessions(user.getId(), session.getSessionId());
+        sessionRepository.clearCurrentSessions(user.getId(), sessionId);
 
         auditService.log(
                 AuditAction.LOGIN,
@@ -323,9 +329,12 @@ public class AuthServiceImpl implements AuthService {
                 user.getId().toString(),
                 null);
 
+        // 7. Issue tokens with session ID included
+        String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
+
         return AuthResponse.builder()
-                .accessToken(jwtTokenProvider.generateAccessToken(user))
-                .refreshToken(refreshToken.getToken())
+                .accessToken(accessToken)
+                .refreshToken(rawRefreshToken)
                 .user(userMapper.toProfileResponse(user))
                 .build();
     }
@@ -508,10 +517,40 @@ public class AuthServiceImpl implements AuthService {
 
         // Create refresh token
         RefreshToken refreshToken = createRefreshToken(user);
+        String rawRefreshToken = refreshToken.getToken();
+        String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
+
+        // Create user session
+        UUID sessionId = UUID.randomUUID();
+        String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
+        String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
+        String deviceName = extractDeviceName(userAgent);
+        String browser = userAgent != null ? userAgent : "Unknown";
+
+        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
+                .userId(user.getId())
+                .sessionId(sessionId)
+                .refreshTokenHash(refreshTokenHash)
+                .deviceName(deviceName)
+                .browser(browser)
+                .ipAddress(ipAddress)
+                .location(null)
+                .lastActivityAt(Instant.now())
+                .expiresAt(refreshToken.getExpiresAt())
+                .status("active")
+                .isCurrent(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        sessionRepository.save(session);
+        sessionRepository.clearCurrentSessions(user.getId(), sessionId);
+
+        // Issue tokens with session ID
+        String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
 
         return AuthResponse.builder()
-                .accessToken(jwtTokenProvider.generateAccessToken(user))
-                .refreshToken(refreshToken.getToken())
+                .accessToken(accessToken)
+                .refreshToken(rawRefreshToken)
                 .user(userMapper.toProfileResponse(user))
                 .build();
     }
@@ -550,60 +589,115 @@ public class AuthServiceImpl implements AuthService {
 
         // Create refresh token
         RefreshToken refreshToken = createRefreshToken(user);
+        String rawRefreshToken = refreshToken.getToken();
+        String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
+
+        // Create user session
+        UUID sessionId = UUID.randomUUID();
+        String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
+        String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
+        String deviceName = extractDeviceName(userAgent);
+        String browser = userAgent != null ? userAgent : "Unknown";
+
+        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
+                .userId(user.getId())
+                .sessionId(sessionId)
+                .refreshTokenHash(refreshTokenHash)
+                .deviceName(deviceName)
+                .browser(browser)
+                .ipAddress(ipAddress)
+                .location(null)
+                .lastActivityAt(Instant.now())
+                .expiresAt(refreshToken.getExpiresAt())
+                .status("active")
+                .isCurrent(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        sessionRepository.save(session);
+        sessionRepository.clearCurrentSessions(user.getId(), sessionId);
+
+        // Issue tokens with session ID
+        String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
 
         return AuthResponse.builder()
-                .accessToken(jwtTokenProvider.generateAccessToken(user))
-                .refreshToken(refreshToken.getToken())
+                .accessToken(accessToken)
+                .refreshToken(rawRefreshToken)
                 .user(userMapper.toProfileResponse(user))
                 .build();
     }
 
     @Override
+    @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
         String rawToken = request.getRefreshToken();
         if (rawToken == null || rawToken.isBlank()) {
             throw new AuthenticationException("Refresh token is required");
         }
 
-        // Hash the token for database lookups
+        // Capture now once for consistent checks
+        Instant now = Instant.now();
+
+        // Hash the token once for all database lookups
         String tokenHash = TokenUtils.hashSha256(rawToken);
 
         // 1. Check if token is blacklisted (has been revoked via logout/session-revoke)
-        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(tokenHash, Instant.now())) {
+        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(tokenHash, now)) {
             throw new AuthenticationException("Token has been blacklisted");
         }
 
-        // 2. Check corresponding session status
+        // 2. Check corresponding session status - MUST exist and be active
         UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
-                .orElse(null);
-        if (session != null) {
-            if (session.isRevoked() || "REVOKED".equals(session.getStatus())) {
-                throw new AuthenticationException("Session has been revoked");
-            }
+                .orElseThrow(() -> new SessionNotFoundException("No active session found for this token"));
+
+        // Check session is not revoked and has valid status
+        if (session.isRevoked()) {
+            throw new RevokedSessionException("Session has been revoked");
         }
-        // If session not found, we still continue to check RefreshToken table
-        // (session might have been cleaned up but token still valid)
+        if (session.getStatus() == null || !"active".equals(session.getStatus())) {
+            throw new InvalidRefreshTokenException("Session is not active");
+        }
+        // Check session not expired
+        if (session.getExpiresAt() != null && !session.getExpiresAt().isAfter(now)) {
+            throw new InvalidRefreshTokenException("Session has expired");
+        }
 
         // 3. Check RefreshToken table (rotational refresh with row lock)
         RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalseForUpdate(rawToken)
-                .orElseThrow(() -> new AuthenticationException("Refresh token is invalid"));
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid"));
 
-        // 4. Check expiration
-        if (existing.getExpiresAt().isBefore(Instant.now())) {
-            existing.setRevoked(true);
-            throw new AuthenticationException("Refresh token has expired");
+        // 4. Verify the refresh token belongs to the session (safety check)
+        if (!tokenHash.equals(session.getRefreshTokenHash())) {
+            throw new InvalidRefreshTokenException("Token does not match session");
         }
 
-        // 5. Check user can authenticate
+        // 5. Check expiration (treat expiresAt == now as expired)
+        if (existing.getExpiresAt().isBefore(now) || existing.getExpiresAt().equals(now)) {
+            existing.setRevoked(true);
+            throw new InvalidRefreshTokenException("Refresh token has expired");
+        }
+
+        // 6. Check user can authenticate
         User user = existing.getUser();
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // 6. Rotate: revoke current token and create new one
+        // 7. Rotate: revoke current token and create new one
         existing.setRevoked(true);
         RefreshToken rotated = createRefreshToken(user);
+        String newTokenHash = TokenUtils.hashSha256(rotated.getToken());
+
+        // 8. Atomically update the UserSession with new token hash and expiry
+        int sessionUpdated = sessionRepository.updateSessionForRotation(
+                session.getSessionId(),
+                newTokenHash,
+                rotated.getExpiresAt(),
+                now);
+        if (sessionUpdated == 0) {
+            throw new IllegalStateException("Failed to update session during token rotation");
+        }
 
         return AuthResponse.builder()
-                .accessToken(jwtTokenProvider.generateAccessToken(user))
+                .accessToken(jwtTokenProvider.generateAccessToken(user, session.getSessionId()))
                 .refreshToken(rotated.getToken())
                 .user(userMapper.toProfileResponse(user))
                 .build();
@@ -649,9 +743,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private RefreshToken createRefreshToken(User user) {
+        String rawToken = generateOpaqueSecret();
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
-                .token(generateOpaqueSecret())
+                .token(rawToken)
+                .tokenHash(TokenUtils.hashSha256(rawToken))
                 .expiresAt(Instant.now().plusMillis(refreshTokenExpirationMs))
                 .build();
         return refreshTokenRepository.save(refreshToken);

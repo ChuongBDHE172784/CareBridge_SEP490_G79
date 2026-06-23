@@ -283,6 +283,11 @@ class RegistrationIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/verify-otp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyRequest)))
+                .andDo(result -> {
+                    if (result.getResolvedException() != null) {
+                        result.getResolvedException().printStackTrace();
+                    }
+                })
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").exists())
                 .andExpect(jsonPath("$.data.refreshToken").exists())
