@@ -4,6 +4,7 @@ import com.carebridge.backend.common.exception.AccountDisabledException;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
@@ -43,6 +44,7 @@ class AuthServiceLoginTest {
     private RefreshTokenRepository refreshTokenRepository;
     private com.carebridge.backend.audit.service.AuditService auditService;
     private com.carebridge.backend.identity.repository.UserSessionRepository sessionRepository;
+    private TokenBlacklistRepository tokenBlacklistRepository;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +58,7 @@ class AuthServiceLoginTest {
         refreshTokenRepository = mock(RefreshTokenRepository.class);
         auditService = mock(com.carebridge.backend.audit.service.AuditService.class);
         sessionRepository = mock(com.carebridge.backend.identity.repository.UserSessionRepository.class);
+        tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
 
         authService = new AuthServiceImpl(
                 userRepository,
@@ -68,6 +71,7 @@ class AuthServiceLoginTest {
                 passwordComplexityPolicy,
                 rateLimitPolicy,
                 sessionRepository,
+                tokenBlacklistRepository,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
                 passwordEncoder
@@ -431,6 +435,7 @@ class AuthServiceLoginTest {
         // We'll just let the mocked service call the real policy method by not stubbing it
         // Actually, since we're using mock(authenticationPolicy) in setUp, we need to override here
         // Easiest: create a new AuthServiceImpl with real policy
+        TokenBlacklistRepository tokenBlacklistRepo = mock(TokenBlacklistRepository.class);
         AuthService realAuthService = new AuthServiceImpl(
                 userRepository,
                 refreshTokenRepository,
@@ -441,7 +446,8 @@ class AuthServiceLoginTest {
                 realPolicy, // real policy
                 passwordComplexityPolicy,
                 rateLimitPolicy,
-                sessionRepository, // added UserSessionRepository
+                sessionRepository,
+                tokenBlacklistRepo,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
                 passwordEncoder

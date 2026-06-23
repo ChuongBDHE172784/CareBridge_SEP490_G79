@@ -8,6 +8,7 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.util.StringUtils;
+import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
@@ -34,10 +35,10 @@ import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.service.AuthService;
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
+import com.carebridge.backend.security.util.TokenUtils;
+import com.carebridge.backend.identity.entity.UserSession;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordComplexityPolicy passwordComplexityPolicy;
     private final RateLimitPolicy rateLimitPolicy;
     private final UserSessionRepository sessionRepository;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
     private final EmailService emailService;
     private final SmsService smsService;
     private final PasswordEncoder passwordEncoder;
@@ -151,7 +153,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 7. Generate 6-digit OTP and hash with SHA256
         String otp = generate6DigitOtp();
-        String otpHash = hashOtpWithSha256(otp);
+        String otpHash = TokenUtils.hashSha256(otp);
 
         // 8. Create OtpVerification with 5-min expiry, 5 attempts
         // Story 1.2 fix: persist .email(...) symmetric to .phone(...) so that
@@ -203,27 +205,6 @@ public class AuthServiceImpl implements AuthService {
         java.security.SecureRandom random = new java.security.SecureRandom();
         int otp = 100000 + random.nextInt(900000); // 100000-999999
         return String.valueOf(otp);
-    }
-
-    private String hashOtpWithSha256(String otp) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(otp.getBytes());
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
-    }
-
-    // Hash refresh token for storage (same algorithm as in OTP for consistency)
-    private String hashToken(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(token.getBytes());
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
     }
 
     // Extract simple device name from User-Agent
@@ -311,7 +292,7 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken refreshToken = createRefreshToken(user);
 
         // Create user session record
-        String refreshTokenHash = hashToken(refreshToken.getToken());
+        String refreshTokenHash = TokenUtils.hashSha256(refreshToken.getToken());
         String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
         String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
         String deviceName = extractDeviceName(userAgent);
@@ -432,7 +413,7 @@ public class AuthServiceImpl implements AuthService {
         // the in-memory slot. See spec-1-1-fix-backend-tests.md change-log
         // entry for EC-E6.
         String otp = generate6DigitOtp();
-        String otpHash = hashOtpWithSha256(otp);
+        String otpHash = TokenUtils.hashSha256(otp);
         Instant now = Instant.now();
 
         existingVerification.setUsedAt(now);
@@ -496,7 +477,7 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse completeRegistration(OtpVerification verification, User user, String otpInput) {
         // Hash input OTP and compare
-        String inputHash = hashOtpWithSha256(otpInput);
+        String inputHash = TokenUtils.hashSha256(otpInput);
         if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
@@ -537,7 +518,7 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse completeLogin(OtpVerification verification, String phone, String otpInput) {
         // Hash input OTP and compare
-        String inputHash = hashOtpWithSha256(otpInput);
+        String inputHash = TokenUtils.hashSha256(otpInput);
         if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
@@ -579,16 +560,48 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse refresh(RefreshTokenRequest request) {
-        RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalseForUpdate(request.getRefreshToken())
+        String rawToken = request.getRefreshToken();
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new AuthenticationException("Refresh token is required");
+        }
+
+        // Hash the token for database lookups
+        String tokenHash = TokenUtils.hashSha256(rawToken);
+
+        // 1. Check if token is blacklisted (has been revoked via logout/session-revoke)
+        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(tokenHash, Instant.now())) {
+            throw new AuthenticationException("Token has been blacklisted");
+        }
+
+        // 2. Check corresponding session status
+        UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
+                .orElse(null);
+        if (session != null) {
+            if (session.isRevoked() || "REVOKED".equals(session.getStatus())) {
+                throw new AuthenticationException("Session has been revoked");
+            }
+        }
+        // If session not found, we still continue to check RefreshToken table
+        // (session might have been cleaned up but token still valid)
+
+        // 3. Check RefreshToken table (rotational refresh with row lock)
+        RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalseForUpdate(rawToken)
                 .orElseThrow(() -> new AuthenticationException("Refresh token is invalid"));
+
+        // 4. Check expiration
         if (existing.getExpiresAt().isBefore(Instant.now())) {
             existing.setRevoked(true);
             throw new AuthenticationException("Refresh token has expired");
         }
+
+        // 5. Check user can authenticate
         User user = existing.getUser();
         authenticationPolicy.ensureCanAuthenticate(user);
+
+        // 6. Rotate: revoke current token and create new one
         existing.setRevoked(true);
         RefreshToken rotated = createRefreshToken(user);
+
         return AuthResponse.builder()
                 .accessToken(jwtTokenProvider.generateAccessToken(user))
                 .refreshToken(rotated.getToken())

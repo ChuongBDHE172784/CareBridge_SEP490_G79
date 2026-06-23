@@ -2,16 +2,15 @@ package com.carebridge.backend.identity.controller;
 
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.response.ApiResponse;
+import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.identity.dto.SessionInfo;
 import com.carebridge.backend.identity.service.SessionService;
-import com.carebridge.backend.security.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,19 +26,21 @@ public class SessionController {
     private final SessionService sessionService;
 
     @GetMapping
-    public ApiResponse<List<SessionInfo>> getSessions(@AuthenticationPrincipal User user) {
-        List<SessionInfo> sessions = sessionService.getActiveSessions(user.getId());
+    public ApiResponse<List<SessionInfo>> getSessions(Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        List<SessionInfo> sessions = sessionService.getActiveSessions(userId);
         return ApiResponse.success(sessions);
     }
 
     @DeleteMapping("/{sessionId}")
     public ApiResponse<Void> revokeSession(
             @PathVariable UUID sessionId,
-            @AuthenticationPrincipal User user,
+            Principal principal,
             HttpServletRequest request) {
         String ip = request.getRemoteAddr();
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
         try {
-            sessionService.revokeSession(sessionId, user.getId(), ip);
+            sessionService.revokeSession(sessionId, userId, ip);
             return ApiResponse.success(null);
         } catch (IllegalArgumentException e) {
             if ("Session not found".equals(e.getMessage())) {

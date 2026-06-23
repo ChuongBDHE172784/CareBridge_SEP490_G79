@@ -1,6 +1,7 @@
 package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.common.exception.RateLimitExceededException;
+import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
@@ -32,6 +33,7 @@ class AuthServiceResendOtpTest {
     private RateLimitPolicy rateLimitPolicy;
     private EmailService emailService;
     private SmsService smsService;
+    private TokenBlacklistRepository tokenBlacklistRepository;
 
     @BeforeEach
     void setUp() {
@@ -40,6 +42,7 @@ class AuthServiceResendOtpTest {
         rateLimitPolicy = mock(RateLimitPolicy.class);
         emailService = mock(EmailService.class);
         smsService = mock(SmsService.class);
+        tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
 
         AtomicLong otpIdSequence = new AtomicLong(10L);
         when(otpVerificationRepository.save(any(OtpVerification.class)))
@@ -62,6 +65,7 @@ class AuthServiceResendOtpTest {
                 mock(com.carebridge.backend.security.policy.PasswordComplexityPolicy.class),
                 rateLimitPolicy,
                 mock(com.carebridge.backend.identity.repository.UserSessionRepository.class),
+                tokenBlacklistRepository,
                 emailService,
                 smsService,
                 mock(org.springframework.security.crypto.password.PasswordEncoder.class)

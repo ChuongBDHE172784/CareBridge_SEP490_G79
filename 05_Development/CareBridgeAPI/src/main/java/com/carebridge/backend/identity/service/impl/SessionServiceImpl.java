@@ -8,10 +8,8 @@ import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.carebridge.backend.security.util.TokenUtils;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -101,7 +99,7 @@ public class SessionServiceImpl implements SessionService {
         // Check if trying to revoke current session
         String currentToken = extractCurrentToken();
         if (currentToken != null && session.getRefreshTokenHash() != null) {
-            String currentTokenHash = hashToken(currentToken);
+            String currentTokenHash = TokenUtils.hashSha256(currentToken);
             if (currentTokenHash.equals(session.getRefreshTokenHash())) {
                 throw new IllegalArgumentException("Please use Logout to sign out from this device");
             }
@@ -233,16 +231,6 @@ public class SessionServiceImpl implements SessionService {
         }
         // Try to extract from principal if credentials is not token
         return null;
-    }
-
-    private String hashToken(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(token.getBytes());
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
     }
 
     private SessionInfo mapToSessionInfo(UserSession session, boolean isCurrent) {
