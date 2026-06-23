@@ -72,8 +72,9 @@ CLAUDE.md
 
 # Local Claude skills (untracked - keep local only)
 .claude/skills/ui-skill-system/
+.agent/skills/ui-skill-system/
+.agents/skills/ui-skill-system/
 
-# Share the ui-skill-system entrypoint across supported project agents (REMOVED - now local only)
 # Note: ui-skill-system is intentionally NOT tracked - keep it local
 
 # Local helper scripts and one-off tools
