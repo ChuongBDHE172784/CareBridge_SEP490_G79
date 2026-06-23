@@ -454,9 +454,9 @@ public class AdminContentServiceImpl implements AdminContentService {
 
 | TC ID        | Stub Result                            | Expected | Actual  | Root Cause |
 | ------------ | -------------------------------------- | -------- | ------- | ---------- |
-| `CNT-TC-001` | `throw(UnsupportedOperationException)` | 🟢 PASS   | ☑ FAIL ☑ PASS  | —          |
-| `CNT-TC-004` | `throw(UnsupportedOperationException)` | 🟢 PASS   | ☑ FAIL ☑ PASS  | —          |
-| `CNT-TC-005` | RBAC guard — controller level          | 🟢 PASS   | ☑ FAIL ☑ PASS  | —          |
+| `CNT-TC-001` | `throw(UnsupportedOperationException)` | 🔴 FAIL   | ☑ FAIL ☐ PASS  | —          |
+| `CNT-TC-004` | `throw(UnsupportedOperationException)` | 🔴 FAIL   | ☑ FAIL ☐ PASS  | —          |
+| `CNT-TC-005` | RBAC guard — controller level          | 🔴 FAIL   | ☑ FAIL ☐ PASS  | —          |
 
 ---
 

@@ -444,18 +444,18 @@ SELECT COUNT(*) FROM community_questions WHERE topic_id = 'topic-001';
 
 | TC ID            | Test File                            | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 | ---------------- | ------------------------------------ | --------------- | ---------------- | --------------- |
-| `COM-TC-001`     | `CommunityTopicServiceImplTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-002`     | `CommunityTopicServiceImplTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-003`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-004`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-005`     | `CommunityTopicServiceImplTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | Soft delete     |
-| `COM-TC-006`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-007`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-008`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-009`     | `CommunityTopicControllerTest.java`  | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-010`     | `CommunityTopicServiceImplTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-INT-001` | `CommunityTopicIntegrationTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
-| `COM-TC-INT-002` | `CommunityTopicIntegrationTest.java` | 🟢 PASS          | ☑ FAIL ☑ PASS    | —               |
+| `COM-TC-001`     | `CommunityTopicServiceImplTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-002`     | `CommunityTopicServiceImplTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-003`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-004`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-005`     | `CommunityTopicServiceImplTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | Soft delete     |
+| `COM-TC-006`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-007`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-008`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-009`     | `CommunityTopicControllerTest.java`  | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-010`     | `CommunityTopicServiceImplTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-INT-001` | `CommunityTopicIntegrationTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
+| `COM-TC-INT-002` | `CommunityTopicIntegrationTest.java` | 🔴 FAIL          | ☑ FAIL ☐ PASS    | —               |
 
 ### 5.1 Red Gate Protocol (CASE 2.0)
 

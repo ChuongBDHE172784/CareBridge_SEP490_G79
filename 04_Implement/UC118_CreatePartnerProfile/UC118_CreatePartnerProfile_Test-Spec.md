@@ -676,11 +676,11 @@ public class PartnerProfileServiceImpl implements PartnerProfileService {
 
 | TC ID            | Stub Result                           | Expected        | Actual        | Root Cause (nếu PASS bất thường) |
 | ---------------- | ------------------------------------- | --------------- | ------------- | -------------------------------- |
-| `PTR-TC-001`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
-| `PTR-TC-002`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
-| `PTR-TC-004`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
-| `PTR-TC-007`     | `controller no @PreAuthorize`         | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
-| `PTR-TC-INT-001` | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
+| `PTR-TC-001`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☑ FAIL ☐ PASS | —                                |
+| `PTR-TC-002`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☑ FAIL ☐ PASS | —                                |
+| `PTR-TC-004`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☑ FAIL ☐ PASS | —                                |
+| `PTR-TC-007`     | `controller no @PreAuthorize`         | 🔴 FAIL          | ☑ FAIL ☐ PASS | —                                |
+| `PTR-TC-INT-001` | `throw UnsupportedOperationException` | 🔴 FAIL          | ☑ FAIL ☐ PASS | —                                |
 
 **Red Gate Evidence:**
 - Stub commit hash: `8d2865e` (trước khi implement)
