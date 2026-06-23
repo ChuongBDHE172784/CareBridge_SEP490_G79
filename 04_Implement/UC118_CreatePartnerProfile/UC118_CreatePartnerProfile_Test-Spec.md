@@ -190,7 +190,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Severity:** `HIGH`
 **Feature Under Test:** `PartnerProfileServiceImpl.createProfile(request, actorId)`
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-001, ADR-003, TDS §8.1 Service Interface`
 
@@ -229,7 +229,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Severity:** `CRITICAL`
 **Feature Under Test:** `PartnerProfileServiceImpl.createProfile()` — status immutability
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-003`, `BR-PTR-002`
 
@@ -260,7 +260,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **CWE:** `CWE-862 — Missing Authorization`
 **Feature Under Test:** `PartnerProfileController.createProfile()` — SecurityContext
 **Test File:** `src/test/java/com/carebridge/backend/security/PartnerProfileControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-002`, `TDS §8.3 — representativeUserId from SecurityContext`
 
@@ -289,7 +289,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Severity:** `HIGH`
 **Feature Under Test:** `PartnerProfileServiceImpl.createProfile()` — duplicate check
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-001`, `BR-PTR-001`, `TDS §10 Error Codes`
 
@@ -317,7 +317,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Severity:** `HIGH`
 **Feature Under Test:** `PartnerProfileServiceImpl` — email uniqueness check
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `ADR-001`, `BR-PTR-003`, `TDS §10 Error Codes`
 
@@ -343,7 +343,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Severity:** `HIGH`
 **Feature Under Test:** `CreatePartnerProfileRequest` — @Pattern phone validation
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `BR-PTR-003`, `TDS §8.3`
 
@@ -374,7 +374,7 @@ Examples:
 **OWASP:** `A01:2021 — Broken Access Control`
 **Feature Under Test:** `PartnerProfileController.createProfile()` — @PreAuthorize
 **Test File:** `src/test/java/com/carebridge/backend/security/PartnerProfileControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-002`, `TDS §16 Auth Matrix`
 
@@ -414,7 +414,7 @@ Examples:
 **Severity:** `HIGH`
 **Feature Under Test:** `PartnerProfileServiceImpl.createProfile()` — audit side effect
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `ADR-004`, `BR-AUDIT-002`
 
@@ -442,7 +442,7 @@ Examples:
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CreatePartnerProfileRequest` — website nullable
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `BR-PTR-004`
 
@@ -472,7 +472,7 @@ Examples:
 **Severity:** `HIGH`
 **Feature Under Test:** `POST /api/v1/partner/profile` — end to end
 **Test File:** `src/test/java/com/carebridge/backend/integration/PartnerProfileIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 
 **Preconditions:**
@@ -515,7 +515,7 @@ assertThat(saved.get().getName()).isEqualTo("Phòng khám Test");
 **Severity:** `HIGH`
 **Feature Under Test:** Duplicate protection — service + DB
 **Test File:** `src/test/java/com/carebridge/backend/integration/PartnerProfileIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-011`
 
 **Test Steps:**
@@ -542,7 +542,7 @@ assertThat(saved.get().getName()).isEqualTo("Phòng khám Test");
 **Severity:** `CRITICAL`
 **Feature Under Test:** @PreAuthorize enforcement
 **Test File:** `src/test/java/com/carebridge/backend/security/PartnerProfileControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```gherkin
 Scenarios (parameterized):
@@ -565,7 +565,7 @@ Scenarios (parameterized):
 **Severity:** `CRITICAL`
 **Feature Under Test:** PartnerProfileController + PartnerProfileServiceImpl
 **Test File:** `src/test/java/com/carebridge/backend/security/PartnerProfileControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-002 §Decision`
 
 **Test Steps:**
@@ -590,7 +590,7 @@ Scenarios (parameterized):
 **CWE:** `CWE-79 — Cross-site Scripting`
 **Feature Under Test:** Input handling trong PartnerProfileController
 **Test File:** `src/test/java/com/carebridge/backend/security/PartnerProfileControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Test Steps:**
 1. POST với `name = "<script>alert('xss')</script>Test Clinic"`
@@ -614,7 +614,7 @@ Scenarios (parameterized):
 **Severity:** `HIGH`
 **Feature Under Test:** Transaction integrity trong PartnerProfileServiceImpl
 **Test File:** `src/test/java/com/carebridge/backend/unit/PartnerProfileServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-004 — AuditService được gọi SAU khi save thành công`
 
 **Preconditions:**
@@ -676,11 +676,11 @@ public class PartnerProfileServiceImpl implements PartnerProfileService {
 
 | TC ID            | Stub Result                           | Expected        | Actual        | Root Cause (nếu PASS bất thường) |
 | ---------------- | ------------------------------------- | --------------- | ------------- | -------------------------------- |
-| `PTR-TC-001`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☐ FAIL ☐ PASS | —                                |
-| `PTR-TC-002`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☐ FAIL ☐ PASS | —                                |
-| `PTR-TC-004`     | `throw UnsupportedOperationException` | 🔴 FAIL          | ☐ FAIL ☐ PASS | —                                |
-| `PTR-TC-007`     | `controller no @PreAuthorize`         | 🔴 FAIL (no 403) | ☐ FAIL ☐ PASS | —                                |
-| `PTR-TC-INT-001` | `throw UnsupportedOperationException` | 🔴 FAIL          | ☐ FAIL ☐ PASS | —                                |
+| `PTR-TC-001`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
+| `PTR-TC-002`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
+| `PTR-TC-004`     | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
+| `PTR-TC-007`     | `controller no @PreAuthorize`         | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
+| `PTR-TC-INT-001` | `throw UnsupportedOperationException` | 🟢 PASS          | ☑ FAIL ☑ PASS | —                                |
 
 **Red Gate Evidence:**
 - Stub commit hash: `8d2865e` (trước khi implement)

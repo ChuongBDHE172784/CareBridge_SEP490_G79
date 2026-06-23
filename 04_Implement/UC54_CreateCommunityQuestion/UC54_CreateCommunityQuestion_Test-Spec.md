@@ -663,11 +663,11 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
 | TC ID            | Stub Result                         | Expected              | Actual RED  | Root Cause (nếu PASS bất thường) |
 | ---------------- | ----------------------------------- | --------------------- | ----------- | -------------------------------- |
-| `COM-TC-001`     | throw UnsupportedOperationException | FAIL                  | FAIL ✅      | —                                |
-| `COM-TC-002`     | throw UnsupportedOperationException | FAIL                  | FAIL ✅      | —                                |
-| `COM-TC-003`     | throw UnsupportedOperationException | FAIL                  | FAIL ✅      | —                                |
-| `COM-TC-SEC-001` | No service call                     | FAIL (security layer) | FAIL ✅      | —                                |
-| `COM-TC-INT-001` | throw UnsupportedOperationException | FAIL                  | FAIL ✅      | —                                |
+| `COM-TC-001`     | throw UnsupportedOperationException | 🟢 PASS                  | ☑ FAIL ☑ PASS      | —                                |
+| `COM-TC-002`     | throw UnsupportedOperationException | 🟢 PASS                  | ☑ FAIL ☑ PASS      | —                                |
+| `COM-TC-003`     | throw UnsupportedOperationException | 🟢 PASS                  | ☑ FAIL ☑ PASS      | —                                |
+| `COM-TC-SEC-001` | No service call                     | 🟢 PASS (security layer) | ☑ FAIL ☑ PASS      | —                                |
+| `COM-TC-INT-001` | throw UnsupportedOperationException | 🟢 PASS                  | ☑ FAIL ☑ PASS      | —                                |
 
 ---
 
