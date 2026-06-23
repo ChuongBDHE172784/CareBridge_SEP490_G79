@@ -61,6 +61,7 @@ class AuthServiceResendOtpTest {
                 mock(com.carebridge.backend.security.policy.AuthenticationPolicy.class),
                 mock(com.carebridge.backend.security.policy.PasswordComplexityPolicy.class),
                 rateLimitPolicy,
+                mock(com.carebridge.backend.identity.repository.UserSessionRepository.class),
                 emailService,
                 smsService,
                 mock(org.springframework.security.crypto.password.PasswordEncoder.class)

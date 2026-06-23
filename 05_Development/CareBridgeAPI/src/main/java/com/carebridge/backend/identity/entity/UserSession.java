@@ -40,11 +40,24 @@ public class UserSession {
     @Column(name = "ip_address", length = 64)
     private String ipAddress;
 
+    @Column(name = "browser", length = 150)
+    private String browser;
+
+    @Column(name = "location", length = 200)
+    private String location;
+
+    @Column(name = "last_activity_at")
+    private Instant lastActivityAt;
+
+    @Column(name = "is_current")
+    private boolean isCurrent;
+
     @Column(name = "expires_at")
     private Instant expiresAt;
 
-    @Column(name = "revoked_at")
-    private Instant revokedAt;
+    @Builder.Default
+    @Column(name = "revoked", nullable = false)
+    private boolean revoked = false;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status;

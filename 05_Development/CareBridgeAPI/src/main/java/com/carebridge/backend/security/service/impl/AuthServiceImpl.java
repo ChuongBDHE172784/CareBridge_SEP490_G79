@@ -8,6 +8,7 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.util.StringUtils;
+import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -39,7 +40,9 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -59,9 +62,13 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationPolicy authenticationPolicy;
     private final PasswordComplexityPolicy passwordComplexityPolicy;
     private final RateLimitPolicy rateLimitPolicy;
+    private final UserSessionRepository sessionRepository;
     private final EmailService emailService;
     private final SmsService smsService;
     private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private transient HttpServletRequest request;
 
     @Value("${carebridge.security.otp.expiration-seconds:300}")
     private long otpExpirationSeconds;
@@ -208,6 +215,38 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    // Hash refresh token for storage (same algorithm as in OTP for consistency)
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes());
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    // Extract simple device name from User-Agent
+    private String extractDeviceName(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) {
+            return "Unknown Device";
+        }
+        userAgent = userAgent.toLowerCase();
+        if (userAgent.contains("mobile") || userAgent.contains("android") || userAgent.contains("iphone")) {
+            return "Mobile Device";
+        }
+        if (userAgent.contains("windows")) {
+            return "Windows PC";
+        }
+        if (userAgent.contains("mac os")) {
+            return "Mac";
+        }
+        if (userAgent.contains("linux")) {
+            return "Linux";
+        }
+        return "Browser/App";
+    }
+
     @Transactional(noRollbackFor = AccountLockedException.class)
     @Override
     public AuthResponse login(LoginRequest request) {
@@ -268,8 +307,33 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
-        // 5. Generate tokens and return response (reuse completeLogin logic)
+        // 5. Generate tokens and create session record
         RefreshToken refreshToken = createRefreshToken(user);
+
+        // Create user session record
+        String refreshTokenHash = hashToken(refreshToken.getToken());
+        String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
+        String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
+        String deviceName = extractDeviceName(userAgent);
+        String browser = userAgent != null ? userAgent : "Unknown";
+
+        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
+                .userId(user.getId())
+                .refreshTokenHash(refreshTokenHash)
+                .deviceName(deviceName)
+                .browser(browser)
+                .ipAddress(ipAddress)
+                .location(null) // Will be populated later via IP lookup or left null
+                .lastActivityAt(Instant.now())
+                .expiresAt(refreshToken.getExpiresAt())
+                .status("active")
+                .isCurrent(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        sessionRepository.save(session);
+        // Clear current flag on other sessions for this user
+        sessionRepository.clearCurrentSessions(user.getId(), session.getSessionId());
 
         auditService.log(
                 AuditAction.LOGIN,

@@ -42,6 +42,7 @@ class AuthServiceLoginTest {
     private com.carebridge.backend.security.mapper.UserMapper userMapper;
     private RefreshTokenRepository refreshTokenRepository;
     private com.carebridge.backend.audit.service.AuditService auditService;
+    private com.carebridge.backend.identity.repository.UserSessionRepository sessionRepository;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +55,7 @@ class AuthServiceLoginTest {
         userMapper = mock(com.carebridge.backend.security.mapper.UserMapper.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
         auditService = mock(com.carebridge.backend.audit.service.AuditService.class);
+        sessionRepository = mock(com.carebridge.backend.identity.repository.UserSessionRepository.class);
 
         authService = new AuthServiceImpl(
                 userRepository,
@@ -65,6 +67,7 @@ class AuthServiceLoginTest {
                 authenticationPolicy,
                 passwordComplexityPolicy,
                 rateLimitPolicy,
+                sessionRepository,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
                 passwordEncoder
@@ -438,6 +441,7 @@ class AuthServiceLoginTest {
                 realPolicy, // real policy
                 passwordComplexityPolicy,
                 rateLimitPolicy,
+                sessionRepository, // added UserSessionRepository
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
                 passwordEncoder
