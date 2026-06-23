@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-COMMUNITY-IMP-001`                  |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented ✅`                         |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[Tech Lead]`                           |
@@ -19,9 +19,10 @@
 
 ## CHANGELOG
 
-| Ngày       | Người thực hiện    | Nội dung thay đổi                                        |
-| ---------- | ------------------ | -------------------------------------------------------- |
-| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-54 Create Community Question |
+| Ngày       | Người thực hiện    | Nội dung thay đổi                                                                                                     |
+| ---------- | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-54 Create Community Question                                                              |
+| 2026-06-24 | AI Agent — Amelia  | Implement hoàn chỉnh: entity/enums, repository, DTO, mapper, service, controller, migration V5, 24 test cases — GREEN |
 
 ---
 

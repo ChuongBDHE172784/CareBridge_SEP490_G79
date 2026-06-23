@@ -2,6 +2,7 @@ package com.carebridge.backend.common.exception;
 
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.partner.exception.PartnerException;
@@ -9,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -76,6 +78,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(CommunityTopicNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityTopicNotFound(
+            CommunityTopicNotFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "COM-003", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(DuplicateTopicNameException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
             DuplicateTopicNameException ex, HttpServletRequest request) {
@@ -105,6 +113,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthorizationException.class)
     public ResponseEntity<ErrorResponse> handleAuthorization(AuthorizationException ex, HttpServletRequest request) {
         return error(HttpStatus.FORBIDDEN, "AUTHORIZATION_DENIED", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleSpringAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Insufficient permissions", request);
     }
 
     @ExceptionHandler(AccessDeniedBusinessException.class)
