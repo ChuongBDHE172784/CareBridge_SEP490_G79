@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/community/topics").hasRole("MODERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/community/topics/**").hasRole("MODERATOR")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().permitAll())

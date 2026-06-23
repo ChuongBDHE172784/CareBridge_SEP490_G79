@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.content.exception.ContentException;
+import com.carebridge.backend.partner.exception.PartnerException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -83,6 +84,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ContentException.class)
     public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PartnerException.class)
+    public ResponseEntity<ErrorResponse> handlePartner(PartnerException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

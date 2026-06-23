@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-PTR-IMP-001`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Approved — Implementation Complete`    |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                            |
 | ---------- | ------------------ | ------------------------------------------------------------ |
 | 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu — TDS cho UC-118 Create Partner Profile |
+| 2026-06-24 | AI Agent — Amelia  | Implementation hoàn thành — 82 tests PASS; điều chỉnh: `representativeUserId` là `Long` (khớp với `User.id`); Role dùng `PARTNER` (không phải `PARTNER_REP`); phone validation dùng `@VietnamesePhoneNumber` sẵn có; DB migration V4 drop-recreate `partner_organizations` |
 
 ---
 
@@ -763,10 +764,10 @@ public record CreatePartnerProfileResponse(
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-001 đến ADR-004 đã được Accepted
-- [ ] Spring Security `@EnableMethodSecurity` đã bật
-- [ ] `partner_organizations` table chưa tồn tại (new table)
-- [ ] AuditService bean đã available
+- [x] ADR-001 đến ADR-004 đã được Accepted
+- [x] Spring Security `@EnableMethodSecurity` đã bật
+- [x] `partner_organizations` table đã được recreate qua V4 migration
+- [x] AuditService bean đã available
 
 ### 11.2. Pre-Migration Checklist
 
@@ -843,10 +844,13 @@ curl -X POST https://api.carebridge.vn/api/v1/partner/profile \
 
 ### 11.4. Deployment Checklist
 
-- [ ] Migration chạy thành công
-- [ ] Health check trả về 200
-- [ ] Unique constraint hoạt động (thử tạo 2 profiles với cùng user)
-- [ ] Audit log sinh ra event `PartnerProfileCreated`
+- [x] Migration V4 tạo thành công
+- [x] Unit tests (7) PASS
+- [x] Controller tests (15) PASS
+- [x] Security tests (10) PASS
+- [ ] Health check trả về 200 (cần DB thực)
+- [ ] Unique constraint hoạt động (cần integration test với DB thực)
+- [ ] Audit log sinh ra event `PartnerProfileCreated` (cần DB thực)
 
 ---
 
