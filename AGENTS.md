@@ -67,3 +67,37 @@ Codex acts as the **Business Analyst, Software Architect, and Code Reviewer** fo
 - Do not create or edit application source files with the `.java`, `.tsx`, or `.ts` extensions. Configuration files are the only exception.
 - Do not implement business logic directly.
 - Limit repository changes to requirements, architecture, specifications, review documentation, and configuration files unless the user explicitly changes these instructions.
+
+## BMAD Integration
+
+This project uses the BMad framework for AI-assisted development.
+
+### Skill Selection
+
+For every new task, invoke the `bmad-help` skill first. Use its recommendation to select the most appropriate BMad workflow. Common mappings include:
+
+- Planning and architecture: `bmad-product-brief`, `bmad-prd`, `bmad-architecture`, `bmad-create-epics-and-stories`, and `bmad-sprint-planning`.
+- Documentation: `bmad-prd`, `bmad-create-story`, `bmad-spec`, and `bmad-document-project`.
+- Development handoff: `bmad-quick-dev`, `bmad-module-builder`, and `bmad-dev-story`.
+- Review: `bmad-code-review`, `bmad-review-edge-case-hunter`, and `bmad-review-adversarial-general`.
+- Testing: `bmad-qa-generate-e2e-tests` and the applicable `bmad-testarch-*` skill.
+- UI/UX: `bmad-ux` and `ui-skill-system` when visual design or interface styling is involved.
+
+### BMAD Resources
+
+- Configuration: `_bmad/config.toml`.
+- Installed Codex skills: `.agents/skills/`.
+- BMAD modules and automation: `_bmad/automator/`, `_bmad/bmb/`, `_bmad/bmm/`, and `_bmad/tea/`.
+- Generated artifacts: `_bmad-output/`.
+
+### Required Usage Pattern
+
+1. Invoke `bmad-help` before starting any new task.
+2. Clearly tell the user which BMad skill or skills will be used and why before invoking them.
+3. Follow the selected skill workflow and its required sequence.
+4. Respect the implementation restrictions in this file. If a recommended skill would write prohibited application source code or implement business logic, use it only to produce the specification and coding handoff; the user will provide that handoff to Claude for implementation.
+5. For UI/UX work, use both the applicable BMad UX workflow and `ui-skill-system` when its trigger conditions apply.
+
+### Transparency Requirement
+
+Always state the selected skill explicitly, for example: "Using `bmad-architecture` to design the solution." This allows the user to understand the approach and track the BMAD workflow.

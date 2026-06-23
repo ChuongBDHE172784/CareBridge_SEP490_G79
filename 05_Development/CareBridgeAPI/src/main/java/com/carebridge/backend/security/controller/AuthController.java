@@ -2,6 +2,7 @@ package com.carebridge.backend.security.controller;
 
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
+import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -17,8 +18,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final SessionService sessionService;
 
     @PostMapping("/register")
     @Operation(
@@ -136,7 +140,7 @@ public class AuthController {
         summary = "User logout",
         description = "Revoke the refresh token and invalidate the current session. Access token remains valid until expiry (short-lived).",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Optional refresh token (if null, uses token from Authorization header)",
+            description = "Optional refresh token (if null, uses token from SecurityContext)",
             content = @Content(schema = @Schema(implementation = RefreshTokenRequest.class))
         ),
         responses = {
@@ -146,9 +150,12 @@ public class AuthController {
     )
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestBody(required = false) RefreshTokenRequest request,
-            Principal principal) {
+            Principal principal,
+            HttpServletRequest httpRequest) {
         String refreshToken = request == null ? null : request.getRefreshToken();
-        authService.logout(refreshToken, SecurityUtils.requireCurrentUserId(principal));
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        String ipAddress = httpRequest.getRemoteAddr();
+        sessionService.logout(refreshToken, userId, ipAddress);
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out"));
     }
 

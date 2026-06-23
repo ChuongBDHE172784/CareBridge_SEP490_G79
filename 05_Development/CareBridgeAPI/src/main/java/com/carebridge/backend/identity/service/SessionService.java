@@ -8,5 +8,6 @@ public interface SessionService {
     List<SessionInfo> getActiveSessions(UUID userId);
     SessionInfo getCurrentSession();
     void revokeSession(UUID sessionId, UUID requestingUserId, String ipAddress);
+    void logout(String refreshToken, UUID userId, String ipAddress);
     void updateLastActivity(String token, String ipAddress);
 }

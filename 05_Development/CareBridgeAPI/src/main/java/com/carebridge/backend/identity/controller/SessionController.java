@@ -1,5 +1,6 @@
 package com.carebridge.backend.identity.controller;
 
+import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.identity.dto.SessionInfo;
 import com.carebridge.backend.identity.service.SessionService;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,7 +38,17 @@ public class SessionController {
             @AuthenticationPrincipal User user,
             HttpServletRequest request) {
         String ip = request.getRemoteAddr();
-        sessionService.revokeSession(sessionId, user.getId(), ip);
-        return ApiResponse.success(null);
+        try {
+            sessionService.revokeSession(sessionId, user.getId(), ip);
+            return ApiResponse.success(null);
+        } catch (IllegalArgumentException e) {
+            if ("Session not found".equals(e.getMessage())) {
+                throw new ResourceNotFoundException("Session not found");
+            }
+            if ("Please use Logout to sign out from this device".equals(e.getMessage())) {
+                throw new IllegalArgumentException("Cannot revoke current session. Please use Logout instead.");
+            }
+            throw e;
+        }
     }
 }
