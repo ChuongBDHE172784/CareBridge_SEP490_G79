@@ -70,25 +70,11 @@ _bmad-output/
 AGENTS.md
 CLAUDE.md
 
-# Share the ui-skill-system entrypoint across supported project agents
-!.agent/
-.agent/*
-!.agent/skills/
-.agent/skills/*
-!.agent/skills/ui-skill-system/
-!.agent/skills/ui-skill-system/SKILL.md
-!.agents/
-.agents/*
-!.agents/skills/
-.agents/skills/*
-!.agents/skills/ui-skill-system/
-!.agents/skills/ui-skill-system/SKILL.md
-!.claude/
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/ui-skill-system/
-!.claude/skills/ui-skill-system/SKILL.md
+# Local Claude skills (untracked - keep local only)
+.claude/skills/ui-skill-system/
+
+# Share the ui-skill-system entrypoint across supported project agents (REMOVED - now local only)
+# Note: ui-skill-system is intentionally NOT tracked - keep it local
 
 # Local helper scripts and one-off tools
 scripts/
