@@ -25,6 +25,8 @@ class ContentMapperTest {
 
     private static final UUID CONTENT_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
+    private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     private ContentItem makeContentItem(ContentStatus status, ContentStage stage, ContentType type) {
         return ContentItem.builder()
                 .id(CONTENT_ID)
@@ -34,7 +36,7 @@ class ContentMapperTest {
                 .stage(stage)
                 .status(status)
                 .versionNo(1)
-                .authorUserId(1L)
+                .authorUserId(AUTHOR_ID)
                 .publishedAt(Instant.now())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())

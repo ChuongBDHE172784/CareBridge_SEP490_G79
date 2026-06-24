@@ -63,7 +63,7 @@ class AdminContentControllerTest {
 
     // CNT-TC-005: MOTHER role bị từ chối 403 (TC-COND-005)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createContent_asMotherRole_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -75,7 +75,7 @@ class AdminContentControllerTest {
 
     // CNT-TC-006: title rỗng → 400 (TC-COND-006)
     @Test
-    @WithMockUser(username = "1", roles = "CONTENT_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
     void createContent_emptyTitle_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -87,7 +87,7 @@ class AdminContentControllerTest {
 
     // CNT-TC-007: type không hợp lệ → 400 (TC-COND-007)
     @Test
-    @WithMockUser(username = "1", roles = "CONTENT_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
     void createContent_invalidType_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -108,10 +108,10 @@ class AdminContentControllerTest {
 
     // Happy path: CONTENT_ADMIN tạo ARTICLE → 201 Created (TC-COND-001)
     @Test
-    @WithMockUser(username = "1", roles = "CONTENT_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
     void createContent_asContentAdmin_validRequest_shouldReturn201() throws Exception {
         UUID newId = UUID.randomUUID();
-        when(adminContentService.createContent(any(), eq(1L))).thenReturn(makeResponse(newId));
+        when(adminContentService.createContent(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000001")))).thenReturn(makeResponse(newId));
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +126,7 @@ class AdminContentControllerTest {
 
     // title thiếu (null) → 400
     @Test
-    @WithMockUser(username = "1", roles = "CONTENT_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
     void createContent_missingTitle_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -138,7 +138,7 @@ class AdminContentControllerTest {
 
     // stage thiếu → 400
     @Test
-    @WithMockUser(username = "1", roles = "CONTENT_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
     void createContent_missingStage_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -150,7 +150,7 @@ class AdminContentControllerTest {
 
     // SYSTEM_ADMIN cũng được phép → 201
     @Test
-    @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "SYSTEM_ADMIN")
     void createContent_asSystemAdmin_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)

@@ -53,7 +53,7 @@ class AdminContentServiceImplTest {
     @InjectMocks
     private AdminContentServiceImpl adminContentService;
 
-    private static final Long ADMIN_USER_ID = 1L;
+    private static final UUID ADMIN_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private CreateContentRequest makeRequest(ContentType type, ContentStage stage, UUID topicId) {
         return CreateContentRequest.builder()

@@ -54,7 +54,7 @@ class CommunityQuestionServiceImplTest {
     private CommunityQuestionServiceImpl questionService;
 
     private static final UUID TOPIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final Long AUTHOR_ID = 2L;
+    private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private CreateCommunityQuestionRequest makeRequest() {
         CreateCommunityQuestionRequest req = new CreateCommunityQuestionRequest();
@@ -90,7 +90,7 @@ class CommunityQuestionServiceImplTest {
                 .title("Valid test question title")
                 .body("This is a valid test body with enough characters")
                 .stage(PregnancyStage.PREGNANCY)
-                .pregnancyWeek(20)
+                .pregnancyWeek((short) 20)
                 .urgency(UrgencyLevel.NORMAL)
                 .anonymous(false)
                 .status(QuestionStatus.PENDING)

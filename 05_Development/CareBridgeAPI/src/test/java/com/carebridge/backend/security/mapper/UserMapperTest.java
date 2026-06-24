@@ -8,6 +8,7 @@ import com.carebridge.backend.security.rbac.Role;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,7 +18,11 @@ class UserMapperTest {
 
     private final UserMapper mapper = new UserMapper();
 
-    private User createTestUser(Long id, String phone, String email, String name,
+    private static final UUID USER_ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID USER_ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID USER_ID_10 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+
+    private User createTestUser(UUID id, String phone, String email, String name,
                                 String avatarUrl, Role role) {
         return User.builder()
                 .id(id)
@@ -48,13 +53,13 @@ class UserMapperTest {
     // PRF-TC-001 (mapper part): Happy path mapping
     @Test
     void toProfileResponse_happyPath_shouldMapAllFields() {
-        User user = createTestUser(1L, "0900000001", "mother@test.com",
+        User user = createTestUser(USER_ID_1, "0900000001", "mother@test.com",
                 "Test Mother", "https://test.carebridge.vn/avatar.jpg", Role.MOTHER);
 
         UserProfileResponse response = mapper.toProfileResponse(user);
 
         assertNotNull(response);
-        assertEquals(1L, response.getId());
+        assertEquals(USER_ID_1, response.getId());
         assertEquals("0900000001", response.getPhone());
         assertEquals("mother@test.com", response.getEmail());
         assertEquals("Test Mother", response.getName());
@@ -65,12 +70,12 @@ class UserMapperTest {
     // PRF-TC-001 (null handling): Handles null optional fields
     @Test
     void toProfileResponse_nullOptionalFields_shouldNotThrow() {
-        User user = createTestUser(2L, "0900000002", null, null, null, Role.FAMILY);
+        User user = createTestUser(USER_ID_2, "0900000002", null, null, null, Role.FAMILY);
 
         UserProfileResponse response = mapper.toProfileResponse(user);
 
         assertNotNull(response);
-        assertEquals(2L, response.getId());
+        assertEquals(USER_ID_2, response.getId());
         assertNull(response.getEmail());
         assertNull(response.getName());
         assertNull(response.getAvatarUrl());
@@ -85,7 +90,7 @@ class UserMapperTest {
     @ParameterizedTest
     @EnumSource(Role.class)
     void toProfileResponse_shouldMapCorrectRole(Role role) {
-        User user = createTestUser(10L, "0900000010", "test@test.com", "Test", null, role);
+        User user = createTestUser(USER_ID_10, "0900000010", "test@test.com", "Test", null, role);
 
         UserProfileResponse response = mapper.toProfileResponse(user);
 

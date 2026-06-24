@@ -69,7 +69,7 @@ class ContentServiceImplTest {
                 .stage(stage)
                 .status(status)
                 .versionNo(1)
-                .authorUserId(1L)
+                .authorUserId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .publishedAt(Instant.now())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())

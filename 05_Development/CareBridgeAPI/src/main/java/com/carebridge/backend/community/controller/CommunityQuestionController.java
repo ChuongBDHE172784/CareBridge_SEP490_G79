@@ -45,7 +45,6 @@ public class CommunityQuestionController {
 
     // UC-162: any authenticated role may search APPROVED questions (ADR-COM-007, ADR-COM-008)
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PaginatedResponse<CommunityQuestionSummaryResponse>> searchQuestions(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID topicId,

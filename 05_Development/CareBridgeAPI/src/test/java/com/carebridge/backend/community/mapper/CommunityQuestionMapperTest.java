@@ -14,7 +14,7 @@ class CommunityQuestionMapperTest {
 
     private final CommunityQuestionMapper mapper = new CommunityQuestionMapper();
 
-    private static final Long AUTHOR_ID = 2L;
+    private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     // COM-TC-002: isAnonymous=true → authorId null in response (ADR-COM-002, BR-PRIVACY)
     @Test

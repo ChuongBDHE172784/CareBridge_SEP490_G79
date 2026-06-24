@@ -62,7 +62,7 @@ class CommunityFeedServiceImplTest {
         return CommunityQuestion.builder()
                 .id(UUID.randomUUID())
                 .topicId(TOPIC_A)
-                .authorId(1L)
+                .authorId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .title("Test question " + UUID.randomUUID())
                 .body("Test body")
                 .stage(PregnancyStage.PREGNANCY)

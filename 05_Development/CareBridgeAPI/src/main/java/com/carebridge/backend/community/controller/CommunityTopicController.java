@@ -32,7 +32,6 @@ public class CommunityTopicController {
     private final CommunityTopicService topicService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CommunityTopicResponse>>> getTopics(
             @RequestParam(defaultValue = "false") boolean includeHidden,
             Authentication authentication) {

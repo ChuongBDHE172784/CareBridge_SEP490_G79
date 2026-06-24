@@ -48,7 +48,7 @@ class PartnerProfileServiceImplTest {
     @InjectMocks
     private PartnerProfileServiceImpl partnerProfileService;
 
-    private static final Long ACTOR_ID = 2L;
+    private static final UUID ACTOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private CreatePartnerProfileRequest makeValidRequest() {
         return CreatePartnerProfileRequest.builder()

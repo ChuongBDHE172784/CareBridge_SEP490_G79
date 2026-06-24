@@ -1,5 +1,7 @@
 
   spring:
+    profiles:
+      active: dev
     application:
       name: backend
 
@@ -10,17 +12,14 @@
       driver-class-name: org.postgresql.Driver
 
     flyway:
-      enabled: true
-      locations: classpath:db/migration
-      baseline-on-migrate: true
-
+      enabled: false
 
     docker:
       compose:
          enabled: false
     jpa:
       hibernate:
-        ddl-auto: validate
+        ddl-auto: update
       open-in-view: false
       properties:
         hibernate:

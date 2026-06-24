@@ -28,7 +28,7 @@ class CommunityFeedMapperTest {
         return CommunityQuestion.builder()
                 .id(UUID.randomUUID())
                 .topicId(UUID.randomUUID())
-                .authorId(42L)
+                .authorId(UUID.fromString("00000000-0000-0000-0000-000000000042"))
                 .title("Test title")
                 .body("Test body")
                 .stage(PregnancyStage.PREGNANCY)

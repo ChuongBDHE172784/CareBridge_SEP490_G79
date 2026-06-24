@@ -76,10 +76,10 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-001: Happy path — PARTNER role creates profile → 201 (TC-COND-001)
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_asPartnerRole_validRequest_shouldReturn201() throws Exception {
         UUID newId = UUID.randomUUID();
-        when(partnerProfileService.createProfile(any(), eq(2L))).thenReturn(makeResponse(newId));
+        when(partnerProfileService.createProfile(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000002")))).thenReturn(makeResponse(newId));
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -93,7 +93,7 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-006: name rỗng → 400 validation error (TC-COND-006)
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_emptyName_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +107,7 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-006: type invalid → 400
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_invalidType_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -122,7 +122,7 @@ class PartnerProfileControllerTest {
     // PTR-TC-006: phone validation — invalid phones reject with 400 (TC-COND-006)
     @ParameterizedTest
     @ValueSource(strings = {"01234567", "abc123", "", "12345678901", "1234"})
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_invalidPhone_shouldReturn400(String phone) throws Exception {
         String body = String.format(
                 "{\"name\":\"Test\",\"type\":\"CLINIC\",\"address\":\"A\",\"city\":\"HN\","
@@ -139,7 +139,7 @@ class PartnerProfileControllerTest {
     // PTR-TC-006: valid phone formats → 201 (TC-COND-006)
     @ParameterizedTest
     @ValueSource(strings = {"0901234567", "0912345678", "+84901234567"})
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_validPhone_shouldPassValidation(String phone) throws Exception {
         UUID newId = UUID.randomUUID();
         when(partnerProfileService.createProfile(any(), any())).thenReturn(makeResponse(newId));
@@ -156,7 +156,7 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-006: invalid email → 400
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_invalidEmail_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -168,7 +168,7 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-009: website optional — request không có website vẫn thành công (TC-COND-009)
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_withoutWebsite_shouldReturn201() throws Exception {
         UUID newId = UUID.randomUUID();
         when(partnerProfileService.createProfile(any(), any())).thenReturn(makeResponse(newId));
@@ -181,7 +181,7 @@ class PartnerProfileControllerTest {
 
     // PTR-TC-009: website invalid URL → 400
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_invalidWebsite_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
