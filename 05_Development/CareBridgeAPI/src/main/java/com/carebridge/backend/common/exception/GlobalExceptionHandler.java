@@ -7,6 +7,7 @@ import com.carebridge.backend.community.exception.CommunityTopicNotFoundExceptio
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.content.exception.ContentException;
+import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.partner.exception.PartnerException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -111,6 +112,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PartnerException.class)
     public ResponseEntity<ErrorResponse> handlePartner(PartnerException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RagException.class)
+    public ResponseEntity<ErrorResponse> handleRag(RagException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

@@ -35,4 +35,10 @@
       otp:
         expiration-seconds: 300
         max-attempts: 5
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      timeout-ms: 5000
+      max-context-chunks: 5
+      base-url: https://generativelanguage.googleapis.com/v1beta
+      model: gemini-1.5-flash
 
