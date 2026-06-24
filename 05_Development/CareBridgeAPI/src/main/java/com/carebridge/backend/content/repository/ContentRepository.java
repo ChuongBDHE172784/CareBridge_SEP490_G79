@@ -32,4 +32,20 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
             Pageable pageable);
 
     Optional<ContentItem> findByIdAndStatus(UUID id, ContentStatus status);
+
+    @Query("SELECT c FROM ContentItem c WHERE " +
+           "c.status = :status AND " +
+           "(:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "   OR LOWER(c.body) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+           "(:type IS NULL OR c.type = :type) AND " +
+           "(:stage IS NULL OR c.stage = :stage) AND " +
+           "(:topicId IS NULL OR c.topicId = :topicId) " +
+           "ORDER BY c.publishedAt DESC NULLS LAST")
+    Page<ContentItem> searchByFilters(
+            @Param("keyword") String keyword,
+            @Param("type") ContentType type,
+            @Param("stage") ContentStage stage,
+            @Param("topicId") UUID topicId,
+            @Param("status") ContentStatus status,
+            Pageable pageable);
 }

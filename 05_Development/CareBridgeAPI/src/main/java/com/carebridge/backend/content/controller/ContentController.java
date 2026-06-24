@@ -3,9 +3,11 @@ package com.carebridge.backend.content.controller;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.content.dto.request.ContentFilterRequest;
+import com.carebridge.backend.content.dto.request.ContentSearchRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
+import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.exception.ContentException;
@@ -50,6 +52,37 @@ public class ContentController {
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
         Page<ContentListResponse> result = contentService.getContents(filter, pageable);
+        return ResponseEntity.ok(PaginatedResponse.of(result));
+    }
+
+    // UC-224: Search verified content by keyword, stage, topicId, type (CB-CONTENT-IMP-002)
+    @GetMapping("/search")
+    public ResponseEntity<PaginatedResponse<ContentSearchResponse>> searchContent(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ContentType type,
+            @RequestParam(required = false) ContentStage stage,
+            @RequestParam(required = false) UUID topicId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (keyword == null || keyword.isBlank()) {
+            throw ContentException.validationFailed("keyword", "is required");
+        }
+        if (keyword.length() > 100) {
+            throw ContentException.validationFailed("keyword", "max length is 100");
+        }
+        if (size > 50) {
+            throw ContentException.validationFailed("size", "must not exceed 50");
+        }
+
+        ContentSearchRequest request = new ContentSearchRequest();
+        request.setKeyword(keyword);
+        request.setType(type);
+        request.setStage(stage);
+        request.setTopicId(topicId);
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+        Page<ContentSearchResponse> result = contentService.searchContent(request, pageable);
         return ResponseEntity.ok(PaginatedResponse.of(result));
     }
 

@@ -1,9 +1,11 @@
 package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.content.dto.request.ContentFilterRequest;
+import com.carebridge.backend.content.dto.request.ContentSearchRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
+import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
@@ -49,6 +51,28 @@ public class ContentServiceImpl implements ContentService {
         ContentItem item = contentRepository.findByIdAndStatus(id, ContentStatus.APPROVED)
                 .orElseThrow(ContentException::contentNotFound);
         return contentMapper.toDetailResponse(item);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ContentSearchResponse> searchContent(ContentSearchRequest request, Pageable pageable) {
+        String sanitized = sanitizeKeyword(request.getKeyword());
+        Page<ContentItem> items = contentRepository.searchByFilters(
+                sanitized,
+                request.getType(),
+                request.getStage(),
+                request.getTopicId(),
+                ContentStatus.APPROVED,  // C1: always APPROVED — BR-RBAC (ADR-003)
+                pageable);
+        return items.map(contentMapper::toSearchResponse);
+    }
+
+    // ADR-004: trim whitespace; escape LIKE wildcards % and _ to prevent unintended matches
+    private String sanitizeKeyword(String keyword) {
+        if (keyword == null) return null;
+        return keyword.trim()
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     @Override

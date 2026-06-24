@@ -1,9 +1,11 @@
 package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.content.dto.request.ContentFilterRequest;
+import com.carebridge.backend.content.dto.request.ContentSearchRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
+import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.entity.ContentStage;
 import java.util.List;
 import java.util.UUID;
@@ -31,4 +33,12 @@ public interface ContentService {
      * @param stage nullable — if null, returns templates for all stages
      */
     List<ChecklistTemplateResponse> getChecklists(ContentStage stage);
+
+    /**
+     * Searches APPROVED content by keyword, stage, topicId, type.
+     * Keyword is sanitized (trim + LIKE wildcard escape) before query (ADR-004).
+     * Always enforces status=APPROVED (BR-RBAC, C1).
+     * Returns empty page (HTTP 200) when no results found — never 404 (C4).
+     */
+    Page<ContentSearchResponse> searchContent(ContentSearchRequest request, Pageable pageable);
 }

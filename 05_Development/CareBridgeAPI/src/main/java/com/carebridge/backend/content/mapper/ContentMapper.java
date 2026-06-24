@@ -5,6 +5,7 @@ import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
+import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
@@ -78,6 +79,18 @@ public class ContentMapper {
                 .stage(template.getStage())
                 .description(template.getDescription())
                 .items(itemResponses)
+                .build();
+    }
+
+    // BR-PRIVACY: authorId excluded; topicName null for MVP (C5 — deferred cross-module resolution)
+    public ContentSearchResponse toSearchResponse(ContentItem item) {
+        return ContentSearchResponse.builder()
+                .id(item.getId())
+                .type(item.getType())
+                .title(item.getTitle())
+                .stage(item.getStage())
+                .topicName(null)
+                .publishedAt(item.getPublishedAt())
                 .build();
     }
 
