@@ -2,6 +2,7 @@ package com.carebridge.backend.community.mapper;
 
 import com.carebridge.backend.community.dto.request.CreateCommunityQuestionRequest;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
+import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryResponse;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.stereotype.Component;
@@ -40,5 +41,20 @@ public class CommunityQuestionMapper {
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    // UC-162: map to lightweight summary for search results
+    public CommunityQuestionSummaryResponse toSummaryResponse(
+            CommunityQuestion entity, String topicName, boolean hasExpertAnswer) {
+        return new CommunityQuestionSummaryResponse(
+                entity.getId(),
+                entity.getTitle(),
+                topicName,
+                entity.getStage() != null ? entity.getStage().name() : null,
+                entity.getUrgency() != null ? entity.getUrgency().name() : null,
+                entity.getAnswerCount(),
+                hasExpertAnswer,
+                entity.getCreatedAt()
+        );
     }
 }

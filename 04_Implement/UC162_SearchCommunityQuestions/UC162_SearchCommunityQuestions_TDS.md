@@ -19,9 +19,10 @@
 
 ## CHANGELOG
 
-| Ngày       | Người thực hiện    | Nội dung thay đổi                                          |
-| ---------- | ------------------ | ---------------------------------------------------------- |
-| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-162 Search Community Questions |
+| Ngày       | Người thực hiện    | Nội dung thay đổi                                                                                                                                                                         |
+| ---------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-162 Search Community Questions                                                                                                                                |
+| 2026-06-24 | AI Agent — HuyND   | Implement hoàn chỉnh: DTO request/response, CommunityQuestionSearchService interface, ServiceImpl (TDD RED→GREEN), JPQL searchApproved() query, controller GET endpoint, mapper extension |
 
 ---
 

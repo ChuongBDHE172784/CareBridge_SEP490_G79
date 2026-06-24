@@ -7,16 +7,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
+import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.community.dto.request.CreateCommunityQuestionRequest;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
+import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryResponse;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
+import com.carebridge.backend.community.service.CommunityQuestionSearchService;
 import com.carebridge.backend.community.service.CommunityQuestionService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -24,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -35,6 +40,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -54,6 +61,9 @@ class CommunityQuestionControllerTest {
 
     @MockitoBean
     private CommunityQuestionService questionService;
+
+    @MockitoBean
+    private CommunityQuestionSearchService searchService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -258,5 +268,48 @@ class CommunityQuestionControllerTest {
 
         // Either rejected (400) or accepted (201) — both safe outcomes
         assertThat(statusCode).isIn(200, 201, 400);
+    }
+
+    // ── UC-162 Search Tests ──────────────────────────────────────────────────────
+
+    // COM162-TC-SEC-001: GET without JWT → 401 (CWE-306, ADR-COM-007)
+    @Test
+    void searchQuestions_noJwt_returns401() throws Exception {
+        mockMvc.perform(get(BASE_URL).param("keyword", "test"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // COM162-TC-007: size > 100 → 400 with COM-001 (ADR-COM-008)
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void searchQuestions_sizeOver100_returns400WithCom001() throws Exception {
+        mockMvc.perform(get(BASE_URL).param("size", "200"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("COM-001"));
+    }
+
+    // COM162-TC-007b: size = 100 (boundary) → 200
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void searchQuestions_sizeExactly100_returns200() throws Exception {
+        PaginatedResponse<CommunityQuestionSummaryResponse> empty =
+                PaginatedResponse.of(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 100), 0));
+        when(searchService.searchQuestions(any())).thenReturn(empty);
+
+        mockMvc.perform(get(BASE_URL).param("size", "100"))
+                .andExpect(status().isOk());
+    }
+
+    // COM162-TC: authenticated user gets 200 with paged response
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void searchQuestions_authenticated_returns200() throws Exception {
+        PaginatedResponse<CommunityQuestionSummaryResponse> empty =
+                PaginatedResponse.of(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0));
+        when(searchService.searchQuestions(any())).thenReturn(empty);
+
+        mockMvc.perform(get(BASE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }
