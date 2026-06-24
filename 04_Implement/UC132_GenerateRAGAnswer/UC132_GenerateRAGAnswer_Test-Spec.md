@@ -172,7 +172,7 @@ void setUp() {
 **Severity:** `HIGH`
 **Feature Under Test:** `RagService.generateAnswer(RagAnswerRequest)` — via `MockRagServiceImpl`
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS 3.1.2.6`, `ADR-RAG-001`
 
@@ -203,7 +203,7 @@ Feature: Generate RAG Answer
 **Severity:** `CRITICAL`
 **Feature Under Test:** `RagService.generateAnswer()` — disclaimer invariant
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `BR-SAFETY — non-diagnostic disclaimer`
 
@@ -225,7 +225,7 @@ Feature: Generate RAG Answer
 **Severity:** `MEDIUM`
 **Feature Under Test:** `MockRagServiceImpl.generateAnswer()` — normal path
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-003`
 
 ```gherkin
@@ -244,7 +244,7 @@ Feature: Generate RAG Answer
 **Severity:** `CRITICAL`
 **Feature Under Test:** `GeminiRagServiceImpl.generateAnswer()` — fallback logic
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `CB-RAG-IMP-001 §12 — Fallback when Gemini unavailable`
 
@@ -268,7 +268,7 @@ Feature: Generate RAG Answer
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentContextBuilder.buildContext()` — status filter
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/ContentContextBuilderTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-CONTENT-APPROVED`
 
@@ -291,7 +291,7 @@ Feature: Generate RAG Answer
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentContextBuilder` — repository call with APPROVED filter
 **Test File:** `ContentContextBuilderTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 
 ```gherkin
@@ -311,7 +311,7 @@ Feature: Generate RAG Answer
 **Severity:** `MEDIUM`
 **Feature Under Test:** `RagAnswerRequest` validation (`@NotBlank`)
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/RagControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 
 ```gherkin
@@ -333,7 +333,7 @@ Feature: Generate RAG Answer
 **OWASP:** `A07:2021 — Identification and Authentication Failures`
 **Feature Under Test:** `POST /api/v1/rag/answer` — JWT filter
 **Test File:** `RagControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 
 ```gherkin
@@ -354,7 +354,7 @@ Feature: Generate RAG Answer
 **Severity:** `MEDIUM`
 **Feature Under Test:** `RagService.generateAnswer()` — source citation
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-009`
 
 ```gherkin
@@ -374,7 +374,7 @@ Feature: Generate RAG Answer
 **Severity:** `CRITICAL`
 **Feature Under Test:** `RagService.generateAnswer()` — BR-SAFETY enforcement
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `BR-SAFETY — non-diagnostic, no prescription`
 
@@ -400,7 +400,7 @@ Feature: Generate RAG Answer
 **OWASP:** `A03:2021 — Injection` (AI Prompt Injection)
 **Feature Under Test:** `RagService.generateAnswer()` — input sanitization
 **Test File:** `RagServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 ```gherkin
   Scenario: Prompt injection attempt is handled safely
@@ -422,7 +422,7 @@ Feature: Generate RAG Answer
 **Severity:** `HIGH`
 **Feature Under Test:** `Full: RagController → RagService (Mock) → ContentContextBuilder → ContentRepository`
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/RagIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Preconditions:**
 - PostgreSQL Testcontainer running

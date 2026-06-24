@@ -197,7 +197,7 @@ private CommunityTopic makeTopic(boolean isHidden) {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityQuestionServiceImpl.createQuestion()`
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityQuestionServiceImplTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001, TC-COND-002`
 **Oracle Source:** `ADR-COM-003, BR-COM-001`
 
@@ -237,7 +237,7 @@ void createQuestion_validRequest_returnsPendingStatus() {
 
 **Expected Result (PASS):** response.status="PENDING", response.id non-null, save() called once
 **Expected Result (FAIL):** status khác PENDING → ADR-COM-003 bị vi phạm
-**Current Status:** 🟢 GREEN — Passed 2026-06-24 — chưa implement
+**Current Status:** 🟢 Passing — Passed 2026-06-24 — chưa implement
 
 ---
 
@@ -246,7 +246,7 @@ void createQuestion_validRequest_returnsPendingStatus() {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityQuestionMapper.toResponse()`
 **Test File:** `src/test/java/com/carebridge/backend/community/mapper/CommunityQuestionMapperTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-COM-002, BR-PRIVACY`
 
@@ -283,7 +283,7 @@ void toResponse_nonAnonymousQuestion_entityAuthorIdStoredInDB() {
 
 **Expected Result (PASS):** response.authorId == null khi isAnonymous=true
 **Expected Result (FAIL):** authorId lộ ra trong response → BR-PRIVACY vi phạm
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -292,7 +292,7 @@ void toResponse_nonAnonymousQuestion_entityAuthorIdStoredInDB() {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityQuestionServiceImpl.createQuestion()`
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityQuestionServiceImplTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `BR-COM-002`
 
@@ -319,7 +319,7 @@ void createQuestion_hiddenTopic_throwsCommunityTopicNotFoundException() {
 
 **Expected Result (PASS):** Exception với COM-003; save() never called
 **Expected Result (FAIL):** Question saved despite hidden topic → data integrity violation
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -328,7 +328,7 @@ void createQuestion_hiddenTopic_throwsCommunityTopicNotFoundException() {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `@Valid CreateCommunityQuestionRequest` — controller layer
 **Test File:** `src/test/java/com/carebridge/backend/community/controller/CommunityQuestionControllerTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-COM-003`
 
@@ -354,7 +354,7 @@ void createQuestion_titleTooShort_returns400() throws Exception {
 
 **Expected Result (PASS):** 400 + COM-001
 **Expected Result (FAIL):** 201 returned — validation not enforced
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -363,7 +363,7 @@ void createQuestion_titleTooShort_returns400() throws Exception {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `@Valid CreateCommunityQuestionRequest`
 **Test File:** `src/test/java/com/carebridge/backend/community/controller/CommunityQuestionControllerTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `BR-COM-004`
 
@@ -383,7 +383,7 @@ void createQuestion_bodyTooLong_returns400() throws Exception {
 ```
 
 **Expected Result (PASS):** 400 + COM-001
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -392,7 +392,7 @@ void createQuestion_bodyTooLong_returns400() throws Exception {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `@Min @Max on pregnancyWeek`
 **Test File:** Controller unit test
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `BR-COM-004` boundary spec
 
@@ -422,7 +422,7 @@ void createQuestion_invalidPregnancyWeekBoundary_returns400(int week) throws Exc
 }
 ```
 
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -437,7 +437,7 @@ void createQuestion_invalidPregnancyWeekBoundary_returns400(int week) throws Exc
 **CWE:** `CWE-306 — Missing Authentication`
 **Feature Under Test:** `Spring Security JWT filter`
 **Test File:** `src/test/java/com/carebridge/backend/community/controller/CommunityQuestionControllerTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 
 ```java
 @Test
@@ -451,7 +451,7 @@ void createQuestion_noJwt_returns401() throws Exception {
 
 **Expected Result (PASS — hệ thống an toàn):** 401 Unauthorized
 **Expected Result (FAIL = lỗ hổng):** 201 Created — auth bypass
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -462,7 +462,7 @@ void createQuestion_noJwt_returns401() throws Exception {
 **CWE:** `CWE-862 — Missing Authorization`
 **Feature Under Test:** `@PreAuthorize("hasRole('MOTHER')")`
 **Test File:** Controller test
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 
 ```java
@@ -479,7 +479,7 @@ void createQuestion_guestRole_returns403() throws Exception {
 
 **Expected Result (PASS):** 403 + COM-004
 **Expected Result (FAIL = lỗ hổng):** 201 — privilege escalation
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -490,7 +490,7 @@ void createQuestion_guestRole_returns403() throws Exception {
 **CWE:** `CWE-79 — Cross-site Scripting`
 **Feature Under Test:** `@NotBlank + JPA entity storage`
 **Test File:** Integration test
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 
 **Preconditions:**
 - Valid MOTHER JWT, valid topic in DB
@@ -524,7 +524,7 @@ void createQuestion_xssInTitle_storedSafely() throws Exception {
 }
 ```
 
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -537,7 +537,7 @@ void createQuestion_xssInTitle_storedSafely() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** `POST /api/v1/community/questions full flow`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityQuestionIntegrationTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001, TC-COND-002`
 
 **Preconditions:**
@@ -590,7 +590,7 @@ WHERE id = '<response.id>';
 -- Expected: status='PENDING', author_id=<mother_id>, like_count=0, answer_count=0
 ```
 
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 
@@ -599,7 +599,7 @@ WHERE id = '<response.id>';
 **Severity:** `HIGH`
 **Feature Under Test:** `Topic validation in service`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityQuestionIntegrationTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 
 **Preconditions:**
 - Seed: FX-COM-002 (hidden topic)
@@ -624,7 +624,7 @@ void createQuestion_hiddenTopic_returns404() throws Exception {
 }
 ```
 
-**Current Status:** 🟢 GREEN — Passed 2026-06-24
+**Current Status:** 🟢 Passing — Passed 2026-06-24
 
 ---
 

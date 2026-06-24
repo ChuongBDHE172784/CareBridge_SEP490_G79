@@ -167,7 +167,7 @@ private CommunityQuestion makeApprovedQuestion() {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityAnswerServiceImpl.postAnswer()`
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityAnswerServiceImplTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001, TC-COND-002, TC-COND-003`
 **Oracle Source:** `ADR-COM-005, ADR-COM-006`
 
@@ -201,7 +201,7 @@ void postAnswer_validRequest_returnsCorrectDefaults() {
 ```
 
 **Expected Result (PASS):** status=PENDING, isExpertLabeled=false, authorId correct
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -210,7 +210,7 @@ void postAnswer_validRequest_returnsCorrectDefaults() {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityAnswerServiceImpl.postAnswer()` — question validation
 **Test File:** Service unit test
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-COM-006, BR-COM-005`
 
@@ -229,7 +229,7 @@ void postAnswer_questionNotApproved_throwsQuestionNotAnswerableException(Questio
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -238,7 +238,7 @@ void postAnswer_questionNotApproved_throwsQuestionNotAnswerableException(Questio
 **Severity:** `MEDIUM`
 **Feature Under Test:** `@Size(min=10) on body`
 **Test File:** Controller unit test
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 
 ```java
@@ -254,7 +254,7 @@ void postAnswer_bodyTooShort_returns400() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -262,7 +262,7 @@ void postAnswer_bodyTooShort_returns400() throws Exception {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `@Size(max=3000)`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 
 ```java
@@ -278,7 +278,7 @@ void postAnswer_bodyTooLong_returns400() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -293,7 +293,7 @@ void postAnswer_bodyTooLong_returns400() throws Exception {
 **CWE:** `CWE-269 — Improper Privilege Management`
 **Feature Under Test:** `PostCommunityAnswerRequest (no isExpertLabeled field) + CommunityAnswerServiceImpl`
 **Test File:** Integration test
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `ADR-COM-005`
 
@@ -328,7 +328,7 @@ void postAnswer_expertLabeledInjection_fieldIgnored() throws Exception {
 
 **Expected Result (PASS):** isExpertLabeled=false — privilege escalation blocked
 **Expected Result (FAIL = lỗ hổng):** isExpertLabeled=true — expert status forged
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -337,7 +337,7 @@ void postAnswer_expertLabeledInjection_fieldIgnored() throws Exception {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021 — Broken Access Control`
 **CWE:** `CWE-306 — Missing Authentication`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 
 ```java
@@ -350,7 +350,7 @@ void postAnswer_noJwt_returns401() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -363,7 +363,7 @@ void postAnswer_noJwt_returns401() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** `POST /api/v1/community/questions/{id}/answers full flow`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityAnswerIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Preconditions:**
 - PostgreSQL Testcontainers running
@@ -400,14 +400,14 @@ FROM community_answers WHERE id = '<answer-id>';
 -- Expected: status='PENDING', is_expert_labeled=false
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM56-TC-INT-002 — Question PENDING → 422 COM-007
 
 **Severity:** `HIGH`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 ```java
 @Test
@@ -425,7 +425,7 @@ void postAnswer_pendingQuestion_returns422() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 

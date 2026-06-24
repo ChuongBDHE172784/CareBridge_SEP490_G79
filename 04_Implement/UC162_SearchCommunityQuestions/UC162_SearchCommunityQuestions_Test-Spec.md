@@ -166,7 +166,7 @@ private CommunityQuestion makeApprovedQuestion(String title) {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityQuestionSearchServiceImpl.searchQuestions()`
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityQuestionSearchServiceImplTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `BR-COM-011, ADR-COM-007`
 
@@ -194,7 +194,7 @@ void searchQuestions_withKeyword_returnsMatchingApprovedOnly() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -202,7 +202,7 @@ void searchQuestions_withKeyword_returnsMatchingApprovedOnly() {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** Return type when no results
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-COM-007`
 
@@ -221,7 +221,7 @@ void searchQuestions_noResults_returns200WithEmptyContent() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -230,7 +230,7 @@ void searchQuestions_noResults_returns200WithEmptyContent() {
 **Severity:** `HIGH`
 **Feature Under Test:** `searchApproved()` status filter
 **Test File:** Integration test
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-COM-007`
 
@@ -254,14 +254,14 @@ void searchQuestions_pendingQuestionsExcluded() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM162-TC-004 — topicId filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 
 ```java
@@ -284,14 +284,14 @@ void searchQuestions_topicIdFilter_returnsOnlyMatchingTopic() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM162-TC-005 — stage filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 
 ```java
@@ -312,14 +312,14 @@ void searchQuestions_stageFilter_returnsOnlyMatchingStage() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM162-TC-006 — hasExpertAnswer=true filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 
 ```java
@@ -341,7 +341,7 @@ void searchQuestions_hasExpertAnswerTrue_returnsQuestionsWithExpertLabeled() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -349,7 +349,7 @@ void searchQuestions_hasExpertAnswerTrue_returnsQuestionsWithExpertLabeled() {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `Max size enforcement`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-COM-008`
 
@@ -364,14 +364,14 @@ void searchQuestions_sizeOver100_returns400() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM162-TC-008 — Pagination: page=1 trả về trang thứ hai
 
 **Severity:** `MEDIUM`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 
 ```java
@@ -394,7 +394,7 @@ void searchQuestions_page1_returnsSecondPage() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -407,7 +407,7 @@ void searchQuestions_page1_returnsSecondPage() {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021`
 **CWE:** `CWE-306`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-009`
 
 ```java
@@ -419,7 +419,7 @@ void searchQuestions_noJwt_returns401() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -428,7 +428,7 @@ void searchQuestions_noJwt_returns401() throws Exception {
 **Severity:** `CRITICAL`
 **OWASP:** `A03:2021 — Injection`
 **CWE:** `CWE-89 — SQL Injection`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-010`
 
 **Preconditions:**
@@ -454,7 +454,7 @@ void searchQuestions_sqlInjectionInKeyword_tableNotDropped() throws Exception {
 
 **Expected Result (PASS):** 200 OK, table intact — parameterized query prevents injection
 **Expected Result (FAIL = lỗ hổng):** Exception or table dropped/empty
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -467,7 +467,7 @@ void searchQuestions_sqlInjectionInKeyword_tableNotDropped() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** `GET /api/v1/community/questions full stack`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityQuestionSearchIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Preconditions:**
 - PostgreSQL Testcontainers
@@ -502,7 +502,7 @@ void searchQuestions_keywordFilter_casInsensitive() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 

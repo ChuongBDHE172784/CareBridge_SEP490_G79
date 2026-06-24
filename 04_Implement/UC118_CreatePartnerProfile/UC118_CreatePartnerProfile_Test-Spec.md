@@ -219,7 +219,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 - `response.status` = APPROVED → vi phạm ADR-003
 - `representativeUserId` khác ACTOR_ID → impersonation risk
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 **Implementation Note:** `PartnerProfileMapper.toEntity()` phải gắn `status=PENDING_APPROVAL` và `representativeUserId=actorId`.
 
 ---
@@ -249,7 +249,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Expected Result (FAIL):**
 - Entity được save với status != PENDING_APPROVAL → business rule violation
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -280,7 +280,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Expected Result (FAIL):**
 - actorId khác "user-rep-003" → controller bị exploit
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -308,7 +308,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 **Expected Result (FAIL):**
 - Service gọi save() bất chấp duplicate → 2 profiles cho cùng 1 user
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -334,7 +334,7 @@ PartnerOrganization makeExistingProfile(Consumer<PartnerOrganization> overrides)
 - `PartnerException` với code `PTR-003` và HTTP 409
 - `save()` KHÔNG được gọi
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -364,7 +364,7 @@ Examples:
 - Valid phones: POST trả về 201 (service mocked)
 - Invalid phones: POST trả về 400 với `PTR-001` và `details[0].field = "phone"`
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -405,7 +405,7 @@ Examples:
 **Expected Result (FAIL):**
 - Bất kỳ non-PARTNER_REP role nào nhận được 201 → broken access control
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -433,7 +433,7 @@ Examples:
 **Expected Result (FAIL):**
 - AuditService không được gọi → audit trail missing
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -461,7 +461,7 @@ Examples:
     And details[0].message contains "Invalid website URL"
 ```
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -506,7 +506,7 @@ assertThat(saved.get().getStatus()).isEqualTo(OrganizationStatus.PENDING_APPROVA
 assertThat(saved.get().getName()).isEqualTo("Phòng khám Test");
 ```
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -531,7 +531,7 @@ assertThat(saved.get().getName()).isEqualTo("Phòng khám Test");
 **Expected Result (FAIL):**
 - Request 2 trả về 201 → 2 profiles cho cùng 1 user
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -556,7 +556,7 @@ Scenarios (parameterized):
   | (no auth)      | 401             |
 ```
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -579,7 +579,7 @@ Scenarios (parameterized):
 - "evil-user-999" không xuất hiện trong DB
 - CreatePartnerProfileRequest không có `representativeUserId` field → extra JSON field bị ignore
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -605,7 +605,7 @@ Scenarios (parameterized):
 - Response headers chứa script → reflected XSS
 - Script được stored và served back without escaping
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -632,7 +632,7 @@ Scenarios (parameterized):
 **Expected Result (FAIL):**
 - AuditService được gọi cho failed operation → false audit trail
 
-**Current Status:** 🟢 PASS
+**Current Status:** 🟢 Passing
 
 ---
 

@@ -218,7 +218,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `HIGH`
 **Feature Under Test:** `ModerationServiceImpl.getModerationQueue(filter)` — no contentType filter
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `BR-MOD-001`, `TDS §8.3 ModerationQueueFilter`
 
@@ -247,7 +247,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ContentPreviewService.fetchPreview()` (hoặc ModerationMapper)
 **Test File:** `src/test/java/com/carebridge/backend/unit/ContentPreviewServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `BR-MOD-002`, `TDS §4.3 Security`
 
@@ -275,7 +275,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `HIGH`
 **Feature Under Test:** `ModerationServiceImpl.getModerationQueue()` — audit side effect
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-003`, `BR-AUDIT-001`
 
@@ -304,7 +304,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `HIGH`
 **Feature Under Test:** `ModerationRepository.findByStatus()` + Pageable sort config
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-MOD-003`, `TDS §8.1 Interface`
 
@@ -333,7 +333,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **CWE:** `CWE-285 — Improper Authorization`
 **Feature Under Test:** `ModerationController.getQueue()` — @PreAuthorize
 **Test File:** `src/test/java/com/carebridge/backend/security/ModerationControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `ADR-002`, `BR-RBAC-001`, `TDS §16 Auth Matrix`
 
@@ -363,7 +363,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ModerationQueueFilter` validation
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `BR-MOD-003`, `TDS §10 Error Codes`
 
@@ -383,7 +383,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ModerationController.getQueue()` — binding error
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `TDS §10 Error Codes`
 
@@ -404,7 +404,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `CRITICAL`
 **Feature Under Test:** JWT authentication filter
 **Test File:** `src/test/java/com/carebridge/backend/security/ModerationControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Test Steps:**
 1. Act: `GET /api/v1/admin/moderation/queue` không có Authorization header
@@ -424,7 +424,7 @@ ModerationQueueFilter makeFilter(Consumer<ModerationQueueFilter.Builder> overrid
 **Severity:** `HIGH`
 **Feature Under Test:** `GET /api/v1/admin/moderation/queue` — end to end
 **Test File:** `src/test/java/com/carebridge/backend/integration/ModerationQueueIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-009`
 
 **Preconditions:**
@@ -469,7 +469,7 @@ assertThat(pendingCount).isEqualTo(2); // FX-001 + FX-002
 **Severity:** `CRITICAL`
 **Feature Under Test:** JWT authentication filter
 **Test File:** `src/test/java/com/carebridge/backend/security/ModerationControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Test Steps:**
 1. Tạo JWT đã expired (FX-007)
@@ -486,7 +486,7 @@ assertThat(pendingCount).isEqualTo(2); // FX-001 + FX-002
 **Severity:** `HIGH`
 **Feature Under Test:** @PreAuthorize ROLE_MODERATOR
 **Test File:** `src/test/java/com/carebridge/backend/security/ModerationControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Oracle Source:** `TDS §16 Auth Matrix — CONTENT_ADMIN = ❌`
 
 **Test Steps:**
@@ -506,7 +506,7 @@ assertThat(pendingCount).isEqualTo(2); // FX-001 + FX-002
 **CWE:** `CWE-89 — SQL Injection`
 **Feature Under Test:** `ModerationController` — contentType param
 **Test File:** `src/test/java/com/carebridge/backend/security/ModerationControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Test Steps:**
 1. `GET /api/v1/admin/moderation/queue?contentType=QUESTION'; DROP TABLE content_reports;--` với MODERATOR JWT
@@ -529,7 +529,7 @@ assertThat(pendingCount).isEqualTo(2); // FX-001 + FX-002
 **Severity:** `HIGH`
 **Feature Under Test:** `ModerationMapper.toQueueItemResponse()`
 **Test File:** `src/test/java/com/carebridge/backend/unit/ModerationMapperTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Oracle Source:** `TDS §4.3 — preview max 200 chars`, `C4 constraint`
 
 **Test Steps:**

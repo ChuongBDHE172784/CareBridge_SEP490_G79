@@ -214,7 +214,7 @@ private ChecklistItem makeChecklistItem(UUID templateId, int order) {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ContentServiceImpl.getContents()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentServiceImplTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `BR-RBAC (ADR-002) — status=APPROVED enforced bởi Service, không phải client`
 
@@ -252,7 +252,7 @@ void getContents_shouldAlwaysPassAPPROVEDStatusToRepository() {
 
 **Expected Result (PASS):** `findByFilters` được gọi với `ContentStatus.APPROVED`; kết quả có 1 element
 **Expected Result (FAIL):** Test fail nếu service truyền DRAFT hoặc ARCHIVED vào repository
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 **Implementation Note:** `ContentServiceImpl.getContents()` phải hardcode `ContentStatus.APPROVED` khi gọi repository
 
 ---
@@ -262,7 +262,7 @@ void getContents_shouldAlwaysPassAPPROVEDStatusToRepository() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentServiceImpl.getContentById()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentServiceImplTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `§10 Error Codes — CNT-003 khi content không tồn tại hoặc không APPROVED`
 
@@ -304,7 +304,7 @@ void getContentById_shouldThrowCNT003WhenContentIsDraft() {
 
 **Expected Result (PASS):** `ContentException` với code `CNT-003` được ném
 **Expected Result (FAIL):** Test fail nếu service trả về null hoặc ném exception khác
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -313,7 +313,7 @@ void getContentById_shouldThrowCNT003WhenContentIsDraft() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentMapper.toListResponse()`, `ContentMapper.toDetailResponse()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentMapperTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`, `TC-COND-003`
 **Oracle Source:** `BR-PRIVACY — authorId là thông tin nội bộ không được expose`
 
@@ -363,7 +363,7 @@ void toDetailResponse_shouldNotIncludeAuthorId() {
 
 **Expected Result (PASS):** `ContentListResponse` và `ContentDetailResponse` không có field `authorId`
 **Expected Result (FAIL):** Test fail nếu response DTO có field authorId hoặc mapper copy authorId vào response
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 **Implementation Note:** Đảm bảo `ContentListResponse` và `ContentDetailResponse` không khai báo field `authorId`
 
 ---
@@ -373,7 +373,7 @@ void toDetailResponse_shouldNotIncludeAuthorId() {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ContentServiceImpl.getChecklists()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentServiceImplTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `L1 Logic Issue — ChecklistItem.order field cần được sort ASC`
 
@@ -413,7 +413,7 @@ void getChecklists_shouldReturnItemsSortedByOrderAsc() {
 
 **Expected Result (PASS):** Items trong response có order = [1, 2, 3]
 **Expected Result (FAIL):** Items không được sắp xếp đúng thứ tự
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -422,7 +422,7 @@ void getChecklists_shouldReturnItemsSortedByOrderAsc() {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ContentController.getContents()` — query param validation
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentControllerTest.java`
-**TDD Phase:** 🟢 GREEN — Passed 2026-06-24
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `CB-CONTENT-IMP-001 §4.4 Scalability — size max 50`
 
@@ -451,7 +451,7 @@ void getContents_shouldAcceptSize50() throws Exception {
 
 **Expected Result (PASS):** size=100 → 400 với CNT-001; size=50 → 200
 **Expected Result (FAIL):** size=100 được chấp nhận
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -485,7 +485,7 @@ void allContentEndpoints_shouldReturn401WithoutJwt(String endpoint) throws Excep
 
 **Expected Result (PASS):** HTTP 401 với IAM-001 cho tất cả 3 endpoints khi không có JWT
 **Expected Result (FAIL):** Bất kỳ endpoint nào trả về 200 mà không cần JWT
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -519,7 +519,7 @@ void getContentById_withDraftId_shouldReturn404() throws Exception {
 
 **Expected Result (PASS):** HTTP 404 với CNT-003 khi truy cập DRAFT content
 **Expected Result (FAIL):** DRAFT content được trả về với HTTP 200
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -566,7 +566,7 @@ long approvedCount = contentRepository.countByStatusAndStage(ContentStatus.APPRO
 assertThat(approvedCount).isEqualTo(1);
 ```
 
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -599,7 +599,7 @@ void getChecklists_integration_shouldReturnItemsInOrderAsc() throws Exception {
 }
 ```
 
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -629,7 +629,7 @@ void getChecklists_withNoItems_shouldReturnEmptyItemsList() throws Exception {
 }
 ```
 
-**Current Status:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 ---
 

@@ -206,7 +206,7 @@ private ContentSearchRequest makeSearchRequest(String keyword, ContentStage stag
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ContentServiceImpl.searchContent()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchServiceTest.java`
-**TDD Phase:** RED — chưa implement
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `BR-RBAC, ADR-003 — chỉ APPROVED content visible`
 
@@ -241,7 +241,7 @@ void searchContent_shouldAlwaysPassAPPROVEDStatusToRepository() {
 
 **Expected Result (PASS):** `searchByFilters` được gọi với `ContentStatus.APPROVED`
 **Expected Result (FAIL):** Test fail nếu service truyền null hoặc DRAFT
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 **Implementation Note:** Hardcode `ContentStatus.APPROVED` trong `searchContent()`
 
 ---
@@ -251,7 +251,7 @@ void searchContent_shouldAlwaysPassAPPROVEDStatusToRepository() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentServiceImpl.sanitizeKeyword()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchServiceTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-004 — keyword trimmed trước khi query`
 
@@ -281,7 +281,7 @@ void sanitizeKeyword_shouldTrimLeadingAndTrailingSpaces() {
 
 **Expected Result (PASS):** Repository nhận keyword đã trim
 **Expected Result (FAIL):** Repository nhận keyword với spaces
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -290,7 +290,7 @@ void sanitizeKeyword_shouldTrimLeadingAndTrailingSpaces() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentServiceImpl.sanitizeKeyword()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchServiceTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-004 — escape LIKE wildcards % và _`
 
@@ -331,7 +331,7 @@ void sanitizeKeyword_shouldEscapeUnderscoreWildcard() {
 
 **Expected Result (PASS):** Repository nhận keyword với `%` escaped thành `\%` và `_` escaped thành `\_`
 **Expected Result (FAIL):** Raw wildcards được truyền vào repository
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -340,7 +340,7 @@ void sanitizeKeyword_shouldEscapeUnderscoreWildcard() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentController.searchContent()`
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchControllerTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `CB-CONTENT-IMP-002 §9.2 — empty search returns 200 with content:[]`
 
@@ -366,7 +366,7 @@ void searchContent_withNoResults_shouldReturn200NotEmpty() throws Exception {
 
 **Expected Result (PASS):** HTTP 200 với `content: []` và `totalElements: 0`
 **Expected Result (FAIL):** HTTP 404 hoặc HTTP 200 với null content
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 **Implementation Note:** Controller không kiểm tra kết quả rỗng để throw 404
 
 ---
@@ -376,7 +376,7 @@ void searchContent_withNoResults_shouldReturn200NotEmpty() throws Exception {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ContentServiceImpl.searchContent()` — topicName resolve
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchServiceTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `CB-CONTENT-IMP-002 §8.1 — topicName resolved, null if topicId null`
 
@@ -406,7 +406,7 @@ void searchContent_contentWithNullTopicId_shouldReturnNullTopicName() {
 
 **Expected Result (PASS):** Không throw NullPointerException; `topicName` là null hoặc empty string
 **Expected Result (FAIL):** `NullPointerException` khi topicId là null
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -415,7 +415,7 @@ void searchContent_contentWithNullTopicId_shouldReturnNullTopicName() {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentController.searchContent()` — request validation
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchControllerTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `CB-CONTENT-IMP-002 §9.2 — keyword required`
 
@@ -452,7 +452,7 @@ void searchContent_withoutKeywordParam_shouldReturn400() throws Exception {
 
 **Expected Result (PASS):** HTTP 400 với CNT-001 khi keyword rỗng, blank, hoặc không có
 **Expected Result (FAIL):** Service được gọi với empty/blank keyword
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -461,7 +461,7 @@ void searchContent_withoutKeywordParam_shouldReturn400() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** `ContentController.searchContent()` — keyword length validation
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchControllerTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-004, CB-CONTENT-IMP-002 §9.2`
 
@@ -492,7 +492,7 @@ void searchContent_withKeyword101Chars_shouldReturn400() throws Exception {
 
 **Expected Result (PASS):** 100 chars → 200; 101 chars → 400 CNT-001
 **Expected Result (FAIL):** 101 chars được chấp nhận
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -501,7 +501,7 @@ void searchContent_withKeyword101Chars_shouldReturn400() throws Exception {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ContentController.searchContent()` — size validation
 **Test File:** `src/test/java/com/carebridge/backend/content/unit/ContentSearchControllerTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 
 **Test Steps:**
@@ -531,7 +531,7 @@ void searchContent_withSizeOver50_shouldReturn400(int size) throws Exception {
 ```
 
 **Expected Result (PASS):** size ≤ 50 → 200; size > 50 → 400
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -544,7 +544,7 @@ void searchContent_withSizeOver50_shouldReturn400(int size) throws Exception {
 **CWE:** `CWE-89 — SQL Injection`
 **Feature Under Test:** `ContentRepository.searchByFilters()` via full stack
 **Test File:** `src/test/java/com/carebridge/backend/content/security/ContentSearchSecurityTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-009`
 
 **Preconditions:**
@@ -579,7 +579,7 @@ void searchContent_withSQLInjectionPayload_shouldNotCauseError(String maliciousK
 
 **Expected Result (PASS = hệ thống an toàn):** HTTP 200 hoặc 400; bảng `content_items` còn nguyên vẹn
 **Expected Result (FAIL = lỗ hổng tồn tại):** HTTP 500 database error; bảng bị xóa hoặc data bị thay đổi
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -590,7 +590,7 @@ void searchContent_withSQLInjectionPayload_shouldNotCauseError(String maliciousK
 **CWE:** `CWE-306 — Missing Authentication`
 **Feature Under Test:** `ContentController.searchContent()` — Spring Security filter
 **Test File:** `src/test/java/com/carebridge/backend/content/security/ContentSearchSecurityTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-010`
 
 **Test Steps:**
@@ -616,7 +616,7 @@ void searchContent_withExpiredJwt_shouldReturn401() throws Exception {
 
 **Expected Result (PASS):** HTTP 401 với IAM-001
 **Expected Result (FAIL):** Search results returned without authentication
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -627,7 +627,7 @@ void searchContent_withExpiredJwt_shouldReturn401() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** Full flow: GET /api/v1/content/search → ILIKE query
 **Test File:** `src/test/java/com/carebridge/backend/content/integration/ContentSearchIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-011`
 
 **Preconditions:**
@@ -661,7 +661,7 @@ List<ContentItem> results = contentRepository.searchByFilters(
 assertThat(results).anyMatch(item -> item.getTitle().toUpperCase().contains("THAI KỲ"));
 ```
 
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -670,7 +670,7 @@ assertThat(results).anyMatch(item -> item.getTitle().toUpperCase().contains("THA
 **Severity:** `CRITICAL`
 **Feature Under Test:** Full flow search → APPROVED filter
 **Test File:** `src/test/java/com/carebridge/backend/content/integration/ContentSearchIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-012`
 
 **Preconditions:**
@@ -709,7 +709,7 @@ void searchContent_integration_shouldExcludeDraftAndArchivedContent() throws Exc
 }
 ```
 
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -718,7 +718,7 @@ void searchContent_integration_shouldExcludeDraftAndArchivedContent() throws Exc
 **Severity:** `MEDIUM`
 **Feature Under Test:** Full flow with multiple filters
 **Test File:** `src/test/java/com/carebridge/backend/content/integration/ContentSearchIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 **Test Steps:**
 
@@ -743,7 +743,7 @@ void searchContent_integration_withMultipleFilters_shouldReturnMatchingOnly() th
 }
 ```
 
-**Current Status:** RED — Not implemented
+**Current Status:** 🔴 Not written
 
 ---
 

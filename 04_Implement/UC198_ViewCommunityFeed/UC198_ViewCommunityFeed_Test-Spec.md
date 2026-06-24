@@ -157,7 +157,7 @@ private CommunityQuestion makeApprovedQuestion(LocalDateTime createdAt, boolean 
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityFeedServiceImpl.getFeed()` ordering
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityFeedServiceImplTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-COM-009, BR-COM-013`
 
@@ -188,7 +188,7 @@ void getFeed_noTopicFilter_returnsApprovedNewestFirst() {
 ```
 
 **Expected Result (PASS):** 3 items, newest first, totalElements=3
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -197,7 +197,7 @@ void getFeed_noTopicFilter_returnsApprovedNewestFirst() {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityFeedMapper.maskAuthorIfAnonymous()`
 **Test File:** `src/test/java/com/carebridge/backend/community/mapper/CommunityFeedMapperTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-COM-002, BR-PRIVACY`
 
@@ -233,7 +233,7 @@ void maskAuthorIfAnonymous_neverReturnsNull() {
 ```
 
 **Expected Result (PASS):** authorDisplay="Mẹ ẩn danh" for anonymous; never null
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -242,7 +242,7 @@ void maskAuthorIfAnonymous_neverReturnsNull() {
 **Severity:** `HIGH`
 **Feature Under Test:** Repository query filtering
 **Test File:** Integration test
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-COM-009`
 
@@ -261,7 +261,7 @@ void getFeed_pendingQuestionsExcluded_integrationTest() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -269,7 +269,7 @@ void getFeed_pendingQuestionsExcluded_integrationTest() throws Exception {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CommunityFeedServiceImpl` branching logic
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-004`
 
 ```java
@@ -304,7 +304,7 @@ void getFeed_withoutTopicId_callsAllTopicsMethod() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -312,7 +312,7 @@ void getFeed_withoutTopicId_callsAllTopicsMethod() {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** Max size enforcement (feed max=50, not 100 like search)
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `ADR-COM-010`
 
@@ -337,14 +337,14 @@ void getFeed_sizeExactly50_allowed() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
 ### COM198-TC-006 — Empty feed → 200 với content:[]
 
 **Severity:** `LOW`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-008`
 
 ```java
@@ -361,7 +361,7 @@ void getFeed_emptyResults_returns200WithEmptyContent() {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -374,7 +374,7 @@ void getFeed_emptyResults_returns200WithEmptyContent() {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021`
 **CWE:** `CWE-306`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-006`
 
 ```java
@@ -385,7 +385,7 @@ void getFeed_noJwt_returns401() throws Exception {
 }
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -395,7 +395,7 @@ void getFeed_noJwt_returns401() throws Exception {
 **OWASP:** `A02:2021 — Cryptographic Failures` (PII exposure)
 **CWE:** `CWE-359 — Exposure of Private Personal Information`
 **Feature Under Test:** `CommunityFeedMapper.maskAuthorIfAnonymous()`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-COM-002, BR-PRIVACY`
 
@@ -423,7 +423,7 @@ void getFeed_anonymousQuestion_realNameNotInResponse() throws Exception {
 
 **Expected Result (PASS):** Real name and userId not in response body
 **Expected Result (FAIL = PII breach):** Real name appears — privacy violation
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
@@ -436,7 +436,7 @@ void getFeed_anonymousQuestion_realNameNotInResponse() throws Exception {
 **Severity:** `HIGH`
 **Feature Under Test:** `GET /api/v1/community/feed full stack`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityFeedIntegrationTest.java`
-**TDD Phase:** RED
+**TDD Phase:** 🔴 RED — chưa implement
 
 ```java
 @Test
@@ -477,7 +477,7 @@ ORDER BY created_at DESC LIMIT 5;
 -- Verify ordering matches API response content[0..n]
 ```
 
-**Current Status:** RED
+**Current Status:** 🔴 Not written
 
 ---
 
