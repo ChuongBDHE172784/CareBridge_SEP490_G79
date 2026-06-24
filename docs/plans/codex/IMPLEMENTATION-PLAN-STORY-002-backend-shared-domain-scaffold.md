@@ -1,8 +1,8 @@
 # IMPLEMENTATION-PLAN-STORY-002-backend-shared-domain-scaffold
 
 Status: DONE
-Approval Required: NO
-Allowed To Execute: NO
+Approval Required: YES
+Allowed To Execute: YES
 
 ## Agent Role
 
@@ -289,7 +289,7 @@ Important blocker: test files are forbidden by the current user instruction and 
 
 ```text
 Status: APPROVED_BY_USER
-Approval Required: NO
+Approval Required: YES
 Allowed To Execute: YES
 ```
 
@@ -379,8 +379,8 @@ Allowed To Execute: YES
 
 ```text
 Status: DONE
-Approval Required: NO
-Allowed To Execute: NO
+Approval Required: YES
+Allowed To Execute: YES
 ```
 
 20. Stop after the handoff. Do not start Gemini QA.

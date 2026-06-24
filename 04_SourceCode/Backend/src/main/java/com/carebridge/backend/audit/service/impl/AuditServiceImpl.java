@@ -8,6 +8,7 @@ import com.carebridge.backend.audit.policy.AuditEligibilityPolicy;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.audit.service.AuditService;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,31 +25,31 @@ public class AuditServiceImpl implements AuditService {
     private final AuditEligibilityPolicy auditEligibilityPolicy;
 
     @Override
-    public void log(AuditAction action, Long userId, String resourceType, String resourceId, Object details) {
+    public void log(AuditAction action, UUID userId, String resourceType, String resourceId, Object details) {
         if (!auditEligibilityPolicy.shouldAudit(action)) {
             return;
         }
         AuditLog log = AuditLog.builder()
-                .timestamp(Instant.now())
-                .userId(userId)
+                .createdAt(Instant.now())
+                .actorUserId(userId)
                 .action(action)
-                .resourceType(resourceType)
-                .resourceId(resourceId)
-                .details(toJson(details))
+                .entityType(resourceType)
+                .entityId(parseUuid(resourceId))
+                .newValueJson(toJson(details))
                 .build();
         auditLogRepository.save(log);
     }
 
     @Override
     public void log(AuditAction action, String userId, String resourceId, Object details) {
-        Long parsedUserId = userId == null ? null : Long.valueOf(userId);
+        UUID parsedUserId = userId == null ? null : UUID.fromString(userId);
         log(action, parsedUserId, null, resourceId, details);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> search(
-            Long userId,
+            UUID userId,
             AuditAction action,
             Instant fromDate,
             Instant toDate,
@@ -62,5 +63,16 @@ public class AuditServiceImpl implements AuditService {
             return null;
         }
         return String.valueOf(details);
+    }
+
+    private UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +34,7 @@ public class ConsentServiceImpl implements ConsentService {
     private final AuditService auditService;
 
     @Override
-    public ConsentGrantResponse grantConsent(Long userId, GrantConsentRequest request) {
+    public ConsentGrantResponse grantConsent(UUID userId, GrantConsentRequest request) {
         Instant now = Instant.now();
         int expiryDays = request.getExpiryDays() == null
                 ? ConsentConstants.DEFAULT_EXPIRY_DAYS
@@ -58,7 +59,7 @@ public class ConsentServiceImpl implements ConsentService {
     }
 
     @Override
-    public ConsentGrantResponse revokeConsent(Long userId, Long consentId) {
+    public ConsentGrantResponse revokeConsent(UUID userId, Long consentId) {
         ConsentGrant grant = consentGrantRepository.findByIdAndUserId(consentId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Consent grant not found"));
         grant.setRevokedAt(Instant.now());
@@ -75,7 +76,7 @@ public class ConsentServiceImpl implements ConsentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ConsentGrantResponse> listConsents(Long userId) {
+    public List<ConsentGrantResponse> listConsents(UUID userId) {
         return consentGrantRepository.findByUserIdOrderByConsentGivenAtDesc(userId).stream()
                 .map(consentGrantMapper::toResponse)
                 .toList();
@@ -83,7 +84,7 @@ public class ConsentServiceImpl implements ConsentService {
 
     @Override
     @Transactional(readOnly = true)
-    public void ensureConsent(Long userId, ConsentDataType dataType, ConsentPurpose purpose) {
+    public void ensureConsent(UUID userId, ConsentDataType dataType, ConsentPurpose purpose) {
         boolean granted = consentGrantRepository.existsValidConsent(userId, dataType, purpose, Instant.now());
         consentCheckPolicy.ensureGranted(granted, userId, dataType, purpose);
     }
