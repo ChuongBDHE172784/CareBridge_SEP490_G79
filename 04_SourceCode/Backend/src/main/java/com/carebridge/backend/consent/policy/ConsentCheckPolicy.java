@@ -4,13 +4,12 @@ import com.carebridge.backend.common.exception.ConsentException;
 import com.carebridge.backend.consent.entity.ConsentDataType;
 import com.carebridge.backend.consent.entity.ConsentPurpose;
 import java.time.Instant;
-import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ConsentCheckPolicy {
 
-    public void ensureGranted(boolean granted, UUID userId, ConsentDataType dataType, ConsentPurpose purpose) {
+    public void ensureGranted(boolean granted, Long userId, ConsentDataType dataType, ConsentPurpose purpose) {
         if (!granted) {
             throw new ConsentException("Consent denied for user=%s, dataType=%s, purpose=%s"
                     .formatted(userId, dataType, purpose));
