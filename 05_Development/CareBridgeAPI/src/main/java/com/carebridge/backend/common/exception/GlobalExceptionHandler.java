@@ -2,6 +2,7 @@ package com.carebridge.backend.common.exception;
 
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.community.exception.CommunityFeedValidationException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
@@ -95,6 +96,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleQuestionNotAnswerable(
             QuestionNotAnswerableException ex, HttpServletRequest request) {
         return error(HttpStatus.UNPROCESSABLE_ENTITY, "COM-007", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CommunityFeedValidationException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityFeedValidation(
+            CommunityFeedValidationException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-001", ex.getMessage(), request);
     }
 
     @ExceptionHandler(ContentException.class)

@@ -19,9 +19,10 @@
 
 ## CHANGELOG
 
-| Ngày       | Người thực hiện    | Nội dung thay đổi                                   |
-| ---------- | ------------------ | --------------------------------------------------- |
-| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-198 View Community Feed |
+| Ngày       | Người thực hiện    | Nội dung thay đổi                                                                  |
+| ---------- | ------------------ | ---------------------------------------------------------------------------------- |
+| 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-198 View Community Feed                               |
+| 2026-06-24 | AI Agent — Amelia  | Implement: CommunityFeedService, CommunityFeedMapper, CommunityFeedController; 14 tests GREEN |
 
 ---
 
