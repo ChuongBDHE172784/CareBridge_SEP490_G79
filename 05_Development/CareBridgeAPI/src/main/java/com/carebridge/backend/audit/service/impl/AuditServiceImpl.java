@@ -24,31 +24,31 @@ public class AuditServiceImpl implements AuditService {
     private final AuditEligibilityPolicy auditEligibilityPolicy;
 
     @Override
-    public void log(AuditAction action, Long userId, String resourceType, String resourceId, Object details) {
+    public void log(AuditAction action, java.util.UUID userId, String resourceType, String resourceId, Object details) {
         if (!auditEligibilityPolicy.shouldAudit(action)) {
             return;
         }
         AuditLog log = AuditLog.builder()
-                .timestamp(Instant.now())
-                .userId(userId)
+                .createdAt(Instant.now())
+                .actorUserId(userId)
                 .action(action)
-                .resourceType(resourceType)
-                .resourceId(resourceId)
-                .details(toJson(details))
+                .entityType(resourceType)
+                .entityId(resourceId == null ? null : java.util.UUID.fromString(resourceId))
+                .newValueJson(toJson(details))
                 .build();
         auditLogRepository.save(log);
     }
 
     @Override
     public void log(AuditAction action, String userId, String resourceId, Object details) {
-        Long parsedUserId = userId == null ? null : Long.valueOf(userId);
+        java.util.UUID parsedUserId = userId == null ? null : java.util.UUID.fromString(userId);
         log(action, parsedUserId, null, resourceId, details);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> search(
-            Long userId,
+            java.util.UUID userId,
             AuditAction action,
             Instant fromDate,
             Instant toDate,

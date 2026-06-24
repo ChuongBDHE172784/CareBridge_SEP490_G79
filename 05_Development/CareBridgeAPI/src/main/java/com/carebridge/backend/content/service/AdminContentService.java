@@ -5,5 +5,5 @@ import com.carebridge.backend.content.dto.response.CreateContentResponse;
 
 public interface AdminContentService {
 
-    CreateContentResponse createContent(CreateContentRequest request, Long authorUserId);
+    CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId);
 }

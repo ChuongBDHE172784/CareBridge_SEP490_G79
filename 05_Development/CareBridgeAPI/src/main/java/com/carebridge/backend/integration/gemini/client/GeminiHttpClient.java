@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 @Component
-@Profile({"prod", "dev"})
+@Profile({"prod", "dev", "supabase"})
 @Slf4j
 public class GeminiHttpClient implements GeminiClient {
 

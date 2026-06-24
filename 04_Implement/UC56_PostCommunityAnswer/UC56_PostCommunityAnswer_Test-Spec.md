@@ -449,7 +449,7 @@ void postAnswer_pendingQuestion_returns422() throws Exception {
 @Service
 public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     @Override
-    public CommunityAnswerResponse postAnswer(Long authorId, UUID questionId, PostCommunityAnswerRequest request) {
+    public CommunityAnswerResponse postAnswer(UUID authorId, UUID questionId, PostCommunityAnswerRequest request) {
         throw new UnsupportedOperationException("Not implemented — Red Phase stub");
     }
 }

@@ -21,7 +21,7 @@ public class CommunityQuestionResponse {
     private String stage;
     private String urgency;
     private boolean anonymous;
-    private Long authorId;
+    private UUID authorId;
     private String status;
     private Instant createdAt;
 }

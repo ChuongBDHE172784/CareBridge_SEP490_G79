@@ -35,7 +35,7 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
 
     @Override
     @Transactional
-    public CommunityTopicResponse createTopic(Long createdBy, CreateCommunityTopicRequest request) {
+    public CommunityTopicResponse createTopic(UUID createdBy, CreateCommunityTopicRequest request) {
         if (topicRepository.existsByNameIgnoreCase(request.getName())) {
             throw new DuplicateTopicNameException(request.getName());
         }

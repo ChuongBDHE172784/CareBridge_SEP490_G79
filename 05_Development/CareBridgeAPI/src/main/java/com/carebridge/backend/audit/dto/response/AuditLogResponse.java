@@ -13,11 +13,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AuditLogResponse {
 
-    private Long id;
+    private java.util.UUID id;
     private Instant timestamp;
-    private Long userId;
+    private java.util.UUID userId;
     private AuditAction action;
     private String resourceType;
-    private String resourceId;
+    private java.util.UUID resourceId;
     private String details;
 }

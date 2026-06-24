@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class ConsentGrantResponse {
 
     private Long id;
-    private Long userId;
+    private java.util.UUID userId;
     private ConsentDataType dataType;
     private ConsentPurpose purpose;
     private String recipient;

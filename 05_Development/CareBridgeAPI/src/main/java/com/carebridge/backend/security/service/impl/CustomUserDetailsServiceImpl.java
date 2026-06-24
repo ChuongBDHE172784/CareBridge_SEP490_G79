@@ -20,7 +20,7 @@ public class CustomUserDetailsServiceImpl implements CustomUserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) {
-        Long userId = Long.valueOf(username);
+        java.util.UUID userId = java.util.UUID.fromString(username);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return new org.springframework.security.core.userdetails.User(

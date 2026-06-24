@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class PartnerProfileMapper {
 
     // Oracle: ADR-003 — status MUST be PENDING_APPROVAL; ADR-002 — actorId from SecurityContext
-    public PartnerOrganization toEntity(CreatePartnerProfileRequest request, Long actorId) {
+    public PartnerOrganization toEntity(CreatePartnerProfileRequest request, java.util.UUID actorId) {
         return PartnerOrganization.builder()
                 .name(request.getName())
                 .type(request.getType())

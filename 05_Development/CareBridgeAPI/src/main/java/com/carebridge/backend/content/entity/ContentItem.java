@@ -57,7 +57,7 @@ public class ContentItem {
     private Integer versionNo;
 
     @Column(name = "author_user_id")
-    private Long authorUserId;
+    private UUID authorUserId;
 
     @Column(name = "source_label", length = 255)
     private String sourceLabel;

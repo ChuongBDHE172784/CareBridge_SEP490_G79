@@ -9,5 +9,5 @@ public interface PartnerProfileService {
      * Creates a partner organization profile with status PENDING_APPROVAL.
      * actorId is always taken from the SecurityContext — never from the request body.
      */
-    CreatePartnerProfileResponse createProfile(CreatePartnerProfileRequest request, Long actorId);
+    CreatePartnerProfileResponse createProfile(CreatePartnerProfileRequest request, java.util.UUID actorId);
 }

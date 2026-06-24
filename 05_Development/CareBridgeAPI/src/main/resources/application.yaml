@@ -42,3 +42,14 @@
       base-url: https://generativelanguage.googleapis.com/v1beta
       model: gemini-1.5-flash
 
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase
+  datasource:
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USERNAME}
+    password: ${SUPABASE_DB_PASSWORD}
+
+

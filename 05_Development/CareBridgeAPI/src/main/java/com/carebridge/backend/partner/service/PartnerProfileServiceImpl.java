@@ -23,7 +23,7 @@ public class PartnerProfileServiceImpl implements PartnerProfileService {
 
     @Override
     @Transactional
-    public CreatePartnerProfileResponse createProfile(CreatePartnerProfileRequest request, Long actorId) {
+    public CreatePartnerProfileResponse createProfile(CreatePartnerProfileRequest request, java.util.UUID actorId) {
         // Oracle: ADR-001, BR-PTR-001 — C4: check duplicate before save
         if (partnerOrganizationRepository.findByRepresentativeUserId(actorId).isPresent()) {
             throw PartnerException.profileAlreadyExists();

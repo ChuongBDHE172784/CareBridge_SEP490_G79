@@ -46,7 +46,7 @@ public class CommunityTopicController {
     public ResponseEntity<ApiResponse<CommunityTopicResponse>> createTopic(
             @Valid @RequestBody CreateCommunityTopicRequest request,
             Principal principal) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
         CommunityTopicResponse response = topicService.createTopic(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Topic created"));
     }

@@ -140,7 +140,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String refreshToken, Long userId) {
+    public void logout(String refreshToken, java.util.UUID userId) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             refreshTokenRepository.findByTokenAndRevokedFalse(refreshToken)
                     .ifPresent(token -> {
@@ -163,14 +163,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(Long userId) {
+    public UserProfileResponse getProfile(java.util.UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toProfileResponse(user);
     }
 
     @Override
-    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+    public UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setName(StringUtils.sanitizeBasicText(request.getName()));

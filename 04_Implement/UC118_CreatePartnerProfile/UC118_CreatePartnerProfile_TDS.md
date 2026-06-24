@@ -22,7 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                            |
 | ---------- | ------------------ | ------------------------------------------------------------ |
 | 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu — TDS cho UC-118 Create Partner Profile |
-| 2026-06-24 | AI Agent — Amelia  | Implementation hoàn thành — 82 tests PASS; điều chỉnh: `representativeUserId` là `Long` (khớp với `User.id`); Role dùng `PARTNER` (không phải `PARTNER_REP`); phone validation dùng `@VietnamesePhoneNumber` sẵn có; DB migration V4 drop-recreate `partner_organizations` |
+| 2026-06-24 | AI Agent — Amelia  | Implementation hoàn thành — 82 tests PASS; điều chỉnh: `representativeUserId` là `UUID` (khớp với `User.id`); Role dùng `PARTNER` (không phải `PARTNER_REP`); phone validation dùng `@VietnamesePhoneNumber` sẵn có; DB migration V4 drop-recreate `partner_organizations` |
 
 ---
 

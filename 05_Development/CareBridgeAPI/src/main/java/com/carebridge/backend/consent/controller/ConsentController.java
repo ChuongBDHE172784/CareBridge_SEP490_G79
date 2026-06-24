@@ -29,13 +29,13 @@ public class ConsentController {
     public ResponseEntity<ApiResponse<ConsentGrantResponse>> grant(
             Principal principal,
             @Valid @RequestBody GrantConsentRequest request) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        java.util.UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.grantConsent(userId, request), "Consent granted"));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ConsentGrantResponse>>> list(Principal principal) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        java.util.UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.listConsents(userId)));
     }
 
@@ -43,7 +43,7 @@ public class ConsentController {
     public ResponseEntity<ApiResponse<ConsentGrantResponse>> revoke(
             Principal principal,
             @PathVariable Long consentId) {
-        Long userId = SecurityUtils.requireCurrentUserId(principal);
+        java.util.UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(consentService.revokeConsent(userId, consentId), "Consent revoked"));
     }
 }

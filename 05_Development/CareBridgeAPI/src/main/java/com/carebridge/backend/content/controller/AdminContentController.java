@@ -28,7 +28,7 @@ public class AdminContentController {
     public ResponseEntity<ApiResponse<CreateContentResponse>> createContent(
             @Valid @RequestBody CreateContentRequest request,
             Principal principal) {
-        Long authorUserId = SecurityUtils.requireCurrentUserId(principal);
+        java.util.UUID authorUserId = SecurityUtils.requireCurrentUserId(principal);
         CreateContentResponse response = adminContentService.createContent(request, authorUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Content created successfully"));

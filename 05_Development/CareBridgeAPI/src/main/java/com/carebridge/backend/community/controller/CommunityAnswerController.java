@@ -29,7 +29,7 @@ public class CommunityAnswerController {
             @PathVariable UUID questionId,
             @Valid @RequestBody PostCommunityAnswerRequest request,
             Principal principal) {
-        Long authorId = SecurityUtils.requireCurrentUserId(principal);
+        UUID authorId = SecurityUtils.requireCurrentUserId(principal);
         CommunityAnswerResponse response = answerService.postAnswer(authorId, questionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Answer posted"));

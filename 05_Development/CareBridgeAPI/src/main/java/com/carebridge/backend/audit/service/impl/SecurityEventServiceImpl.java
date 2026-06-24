@@ -21,7 +21,7 @@ public class SecurityEventServiceImpl implements SecurityEventService {
     private final AuditService auditService;
 
     @Override
-    public void log(SecurityEventType eventType, Long userId, String ipAddress, Object details) {
+    public void log(SecurityEventType eventType, java.util.UUID userId, String ipAddress, Object details) {
         SecurityEvent event = SecurityEvent.builder()
                 .timestamp(Instant.now())
                 .eventType(eventType)

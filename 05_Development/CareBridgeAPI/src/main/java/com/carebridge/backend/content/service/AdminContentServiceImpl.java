@@ -24,7 +24,7 @@ public class AdminContentServiceImpl implements AdminContentService {
 
     @Override
     @Transactional
-    public CreateContentResponse createContent(CreateContentRequest request, Long authorUserId) {
+    public CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId) {
         if (request.getTopicId() != null
                 && !communityTopicRepository.existsById(request.getTopicId())) {
             throw ContentException.topicNotFound(request.getTopicId().toString());
