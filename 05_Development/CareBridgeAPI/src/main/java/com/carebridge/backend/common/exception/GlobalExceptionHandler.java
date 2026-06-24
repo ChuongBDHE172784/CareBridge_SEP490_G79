@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
+import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.partner.exception.PartnerException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -88,6 +89,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
             DuplicateTopicNameException ex, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "COM-009", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(QuestionNotAnswerableException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionNotAnswerable(
+            QuestionNotAnswerableException ex, HttpServletRequest request) {
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "COM-007", ex.getMessage(), request);
     }
 
     @ExceptionHandler(ContentException.class)
