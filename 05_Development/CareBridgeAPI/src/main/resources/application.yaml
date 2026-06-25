@@ -4,9 +4,9 @@
       name: backend
 
     datasource:
-      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/carebridge}
-      username: ${SPRING_DATASOURCE_USERNAME:postgres}
-      password: ${SPRING_DATASOURCE_PASSWORD:password}
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require}
+      username: ${SPRING_DATASOURCE_USERNAME:postgres.wqsunmakzdaxwyknegkq}
+      password: ${SPRING_DATASOURCE_PASSWORD:sdSjTLr8eWTgA7WI}
       driver-class-name: org.postgresql.Driver
 
     flyway:
@@ -35,4 +35,25 @@
       otp:
         expiration-seconds: 300
         max-attempts: 5
+
+    expert:
+      price:
+        min: ${EXPERT_PRICE_BAND_MIN:50000}
+        max: ${EXPERT_PRICE_BAND_MAX:500000}
+        default-duration-minutes: 30
+
+    payment:
+      mock:
+        enabled: ${PAYMENT_MOCK_ENABLED:true}
+      gateway:
+        vnpay:
+          url: ${VNPAY_URL:https://mock.vnpay.vn}
+          tmn-code: ${VNPAY_TMN_CODE:TEST_TMN}
+          hash-secret: ${VNPAY_HASH_SECRET:test-secret}
+
+    realtime:
+      provider: ${REALTIME_PROVIDER:mock}
+      zego:
+        app-id: ${ZEGO_APP_ID:0}
+        server-secret: ${ZEGO_SERVER_SECRET:test-secret}
 
