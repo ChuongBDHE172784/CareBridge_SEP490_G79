@@ -2,11 +2,12 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
 
 const NAV_LINKS = [
-  { to: '/moderator', label: 'Moderation Queue', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
-  { to: '/content', label: 'Content', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/admin/dashboard', label: 'Dashboard', roles: ['SYSTEM_ADMIN'] },
+  { to: '/moderator/dashboard', label: 'Moderation Queue', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
+  { to: '/content/dashboard', label: 'Content', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/expert/dashboard', label: 'Expert', roles: ['EXPERT'] },
+  { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER', 'SYSTEM_ADMIN'] },
   { to: '/admin/topics', label: 'Topics', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
-  { to: '/partner', label: 'Partner', roles: ['PARTNER', 'SYSTEM_ADMIN'] },
-  { to: '/admin', label: 'Dashboard', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 
 export default function AdminLayout() {

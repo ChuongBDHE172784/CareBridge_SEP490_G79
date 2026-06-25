@@ -18,7 +18,7 @@ architecture_style: Layered Architecture using Controller-Service-Repository pat
 This design is derived from the three supplied project documents:
 
 - Report 1 - Project Introduction: CareBridge is a maternal and early childhood healthcare support platform for pre-pregnancy, pregnancy, postpartum, baby care, family coordination, expert guidance, moderated community, AI-assisted triage, emergency support, and legal-safe healthcare boundaries.
-- Report 2 - Project Management Plan: the MVP is Hanoi-first, academic-scope, and uses Flutter, Java Spring Boot, PostgreSQL, MongoDB, Redis or lightweight caching, Firebase Cloud Messaging, TrackAsia, Firebase Storage, GitLab CI/CD, AWS, and Vercel.
+- Report 2 - Project Management Plan: the MVP is Hanoi-first, academic-scope, and uses Flutter, Java Spring Boot, PostgreSQL,Redis or lightweight caching, Firebase Cloud Messaging, TrackAsia, Firebase Storage, GitLab CI/CD, AWS, and Vercel.
 - Report 3 - Software Requirement Specification: the system includes mobile app, web portal, backend services, Gemini AI/RAG, ZegoCloud, Firebase chat/storage/notification, TrackAsia, smartwatch data, phone IMU, MediaPipe posture analysis, VNPay, consent, audit, and security event workflows.
 
 ## 2. Architecture Position
@@ -34,21 +34,20 @@ Recommended shape:
 - Flutter mobile app organized by feature and simple UI/API/state layers.
 - Web portal organized by feature and simple page/service/API layers.
 - PostgreSQL for structured relational data.
-- MongoDB for flexible content, logs, RAG chunks, and metadata-heavy records.
 - Firebase Storage or compatible object storage for uploaded files.
 - Integration services for Gemini, TrackAsia, Firebase, ZegoCloud, VNPay, wearable/smartwatch, and MediaPipe-related data.
 
 ## 3. Layered Architecture Rules
 
-| Layer | Backend package | Responsibility |
-| --- | --- | --- |
-| Presentation Layer | `controller`, `dto.request`, `dto.response` | Receive API requests, validate input shape, call services, return responses |
-| Business Layer | `service`, `policy` | Implement business workflows, healthcare safety rules, consent checks, RBAC decisions, audit triggers |
-| Data Access Layer | `repository` | Query and persist data through Spring Data JPA/Mongo repositories |
-| Persistence Model | `entity`, `document` | Represent database tables/collections |
-| Mapping Layer | `mapper` | Convert request/response/entity objects |
-| Integration Layer | `integration`, external service clients | Wrap Firebase, Gemini, TrackAsia, ZegoCloud, VNPay, storage, wearable APIs |
-| Shared Layer | `shared`, `common` | Exceptions, constants, response wrappers, validation helpers, utilities |
+| Layer              | Backend package                             | Responsibility                                                                                        |
+| ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Presentation Layer | `controller`, `dto.request`, `dto.response` | Receive API requests, validate input shape, call services, return responses                           |
+| Business Layer     | `service`, `policy`                         | Implement business workflows, healthcare safety rules, consent checks, RBAC decisions, audit triggers |
+| Data Access Layer  | `repository`                                | Query and persist data through Spring Data JPA repositories                                           |
+| Persistence Model  | `entity`, `document`                        | Represent database tables/collections                                                                 |
+| Mapping Layer      | `mapper`                                    | Convert request/response/entity objects                                                               |
+| Integration Layer  | `integration`, external service clients     | Wrap Firebase, Gemini, TrackAsia, ZegoCloud, VNPay, storage, wearable APIs                            |
+| Shared Layer       | `shared`, `common`                          | Exceptions, constants, response wrappers, validation helpers, utilities                               |
 
 Dependency direction:
 
@@ -478,21 +477,21 @@ ConsultationBookingService
 
 ## 8. Backend Domain Module Map
 
-| SRS domain | Backend package | Key responsibilities |
-| --- | --- | --- |
-| Authentication, profile, role | `security`, `identity` | Login, OTP, JWT/session, profile, role, account lifecycle |
-| Privacy and consent | `consent`, `audit` | Permission scope, sharing grant, expiry, revoke, sharing history |
-| Mother and baby journey | `carejourney`, `healthrecord`, `reminder` | Mother journey, baby profile, health metrics, health records, reminders |
-| Community Q&A | `community` | Posts, answers, anonymous display, reports, moderation queue |
-| Expert ecosystem | `expert`, `consultation` | Expert profile, verification, availability, expert answer, consultation |
-| AI triage and RAG | `triage`, `content`, `integration.gemini` | Intake, RAG answer, red-flag rules, safe recommendation, AI logs |
-| Emergency map and nearby care | `emergency`, `integration.trackasia` | Emergency flow, nearby care search, route, location snapshot |
-| Family sync | `family`, `consent`, `reminder` | Care group, invitation, shared permissions, shared tasks |
-| Safety monitoring | `safety`, `emergency`, `integration.firebase` | Safety settings, safety events, alerts, false-positive feedback |
-| Pregnancy exercise and posture | `exercise` | Exercise library, safety checks, sessions, posture config/feedback |
-| Partner and sponsored content | `partner`, `content` | Partner profile, service listing, sponsored content governance |
-| Payment, refund, commission | `payment`, `consultation`, `integration.vnpay` | Transactions, refunds, settlement, commission |
-| Audit and security incident | `audit`, `security` | Audit log, security event, incident investigation, access review |
+| SRS domain                     | Backend package                                | Key responsibilities                                                    |
+| ------------------------------ | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Authentication, profile, role  | `security`, `identity`                         | Login, OTP, JWT/session, profile, role, account lifecycle               |
+| Privacy and consent            | `consent`, `audit`                             | Permission scope, sharing grant, expiry, revoke, sharing history        |
+| Mother and baby journey        | `carejourney`, `healthrecord`, `reminder`      | Mother journey, baby profile, health metrics, health records, reminders |
+| Community Q&A                  | `community`                                    | Posts, answers, anonymous display, reports, moderation queue            |
+| Expert ecosystem               | `expert`, `consultation`                       | Expert profile, verification, availability, expert answer, consultation |
+| AI triage and RAG              | `triage`, `content`, `integration.gemini`      | Intake, RAG answer, red-flag rules, safe recommendation, AI logs        |
+| Emergency map and nearby care  | `emergency`, `integration.trackasia`           | Emergency flow, nearby care search, route, location snapshot            |
+| Family sync                    | `family`, `consent`, `reminder`                | Care group, invitation, shared permissions, shared tasks                |
+| Safety monitoring              | `safety`, `emergency`, `integration.firebase`  | Safety settings, safety events, alerts, false-positive feedback         |
+| Pregnancy exercise and posture | `exercise`                                     | Exercise library, safety checks, sessions, posture config/feedback      |
+| Partner and sponsored content  | `partner`, `content`                           | Partner profile, service listing, sponsored content governance          |
+| Payment, refund, commission    | `payment`, `consultation`, `integration.vnpay` | Transactions, refunds, settlement, commission                           |
+| Audit and security incident    | `audit`, `security`                            | Audit log, security event, incident investigation, access review        |
 
 ## 9. Web Portal Structure
 
@@ -753,10 +752,6 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 │   ├── views/
 │   ├── functions/
 │   └── indexes/
-├── mongodb/
-│   ├── collections/
-│   ├── indexes/
-│   └── seeds/
 ├── sample-data/
 └── docs/
 
@@ -783,8 +778,7 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 
 Recommended data split:
 
-- PostgreSQL: identity, RBAC, consent, care journey, baby profile, health metadata, family group, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes.
-- MongoDB: community post bodies, content versions, FAQ/checklist rich content, AI prompt/response metadata, flexible safety logs, RAG document chunks, device raw metadata.
+- PostgreSQL: identity, RBAC, consent, care journey, baby profile, health metadata, family group, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes, community post bodies, content versions, FAQ/checklist rich content, AI prompt/response metadata, flexible safety logs, RAG document chunks, device raw metadata.
 - Object storage: health record files, credential documents, content media, exercise media.
 
 ## 12. Cross-Cutting Policies
@@ -876,15 +870,15 @@ Minimum gates:
 
 ## 15. Decisions
 
-| Decision | Recommendation | Reason |
-| --- | --- | --- |
-| Repository shape | Preserve SDLC folders and expand `04_SourceCode` | Matches current repo and academic deliverable structure. |
-| Backend architecture | Layered Architecture using Controller-Service-Repository pattern | Familiar, simple, and suitable for Spring Boot MVP delivery. |
-| Backend package style | Package by domain, layer inside each domain | Keeps related code together while preserving layered responsibilities. |
-| Backend module structure | `controller/service/repository/entity/dto/mapper/policy` | Directly matches common Spring Boot practice. |
-| Frontend architecture | Feature-based pages/components/services/models | Practical for admin/expert/partner portal development. |
-| Mobile architecture | Feature-based screens/widgets/services/repositories/models | Practical for Flutter team implementation. |
-| Data architecture | PostgreSQL plus MongoDB plus object storage | Matches structured workflows, flexible content/logs, and file uploads. |
-| Integration strategy | Dedicated integration services with fallback behavior | Reduces schedule risk and supports demo mode. |
-| Safety strategy | Centralized consent, audit, RBAC, and triage policies | Required by healthcare-safe positioning and sensitive data handling. |
+| Decision                 | Recommendation                                                   | Reason                                                                 |
+| ------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Repository shape         | Preserve SDLC folders and expand `04_SourceCode`                 | Matches current repo and academic deliverable structure.               |
+| Backend architecture     | Layered Architecture using Controller-Service-Repository pattern | Familiar, simple, and suitable for Spring Boot MVP delivery.           |
+| Backend package style    | Package by domain, layer inside each domain                      | Keeps related code together while preserving layered responsibilities. |
+| Backend module structure | `controller/service/repository/entity/dto/mapper/policy`         | Directly matches common Spring Boot practice.                          |
+| Frontend architecture    | Feature-based pages/components/services/models                   | Practical for admin/expert/partner portal development.                 |
+| Mobile architecture      | Feature-based screens/widgets/services/repositories/models       | Practical for Flutter team implementation.                             |
+| Data architecture        | PostgreSQL plus object storage                                   | Matches structured workflows, flexible content/logs, and file uploads. |
+| Integration strategy     | Dedicated integration services with fallback behavior            | Reduces schedule risk and supports demo mode.                          |
+| Safety strategy          | Centralized consent, audit, RBAC, and triage policies            | Required by healthcare-safe positioning and sensitive data handling.   |
 

@@ -17,5 +17,5 @@ public class RagAnswerRequest {
     private String query;
     private UserStage userStage;
     private UUID topicId;
-    private int maxContextChunks;
+    private Integer maxContextChunks;
 }

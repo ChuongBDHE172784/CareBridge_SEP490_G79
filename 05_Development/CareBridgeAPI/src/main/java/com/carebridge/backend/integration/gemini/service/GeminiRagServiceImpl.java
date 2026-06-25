@@ -47,7 +47,8 @@ public class GeminiRagServiceImpl implements RagService {
             return buildRedFlagResponse(safetyResult.getEmergencyGuidance());
         }
 
-        int maxChunks = request.getMaxContextChunks() > 0 ? request.getMaxContextChunks() : 5;
+        int maxChunks = (request.getMaxContextChunks() != null && request.getMaxContextChunks() > 0)
+                ? request.getMaxContextChunks() : 5;
 
         List<ContentItem> contextItems = contextRetriever.retrieveContext(
                 request.getQuery(), request.getTopicId(), maxChunks);

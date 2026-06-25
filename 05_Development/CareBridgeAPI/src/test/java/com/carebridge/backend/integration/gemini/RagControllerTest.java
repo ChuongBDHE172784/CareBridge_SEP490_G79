@@ -150,6 +150,31 @@ class RagControllerTest {
                 .andExpect(jsonPath("$.data.disclaimer").isNotEmpty());
     }
 
+    // RAG-TC-INT-002: Request without maxContextChunks → 200 (field is optional, server defaults)
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
+    void generateAnswer_withoutMaxContextChunks_shouldReturn200() throws Exception {
+        when(ragService.generateAnswer(any())).thenReturn(makeNormalResponse());
+
+        mockMvc.perform(post("/api/v1/rag/answer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\": \"Phù chân khi mang thai 28 tuần\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    // RAG-TC-INT-003: Request with maxContextChunks: 10 (boundary) → 200
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
+    void generateAnswer_withMaxContextChunksBoundary10_shouldReturn200() throws Exception {
+        when(ragService.generateAnswer(any())).thenReturn(makeNormalResponse());
+
+        mockMvc.perform(post("/api/v1/rag/answer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\": \"Phù chân khi mang thai 28 tuần\", \"maxContextChunks\": 10}"))
+                .andExpect(status().isOk());
+    }
+
     // RAG-TC-AUTH-001: PARTNER role → 403 (health guidance is for personal-use roles only)
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")

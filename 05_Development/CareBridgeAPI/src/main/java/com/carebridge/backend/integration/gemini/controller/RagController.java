@@ -32,7 +32,7 @@ public class RagController {
         if (query == null || query.isBlank() || query.length() < 3 || query.length() > 500) {
             throw RagException.invalidQuery();
         }
-        if (request.getMaxContextChunks() > 10) {
+        if (request.getMaxContextChunks() != null && request.getMaxContextChunks() > 10) {
             throw RagException.contextChunksExceeded();
         }
 

@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 null,
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         return OtpSendResponse.builder()
                 .message("OTP sent")
@@ -91,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 user.getId(),
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         return OtpSendResponse.builder()
                 .message("OTP sent")
@@ -110,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_VERIFIED,
                 user.getId(),
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
         return AuthResponse.builder()
@@ -149,7 +149,7 @@ public class AuthServiceImpl implements AuthService {
                                 AuditAction.LOGOUT,
                                 token.getUser().getId(),
                                 "RefreshToken",
-                                token.getId().toString(),
+                                null,
                                 null);
                     });
             return;
