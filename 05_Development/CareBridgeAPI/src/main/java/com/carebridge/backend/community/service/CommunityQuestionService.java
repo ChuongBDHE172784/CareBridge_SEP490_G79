@@ -9,5 +9,5 @@ public interface CommunityQuestionService {
      * Creates a new community question with status=PENDING.
      * @throws com.carebridge.backend.community.exception.CommunityTopicNotFoundException (COM-003) when topicId is invalid or hidden
      */
-    CommunityQuestionResponse createQuestion(Long authorId, CreateCommunityQuestionRequest request);
+    CommunityQuestionResponse createQuestion(java.util.UUID authorId, CreateCommunityQuestionRequest request);
 }

@@ -1,7 +1,6 @@
-import AccountProfilePage from './features/auth/pages/AccountProfilePage'
+import { RouterProvider } from 'react-router-dom';
+import { router } from './app/router';
 
-function App() {
-  return <AccountProfilePage />
+export default function App() {
+  return <RouterProvider router={router} />;
 }
-
-export default App

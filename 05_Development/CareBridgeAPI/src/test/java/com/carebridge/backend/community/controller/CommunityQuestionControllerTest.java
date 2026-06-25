@@ -24,6 +24,7 @@ import com.carebridge.backend.community.service.CommunityQuestionSearchService;
 import com.carebridge.backend.community.service.CommunityQuestionService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -67,6 +68,9 @@ class CommunityQuestionControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String BASE_URL = "/api/v1/community/questions";
     private static final UUID TOPIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -136,9 +140,9 @@ class CommunityQuestionControllerTest {
 
     // Happy path: ROLE_MOTHER → 201 with status=PENDING
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_motherRole_returns201() throws Exception {
-        when(questionService.createQuestion(eq(2L), any())).thenReturn(mockResponse());
+        when(questionService.createQuestion(eq(UUID.fromString("00000000-0000-0000-0000-000000000002")), any())).thenReturn(mockResponse());
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -151,7 +155,7 @@ class CommunityQuestionControllerTest {
 
     // COM-TC-004: title too short (< 5 chars) → 400 (BR-COM-003)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_titleTooShort_returns400() throws Exception {
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setTitle("Hi")));
 
@@ -165,7 +169,7 @@ class CommunityQuestionControllerTest {
 
     // COM-TC-005: body too long (> 5000 chars) → 400 (BR-COM-004)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_bodyTooLong_returns400() throws Exception {
         String longBody = "A".repeat(5001);
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setBody(longBody)));
@@ -180,7 +184,7 @@ class CommunityQuestionControllerTest {
 
     // COM-TC-004 sub: title missing → 400
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_titleMissing_returns400() throws Exception {
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setTitle(null)));
 
@@ -192,7 +196,7 @@ class CommunityQuestionControllerTest {
 
     // topicId missing → 400
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_topicIdMissing_returns400() throws Exception {
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setTopicId(null)));
 
@@ -205,7 +209,7 @@ class CommunityQuestionControllerTest {
     // COM-TC-006: pregnancyWeek boundary values — valid (1, 42) → 201
     @ParameterizedTest
     @ValueSource(ints = {1, 42})
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_validPregnancyWeekBoundary_returns201(int week) throws Exception {
         when(questionService.createQuestion(any(), any())).thenReturn(mockResponse());
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setPregnancyWeek(week)));
@@ -219,7 +223,7 @@ class CommunityQuestionControllerTest {
     // COM-TC-006: pregnancyWeek boundary — invalid (0, 43) → 400
     @ParameterizedTest
     @ValueSource(ints = {0, 43})
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_invalidPregnancyWeekBoundary_returns400(int week) throws Exception {
         String body = objectMapper.writeValueAsString(makeRequest(req -> req.setPregnancyWeek(week)));
 
@@ -231,7 +235,7 @@ class CommunityQuestionControllerTest {
 
     // Hidden topic → 404 COM-003
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_hiddenTopic_returns404() throws Exception {
         when(questionService.createQuestion(any(), any()))
                 .thenThrow(new CommunityTopicNotFoundException(TOPIC_ID.toString()));
@@ -245,7 +249,7 @@ class CommunityQuestionControllerTest {
 
     // COM-TC-SEC-003: XSS in title — stored safely (no executable script in response)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createQuestion_xssInTitle_storedSafely() throws Exception {
         String xssTitle = "<script>alert('xss')</script>Valid question title";
         CommunityQuestionResponse safeResponse = CommunityQuestionResponse.builder()

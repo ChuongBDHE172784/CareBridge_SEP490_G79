@@ -13,13 +13,13 @@ public final class SecurityUtils {
     private SecurityUtils() {
     }
 
-    public static Long requireCurrentUserId(Principal principal) {
+    public static java.util.UUID requireCurrentUserId(Principal principal) {
         if (principal == null || principal.getName() == null) {
             throw new AuthenticationException("Authenticated user is required");
         }
         try {
-            return Long.valueOf(principal.getName());
-        } catch (NumberFormatException ex) {
+            return java.util.UUID.fromString(principal.getName());
+        } catch (IllegalArgumentException ex) {
             throw new AuthenticationException("Invalid authenticated user");
         }
     }

@@ -48,7 +48,7 @@ public class CommunityTopic {
     private int sortOrder = 0;
 
     @Column(name = "created_by")
-    private Long createdBy;
+    private UUID createdBy;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

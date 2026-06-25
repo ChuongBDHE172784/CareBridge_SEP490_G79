@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConsentCheckPolicy {
 
-    public void ensureGranted(boolean granted, Long userId, ConsentDataType dataType, ConsentPurpose purpose) {
+    public void ensureGranted(boolean granted, java.util.UUID userId, ConsentDataType dataType, ConsentPurpose purpose) {
         if (!granted) {
             throw new ConsentException("Consent denied for user=%s, dataType=%s, purpose=%s"
                     .formatted(userId, dataType, purpose));

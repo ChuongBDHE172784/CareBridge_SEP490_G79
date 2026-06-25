@@ -8,11 +8,11 @@ import java.util.List;
 
 public interface ConsentService {
 
-    ConsentGrantResponse grantConsent(Long userId, GrantConsentRequest request);
+    ConsentGrantResponse grantConsent(java.util.UUID userId, GrantConsentRequest request);
 
-    ConsentGrantResponse revokeConsent(Long userId, Long consentId);
+    ConsentGrantResponse revokeConsent(java.util.UUID userId, Long consentId);
 
-    List<ConsentGrantResponse> listConsents(Long userId);
+    List<ConsentGrantResponse> listConsents(java.util.UUID userId);
 
-    void ensureConsent(Long userId, ConsentDataType dataType, ConsentPurpose purpose);
+    void ensureConsent(java.util.UUID userId, ConsentDataType dataType, ConsentPurpose purpose);
 }

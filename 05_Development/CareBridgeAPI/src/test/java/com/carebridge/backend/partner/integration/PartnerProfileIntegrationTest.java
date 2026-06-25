@@ -20,6 +20,7 @@ import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -56,6 +57,9 @@ class PartnerProfileIntegrationTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private CreatePartnerProfileRequest validRequest;
 
     @BeforeEach
@@ -74,7 +78,7 @@ class PartnerProfileIntegrationTest {
 
     // ── PTR-TC-INT-001: Full flow POST tạo record đúng ─────────────────────
     @Test
-    @WithMockUser(username = "123", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000123", roles = "PARTNER")
     void createProfile_integration_shouldCreateAndReturnProfile() throws Exception {
         UUID generatedId = UUID.randomUUID();
         CreatePartnerProfileResponse response = CreatePartnerProfileResponse.builder()
@@ -84,7 +88,7 @@ class PartnerProfileIntegrationTest {
                 .status(OrganizationStatus.PENDING_APPROVAL)
                 .build();
 
-        when(partnerProfileService.createProfile(any(), eq(123L))).thenReturn(response);
+        when(partnerProfileService.createProfile(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000123")))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/partner/profile").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -99,14 +103,14 @@ class PartnerProfileIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("PENDING_APPROVAL"))
                 .andExpect(jsonPath("$.data.name").value("Phòng khám Test"));
 
-        verify(partnerProfileService).createProfile(any(), eq(123L));
+        verify(partnerProfileService).createProfile(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000123")));
     }
 
     // ── PTR-TC-INT-002: Duplicate POST bị reject ────────────────────────────
     @Test
-    @WithMockUser(username = "123", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000123", roles = "PARTNER")
     void createProfile_integration_shouldRejectDuplicateProfile() throws Exception {
-        when(partnerProfileService.createProfile(any(), eq(123L)))
+        when(partnerProfileService.createProfile(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000123"))))
                 .thenThrow(PartnerException.profileAlreadyExists());
 
         mockMvc.perform(post("/api/v1/partner/profile").with(csrf())
@@ -118,9 +122,9 @@ class PartnerProfileIntegrationTest {
 
     // ── Concurrent duplicate POST check (DataIntegrityViolation) ───────────
     @Test
-    @WithMockUser(username = "123", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000123", roles = "PARTNER")
     void createProfile_integration_shouldHandleDataIntegrityViolation() throws Exception {
-        when(partnerProfileService.createProfile(any(), eq(123L)))
+        when(partnerProfileService.createProfile(any(), eq(UUID.fromString("00000000-0000-0000-0000-000000000123"))))
                 .thenThrow(PartnerException.profileAlreadyExists());
 
         mockMvc.perform(post("/api/v1/partner/profile").with(csrf())

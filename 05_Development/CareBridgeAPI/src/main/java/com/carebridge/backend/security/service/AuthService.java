@@ -19,9 +19,9 @@ public interface AuthService {
 
     AuthResponse refresh(RefreshTokenRequest request);
 
-    void logout(String refreshToken, Long userId);
+    void logout(String refreshToken, java.util.UUID userId);
 
-    UserProfileResponse getProfile(Long userId);
+    UserProfileResponse getProfile(java.util.UUID userId);
 
-    UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request);
+    UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request);
 }

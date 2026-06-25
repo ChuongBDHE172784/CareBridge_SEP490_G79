@@ -16,6 +16,7 @@ import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class PartnerProfileControllerSecurityTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private static final String BASE_URL = "/api/v1/partner/profile";
 
     private String validBody() {
@@ -75,7 +79,7 @@ class PartnerProfileControllerSecurityTest {
     // PTR-TC-SEC-001 / PTR-TC-007: Non-PARTNER roles bị 403 (TC-COND-007)
     @ParameterizedTest
     @ValueSource(strings = {"MOTHER", "EXPERT", "MODERATOR", "CONTENT_ADMIN"})
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void createProfile_nonPartnerRoles_shouldReturn403(String role) throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -86,7 +90,7 @@ class PartnerProfileControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void createProfile_motherRole_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +101,7 @@ class PartnerProfileControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "1", roles = "EXPERT")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "EXPERT")
     void createProfile_expertRole_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -106,7 +110,7 @@ class PartnerProfileControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void createProfile_moderatorRole_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +130,7 @@ class PartnerProfileControllerSecurityTest {
     // PTR-TC-SEC-002: representativeUserId injection từ body bị ignore (TC-COND-003)
     // Extra JSON field "representativeUserId" in body must be ignored — only actorId from JWT is used
     @Test
-    @WithMockUser(username = "3", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "PARTNER")
     void createProfile_representativeUserIdInjectedInBody_isIgnored() throws Exception {
         when(partnerProfileService.createProfile(any(), any())).thenReturn(makeResponse());
 
@@ -152,7 +156,7 @@ class PartnerProfileControllerSecurityTest {
 
     // PTR-TC-SEC-003: XSS trong name field — phải được stored as plain text hoặc rejected (TC-COND-012)
     @Test
-    @WithMockUser(username = "2", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
     void createProfile_xssInNameField_isHandledSafely() throws Exception {
         when(partnerProfileService.createProfile(any(), any())).thenReturn(makeResponse());
 

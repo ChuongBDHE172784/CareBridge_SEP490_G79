@@ -71,9 +71,8 @@ public class PartnerOrganization {
     @Column(name = "status", nullable = false, length = 30)
     private OrganizationStatus status;
 
-    // Oracle: ADR-002 — representativeUserId MUST come from SecurityContext (matches User.id = Long)
     @Column(name = "representative_user_id", nullable = false)
-    private Long representativeUserId;
+    private UUID representativeUserId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

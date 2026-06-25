@@ -166,7 +166,7 @@ private CommunityQuestion makeApprovedQuestion(String title) {
 **Severity:** `HIGH`
 **Feature Under Test:** `CommunityQuestionSearchServiceImpl.searchQuestions()`
 **Test File:** `src/test/java/com/carebridge/backend/community/service/CommunityQuestionSearchServiceImplTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `BR-COM-011, ADR-COM-007`
 
@@ -194,7 +194,7 @@ void searchQuestions_withKeyword_returnsMatchingApprovedOnly() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -202,7 +202,7 @@ void searchQuestions_withKeyword_returnsMatchingApprovedOnly() {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** Return type when no results
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-COM-007`
 
@@ -221,7 +221,7 @@ void searchQuestions_noResults_returns200WithEmptyContent() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -261,7 +261,7 @@ void searchQuestions_pendingQuestionsExcluded() {
 ### COM162-TC-004 — topicId filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 
 ```java
@@ -284,14 +284,14 @@ void searchQuestions_topicIdFilter_returnsOnlyMatchingTopic() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### COM162-TC-005 — stage filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 
 ```java
@@ -312,14 +312,14 @@ void searchQuestions_stageFilter_returnsOnlyMatchingStage() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### COM162-TC-006 — hasExpertAnswer=true filter
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 
 ```java
@@ -341,7 +341,7 @@ void searchQuestions_hasExpertAnswerTrue_returnsQuestionsWithExpertLabeled() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -349,7 +349,7 @@ void searchQuestions_hasExpertAnswerTrue_returnsQuestionsWithExpertLabeled() {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `Max size enforcement`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-COM-008`
 
@@ -364,14 +364,14 @@ void searchQuestions_sizeOver100_returns400() throws Exception {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### COM162-TC-008 — Pagination: page=1 trả về trang thứ hai
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 
 ```java
@@ -394,7 +394,7 @@ void searchQuestions_page1_returnsSecondPage() {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -407,7 +407,7 @@ void searchQuestions_page1_returnsSecondPage() {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021`
 **CWE:** `CWE-306`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 
 ```java
@@ -419,7 +419,7 @@ void searchQuestions_noJwt_returns401() throws Exception {
 }
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

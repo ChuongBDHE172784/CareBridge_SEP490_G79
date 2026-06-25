@@ -24,7 +24,6 @@ public class CommunityFeedController {
     private final CommunityFeedService feedService;
 
     @GetMapping("/feed")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PaginatedResponse<CommunityFeedItemResponse>> getFeed(
             @RequestParam(required = false) UUID topicId,
             @RequestParam(defaultValue = "0") int page,

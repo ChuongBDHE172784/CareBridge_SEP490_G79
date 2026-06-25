@@ -54,7 +54,7 @@ class CommunityAnswerServiceImplTest {
     private CommunityAnswerServiceImpl service;
 
     private static final UUID QUESTION_ID = UUID.fromString("00000000-0000-0000-0001-000000000001");
-    private static final Long AUTHOR_ID = 42L;
+    private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000042");
 
     private PostCommunityAnswerRequest makeRequest() {
         PostCommunityAnswerRequest req = new PostCommunityAnswerRequest();

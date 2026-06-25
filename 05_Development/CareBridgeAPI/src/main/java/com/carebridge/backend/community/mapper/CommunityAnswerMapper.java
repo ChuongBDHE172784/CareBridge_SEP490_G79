@@ -11,7 +11,7 @@ import java.util.UUID;
 @Component
 public class CommunityAnswerMapper {
 
-    public CommunityAnswer toEntity(PostCommunityAnswerRequest request, Long authorId, UUID questionId) {
+    public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorId, UUID questionId) {
         return CommunityAnswer.builder()
                 .questionId(questionId)
                 .authorId(authorId)

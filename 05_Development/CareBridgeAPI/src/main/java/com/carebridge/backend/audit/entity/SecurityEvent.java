@@ -36,7 +36,7 @@ public class SecurityEvent {
     private SecurityEventType eventType;
 
     @Column(name = "user_id")
-    private Long userId;
+    private java.util.UUID userId;
 
     @Column(name = "ip_address", length = 80)
     private String ipAddress;

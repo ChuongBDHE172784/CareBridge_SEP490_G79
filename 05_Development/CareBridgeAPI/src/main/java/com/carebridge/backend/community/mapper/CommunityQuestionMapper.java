@@ -7,18 +7,20 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class CommunityQuestionMapper {
 
-    public CommunityQuestion toEntity(CreateCommunityQuestionRequest request, Long authorId) {
+    public CommunityQuestion toEntity(CreateCommunityQuestionRequest request, UUID authorId) {
         return CommunityQuestion.builder()
                 .topicId(request.getTopicId())
                 .authorId(authorId)
                 .title(request.getTitle())
                 .body(request.getBody())
                 .stage(request.getStage())
-                .pregnancyWeek(request.getPregnancyWeek())
-                .babyAgeMonths(request.getBabyAgeMonths())
+                .pregnancyWeek(request.getPregnancyWeek() != null ? request.getPregnancyWeek().shortValue() : null)
+                .babyAgeMonths(request.getBabyAgeMonths() != null ? request.getBabyAgeMonths().shortValue() : null)
                 .urgency(request.getUrgency())
                 .anonymous(Boolean.TRUE.equals(request.getIsAnonymous()))
                 .status(QuestionStatus.PENDING)
@@ -27,7 +29,7 @@ public class CommunityQuestionMapper {
 
     public CommunityQuestionResponse toResponse(CommunityQuestion entity) {
         // ADR-COM-002: mask authorId when isAnonymous=true
-        Long exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
+        UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
 
         return CommunityQuestionResponse.builder()
                 .id(entity.getId())

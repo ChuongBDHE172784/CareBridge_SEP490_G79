@@ -14,6 +14,7 @@ import com.carebridge.backend.community.dto.response.CommunityFeedItemResponse;
 import com.carebridge.backend.community.service.CommunityFeedService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -48,6 +49,9 @@ class CommunityFeedControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String FEED_URL = "/api/v1/community/feed";
 

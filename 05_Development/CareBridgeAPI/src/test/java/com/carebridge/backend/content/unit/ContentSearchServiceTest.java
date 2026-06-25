@@ -61,7 +61,7 @@ class ContentSearchServiceTest {
                 .topicId(null)
                 .status(ContentStatus.APPROVED)
                 .versionNo(1)
-                .authorUserId(1L)
+                .authorUserId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .publishedAt(Instant.now().minusSeconds(86400))
                 .createdAt(Instant.now().minusSeconds(172800))
                 .updatedAt(Instant.now().minusSeconds(86400))

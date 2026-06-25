@@ -16,6 +16,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_logs")
@@ -27,33 +29,36 @@ import lombok.Setter;
 public class AuditLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "audit_log_id", updatable = false, nullable = false)
+    private java.util.UUID auditLogId;
 
-    @Column(nullable = false)
-    private Instant timestamp;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
-    @Column(name = "user_id")
-    private Long userId;
+    @Column(name = "actor_user_id")
+    private java.util.UUID actorUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 80)
     private AuditAction action;
 
-    @Column(name = "resource_type", length = 100)
-    private String resourceType;
+    @Column(name = "entity_type", length = 100)
+    private String entityType;
 
-    @Column(name = "resource_id", length = 120)
-    private String resourceId;
+    @Column(name = "entity_id")
+    private java.util.UUID entityId;
 
-    @Column(columnDefinition = "TEXT")
-    private String details;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "new_value_json", columnDefinition = "jsonb")
+    private String newValueJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "old_value_json", columnDefinition = "jsonb")
+    private String oldValueJson;
 
     @Column(name = "ip_address", length = 80)
     private String ipAddress;
-
-    @Column(name = "user_agent", length = 500)
-    private String userAgent;
 
     @PreUpdate
     @PreRemove

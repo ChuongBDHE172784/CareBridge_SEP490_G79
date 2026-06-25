@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class CommunityTopicMapper {
 
-    public CommunityTopic toEntity(CreateCommunityTopicRequest request, Long createdBy) {
+    public CommunityTopic toEntity(CreateCommunityTopicRequest request, java.util.UUID createdBy) {
         return CommunityTopic.builder()
                 .name(request.getName().trim())
                 .description(request.getDescription())

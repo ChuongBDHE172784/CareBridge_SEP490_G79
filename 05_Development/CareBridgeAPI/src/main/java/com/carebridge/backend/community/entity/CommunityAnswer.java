@@ -25,9 +25,9 @@ public class CommunityAnswer {
     @Column(name = "question_id", nullable = false)
     private UUID questionId;
 
-    // ADR-COM-004: authorId from JWT — matches users.id (BIGINT)
+    // ADR-COM-004: authorId from JWT — matches users.id (UUID)
     @Column(name = "author_id", nullable = false)
-    private Long authorId;
+    private UUID authorId;
 
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;

@@ -17,6 +17,7 @@ import com.carebridge.backend.community.exception.QuestionNotAnswerableException
 import com.carebridge.backend.community.service.CommunityAnswerService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -53,6 +54,9 @@ class CommunityAnswerControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private static final UUID QUESTION_ID = UUID.fromString("00000000-0000-0000-0001-000000000001");
     private static final String BASE_URL = "/api/v1/community/questions/{questionId}/answers";
 
@@ -73,7 +77,7 @@ class CommunityAnswerControllerTest {
         return CommunityAnswerResponse.builder()
                 .id(UUID.randomUUID())
                 .questionId(QUESTION_ID)
-                .authorId(2L)
+                .authorId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .body("This is a valid personal experience answer with enough characters")
                 .personalExperience(true)
                 .expertLabeled(false)
@@ -93,9 +97,9 @@ class CommunityAnswerControllerTest {
 
     // COM56-TC happy: authenticated user → 201, status=PENDING, isExpertLabeled=false (ADR-COM-004)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_authenticatedUser_returns201() throws Exception {
-        when(answerService.postAnswer(eq(2L), eq(QUESTION_ID), any())).thenReturn(mockResponse());
+        when(answerService.postAnswer(eq(UUID.fromString("00000000-0000-0000-0000-000000000002")), eq(QUESTION_ID), any())).thenReturn(mockResponse());
 
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -108,9 +112,9 @@ class CommunityAnswerControllerTest {
 
     // ADR-COM-004: EXPERT role also allowed
     @Test
-    @WithMockUser(username = "3", roles = "EXPERT")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "EXPERT")
     void postAnswer_expertRole_returns201() throws Exception {
-        when(answerService.postAnswer(eq(3L), eq(QUESTION_ID), any())).thenReturn(mockResponse());
+        when(answerService.postAnswer(eq(UUID.fromString("00000000-0000-0000-0000-000000000003")), eq(QUESTION_ID), any())).thenReturn(mockResponse());
 
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -120,7 +124,7 @@ class CommunityAnswerControllerTest {
 
     // COM56-TC-003: body too short → 400 (BR-COM-007)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_bodyTooShort_returns400() throws Exception {
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +136,7 @@ class CommunityAnswerControllerTest {
 
     // COM56-TC-004: body too long → 400 (BR-COM-007)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_bodyTooLong_returns400() throws Exception {
         String longBody = "A".repeat(3001);
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
@@ -145,7 +149,7 @@ class CommunityAnswerControllerTest {
 
     // isPersonalExperience missing → 400
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_isPersonalExperienceMissing_returns400() throws Exception {
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -157,7 +161,7 @@ class CommunityAnswerControllerTest {
 
     // COM56-TC-002: question not APPROVED → 422 COM-007 (ADR-COM-006)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_questionNotApproved_returns422() throws Exception {
         when(answerService.postAnswer(any(), any(), any()))
                 .thenThrow(new QuestionNotAnswerableException(QUESTION_ID.toString()));
@@ -171,13 +175,13 @@ class CommunityAnswerControllerTest {
 
     // COM56-TC-SEC-001: isExpertLabeled=true in JSON body — must be ignored by DTO (ADR-COM-005)
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void postAnswer_expertLabeledInjectionInJson_fieldIgnoredByDto() throws Exception {
         // Raw JSON with injected isExpertLabeled=true — PostCommunityAnswerRequest has no such field
         String rawJson = "{\"body\":\"Valid answer body with enough characters here\","
                 + "\"isPersonalExperience\":true,\"isExpertLabeled\":true}";
 
-        when(answerService.postAnswer(eq(2L), eq(QUESTION_ID), any())).thenReturn(mockResponse());
+        when(answerService.postAnswer(eq(UUID.fromString("00000000-0000-0000-0000-000000000002")), eq(QUESTION_ID), any())).thenReturn(mockResponse());
 
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)

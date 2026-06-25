@@ -47,7 +47,7 @@ class CommunityTopicServiceImplTest {
     @InjectMocks
     private CommunityTopicServiceImpl topicService;
 
-    private static final Long MODERATOR_ID = 1L;
+    private static final UUID MODERATOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private CreateCommunityTopicRequest makeCreateRequest(String name) {
         return CreateCommunityTopicRequest.builder()

@@ -10,7 +10,7 @@ public interface CommunityTopicService {
 
     List<CommunityTopicResponse> getTopics(boolean includeHidden);
 
-    CommunityTopicResponse createTopic(Long createdBy, CreateCommunityTopicRequest request);
+    CommunityTopicResponse createTopic(java.util.UUID createdBy, CreateCommunityTopicRequest request);
 
     CommunityTopicResponse updateTopic(UUID id, UpdateCommunityTopicRequest request);
 }

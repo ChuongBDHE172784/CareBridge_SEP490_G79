@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 null,
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         return OtpSendResponse.builder()
                 .message("OTP sent")
@@ -91,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 user.getId(),
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         return OtpSendResponse.builder()
                 .message("OTP sent")
@@ -110,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_VERIFIED,
                 user.getId(),
                 "OtpVerification",
-                verification.getId().toString(),
+                null,
                 Map.of("purpose", verification.getPurpose().name()));
         auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
         return AuthResponse.builder()
@@ -140,7 +140,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String refreshToken, Long userId) {
+    public void logout(String refreshToken, java.util.UUID userId) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             refreshTokenRepository.findByTokenAndRevokedFalse(refreshToken)
                     .ifPresent(token -> {
@@ -149,7 +149,7 @@ public class AuthServiceImpl implements AuthService {
                                 AuditAction.LOGOUT,
                                 token.getUser().getId(),
                                 "RefreshToken",
-                                token.getId().toString(),
+                                null,
                                 null);
                     });
             return;
@@ -163,14 +163,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(Long userId) {
+    public UserProfileResponse getProfile(java.util.UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toProfileResponse(user);
     }
 
     @Override
-    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+    public UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setName(StringUtils.sanitizeBasicText(request.getName()));

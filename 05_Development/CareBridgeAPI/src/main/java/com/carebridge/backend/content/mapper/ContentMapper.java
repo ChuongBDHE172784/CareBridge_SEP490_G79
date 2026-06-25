@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContentMapper {
 
-    public ContentItem toEntity(CreateContentRequest request, Long authorUserId) {
+    public ContentItem toEntity(CreateContentRequest request, java.util.UUID authorUserId) {
         return ContentItem.builder()
                 .type(request.getType())
                 .title(request.getTitle())

@@ -27,7 +27,7 @@ public class CommunityQuestion {
     private UUID topicId;
 
     @Column(name = "author_id", nullable = false)
-    private Long authorId;
+    private java.util.UUID authorId;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -40,10 +40,10 @@ public class CommunityQuestion {
     private PregnancyStage stage;
 
     @Column(name = "pregnancy_week")
-    private Integer pregnancyWeek;
+    private Short pregnancyWeek;
 
     @Column(name = "baby_age_months")
-    private Integer babyAgeMonths;
+    private Short babyAgeMonths;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "urgency", nullable = false, length = 20)

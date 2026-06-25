@@ -29,7 +29,7 @@ public class PartnerProfileController {
             @Valid @RequestBody CreatePartnerProfileRequest request,
             Principal principal) {
         // Oracle: ADR-002 — actorId MUST come from SecurityContext, never from request body
-        Long actorId = SecurityUtils.requireCurrentUserId(principal);
+        java.util.UUID actorId = SecurityUtils.requireCurrentUserId(principal);
         CreatePartnerProfileResponse response = partnerProfileService.createProfile(request, actorId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Partner profile created successfully"));

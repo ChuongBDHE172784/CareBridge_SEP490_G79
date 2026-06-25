@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PartnerOrganizationRepository extends JpaRepository<PartnerOrganization, UUID> {
 
-    Optional<PartnerOrganization> findByRepresentativeUserId(Long userId);
+    Optional<PartnerOrganization> findByRepresentativeUserId(java.util.UUID userId);
 
-    boolean existsByRepresentativeUserId(Long userId);
+    boolean existsByRepresentativeUserId(java.util.UUID userId);
 
     boolean existsByEmail(String email);
 }

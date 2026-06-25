@@ -14,9 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ConsentGrantRepository extends JpaRepository<ConsentGrant, Long> {
 
-    List<ConsentGrant> findByUserIdOrderByConsentGivenAtDesc(Long userId);
+    List<ConsentGrant> findByUserIdOrderByConsentGivenAtDesc(java.util.UUID userId);
 
-    Optional<ConsentGrant> findByIdAndUserId(Long id, Long userId);
+    Optional<ConsentGrant> findByIdAndUserId(Long id, java.util.UUID userId);
 
     @Query("""
             select count(c) > 0
@@ -28,7 +28,7 @@ public interface ConsentGrantRepository extends JpaRepository<ConsentGrant, Long
               and c.expiryAt > :now
             """)
     boolean existsValidConsent(
-            @Param("userId") Long userId,
+            @Param("userId") java.util.UUID userId,
             @Param("dataType") ConsentDataType dataType,
             @Param("purpose") ConsentPurpose purpose,
             @Param("now") Instant now);

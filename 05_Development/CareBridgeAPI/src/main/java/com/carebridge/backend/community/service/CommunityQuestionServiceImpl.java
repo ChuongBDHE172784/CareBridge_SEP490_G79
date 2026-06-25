@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class CommunityQuestionServiceImpl implements CommunityQuestionService {
@@ -24,7 +26,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
     @Override
     @Transactional
-    public CommunityQuestionResponse createQuestion(Long authorId, CreateCommunityQuestionRequest request) {
+    public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
         // BR-COM-002: reject hidden or non-existent topics (ADR-COM-005)
         topicRepository.findByIdAndIsHiddenFalse(request.getTopicId())
                 .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));

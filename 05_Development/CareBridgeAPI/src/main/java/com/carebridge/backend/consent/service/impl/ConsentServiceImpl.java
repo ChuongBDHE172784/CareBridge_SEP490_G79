@@ -33,7 +33,7 @@ public class ConsentServiceImpl implements ConsentService {
     private final AuditService auditService;
 
     @Override
-    public ConsentGrantResponse grantConsent(Long userId, GrantConsentRequest request) {
+    public ConsentGrantResponse grantConsent(java.util.UUID userId, GrantConsentRequest request) {
         Instant now = Instant.now();
         int expiryDays = request.getExpiryDays() == null
                 ? ConsentConstants.DEFAULT_EXPIRY_DAYS
@@ -58,7 +58,7 @@ public class ConsentServiceImpl implements ConsentService {
     }
 
     @Override
-    public ConsentGrantResponse revokeConsent(Long userId, Long consentId) {
+    public ConsentGrantResponse revokeConsent(java.util.UUID userId, Long consentId) {
         ConsentGrant grant = consentGrantRepository.findByIdAndUserId(consentId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Consent grant not found"));
         grant.setRevokedAt(Instant.now());
@@ -75,7 +75,7 @@ public class ConsentServiceImpl implements ConsentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ConsentGrantResponse> listConsents(Long userId) {
+    public List<ConsentGrantResponse> listConsents(java.util.UUID userId) {
         return consentGrantRepository.findByUserIdOrderByConsentGivenAtDesc(userId).stream()
                 .map(consentGrantMapper::toResponse)
                 .toList();
@@ -83,7 +83,7 @@ public class ConsentServiceImpl implements ConsentService {
 
     @Override
     @Transactional(readOnly = true)
-    public void ensureConsent(Long userId, ConsentDataType dataType, ConsentPurpose purpose) {
+    public void ensureConsent(java.util.UUID userId, ConsentDataType dataType, ConsentPurpose purpose) {
         boolean granted = consentGrantRepository.existsValidConsent(userId, dataType, purpose, Instant.now());
         consentCheckPolicy.ensureGranted(granted, userId, dataType, purpose);
     }

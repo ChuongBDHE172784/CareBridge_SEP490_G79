@@ -8,9 +8,9 @@ import org.springframework.data.domain.Pageable;
 
 public interface AuditService {
 
-    void log(AuditAction action, Long userId, String resourceType, String resourceId, Object details);
+    void log(AuditAction action, java.util.UUID userId, String resourceType, String resourceId, Object details);
 
     void log(AuditAction action, String userId, String resourceId, Object details);
 
-    Page<AuditLogResponse> search(Long userId, AuditAction action, Instant fromDate, Instant toDate, Pageable pageable);
+    Page<AuditLogResponse> search(java.util.UUID userId, AuditAction action, Instant fromDate, Instant toDate, Pageable pageable);
 }

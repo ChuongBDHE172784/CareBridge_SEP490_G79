@@ -27,7 +27,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
     @Override
     @Transactional
-    public CommunityAnswerResponse postAnswer(Long authorId, UUID questionId, PostCommunityAnswerRequest request) {
+    public CommunityAnswerResponse postAnswer(UUID authorId, UUID questionId, PostCommunityAnswerRequest request) {
         // ADR-COM-006: only APPROVED questions accept answers
         questionRepository.findByIdAndStatus(questionId, QuestionStatus.APPROVED)
                 .orElseThrow(() -> new QuestionNotAnswerableException(questionId.toString()));

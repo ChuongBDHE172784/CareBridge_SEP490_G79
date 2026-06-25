@@ -30,9 +30,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Query("""
             SELECT q FROM CommunityQuestion q
             WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
-              AND (:keyword IS NULL
-                   OR LOWER(q.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                   OR LOWER(q.body) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (CAST(:keyword AS String) IS NULL
+                   OR LOWER(q.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%'))
+                   OR LOWER(q.body) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')))
               AND (:topicId IS NULL OR q.topicId = :topicId)
               AND (:stage IS NULL OR q.stage = :stage)
               AND (:hasExpertAnswer IS NULL

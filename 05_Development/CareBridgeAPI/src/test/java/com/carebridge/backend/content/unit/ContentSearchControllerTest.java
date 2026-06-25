@@ -11,6 +11,7 @@ import com.carebridge.backend.content.controller.ContentController;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -40,6 +41,9 @@ class ContentSearchControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     // ── CNT224-TC-004: Empty results → 200 with content:[], NOT 404 ──────────
     // Oracle: CB-CONTENT-IMP-002 §9.2 — empty search returns HTTP 200

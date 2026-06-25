@@ -18,6 +18,7 @@ import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
@@ -48,6 +49,9 @@ class CommunityTopicControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private static final String BASE_URL = "/api/v1/community/topics";
 
     private CommunityTopicResponse makeTopic(UUID id, String name, boolean hidden) {
@@ -63,7 +67,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-008: GET topics — MOTHER thấy non-hidden topics
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void getTopics_asMotherUser_shouldReturn200WithNonHiddenTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
         when(topicService.getTopics(false)).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
@@ -77,7 +81,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-009: GET topics — MODERATOR với includeHidden=true thấy tất cả
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void getTopics_asModeratorWithIncludeHidden_shouldReturn200WithAllTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
         UUID t2 = UUID.randomUUID();
@@ -99,7 +103,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-006: POST — MOTHER bị từ chối 403
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void createTopic_asMotherUser_shouldReturn403() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +115,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-003: POST — name rỗng → 400
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void createTopic_emptyName_shouldReturn400() throws Exception {
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -123,7 +127,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-004: POST — name > 100 ký tự → 400
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void createTopic_nameTooLong_shouldReturn400() throws Exception {
         String longName = "A".repeat(101);
         mockMvc.perform(post(BASE_URL).with(csrf())
@@ -136,11 +140,11 @@ class CommunityTopicControllerTest {
 
     // POST — MODERATOR tạo topic thành công → 201
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void createTopic_asModeratorValidRequest_shouldReturn201() throws Exception {
         UUID newId = UUID.randomUUID();
         CommunityTopicResponse created = makeTopic(newId, "Dinh dưỡng thai kỳ", false);
-        when(topicService.createTopic(eq(1L), any())).thenReturn(created);
+        when(topicService.createTopic(eq(UUID.fromString("00000000-0000-0000-0000-000000000001")), any())).thenReturn(created);
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +156,7 @@ class CommunityTopicControllerTest {
 
     // COM-TC-007: PATCH — MOTHER bị từ chối 403
     @Test
-    @WithMockUser(username = "2", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void updateTopic_asMotherUser_shouldReturn403() throws Exception {
         UUID topicId = UUID.randomUUID();
         mockMvc.perform(patch(BASE_URL + "/" + topicId).with(csrf())
@@ -165,7 +169,7 @@ class CommunityTopicControllerTest {
 
     // PATCH — MODERATOR ẩn topic → 200
     @Test
-    @WithMockUser(username = "1", roles = "MODERATOR")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
     void updateTopic_asModerator_shouldReturn200() throws Exception {
         UUID topicId = UUID.randomUUID();
         CommunityTopicResponse updated = makeTopic(topicId, "Thai kỳ", true);

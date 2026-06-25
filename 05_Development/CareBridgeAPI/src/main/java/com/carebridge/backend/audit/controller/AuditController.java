@@ -27,14 +27,14 @@ public class AuditController {
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<PaginatedResponse<com.carebridge.backend.audit.dto.response.AuditLogResponse>> search(
-            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) java.util.UUID userId,
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int pageSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "timestamp"));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(PaginatedResponse.of(
                 auditService.search(userId, action, fromDate, toDate, pageable)));
     }
