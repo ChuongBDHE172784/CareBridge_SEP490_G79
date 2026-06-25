@@ -4,7 +4,8 @@ project: CareBridge_SEP490_G79
 source_documents:
   - 01_Requirements/SRS/Report1_Project Introduction.docx.md
   - 01_Requirements/SRS/Report2_Project Management Plan.docx.md
-  - 01_Requirements/SRS/Report3_Software Requirement Specification.docx.md
+  - 02_Requirements/SRS/3_Functional_Specification.md
+  - 02_Requirements/SRS/4_Functional_Requirements.md
 created_by: bmad-create-architecture
 date: 2026-06-17
 status: draft
