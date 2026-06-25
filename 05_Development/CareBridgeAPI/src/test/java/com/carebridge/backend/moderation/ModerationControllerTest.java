@@ -16,6 +16,7 @@ import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.service.ModerationService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +46,9 @@ class ModerationControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String QUEUE_URL = "/api/v1/admin/moderation/queue";
 

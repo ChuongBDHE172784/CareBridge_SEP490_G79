@@ -16,6 +16,7 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +48,9 @@ class ContentControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private ContentListResponse makeListItem(UUID id) {
         return ContentListResponse.builder()

@@ -24,6 +24,7 @@ import com.carebridge.backend.community.service.CommunityQuestionSearchService;
 import com.carebridge.backend.community.service.CommunityQuestionService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -67,6 +68,9 @@ class CommunityQuestionControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String BASE_URL = "/api/v1/community/questions";
     private static final UUID TOPIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

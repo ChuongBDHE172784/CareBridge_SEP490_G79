@@ -8,6 +8,7 @@ import com.carebridge.backend.content.controller.ContentController;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -34,6 +35,9 @@ class ContentSearchSecurityTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     // ── CNT224-TC-SEC-002: No JWT → 401 ──────────────────────────────────────
     // Oracle: BR-RBAC, SecurityConfig — /api/v1/** requires authentication

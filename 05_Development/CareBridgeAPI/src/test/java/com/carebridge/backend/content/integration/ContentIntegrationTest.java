@@ -19,6 +19,7 @@ import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -53,6 +54,9 @@ class ContentIntegrationTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     // ── CNT82-TC-INT-001: Only APPROVED content returned ─────────────────────
     // Verifies the service is always called with APPROVED status and authorId not in response

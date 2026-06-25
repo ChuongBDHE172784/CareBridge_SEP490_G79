@@ -20,6 +20,7 @@ import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -55,6 +56,9 @@ class PartnerProfileIntegrationTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private CreatePartnerProfileRequest validRequest;
 

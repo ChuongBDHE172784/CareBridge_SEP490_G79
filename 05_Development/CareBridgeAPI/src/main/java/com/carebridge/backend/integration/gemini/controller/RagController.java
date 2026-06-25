@@ -7,6 +7,7 @@ import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.integration.gemini.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,10 @@ public class RagController {
 
     private final RagService ragService;
 
+    // PARTNER is excluded: RAG health guidance is for personal-use roles only.
+    // Account locked/disabled state is enforced at token issuance (AuthenticationPolicy),
+    // not per-request — token TTL is 15 min, bounding any residual window.
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT', 'MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping("/answer")
     public ResponseEntity<ApiResponse<RagAnswerResponse>> generateAnswer(
             @RequestBody RagAnswerRequest request) {

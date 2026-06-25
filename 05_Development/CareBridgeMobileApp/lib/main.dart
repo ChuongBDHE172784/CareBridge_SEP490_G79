@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'core/auth/auth_state.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/blocked_account_screen.dart';
 import 'features/community/screens/community_feed_screen.dart';
 import 'features/community/screens/search_questions_screen.dart';
 import 'features/healthRecords/screens/view_content_screen.dart';
@@ -6,7 +9,10 @@ import 'features/healthRecords/screens/search_content_screen.dart';
 import 'features/aiTriage/screens/rag_chat_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const CareBridgeApp());
+  // init() completes async; notifyListeners() inside triggers rebuild
+  AuthState.instance.init();
 }
 
 class CareBridgeApp extends StatelessWidget {
@@ -39,7 +45,35 @@ class CareBridgeApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainShell(),
+      home: ListenableBuilder(
+        listenable: AuthState.instance,
+        builder: (context, _) {
+          if (AuthState.instance.isRestoring) {
+            return const _SplashScreen();
+          }
+          if (AuthState.instance.blockedReason != null) {
+            return const BlockedAccountScreen();
+          }
+          if (!AuthState.instance.isAuthenticated) {
+            return const LoginScreen();
+          }
+          return const MainShell();
+        },
+      ),
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFF6F1EC),
+      body: Center(
+        child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+      ),
     );
   }
 }

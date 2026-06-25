@@ -1,7 +1,10 @@
-import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
-import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../auth/auth_state.dart';
+import 'account_block_parser.dart';
 
 String get _baseUrl {
   if (kIsWeb) return 'http://localhost:8080';
@@ -10,8 +13,9 @@ String get _baseUrl {
 }
 
 Map<String, String> _headers({String? token}) {
+  final effective = token ?? AuthState.instance.accessToken;
   final headers = <String, String>{'Content-Type': 'application/json'};
-  if (token != null) headers['Authorization'] = 'Bearer $token';
+  if (effective != null) headers['Authorization'] = 'Bearer $effective';
   return headers;
 }
 
@@ -21,10 +25,17 @@ Future<dynamic> apiGet(String path, {String? token}) async {
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
+  if (response.statusCode == 401) {
+    unawaited(AuthState.instance.clear());
+  } else {
+    final code = parseAccountBlockedCode(response);
+    if (code != null) unawaited(AuthState.instance.clearWithReason(code));
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiPost(String path, Map<String, dynamic> body, {String? token}) async {
+Future<dynamic> apiPost(String path, Map<String, dynamic> body,
+    {String? token}) async {
   final uri = Uri.parse('$_baseUrl$path');
   final response = await http.post(
     uri,
@@ -34,6 +45,12 @@ Future<dynamic> apiPost(String path, Map<String, dynamic> body, {String? token})
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+  if (response.statusCode == 401) {
+    unawaited(AuthState.instance.clear());
+  } else {
+    final code = parseAccountBlockedCode(response);
+    if (code != null) unawaited(AuthState.instance.clearWithReason(code));
   }
   throw ApiException(response.statusCode, response.body);
 }

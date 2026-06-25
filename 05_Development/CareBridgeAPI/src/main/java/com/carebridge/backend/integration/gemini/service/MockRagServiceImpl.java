@@ -6,6 +6,7 @@ import com.carebridge.backend.integration.gemini.dto.RagSource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
  * Used in all unit/integration tests via @Profile("test").
  */
 @Service
+@Primary
 @Profile("test")
 public class MockRagServiceImpl implements RagService {
 

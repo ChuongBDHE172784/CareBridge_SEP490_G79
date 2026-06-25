@@ -45,15 +45,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
-                        // Public read endpoints (community feed, topics, questions, content)
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/community/feed",
-                                "/api/v1/community/topics",
-                                "/api/v1/community/questions",
-                                "/api/v1/community/questions/**",
-                                "/api/v1/community/answers/**",
-                                "/api/v1/content",
-                                "/api/v1/content/**").permitAll()
+                        // All community and content read endpoints require a valid JWT.
+                        // Unauthenticated requests → 401 (per CNT82-TC-SEC-001, ADR-COM-*)
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")

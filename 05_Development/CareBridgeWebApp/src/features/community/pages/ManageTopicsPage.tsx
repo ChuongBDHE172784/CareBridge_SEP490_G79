@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 
 interface Topic {
-  id: number;
+  id: string;
   name: string;
   description: string;
   icon: string;

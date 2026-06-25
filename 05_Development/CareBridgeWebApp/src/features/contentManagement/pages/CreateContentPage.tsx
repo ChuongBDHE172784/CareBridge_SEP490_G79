@@ -19,7 +19,7 @@ const s = {
 
 export default function CreateContentPage() {
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<{ id: number | string } | null>(null);
+  const [success, setSuccess] = useState<{ id: string } | null>(null);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -29,7 +29,7 @@ export default function CreateContentPage() {
     const fd = new FormData(e.currentTarget);
     setSubmitting(true);
     try {
-      const { data } = await apiClient.post<{ id: number | string }>('/api/v1/admin/content', {
+      const { data } = await apiClient.post<{ id: string }>('/api/v1/admin/content', {
         type: fd.get('type'),
         title: fd.get('title'),
         body: fd.get('body'),

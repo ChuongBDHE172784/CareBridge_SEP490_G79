@@ -16,6 +16,7 @@ import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class PartnerProfileControllerSecurityTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String BASE_URL = "/api/v1/partner/profile";
 

@@ -17,6 +17,7 @@ import com.carebridge.backend.community.exception.QuestionNotAnswerableException
 import com.carebridge.backend.community.service.CommunityAnswerService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -52,6 +53,9 @@ class CommunityAnswerControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final UUID QUESTION_ID = UUID.fromString("00000000-0000-0000-0001-000000000001");
     private static final String BASE_URL = "/api/v1/community/questions/{questionId}/answers";

@@ -12,14 +12,19 @@
       driver-class-name: org.postgresql.Driver
 
     flyway:
-      enabled: false
+      enabled: true
+      locations: classpath:db/migration
+      baseline-on-migrate: false
+      validate-on-migrate: true
+      out-of-order: false
+      clean-disabled: true
 
     docker:
       compose:
          enabled: false
     jpa:
       hibernate:
-        ddl-auto: update
+        ddl-auto: validate
       open-in-view: false
       properties:
         hibernate:
@@ -50,5 +55,9 @@ spring:
     url: ${SUPABASE_DB_URL}
     username: ${SUPABASE_DB_USERNAME}
     password: ${SUPABASE_DB_PASSWORD}
-
-
+  flyway:
+    clean-disabled: true
+    # No ignore-migration-patterns override here — intentional.
+    # The application WILL REFUSE TO START against Supabase until Phase C DB reset
+    # clears the legacy V2-V12 flyway_schema_history entries and applies the clean
+    # V1 baseline. This is the desired safety behavior.

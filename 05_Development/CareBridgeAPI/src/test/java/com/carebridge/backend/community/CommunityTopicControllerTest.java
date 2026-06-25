@@ -18,6 +18,7 @@ import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
@@ -47,6 +48,9 @@ class CommunityTopicControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final String BASE_URL = "/api/v1/community/topics";
 

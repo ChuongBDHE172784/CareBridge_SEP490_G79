@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 
 interface ModerationItem {
-  id: number;
+  id: string;
   reportedContentType: 'QUESTION' | 'ANSWER' | 'CONTENT';
   contentPreview: string;
   reportCount: number;

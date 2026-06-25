@@ -12,6 +12,7 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,6 +43,9 @@ class ContentSecurityTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     // ── CNT82-TC-SEC-001: Unauthenticated requests → 401 ─────────────────────
     // Oracle: BR-RBAC — all /api/v1/** require JWT (SecurityConfig)

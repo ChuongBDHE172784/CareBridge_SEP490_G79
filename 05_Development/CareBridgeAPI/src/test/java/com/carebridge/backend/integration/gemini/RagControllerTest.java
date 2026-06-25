@@ -15,6 +15,7 @@ import com.carebridge.backend.integration.gemini.dto.RagSource;
 import com.carebridge.backend.integration.gemini.service.RagService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +47,9 @@ class RagControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private static final String DISCLAIMER =
             "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế.";
 
@@ -64,7 +68,7 @@ class RagControllerTest {
 
     // RAG-TC-007: Empty query → 400 RAG-001
     @Test
-    @WithMockUser(username = "user-1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void generateAnswer_emptyQuery_shouldReturn400WithRag001() throws Exception {
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +81,7 @@ class RagControllerTest {
 
     // RAG-TC-007b: query quá ngắn (< 3 chars) → 400
     @Test
-    @WithMockUser(username = "user-1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void generateAnswer_tooShortQuery_shouldReturn400() throws Exception {
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +92,7 @@ class RagControllerTest {
 
     // RAG-TC-007c: maxContextChunks > 10 → 400 RAG-002
     @Test
-    @WithMockUser(username = "user-1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void generateAnswer_maxContextChunksExceeded_shouldReturn400WithRag002() throws Exception {
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +114,7 @@ class RagControllerTest {
 
     // RAG-TC-INT-001: Full HTTP flow — 200 với disclaimer và isFallback=false
     @Test
-    @WithMockUser(username = "user-1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void generateAnswer_validRequest_shouldReturn200WithDisclaimerAndSources() throws Exception {
         when(ragService.generateAnswer(any())).thenReturn(makeNormalResponse());
 
@@ -127,7 +131,7 @@ class RagControllerTest {
 
     // RAG-TC-INT-001b: Fallback response → 200 với isFallback=true
     @Test
-    @WithMockUser(username = "user-1", roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void generateAnswer_fallbackResponse_shouldReturn200WithIsFallbackTrue() throws Exception {
         RagAnswerResponse fallback = RagAnswerResponse.builder()
                 .answer("Tôi hiện không thể trả lời câu hỏi này.")
@@ -144,5 +148,17 @@ class RagControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.fallback").value(true))
                 .andExpect(jsonPath("$.data.disclaimer").isNotEmpty());
+    }
+
+    // RAG-TC-AUTH-001: PARTNER role → 403 (health guidance is for personal-use roles only)
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
+    void generateAnswer_partnerRole_shouldReturn403() throws Exception {
+        mockMvc.perform(post("/api/v1/rag/answer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\": \"Phù chân khi mang thai 28 tuần\", \"maxContextChunks\": 3}"))
+                .andExpect(status().isForbidden());
+
+        verify(ragService, never()).generateAnswer(any());
     }
 }

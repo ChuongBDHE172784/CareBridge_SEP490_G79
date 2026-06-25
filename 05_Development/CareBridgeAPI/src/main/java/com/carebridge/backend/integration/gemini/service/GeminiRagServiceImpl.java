@@ -14,10 +14,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Primary
 @Profile({"prod", "dev", "supabase"})
 @RequiredArgsConstructor
 @Slf4j
