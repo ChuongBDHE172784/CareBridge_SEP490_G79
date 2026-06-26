@@ -12,13 +12,13 @@ public class AuditLogMapper {
             return null;
         }
         return AuditLogResponse.builder()
-                .id(log.getId())
-                .timestamp(log.getTimestamp())
-                .userId(log.getUserId())
+                .id(log.getAuditLogId())
+                .timestamp(log.getCreatedAt())
+                .userId(log.getActorUserId())
                 .action(log.getAction())
-                .resourceType(log.getResourceType())
-                .resourceId(log.getResourceId())
-                .details(log.getDetails())
+                .resourceType(log.getEntityType())
+                .resourceId(log.getEntityId())
+                .details(log.getNewValueJson())
                 .build();
     }
 }

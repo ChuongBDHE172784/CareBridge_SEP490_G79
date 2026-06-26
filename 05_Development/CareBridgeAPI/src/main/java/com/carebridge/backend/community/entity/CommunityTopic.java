@@ -13,39 +13,48 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "community_topics")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class CommunityTopic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "topic_id")
-    private UUID topicId;
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Column(name = "name", length = 150)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "slug", length = 160)
-    private String slug;
-
-    @Column(name = "description", length = 500)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "risk_level", length = 20)
-    private String riskLevel;
+    @Column(name = "icon", length = 255)
+    private String icon;
 
-    @Column(name = "is_active")
-    private Boolean isActive;
+    @Builder.Default
+    @Column(name = "is_hidden", nullable = false)
+    private boolean isHidden = false;
 
-    @Column(name = "created_at", nullable = false)
+    @Builder.Default
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder = 0;
+
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 }

@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: dev
   application:
     name: backend
 
@@ -12,6 +14,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true
 
   docker:
     compose:
@@ -28,19 +33,24 @@ spring:
 carebridge:
   security:
     jwt:
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:carebridge-local-dev-secret-key-must-be-at-least-32-characters}
       access-token-expiration-ms: 900000
       refresh-token-expiration-ms: 604800000
     otp:
       expiration-seconds: 300
       max-attempts: 5
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    timeout-ms: 5000
+    max-context-chunks: 5
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    model: gemini-1.5-flash
 
 ---
 spring:
   config:
     activate:
       on-profile: supabase
-
   datasource:
     url: ${SUPABASE_DB_URL}
     username: ${SUPABASE_DB_USERNAME}
@@ -51,6 +61,7 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    clean-disabled: true
 
   docker:
     compose:

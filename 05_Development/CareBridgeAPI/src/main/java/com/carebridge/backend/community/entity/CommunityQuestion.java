@@ -1,60 +1,76 @@
 package com.carebridge.backend.community.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
-@Table(name = "community_questions")
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(name = "community_questions", indexes = {
+    @Index(name = "idx_community_questions_topic_id", columnList = "topic_id"),
+    @Index(name = "idx_community_questions_author_id", columnList = "author_id"),
+    @Index(name = "idx_community_questions_status", columnList = "status"),
+    @Index(name = "idx_community_questions_stage", columnList = "stage")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CommunityQuestion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "question_id")
-    private UUID questionId;
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Column(name = "author_user_id")
-    private UUID authorUserId;
-
-    @Column(name = "topic_id")
+    @Column(name = "topic_id", nullable = false)
     private UUID topicId;
 
-    @Column(name = "title", length = 250)
+    @Column(name = "author_id", nullable = false)
+    private java.util.UUID authorId;
+
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "content", columnDefinition = "TEXT")
-    private String content;
+    @Column(name = "body", nullable = false, columnDefinition = "TEXT")
+    private String body;
 
-    @Column(name = "is_anonymous")
-    private Boolean isAnonymous;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage", nullable = false, length = 30)
+    private PregnancyStage stage;
 
-    @Column(name = "urgency_level", length = 20)
-    private String urgencyLevel;
+    @Column(name = "pregnancy_week")
+    private Short pregnancyWeek;
 
-    @Column(name = "moderation_status", length = 20)
-    private String moderationStatus;
+    @Column(name = "baby_age_months")
+    private Short babyAgeMonths;
 
-    @Column(name = "published_at")
-    private Instant publishedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "urgency", nullable = false, length = 20)
+    private UrgencyLevel urgency;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "is_anonymous", nullable = false)
+    @Builder.Default
+    private boolean anonymous = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private QuestionStatus status = QuestionStatus.PENDING;
+
+    @Column(name = "like_count", nullable = false)
+    @Builder.Default
+    private int likeCount = 0;
+
+    @Column(name = "answer_count", nullable = false)
+    @Builder.Default
+    private int answerCount = 0;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 }

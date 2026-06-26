@@ -2,6 +2,8 @@ package com.carebridge.backend.content.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "content_items")
@@ -25,17 +29,12 @@ public class ContentItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "content_item_id")
-    private UUID contentItemId;
+    @Column(name = "content_item_id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Column(name = "topic_id")
-    private UUID topicId;
-
-    @Column(name = "author_user_id")
-    private UUID authorUserId;
-
+    @Enumerated(EnumType.STRING)
     @Column(name = "content_type", length = 30)
-    private String contentType;
+    private ContentType type;
 
     @Column(name = "title", length = 250)
     private String title;
@@ -43,21 +42,34 @@ public class ContentItem {
     @Column(name = "body", columnDefinition = "TEXT")
     private String body;
 
-    @Column(name = "source_label", length = 255)
-    private String sourceLabel;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage", length = 30)
+    private ContentStage stage;
+
+    @Column(name = "topic_id")
+    private UUID topicId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private ContentStatus status;
 
     @Column(name = "version_no")
     private Integer versionNo;
 
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    @Column(name = "author_user_id")
+    private UUID authorUserId;
+
+    @Column(name = "source_label", length = 255)
+    private String sourceLabel;
 
     @Column(name = "published_at")
     private Instant publishedAt;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 }

@@ -2,6 +2,8 @@ package com.carebridge.backend.content.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "checklist_templates")
@@ -25,27 +29,24 @@ public class ChecklistTemplate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "checklist_template_id")
-    private UUID checklistTemplateId;
-
-    @Column(name = "content_item_id")
-    private UUID contentItemId;
+    @Column(name = "checklist_template_id", updatable = false, nullable = false)
+    private UUID id;
 
     @Column(name = "name", length = 200)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)
-    private String stage;
+    private ContentStage stage;
 
-    @Column(name = "version_no")
-    private Integer versionNo;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
-
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 }

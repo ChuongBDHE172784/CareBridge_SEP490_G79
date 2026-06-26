@@ -2,16 +2,27 @@ package com.carebridge.backend.common.exception;
 
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.community.exception.CommunityFeedValidationException;
+import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
+import com.carebridge.backend.community.exception.DuplicateTopicNameException;
+import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
+import com.carebridge.backend.content.exception.ContentException;
+import com.carebridge.backend.content.exception.ModerationException;
+import com.carebridge.backend.integration.gemini.exception.RagException;
+import com.carebridge.backend.partner.exception.PartnerException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,6 +49,19 @@ public class GlobalExceptionHandler {
                 .details(details)
                 .build();
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request body: " + ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "Invalid value for parameter '" + ex.getName() + "': " + ex.getValue();
+        return error(HttpStatus.BAD_REQUEST, "MOD-001", message, request);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -80,6 +104,50 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         logger.error("Resource not found: {}", ex.getMessage(), ex);
         return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CommunityTopicNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityTopicNotFound(
+            CommunityTopicNotFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "COM-003", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DuplicateTopicNameException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
+            DuplicateTopicNameException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-009", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(QuestionNotAnswerableException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionNotAnswerable(
+            QuestionNotAnswerableException ex, HttpServletRequest request) {
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "COM-007", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CommunityFeedValidationException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityFeedValidation(
+            CommunityFeedValidationException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-001", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ContentException.class)
+    public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ModerationException.class)
+    public ResponseEntity<ErrorResponse> handleModeration(ModerationException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PartnerException.class)
+    public ResponseEntity<ErrorResponse> handlePartner(PartnerException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RagException.class)
+    public ResponseEntity<ErrorResponse> handleRag(RagException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(ConsentException.class)
@@ -128,6 +196,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuthorization(AuthorizationException ex, HttpServletRequest request) {
         logger.error("Authorization denied: {}", ex.getMessage(), ex);
         return error(HttpStatus.FORBIDDEN, "AUTHORIZATION_DENIED", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleSpringAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Insufficient permissions", request);
     }
 
     @ExceptionHandler(AccessDeniedBusinessException.class)

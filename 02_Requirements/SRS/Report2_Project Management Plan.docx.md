@@ -50,20 +50,20 @@
 
 # **I. Record of Changes** {#i.-record-of-changes}
 
-| Date | A\*M, D | In charge | Change Description |
-| ----- | ----- | ----- | ----- |
-| 28/05/2026 | A | ChuongBD | Create initial Report 2 draft |
-| 28/05/2026 | M | ChuongBD | Update project planning, governance, scalability, and legal sections |
-| 30/05/2026	 | M | ChuongBD | Update project scope from clinic-centric model to community-based health support model |
-| 30/05/2026	 | M | ChuongBD | Add AI Safety, Community Governance, Privacy, Consent, and Compliance planning |
-| 30/05/2026	 | M | ChuongBD | Add Sustainability & Funding Model and Responsibility Matrix considerations |
-| 30/05/2026	 | M | ChuongBD | Revise WBS estimation and management approach based |
-| 13/06/2026 | A | ChuongBD | Add table name |
-|  |  |  |  |
-|  |  |  |  |
-|  |  |  |  |
-|  |  |  |  |
-|  |  |  |  |
+| Date       | A\*M, D | In charge | Change Description                                                                     |
+| ---------- | -------- | --------- | -------------------------------------------------------------------------------------- |
+| 28/05/2026 | A        | ChuongBD  | Create initial Report 2 draft                                                          |
+| 28/05/2026 | M        | ChuongBD  | Update project planning, governance, scalability, and legal sections                   |
+| 30/05/2026 | M        | ChuongBD  | Update project scope from clinic-centric model to community-based health support model |
+| 30/05/2026 | M        | ChuongBD  | Add AI Safety, Community Governance, Privacy, Consent, and Compliance planning         |
+| 30/05/2026 | M        | ChuongBD  | Add Sustainability & Funding Model and Responsibility Matrix considerations            |
+| 30/05/2026 | M        | ChuongBD  | Revise WBS estimation and management approach based                                    |
+| 13/06/2026 | A        | ChuongBD  | Add table name                                                                         |
+|            |          |           |                                                                                        |
+|            |          |           |                                                                                        |
+|            |          |           |                                                                                        |
+|            |          |           |                                                                                        |
+|            |          |           |                                                                                        |
 
 \*A \- Added M \- Modified D \- Deleted
 
@@ -89,16 +89,16 @@ The scope of the CareBridge MVP includes the design, implementation, testing, do
 
 The project scope is organized into the following functional domains:
 
-| Domain | Included features | Primary platforms |
-| :---- | :---- | :---- |
-| Mobile Application | Registration, authentication, profile management, mother journey, baby journey, health records, reminders, Family Sync, AI intake, community participation, safety monitoring, and emergency support entry points. | Flutter Mobile App |
-| Community Platform | Anonymous posting, community feed, category management, reporting mechanism, moderation workflow, expert responses, source labels, and community governance. | Mobile App \+ Backend \+ Admin Portal |
-| Expert Ecosystem | Expert profile, verification workflow, contribution mechanism, consultation request handling, expert responses, availability, and rating/reputation support. | Expert Portal \+ Mobile App \+ Backend |
-| AI Safety & Risk Triage | Structured intake, symptom normalization, green/yellow/red risk routing, safe recommendation, red-flag detection, disclaimer, logging, and no-diagnosis guardrails. | Mobile App \+ Backend \+ AI/Rule Engine |
-| Health Data, Consent & Family Coordination | Personal health records, source labeling, temporary sharing, consent scope, family invitation, shared care tasks, care calendar, and audit trail. | Mobile App \+ Backend |
-| Smart Activity Monitoring & Safety Support | Optional IMU-based safety monitoring, suspected fall/impact detection, safety confirmation countdown, family alert, false-positive feedback, safety event history, and emergency support handoff. | Mobile App \+ Phone IMU \+ Backend \+ Notification Service |
-| Partner & Nearby Care Support | Partner clinic listing, sponsored service governance, emergency map, nearby care search, quick call, route support, and location sharing with consent. | Partner/Admin Portal \+ Mobile App \+ Map Service |
-| Administration & Governance Portal | User management, expert verification, moderation dashboard, report processing, governance monitoring, audit log review, partner approval, dashboard, and compliance monitoring. | Admin Portal \+ Backend |
+| Domain                                     | Included features                                                                                                                                                                                                  | Primary platforms                                          |
+| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+| Mobile Application                         | Registration, authentication, profile management, mother journey, baby journey, health records, reminders, Family Sync, AI intake, community participation, safety monitoring, and emergency support entry points. | Flutter Mobile App                                         |
+| Community Platform                         | Anonymous posting, community feed, category management, reporting mechanism, moderation workflow, expert responses, source labels, and community governance.                                                       | Mobile App \+ Backend \+ Admin Portal                      |
+| Expert Ecosystem                           | Expert profile, verification workflow, contribution mechanism, consultation request handling, expert responses, availability, and rating/reputation support.                                                       | Expert Portal \+ Mobile App \+ Backend                     |
+| AI Safety & Risk Triage                    | Structured intake, symptom normalization, green/yellow/red risk routing, safe recommendation, red-flag detection, disclaimer, logging, and no-diagnosis guardrails.                                                | Mobile App \+ Backend \+ AI/Rule Engine                    |
+| Health Data, Consent & Family Coordination | Personal health records, source labeling, temporary sharing, consent scope, family invitation, shared care tasks, care calendar, and audit trail.                                                                  | Mobile App \+ Backend                                      |
+| Smart Activity Monitoring & Safety Support | Optional IMU-based safety monitoring, suspected fall/impact detection, safety confirmation countdown, family alert, false-positive feedback, safety event history, and emergency support handoff.                  | Mobile App \+ Phone IMU \+ Backend \+ Notification Service |
+| Partner & Nearby Care Support              | Partner clinic listing, sponsored service governance, emergency map, nearby care search, quick call, route support, and location sharing with consent.                                                             | Partner/Admin Portal \+ Mobile App \+ Map Service          |
+| Administration & Governance Portal         | User management, expert verification, moderation dashboard, report processing, governance monitoring, audit log review, partner approval, dashboard, and compliance monitoring.                                    | Admin Portal \+ Backend                                    |
 
 **Table 1\. Functional Domain Scope of the CareBridge MVP**
 
@@ -109,127 +109,137 @@ The MVP intentionally prioritizes safe and demonstrable functionality over comme
 **Figure 1\. Core CareBridge workflow and system boundary**  
 [Detail: Core CareBridge workflow and system boundary](https://drive.google.com/file/d/1z3MFuCc1sqXPdwaituZz_qyKD7F3NzLd/view?usp=drive_link)
 
-#### 
-
-#### 
-
-#### 
-
 #### ***1.1.3 Scope Assumptions***
 
-- Users in the pilot target group have access to smartphones and internet connectivity.  
-- The project team consists of five active members and follows the official SEP490 timeline.  
-- The MVP is piloted for Hanoi metropolitan users first; nationwide scaling is not part of MVP validation.  
-- Verified experts are manually reviewed and approved during the MVP phase.  
-- Third-party AI or rule-based services remain available during development, or can be replaced with mock/rule-based implementation for demonstration.  
-- Notification services are available for account, reminder, moderation, and family alert use cases.  
-- Mobile operating systems continue to provide motion sensor access under user permission and device limitations.  
-- Map and location services are used only when the user opens emergency/nearby-care support and grants location permission.  
-- Stakeholders and supervisors provide timely feedback during review sessions.  
+- Users in the pilot target group have access to smartphones and internet connectivity.
+
+- The project team consists of five active members and follows the official SEP490 timeline.
+
+- The MVP is piloted for Hanoi metropolitan users first; nationwide scaling is not part of MVP validation.
+
+- Verified experts are manually reviewed and approved during the MVP phase.
+
+- Third-party AI or rule-based services remain available during development, or can be replaced with mock/rule-based implementation for demonstration.
+
+- Notification services are available for account, reminder, moderation, and family alert use cases.
+
+- Mobile operating systems continue to provide motion sensor access under user permission and device limitations.
+
+- Map and location services are used only when the user opens emergency/nearby-care support and grants location permission.
+
+- Stakeholders and supervisors provide timely feedback during review sessions.
+
 - The team can use mock data where real integrations would exceed academic project feasibility.
 
 #### ***1.1.4 Scope Constraints***
 
-| Constraint Type | Description | Project Impact |
-| ----- | ----- | ----- |
-| Schedule | The project follows a 14-week working plan starting from 11/05/2026, with Reports 1, 2, and 3 due on 16/06/2026 and Report 4 due on 28/07/2026. | The team must prioritize MVP features and avoid overbuilding late-roadmap modules. |
-| Resource | The development team consists of five students with academic commitments and limited implementation capacity. | Scope must be decomposed into feasible modules with clear ownership. |
-| Budget | The project primarily relies on open-source tools, educational services, mock integrations, and low-cost cloud resources. | Commercial integrations such as full payment gateway or large-scale video calling may be simulated. |
-| Healthcare Safety | CareBridge cannot diagnose, treat, prescribe, replace emergency services, or operate as a licensed telemedicine system. | All AI, expert, community, and emergency flows must include disclaimers and safe routing. |
-| Data Protection | Health records, pregnancy data, child data, mental health data, consultation records, and location/sensor events are sensitive. | Consent, RBAC, encryption design, audit log, and minimal data sharing are mandatory. |
-| Mobile Sensor Limitation | IMU monitoring depends on device hardware, OS permission, battery mode, and foreground/background restrictions. | The feature must be optional, consent-based, and cannot guarantee continuous monitoring on all devices. |
+| Constraint Type          | Description                                                                                                                                     | Project Impact                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Schedule                 | The project follows a 14-week working plan starting from 11/05/2026, with Reports 1, 2, and 3 due on 16/06/2026 and Report 4 due on 28/07/2026. | The team must prioritize MVP features and avoid overbuilding late-roadmap modules.                      |
+| Resource                 | The development team consists of five students with academic commitments and limited implementation capacity.                                   | Scope must be decomposed into feasible modules with clear ownership.                                    |
+| Budget                   | The project primarily relies on open-source tools, educational services, mock integrations, and low-cost cloud resources.                       | Commercial integrations such as full payment gateway or large-scale video calling may be simulated.     |
+| Healthcare Safety        | CareBridge cannot diagnose, treat, prescribe, replace emergency services, or operate as a licensed telemedicine system.                         | All AI, expert, community, and emergency flows must include disclaimers and safe routing.               |
+| Data Protection          | Health records, pregnancy data, child data, mental health data, consultation records, and location/sensor events are sensitive.                 | Consent, RBAC, encryption design, audit log, and minimal data sharing are mandatory.                    |
+| Mobile Sensor Limitation | IMU monitoring depends on device hardware, OS permission, battery mode, and foreground/background restrictions.                                 | The feature must be optional, consent-based, and cannot guarantee continuous monitoring on all devices. |
 
 **Table 2\. CareBridge MVP Scope Constraints**
 
 #### ***1.1.5 Scope Exclusions***
 
-- Official Electronic Medical Record interoperability and national healthcare database integration.  
-- Electronic prescription, medication dosage recommendation, clinical diagnosis, or treatment planning.  
-- Licensed telemedicine service positioning, official online medical examination, or emergency dispatch operation.  
-- Insurance claim processing, hospital resource scheduling, and hospital internal HIS/EMR workflow.  
-- Medical imaging analysis, clinical decision support systems, and regulated medical-device certification.  
-- Nationwide deployment infrastructure and commercial-scale operation during the academic MVP.  
-- Continuous background safety monitoring guarantee across all devices and operating systems.  
+- Official Electronic Medical Record interoperability and national healthcare database integration.
+
+- Electronic prescription, medication dosage recommendation, clinical diagnosis, or treatment planning.
+
+- Licensed telemedicine service positioning, official online medical examination, or emergency dispatch operation.
+
+- Insurance claim processing, hospital resource scheduling, and hospital internal HIS/EMR workflow.
+
+- Medical imaging analysis, clinical decision support systems, and regulated medical-device certification.
+
+- Nationwide deployment infrastructure and commercial-scale operation during the academic MVP.
+
+- Continuous background safety monitoring guarantee across all devices and operating systems.
+
 - Selling, sharing, or using personal health data for advertising or commercial targeting without explicit consent.
 
 ####  ***1.1.6 Work Breakdown Structure (WBS) & Estimation***
 
-| \# | WBS Item | Complexity | Est. Effort (man-days) | Description |
-| ----- | :---- | :---- | ----- | ----- |
-| ***1*** | ***Project Initiation & Management*** |  | ***18*** | ***Kick-off, planning, progress tracking, meeting minutes, supervisor communication, task tracking.*** |
-| 1.1 | Project charter, scope baseline and revision control | Medium | 4 | Align team and supervisor on community-first healthcare-support positioning. |
-| 1.2 | Schedule, sprint and milestone planning | Medium | 5 | Define 14-week roadmap, sprint plan and internal deadlines. |
-| 1.3 | Project monitoring and reporting | Medium | 5 | Weekly tracking, issue log, status updates and risk review. |
-| 1.4 | Final review and defense preparation | Medium  | 4 | Document refinement, rehearsal and final quality check. |
-| ***2*** | ***Software Requirement Specification*** |  | ***30*** | ***Actor/use case review, requirements, functional specifications, traceability with latest use case baseline.*** |
-| 2.1 | Actor and stakeholder analysis | *Medium*   | *4* | *Validate 14-actor structure and platform responsibilities.* |
-| 2.2 | Use case analysis and diagram preparation | High | 8 | Maintain updated use case list including safety monitoring additions. |
-| 2.3 | Functional specification writing | High | 10 | Detailed flows, business rules, exceptions, healthcare safety boundary. |
-| 2.4 | Non-functional requirements and appendix | Medium  | 4 | Security, performance, usability, reliability, messages and business rules. |
-| 2.5 | SRS review and consistency check | Medium  | 4 | Ensure Report 2, Report 3, task plan and business logic are consistent. |
-| ***3*** | ***Authentication, Access Control & Profile*** |  | ***24*** | ***Account, OTP, profile, RBAC, expert status, privacy defaults.*** |
-| 3.1 | Registration, OTP and login/logout | Low | 6 | Account creation and session handling. |
-| 3.2 | Profile management and onboarding | Low | 5 | Role-based onboarding for mother, caregiver, expert and partner. |
-| 3.3 | Role-based access control | Medium | 6 | User, expert, moderator, admin and partner permissions. |
-| 3.4 | Consent and privacy settings | High | 7 | Consent scope, data sharing, revoke and audit hooks. |
-| ***4*** | ***Mother & Baby Care Journey*** |  | ***38*** | ***Mother journey, baby profile, growth, vaccination, health record and reminders.*** |
-| 4.1 | Mother journey tracking | Medium | 8 | Pre-pregnancy, pregnancy and postpartum dashboard. |
-| 4.2 | Baby profile and daily log | Medium | 7 | Breastfeeding, sleep, diaper, fever, notes and night mode. |
-| 4.3 | Growth, milestone and vaccination tracking | High | 8 | Charts, records, reminders and source labels. |
-| 4.4 | Personal health record vault | Medium | 7 | Upload, tag, categorize and share health records. |
-| 4.5 | Reminder and care task engine | Medium | 8 | Appointment, vaccination, vitamin, checklist and daily task reminders. |
-| ***5*** | ***Community & Knowledge Hub*** |  | ***34*** | ***Community Q\&A, anonymous posting, content hub, checklist and moderation support.*** |
-| 5.1 | Community feed and topic management | Medium  | 6 | Create, browse, filter and categorize community content. |
-| 5.2 | Anonymous posting and privacy prompts | Medium  | 5 | Safe asking for sensitive topics while keeping internal traceability. |
-| 5.3 | Answer, interaction and source labeling | Medium  | 6 | Personal-experience labels and expert-response labels. |
-| 5.4 | Report mechanism and moderation queue | High  | 9 | Report, triage, hide, lock, warn and escalation. |
-| 5.5 | Verified content, FAQ and checklist hub | Medium  | 8 | Short-stage content, FAQ and checklist templates. |
-| ***6*** | ***Verified Expert Ecosystem*** |  | ***30*** | ***Expert verification, contribution, consultation request and reputation.*** |
-| 6.1 | Expert profile and credential submission | Medium | 6 | Specialty, documents, scope and status. |
-| 6.2 | Admin verification workflow | High | 7 | Approve, reject, request supplement and log decisions. |
-| 6.3 | Expert answer and contribution queue | Medium | 6 | Free expert response within safety boundary. |
-| 6.4 | Consultation request and temporary data sharing | High | 7 | Booking request, scope disclaimer and time-limited access. |
-| 6.5 | Rating/reputation and complaint handling | Medium | 4 | Verified review and dispute evidence. |
-| ***7*** | ***AI Risk Triage & Safety Engine*** |  | ***34*** | ***Structured intake, red-flag rule, green/yellow/red routing and safe recommendation.*** |
-| 7.1 | AI intake interface | Medium | 6 | Step-by-step intake for user concern. |
-| 7.2 | Structured data normalization | Medium | 5 | Symptom, duration, severity and related profile fields. |
-| 7.3 | Risk classification rule engine | High | 8 | Green/yellow/red rules and conservative fallback. |
-| 7.4 | Safe recommendation and emergency override | High | 7 | No diagnosis, no prescription, no paid consultation before red-flag routing. |
-| 7.5 | AI logging and policy monitoring | Medium | 5 | Prompt/response metadata, report and review. |
-| 7.6 | AI safety testing | High | 3 | Medication, emergency, postpartum mental health and child fever scenarios. |
-| ***8*** | ***Family Sync & Cooperative Care*** |  | ***22*** | ***Care group, shared calendar, task assignment and family alert permissions.*** |
-| 8.1 | Care group invitation | Medium | 5 | Invite by link/phone, account validation and default minimal permissions. |
-| 8.2 | Family permission management | High | 6 | Granular sharing for calendar, baby log, alerts and records. |
-| 8.3 | Shared calendar and task assignment | Medium  | 6 | Care events, responsibility, status and reminders. |
-| 8.4 | Family notifications and alert settings | Medium  | 5 | Shared reminders and important alerts based on consent. |
-| ***9*** | ***Smart Activity Monitoring & Safety Support*** |  | ***28*** | ***Optional phone IMU monitoring, suspected fall/impact event, confirmation and family alert.*** |
-| 9.1 | Safety monitoring configuration and consent | Medium  | 5 | Explain limits, sensor permission, notification, location optional and contact selection. |
-| 9.2 | IMU data processing and on-device feature extraction | High | 6 | Accelerometer/gyroscope sampling, filtering and activity windows. |
-| 9.3 | Suspected fall/impact rule detection | High | 6 | Rule/confidence, false-positive prevention and event creation. |
-| 9.4 | Safety confirmation countdown | Medium  | 4 | Full-screen prompt, vibration/sound and response options. |
-| 9.5 | Family alert and notification delivery | High | 4 | Minimal payload, consent and delivery state. |
-| 9.6 | Safety history and false-positive feedback | Medium  | 3 | Event history, label and anonymized rule improvement. |
-| ***10*** | ***Emergency Map & Partner/Nearby Care Support*** |  | ***22*** | ***Emergency entry, map, route, quick call, location sharing and partner service listing.*** |
-| 10.1 | Emergency support screen and red-flag routing | High | 5 | Emergency flow and visible disclaimer. |
-| 10.2 | Map service and nearby care search | Medium  | 5 | Location permission, facility list and route support. |
-| 10.3 | Partner profile and service listing | Medium  | 5 | Approved partner clinic/service data and sponsored labels. |
-| 10.4 | Partner content moderation and referral request | Medium  | 4 | Approval, labeling and no data sharing without consent. |
-| 10.5 | Location/privacy event logging | Medium  | 3 | Minimal metadata and audit trail. |
-| ***11*** | ***Administration, Governance & Operation Dashboard*** |  | ***30*** | ***User, expert, moderation, partner, audit, impact and compliance dashboards.*** |
-| 11.1 | User and role management | Medium  | 5 | View status, lock, unlock and support actions. |
-| 11.2 | Expert and partner approval dashboard | High | 6 | Verification, status and audit trail. |
-| 11.3 | Moderation dashboard | High | 7 | Queue, report, warning, hide, lock and escalation. |
-| 11.4 | Governance and audit dashboard | High | 6 | Access log, consent log, AI/safety log and incident review. |
-| 11.5 | Impact and KPI dashboard | Medium  | 6 | Community, expert, safety and social-impact statistics. |
-| ***12*** | ***Infrastructure, DevOps & Quality Assurance*** |  | ***54*** | ***Cloud setup, database, CI/CD, security, testing and final deployment package.*** |
-| 12.1 | Backend infrastructure and database setup | Medium | 8 | Spring Boot services, PostgreSQL/MongoDB and data storage design. |
-| 12.2 | Flutter mobile app foundation | High | 8 | Navigation, state management, auth and design system. |
-| 12.3 | CI/CD and repository workflow | Medium | 6 | Git workflow, pull request review, build validation. |
-| 12.4 | Security, backup and logging setup | High | 7 | Encryption design, backup policy, access log and monitoring. |
-| 12.5 | Unit and integration testing | High | 8 | Backend, mobile and API validation. |
-| 12.6 | System, performance and security testing | High | 9 | Critical-flow, load, privacy, RBAC and AI safety testing. |
-| 12.7 | UAT, defect closure and final package | High | 8 | Representative scenarios, evidence and final release checklist. |
-|        ***Total Estimated Effort (man-days)*** |  |  | ***364*** |  |
+| \#                                      | WBS Item                                               | Complexity | Est. Effort (man-days) | Description                                                                                                       |
+| --------------------------------------- | :----------------------------------------------------- | :--------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| ***1***                                 | ***Project Initiation & Management***                  |            | ***18***               | ***Kick-off, planning, progress tracking, meeting minutes, supervisor communication, task tracking.***            |
+| 1.1                                     | Project charter, scope baseline and revision control   | Medium     | 4                      | Align team and supervisor on community-first healthcare-support positioning.                                      |
+| 1.2                                     | Schedule, sprint and milestone planning                | Medium     | 5                      | Define 14-week roadmap, sprint plan and internal deadlines.                                                       |
+| 1.3                                     | Project monitoring and reporting                       | Medium     | 5                      | Weekly tracking, issue log, status updates and risk review.                                                       |
+| 1.4                                     | Final review and defense preparation                   | Medium     | 4                      | Document refinement, rehearsal and final quality check.                                                           |
+| ***2***                                 | ***Software Requirement Specification***               |            | ***30***               | ***Actor/use case review, requirements, functional specifications, traceability with latest use case baseline.*** |
+| 2.1                                     | Actor and stakeholder analysis                         | *Medium*   | *4*                    | *Validate 14-actor structure and platform responsibilities.*                                                      |
+| 2.2                                     | Use case analysis and diagram preparation              | High       | 8                      | Maintain updated use case list including safety monitoring additions.                                             |
+| 2.3                                     | Functional specification writing                       | High       | 10                     | Detailed flows, business rules, exceptions, healthcare safety boundary.                                           |
+| 2.4                                     | Non-functional requirements and appendix               | Medium     | 4                      | Security, performance, usability, reliability, messages and business rules.                                       |
+| 2.5                                     | SRS review and consistency check                       | Medium     | 4                      | Ensure Report 2, Report 3, task plan and business logic are consistent.                                           |
+| ***3***                                 | ***Authentication, Access Control & Profile***         |            | ***24***               | ***Account, OTP, profile, RBAC, expert status, privacy defaults.***                                               |
+| 3.1                                     | Registration, OTP and login/logout                     | Low        | 6                      | Account creation and session handling.                                                                            |
+| 3.2                                     | Profile management and onboarding                      | Low        | 5                      | Role-based onboarding for mother, caregiver, expert and partner.                                                  |
+| 3.3                                     | Role-based access control                              | Medium     | 6                      | User, expert, moderator, admin and partner permissions.                                                           |
+| 3.4                                     | Consent and privacy settings                           | High       | 7                      | Consent scope, data sharing, revoke and audit hooks.                                                              |
+| ***4***                                 | ***Mother & Baby Care Journey***                       |            | ***38***               | ***Mother journey, baby profile, growth, vaccination, health record and reminders.***                             |
+| 4.1                                     | Mother journey tracking                                | Medium     | 8                      | Pre-pregnancy, pregnancy and postpartum dashboard.                                                                |
+| 4.2                                     | Baby profile and daily log                             | Medium     | 7                      | Breastfeeding, sleep, diaper, fever, notes and night mode.                                                        |
+| 4.3                                     | Growth, milestone and vaccination tracking             | High       | 8                      | Charts, records, reminders and source labels.                                                                     |
+| 4.4                                     | Personal health record vault                           | Medium     | 7                      | Upload, tag, categorize and share health records.                                                                 |
+| 4.5                                     | Reminder and care task engine                          | Medium     | 8                      | Appointment, vaccination, vitamin, checklist and daily task reminders.                                            |
+| ***5***                                 | ***Community & Knowledge Hub***                        |            | ***34***               | ***Community Q\&A, anonymous posting, content hub, checklist and moderation support.***                           |
+| 5.1                                     | Community feed and topic management                    | Medium     | 6                      | Create, browse, filter and categorize community content.                                                          |
+| 5.2                                     | Anonymous posting and privacy prompts                  | Medium     | 5                      | Safe asking for sensitive topics while keeping internal traceability.                                             |
+| 5.3                                     | Answer, interaction and source labeling                | Medium     | 6                      | Personal-experience labels and expert-response labels.                                                            |
+| 5.4                                     | Report mechanism and moderation queue                  | High       | 9                      | Report, triage, hide, lock, warn and escalation.                                                                  |
+| 5.5                                     | Verified content, FAQ and checklist hub                | Medium     | 8                      | Short-stage content, FAQ and checklist templates.                                                                 |
+| ***6***                                 | ***Verified Expert Ecosystem***                        |            | ***30***               | ***Expert verification, contribution, consultation request and reputation.***                                     |
+| 6.1                                     | Expert profile and credential submission               | Medium     | 6                      | Specialty, documents, scope and status.                                                                           |
+| 6.2                                     | Admin verification workflow                            | High       | 7                      | Approve, reject, request supplement and log decisions.                                                            |
+| 6.3                                     | Expert answer and contribution queue                   | Medium     | 6                      | Free expert response within safety boundary.                                                                      |
+| 6.4                                     | Consultation request and temporary data sharing        | High       | 7                      | Booking request, scope disclaimer and time-limited access.                                                        |
+| 6.5                                     | Rating/reputation and complaint handling               | Medium     | 4                      | Verified review and dispute evidence.                                                                             |
+| ***7***                                 | ***AI Risk Triage & Safety Engine***                   |            | ***34***               | ***Structured intake, red-flag rule, green/yellow/red routing and safe recommendation.***                         |
+| 7.1                                     | AI intake interface                                    | Medium     | 6                      | Step-by-step intake for user concern.                                                                             |
+| 7.2                                     | Structured data normalization                          | Medium     | 5                      | Symptom, duration, severity and related profile fields.                                                           |
+| 7.3                                     | Risk classification rule engine                        | High       | 8                      | Green/yellow/red rules and conservative fallback.                                                                 |
+| 7.4                                     | Safe recommendation and emergency override             | High       | 7                      | No diagnosis, no prescription, no paid consultation before red-flag routing.                                      |
+| 7.5                                     | AI logging and policy monitoring                       | Medium     | 5                      | Prompt/response metadata, report and review.                                                                      |
+| 7.6                                     | AI safety testing                                      | High       | 3                      | Medication, emergency, postpartum mental health and child fever scenarios.                                        |
+| ***8***                                 | ***Family Sync & Cooperative Care***                   |            | ***22***               | ***Care group, shared calendar, task assignment and family alert permissions.***                                  |
+| 8.1                                     | Care group invitation                                  | Medium     | 5                      | Invite by link/phone, account validation and default minimal permissions.                                         |
+| 8.2                                     | Family permission management                           | High       | 6                      | Granular sharing for calendar, baby log, alerts and records.                                                      |
+| 8.3                                     | Shared calendar and task assignment                    | Medium     | 6                      | Care events, responsibility, status and reminders.                                                                |
+| 8.4                                     | Family notifications and alert settings                | Medium     | 5                      | Shared reminders and important alerts based on consent.                                                           |
+| ***9***                                 | ***Smart Activity Monitoring & Safety Support***       |            | ***28***               | ***Optional phone IMU monitoring, suspected fall/impact event, confirmation and family alert.***                  |
+| 9.1                                     | Safety monitoring configuration and consent            | Medium     | 5                      | Explain limits, sensor permission, notification, location optional and contact selection.                         |
+| 9.2                                     | IMU data processing and on-device feature extraction   | High       | 6                      | Accelerometer/gyroscope sampling, filtering and activity windows.                                                 |
+| 9.3                                     | Suspected fall/impact rule detection                   | High       | 6                      | Rule/confidence, false-positive prevention and event creation.                                                    |
+| 9.4                                     | Safety confirmation countdown                          | Medium     | 4                      | Full-screen prompt, vibration/sound and response options.                                                         |
+| 9.5                                     | Family alert and notification delivery                 | High       | 4                      | Minimal payload, consent and delivery state.                                                                      |
+| 9.6                                     | Safety history and false-positive feedback             | Medium     | 3                      | Event history, label and anonymized rule improvement.                                                             |
+| ***10***                                | ***Emergency Map & Partner/Nearby Care Support***      |            | ***22***               | ***Emergency entry, map, route, quick call, location sharing and partner service listing.***                      |
+| 10.1                                    | Emergency support screen and red-flag routing          | High       | 5                      | Emergency flow and visible disclaimer.                                                                            |
+| 10.2                                    | Map service and nearby care search                     | Medium     | 5                      | Location permission, facility list and route support.                                                             |
+| 10.3                                    | Partner profile and service listing                    | Medium     | 5                      | Approved partner clinic/service data and sponsored labels.                                                        |
+| 10.4                                    | Partner content moderation and referral request        | Medium     | 4                      | Approval, labeling and no data sharing without consent.                                                           |
+| 10.5                                    | Location/privacy event logging                         | Medium     | 3                      | Minimal metadata and audit trail.                                                                                 |
+| ***11***                                | ***Administration, Governance & Operation Dashboard*** |            | ***30***               | ***User, expert, moderation, partner, audit, impact and compliance dashboards.***                                 |
+| 11.1                                    | User and role management                               | Medium     | 5                      | View status, lock, unlock and support actions.                                                                    |
+| 11.2                                    | Expert and partner approval dashboard                  | High       | 6                      | Verification, status and audit trail.                                                                             |
+| 11.3                                    | Moderation dashboard                                   | High       | 7                      | Queue, report, warning, hide, lock and escalation.                                                                |
+| 11.4                                    | Governance and audit dashboard                         | High       | 6                      | Access log, consent log, AI/safety log and incident review.                                                       |
+| 11.5                                    | Impact and KPI dashboard                               | Medium     | 6                      | Community, expert, safety and social-impact statistics.                                                           |
+| ***12***                                | ***Infrastructure, DevOps & Quality Assurance***       |            | ***54***               | ***Cloud setup, database, CI/CD, security, testing and final deployment package.***                               |
+| 12.1                                    | Backend infrastructure and database setup              | Medium     | 8                      | Spring Boot services, PostgreSQL and data storage design.                                                         |
+| 12.2                                    | Flutter mobile app foundation                          | High       | 8                      | Navigation, state management, auth and design system.                                                             |
+| 12.3                                    | CI/CD and repository workflow                          | Medium     | 6                      | Git workflow, pull request review, build validation.                                                              |
+| 12.4                                    | Security, backup and logging setup                     | High       | 7                      | Encryption design, backup policy, access log and monitoring.                                                      |
+| 12.5                                    | Unit and integration testing                           | High       | 8                      | Backend, mobile and API validation.                                                                               |
+| 12.6                                    | System, performance and security testing               | High       | 9                      | Critical-flow, load, privacy, RBAC and AI safety testing.                                                         |
+| 12.7                                    | UAT, defect closure and final package                  | High       | 8                      | Representative scenarios, evidence and final release checklist.                                                   |
+| ***Total Estimated Effort (man-days)*** |                                                        |            | ***364***              |                                                                                                                   |
 
 **Table 3\. Work Breakdown Structure** 
 
@@ -241,15 +251,15 @@ The MVP pilot is limited to the Hanoi metropolitan area. This scope reflects the
 
 #### ***1.1.8 MVP Boundary***
 
-| MVP Validation Area | What the MVP must prove | Not intended to prove |
-| ----- | ----- | ----- |
-| User adoption | Users can register, create profiles, track mother/baby journeys, post questions and use reminders. | Nationwide market acquisition or commercial retention at scale. |
-| Community engagement | Users can ask, answer, report and receive moderated support safely. | Unmoderated social-network scale behavior. |
-| Expert participation | Verified experts can be reviewed, approved and contributed safely. | Full regulated medical consultation operation. |
-| AI safety | Structured intake and green/yellow/red routing can support safe next actions. | AI diagnosis, treatment, prescription or clinical decision support. |
-| Family coordination | Care groups, shared tasks, and alerts can reduce caregiver burden. | Full family medical management or legal guardian verification at national level. |
-| Safety monitoring | Phone IMU can demonstrate suspected event detection, safety confirmation and consent-based family alert. | Certified medical device behavior, guaranteed fall detection, or emergency dispatch. |
-| Partner and emergency support | Map/partner support can guide users toward nearby care and transparent O2O referral. | Guaranteed appointment, ambulance dispatch or priority commercial routing in emergencies. |
+| MVP Validation Area           | What the MVP must prove                                                                                  | Not intended to prove                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| User adoption                 | Users can register, create profiles, track mother/baby journeys, post questions and use reminders.       | Nationwide market acquisition or commercial retention at scale.                           |
+| Community engagement          | Users can ask, answer, report and receive moderated support safely.                                      | Unmoderated social-network scale behavior.                                                |
+| Expert participation          | Verified experts can be reviewed, approved and contributed safely.                                       | Full regulated medical consultation operation.                                            |
+| AI safety                     | Structured intake and green/yellow/red routing can support safe next actions.                            | AI diagnosis, treatment, prescription or clinical decision support.                       |
+| Family coordination           | Care groups, shared tasks, and alerts can reduce caregiver burden.                                       | Full family medical management or legal guardian verification at national level.          |
+| Safety monitoring             | Phone IMU can demonstrate suspected event detection, safety confirmation and consent-based family alert. | Certified medical device behavior, guaranteed fall detection, or emergency dispatch.      |
+| Partner and emergency support | Map/partner support can guide users toward nearby care and transparent O2O referral.                     | Guaranteed appointment, ambulance dispatch or priority commercial routing in emergencies. |
 
 **Table 4\. MVP Validation Boundary** 
 
@@ -261,36 +271,49 @@ The primary objective of CareBridge is to deliver a secure, scalable, and health
 
 #### ***1.2.2 Business Objectives***
 
-- Improve access to trusted and actionable maternal and child-care information.  
-- Reduce misinformation and unsafe peer advice through moderation and expert verification.  
-- Promote preventive care behavior through reminders, checklist, health records and care tasks.  
-- Create a community-first product where users can receive support without being forced into paid consultation from the beginning.  
-- Enable verified experts to build reputation and provide safe educational guidance.  
-- Validate the Hanoi pilot model before any nationwide expansion.  
+- Improve access to trusted and actionable maternal and child-care information.
+
+- Reduce misinformation and unsafe peer advice through moderation and expert verification.
+
+- Promote preventive care behavior through reminders, checklist, health records and care tasks.
+
+- Create a community-first product where users can receive support without being forced into paid consultation from the beginning.
+
+- Enable verified experts to build reputation and provide safe educational guidance.
+
+- Validate the Hanoi pilot model before any nationwide expansion.
+
 - Establish a sustainable social-impact direction through optional expert marketplace, partner support, and CSR opportunities without selling personal health data.
 
 #### ***1.2.3 Technical Objectives***
 
-- Implement Flutter mobile application for the user-facing MVP.  
-- Implement modular backend services using Java Spring Boot with PostgreSQL and MongoDB where appropriate.  
-- Apply role-based access control, consent-driven data sharing, and audit logging for sensitive actions.  
-- Support structured AI/rule-based triage without allowing diagnosis or prescription behavior.  
-- Support notification flows for reminders, moderation updates, consultation requests, and family safety alerts.  
-- Support map/location integration only within consent-based emergency or nearby-care flows.  
-- Design IMU safety monitoring as optional, on-device-first, privacy-aware functionality.  
+- Implement Flutter mobile application for the user-facing MVP.
+
+- Implement modular backend services using Java Spring Boot with PostgreSQL where appropriate.
+
+- Apply role-based access control, consent-driven data sharing, and audit logging for sensitive actions.
+
+- Support structured AI/rule-based triage without allowing diagnosis or prescription behavior.
+
+- Support notification flows for reminders, moderation updates, consultation requests, and family safety alerts.
+
+- Support map/location integration only within consent-based emergency or nearby-care flows.
+
+- Design IMU safety monitoring as optional, on-device-first, privacy-aware functionality.
+
 - Maintain cloud-ready architecture and CI/CD workflow for academic deployment and demonstration.
 
 ####  ***1.2.4 Quality Objectives***
 
-| \# | Testing Stage | Test Coverage | No. of Defects | % of Defect | Notes |
-| :---- | :---- | :---- | ----- | ----- | :---- |
-| 1 | Requirement and Design Review | 100% key documents reviewed | All critical inconsistencies resolved | N/A | Scope, actor, use case, WBS, risk and deliverable consistency. |
-| 2 | Unit Testing | \>= 80% backend service coverage; \>= 90% critical business-rule coverage | \<= 10	 | \<= 10%	 | Focus on auth, RBAC, triage rule, permission and reminder logic. |
-| 3 | Integration Testing | \>= 75% key API/service integration coverage | \<= 8	 | \<= 15%	 | Mobile-backend, AI/rule engine, notification, map and admin flows. |
-| 4 | System Testing | 100% critical MVP flows; \>= 90% major flows | \<= 5	 | \<= 5%	 | Includes red-flag flow, moderation, data sharing and safety monitoring. |
-| 5 | Security & Privacy Testing | 100% RBAC, consent and sensitive-data access checks | 0 critical defects	 |      0%	 | Focus on health records, child data, consultation and safety event logs. |
-| 6 | AI Safety Testing | 100% high-risk prompt set executed | 0 Unsafe Responses |      0%	 | Medication, red flag, child fever, postpartum mental health, self-harm and emergency scenarios. |
-| 7 | UAT | 100% MVP scenarios validated | 0 Blocker Defects |      0%	 | Representative care seeker, family, expert, moderator and admin scenarios. |
+| \#   | Testing Stage                 | Test Coverage                                                             | No. of Defects                        | % of Defect | Notes                                                                                           |
+| :--- | :---------------------------- | :------------------------------------------------------------------------ | ------------------------------------- | ----------- | :---------------------------------------------------------------------------------------------- |
+| 1    | Requirement and Design Review | 100% key documents reviewed                                               | All critical inconsistencies resolved | N/A         | Scope, actor, use case, WBS, risk and deliverable consistency.                                  |
+| 2    | Unit Testing                  | \>= 80% backend service coverage; \>= 90% critical business-rule coverage | \<= 10                                | \<= 10%     | Focus on auth, RBAC, triage rule, permission and reminder logic.                                |
+| 3    | Integration Testing           | \>= 75% key API/service integration coverage                              | \<= 8                                 | \<= 15%     | Mobile-backend, AI/rule engine, notification, map and admin flows.                              |
+| 4    | System Testing                | 100% critical MVP flows; \>= 90% major flows                              | \<= 5                                 | \<= 5%      | Includes red-flag flow, moderation, data sharing and safety monitoring.                         |
+| 5    | Security & Privacy Testing    | 100% RBAC, consent and sensitive-data access checks                       | 0 critical defects                    | 0%          | Focus on health records, child data, consultation and safety event logs.                        |
+| 6    | AI Safety Testing             | 100% high-risk prompt set executed                                        | 0 Unsafe Responses                    | 0%          | Medication, red flag, child fever, postpartum mental health, self-harm and emergency scenarios. |
+| 7    | UAT                           | 100% MVP scenarios validated                                              | 0 Blocker Defects                     | 0%          | Representative care seeker, family, expert, moderator and admin scenarios.                      |
 
 **Table 5\. Quality Objectives and Defect Targets** 
 
@@ -298,29 +321,27 @@ The primary objective of CareBridge is to deliver a secure, scalable, and health
 
 The project follows a 14-week working plan starting from 11/05/2026. Reports 1, 2, and 3 are aligned for 16/06/2026, Report 4 is aligned for 28/07/2026, and Reports 5, 6, and 7 are prepared before the final defense according to SEP490 scheduling. The team targets a milestone timeliness rate of at least 90% and keeps a final review buffer before defense.
 
-| Activity | Estimated Effort (%) | Management Focus |
-| ----- | :---: | ----- |
-| Requirement Analysis	 | 15% | Actor, use case, business rule, risk boundary and SRS alignment. |
-| Architecture & Design	 | 15% | System architecture, ERD, API design, screen flow and security design. |
-| Development | 40% | Flutter mobile app, backend services, admin/expert/partner flows, AI/rule services and safety monitoring demo. |
-| Testing & QA | 20% | Unit, integration, system, UAT, security, privacy and AI safety testing. |
-| Project Management	 | 10% | Planning, tracking, risk management, communication, configuration and final packaging. |
+| Activity              | Estimated Effort (%) | Management Focus                                                                                               |
+| --------------------- | :------------------: | -------------------------------------------------------------------------------------------------------------- |
+| Requirement Analysis  |         15%          | Actor, use case, business rule, risk boundary and SRS alignment.                                               |
+| Architecture & Design |         15%          | System architecture, ERD, API design, screen flow and security design.                                         |
+| Development           |         40%          | Flutter mobile app, backend services, admin/expert/partner flows, AI/rule services and safety monitoring demo. |
+| Testing & QA          |         20%          | Unit, integration, system, UAT, security, privacy and AI safety testing.                                       |
+| Project Management    |         10%          | Planning, tracking, risk management, communication, configuration and final packaging.                         |
 
 **Table 6\. Effort Distribution by Activity Group** 
 
-#### 
-
 #### ***1.2.6 Pilot Success Metrics***
 
-| Metric | Target for Academic Pilot | Rationale |
-| ----- | :---: | ----- |
-| MVP critical-flow completion | \>= 90% | Most essential flows must be demonstrable by defense. |
-| Critical defect count before final package | 0 | No blocker in auth, health record, triage, moderation, consent or emergency/safety flow. |
-| User scenario acceptance | \>= 90% | Representative user scenarios should pass UAT. |
-| AI safety violation rate in test set | 0 critical violations | No diagnosis, prescription, dosage or emergency-delay behavior. |
-| Moderation handling coverage | 100% high-risk content scenarios | Medication, red flag, misinformation and abuse reports must be handled. |
-| Safety monitoring demo readiness | \>= 1 working demo flow | Enable monitoring, detect simulated suspected events, confirm status, alert or emergency handoff. |
-| Documentation completion | 100% required SEP490 reports and evidence | Reports, tracking, design, test cases, user guide and final presentation. |
+| Metric                                     |         Target for Academic Pilot         | Rationale                                                                                         |
+| ------------------------------------------ | :---------------------------------------: | ------------------------------------------------------------------------------------------------- |
+| MVP critical-flow completion               |                  \>= 90%                  | Most essential flows must be demonstrable by defense.                                             |
+| Critical defect count before final package |                     0                     | No blocker in auth, health record, triage, moderation, consent or emergency/safety flow.          |
+| User scenario acceptance                   |                  \>= 90%                  | Representative user scenarios should pass UAT.                                                    |
+| AI safety violation rate in test set       |           0 critical violations           | No diagnosis, prescription, dosage or emergency-delay behavior.                                   |
+| Moderation handling coverage               |     100% high-risk content scenarios      | Medication, red flag, misinformation and abuse reports must be handled.                           |
+| Safety monitoring demo readiness           |          \>= 1 working demo flow          | Enable monitoring, detect simulated suspected events, confirm status, alert or emergency handoff. |
+| Documentation completion                   | 100% required SEP490 reports and evidence | Reports, tracking, design, test cases, user guide and final presentation.                         |
 
 **Table 7\. Academic Pilot Success Metrics**
 
@@ -328,26 +349,26 @@ The project follows a 14-week working plan starting from 11/05/2026. Reports 1, 
 
 The risk register is rebuilt to reflect the current CareBridge scope, including healthcare legal boundaries, community governance, AI safety, privacy, location, partner content, and phone-sensor safety monitoring.
 
-| \# | Risk Description | Impact | Possibility |  Response Plans |
-| :---: | :---- | ----- | ----- | :---- |
-| 1 | Healthcare legal misunderstanding | High | Medium | Use legal-safe wording: support, guidance, risk triage; never diagnosis, prescription, treatment or emergency replacement. |
-| 2 | Unsafe AI recommendation | High | Medium | Restrict AI to structured intake, summarization and safe next-action routing; maintain red-flag override and test prompt set. |
-| 3 | Community misinformation | High | High | Apply moderation queue, report button, expert labels, banned keywords and health-risk classifier. |
-| 4 | Expert verification failure | High | Medium | Manual review, credential status, badge control, complaint handling and periodic re-check. |
-| 5 | Sensitive data leakage | High | Medium | RBAC, consent scope, encryption design, audit log, limited internal access and incident response plan. |
-| 6 | Child data privacy risk | High | Medium | Guardian-controlled profiles, privacy prompts, default private settings and no public child identity exposure. |
-| 7 | Timeline pressure | High | High | Use sprint prioritization, internal buffers, MVP cuts and weekly risk review. |
-| 8 | Cloud deployment complexity | Medium | Medium | Deploy staging early, use simple architecture, document rollback and maintain local fallback demo. |
-| 9 | Team lacks scalable architecture experience | Medium | Medium | Conduct training, architecture review, code review and supervisor feedback. |
-| 10 | False positive safety detection | Medium | High | Use confirmation countdown, false-positive feedback, on-device filtering and clear “suspected event” wording. |
-| 11 | False negative safety detection | High | Medium | Do not claim guaranteed fall detection; include disclaimer and allow manual emergency support. |
-| 12 | Battery drain from sensor monitoring | Medium | Medium | Make monitoring optional, display battery notice, optimize sampling and allow scheduled monitoring. |
-| 13 | Mobile OS sensor/background limitation | Medium | High | State actual monitoring limitation, test on target device, avoid guaranteeing continuous background operation. |
-| 14 | Family alert delivery failure | High | Medium | Track delivery status, retry policy, fallback quick call and minimal payload. |
-| 15 | GPS/map unavailable in emergency flow | High | Medium | Allow manual hotline/area search and show no-location fallback. |
-| 16 | Partner/sponsored content misleads users | High | Medium | Require admin approval, sponsored label, no ads in AI triage/red-alert recommendation and report workflow. |
-| 17 | Payment or paid consultation misconception | Medium | Medium | Use mock/controlled payment; show scope, price, refund policy and no medical guarantee. |
-| 18 | Scope creep from too many features | High | High | Separate MVP, should-have and roadmap; prioritize demonstration-critical features. |
+|  \#   | Risk Description                            | Impact | Possibility | Response Plans                                                                                                                |
+| :---: | :------------------------------------------ | ------ | ----------- | :---------------------------------------------------------------------------------------------------------------------------- |
+|   1   | Healthcare legal misunderstanding           | High   | Medium      | Use legal-safe wording: support, guidance, risk triage; never diagnosis, prescription, treatment or emergency replacement.    |
+|   2   | Unsafe AI recommendation                    | High   | Medium      | Restrict AI to structured intake, summarization and safe next-action routing; maintain red-flag override and test prompt set. |
+|   3   | Community misinformation                    | High   | High        | Apply moderation queue, report button, expert labels, banned keywords and health-risk classifier.                             |
+|   4   | Expert verification failure                 | High   | Medium      | Manual review, credential status, badge control, complaint handling and periodic re-check.                                    |
+|   5   | Sensitive data leakage                      | High   | Medium      | RBAC, consent scope, encryption design, audit log, limited internal access and incident response plan.                        |
+|   6   | Child data privacy risk                     | High   | Medium      | Guardian-controlled profiles, privacy prompts, default private settings and no public child identity exposure.                |
+|   7   | Timeline pressure                           | High   | High        | Use sprint prioritization, internal buffers, MVP cuts and weekly risk review.                                                 |
+|   8   | Cloud deployment complexity                 | Medium | Medium      | Deploy staging early, use simple architecture, document rollback and maintain local fallback demo.                            |
+|   9   | Team lacks scalable architecture experience | Medium | Medium      | Conduct training, architecture review, code review and supervisor feedback.                                                   |
+|  10   | False positive safety detection             | Medium | High        | Use confirmation countdown, false-positive feedback, on-device filtering and clear “suspected event” wording.                 |
+|  11   | False negative safety detection             | High   | Medium      | Do not claim guaranteed fall detection; include disclaimer and allow manual emergency support.                                |
+|  12   | Battery drain from sensor monitoring        | Medium | Medium      | Make monitoring optional, display battery notice, optimize sampling and allow scheduled monitoring.                           |
+|  13   | Mobile OS sensor/background limitation      | Medium | High        | State actual monitoring limitation, test on target device, avoid guaranteeing continuous background operation.                |
+|  14   | Family alert delivery failure               | High   | Medium      | Track delivery status, retry policy, fallback quick call and minimal payload.                                                 |
+|  15   | GPS/map unavailable in emergency flow       | High   | Medium      | Allow manual hotline/area search and show no-location fallback.                                                               |
+|  16   | Partner/sponsored content misleads users    | High   | Medium      | Require admin approval, sponsored label, no ads in AI triage/red-alert recommendation and report workflow.                    |
+|  17   | Payment or paid consultation misconception  | Medium | Medium      | Use mock/controlled payment; show scope, price, refund policy and no medical guarantee.                                       |
+|  18   | Scope creep from too many features          | High   | High        | Separate MVP, should-have and roadmap; prioritize demonstration-critical features.                                            |
 
 **Table 8\. Project Risk Register** 
 
@@ -361,12 +382,6 @@ The CareBridge project adopts Agile Scrum as the primary development methodology
 
 ### 
 
-### 
-
-### 
-
-### 
-
 ### **2.1 Project Process** {#2.1-project-process}
 
 #### ***2.1.1 Development Methodology***
@@ -377,92 +392,97 @@ The project is implemented with iterative Scrum cycles. Each sprint produces a r
 **Figure 3\. Scrum process model applied in CareBridge**  
 [Detail Scrum process model applied in CareBridge](https://drive.google.com/file/d/1y-OpY4clypTxo1Vtzjk1sUWiuTfSeB8o/view?usp=drive_link)
 
-#### 
-
-#### 
-
-#### 
-
 #### ***2.1.2 Scrum Roles*** 
 
-| Role | Responsibility |
-| :---- | :---- |
-| Product Owner | Prioritize business requirements, MVP boundary, safety scope and deliverable readiness. |
-| Scrum Master | Facilitate sprint events, remove blockers, maintain sprint discipline and update progress. |
-| Development Team | Analyze, design, implement, test and document the system modules. |
-| QA / Reviewer | Review requirements, test cases, defect logs, privacy scenarios, AI safety and UAT evidence. |
-| Supervisor/Mentor | Review project outputs, provide guidance and validate academic direction. |
+| Role              | Responsibility                                                                               |
+| :---------------- | :------------------------------------------------------------------------------------------- |
+| Product Owner     | Prioritize business requirements, MVP boundary, safety scope and deliverable readiness.      |
+| Scrum Master      | Facilitate sprint events, remove blockers, maintain sprint discipline and update progress.   |
+| Development Team  | Analyze, design, implement, test and document the system modules.                            |
+| QA / Reviewer     | Review requirements, test cases, defect logs, privacy scenarios, AI safety and UAT evidence. |
+| Supervisor/Mentor | Review project outputs, provide guidance and validate academic direction.                    |
 
 **Table 9\. Scrum Roles and Responsibilities** 
 
 #### ***2.1.3 Scrum Artifacts***
 
-- Product Backlog  
-- Sprint Backlog  
-- Sprint Goal  
-- Increment  
-- Sprint Burndown/Progress Tracking  
-- Defect Log  
-- Risk Register  
-- Requirement Traceability Matrix  
-- Change Log  
+- Product Backlog
+
+- Sprint Backlog
+
+- Sprint Goal
+
+- Increment
+
+- Sprint Burndown/Progress Tracking
+
+- Defect Log
+
+- Risk Register
+
+- Requirement Traceability Matrix
+
+- Change Log
+
 - Meeting Minutes
 
 #### ***2.1.4 Sprint Structure***
 
-- Sprint Planning  
-- Requirement Clarification  
-- Design and UI/API Planning  
-- Implementation  
-- Unit Testing  
-- Integration Testing  
-- Review and Demonstration  
+- Sprint Planning
+
+- Requirement Clarification
+
+- Design and UI/API Planning
+
+- Implementation
+
+- Unit Testing
+
+- Integration Testing
+
+- Review and Demonstration
+
 - Retrospective and Backlog Update
-
-#### 
-
-#### 
-
-#### 
-
-#### 
-
-#### 
 
 #### ***2.1.5   14-Week Project Roadmap*** 
 
-| Week | Period | Main Focus | Expected Output |
-| ----- | ----- | ----- | ----- |
-| 1 | 11/05 \- 17/05 | Project initiation, problem framing, stakeholder identification, initial product positioning. | Report 1 outline, project direction, meeting minutes. |
-| 2 | 18/05 \- 24/05 | Report 1 preparation, market/problem analysis, related systems and expected outcomes. | Report 1 completed draft. |
-| 3 | 25/05 \- 31/05 | Report 2 project management planning, scope, WBS, risk and communication plan. | Report 2 initial draft. |
-| 4 | 01/06 \- 07/06 | Business logic update, actor/use case redesign, safety boundary confirmation, IMU research demo preparation. | Updated business scope, use case baseline and research demo. |
-| 5 | 08/06 \- 16/06 | Finalize Reports 1, 2, 3; SRS completion, use case descriptions, non-functional requirements. | Reports 1, 2, 3 submitted by 16/06/2026. |
-| 6 | 17/06 \- 23/06 | Architecture design, screen flow, ERD, API design, technology proof of concept. | Report 4 design skeleton and prototype evidence. |
-| 7 | 24/06 \- 30/06 | Core backend and Flutter foundation: auth, profile, mother/baby journey. | Core app framework and backend services. |
-| 8 | 01/07 \- 07/07 | Community, moderation, content hub and health record implementation. | Community and record modules. |
-| 9 | 08/07 \- 14/07 | Expert ecosystem, Family Sync, reminders and notification flows. | Expert and family coordination modules. |
-| 10 | 15/07 \- 21/07 | AI/rule triage, red/yellow/green routing, governance and audit log. | AI safety and governance increment. |
-| 11 | 22/07 \- 28/07 | Safety monitoring demo, emergency map support, Report 4 finalization. | Report 4 due 28/07/2026; safety demo evidence. |
-| 12 | 29/07 \- 04/08 | Integration testing, system testing, defect fixing, performance/security validation. | Test evidence and defect log. |
-| 13 | 05/08 \- 11/08 | User guide, deployment guide, UAT, final software package and documentation consolidation. | Reports 5 and 6 drafts, MVP package. |
-| 14 | 12/08 \- Final Defense | Final report consolidation, presentation, rehearsal, Q\&A preparation and final package verification. | Reports 5, 6, 7 before defense 3 days; final presentation. |
+| Week | Period                 | Main Focus                                                                                                   | Expected Output                                              |
+| ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1    | 11/05 \- 17/05         | Project initiation, problem framing, stakeholder identification, initial product positioning.                | Report 1 outline, project direction, meeting minutes.        |
+| 2    | 18/05 \- 24/05         | Report 1 preparation, market/problem analysis, related systems and expected outcomes.                        | Report 1 completed draft.                                    |
+| 3    | 25/05 \- 31/05         | Report 2 project management planning, scope, WBS, risk and communication plan.                               | Report 2 initial draft.                                      |
+| 4    | 01/06 \- 07/06         | Business logic update, actor/use case redesign, safety boundary confirmation, IMU research demo preparation. | Updated business scope, use case baseline and research demo. |
+| 5    | 08/06 \- 16/06         | Finalize Reports 1, 2, 3; SRS completion, use case descriptions, non-functional requirements.                | Reports 1, 2, 3 submitted by 16/06/2026.                     |
+| 6    | 17/06 \- 23/06         | Architecture design, screen flow, ERD, API design, technology proof of concept.                              | Report 4 design skeleton and prototype evidence.             |
+| 7    | 24/06 \- 30/06         | Core backend and Flutter foundation: auth, profile, mother/baby journey.                                     | Core app framework and backend services.                     |
+| 8    | 01/07 \- 07/07         | Community, moderation, content hub and health record implementation.                                         | Community and record modules.                                |
+| 9    | 08/07 \- 14/07         | Expert ecosystem, Family Sync, reminders and notification flows.                                             | Expert and family coordination modules.                      |
+| 10   | 15/07 \- 21/07         | AI/rule triage, red/yellow/green routing, governance and audit log.                                          | AI safety and governance increment.                          |
+| 11   | 22/07 \- 28/07         | Safety monitoring demo, emergency map support, Report 4 finalization.                                        | Report 4 due 28/07/2026; safety demo evidence.               |
+| 12   | 29/07 \- 04/08         | Integration testing, system testing, defect fixing, performance/security validation.                         | Test evidence and defect log.                                |
+| 13   | 05/08 \- 11/08         | User guide, deployment guide, UAT, final software package and documentation consolidation.                   | Reports 5 and 6 drafts, MVP package.                         |
+| 14   | 12/08 \- Final Defense | Final report consolidation, presentation, rehearsal, Q\&A preparation and final package verification.        | Reports 5, 6, 7 before defense 3 days; final presentation.   |
 
 **Table 10\. Fourteen-Week Project Roadmap**
 
 #### 
 
-#### 
-
 #### ***2.1.6 Definition of Done***
 
-- Requirement is linked to actor/use case or approved business rule.  
-- UI/API behavior is documented and reviewed by at least one team member.  
-- Implementation is committed to the repository with meaningful branch/commit history.  
-- Unit or integration test evidence is available for implemented logic where applicable.  
-- No critical or high-severity defect remains open for the completed scope.  
-- Healthcare safety boundary is checked: no diagnosis, no prescription, no treatment, no emergency replacement.  
-- Sensitive data access follows RBAC, consent and audit-log expectations.  
+- Requirement is linked to actor/use case or approved business rule.
+
+- UI/API behavior is documented and reviewed by at least one team member.
+
+- Implementation is committed to the repository with meaningful branch/commit history.
+
+- Unit or integration test evidence is available for implemented logic where applicable.
+
+- No critical or high-severity defect remains open for the completed scope.
+
+- Healthcare safety boundary is checked: no diagnosis, no prescription, no treatment, no emergency replacement.
+
+- Sensitive data access follows RBAC, consent and audit-log expectations.
+
 - Documentation and screenshots/evidence are updated for the sprint increment.
 
 #### ***2.1.7 Change Management***
@@ -475,42 +495,51 @@ Any major requirement change must be reviewed against impact on scope, schedule,
 
 #### ***2.2.2 Defect Prevention***
 
-- Requirement review sessions  
-- Design walkthroughs  
-- Coding standards enforcement  
-- Architecture review  
-- Peer review and Merge Request review  
-- Static analysis and linting  
-- CI/CD validation  
-- AI safety prompt testing  
-- Security and consent scenario review  
+- Requirement review sessions
+
+- Design walkthroughs
+
+- Coding standards enforcement
+
+- Architecture review
+
+- Peer review and Merge Request review
+
+- Static analysis and linting
+
+- CI/CD validation
+
+- AI safety prompt testing
+
+- Security and consent scenario review
+
 - Pre-defense document consistency audit
 
 #### ***2.2.3 Review Process*** 
 
-| Deliverable | Reviewer | Review Focus |
-| :---- | :---- | :---- |
-| Project Plan | Team Lead, Supervisor | Scope, schedule, risks, WBS, responsibility and consistency with current business scope. |
-| SRS | Development Team, Supervisor | Actors, use cases, functional details, NFR, safety boundary and traceability. |
-| Software Design | Development Team | Architecture, screen flow, ERD, APIs, security and deployment feasibility. |
-| Source Code | Peer Developers | Code quality, testability, security and maintainability. |
-| Test Cases | QA Members | Coverage of critical flows, abnormal cases, AI safety and data privacy. |
-| User Guides | Team Lead, QA | Install steps, user flows, screenshots and clarity. |
-| Final Package | Entire Team | Build readiness, documentation, evidence and presentation consistency. |
+| Deliverable     | Reviewer                     | Review Focus                                                                             |
+| :-------------- | :--------------------------- | :--------------------------------------------------------------------------------------- |
+| Project Plan    | Team Lead, Supervisor        | Scope, schedule, risks, WBS, responsibility and consistency with current business scope. |
+| SRS             | Development Team, Supervisor | Actors, use cases, functional details, NFR, safety boundary and traceability.            |
+| Software Design | Development Team             | Architecture, screen flow, ERD, APIs, security and deployment feasibility.               |
+| Source Code     | Peer Developers              | Code quality, testability, security and maintainability.                                 |
+| Test Cases      | QA Members                   | Coverage of critical flows, abnormal cases, AI safety and data privacy.                  |
+| User Guides     | Team Lead, QA                | Install steps, user flows, screenshots and clarity.                                      |
+| Final Package   | Entire Team                  | Build readiness, documentation, evidence and presentation consistency.                   |
 
 **Table 11\. Deliverable Review Matrix** 
 
 #### ***2.2.4 Testing Strategy*** 
 
-| Testing Type | Scope | Acceptance Criteria |
-| :---- | :---- | :---- |
-| Unit Testing | Backend services, rules, validators, permission checks, reminder logic, sensor-event rules. | Core business logic \>= 90% where feasible; no critical failed test. |
-| Integration Testing | Mobile-backend, admin-backend, notification, AI/rule engine, map and database flow. | Critical integration path passes; retry/failure handling verified. |
-| System Testing | End-to-end flows across user, family, expert, moderator, admin and partner paths. | All critical MVP flows pass. |
-| Security & Privacy Testing | RBAC, consent, temporary access, audit log, child data and health record sharing. | No unauthorized sensitive data access. |
-| AI Safety Testing | Medication, dosage, red flag, diagnosis, self-harm, postpartum mental health and emergency scenarios. | AI never diagnoses, prescribes or delays emergency routing. |
-| Sensor Safety Testing | Enable/disable monitoring, suspected event, safety confirmation, family alert, false-positive feedback. | Event wording remains “suspected”; user confirmation is required unless there is no response. |
-| UAT | Representative scenarios with care seeker, family member, expert, moderator and admin. | User acceptance rate \>= 90%; no critical blocker. |
+| Testing Type               | Scope                                                                                                   | Acceptance Criteria                                                                           |
+| :------------------------- | :------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------- |
+| Unit Testing               | Backend services, rules, validators, permission checks, reminder logic, sensor-event rules.             | Core business logic \>= 90% where feasible; no critical failed test.                          |
+| Integration Testing        | Mobile-backend, admin-backend, notification, AI/rule engine, map and database flow.                     | Critical integration path passes; retry/failure handling verified.                            |
+| System Testing             | End-to-end flows across user, family, expert, moderator, admin and partner paths.                       | All critical MVP flows pass.                                                                  |
+| Security & Privacy Testing | RBAC, consent, temporary access, audit log, child data and health record sharing.                       | No unauthorized sensitive data access.                                                        |
+| AI Safety Testing          | Medication, dosage, red flag, diagnosis, self-harm, postpartum mental health and emergency scenarios.   | AI never diagnoses, prescribes or delays emergency routing.                                   |
+| Sensor Safety Testing      | Enable/disable monitoring, suspected event, safety confirmation, family alert, false-positive feedback. | Event wording remains “suspected”; user confirmation is required unless there is no response. |
+| UAT                        | Representative scenarios with care seeker, family member, expert, moderator and admin.                  | User acceptance rate \>= 90%; no critical blocker.                                            |
 
 **Table 12\. Testing Strategy and Acceptance Criteria** 
 
@@ -518,39 +547,41 @@ Any major requirement change must be reviewed against impact on scope, schedule,
 
 UAT is conducted using representative scenarios: a mother creates a journey, records baby care data, asks a community question, receives moderated guidance, shares a summary with a verified expert, configures family access, receives reminders, and tests safety monitoring flow. The UAT also covers abnormal cases such as unsafe community advice, red-flag triage, permission revocation, and failed notification delivery.
 
-### **2.3 Training Plan**  {#2.3-training-plan}
+### **2.3 Training Plan** {#2.3-training-plan}
 
-| Training Area | Participants | When, Duration | Waiver Criteria |
-| :---- | :---- | :---- | :---- |
-| Flutter Mobile Development | Mobile Team | Week 2-4 / 3 days initial \+ practice | Mandatory for mobile app implementation. |
-| Java Spring Boot Backend | Backend Team | Week 2-4 / 3 days initial \+ practice | Mandatory for backend implementation. |
-| Database Design: PostgreSQL & MongoDB | Backend Team | Week 4-6 / 2 days | Mandatory for data model and persistence. |
-| GitLab Workflow and Merge Request Review | Entire Team | Week 1 / 1 day | Mandatory for source control discipline. |
-| Cloud Deployment Basics | Entire Team | Week 3-6 / 2 days | Mandatory for demo deployment. |
-| AI Safety & Rule-Based Triage | BA, Backend, QA | Week 4-8 / 2 days | Mandatory for AI/risk module. |
-| Healthcare Legal Boundary & Privacy | Entire Team | Week 4 / 1 day \+ review | Mandatory before implementing health-sensitive features. |
-| IMU Sensor Prototype and Motion Event Testing | Mobile Team, QA | Week 4-10 / 2 days \+ demo testing | Mandatory for safety monitoring prototype. |
-| Testing, Defect Management and UAT Evidence | QA \+ Development Team | Week 10-13 / 2 days | Mandatory for Reports 5 and final package. |
+| Training Area                                 | Participants           | When, Duration                        | Waiver Criteria                                          |
+| :-------------------------------------------- | :--------------------- | :------------------------------------ | :------------------------------------------------------- |
+| Flutter Mobile Development                    | Mobile Team            | Week 2-4 / 3 days initial \+ practice | Mandatory for mobile app implementation.                 |
+| Java Spring Boot Backend                      | Backend Team           | Week 2-4 / 3 days initial \+ practice | Mandatory for backend implementation.                    |
+| Database Design: PostgreSQL         | Backend Team           | Week 4-6 / 2 days                     | Mandatory for data model and persistence.                |
+| GitLab Workflow and Merge Request Review      | Entire Team            | Week 1 / 1 day                        | Mandatory for source control discipline.                 |
+| Cloud Deployment Basics                       | Entire Team            | Week 3-6 / 2 days                     | Mandatory for demo deployment.                           |
+| AI Safety & Rule-Based Triage                 | BA, Backend, QA        | Week 4-8 / 2 days                     | Mandatory for AI/risk module.                            |
+| Healthcare Legal Boundary & Privacy           | Entire Team            | Week 4 / 1 day \+ review              | Mandatory before implementing health-sensitive features. |
+| IMU Sensor Prototype and Motion Event Testing | Mobile Team, QA        | Week 4-10 / 2 days \+ demo testing    | Mandatory for safety monitoring prototype.               |
+| Testing, Defect Management and UAT Evidence   | QA \+ Development Team | Week 10-13 / 2 days                   | Mandatory for Reports 5 and final package.               |
 
 **Table 13\. Project Training Plan** 
 
+## 
+
 ## **3\. Project Deliverables** {#3.-project-deliverables}
 
-| \# | Deliverable | Due Date / Target | Notes |
-| :---: | :---- | :---- | :---- |
-| 1 | Report 1 \- Project Introduction | 16/06/2026 | Project background, problem statement, related systems, objectives and expected outcomes. |
-| 2 | Report 2 \- Project Management Plan | 16/06/2026 | Current document: scope, WBS, risks, process, quality, training, deliverables, RACI, communication and configuration management. |
-| 3 | Report 3 \- Software Requirement Specification | 16/06/2026 | Actors, use cases, functional specifications, NFR, business rules and appendix. |
-| 4 | Research / Prototype Demo Evidence | June 2026 | System design |
-| 5 | Report 4 \- Software Design Specification | 28/07/2026 | Core features |
-| 6 | Software Package Iteration 1 | Early July 2026 | Authentication, profile, mother/baby journey, health records and basic reminders. |
-| 7 | Software Package Iteration 2 | Mid July 2026 | Community, moderation, expert profile, Family Sync and notification. |
-| 8 | Software Package Iteration 3 | Late July 2026 | AI/rule triage, governance dashboard, emergency support and safety monitoring prototype. |
-| 9 | Final Software Package | Before Defense | Integrated MVP, deployment evidence, source code, release notes and demo scenario. |
-| 10 | Report 5 \- Testing Report | Before Defense | Test plan, test cases, test results, defect log and evidence. |
-| 11 | Report 6 \- User Guide | Before Defense | Installation guide, user manual and screenshots. |
-| 12 | Report 7 \- Final Project Report | Before Defense | Consolidated final report following the school template. |
-| 13 | Final Presentation and Defense Materials | According to SEP490 schedule | Slides, demo script, Q\&A preparation and backup evidence. |
+|  \#   | Deliverable                                    | Due Date / Target            | Notes                                                                                                                            |
+| :---: | :--------------------------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+|   1   | Report 1 \- Project Introduction               | 16/06/2026                   | Project background, problem statement, related systems, objectives and expected outcomes.                                        |
+|   2   | Report 2 \- Project Management Plan            | 16/06/2026                   | Current document: scope, WBS, risks, process, quality, training, deliverables, RACI, communication and configuration management. |
+|   3   | Report 3 \- Software Requirement Specification | 16/06/2026                   | Actors, use cases, functional specifications, NFR, business rules and appendix.                                                  |
+|   4   | Research / Prototype Demo Evidence             | June 2026                    | System design                                                                                                                    |
+|   5   | Report 4 \- Software Design Specification      | 28/07/2026                   | Core features                                                                                                                    |
+|   6   | Software Package Iteration 1                   | Early July 2026              | Authentication, profile, mother/baby journey, health records and basic reminders.                                                |
+|   7   | Software Package Iteration 2                   | Mid July 2026                | Community, moderation, expert profile, Family Sync and notification.                                                             |
+|   8   | Software Package Iteration 3                   | Late July 2026               | AI/rule triage, governance dashboard, emergency support and safety monitoring prototype.                                         |
+|   9   | Final Software Package                         | Before Defense               | Integrated MVP, deployment evidence, source code, release notes and demo scenario.                                               |
+|  10   | Report 5 \- Testing Report                     | Before Defense               | Test plan, test cases, test results, defect log and evidence.                                                                    |
+|  11   | Report 6 \- User Guide                         | Before Defense               | Installation guide, user manual and screenshots.                                                                                 |
+|  12   | Report 7 \- Final Project Report               | Before Defense               | Consolidated final report following the school template.                                                                         |
+|  13   | Final Presentation and Defense Materials       | According to SEP490 schedule | Slides, demo script, Q\&A preparation and backup evidence.                                                                       |
 
 **Table 14\. Project Deliverables and Milestones** 
 
@@ -558,48 +589,50 @@ UAT is conducted using representative scenarios: a mother creates a journey, rec
 
 ## **4\. Responsibility Assignments** {#4.-responsibility-assignments}
 
-![][image5]  
-**Figure 4\. Responsibility Structure**  
+![][image5]
+
+**Figure 4\. Responsibility Structure**
+
 [Detail Responsibility Structure](https://drive.google.com/file/d/1Fzxwi_5v51DiD_PHUiJUtIET0IL7b0Uw/view?usp=drive_link)
 
 The responsibility assignment matrix uses D \= Do, R \= Review, S \= Support, I \= Informed. The matrix combines document ownership and technical module responsibility to improve traceability during defense.
 
-| Responsibility | ChuongBD | HuyND | BachNQ | PhuongNT | LamVH |
-| :---- | :---: | :---: | :---: | :---: | :---: |
-| Project Planning & Tracking | D | D | R | R | S |
-| Report 1 \- Project Introduction | D | S | D | R | R |
-| Report 2 \- Project Management Plan | D | S | R | R | S |
-| Report 3 \- SRS Overview & User Requirements | D | D | S | R | S |
-| Report 3 \- Functional Specifications | R | D | S | D | R |
-| Report 4 \- Software Design | D | R | S | I | S |
-| Flutter Mobile App Foundation | D | D | I | S | R |
-| Backend Development | R | D | I | I | S |
-| Database & API Design | R | D | S | I | S |
-| Community & Moderation Module | D | S | R | R | S |
-| Expert Ecosystem Module | R | D | S | S | R |
-| AI Risk Triage & Safety Rules | D | R | S | R | S |
-| Smart Activity Monitoring Prototype | D | D | I | S | R |
-| Emergency Map & Notification Flow | R | D | S | S | R |
-| Testing & QA | R | S | I | D | S |
-| Documentation & Formatting | R | I | D | S | D |
-| Final Presentation & Demo Script | D | S | R | R | D |
+| Responsibility                               | ChuongBD | HuyND | BachNQ | PhuongNT | LamVH |
+| :------------------------------------------- | :------: | :---: | :----: | :------: | :---: |
+| Project Planning & Tracking                  |    D     |   D   |   R    |    R     |   S   |
+| Report 1 \- Project Introduction             |    D     |   S   |   D    |    R     |   R   |
+| Report 2 \- Project Management Plan          |    D     |   S   |   R    |    R     |   S   |
+| Report 3 \- SRS Overview & User Requirements |    D     |   D   |   S    |    R     |   S   |
+| Report 3 \- Functional Specifications        |    R     |   D   |   S    |    D     |   R   |
+| Report 4 \- Software Design                  |    D     |   R   |   S    |    I     |   S   |
+| Flutter Mobile App Foundation                |    D     |   D   |   I    |    S     |   R   |
+| Backend Development                          |    R     |   D   |   I    |    I     |   S   |
+| Database & API Design                        |    R     |   D   |   S    |    I     |   S   |
+| Community & Moderation Module                |    D     |   S   |   R    |    R     |   S   |
+| Expert Ecosystem Module                      |    R     |   D   |   S    |    S     |   R   |
+| AI Risk Triage & Safety Rules                |    D     |   R   |   S    |    R     |   S   |
+| Smart Activity Monitoring Prototype          |    D     |   D   |   I    |    S     |   R   |
+| Emergency Map & Notification Flow            |    R     |   D   |   S    |    S     |   R   |
+| Testing & QA                                 |    R     |   S   |   I    |    D     |   S   |
+| Documentation & Formatting                   |    R     |   I   |   D    |    S     |   D   |
+| Final Presentation & Demo Script             |    D     |   S   |   R    |    R     |   D   |
 
 **Table 15\. Responsibility Assignment Matrix (RAM)** 
 
 ## **5\. Project Communications** {#5.-project-communications}
 
-| Communication Item | Who/ Target | Purpose | When, Frequency | Type, Tool, Method(s) |
-| :---- | :---- | :---- | :---- | :---- |
-| Daily Standup	 | Entire Team | Progress tracking, blockers and short-term tasks. | Daily or working-day basis | Discord, Messenger |
-| Sprint Planning | Entire Team | Confirm sprint goal, assign backlog and define acceptance criteria. | Every sprint | Discord, Google meet |
-| Sprint Review | Entire Team \+ Supervisor | Demonstrate increment and collect feedback. | End of sprint / milestone | GitLab \+ Google meet |
-| Technical Review | Development Team | Review architecture, API, code, database and deployment decisions. | Weekly | GitLab \+ Discord \+ design docs |
-| Requirement Review | Team \+ Supervisor | Confirm scope, use cases, safety boundary and report consistency. | Before report submission / major change | Google Docs \+ meeting notes |
-| Risk Review | Team Lead \+ Module Owners | Update risk status and mitigation actions. | Weekly | Discord |
-| Supervisor Meeting | Team \+ Supervisor | Receive academic feedback and align deliverables. | Weekly or scheduled | Google Meet |
-| Progress Tracking | Team Lead | Monitor tasks, status, deadlines and blockers. | Weekly | GitLab |
-| Defect Triage | QA \+ Developers | Prioritize defects and assign fixes. | During testing weeks | Issue tracker \+ test report |
-| Final Defense Preparation | Entire Team | Rehearse presentation, demo and Q\&A. | Final buffer period | Slides \+ demo script \+ dry run |
+| Communication Item        | Who/ Target                | Purpose                                                             | When, Frequency                         | Type, Tool, Method(s)            |
+| :------------------------ | :------------------------- | :------------------------------------------------------------------ | :-------------------------------------- | :------------------------------- |
+| Daily Standup             | Entire Team                | Progress tracking, blockers and short-term tasks.                   | Daily or working-day basis              | Discord, Messenger               |
+| Sprint Planning           | Entire Team                | Confirm sprint goal, assign backlog and define acceptance criteria. | Every sprint                            | Discord, Google meet             |
+| Sprint Review             | Entire Team \+ Supervisor  | Demonstrate increment and collect feedback.                         | End of sprint / milestone               | GitLab \+ Google meet            |
+| Technical Review          | Development Team           | Review architecture, API, code, database and deployment decisions.  | Weekly                                  | GitLab \+ Discord \+ design docs |
+| Requirement Review        | Team \+ Supervisor         | Confirm scope, use cases, safety boundary and report consistency.   | Before report submission / major change | Google Docs \+ meeting notes     |
+| Risk Review               | Team Lead \+ Module Owners | Update risk status and mitigation actions.                          | Weekly                                  | Discord                          |
+| Supervisor Meeting        | Team \+ Supervisor         | Receive academic feedback and align deliverables.                   | Weekly or scheduled                     | Google Meet                      |
+| Progress Tracking         | Team Lead                  | Monitor tasks, status, deadlines and blockers.                      | Weekly                                  | GitLab                           |
+| Defect Triage             | QA \+ Developers           | Prioritize defects and assign fixes.                                | During testing weeks                    | Issue tracker \+ test report     |
+| Final Defense Preparation | Entire Team                | Rehearse presentation, demo and Q\&A.                               | Final buffer period                     | Slides \+ demo script \+ dry run |
 
 **Table 16\. Project Communication Plan**  
 
@@ -615,21 +648,28 @@ Source code is managed through GitLab repositories using a Git-based version con
 
 ### **6.3 Tools & Infrastructures** {#6.3-tools-&-infrastructures}
 
-| Category | Tools / Infrastructure | Usage |
-| ----- | ----- | ----- |
-| **Mobile Technology** | Flutter | Primary mobile application for care seekers, family members and community users. |
-| **Backend Technology** | Java Spring Boot | Backend APIs, business services, RBAC, consent, triage and governance logic, Spring Security. |
-| **Database** | PostgreSQL, MongoDB | Structured relational data and flexible document/log/content data as needed. |
-| **Caching / Performance** | Redis or lightweight caching strategy | Community feed, FAQ, checklist and read-heavy data optimization when implemented. |
-| **Notification** | Firebase Cloud Messaging or equivalent | Reminders, family alerts, moderation results and consultation updates. |
-| **Map / Location** | TrackAsia link/API or mock nearby-care dataset | Emergency map, nearby care search and routing support in Vietnam. |
-| **Sensor Prototype** | Phone accelerometer/gyroscope | Smart activity monitoring and suspected fall/impact detection demo. |
-| **IDEs / Editors** | Visual Studio Code, IntelliJ IDEA, Android Studio | Development and debugging. |
-| **Diagramming** | DrawIO, PlantUML, Mermaid | Use case, process, architecture, ERD and flow diagrams. |
-| **Documentation** | Microsoft Office, Google Docs/Sheets/Slides | Reports, schedules, meeting notes, slides and shared documents. |
-| **Version Control** | GitLab | Source code management, Merge Requests, issue tracking, repository management, CI/CD pipelines and release packaging. |
-| **Deployment** | GitLab CI/CD, AWS, Vercel | Build automation, deployment, MVP hosting, and demonstration environment management. |
-| **Project Management** | GitLab Boards, Google Sheets | Task planning, sprint tracking, issue management and progress reporting. |
+| Category                       | Tools / Infrastructure                            | Usage                                                                                                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mobile Technology**          | Flutter (Dart)                                    | Primary mobile application for care seekers, family members and community users.                                                                                                                                                          |
+| **Web Technology**             | React \+ TypeScript                               | Web portal development for Admin Portal, Expert Portal, Moderator and Partner management functions.                                                                                                                                       |
+| **Backend Technology**         | Java Spring Boot                                  | Backend APIs, business services, RBAC, consent, triage and governance logic, Spring Security.                                                                                                                                             |
+| **Security & Access Control**  | Spring Security \+ JWT                            | User authentication, role-based authorization, session management and protected API access for different user roles.                                                                                                                      |
+| **Database**                   | PostgreSQL                                        | Structured relational data and flexible document/log/content data as needed.Main relational database for user profiles, pregnancy records, baby information, expert profiles, consultation data, payment records and system transactions. |
+| **Document / Content Storage** | Firebase Storage / AWS S3                         | Flexible storage for community content, uploaded documents, images, health records and unstructured data when required.                                                                                                                   |
+| **Caching / Performance**      | Redis or lightweight caching strategy             | Community feed, FAQ, checklist and read-heavy data optimization when implemented.                                                                                                                                                         |
+| **Realtime Communication**     | WebSocket / Firebase Realtime Database            | Real-time messaging, consultation chat, live status updates and community interaction features.                                                                                                                                           |
+| **Video Consultation**         | ZegoCloud/ Agora SDK                              | Supports online consultation through voice call and video call between users and verified experts.                                                                                                                                        |
+| **Notification**               | Firebase Cloud Messaging (FCM)                    | Push notifications for pregnancy reminders, baby care reminders, consultation updates, expert responses and safety alerts.                                                                                                                |
+| **AI & Intelligent Support**   | Python FastAPI, LangChain / LangGraph, LLM API    | AI assistant, RAG-based FAQ retrieval, conversation summarization and safe support guidance. AI is used for assistance and information organization, not medical diagnosis.                                                               |
+| **Map / Location**             | TrackAsia link/API or mock nearby-care dataset    | Emergency map, nearby care search and routing support in Vietnam.                                                                                                                                                                         |
+| **Sensor Prototype**           | Phone accelerometer/gyroscope                     | Smart activity monitoring and suspected fall/impact detection demo.                                                                                                                                                                       |
+| **Payment Integration**        | VNPay Sandbox / Payment Gateway API               | Supports paid expert consultation transactions, payment verification and revenue sharing workflow demonstration.                                                                                                                          |
+| **IDEs / Editors**             | Visual Studio Code, IntelliJ IDEA, Android Studio | Development environment for frontend, backend and mobile application coding, debugging and testing.                                                                                                                                       |
+| **Diagramming**                | DrawIO, PlantUML, Mermaid                         | Design use case diagrams, architecture diagrams, ERD, sequence diagrams and workflow documentation.                                                                                                                                       |
+| **Documentation**              | Microsoft Office, Google Docs/Sheets/Slides       | Project reports, requirement documents, meeting notes, schedules and presentation materials.                                                                                                                                              |
+| **Version Control**            | GitLab                                            | Source code management, repository hosting, Merge Requests, issue tracking, branch management and CI/CD integration.                                                                                                                      |
+| **Deployment**                 | Docker, GitLab CI/CD, AWS / Cloud Hosting, Vercel | Containerization, automated build pipeline, backend deployment, frontend hosting and MVP demonstration environment.                                                                                                                       |
+| **Project Management**         | GitLab Boards, Google Sheets                      | Sprint planning, task assignment, progress tracking, issue management and project reporting.                                                                                                                                              |
 
 **Table 17\. Development Tools and Infrastructure**
 
@@ -637,14 +677,14 @@ Source code is managed through GitLab repositories using a Git-based version con
 
 ### 
 
-| Status | Description | Exit Criteria |
-| :---- | :---- | ----- |
-| **To Do**	 | Task identified but not started. | The task has owner, scope and expected output. |
-| **In Progress**	 | Task currently being implemented or written. | The work item is actively updated and not blocked. |
-| **Blocked** | Waiting for dependency, decision, access, technical issue or review. | Blocker is documented with the owner and next action. |
-| **Testing** | Implementation completed and under testing/review. | Test cases are executed and results recorded. |
-| **Review** | Awaiting peer/supervisor/module-owner validation. | Reviewer confirms acceptance or requests rework. |
-| **Done** | Task successfully completed and evidence stored. | Output is linked to report, code, screenshot, test result or demo evidence. |
+| Status          | Description                                                          | Exit Criteria                                                               |
+| :-------------- | :------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **To Do**       | Task identified but not started.                                     | The task has owner, scope and expected output.                              |
+| **In Progress** | Task currently being implemented or written.                         | The work item is actively updated and not blocked.                          |
+| **Blocked**     | Waiting for dependency, decision, access, technical issue or review. | Blocker is documented with the owner and next action.                       |
+| **Testing**     | Implementation completed and under testing/review.                   | Test cases are executed and results recorded.                               |
+| **Review**      | Awaiting peer/supervisor/module-owner validation.                    | Reviewer confirms acceptance or requests rework.                            |
+| **Done**        | Task successfully completed and evidence stored.                     | Output is linked to report, code, screenshot, test result or demo evidence. |
 
 **Table 18\. Task Workflow Status Definition**
 

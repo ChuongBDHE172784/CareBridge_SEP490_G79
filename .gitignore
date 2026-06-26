@@ -101,3 +101,6 @@ tools/
 
 # Keep empty project structure markers
 !.gitkeep
+# Added by code-review-graph
+.code-review-graph/
+.mcp.json

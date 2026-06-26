@@ -2,7 +2,6 @@ package com.carebridge.backend.audit.dto.response;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,11 +13,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AuditLogResponse {
 
-    private UUID id;
+    private java.util.UUID id;
     private Instant timestamp;
-    private UUID userId;
+    private java.util.UUID userId;
     private AuditAction action;
     private String resourceType;
-    private String resourceId;
+    private java.util.UUID resourceId;
     private String details;
 }

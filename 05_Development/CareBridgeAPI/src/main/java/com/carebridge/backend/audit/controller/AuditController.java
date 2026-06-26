@@ -5,7 +5,6 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.constants.AppConstants;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +27,7 @@ public class AuditController {
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<PaginatedResponse<com.carebridge.backend.audit.dto.response.AuditLogResponse>> search(
-            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) java.util.UUID userId,
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate,

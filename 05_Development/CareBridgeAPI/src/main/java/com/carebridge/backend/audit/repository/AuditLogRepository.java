@@ -3,7 +3,6 @@ package com.carebridge.backend.audit.repository;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.entity.AuditLog;
 import java.time.Instant;
-import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
+public interface AuditLogRepository extends JpaRepository<AuditLog, java.util.UUID> {
 
     @Query("""
             select a
@@ -24,7 +23,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             order by a.createdAt desc
             """)
     Page<AuditLog> search(
-            @Param("userId") UUID userId,
+            @Param("userId") java.util.UUID userId,
             @Param("action") AuditAction action,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate,

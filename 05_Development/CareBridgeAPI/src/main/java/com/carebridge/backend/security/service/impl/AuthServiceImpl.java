@@ -2,6 +2,7 @@ package com.carebridge.backend.security.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
 import com.carebridge.backend.common.exception.InvalidRefreshTokenException;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
@@ -9,8 +10,8 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
 import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
-import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.util.StringUtils;
+import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
@@ -20,8 +21,8 @@ import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
-import com.carebridge.backend.security.dto.response.RegisterResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
+import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.RefreshToken;
@@ -39,9 +40,10 @@ import com.carebridge.backend.security.service.AuthService;
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
 import com.carebridge.backend.security.util.TokenUtils;
-import com.carebridge.backend.identity.entity.UserSession;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final SmsService smsService;
     private final PasswordEncoder passwordEncoder;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
     private transient HttpServletRequest request;
@@ -88,7 +91,6 @@ public class AuthServiceImpl implements AuthService {
         if (hash1 == null || hash2 == null) {
             return hash1 == hash2;
         }
-        // Compare as UTF-8 bytes; both hashes are expected to be same length (64 for SHA256)
         try {
             byte[] bytes1 = hash1.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             byte[] bytes2 = hash2.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -99,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public RegisterResponse register(RegisterRequest request) {
+    public OtpSendResponse register(RegisterRequest request) {
         // 1. Validate password complexity
         if (!passwordComplexityPolicy.isComplexEnough(request.getPassword())) {
             throw new ValidationException(passwordComplexityPolicy.getRequirements());
@@ -112,13 +114,11 @@ public class AuthServiceImpl implements AuthService {
 
         if (email != null && !email.isBlank()) {
             identifier = email.trim().toLowerCase();
-            // Validate email format using RFC 5322 simplified regex
             if (!identifier.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
                 throw new ValidationException("Invalid email format");
             }
         } else if (phone != null && !phone.isBlank()) {
             identifier = phone;
-            // Validate Vietnamese phone format (E.164)
             if (!identifier.matches("^\\+84[1-9][0-9]{8,9}$")) {
                 throw new ValidationException("Invalid phone format. Use E.164 format (+84xxxxxxxxx)");
             }
@@ -131,14 +131,13 @@ public class AuthServiceImpl implements AuthService {
         boolean phoneExists = phone != null && !phone.isBlank() && userRepository.existsByPhone(phone);
 
         if (emailExists || phoneExists) {
-            // Generic message - don't leak which identifier exists
             throw new ValidationException("Account already exists");
         }
 
         // 4. Resolve role through authentication policy
         Role role = authenticationPolicy.resolveSelfRegistrationRole(request.getRole());
 
-        // 5. Hash password with BCrypt (strength 12 via encoder config)
+        // 5. Hash password with BCrypt
         String passwordHash = passwordEncoder.encode(request.getPassword());
 
         // 6. Create user with enabled=false
@@ -158,10 +157,7 @@ public class AuthServiceImpl implements AuthService {
         String otp = generate6DigitOtp();
         String otpHash = TokenUtils.hashSha256(otp);
 
-        // 8. Create OtpVerification with 5-min expiry, 5 attempts
-        // Story 1.2 fix: persist .email(...) symmetric to .phone(...) so that
-        // email-channel verify-otp (which looks up by email) can find the row.
-        // Without this, email-registered users could never complete registration.
+        // 8. Create OtpVerification
         OtpVerification otpVerification = OtpVerification.builder()
                 .user(user)
                 .codeHash(otpHash)
@@ -169,13 +165,13 @@ public class AuthServiceImpl implements AuthService {
                 .email(identifier != null && identifier.contains("@") ? identifier : null)
                 .purpose(OtpVerification.OtpPurpose.REGISTER)
                 .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
-                .attempts(5) // remaining attempts
+                .attempts(5)
                 .verified(false)
                 .build();
 
         otpVerificationRepository.save(otpVerification);
 
-        // 9. Send OTP via email or SMS
+        // 9. Send OTP
         if (email != null && !email.isBlank()) {
             emailService.sendOtpVerificationEmail(email, otp, (int) (otpExpirationSeconds / 60));
         }
@@ -183,7 +179,7 @@ public class AuthServiceImpl implements AuthService {
             smsService.sendOtpVerificationSms(phone, otp, (int) (otpExpirationSeconds / 60));
         }
 
-        // 10. Audit log - using OTP_SENT as registration initiation
+        // 10. Audit log
         auditService.log(
                 AuditAction.OTP_SENT,
                 user.getId(),
@@ -195,22 +191,17 @@ public class AuthServiceImpl implements AuthService {
                     Map.entry("phone", phone != null ? phone : ""),
                     Map.entry("role", role.name())));
 
-        // 11. Return response
-        return RegisterResponse.builder()
-                .userId(user.getId())
-                .message("Registration initiated. Please verify your OTP.")
-                .otpExpiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
+        return OtpSendResponse.builder()
+                .message("OTP sent")
+                .expiresIn(otpExpirationSeconds)
                 .build();
     }
 
     private String generate6DigitOtp() {
-        // Secure random 6-digit OTP
-        java.security.SecureRandom random = new java.security.SecureRandom();
-        int otp = 100000 + random.nextInt(900000); // 100000-999999
+        int otp = 100000 + secureRandom.nextInt(900000);
         return String.valueOf(otp);
     }
 
-    // Extract simple device name from User-Agent
     private String extractDeviceName(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {
             return "Unknown Device";
@@ -231,9 +222,8 @@ public class AuthServiceImpl implements AuthService {
         return "Browser/App";
     }
 
-    @Transactional(noRollbackFor = AccountLockedException.class)
     @Override
-    public AuthResponse login(LoginRequest request) {
+    public OtpSendResponse login(LoginRequest request) {
         // 1. Normalize identifier (phone or email)
         String phone = normalizePhone(request.getPhone());
         String emailRaw = request.getEmail();
@@ -246,96 +236,77 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Either phone or email must be provided (exactly one)");
         }
 
-        // 2. Rate limiting: check if account is locked due to too many failed attempts
-        // Use user ID as rate limit key (will be known after fetching user)
+        // 2. Fetch user
         User user = hasPhone
                 ? userRepository.findByPhone(phone).orElse(null)
                 : userRepository.findByEmailIgnoreCase(email).orElse(null);
 
         if (user == null) {
-            // Generic message - don't leak user existence
             throw new AuthenticationException("Invalid credentials");
         }
 
         // Check account status via policy (covers enabled/disabled/locked)
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // Rate limit key based on user ID (not identifier) to prevent account-wide lockout
+        // Rate limit check
         String rateLimitKey = getRateLimitKey(user);
-
-        // Check rate limit - if exhausted, lock the account
         if (!rateLimitPolicy.canAttempt(rateLimitKey)) {
-            // Lock the account for 15 minutes
             user.setLocked(true);
             user.setLockedAt(Instant.now());
             userRepository.save(user);
-
             throw new AccountLockedException("Account temporarily locked due to multiple failed attempts");
         }
 
-        // 3. Verify password
+        // Verify password
         String passwordHash = user.getPasswordHash();
         if (passwordHash == null) {
             throw new AuthenticationException("Invalid credentials");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), passwordHash)) {
-            // Password mismatch - rate limit counter already incremented by canAttempt()
             throw new AuthenticationException("Invalid credentials");
         }
 
-        // 4. Successful login - reset rate limit, unlock account, update last login
+        // Password matches: reset rate limits and locks
         resetRateLimit(rateLimitKey);
         user.setLocked(false);
         user.setLockedAt(null);
-        user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
-        // 5. Generate refresh token first
-        RefreshToken refreshToken = createRefreshToken(user);
-        String rawRefreshToken = refreshToken.getToken();
-        String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
+        // Generate OTP
+        String otp = generate6DigitOtp();
+        String otpHash = TokenUtils.hashSha256(otp);
 
-        // 6. Create user session record with a unique session ID BEFORE issuing tokens
-        UUID sessionId = UUID.randomUUID();
-        String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
-        String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
-        String deviceName = extractDeviceName(userAgent);
-        String browser = userAgent != null ? userAgent : "Unknown";
-
-        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
-                .userId(user.getId())
-                .sessionId(sessionId)
-                .refreshTokenHash(refreshTokenHash)
-                .deviceName(deviceName)
-                .browser(browser)
-                .ipAddress(ipAddress)
-                .location(null) // Will be populated later via IP lookup or left null
-                .lastActivityAt(Instant.now())
-                .expiresAt(refreshToken.getExpiresAt())
-                .status("active")
-                .isCurrent(true)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+        OtpVerification otpVerification = OtpVerification.builder()
+                .user(user)
+                .codeHash(otpHash)
+                .phone(phone)
+                .email(email)
+                .purpose(OtpVerification.OtpPurpose.LOGIN)
+                .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
+                .attempts(5)
+                .verified(false)
                 .build();
-        sessionRepository.save(session);
-        // Clear current flag on other sessions for this user
-        sessionRepository.clearCurrentSessions(user.getId(), sessionId);
+
+        otpVerificationRepository.save(otpVerification);
+
+        // Send OTP
+        if (hasEmail) {
+            emailService.sendOtpVerificationEmail(email, otp, (int) (otpExpirationSeconds / 60));
+        } else {
+            smsService.sendOtpVerificationSms(phone, otp, (int) (otpExpirationSeconds / 60));
+        }
 
         auditService.log(
-                AuditAction.LOGIN,
+                AuditAction.OTP_SENT,
                 user.getId(),
-                "User",
-                user.getId().toString(),
-                null);
+                "OtpVerification",
+                otpVerification.getId().toString(),
+                Map.of("purpose", "LOGIN"));
 
-        // 7. Issue tokens with session ID included
-        String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
-
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(rawRefreshToken)
-                .user(userMapper.toProfileResponse(user))
+        return OtpSendResponse.builder()
+                .message("OTP sent")
+                .expiresIn(otpExpirationSeconds)
                 .build();
     }
 
@@ -343,10 +314,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
         String phone = normalizePhone(request.getPhone());
-        // Story 1.2 fix: normalize the email to match the canonical form used in
-        // register() and resendOtp(). Without this, "Test@Example.com " does not
-        // match the persisted lowercase trimmed value, and verify fails with a
-        // generic "Invalid or expired OTP" error.
         String emailRaw = request.getEmail();
         String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
         String otpInput = request.getOtp();
@@ -369,14 +336,12 @@ public class AuthServiceImpl implements AuthService {
 
         // Verify purpose-specific logic
         if (verification.getPurpose() == OtpVerification.OtpPurpose.REGISTER) {
-            // For registration: user must exist and be pending activation
             User user = verification.getUser();
             if (user == null) {
                 throw new ValidationException("Invalid OTP");
             }
             return completeRegistration(verification, user, otpInput);
         } else if (verification.getPurpose() == OtpVerification.OtpPurpose.LOGIN) {
-            // For login: verify OTP and authenticate
             return completeLogin(verification, phone, otpInput);
         }
 
@@ -415,12 +380,6 @@ public class AuthServiceImpl implements AuthService {
 
         String resendAccountKey = user.getId().toString();
 
-        // Reordered (Iteration 3): DB writes before cooldown consumption so that
-        // a Transaction rollback (DB-level failure) releases the cooldown slot
-        // implicitly by skipping the consume call. If a step AFTER successful
-        // consume (audit/delivery) throws, the explicit finally-block releases
-        // the in-memory slot. See spec-1-1-fix-backend-tests.md change-log
-        // entry for EC-E6.
         String otp = generate6DigitOtp();
         String otpHash = TokenUtils.hashSha256(otp);
         Instant now = Instant.now();
@@ -441,15 +400,12 @@ public class AuthServiceImpl implements AuthService {
 
         OtpVerification savedVerification = otpVerificationRepository.save(newVerification);
 
-        // Consume cooldown AFTER DB writes succeeded (or will succeed at commit).
-        // If this throws 429, the @Transactional rollback discards the DB writes.
         if (!rateLimitPolicy.tryConsumeResend(resendAccountKey)) {
             long cooldownRemaining = rateLimitPolicy.getTimeUntilResendReset(resendAccountKey);
             throw new RateLimitExceededException(
                     "Please wait before resending OTP. Cooldown: " + cooldownRemaining + " seconds");
         }
 
-        boolean cooldownConsumed = true;
         try {
             if (hasEmail) {
                 emailService.sendOtpVerificationEmail(deliveryIdentifier, otp, (int) (otpExpirationSeconds / 60));
@@ -467,11 +423,7 @@ public class AuthServiceImpl implements AuthService {
                             "channel", hasPhone ? "SMS" : "EMAIL",
                             "otpVerificationId", String.valueOf(savedVerification.getId())));
         } catch (RuntimeException ex) {
-            // Delivery or audit failed after cooldown was consumed. Release the
-            // slot so the user can retry without waiting a full window. The
-            // @Transactional rollback discards the DB writes.
             rateLimitPolicy.resetResend(resendAccountKey);
-            cooldownConsumed = false;
             throw ex;
         }
 
@@ -485,10 +437,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse completeRegistration(OtpVerification verification, User user, String otpInput) {
-        // Hash input OTP and compare
         String inputHash = TokenUtils.hashSha256(otpInput);
         if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
-            // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
                 verification.setUsedAt(Instant.now());
@@ -497,12 +447,10 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Invalid OTP");
         }
 
-        // Mark OTP as used
         verification.setUsedAt(Instant.now());
         verification.setVerified(true);
         otpVerificationRepository.save(verification);
 
-        // Enable user
         user.setEnabled(true);
         user.setAccountStatus("ACTIVE");
         userRepository.save(user);
@@ -515,19 +463,17 @@ public class AuthServiceImpl implements AuthService {
                 Map.of("purpose", verification.getPurpose().name()));
         auditService.log(AuditAction.USER_REGISTRATION_COMPLETED, user.getId(), "User", user.getId().toString(), null);
 
-        // Create refresh token
         RefreshToken refreshToken = createRefreshToken(user);
         String rawRefreshToken = refreshToken.getToken();
         String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
 
-        // Create user session
         UUID sessionId = UUID.randomUUID();
         String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
         String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
         String deviceName = extractDeviceName(userAgent);
         String browser = userAgent != null ? userAgent : "Unknown";
 
-        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
+        UserSession session = UserSession.builder()
                 .userId(user.getId())
                 .sessionId(sessionId)
                 .refreshTokenHash(refreshTokenHash)
@@ -545,7 +491,6 @@ public class AuthServiceImpl implements AuthService {
         sessionRepository.save(session);
         sessionRepository.clearCurrentSessions(user.getId(), sessionId);
 
-        // Issue tokens with session ID
         String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
 
         return AuthResponse.builder()
@@ -556,10 +501,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse completeLogin(OtpVerification verification, String phone, String otpInput) {
-        // Hash input OTP and compare
         String inputHash = TokenUtils.hashSha256(otpInput);
         if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
-            // Decrease attempts
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
                 verification.setUsedAt(Instant.now());
@@ -568,7 +511,6 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Invalid OTP");
         }
 
-        // Mark OTP as used
         verification.setUsedAt(Instant.now());
         verification.setVerified(true);
         otpVerificationRepository.save(verification);
@@ -576,7 +518,7 @@ public class AuthServiceImpl implements AuthService {
         User user = verification.getUser();
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // If policy auto-unlocked the account, persist the change
+        user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
         auditService.log(
@@ -587,19 +529,17 @@ public class AuthServiceImpl implements AuthService {
                 Map.of("purpose", verification.getPurpose().name()));
         auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
 
-        // Create refresh token
         RefreshToken refreshToken = createRefreshToken(user);
         String rawRefreshToken = refreshToken.getToken();
         String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
 
-        // Create user session
         UUID sessionId = UUID.randomUUID();
         String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
         String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
         String deviceName = extractDeviceName(userAgent);
         String browser = userAgent != null ? userAgent : "Unknown";
 
-        com.carebridge.backend.identity.entity.UserSession session = com.carebridge.backend.identity.entity.UserSession.builder()
+        UserSession session = UserSession.builder()
                 .userId(user.getId())
                 .sessionId(sessionId)
                 .refreshTokenHash(refreshTokenHash)
@@ -617,7 +557,6 @@ public class AuthServiceImpl implements AuthService {
         sessionRepository.save(session);
         sessionRepository.clearCurrentSessions(user.getId(), sessionId);
 
-        // Issue tokens with session ID
         String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
 
         return AuthResponse.builder()
@@ -635,58 +574,45 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthenticationException("Refresh token is required");
         }
 
-        // Capture now once for consistent checks
         Instant now = Instant.now();
-
-        // Hash the token once for all database lookups
         String tokenHash = TokenUtils.hashSha256(rawToken);
 
-        // 1. Check if token is blacklisted (has been revoked via logout/session-revoke)
         if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(tokenHash, now)) {
             throw new AuthenticationException("Token has been blacklisted");
         }
 
-        // 2. Check corresponding session status - MUST exist and be active
         UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
                 .orElseThrow(() -> new SessionNotFoundException("No active session found for this token"));
 
-        // Check session is not revoked and has valid status
         if (session.isRevoked()) {
             throw new RevokedSessionException("Session has been revoked");
         }
         if (session.getStatus() == null || !"active".equals(session.getStatus())) {
             throw new InvalidRefreshTokenException("Session is not active");
         }
-        // Check session not expired
         if (session.getExpiresAt() != null && !session.getExpiresAt().isAfter(now)) {
             throw new InvalidRefreshTokenException("Session has expired");
         }
 
-        // 3. Check RefreshToken table (rotational refresh with row lock)
         RefreshToken existing = refreshTokenRepository.findByTokenAndRevokedFalseForUpdate(rawToken)
                 .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid"));
 
-        // 4. Verify the refresh token belongs to the session (safety check)
         if (!tokenHash.equals(session.getRefreshTokenHash())) {
             throw new InvalidRefreshTokenException("Token does not match session");
         }
 
-        // 5. Check expiration (treat expiresAt == now as expired)
         if (existing.getExpiresAt().isBefore(now) || existing.getExpiresAt().equals(now)) {
             existing.setRevoked(true);
             throw new InvalidRefreshTokenException("Refresh token has expired");
         }
 
-        // 6. Check user can authenticate
         User user = existing.getUser();
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // 7. Rotate: revoke current token and create new one
         existing.setRevoked(true);
         RefreshToken rotated = createRefreshToken(user);
         String newTokenHash = TokenUtils.hashSha256(rotated.getToken());
 
-        // 8. Atomically update the UserSession with new token hash and expiry
         int sessionUpdated = sessionRepository.updateSessionForRotation(
                 session.getSessionId(),
                 newTokenHash,
@@ -706,9 +632,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String refreshToken, UUID userId) {
         if (refreshToken != null && !refreshToken.isBlank()) {
+            String tokenHash = TokenUtils.hashSha256(refreshToken);
+
+            tokenBlacklistRepository.save(com.carebridge.backend.identity.entity.TokenBlacklist.builder()
+                    .tokenHash(tokenHash)
+                    .expiresAt(Instant.now().plus(7, java.time.temporal.ChronoUnit.DAYS))
+                    .build());
+
+            sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
+                    .ifPresent(session -> {
+                        session.setRevoked(true);
+                        session.setStatus("logged_out");
+                        session.setUpdatedAt(Instant.now());
+                        sessionRepository.save(session);
+                    });
+
             refreshTokenRepository.findByTokenAndRevokedFalse(refreshToken)
                     .ifPresent(token -> {
                         token.setRevoked(true);
+                        refreshTokenRepository.save(token);
                         auditService.log(
                                 AuditAction.LOGOUT,
                                 token.getUser().getId(),
@@ -720,7 +662,17 @@ public class AuthServiceImpl implements AuthService {
         }
         if (userId != null) {
             refreshTokenRepository.findByUser_IdAndRevokedFalse(userId)
-                    .forEach(token -> token.setRevoked(true));
+                    .forEach(token -> {
+                        token.setRevoked(true);
+                        refreshTokenRepository.save(token);
+                    });
+            sessionRepository.findByUserIdAndStatus(userId, "active")
+                    .forEach(session -> {
+                        session.setRevoked(true);
+                        session.setStatus("logged_out");
+                        session.setUpdatedAt(Instant.now());
+                        sessionRepository.save(session);
+                    });
             auditService.log(AuditAction.LOGOUT, userId, "User", userId.toString(), null);
         }
     }
@@ -755,20 +707,18 @@ public class AuthServiceImpl implements AuthService {
 
     private String generateOpaqueSecret() {
         byte[] bytes = new byte[48];
-        new java.security.SecureRandom().nextBytes(bytes);
-        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     private String normalizePhone(String phone) {
         return StringUtils.trimToNull(phone);
     }
 
-    // Helper để lấy identifier cho rate limiting (dùng user ID để thống nhất)
     private String getRateLimitKey(User user) {
         return user.getId().toString();
     }
 
-    // Helper reset rate limit counter
     private void resetRateLimit(String identifier) {
         rateLimitPolicy.reset(identifier);
     }

@@ -10,8 +10,8 @@ import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
-import com.carebridge.backend.security.dto.response.RegisterResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
+import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,42 +50,41 @@ public class AuthController {
             content = @Content(schema = @Schema(implementation = RegisterRequest.class))
         ),
         responses = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Registration initiated", content = @Content(schema = @Schema(implementation = RegisterResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Registration initiated, OTP sent", content = @Content(schema = @Schema(implementation = OtpSendResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request data"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email or phone already registered")
         }
     )
-    public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        RegisterResponse response = authService.register(request);
+    public ResponseEntity<ApiResponse<OtpSendResponse>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Registration initiated"));
+                .body(ApiResponse.success(authService.register(request), "OTP sent"));
     }
 
     @PostMapping("/login")
     @Operation(
         summary = "User login with credentials",
-        description = "Authenticate user with email/phone and password. Returns access and refresh tokens directly upon successful authentication. Rate limited: max 5 attempts per 15 minutes per account. Account will be temporarily locked for 15 minutes after exceeding attempts.",
+        description = "Authenticate user with email/phone and password. Sends an OTP code which must be verified to complete authentication. Rate limited: max 5 attempts per 15 minutes per account. Account will be temporarily locked for 15 minutes after exceeding attempts.",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Login credentials with password",
+            description = "Login credentials",
             content = @Content(schema = @Schema(implementation = LoginRequest.class))
         ),
         responses = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OTP sent successfully", content = @Content(schema = @Schema(implementation = OtpSendResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid credentials or user not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account is disabled or locked"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Account temporarily locked due to multiple failed attempts")
         }
     )
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.login(request), "Login successful"));
+    public ResponseEntity<ApiResponse<OtpSendResponse>> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.login(request), "OTP sent"));
     }
 
     @PostMapping("/verify-otp")
     @Operation(
-        summary = "Verify OTP and activate account",
-        description = "Verify the 6-digit OTP sent via email or SMS. Upon successful verification, the user account is activated (enabled=true) and access/refresh tokens are returned.",
+        summary = "Verify OTP and complete login/registration",
+        description = "Verify the 6-digit OTP sent via email or SMS. Upon successful verification, the user account is activated (enabled=true), a new session is created, and access/refresh tokens are returned.",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "OTP verification request with phone/email and the 6-digit code",
+            description = "OTP verification request",
             content = @Content(schema = @Schema(implementation = VerifyOtpRequest.class))
         ),
         responses = {

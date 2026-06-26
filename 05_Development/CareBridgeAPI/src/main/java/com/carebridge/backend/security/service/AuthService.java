@@ -7,16 +7,15 @@ import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
-import com.carebridge.backend.security.dto.response.RegisterResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
+import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
-import java.util.UUID;
 
 public interface AuthService {
 
-    RegisterResponse register(RegisterRequest request);
+    OtpSendResponse register(RegisterRequest request);
 
-    AuthResponse login(LoginRequest request);
+    OtpSendResponse login(LoginRequest request);
 
     AuthResponse verifyOtp(VerifyOtpRequest request);
 
@@ -24,9 +23,9 @@ public interface AuthService {
 
     AuthResponse refresh(RefreshTokenRequest request);
 
-    void logout(String refreshToken, UUID userId);
+    void logout(String refreshToken, java.util.UUID userId);
 
-    UserProfileResponse getProfile(UUID userId);
+    UserProfileResponse getProfile(java.util.UUID userId);
 
-    UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request);
+    UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request);
 }

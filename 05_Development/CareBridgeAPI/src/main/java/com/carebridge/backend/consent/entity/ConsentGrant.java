@@ -9,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,7 +31,7 @@ public class ConsentGrant {
     private Long id;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private java.util.UUID userId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "data_type", nullable = false, length = 60)
@@ -58,7 +57,7 @@ public class ConsentGrant {
     private Instant revokedAt;
 
     @Column(name = "revoked_by")
-    private UUID revokedBy;
+    private java.util.UUID revokedBy;
 
     @Builder.Default
     @Column(nullable = false)
