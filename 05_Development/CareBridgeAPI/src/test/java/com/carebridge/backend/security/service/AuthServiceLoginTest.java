@@ -7,6 +7,7 @@ import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
+import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.RefreshToken;
 import com.carebridge.backend.security.entity.User;
@@ -114,19 +115,18 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        AuthResponse response = authService.login(request);
+        OtpSendResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isNotNull();
-        assertThat(response.getUser()).isNotNull();
+        assertThat(response.getMessage()).isEqualTo("OTP sent");
+        assertThat(response.getExpiresIn()).isGreaterThanOrEqualTo(0);
 
         verify(rateLimitPolicy).reset(userId.toString());
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         User savedUser = userCaptor.getValue();
-        assertThat(savedUser.getLastLoginAt()).isNotNull();
+        assertThat(savedUser.getLastLoginAt()).isNull();
         assertThat(savedUser.isLocked()).isFalse();
         assertThat(savedUser.getLockedAt()).isNull();
     }
@@ -167,12 +167,11 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        AuthResponse response = authService.login(request);
+        OtpSendResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isNotNull();
+        assertThat(response.getMessage()).isEqualTo("OTP sent");
     }
 
     @Test
@@ -375,7 +374,7 @@ class AuthServiceLoginTest {
         request.setPassword("password");
 
         // When
-        AuthResponse response = authService.login(request);
+        OtpSendResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
@@ -471,11 +470,11 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        AuthResponse response = realAuthService.login(request);
+        OtpSendResponse response = realAuthService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getMessage()).isEqualTo("OTP sent");
 
         // Verify user was unlocked and persisted
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);

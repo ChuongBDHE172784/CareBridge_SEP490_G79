@@ -184,7 +184,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 user.getId(),
                 "OtpVerification",
-                otpVerification.getId().toString(),
+                otpVerification.getId() != null ? otpVerification.getId().toString() : null,
                 Map.ofEntries(
                     Map.entry("purpose", "REGISTER"),
                     Map.entry("email", email != null ? email : ""),
@@ -301,7 +301,7 @@ public class AuthServiceImpl implements AuthService {
                 AuditAction.OTP_SENT,
                 user.getId(),
                 "OtpVerification",
-                otpVerification.getId().toString(),
+                otpVerification.getId() != null ? otpVerification.getId().toString() : null,
                 Map.of("purpose", "LOGIN"));
 
         return OtpSendResponse.builder()
@@ -666,7 +666,7 @@ public class AuthServiceImpl implements AuthService {
                         token.setRevoked(true);
                         refreshTokenRepository.save(token);
                     });
-            sessionRepository.findByUserIdAndStatus(userId, "active")
+            sessionRepository.findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(userId)
                     .forEach(session -> {
                         session.setRevoked(true);
                         session.setStatus("logged_out");

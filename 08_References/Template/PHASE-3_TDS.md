@@ -183,19 +183,19 @@ class ValueObject <<ValueObject>> {
 
 ' === SERVICES ===
 interface IModuleNameService <<interface>> {
-  + method(input: InputType): Promise<OutputType>
+  + method(input: InputType): OutputType
 }
 
 class ModuleNameService implements IModuleNameService {
   - repository: IModuleNameRepository
   - otherDependency: Type
-  + method(input: InputType): Promise<OutputType>
+  + method(input: InputType): OutputType
 }
 
 ' === REPOSITORIES ===
 interface IModuleNameRepository <<interface>> {
-  + findById(id: UUID): Promise<Entity | null>
-  + save(entity: Entity): Promise<Entity>
+  + findById(id: UUID): Optional<Entity>
+  + save(entity: Entity): Entity
 }
 
 ' === RELATIONSHIPS ===
@@ -206,25 +206,30 @@ Entity *-- ValueObject : contains
 
 ```
 
-### 5.2. Data Structure (Prisma Schema)
+### 5.2. Data Structure (Flyway SQL Migration)
 
-```prisma
-// === [MODULE NAME] SCHEMA ===
+Tạo file: `src/main/resources/db/migration/V{n}__[migration_name].sql`
 
-model [EntityName] {
-  id          String    @id @default(uuid()) @db.Uuid
-  // --- Khai báo đầy đủ từng field, kèm chú thích ---
-  fieldA      String    // [Mô tả ý nghĩa]
-  fieldB      DateTime  // [Mô tả ý nghĩa]
-  // --- Audit fields (bắt buộc với PII modules) ---
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdBy   String    // userId thực hiện thao tác
+```sql
+-- === [MODULE NAME] SCHEMA ===
 
-  @@index([fieldA])
-  @@map("[table_name]")
-}
+CREATE TABLE [table_name] (
+  id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Khai báo đầy đủ từng column, kèm chú thích
+  field_a     VARCHAR(255)  NOT NULL,                -- [Mô tả ý nghĩa]
+  field_b     TIMESTAMPTZ   NOT NULL,                -- [Mô tả ý nghĩa]
+  -- Audit fields (bắt buộc với PII modules)
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  created_by  UUID          NOT NULL,                -- userId thực hiện thao tác
+
+  CONSTRAINT fk_[table]_user FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE INDEX idx_[table]_field_a ON [table_name](field_a);
 ```
+
+> **Quy tắc đặt tên:** Tất cả column dùng **snake_case**. Không dùng camelCase trong SQL DDL.
 
 ---
 
@@ -316,7 +321,7 @@ end note
 
 | Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
 |------------|---------|-----------|---------------|----------------|--------|
-| `[EntityVerbed]` | [Mô tả trigger] | `[Service]` | `[ServiceA, ServiceB]` | `[EventName].ts` | Yes/No |
+| `[EntityVerbed]` | [Mô tả trigger] | `[Service]` | `[ServiceA, ServiceB]` | `[EventName].java` | Yes/No |
 
 ### 7.2. Events Consumed (Tiêu thụ)
 
@@ -326,21 +331,26 @@ end note
 
 ### 7.3. Payload Schema
 
-```typescript
-// [EventName].ts
-export interface [EventName] {
-  eventId: string;          // UUID — dùng để deduplicate
-  eventType: '[EventName]';
-  occurredAt: string;       // ISO 8601
-  version: '1.0';           // Schema version — tăng khi breaking change
-  payload: {
-    // --- Khai báo đầy đủ từng field ---
-    [field]: [type]; // [Mô tả]
-  };
-  metadata: {
-    correlationId: string;  // Dùng để trace request xuyên suốt
-    causedBy: string;       // userId hoặc systemId
-  };
+```java
+// [EventName].java
+public record [EventName](
+    UUID    eventId,          // UUID.randomUUID() — dùng để deduplicate
+    String  eventType,        // "[EventName]"
+    Instant occurredAt,       // Instant.now()
+    String  version,          // "1.0" — tăng khi breaking change
+    Payload payload,
+    Metadata metadata
+) implements ApplicationEvent {
+
+    public record Payload(
+        // --- Khai báo đầy đủ từng field ---
+        // [Type] [fieldName]; // [Mô tả]
+    ) {}
+
+    public record Metadata(
+        UUID   correlationId, // Dùng để trace request xuyên suốt
+        String causedBy       // userId hoặc "system"
+    ) {}
 }
 ```
 
@@ -352,43 +362,47 @@ export interface [EventName] {
 
 ### 8.1. Service Interface
 
-```typescript
-// I[ModuleName]Service.ts
+```java
+// [MethodName]Request.java — Input DTO
+// @version 1.0
+public class [MethodName]Request {
+    private String fieldA;   // [Mô tả, validation rule]
+    private Integer fieldB;  // [Optional — mô tả khi nào dùng]
+    // getters / setters / @Valid annotations
+}
+
+// [MethodName]Response.java — Output DTO
+public class [MethodName]Response {
+    private UUID id;
+    // ...
+    // getters / setters
+}
+
+// I[ModuleName]Service.java — Service Contract
 // @version 1.0
 // @breaking-change Ghi chú nếu thay đổi phá vỡ interface cũ
-
-// --- Input / Output Types (khai báo đầy đủ, không dùng `any`) ---
-export interface [MethodName]Input {
-  fieldA: string;   // [Mô tả, validation rule]
-  fieldB?: number;  // [Optional — mô tả khi nào dùng]
-}
-
-export interface [MethodName]Output {
-  id: string;
-  // ...
-}
-
-// --- Service Contract ---
-export interface I[ModuleName]Service {
-  /**
-   * [Mô tả mục đích của method]
-   * @throws {[ErrorCode]} Khi [điều kiện lỗi]
-   */
-  [methodName](input: [MethodName]Input): Promise<[MethodName]Output>;
+public interface I[ModuleName]Service {
+    /**
+     * [Mô tả mục đích của method]
+     * @throws [ExceptionClass] ([ERROR_CODE]) khi [điều kiện lỗi]
+     */
+    [MethodName]Response [methodName]([MethodName]Request request);
 }
 ```
 
 ### 8.2. Repository Interface
 
-```typescript
-// I[ModuleName]Repository.ts
+```java
+// I[ModuleName]Repository.java
 // @version 1.0
+public interface I[ModuleName]Repository extends JpaRepository<[Entity], UUID> {
 
-export interface I[ModuleName]Repository {
-  findById(id: string): Promise<[Entity] | null>;
-  findBy[Field](value: string): Promise<[Entity][]>;
-  save(entity: [Entity]): Promise<[Entity]>;
-  // Lưu ý: Không có delete() — Append-only nếu module PII
+    Optional<[Entity]> findById(UUID id);
+
+    List<[Entity]> findBy[Field](String value);
+
+    // Lưu ý: Không có delete() — Append-only nếu module PII
+    // Dùng @Modifying + @Query chỉ để SET trạng thái (vd: revokedAt, usedAt)
 }
 ```
 
@@ -483,19 +497,26 @@ export interface I[ModuleName]Repository {
 
 ### 11.3. Implementation Steps
 
-#### Chặng 1 — [Tên chặng]
+#### Chặng 1 — Tạo Flyway migration
 
-```bash
-# Lệnh cụ thể, có thể chạy ngay
-npx prisma migrate dev --name [migration_name]
+Tạo file: `src/main/resources/db/migration/V{n}__[migration_name].sql`
+
+```sql
+-- Nội dung migration SQL (xem §5.2 cho schema đầy đủ)
 ```
 
-> ⚠️ **Chú ý:** [Cảnh báo rủi ro nếu có]
+Chạy migration:
+
+```bash
+./mvnw flyway:migrate
+```
+
+> ⚠️ **Chú ý:** [Cảnh báo rủi ro nếu có — vd: lock table, index build time]
 
 #### Chặng 2 — [Tên chặng]
 
-```typescript
-// Code snippet minh họa nếu cần
+```java
+// Code snippet Java minh họa nếu cần
 ```
 
 #### Chặng 3 — Verification sau deploy
@@ -533,8 +554,11 @@ curl -X GET https://[host]/api/v1/health
 ### 12.2. Rollback Procedure
 
 ```bash
-# Bước 1: Revert migration (nếu có schema change)
-npx prisma migrate resolve --rolled-back [migration_id]
+# Bước 1: Revert migration thủ công (Flyway không hỗ trợ auto-rollback)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -c "DROP TABLE IF EXISTS [table_name] CASCADE;"
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -c "DELETE FROM flyway_schema_history WHERE version = '{n}';"
 
 # Bước 2: Re-deploy phiên bản cũ
 kubectl rollout undo deployment/[service-name]

@@ -1167,4 +1167,22 @@ Tests phải cover §13 Test Scenarios.
 
 ---
 
-*EDS v2.0 — CB-COMMUNITY-IMP-001 — UC-54 Create Community Question*
+## PHỤ LỤC
+
+### A. Glossary (Thuật ngữ)
+
+| Thuật ngữ | Định nghĩa |
+|-----------|------------|
+| PregnancyStage | Giai đoạn thai kỳ/chăm sóc bé — dùng để phân loại câu hỏi cộng đồng |
+| UrgencyLevel | Mức độ khẩn cấp của câu hỏi (LOW, NORMAL, URGENT) |
+| QuestionStatus | Trạng thái duyệt câu hỏi (PENDING, APPROVED, HIDDEN, LOCKED) |
+
+### B. Tài liệu tham chiếu
+
+| Document | Path |
+|----------|------|
+| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*

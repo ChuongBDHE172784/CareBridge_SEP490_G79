@@ -985,6 +985,32 @@ Theo TDS CB-COMMUNITY-IMP-005:
 | AP-AI-003 | Implicit Decision     | Code dùng existsByName() (case-sensitive)                    | Reject — C2 |
 | AP-AI-005 | Hallucinated Contract | Code gọi TopicTagService không có trong §8                   | Reject      |
 
+### 17.4 Anti-Pattern Detection
+
+| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
+|-------|-------------|-----------|----------|
+| AP-AI-001 | Unconstrained Gen | Code không match constraint C1-C6 | Reject — inject lại constraints |
+| AP-AI-003 | Implicit Decision | Code assume architecture không có ADR | Reject — viết ADR trước |
+| AP-AI-005 | Hallucinated Contract | Code import không có trong §8 | Reject — verify contract |
+
 ---
 
-*EDS v2.0 — CB-COMMUNITY-IMP-005 — UC-109 Manage Community Topics*
+## PHỤ LỤC
+
+### A. Glossary (Thuật ngữ)
+
+| Thuật ngữ | Định nghĩa |
+|-----------|------------|
+| CommunityTopic | Chủ đề cộng đồng — dùng để phân loại câu hỏi (Thai kỳ, Chăm sóc bé, Dinh dưỡng, v.v.) |
+| isHidden | Cờ soft-hide — ẩn topic khỏi feed nhưng không xóa questions liên quan |
+| sortOrder | Thứ tự sắp xếp topics trên giao diện — số nhỏ hơn hiển thị trước |
+
+### B. Tài liệu tham chiếu
+
+| Document | Path |
+|----------|------|
+| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
