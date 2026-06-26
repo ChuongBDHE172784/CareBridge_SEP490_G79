@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModPortal - Trường hợp khẩn cấp</title>
+<!-- Google Fonts: Lexend -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-primary": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "on-primary-fixed": "#341006",
+                        "primary": "#845143",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-container": "#51271b",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container": "#ffe9e3",
+                        "inverse-on-surface": "#ffede7",
+                        "tertiary-container": "#a09a95",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#271812",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "tertiary-fixed": "#e9e1db",
+                        "outline-variant": "#d6c2bd",
+                        "background": "#fff8f6",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#3e2c26",
+                        "primary-container": "#c98c7b",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "surface-tint": "#845143",
+                        "surface": "#fff8f6",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "secondary": "#6e5a52",
+                        "surface-dim": "#f1d4ca",
+                        "error": "#ba1a1a",
+                        "on-surface": "#271812",
+                        "surface-bright": "#fff8f6",
+                        "outline": "#84736f",
+                        "surface-container-low": "#fff1ec",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-fixed": "#271812",
+                        "surface-variant": "#fadcd3",
+                        "tertiary": "#625d59",
+                        "on-tertiary-container": "#36322e"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "safe-margin": "24px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-md": "16px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"]
+                    },
+                    fontSize: {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        @keyframes pulse-border {
+            0% { border-color: rgba(186, 26, 26, 0.4); box-shadow: 0 0 0 0 rgba(186, 26, 26, 0.2); }
+            50% { border-color: rgba(186, 26, 26, 1); box-shadow: 0 0 0 8px rgba(186, 26, 26, 0); }
+            100% { border-color: rgba(186, 26, 26, 0.4); box-shadow: 0 0 0 0 rgba(186, 26, 26, 0); }
+        }
+        .urgent-pulse {
+            animation: pulse-border 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface dark:bg-surface-dim shadow-[0px_4px_20px_rgba(90,70,63,0.06)] h-screen w-64 fixed left-0 top-0 flex flex-col p-4 gap-2 z-20">
+<div class="flex items-center gap-3 px-4 py-4 mb-4">
+<span class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+<div>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim font-bold tracking-tight">ModPortal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase">Hệ thống kiểm duyệt</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 flex-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors transition-all duration-200 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Tổng quan
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors transition-all duration-200 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">queue</span>
+                Hàng đợi
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors transition-all duration-200 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">assessment</span>
+                Báo cáo
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors transition-all duration-200 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">gavel</span>
+                Vi phạm
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-bold transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+                Ca an toàn
+            </a>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-4 px-4 flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover bg-surface-container-high" data-alt="A small circular avatar placeholder image for a moderator profile, featuring a warm neutral background with a subtle professional silhouette. The style is clean, modern, and high-resolution, matching a high-end web application interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbD2L2Hw1t1l2je5yWFrmoEwk6hS18ykD7YXJKhnXq3_NWKie_qofPQXqIthSb9IzD_MIspSrQmvnEYD27LkUIyUr7KviHfbNewVm5G-bBkQvAlkuwVhlZDiHZCII6fHJaBcOJyMD8XGiiA9WFcgQA-PDuBFq-90JLWo6OgBT9HtsvaMsEdwlKVzUQUbLA1GzwlOocELS5e-YEH_L3Kh5AMDdhiqvRKHpVkZeQaEiyhCKvusY4FuFAwDoZua_Z6hyZ6to-d9z9Jks"/>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Mod_A12</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Safety Team</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex justify-between items-center px-6 z-10">
+<div class="flex items-center gap-2">
+<span class="font-body-lg text-body-lg text-on-surface-variant">Ca an toàn</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+<span class="font-button text-button text-on-surface">CB-072</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-[48px] h-[48px] flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-error rounded-full"></span>
+</button>
+<button class="w-[48px] h-[48px] flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto mt-16 p-safe-margin bg-background">
+<div class="max-w-6xl mx-auto space-y-6">
+<!-- Urgent Header -->
+<div class="bg-error-container border border-error/20 rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0px_8px_24px_rgba(186,26,26,0.1)] urgent-pulse relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-error/5 to-transparent pointer-events-none"></div>
+<div class="flex items-start sm:items-center gap-4 relative z-10">
+<div class="w-12 h-12 rounded-full bg-error text-on-error flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-error-container mb-1">Trường hợp khẩn cấp: Đe dọa an toàn vật lý</h2>
+<p class="font-body-md text-body-md text-on-error-container/80 flex items-center gap-2">
+<span class="font-semibold">Mã ca:</span> CB-072 
+                                <span class="w-1 h-1 rounded-full bg-on-error-container/50"></span>
+<span class="font-semibold">Báo cáo lúc:</span> 14:05, 24/10/2023
+                            </p>
+</div>
+</div>
+<div class="flex flex-col items-end relative z-10">
+<span class="font-label-md text-label-md text-on-error-container uppercase tracking-wider mb-1">SLA Xử lý còn lại</span>
+<div class="font-display-lg text-display-lg text-error flex items-baseline gap-1">
+                            12 <span class="font-headline-md text-headline-md">phút</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Summary Column -->
+<div class="lg:col-span-2 space-y-gutter">
+<!-- Details Card -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container"></div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">subject</span>
+                                Tóm tắt sự việc
+                            </h3>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="p-4 bg-surface-container rounded-lg">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Người bị báo cáo</p>
+<p class="font-body-lg text-body-lg text-on-surface font-medium flex items-center gap-2">
+                                        User_7782 <span class="material-symbols-outlined text-[16px] text-error cursor-pointer" title="Lịch sử vi phạm cao">flag</span>
+</p>
+</div>
+<div class="p-4 bg-surface-container rounded-lg">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase">Người báo cáo</p>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Ẩn danh (Mã: R-441)</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+                                    Người dùng User_7782 đã gửi nhiều tin nhắn trực tiếp chứa ngôn từ đe dọa bạo lực nhắm vào gia đình của người báo cáo sau một cuộc tranh luận trong nhóm "Kinh nghiệm nuôi con mọn". Nội dung bao gồm địa chỉ nhà cụ thể và hình ảnh mang tính uy hiếp.
+                                </p>
+</div>
+</div>
+<!-- Evidence Card -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">lock</span>
+                                    Bằng chứng được bảo vệ
+                                </h3>
+<span class="bg-surface-variant text-on-surface-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">visibility_off</span> Nhạy cảm
+                                </span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+<!-- Evidence Image 1 -->
+<div class="relative group cursor-pointer aspect-square rounded-lg overflow-hidden border border-outline-variant/50">
+<img class="w-full h-full object-cover filter blur-md group-hover:blur-sm transition-all duration-300" data-alt="A blurred interface mockup showing a chat window, representing protected evidence of a hostile conversation. The overall tone is clinical and secure, using a light mode aesthetic with soft shadows and rounded corners, matching the ModPortal professional B2B design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXMuCwEDI0-RwxHqHT5-EDjyACsCoXkKGVfVvNUrAXZNoyEyp3xTHzC-QAvOykqSrGj54LgUSM-eQYD9tU9bl0d_sZ0dVtcYUFjyZUS0U4Yj5EWP959jwKFZZJliOFfo1hE_VRtmIXXbQpCFyQyP_o5f3UJDn1nc33UPPHZvMNQ9lAsxOxTXCdydep5qD64uPFSSPMYogTkHaXNl_LTxw5X4ZFIwbOyYT6RIC_wsaWQTDfRrkq1iaeqjcbKe6IkEQGbQe70JKvrqw"/>
+<div class="absolute inset-0 bg-on-surface/10 flex flex-col items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+<span class="material-symbols-outlined text-white text-3xl drop-shadow-md">image</span>
+<span class="text-white font-label-md mt-2 drop-shadow-md">Nhấn để xem</span>
+</div>
+</div>
+<!-- Evidence Text Log -->
+<div class="bg-surface-container p-4 rounded-lg flex flex-col justify-between aspect-square border border-outline-variant/30 cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-tertiary text-[24px]">receipt_long</span>
+<div>
+<p class="font-button text-button text-on-surface mb-1">Log chat #882</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Trích xuất lúc 14:02</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions & Links Column -->
+<div class="lg:col-span-1 space-y-gutter">
+<!-- Priority Actions Card -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_8px_24px_rgba(90,70,63,0.12)] border-t-4 border-error">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-error">gavel</span>
+                                Hành động khẩn cấp
+                            </h3>
+<div class="space-y-3">
+<button class="w-full h-[52px] bg-error hover:bg-on-error-container text-on-error rounded-full font-button text-button flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]">block</span>
+                                    Đình chỉ tài khoản ngay
+                                </button>
+<button class="w-full h-[52px] bg-primary hover:bg-on-primary-container text-on-primary rounded-full font-button text-button flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]">escalator_warning</span>
+                                    Chuyển Safety Lead
+                                </button>
+<div class="h-[1px] w-full bg-outline-variant/50 my-4"></div>
+<button class="w-full h-[52px] bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-outline rounded-full font-button text-button flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]">local_police</span>
+                                    Thông báo cơ quan chức năng
+                                </button>
+</div>
+</div>
+<!-- Linked Reports -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">link</span>
+                                Báo cáo liên kết
+                            </h3>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">forum</span>
+</div>
+<div>
+<a class="font-button text-button text-primary hover:underline" href="#">RP-992 (Ngôn từ kích động)</a>
+<p class="font-body-md text-body-md text-on-surface-variant">Cùng User_7782 • 2 ngày trước</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">report</span>
+</div>
+<div>
+<a class="font-button text-button text-primary hover:underline" href="#">RP-804 (Spam bình luận)</a>
+<p class="font-body-md text-body-md text-on-surface-variant">Cùng User_7782 • 1 tuần trước</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

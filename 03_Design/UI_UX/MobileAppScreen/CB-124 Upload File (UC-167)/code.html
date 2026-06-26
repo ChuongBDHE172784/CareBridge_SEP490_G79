@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#fab7a4",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "primary-fixed": "#ffdbd1",
+                        "outline": "#84736f",
+                        "on-tertiary-container": "#36322e",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-tint": "#845143",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "inverse-surface": "#3e2c26",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "primary-container": "#c98c7b",
+                        "on-background": "#271812",
+                        "tertiary": "#625d59",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-error-container": "#93000a",
+                        "surface": "#fff8f6",
+                        "tertiary-fixed": "#e9e1db",
+                        "primary": "#845143",
+                        "inverse-on-surface": "#ffede7",
+                        "on-tertiary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-container": "#a09a95",
+                        "surface-variant": "#fadcd3",
+                        "on-surface": "#271812",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-primary-container": "#51271b",
+                        "on-secondary-container": "#735e56",
+                        "background": "#fff8f6",
+                        "surface-container-low": "#fff1ec",
+                        "surface-container-highest": "#fadcd3",
+                        "on-surface-variant": "#524440",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "stack-lg": "24px",
+                        "safe-margin": "24px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "touch-target-min": "48px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "headline-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #fff8f6;
+            color: #271812;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .soft-card-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .active-ring:focus-within {
+            ring: 2px;
+            ring-color: #c98c7b;
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #c98c7b !important;
+        }
+        /* Custom Toggle Switch Style */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #c98c7b;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #c98c7b;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-stack-lg">
+<!-- Top App Bar -->
+<header class="bg-background sticky top-0 z-50 flex justify-between items-center px-safe-margin h-touch-target-min w-full">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Tải lên tài liệu</h1>
+<div class="w-[24px]"></div> <!-- Spacer for symmetry -->
+</header>
+<main class="px-safe-margin mt-stack-md">
+<!-- File Picker Area -->
+<section class="mb-stack-lg">
+<div class="relative group cursor-pointer border-2 border-dashed border-outline-variant bg-surface-container-low rounded-lg p-stack-lg flex flex-col items-center justify-center min-h-[160px] transition-all hover:bg-surface-container hover:border-primary" id="drop-zone">
+<input class="absolute inset-0 opacity-0 cursor-pointer" id="file-input" multiple="" type="file"/>
+<div class="bg-primary-fixed text-on-primary-fixed w-12 h-12 rounded-full flex items-center justify-center mb-stack-sm">
+<span class="material-symbols-outlined text-[28px]">cloud_upload</span>
+</div>
+<p class="font-headline-md text-headline-md text-on-surface mb-1">Chọn hoặc kéo tệp</p>
+<p class="font-label-md text-label-md text-on-surface-variant text-center px-gutter">Hỗ trợ PDF, JPG, PNG (Tối đa 10MB)</p>
+</div>
+<!-- File Preview Placeholder (Hidden by default) -->
+<div class="mt-stack-sm space-y-2 hidden" id="file-preview-list">
+<!-- Example of a selected file -->
+<div class="flex items-center gap-3 p-3 bg-white rounded-lg soft-card-shadow">
+<span class="material-symbols-outlined text-primary">description</span>
+<div class="flex-1">
+<p class="font-body-md text-on-surface truncate">ket_qua_xet_nghiem.pdf</p>
+<p class="text-[10px] text-on-surface-variant">1.2 MB • Hoàn tất</p>
+</div>
+<button class="text-error"><span class="material-symbols-outlined">close</span></button>
+</div>
+</div>
+</section>
+<!-- Form Fields -->
+<div class="space-y-stack-md">
+<!-- Title Field -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface ml-1">Tiêu đề tài liệu</label>
+<input class="w-full h-14 px-4 bg-white border border-outline-variant rounded-lg font-body-lg text-on-surface placeholder:text-outline active-ring transition-all" placeholder="Ví dụ: Phiếu tiêm chủng tháng 6" type="text"/>
+</div>
+<!-- Double Column Dropdowns -->
+<div class="grid grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface ml-1">Danh mục</label>
+<div class="relative">
+<select class="w-full h-14 pl-4 pr-10 bg-white border border-outline-variant rounded-lg font-body-lg text-on-surface appearance-none active-ring transition-all">
+<option value="">Chọn loại</option>
+<option value="suc-khoe">Sức khỏe</option>
+<option value="dinh-duong">Dinh dưỡng</option>
+<option value="giao-duc">Giáo dục</option>
+<option value="khac">Khác</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-4 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface ml-1">Chủ sở hữu</label>
+<div class="relative">
+<select class="w-full h-14 pl-4 pr-10 bg-white border border-outline-variant rounded-lg font-body-lg text-on-surface appearance-none active-ring transition-all">
+<option value="be">Bé</option>
+<option value="me">Mẹ</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-4 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Date Input -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface ml-1">Ngày chứng từ</label>
+<div class="relative">
+<input class="w-full h-14 px-4 bg-white border border-outline-variant rounded-lg font-body-lg text-on-surface active-ring transition-all" type="date"/>
+<span class="material-symbols-outlined absolute right-3 top-4 pointer-events-none text-on-surface-variant">calendar_today</span>
+</div>
+</div>
+<!-- Notes Area -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface ml-1">Ghi chú (Tùy chọn)</label>
+<textarea class="w-full p-4 bg-white border border-outline-variant rounded-lg font-body-lg text-on-surface placeholder:text-outline active-ring transition-all resize-none" placeholder="Thêm thông tin chi tiết về tài liệu này..." rows="3"></textarea>
+</div>
+<!-- Privacy Toggle -->
+<div class="bg-white p-4 rounded-lg border border-outline-variant flex items-center justify-between mt-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<div>
+<p class="font-button text-on-surface">Quyền riêng tư</p>
+<p class="text-[12px] text-on-surface-variant">Chỉ mình bạn mới thấy tệp này</p>
+</div>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer focus:ring-0 checked:right-0 right-6 transition-all duration-300" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant cursor-pointer transition-colors duration-300" for="toggle"></label>
+</div>
+</div>
+</div>
+<!-- Security Badge -->
+<div class="flex items-center justify-center gap-2 mt-stack-lg mb-stack-md py-3 px-4 bg-secondary-container/30 rounded-full w-fit mx-auto">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified_user</span>
+<span class="font-label-md text-label-md text-secondary">Mã hóa đầu cuối 256-bit AES</span>
+</div>
+<!-- Primary Action -->
+<div class="mt-stack-lg">
+<button class="w-full h-[52px] bg-primary text-white font-button text-button rounded-full flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">security</span>
+                Tải lên an toàn
+            </button>
+<p class="text-center mt-3 font-label-md text-label-md text-on-surface-variant">Dung lượng còn lại: 1.2 GB / 5 GB</p>
+</div>
+</main>
+<!-- Illustrative Background Element (Subtle) -->
+<div class="fixed -bottom-10 -right-10 opacity-10 pointer-events-none">
+<div class="w-64 h-64 bg-cover bg-center rounded-full blur-3xl" data-alt="A soft, abstract organic shape in warm terracotta and cocoa tones, suggesting a nurturing and safe environment, in a modern light-mode Vietnamese maternal care app style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAOUek4rHmGlUYvq4Y7FoKEqQqV5ZkphmjT9mwGK093X4E0TmVSX3WXxwK6z2TyX5N7VTC_kQZ870mgmII7jCIoFp_xTkGOsuTo8TqUhE3yfnFq8kqwedVjbH0g-aS6E0KfBkQsTFGltilR5j9ZZJacTVAoAlLP3UpqbqPZMmCcAG13VqzbOCDcfqO2RhqfMCOIj7cayTjtR7R0i3zlaXvdMwmN8RpnkFQarpcxyD6nwLwa_VR_ic2amtVJoUHHsRbrxu5VKXRRdwk')"></div>
+</div>
+<script>
+        // Micro-interactions
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const previewList = document.getElementById('file-preview-list');
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                previewList.classList.remove('hidden');
+                // For demo purposes, we just show the hidden placeholder
+            }
+        });
+
+        // Add drag & drop visual feedback
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-primary', 'bg-primary-fixed/30');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-primary', 'bg-primary-fixed/30');
+            }, false);
+        });
+    </script>
+</body></html>

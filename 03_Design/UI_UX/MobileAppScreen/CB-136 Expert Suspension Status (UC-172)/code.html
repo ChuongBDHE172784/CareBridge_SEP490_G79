@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Trạng thái tài khoản - CareBridge Expert</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "primary": "#845143",
+                    "on-tertiary-container": "#36322e",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#625d59",
+                    "outline-variant": "#d6c2bd",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#f8ddd2",
+                    "inverse-primary": "#fab7a4",
+                    "surface-variant": "#fadcd3",
+                    "surface-dim": "#f1d4ca",
+                    "secondary-container": "#f6dacf",
+                    "on-background": "#271812",
+                    "secondary": "#6e5a52",
+                    "outline": "#84736f",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#a09a95",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff",
+                    "primary-fixed": "#ffdbd1",
+                    "on-primary-fixed": "#341006",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#e9e1db",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-low": "#fff1ec",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "inverse-surface": "#3e2c26",
+                    "on-secondary-container": "#735e56",
+                    "background": "#fff8f6",
+                    "on-surface": "#271812",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "primary-container": "#c98c7b",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "surface-bright": "#fff8f6",
+                    "surface-container-highest": "#fadcd3",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-secondary-fixed": "#271812",
+                    "surface-tint": "#845143",
+                    "surface": "#fff8f6",
+                    "inverse-on-surface": "#ffede7",
+                    "surface-container": "#ffe9e3",
+                    "on-primary-fixed-variant": "#693a2d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "touch-target-min": "48px",
+                    "stack-lg": "24px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "headline-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "headline-lg": ["Lexend"]
+            },
+            "fontSize": {
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+            color: #271812;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: contain;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .status-header-gradient {
+            background: linear-gradient(180deg, #FADCD3 0%, #FFF8F6 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-body-md min-h-screen flex flex-col items-center">
+<!-- Mobile Frame Container (390x844 simulated) -->
+<main class="w-full max-w-[390px] min-h-screen bg-background relative flex flex-col overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background sticky top-0 z-50">
+<button aria-label="Quay lại" class="w-10 h-10 flex items-center justify-start active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary truncate">Trạng thái tài khoản</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 px-safe-margin pb-safe-margin pt-stack-md space-y-stack-lg">
+<!-- High-Visibility Status Card -->
+<section class="card-shadow bg-surface-container-lowest rounded-lg p-stack-lg overflow-hidden relative">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[80px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex flex-col items-start gap-stack-sm relative z-10">
+<div class="flex items-center gap-2 px-3 py-1 bg-error-container text-on-error-container rounded-full">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">block</span>
+<span class="font-label-md text-label-md">TẠM NGƯNG</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg mt-2 text-on-background">Tài khoản tạm ngưng</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Quyền truy cập của bạn vào một số tính năng đã bị giới hạn do vi phạm chính sách.</p>
+</div>
+</section>
+<!-- Detailed Info Grid -->
+<section class="space-y-stack-md">
+<div class="card-shadow bg-surface-container-lowest rounded-lg p-5 flex flex-col gap-4">
+<div class="flex justify-between items-start border-b border-surface-variant pb-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline uppercase tracking-wider">Lý do</span>
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Vi phạm quy tắc cộng đồng</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">info</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline uppercase tracking-wider">Thời hạn hiệu lực</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+<span class="font-body-md text-body-md text-on-background">24/10/2023 — 24/11/2023</span>
+</div>
+</div>
+</div>
+<!-- Restricted Features List -->
+<div class="card-shadow bg-surface-container-lowest rounded-lg p-5">
+<h3 class="font-label-md text-label-md text-outline uppercase tracking-wider mb-stack-md">Tính năng bị hạn chế</h3>
+<ul class="space-y-stack-md">
+<li class="flex items-start gap-3">
+<div class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-surface-container-high">
+<span class="material-symbols-outlined text-[14px] text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">close</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Không thể nhận tư vấn mới</span>
+</li>
+<li class="flex items-start gap-3">
+<div class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-surface-container-high">
+<span class="material-symbols-outlined text-[14px] text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">close</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Không thể trả lời câu hỏi cộng đồng</span>
+</li>
+<li class="flex items-start gap-3 opacity-50">
+<div class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-surface-container-high">
+<span class="material-symbols-outlined text-[14px] text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">close</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Rút tiền (Bị khóa tạm thời)</span>
+</li>
+</ul>
+</div>
+</section>
+<!-- Support/Appeal Actions -->
+<section class="space-y-stack-md pt-4">
+<button class="w-full h-touch-target-min bg-primary text-on-primary rounded-full font-button text-button flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">mail</span>
+                    Liên hệ hỗ trợ
+                </button>
+<button class="w-full h-touch-target-min bg-secondary-container text-on-secondary-container rounded-full font-button text-button flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">gavel</span>
+                    Gửi khiếu nại
+                </button>
+<p class="text-center font-label-md text-label-md text-on-surface-variant/60 px-4">
+                    Nếu bạn cho rằng đây là một sự nhầm lẫn, vui lòng gửi khiếu nại kèm theo các bằng chứng liên quan.
+                </p>
+</section>
+</div>
+<!-- Footer / Decorative Background Element -->
+<div class="absolute bottom-0 left-0 w-full h-32 -z-10 pointer-events-none opacity-20">
+
+</div>
+</main>
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+    </script>
+</body></html>

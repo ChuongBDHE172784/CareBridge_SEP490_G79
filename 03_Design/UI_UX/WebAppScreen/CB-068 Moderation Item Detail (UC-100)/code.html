@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModPortal - Chi tiết báo cáo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-primary": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "on-primary-fixed": "#341006",
+                        "primary": "#845143",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-container": "#51271b",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container": "#ffe9e3",
+                        "inverse-on-surface": "#ffede7",
+                        "tertiary-container": "#a09a95",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#271812",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "tertiary-fixed": "#e9e1db",
+                        "outline-variant": "#d6c2bd",
+                        "background": "#fff8f6",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#3e2c26",
+                        "primary-container": "#c98c7b",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "surface-tint": "#845143",
+                        "surface": "#fff8f6",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "secondary": "#6e5a52",
+                        "surface-dim": "#f1d4ca",
+                        "error": "#ba1a1a",
+                        "on-surface": "#271812",
+                        "surface-bright": "#fff8f6",
+                        "outline": "#84736f",
+                        "surface-container-low": "#fff1ec",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-fixed": "#271812",
+                        "surface-variant": "#fadcd3",
+                        "tertiary": "#625d59",
+                        "on-tertiary-container": "#36322e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "safe-margin": "24px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        body { background-color: #F6F1EC; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-surface-dim shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-20 flex flex-col h-full p-4 gap-2 transition-all duration-200 ease-in-out hidden md:flex">
+<div class="px-4 py-6">
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim font-bold tracking-tight">ModPortal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Hệ thống kiểm duyệt</p>
+</div>
+<div class="flex-1 flex flex-col gap-2 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-button text-button">Tổng quan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-bold hover:bg-surface-container-high dark:hover:bg-surface-variant" href="#">
+<span class="material-symbols-outlined icon-filled" data-icon="queue">queue</span>
+<span class="font-button text-button">Hàng đợi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-button text-button">Báo cáo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-button text-button">Vi phạm</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-button text-button">Ca an toàn</span>
+</a>
+</div>
+<div class="mt-auto p-4 border-t border-surface-container-high flex items-center gap-3">
+<img alt="Moderator Profile Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A warm, professional portrait photo of a Vietnamese moderator with a friendly expression, soft lighting, suitable for a healthcare or maternal app avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4PRNPYaMx6VIpipW6CR4qm-obfs1QRXwteVCYesN7jC2eDJ_ad2shZSXs7E0GorisS-C43WywuREZ5WTlgGbpeR4JfmgBhDDNaxNTada2CEnNJ5VTKHlR3-ENqgzhu4Luw8gzrJqJhwvAfK_GJYWJ0r5hAdE685De5deAkLuipkEiTkSNw96hu3-38o3t7-e8Hg5rpFEcUt2yRndsuJbcP43ePiQ2zuEmPQwfzkDy4GD70YfyTEQM84qej1qhKv03cimqbjCdL1o"/>
+<div>
+<p class="font-button text-button text-on-surface">Nguyễn Văn A</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Moderator</p>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-10">
+<div class="flex justify-between items-center px-6 h-full w-full">
+<!-- Search on left -->
+<div class="flex-1 flex items-center max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full font-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Tìm kiếm báo cáo, ID người dùng..." type="text"/>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="Moderator Avatar" class="w-8 h-8 rounded-full object-cover md:hidden" data-alt="A warm, professional portrait photo of a Vietnamese moderator with a friendly expression, soft lighting, suitable for a healthcare or maternal app avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6KCL23VUT1YxuvsVvcLcmpRCoFX9iC2f6L8Mv4rJbugS4AVzBF7CfcGj-Q4-mG0oMdvQJRsVyWEsx199rVyFG18ONLEtX2MMpnQrvSouWJ0WAK9xw7KNG9IB3dDDRV7_iuXHmVoO67Z0uOE62nZBhiq4GPe47BPjUhpLSkx8wXXGzDi2dHLipMf_yDv1DpBm0gBOR17Ts4bomxXPqOxVCVcVdMIBs4JnoN4xduZDjKU5a7E-4CkEWJUog2cvuJt15nnNdFQo4rO8"/>
+</div>
+</div>
+</header>
+<!-- Workspace Canvas -->
+<div class="mt-16 p-safe-margin max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-safe-margin">
+<!-- Left Column: Flagged Content (2/3 width on desktop) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Header Info -->
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-1">Chi tiết báo cáo #RP-8492</h2>
+<div class="flex items-center gap-3 font-body-md text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> 10 phút trước</span>
+<span class="text-outline-variant">•</span>
+<span>Bởi: <strong>@nguoidung123</strong></span>
+</div>
+</div>
+<div class="bg-error-container text-on-error-container px-3 py-1 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+<span class="font-label-md text-label-md">Ngôn từ thù ghét (Độ tin cậy 85%)</span>
+</div>
+</div>
+<!-- Content Preview Card -->
+<div class="bg-surface rounded-DEFAULT shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6">
+<div class="flex items-start gap-4 mb-4">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="Profile picture of an app user, a warm and friendly portrait of a mother holding a baby, soft natural lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3xq7TxIzPYP6sxiDwParHyKM2SmFdiXb1Vv_L3_O6hT1-mlD79geV0ROJDmp0YCy0lN1gNk9yV70sTBEN_rgATTUOf-LN5XuMQfEpO78OBpoGKrrZhMelnEaG9K55bdylx4FCD5_JOuxV7UFWWnYXEHBuwQ43SKqNr2b3fItRx5xPL4fhBKd2SNM3cHNp-Axqs5XO0nuKaAzM3fRwYxmBv6YZ4bLfgXahM4RkNAx6fYUYE7MeuX5HkY1mBeXvv3nwLwrqBZQXJjw"/>
+<div class="flex-1">
+<h3 class="font-button text-button text-on-surface">@nguoidung123</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Đăng trong nhóm "Kinh nghiệm nuôi con"</p>
+</div>
+</div>
+<div class="border-l-4 border-error pl-4 py-2 mb-4">
+<p class="font-body-lg text-body-lg text-on-surface whitespace-pre-wrap">Thật không thể hiểu nổi mấy người cho con ăn dặm kiểu này. Đồ ngu xuẩn, làm hỏng cả một thế hệ! Cần phải tẩy chay những bà mẹ vô trách nhiệm như vậy.</p>
+</div>
+<!-- Evidence / Context images -->
+<div class="grid grid-cols-2 gap-4 mt-4">
+<img class="w-full h-48 object-cover rounded-lg border border-surface-variant" data-alt="A screenshot of a social media post showing a controversial discussion about baby food preparation, text is blurred but the layout implies a forum thread." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSLSjCGqFmy_Ag5G99gxORhXugp__iXQtxGQp6xk3BxoePm5LplRqm0CUjiS5Tboi8sOD3vjvTd8fzplSdFjQ4Zqhz6FlWegIVPnJ9GcWgnmXWr2TUHE9e6JNvmj71Tw3JQ13xLMMP6jQOSD7twx6zVtvJUimJIfk4AQZ7f0fj2RPPk8r51tq4Gm0KQGlNRX0q_-NEUT94affwv8xhPnUNEnnK3LgLzC_EFNjAYJ-e5kPxeg56d7CCf_lMcbRJyrhYD3tByA1VmS0"/>
+</div>
+</div>
+<!-- Context Thread -->
+<div class="bg-surface rounded-DEFAULT shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined">forum</span> Bối cảnh hội thoại
+                    </h3>
+<div class="flex flex-col gap-4">
+<div class="flex gap-3">
+<img class="w-8 h-8 rounded-full" data-alt="A small avatar image of a user, a stylized floral illustration in soft pastel colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNArt9AEcHTj0FsMAWe6luy42OxfypdCGCnJWbiCa47L1epMtPizz-B-fy1QrrD_l0s3uX4cgBkT5m4bQ1hEwWSa_fUeU-I0wY9OAcwdxSksWwzwiMcjAKVwE4KKSnrg_pAtFKYSRqUYT4zi-UTObLfRWeNfxnjZFA2lo0opFJ0_xARv59UBXWGkN-vgWMueJ11VoFRmk0vMPkAhEYU6YHbiRvYwk9t_T_Ycn8oD5zTDv2yCbtxNQOpdZyW2iWiYQ5PDwP8vrWd0k"/>
+<div class="bg-surface-container-low p-3 rounded-lg rounded-tl-none">
+<p class="font-body-md text-body-md text-on-surface">Chào các mẹ, mình mới bắt đầu cho bé ăn dặm BLW, thấy bé có vẻ thích nhưng hay oẹ...</p>
+</div>
+</div>
+<div class="flex gap-3 justify-end">
+<div class="bg-primary-container text-on-primary-container p-3 rounded-lg rounded-tr-none max-w-[80%] border-2 border-error-container">
+<p class="font-body-md text-body-md">Thật không thể hiểu nổi mấy người cho con ăn dặm kiểu này. Đồ ngu xuẩn, làm hỏng cả một thế hệ! Cần phải tẩy chay những bà mẹ vô trách nhiệm như vậy.</p>
+<span class="text-xs mt-1 block opacity-80">Đã bị báo cáo</span>
+</div>
+<img class="w-8 h-8 rounded-full" data-alt="Profile picture of an app user, a warm and friendly portrait of a mother holding a baby, soft natural lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSQFu1XUGgxtidm-jNw1tqJDdvNkymeS3yW0GYvQ5xhge2q0gUDM59tYy4blm82GAlv8Y1vwmfIYHqmAeGFY0XUEaMGPTQnQu6Q5g_wncg4DvnKA9-fMxRWp0XAQNr2G3InBsQ91pketHXzfpibwOsPvkLAT7A6pYysx2uu8Xbzxg2fUBEiqlJxHJPHA_D3KYh5AvJkTF77DdZpaGsjEc65f9QyP3d2tkVtve5RW9DqtyZlhi3dHiS9x5nS15F80xql8qD3VBXubE"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Action Panel (1/3 width on desktop) -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Actions Card -->
+<div class="bg-surface rounded-DEFAULT shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6 sticky top-24">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Hành động</h3>
+<div class="flex flex-col gap-3">
+<button class="w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary-container font-button text-button py-3 px-4 rounded-full h-[52px] hover:bg-primary-fixed-dim transition-colors shadow-sm">
+<span class="material-symbols-outlined">visibility_off</span>
+                            Ẩn nội dung
+                        </button>
+<button class="w-full flex items-center justify-center gap-2 bg-error text-on-error font-button text-button py-3 px-4 rounded-full h-[52px] hover:opacity-90 transition-colors shadow-sm">
+<span class="material-symbols-outlined">warning</span>
+                            Cảnh báo người dùng
+                        </button>
+<div class="h-px bg-surface-variant my-2 w-full"></div>
+<button class="w-full flex items-center justify-center gap-2 bg-surface-container-low text-on-surface-variant font-button text-button py-3 px-4 rounded-full h-[52px] hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">check_circle</span>
+                            Bỏ qua (Giữ lại)
+                        </button>
+<button class="w-full flex items-center justify-center gap-2 bg-surface-container-low text-on-surface-variant font-button text-button py-3 px-4 rounded-full h-[52px] hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">escalator</span>
+                            Nâng cấp xử lý
+                        </button>
+</div>
+<div class="mt-6">
+<label class="font-label-md text-label-md text-on-surface-variant block mb-2">Ghi chú kiểm duyệt (Tuỳ chọn)</label>
+<textarea class="w-full h-24 p-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-on-surface placeholder-outline focus:outline-none focus:border-primary resize-none" placeholder="Nhập lý do hoặc ghi chú nội bộ..."></textarea>
+</div>
+</div>
+<!-- History / Timeline -->
+<div class="bg-surface rounded-DEFAULT shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Lịch sử tài khoản</h3>
+<div class="relative pl-4 border-l-2 border-surface-variant flex flex-col gap-4">
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-error"></div>
+<p class="font-label-md text-label-md text-on-surface-variant">Hôm nay, 10:45 AM</p>
+<p class="font-body-md text-body-md text-on-surface mt-1">Bị báo cáo bởi 3 người dùng (Ngôn từ thù ghét)</p>
+</div>
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-surface-variant"></div>
+<p class="font-label-md text-label-md text-on-surface-variant">15 Tháng 5, 2023</p>
+<p class="font-body-md text-body-md text-on-surface mt-1">Cảnh báo vi phạm nội quy nhóm (Spam)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

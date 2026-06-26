@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Đăng xuất</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#51271b",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#271812",
+                      "primary-fixed": "#ffdbd1",
+                      "surface-bright": "#fff8f6",
+                      "on-primary-fixed": "#341006",
+                      "background": "#fff8f6",
+                      "surface-variant": "#fadcd3",
+                      "inverse-on-surface": "#ffede7",
+                      "on-secondary-fixed": "#271812",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#36322e",
+                      "tertiary": "#625d59",
+                      "secondary-container": "#f6dacf",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "outline": "#84736f",
+                      "on-background": "#271812",
+                      "surface": "#fff8f6",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "secondary": "#6e5a52",
+                      "primary": "#845143",
+                      "outline-variant": "#d6c2bd",
+                      "on-secondary-container": "#735e56",
+                      "on-primary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container-highest": "#fadcd3",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a",
+                      "surface-tint": "#845143",
+                      "secondary-fixed": "#f8ddd2",
+                      "surface-dim": "#f1d4ca",
+                      "surface-container-high": "#ffe2d9",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-container-low": "#fff1ec",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "on-surface-variant": "#524440",
+                      "primary-container": "#c98c7b",
+                      "error-container": "#ffdad6",
+                      "primary-fixed-dim": "#fab7a4",
+                      "tertiary-fixed": "#e9e1db",
+                      "inverse-primary": "#fab7a4",
+                      "tertiary-container": "#a09a95",
+                      "inverse-surface": "#3e2c26",
+                      "surface-container": "#ffe9e3"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-lg": "24px",
+                      "gutter": "16px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "safe-margin": "24px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Lexend"
+                      ],
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "headline-md": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ],
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "label-md": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Ambient Background Blur */
+        .backdrop-blur-ambient {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        
+        /* Entrance Animation */
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .animate-entrance {
+            animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-hidden flex items-center justify-center">
+<!-- Mock Content Behind Overlay to show context -->
+<div class="absolute inset-0 z-0 opacity-40 select-none pointer-events-none filter blur-sm">
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background border-b border-surface-variant">
+<span class="font-display-lg text-display-lg text-primary">CareBridge</span>
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-primary-container font-headline-md">M</div>
+</header>
+<main class="p-safe-margin space-y-stack-lg mt-8">
+<div class="bg-surface rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] h-32 w-full max-w-md mx-auto"></div>
+<div class="bg-surface rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] h-48 w-full max-w-md mx-auto"></div>
+</main>
+</div>
+<!-- Dimmed Background Overlay -->
+<div class="absolute inset-0 z-40 bg-[#271812]/40 backdrop-blur-ambient flex items-end md:items-center justify-center p-0 md:p-safe-margin transition-opacity duration-300">
+<!-- Confirmation Card / Bottom Sheet -->
+<div class="bg-[#F6F1EC] w-full md:w-[400px] md:rounded-[32px] rounded-t-[32px] md:rounded-b-[32px] shadow-[0px_8px_24px_rgba(90,70,63,0.12)] p-safe-margin pt-8 md:pt-safe-margin animate-entrance flex flex-col items-center relative z-50">
+<!-- Mobile Pull Handle -->
+<div class="w-12 h-1.5 bg-surface-variant rounded-full absolute top-3 md:hidden"></div>
+<!-- Avatar -->
+<div class="relative mb-stack-md mt-2">
+<img class="w-20 h-20 rounded-full object-cover shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border-4 border-[#F6F1EC]" data-alt="A softly lit, warm and inviting portrait placeholder avatar image. It features an abstract, soft organic shape in muted warm tones like soft peach, light cocoa, and creamy white, representing a caring mother profile in the CareBridge app. The lighting is bright and ethereal, suitable for a light-mode modern UI design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHOsdxERFX5Gt17_bPLq28OPrbVEvPcLpYcAmc54Xv3POke15ZBMS23HOE-9y18Wr7KlxnThq27_ag2jtbBU4zJ0LKpcGpvmqGtwOQwntKmPj0Yas32bPqHTYbXT1uWaMsYt_UDPcKgN6Cdkm429hepaG9Ns-bIj-QFbyp0IvgxjXtgFd7Bc-4ytObfJV8aZ77nHp5cHG2pzYoCVHAbB9M_VJXR3TrM6oHaHvJK5O6b0P_RYLBbzXl2Ysc8ki-tEK3K0eUaycofFI"/>
+<div class="absolute -bottom-1 -right-1 bg-[#F6F1EC] rounded-full p-1.5 shadow-sm">
+<span class="material-symbols-outlined text-primary-container" style="font-size: 20px;">logout</span>
+</div>
+</div>
+<!-- Content -->
+<h2 class="font-headline-lg text-headline-lg text-on-surface text-center mb-2">Đăng xuất</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant text-center mb-1">
+                Bạn có chắc chắn muốn đăng xuất?
+            </p>
+<p class="font-body-md text-body-md text-primary font-medium text-center mb-stack-lg">
+                Tài khoản: Nguyễn Thị Mai
+            </p>
+<!-- Actions -->
+<div class="flex flex-col gap-stack-md w-full mt-2">
+<button class="w-full h-[52px] bg-[#C98C7B] text-white font-button text-button rounded-full flex items-center justify-center hover:opacity-90 active:scale-[0.98] transition-all duration-200">
+                    Đăng xuất
+                </button>
+<button class="w-full h-[52px] bg-transparent text-on-surface font-button text-button rounded-full flex items-center justify-center hover:bg-surface-variant/30 active:scale-[0.98] transition-all duration-200 border border-outline-variant/30">
+                    Hủy
+                </button>
+</div>
+</div>
+</div>
+</body></html>

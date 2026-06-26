@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lịch làm việc của Chuyên gia - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-container": "#a09a95",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "inverse-surface": "#3e2c26",
+                        "surface-variant": "#fadcd3",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-tertiary-container": "#36322e",
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "on-surface": "#271812",
+                        "on-primary-fixed": "#341006",
+                        "on-primary-container": "#51271b",
+                        "tertiary-fixed": "#e9e1db",
+                        "outline": "#84736f",
+                        "surface": "#fff8f6",
+                        "surface-container": "#ffe9e3",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#fab7a4",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "background": "#fff8f6",
+                        "on-background": "#271812",
+                        "surface-dim": "#f1d4ca",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary-fixed": "#271812",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-bright": "#fff8f6",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#f6dacf",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-container": "#735e56",
+                        "surface-container-low": "#fff1ec",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-highest": "#fadcd3",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "gutter": "16px",
+                        "safe-margin": "24px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Hide scrollbar for clean look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d6c2bd; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #84736f; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-background dark:bg-background flex justify-between items-center px-safe-margin h-touch-target-min w-full z-40 border-b border-outline-variant/30 hidden md:flex">
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim">CareBridge</span>
+<div class="h-6 w-px bg-outline-variant/50 mx-2"></div>
+<span class="font-headline-md text-headline-md text-on-surface">Portal Chuyên Gia</span>
+</div>
+<nav class="flex items-center gap-6">
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:opacity-80 transition-opacity" href="#">Tổng quan</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:opacity-80 transition-opacity" href="#">Cuộc hẹn</a>
+<a class="text-primary dark:text-primary-fixed-dim font-label-md text-label-md hover:opacity-80 transition-opacity font-bold" href="#">Lịch làm việc</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:opacity-80 transition-opacity" href="#">Bệnh nhân</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform duration-200">
+<div class="w-10 h-10 rounded-full bg-primary-container overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a smiling Vietnamese female pediatrician in her 30s. She is wearing a soft beige blouse and a stethoscope around her neck. The background is a brightly lit, modern clinic with warm lighting and soft pastel tones, emphasizing a nurturing and reliable environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlrhbMfnKG6UEv5J1eNIPSTcer8IVIqdVMpr2rZf3MgAoZouQjJn-GxJqzy8rKhhRcsgguFcMYHrng1oIP0b5OCkFqeQ_6KhMViE_Sj27TUh3g-v66IP-FG-WHliOtsZE0ef9e24swwxX1-wR9P4yV-AT09iQQh3UdwMGWGjuLe89ZW7281U4HtOiIt7NtHLfWmSsH2cIu19B9ECQGq60Wce55-gq9SD8mkKevLczgCYcYWS6eZcLlBYLjWi8efr7JiFYEOJD_Eyk"/>
+</div>
+<div class="hidden lg:block">
+<p class="font-label-md text-label-md text-on-surface">BS. Nguyễn Lê</p>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Nhi khoa</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">arrow_drop_down</span>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Sidebar Navigation (Desktop) - Optional but good for B2B portal -->
+<aside class="w-64 bg-surface-container-low border-r border-outline-variant/30 hidden lg:flex flex-col py-6 px-4 shrink-0 overflow-y-auto">
+<div class="mb-8">
+<button class="w-full bg-primary-container text-on-primary font-button text-button h-12 rounded-full flex items-center justify-center gap-2 hover:bg-primary transition-colors shadow-[0px_4px_20px_rgba(90,70,63,0.06)] active:scale-95">
+<span class="material-symbols-outlined">add</span>
+                    Thêm lịch rảnh
+                </button>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<div class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 mt-4 px-3">Quản lý lịch</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined fill text-primary">calendar_month</span>
+                    Lịch tuần
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">event_repeat</span>
+                    Cài đặt lặp lại
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+                    Ngày nghỉ / Ngoại lệ
+                </a>
+<div class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 mt-6 px-3">Hình thức tư vấn</div>
+<label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-sm border-outline focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="material-symbols-outlined text-on-surface-variant">videocam</span>
+<span class="font-label-md text-label-md text-on-surface">Video Call</span>
+</label>
+<label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-sm border-outline focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="material-symbols-outlined text-on-surface-variant">forum</span>
+<span class="font-label-md text-label-md text-on-surface">Chat trực tuyến</span>
+</label>
+<label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer">
+<input class="form-checkbox text-primary rounded-sm border-outline focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="material-symbols-outlined text-on-surface-variant">call</span>
+<span class="font-label-md text-label-md text-on-surface">Gọi thoại</span>
+</label>
+</nav>
+</aside>
+<!-- Calendar Canvas -->
+<section class="flex-1 flex flex-col h-full overflow-hidden bg-background">
+<!-- Calendar Header Controls -->
+<div class="px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface/50 border-b border-outline-variant/30 backdrop-blur-sm z-10">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Tuần này</h1>
+<div class="flex bg-surface-container-lowest border border-outline-variant rounded-full p-1 shadow-[0px_2px_10px_rgba(90,70,63,0.03)]">
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface flex items-center px-3">24 Th10 - 30 Th10, 2023</span>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<button class="px-4 h-10 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-lowest transition-colors">Hôm nay</button>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<select class="appearance-none bg-surface-container-lowest border border-outline-variant text-on-surface font-label-md text-label-md rounded-full px-4 py-2 pr-10 focus:ring-primary focus:border-primary">
+<option>Xem theo Tuần</option>
+<option>Xem theo Ngày</option>
+<option>Danh sách</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Legend & Alerts -->
+<div class="px-6 py-2 flex items-center gap-6 bg-surface-container-lowest border-b border-outline-variant/20 text-xs">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary-container"></div>
+<span class="text-on-surface-variant font-label-md">Lịch rảnh</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-tertiary-container"></div>
+<span class="text-on-surface-variant font-label-md">Đã đặt</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-surface-variant border border-outline-variant"></div>
+<span class="text-on-surface-variant font-label-md">Nghỉ / Khóa</span>
+</div>
+<div class="flex items-center gap-2 ml-auto text-error">
+<span class="material-symbols-outlined text-sm">warning</span>
+<span class="font-label-md">Phát hiện 1 xung đột lịch!</span>
+<button class="underline text-error hover:text-on-error-container">Xem chi tiết</button>
+</div>
+</div>
+<!-- Grid Calendar Area (Bento-inspired but functional for calendar) -->
+<div class="flex-1 overflow-auto bg-surface-container-lowest relative p-safe-margin">
+<div class="bg-white rounded-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-outline-variant/20 overflow-hidden flex flex-col h-full min-w-[800px]">
+<!-- Days Header -->
+<div class="grid grid-cols-8 border-b border-outline-variant/30 bg-surface/50 sticky top-0 z-20">
+<div class="p-3 text-center border-r border-outline-variant/30 flex items-end justify-end pb-2">
+<span class="text-xs text-on-surface-variant font-label-md">GMT+7</span>
+</div>
+<!-- Day Columns -->
+<div class="p-3 text-center border-r border-outline-variant/30">
+<div class="font-label-md text-on-surface-variant">T2</div>
+<div class="font-headline-md text-on-surface mt-1">24</div>
+</div>
+<div class="p-3 text-center border-r border-outline-variant/30">
+<div class="font-label-md text-on-surface-variant">T3</div>
+<div class="font-headline-md text-on-surface mt-1">25</div>
+</div>
+<div class="p-3 text-center border-r border-outline-variant/30 bg-primary-fixed/20">
+<div class="font-label-md text-primary">T4</div>
+<div class="font-headline-md text-primary mt-1">26</div>
+<div class="w-1.5 h-1.5 bg-primary rounded-full mx-auto mt-1"></div>
+</div>
+<div class="p-3 text-center border-r border-outline-variant/30">
+<div class="font-label-md text-on-surface-variant">T5</div>
+<div class="font-headline-md text-on-surface mt-1">27</div>
+</div>
+<div class="p-3 text-center border-r border-outline-variant/30">
+<div class="font-label-md text-on-surface-variant">T6</div>
+<div class="font-headline-md text-on-surface mt-1">28</div>
+</div>
+<div class="p-3 text-center border-r border-outline-variant/30 bg-surface-variant/30 text-on-surface-variant opacity-70">
+<div class="font-label-md">T7</div>
+<div class="font-headline-md mt-1">29</div>
+</div>
+<div class="p-3 text-center bg-surface-variant/30 text-on-surface-variant opacity-70">
+<div class="font-label-md">CN</div>
+<div class="font-headline-md mt-1">30</div>
+</div>
+</div>
+<!-- Time Slots Grid -->
+<div class="flex-1 overflow-y-auto relative bg-[linear-gradient(to_bottom,transparent_47px,#F2EAE4_48px)] bg-[size:100%_48px]">
+<!-- Grid Lines overlay (CSS background handles horizontal, this handles vertical) -->
+<div class="absolute inset-0 grid grid-cols-8 pointer-events-none">
+<div class="border-r border-outline-variant/30"></div>
+<div class="border-r border-outline-variant/30"></div>
+<div class="border-r border-outline-variant/30"></div>
+<div class="border-r border-outline-variant/30 bg-primary-fixed/5"></div>
+<div class="border-r border-outline-variant/30"></div>
+<div class="border-r border-outline-variant/30"></div>
+<div class="border-r border-outline-variant/30 bg-surface-variant/20"></div>
+<div class="bg-surface-variant/20"></div>
+</div>
+<!-- Time Labels Column -->
+<div class="absolute left-0 top-0 bottom-0 w-[12.5%] pointer-events-none">
+<!-- 8:00 AM -->
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">08:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">09:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">10:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">11:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">12:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">13:00</span>
+</div>
+<div class="h-12 relative">
+<span class="absolute -top-2.5 right-4 text-xs font-label-md text-on-surface-variant bg-white px-1">14:00</span>
+</div>
+</div>
+<!-- Event Blocks (Absolute Positioning for calendar feel) -->
+<!-- T2 Events -->
+<div class="absolute left-[12.5%] top-[48px] w-[12.5%] h-[96px] p-1">
+<div class="bg-primary-container/20 border-l-4 border-primary rounded-md p-2 h-full flex flex-col justify-between group hover:bg-primary-container/30 transition-colors cursor-pointer shadow-sm">
+<div>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[14px]">videocam</span>
+<span class="text-[10px] font-label-md font-bold">RẢNH LẶP LẠI</span>
+</div>
+<p class="text-xs font-body-md text-on-surface mt-1 leading-tight">Tư vấn trực tuyến</p>
+</div>
+<span class="text-[10px] text-on-surface-variant">09:00 - 11:00</span>
+</div>
+</div>
+<!-- T3 Events -->
+<div class="absolute left-[25%] top-[96px] w-[12.5%] h-[48px] p-1">
+<div class="bg-tertiary-container/30 border-l-4 border-tertiary rounded-md p-2 h-full flex flex-col justify-between cursor-pointer shadow-sm relative overflow-hidden">
+<div class="absolute inset-0 bg-white/40"></div> <!-- glass effect -->
+<div class="relative z-10 flex items-center justify-between">
+<div class="flex items-center gap-1 text-on-tertiary-container">
+<span class="material-symbols-outlined text-[14px]">person</span>
+<span class="text-xs font-body-md font-medium truncate w-16">Bé An</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">videocam</span>
+</div>
+<span class="relative z-10 text-[10px] text-on-surface-variant">10:00 - 11:00</span>
+</div>
+</div>
+<!-- T4 Events (Today) -->
+<div class="absolute left-[37.5%] top-[0px] w-[12.5%] h-[96px] p-1">
+<div class="bg-surface-variant/50 border border-outline-variant border-dashed rounded-md p-2 h-full flex flex-col items-center justify-center text-center opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant mb-1">block</span>
+<p class="text-xs font-label-md text-on-surface-variant">Nghỉ phép</p>
+</div>
+</div>
+<!-- Xung đột lịch (Conflict example) -->
+<div class="absolute left-[50%] top-[144px] w-[12.5%] h-[48px] p-1 z-10">
+<div class="bg-error-container border-l-4 border-error rounded-md p-2 h-full flex flex-col justify-between shadow-[0px_4px_12px_rgba(186,26,26,0.15)] animate-pulse">
+<div class="flex items-center gap-1 text-on-error-container">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span class="text-[10px] font-label-md font-bold truncate">XUNG ĐỘT</span>
+</div>
+<span class="text-[10px] text-on-error-container opacity-80">11:00 - 12:00</span>
+</div>
+</div>
+<!-- Overlapping event -->
+<div class="absolute left-[50%] top-[144px] w-[10%] h-[48px] p-1 ml-4 z-0 opacity-50">
+<div class="bg-primary-container/20 border border-primary rounded-md p-2 h-full"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] md:hidden rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Tổng quan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Cuộc hẹn</span>
+</a>
+<!-- FAB placeholder in nav for mobile if needed, or active tab -->
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-4 py-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined fill">calendar_month</span>
+<span class="font-label-md text-label-md mt-1">Lịch</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md mt-1">Bệnh nhân</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+<!-- FAB (Mobile Add Event) -->
+<button class="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-primary-container text-on-primary rounded-full flex items-center justify-center shadow-[0px_8px_24px_rgba(90,70,63,0.12)] z-40 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</body></html>

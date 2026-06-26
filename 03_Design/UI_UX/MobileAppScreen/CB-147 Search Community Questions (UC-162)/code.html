@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Hỏi đáp Cộng đồng</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#3e2c26",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-low": "#fff1ec",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-tint": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-background": "#271812",
+                        "surface-bright": "#fff8f6",
+                        "background": "#fff8f6",
+                        "on-primary-container": "#51271b",
+                        "secondary": "#6e5a52",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#f1d4ca",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-primary": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "primary-container": "#c98c7b",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary-fixed": "#271812",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "outline": "#84736f",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-container": "#735e56",
+                        "primary-fixed-dim": "#fab7a4",
+                        "secondary-container": "#f6dacf",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-variant": "#fadcd3",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "tertiary": "#625d59",
+                        "tertiary-container": "#a09a95",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-error": "#ffffff",
+                        "primary": "#845143"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-mobile": "16px",
+                        "container-margin-mobile": "20px",
+                        "unit": "8px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px",
+                        "gutter-desktop": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-lg": ["Quicksand"],
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Quicksand', sans-serif; background-color: #F6F1EC; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background max-w-[390px] mx-auto min-h-screen relative overflow-x-hidden flex flex-col pb-[100px]">
+<!-- TopAppBar (From JSON) -->
+<header class="fixed top-0 w-full max-w-[390px] z-50 bg-surface dark:bg-surface-dim flex items-center justify-between px-gutter-mobile h-16 shadow-sm">
+<button class="text-primary active:scale-95 transition-transform hover:opacity-80 p-2 -ml-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">Hỏi đáp Cộng đồng</h1>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center shrink-0 border border-outline-variant">
+<img alt="expert_profile_photo" class="w-full h-full object-cover" data-alt="A close up, highly detailed professional headshot of an empathetic, warm healthcare expert. Soft, warm natural lighting creates a reassuring mood. The background is a slightly blurred, bright, minimalist clinic setting in a modern light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfNITPPwo6aIQP4ZH1nAEM3AUf_Vtjs3ug_0m3qBIhYHpqCXPpOof5UX8OGs89mmeSS2aJmR5VThBiCTxSn8_m8AZDKIxMLV5i_HGR0zlFFXzr6aCNwDu2TkqtZ5kwsAUWfbY12K3TYhLvydd80qdewNF_Pm_SwmyJn1yF9CY7qXFUA4jGYx7RNntGxMSBJGCagRCoeFX8Q9wkUZbHUIyVUBlqdGoSnoglpBljFje3_K1aR91f2zCIM6unGd2n3xlG2iECZl6zDik"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-[80px] px-container-margin-mobile flex flex-col gap-unit">
+<!-- Search & Filter Bar -->
+<div class="flex items-center gap-2 mb-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full h-[48px] pl-10 pr-4 rounded-xl border-outline-variant bg-surface-container-low text-on-surface focus:border-primary focus:ring-1 focus:ring-primary font-body-lg text-body-lg placeholder:text-outline transition-all" placeholder="Tìm kiếm câu hỏi..." type="text"/>
+</div>
+<button class="w-[48px] h-[48px] shrink-0 rounded-xl bg-surface-container-high flex items-center justify-center text-primary active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+</div>
+<!-- Filter Chips (Horizontal Scroll) -->
+<div class="flex overflow-x-auto no-scrollbar gap-2 pb-2 mb-2 -mx-container-margin-mobile px-container-margin-mobile">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-body-sm text-body-sm active:scale-95 transition-transform shrink-0">Tất cả</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high font-body-sm text-body-sm active:scale-95 transition-transform shrink-0">Khẩn cấp</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high font-body-sm text-body-sm active:scale-95 transition-transform shrink-0">Chuyên môn của tôi</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high font-body-sm text-body-sm active:scale-95 transition-transform shrink-0">Chưa trả lời</button>
+</div>
+<!-- Result Cards List -->
+<div class="flex flex-col gap-4">
+<!-- Card 1 -->
+<article class="bg-surface rounded-[20px] p-[16px] shadow-[0_4px_20px_rgba(90,70,63,0.08)] flex flex-col gap-3 relative overflow-hidden">
+<!-- Decorative subtle element -->
+<div class="absolute top-0 right-0 w-16 h-16 bg-surface-container-high rounded-bl-[40px] opacity-50 -z-0"></div>
+<div class="flex justify-between items-start z-10 relative">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="person_outline">person_outline</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Ẩn danh</span>
+</div>
+<span class="px-2 py-1 rounded-md bg-secondary-container text-on-secondary-container font-label-caps text-label-caps tracking-wider text-[10px]">CHỜ DUYỆT</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface z-10 relative leading-snug">Làm thế nào để giảm đau lưng sau sinh?</h2>
+<div class="flex items-center gap-4 mt-1 z-10 relative">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="forum">forum</span>
+<span class="font-body-sm text-body-sm font-bold">3 câu trả lời</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span>
+<span class="font-body-sm text-body-sm text-[12px]">2 giờ trước</span>
+</div>
+</div>
+<button class="mt-2 h-[40px] w-full rounded-xl bg-surface-container-high text-primary font-body-sm text-body-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+                    Trả lời câu hỏi
+                </button>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface rounded-[20px] p-[16px] shadow-[0_4px_20px_rgba(90,70,63,0.08)] flex flex-col gap-3 relative overflow-hidden">
+<div class="flex justify-between items-start z-10 relative">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed overflow-hidden border border-primary-fixed-dim">
+<img alt="avatar" class="w-full h-full object-cover" data-alt="A soft, bright avatar image for a user profile named 'Mẹ Bé Bo'. The image shows a serene, stylized illustration of a mother and child in warm pastel tones, fitting a modern light-mode app aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsqN55IgivFLkJUUSYHW3tDbm_2C5dar9uPbpyURzAi0PYBiT-eLUpE4JKA7fJ3syh2OH4BMPWtn3CU3OjS-Lr5lRUAZFo1_Vb9ePVFTt-i5H8PdAFciOsN6oDto2IaghMmFQfnxobvLmk0hzX2IQR3PV49RvAnwZY5CjW8VoXovyZD5Qz5RnoOfF8qgMJ3Auceci8GFHQUfpMMZestu2dyakX2C2qfZLRV224wSy88pmF5rwi5FnEbCtMpnBGTDwU_7675Jgg-Ys"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Mẹ Bé Bo</span>
+</div>
+<span class="px-2 py-1 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-caps text-label-caps tracking-wider text-[10px]">CÔNG KHAI</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface z-10 relative leading-snug">Chế độ dinh dưỡng cho trẻ 6 tháng tuổi</h2>
+<div class="flex items-center gap-4 mt-1 z-10 relative">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="forum">forum</span>
+<span class="font-body-sm text-body-sm font-bold">1 câu trả lời</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span>
+<span class="font-body-sm text-body-sm text-[12px]">5 giờ trước</span>
+</div>
+</div>
+<button class="mt-2 h-[40px] w-full rounded-xl bg-transparent border-2 border-primary-container text-primary-container font-body-sm text-body-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility">visibility</span>
+                    Xem chi tiết
+                </button>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (From JSON) -->
+<nav class="fixed bottom-0 w-full max-w-[390px] z-50 rounded-t-lg bg-surface dark:bg-inverse-surface shadow-[0_-4px_20px_rgba(90,70,63,0.08)] flex justify-around items-center px-4 py-2 transition-all duration-200 ease-in-out">
+<!-- Inactive: Trang chủ -->
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high rounded-xl transition-all w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-caps text-label-caps text-[10px] text-center w-full truncate">Trang chủ</span>
+</a>
+<!-- Inactive: Yêu cầu -->
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high rounded-xl transition-all w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="assignment">assignment</span>
+<span class="font-label-caps text-label-caps text-[10px] text-center w-full truncate">Yêu cầu</span>
+</a>
+<!-- Active: Cộng đồng -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 w-20 shadow-sm transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="forum" style="font-variation-settings: 'FILL' 1;">forum</span>
+<span class="font-label-caps text-label-caps text-[10px] text-center w-full truncate">Cộng đồng</span>
+</a>
+<!-- Inactive: Tài khoản -->
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high rounded-xl transition-all w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps text-[10px] text-center w-full truncate">Tài khoản</span>
+</a>
+</nav>
+</body></html>

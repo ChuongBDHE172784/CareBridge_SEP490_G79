@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Care Groups</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-container-highest": "#fadcd3",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "tertiary": "#625d59",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "on-secondary-fixed": "#271812",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-[90px] font-body-md antialiased md:hidden flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background dark:bg-background docked full-width top-0 sticky z-40 flat no shadows">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<span class="font-body-md text-on-surface-variant font-medium">Ng</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim">CareBridge</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-on-surface-variant" data-icon="notifications" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-safe-margin pt-stack-md pb-stack-lg">
+<div class="mb-stack-lg">
+<h2 class="font-headline-md text-headline-md text-on-background mb-1">Nhóm chăm sóc của tôi</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Quản lý các nhóm bạn đang tham gia cùng gia đình và người thân.</p>
+</div>
+<!-- Care Group Cards List -->
+<div class="flex flex-col gap-stack-md">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-lg card-shadow p-[20px] flex flex-col gap-stack-md relative overflow-hidden border border-outline-variant/30">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">family_home</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-semibold text-on-background">Gia đình bé Mỡ</h3>
+<span class="font-label-md text-label-md text-on-surface-variant px-2 py-0.5 rounded bg-surface-container-high inline-block mt-1">Bà ngoại</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 mt-2 border-t border-surface-container pt-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">group</span>
+<span class="font-body-md text-body-md">3 thành viên</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+<span class="font-body-md text-body-md">Toàn quyền theo dõi</span>
+</div>
+</div>
+<div class="flex gap-3 mt-2">
+<button class="flex-1 h-touch-target-min rounded-full bg-primary-container text-on-primary font-button text-button flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                        Chi tiết
+                    </button>
+<button aria-label="Rời khỏi nhóm" class="w-12 h-touch-target-min rounded-full bg-error-container text-on-error-container flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest rounded-lg card-shadow p-[20px] flex flex-col gap-stack-md relative overflow-hidden border border-outline-variant/30">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">diversity_3</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-semibold text-on-background">Nhà bé Đậu</h3>
+<span class="font-label-md text-label-md text-on-surface-variant px-2 py-0.5 rounded bg-surface-container-high inline-block mt-1">Người thân</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 mt-2 border-t border-surface-container pt-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">group</span>
+<span class="font-body-md text-body-md">4 thành viên</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+<span class="font-body-md text-body-md">Chỉ xem lịch</span>
+</div>
+</div>
+<div class="flex gap-3 mt-2">
+<button class="flex-1 h-touch-target-min rounded-full bg-primary-container text-on-primary font-button text-button flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                        Chi tiết
+                    </button>
+<button aria-label="Rời khỏi nhóm" class="w-12 h-touch-target-min rounded-full bg-error-container text-on-error-container flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+</article>
+</div>
+<!-- Empty State Hint -->
+<div class="mt-stack-lg p-[20px] border border-dashed border-outline-variant rounded-lg bg-surface flex flex-col items-center justify-center text-center gap-3">
+<span class="material-symbols-outlined text-outline text-[32px] opacity-70" style="font-variation-settings: 'FILL' 0;">mail</span>
+<p class="font-body-md text-body-md text-on-surface-variant">Đang chờ lời mời tham gia nhóm mới?<br/>Kiểm tra thông báo của bạn.</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 px-2 py-1 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 px-2 py-1 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 px-2 py-1 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 px-2 py-1 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+</body></html>

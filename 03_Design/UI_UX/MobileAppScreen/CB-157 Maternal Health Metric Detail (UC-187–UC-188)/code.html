@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mother Mobile App - Metric Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    fontSize: {
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "500" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC; /* Canvas level 0 */
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        .soft-shadow {
+            box-shadow: 0 4px 20px rgba(90, 70, 63, 0.08);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-sm text-on-surface antialiased bg-[#F6F1EC] pb-8 h-screen overflow-y-auto">
+<!-- TopAppBar -->
+<header class="bg-background flex justify-between items-center px-gutter-mobile h-16 w-full z-50 sticky top-0 flat no shadows text-primary">
+<button class="w-12 h-12 flex items-center justify-start hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-150 text-on-surface-variant">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight">Chi tiết chỉ số</h1>
+<button class="w-12 h-12 flex items-center justify-end hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-150 text-on-surface-variant">
+<span class="material-symbols-outlined text-2xl">more_vert</span>
+</button>
+</header>
+<main class="px-container-margin-mobile pt-4 flex flex-col gap-unit">
+<!-- Main Metric Card -->
+<section class="bg-surface rounded-DEFAULT p-4 soft-shadow flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_weight</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cân nặng</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Hôm nay, 08:30</p>
+</div>
+</div>
+</div>
+<div class="flex items-end gap-2 mt-2">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary leading-none text-4xl">62.5</span>
+<span class="font-body-lg text-body-lg text-on-surface-variant mb-1">kg</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary w-fit mt-1">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-caps text-label-caps">+0.5kg so với tuần trước</span>
+</div>
+</section>
+<!-- Details Card -->
+<section class="bg-surface rounded-DEFAULT p-4 soft-shadow mt-2 flex flex-col gap-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">Thông tin chi tiết</h3>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center py-2 border-b border-surface-variant">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                        Ngày đo
+                    </span>
+<span class="font-body-lg text-body-lg text-on-surface">15/11/2023</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                        Thời gian
+                    </span>
+<span class="font-body-lg text-body-lg text-on-surface">08:30 AM</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">devices</span>
+                        Nguồn
+                    </span>
+<span class="font-body-lg text-body-lg text-on-surface">Nhập thủ công</span>
+</div>
+<div class="flex flex-col gap-1 py-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+                        Ghi chú
+                    </span>
+<p class="font-body-sm text-body-sm text-on-surface bg-surface-container-low p-3 rounded-lg mt-1">
+                        Cảm thấy hơi nặng nề vào buổi sáng. Cần uống thêm nước.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Mini Chart/Trend Card -->
+<section class="bg-surface rounded-DEFAULT p-4 soft-shadow mt-2">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">Xu hướng (Tháng này)</h3>
+<span class="material-symbols-outlined text-primary text-[20px]">insights</span>
+</div>
+<!-- Minimalist Chart Representation -->
+<div class="h-32 w-full flex items-end justify-between gap-2 px-2 pb-6 relative">
+<!-- Grid line -->
+<div class="absolute bottom-6 left-0 w-full h-[1px] bg-surface-variant"></div>
+<div class="absolute bottom-16 left-0 w-full h-[1px] bg-surface-variant border-dashed"></div>
+<!-- Bars -->
+<div class="w-1/5 bg-surface-container-highest rounded-t-sm h-[40%] flex flex-col justify-end items-center group">
+<span class="text-[10px] text-on-surface-variant absolute -bottom-5">T1</span>
+</div>
+<div class="w-1/5 bg-surface-container-highest rounded-t-sm h-[45%] flex flex-col justify-end items-center group">
+<span class="text-[10px] text-on-surface-variant absolute -bottom-5">T2</span>
+</div>
+<div class="w-1/5 bg-surface-container-highest rounded-t-sm h-[50%] flex flex-col justify-end items-center group">
+<span class="text-[10px] text-on-surface-variant absolute -bottom-5">T3</span>
+</div>
+<div class="w-1/5 bg-primary-container rounded-t-sm h-[65%] flex flex-col justify-end items-center relative group">
+<!-- Tooltip hint -->
+<div class="absolute -top-8 bg-on-surface text-on-primary text-[10px] py-1 px-2 rounded opacity-100 transition-opacity">62.5</div>
+<span class="text-[10px] text-primary font-bold absolute -bottom-5">HT</span>
+</div>
+</div>
+</section>
+<!-- Action Buttons -->
+<section class="flex gap-4 mt-6 mb-safe">
+<button class="flex-1 h-12 rounded-full border-2 border-primary text-primary font-body-lg text-body-lg flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+                Sửa
+            </button>
+<button class="flex-1 h-12 rounded-full bg-error-container text-on-error-container font-body-lg text-body-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-95">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+                Xóa
+            </button>
+</section>
+</main>
+</body></html>

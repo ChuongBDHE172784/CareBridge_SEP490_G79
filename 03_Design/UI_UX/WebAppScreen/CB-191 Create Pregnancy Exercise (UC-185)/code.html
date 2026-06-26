@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareTech Admin - Create Pregnancy Exercise</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#fef8f4",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-high": "#ede7e3",
+                        "status-active": "#C98C7B",
+                        "outline": "#84736f",
+                        "on-primary-container": "#51271b",
+                        "on-surface-variant": "#524440",
+                        "text-heading": "#2D2A28",
+                        "tertiary": "#605e5a",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-highest": "#e7e1dd",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#e9e1db",
+                        "background": "#fef8f4",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "surface-main": "#FFFFFF",
+                        "inverse-surface": "#32302d",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-on-surface": "#f6f0eb",
+                        "secondary": "#625d59",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "tertiary-container": "#9e9a96",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#f3ede8",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#d6c2bd",
+                        "text-body": "#524F4C",
+                        "surface-accent-muted": "#F2EAE4",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "primary": "#845143",
+                        "on-background": "#1d1b19",
+                        "surface-accent-light": "#F6F1EC",
+                        "on-surface": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "on-secondary-container": "#68635f",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#845143",
+                        "inverse-primary": "#fab7a4",
+                        "surface": "#fef8f4",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed": "#e6e2dd",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "primary-container": "#c98c7b",
+                        "surface-dim": "#dfd9d5",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#e9e1db",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-variant": "#e7e1dd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "sidebar-width": "280px",
+                        "panel-gap": "24px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "label-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "body-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .warm-shadow {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+        .form-input {
+            border: 2px solid #F2EAE4;
+            transition: border-color 0.2s ease-in-out;
+        }
+        .form-input:focus {
+            border-color: #C98C7B;
+            outline: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen w-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-screen w-sidebar-width bg-surface-accent-muted flex flex-col py-container-padding gap-stack-md z-20">
+<div class="px-6 mb-8">
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">CareTech Admin</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Healthcare Portal</p>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-4 px-6 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-nav-item text-nav-item">Overview</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-nav-item text-nav-item">Users</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">security</span>
+<span class="font-nav-item text-nav-item">Security</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-r-full scale-95 transition-transform duration-150 relative" href="#">
+<div class="absolute left-0 top-0 h-full w-1 bg-primary rounded-r-full"></div>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-nav-item text-nav-item">Content Management</span>
+</a>
+</div>
+<div class="px-6 mt-auto flex flex-col gap-4">
+<button class="w-full bg-primary text-on-primary rounded-full py-3 font-nav-item text-nav-item shadow-md hover:scale-95 transition-transform duration-150 flex justify-center items-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Entry
+            </button>
+<div class="flex flex-col gap-2 border-t border-surface-variant pt-4">
+<a class="flex items-center gap-4 py-2 text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-nav-item text-nav-item">Settings</span>
+</a>
+<a class="flex items-center gap-4 py-2 text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-nav-item text-nav-item">Support</span>
+</a>
+</div>
+<div class="flex items-center gap-3 mt-4">
+<img alt="Admin User Avatar" class="w-10 h-10 rounded-full object-cover bg-surface-variant" data-alt="A small circular avatar placeholder for an admin user profile picture, professional lighting, neutral background, modern healthcare context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDI72hyT0hC_pwj2cvCoShUYrHDpRJcQYOLV-nkdp_CgU-VIgRGqLtGzc-4MmIqlD28d-Ip90hVyN6MwXcMGYGA4qLri2VVmyTmOAIG4UMTqXqB2X4QJ-0NwAhPrZ-LmK2pHcZRe2tlMbJVlHhWXqGR63pnlzpJUtcaK0HIfMXuqTMszEZPvlhqR9ingLAsuHiCXVg-dA6EnxmJ-rJd3Hkvr0NyoWnS9ifdVRlNi8I7IEBrWDIyYc8PmIqIQWT4SSwrgnEZAc3Zmog"/>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Admin User</span>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-70">Superadmin</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="ml-sidebar-width flex-1 flex flex-col h-screen relative bg-background">
+<!-- TopAppBar -->
+<header class="h-20 bg-background flex justify-between items-center px-container-padding z-10 shrink-0">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-on-surface-variant p-2 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#"><span class="font-body-md text-body-md">Content Management</span></a>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="font-body-md text-body-md text-primary font-bold">Create Exercise</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-accent-muted rounded-full form-input font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant" placeholder="Search..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary px-3 py-1.5 rounded-full hover:bg-surface-container-high transition-all font-body-md text-body-md">
+                    Help
+                </button>
+<div class="w-px h-6 bg-surface-variant mx-2"></div>
+<button class="flex items-center gap-2 hover:bg-surface-container-high p-1 pr-3 rounded-full transition-all">
+<img alt="Admin Avatar" class="w-8 h-8 rounded-full object-cover bg-surface-variant" data-alt="A small circular avatar placeholder for an admin user profile picture, professional lighting, neutral background, modern healthcare context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAluk1Oasy5f35ibvjdt2eaSF96_kXOLeVNLDi52DN7BSZMzIw3J4CwjQExLf44IZoH3DEBJh3oSk4VVWILZquV4jRSzgQKx2wjCjpF97eUN7UJmbtPyW_HWttL5qr_RVa1ACd45Tx6QdqC5YDoCkvb-zPp_GsQFnd6nnvfJvyfBJzOveqYlaki6D7c-_zWfWblKl4Hk2u0O1yMfNtCFrE8a2xLetefgbzB6LTJM5C1rb_-4PKJlzvcNhZxDAW2tzlzJbREWV5JWa8"/>
+<span class="font-body-md text-body-md text-on-surface font-semibold">Profile</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-container-padding pb-32">
+<div class="max-w-5xl mx-auto">
+<div class="mb-8">
+<h2 class="font-headline-md text-headline-md text-text-heading mb-2">Tạo Bài Tập Thai Kỳ Mới</h2>
+<p class="font-body-lg text-body-lg text-text-body">Thiết lập chi tiết bài tập, hướng dẫn an toàn và cấu hình phân tích tư thế AI.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-panel-gap">
+<!-- Left Column: Main Form -->
+<div class="lg:col-span-2 flex flex-col gap-panel-gap">
+<!-- Basic Info Card -->
+<div class="bg-surface-main rounded-DEFAULT p-8 warm-shadow">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">info</span>
+                                Thông tin cơ bản
+                            </h3>
+<div class="flex flex-col gap-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Tên Bài Tập *</label>
+<input class="w-full rounded-lg bg-white px-4 py-3 font-body-md text-body-md text-on-surface form-input" placeholder="VD: Yoga thư giãn vùng hông" type="text"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Mô tả ngắn *</label>
+<textarea class="w-full rounded-lg bg-white px-4 py-3 font-body-md text-body-md text-on-surface form-input resize-none" placeholder="Mô tả tóm tắt lợi ích của bài tập..." rows="3"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Độ khó *</label>
+<select class="w-full rounded-lg bg-white px-4 py-3 font-body-md text-body-md text-on-surface form-input appearance-none">
+<option value="">Chọn độ khó</option>
+<option value="beginner">Người mới bắt đầu</option>
+<option value="intermediate">Trung bình</option>
+<option value="advanced">Nâng cao</option>
+</select>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Thời lượng (phút) *</label>
+<input class="w-full rounded-lg bg-white px-4 py-3 font-body-md text-body-md text-on-surface form-input" min="1" placeholder="15" type="number"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Instructions Card -->
+<div class="bg-surface-main rounded-DEFAULT p-8 warm-shadow">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">list_alt</span>
+                                Hướng dẫn chi tiết
+                            </h3>
+<div class="flex flex-col gap-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Các bước thực hiện</label>
+<!-- Rich Text Editor Mockup -->
+<div class="border-2 border-surface-accent-muted rounded-lg overflow-hidden flex flex-col">
+<div class="bg-surface-accent-muted px-3 py-2 flex gap-2 border-b-2 border-surface-accent-muted">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-sm">format_bold</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-sm">format_italic</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-sm">format_list_bulleted</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-sm">format_list_numbered</span></button>
+</div>
+<textarea class="w-full bg-white px-4 py-3 font-body-md text-body-md text-on-surface border-none focus:ring-0 resize-none" placeholder="Nhập từng bước một..." rows="6"></textarea>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider text-error">Hướng dẫn an toàn (Cảnh báo)</label>
+<textarea class="w-full rounded-lg bg-error-container/20 px-4 py-3 font-body-md text-body-md text-on-surface form-input border-error/30 focus:border-error resize-none" placeholder="Những lưu ý quan trọng để tránh chấn thương..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Settings & Metadata -->
+<div class="flex flex-col gap-panel-gap">
+<!-- Eligibility Card -->
+<div class="bg-surface-main rounded-DEFAULT p-6 warm-shadow">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">pregnant_woman</span>
+                                Phù hợp cho
+                            </h3>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-3 uppercase tracking-wider">Tam cá nguyệt</label>
+<div class="flex flex-col gap-3">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border-2 border-surface-variant rounded bg-white checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 text-[16px] pointer-events-none">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Tam cá nguyệt 1 (1-3 tháng)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border-2 border-surface-variant rounded bg-white checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 text-[16px] pointer-events-none">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Tam cá nguyệt 2 (4-6 tháng)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border-2 border-surface-variant rounded bg-white checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 text-[16px] pointer-events-none">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Tam cá nguyệt 3 (7-9 tháng)</span>
+</label>
+</div>
+</div>
+<!-- AI Posture Analysis Card -->
+<div class="bg-surface-main rounded-DEFAULT p-6 warm-shadow">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-headline-sm text-headline-sm text-text-heading flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">accessibility_new</span>
+                                    Phân tích tư thế AI
+                                </h3>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<p class="font-body-md text-body-md text-text-body mb-4 text-sm">Bật tính năng theo dõi và chấm điểm tư thế qua camera trong lúc tập.</p>
+<div class="border-t border-surface-accent-muted pt-4">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Model Khớp Nhận Diện</label>
+<select class="w-full rounded-lg bg-surface-bright px-3 py-2 font-body-md text-body-md text-on-surface form-input appearance-none text-sm">
+<option>Toàn thân (Pose Landmark)</option>
+<option>Nửa thân trên</option>
+<option>Tập trung thân dưới</option>
+</select>
+</div>
+</div>
+<!-- Media Upload Preview (Placeholder) -->
+<div class="bg-surface-main rounded-DEFAULT p-6 warm-shadow">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">video_file</span>
+                                Video mẫu
+                            </h3>
+<div class="border-2 border-dashed border-surface-variant rounded-lg h-32 flex flex-col items-center justify-center bg-surface-bright cursor-pointer hover:bg-surface-accent-muted transition-colors">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-3xl mb-2">cloud_upload</span>
+<span class="font-body-md text-body-md text-text-body text-sm">Kéo thả hoặc click để tải lên</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer -->
+<footer class="absolute bottom-0 left-0 right-0 bg-surface-main border-t border-surface-accent-muted p-4 px-container-padding flex justify-between items-center z-10">
+<button class="px-6 py-2.5 rounded-full font-nav-item text-nav-item text-on-surface hover:bg-surface-container-high transition-colors">
+                Hủy
+            </button>
+<div class="flex gap-4">
+<button class="px-6 py-2.5 rounded-full font-nav-item text-nav-item text-primary bg-surface-accent-muted hover:bg-surface-container-high transition-colors">
+                    Lưu bản nháp
+                </button>
+<button class="px-8 py-2.5 rounded-full font-nav-item text-nav-item text-on-primary bg-primary shadow-md hover:scale-95 transition-transform duration-150 flex items-center gap-2">
+<span>Xem trước &amp; Gửi duyệt</span>
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</footer>
+</div>
+</body></html>
