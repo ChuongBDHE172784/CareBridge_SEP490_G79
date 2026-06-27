@@ -10,6 +10,9 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.partner.exception.PartnerException;
+import com.carebridge.backend.emergency.exception.EmergencyException;
+import com.carebridge.backend.safety.exception.SafetyException;
+import com.carebridge.backend.triage.exception.TriageException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -134,6 +137,18 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
+    @ExceptionHandler(SafetyException.class)
+    public ResponseEntity<ErrorResponse> handleSafety(SafetyException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ExerciseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExerciseNotFound(
+            ExerciseNotFoundException ex, HttpServletRequest request) {
+        logger.error("Exercise not found: {}", ex.getMessage());
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ConsentException.class)
     public ResponseEntity<ErrorResponse> handleConsent(ConsentException ex, HttpServletRequest request) {
         return error(HttpStatus.FORBIDDEN, "CONSENT_DENIED", ex.getMessage(), request);
@@ -160,6 +175,16 @@ public class GlobalExceptionHandler {
             AccessDeniedBusinessException ex,
             HttpServletRequest request) {
         return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TriageException.class)
+    public ResponseEntity<ErrorResponse> handleTriage(TriageException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(EmergencyException.class)
+    public ResponseEntity<ErrorResponse> handleEmergency(EmergencyException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(RedFlagException.class)
