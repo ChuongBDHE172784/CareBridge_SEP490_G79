@@ -62,7 +62,18 @@ public class DevDataSeeder implements ApplicationRunner {
         int created = 0;
 
         for (SeedAccount seed : SEED_ACCOUNTS) {
-            if (userRepository.existsByEmail(seed.email())) {
+            var existing = userRepository.findByEmail(seed.email());
+            if (existing.isPresent()) {
+                User user = existing.get();
+                if (!passwordEncoder.matches(testPassword, user.getPasswordHash())) {
+                    user.setPasswordHash(passwordHash);
+                    user.setEnabled(true);
+                    user.setLocked(false);
+                    user.setAccountStatus("ACTIVE");
+                    userRepository.save(user);
+                    created++;
+                    log.info("Reset password for existing seed account: {}", seed.email());
+                }
                 continue;
             }
 
