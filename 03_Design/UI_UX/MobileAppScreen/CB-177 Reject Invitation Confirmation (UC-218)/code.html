@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Từ chối lời mời - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "status-active": "#C98C7B",
+                    "outline": "#84736f",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-tint": "#845143",
+                    "inverse-primary": "#fab7a4",
+                    "text-body": "#524F4C",
+                    "tertiary-fixed": "#e6e2dd",
+                    "on-error": "#ffffff",
+                    "text-heading": "#2D2A28",
+                    "tertiary-container": "#9e9a96",
+                    "surface-container-high": "#ede7e3",
+                    "surface": "#fef8f4",
+                    "primary-fixed-dim": "#fab7a4",
+                    "background": "#fef8f4",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#f6f0eb",
+                    "error": "#ba1a1a",
+                    "tertiary": "#605e5a",
+                    "on-secondary-container": "#68635f",
+                    "on-error-container": "#93000a",
+                    "surface-main": "#FFFFFF",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-container-low": "#f9f2ee",
+                    "surface-container": "#f3ede8",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "on-background": "#1d1b19",
+                    "on-primary-container": "#51271b",
+                    "surface-variant": "#e7e1dd",
+                    "inverse-surface": "#32302d",
+                    "on-surface-variant": "#524440",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e7e1dd",
+                    "surface-bright": "#fef8f4",
+                    "on-primary-fixed": "#341006",
+                    "primary": "#845143",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "on-secondary-fixed": "#1e1b18",
+                    "surface-accent-light": "#F6F1EC",
+                    "primary-container": "#c98c7b",
+                    "secondary-container": "#e9e1db",
+                    "surface-dim": "#dfd9d5",
+                    "secondary": "#625d59",
+                    "on-surface": "#1d1b19",
+                    "surface-accent-muted": "#F2EAE4",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#d6c2bd",
+                    "on-tertiary-container": "#34322f",
+                    "secondary-fixed": "#e9e1db"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-lg": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                    "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                    "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                    "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased h-screen w-full overflow-hidden flex flex-col relative">
+<!-- Subtle Background Texture/Gradient for Depth -->
+<div class="absolute inset-0 bg-gradient-to-b from-surface to-surface-container-low z-0 pointer-events-none"></div>
+<!-- Transactional Header (Nav Shell Suppressed) -->
+<header class="relative z-10 flex items-center justify-between p-4 h-16 w-full">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="relative z-10 flex-1 flex flex-col items-center justify-center px-container-padding pb-8 pt-4 overflow-y-auto">
+<!-- Impact Visual -->
+<div class="relative mb-8 flex flex-col items-center">
+<!-- Avatar of the person inviting -->
+<div class="w-28 h-28 rounded-full overflow-hidden border-4 border-surface-main shadow-[0_4px_20px_rgba(201,140,123,0.15)] relative z-10">
+<img class="w-full h-full object-cover" data-alt="A high-quality, softly lit photographic portrait of an elderly Vietnamese woman with a warm, gentle smile, wearing a traditional understated blouse, set against a blurred, airy, minimalist, light-toned background. The image evokes a sense of care and family connection, aligning with a modern, empathetic healthcare aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRh8M169EA9xdx-_TI9YHGEj_WRRsBtKv0dpxmVjZ9RAXECGNG9rxTEkhywVkfxNV1jW-08v1HZ27bMgtLppMwHi-m3RTNV_hF7gbKAgSx8HPkKbz00mdKitmaJuDc88hChxFFyjYovB9KeLVFzPhKtx9ryL7lpZ8IeOVJLaTyrANHoJl0It6XF8YfXIDGu85mg-sG3Bk0d_jbatqYU0J1G4qQ83zM0hOZTzAvfUwr1L69rRfVSMm1hReaTvbZcdDys091R2xzVNM"/>
+</div>
+<!-- Rejection/Warning Badge -->
+<div class="absolute -bottom-3 z-20 w-12 h-12 bg-surface-main rounded-full flex items-center justify-center p-1 shadow-sm">
+<div class="w-full h-full bg-error-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-error-container text-2xl" style="font-variation-settings: 'FILL' 1;">person_remove</span>
+</div>
+</div>
+</div>
+<!-- Typography Content -->
+<div class="text-center max-w-[320px] mb-10 w-full flex flex-col items-center">
+<h1 class="font-display-lg text-display-lg text-text-heading mb-4 leading-tight">
+                Từ chối lời mời?
+            </h1>
+<div class="bg-surface-main p-5 rounded-DEFAULT shadow-[0_4px_20px_rgba(201,140,123,0.05)] border border-surface-variant w-full">
+<p class="font-body-md text-body-md text-text-body">
+                    Bạn đang từ chối tham gia nhóm chăm sóc của <span class="font-bold text-text-heading">Bà Nguyễn Thị B</span>.
+                </p>
+<div class="h-[1px] w-full bg-surface-variant my-3"></div>
+<p class="font-body-md text-body-md text-secondary">
+                    Nếu từ chối, bạn sẽ không nhận được thông báo về lịch trình y tế, nhắc nhở thuốc, hay các cập nhật sức khỏe quan trọng từ nhóm này.
+                </p>
+</div>
+</div>
+<!-- Actions -->
+<div class="w-full max-w-[320px] flex flex-col gap-stack-md mt-auto">
+<!-- Primary Action (Destructive) -->
+<button class="w-full h-14 bg-error text-on-error rounded-full font-label-md text-label-md uppercase tracking-wider shadow-[0_4px_12px_rgba(186,26,26,0.2)] hover:shadow-[0_6px_16px_rgba(186,26,26,0.3)] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">block</span>
+                Xác nhận từ chối
+            </button>
+<!-- Secondary Action (Cancel/Keep) -->
+<button class="w-full h-14 bg-surface-variant text-on-surface-variant rounded-full font-label-md text-label-md uppercase tracking-wider hover:bg-surface-dim active:scale-[0.98] transition-all duration-200 flex items-center justify-center">
+                Quay lại
+            </button>
+</div>
+</main>
+</body></html>
