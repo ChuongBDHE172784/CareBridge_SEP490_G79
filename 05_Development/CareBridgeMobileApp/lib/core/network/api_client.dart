@@ -56,6 +56,22 @@ Future<dynamic> apiPost(String path, Map<String, dynamic> body,
   throw ApiException(response.statusCode, response.body);
 }
 
+Future<dynamic> apiDelete(String path, {String? token}) async {
+  final uri = Uri.parse('$_baseUrl$path');
+  final response = await http.delete(uri, headers: _headers(token: token));
+  if (response.statusCode >= 200 && response.statusCode < 300) {
+    if (response.body.isEmpty) return null;
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+  if (response.statusCode == 401) {
+    unawaited(AuthState.instance.clear());
+  } else {
+    final code = parseAccountBlockedCode(response);
+    if (code != null) unawaited(AuthState.instance.clearWithReason(code));
+  }
+  throw ApiException(response.statusCode, response.body);
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;

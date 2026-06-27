@@ -10,13 +10,13 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 4 | **CB-004** | Login | UC-03 | 3.1.1.3 | ✅ Done | `CareBridgeMobileApp/lib/features/auth/screens/login_screen.dart` |
 | 5 | **CB-005** | Forgot Password | UC-05 | 3.1.1.5 | ⬜ Not Started | - |
 | 6 | **CB-006** | Reset Password | UC-06 | 3.1.1.6 | ⬜ Not Started | - |
-| 7 | **CB-007** | Mother Journey Setup | UC-22 | 3.3.1.1 | ⬜ Not Started | - |
+| 7 | **CB-007** | Mother Journey Setup | UC-22 | 3.3.1.1 | ✅ Done | `CareBridgeMobileApp/lib/features/journey/screens/journey_setup_screen.dart` |
 | 8 | **CB-008** | Mother Home | UC-24, UC-49 | 3.3.1.3 / 3.3.1.26 | ⬜ Not Started | - |
 | 9 | **CB-009** | Mother Journey | UC-23, UC-25, UC-26, UC-27, UC-28, UC-51, UC-52, UC-53 | 3.3.1.2 / 3.3.1.4 / 3.3.1.5 / 3.3.1.6 / 3.3.1.7 / 3.3.1.28 / 3.3.1.29 / 3.3.1.30 | ⬜ Not Started | - |
-| 10 | **CB-010** | Baby Profiles | UC-31, UC-32, UC-33, UC-192, UC-193 | 3.3.1.8 / 3.3.1.9 / 3.3.1.10 / 3.3.12.1 / 3.3.12.2 | ⬜ Not Started | - |
-| 11 | **CB-011** | Baby Profile | UC-34, UC-35, UC-36, UC-37, UC-38, UC-192, UC-194, UC-195, UC-196, UC-197 | 3.3.1.11 / 3.3.1.12 / 3.3.1.13 / 3.3.1.14 / 3.3.1.15 / 3.3.12.1 / 3.3.12.3 / 3.3.12.4 / 3.3.12.5 / 3.3.12.6 | ⬜ Not Started | - |
-| 12 | **CB-012** | Health Record Timeline | UC-39, UC-40, UC-41, UC-42, UC-211 | 3.3.1.16 / 3.3.1.17 / 3.3.1.18 / 3.3.1.19 / 3.3.15.1 | ⬜ Not Started | - |
-| 13 | **CB-013** | Today Tasks | UC-45, UC-46, UC-47, UC-48, UC-49, UC-50, UC-212, UC-213, UC-214, UC-215 | 3.3.1.22 / 3.3.1.23 / 3.3.1.24 / 3.3.1.25 / 3.3.1.26 / 3.3.1.27 / 3.3.16.1 / 3.3.16.2 / 3.3.16.3 / 3.3.16.4 | ⬜ Not Started | - |
+| 10 | **CB-010** | Baby Profiles | UC-31, UC-32, UC-33, UC-192, UC-193 | 3.3.1.8 / 3.3.1.9 / 3.3.1.10 / 3.3.12.1 / 3.3.12.2 | ✅ Done | `CareBridgeMobileApp/lib/features/baby/screens/baby_profiles_screen.dart` |
+| 11 | **CB-011** | Baby Profile | UC-34, UC-35, UC-36, UC-37, UC-38, UC-192, UC-194, UC-195, UC-196, UC-197 | 3.3.1.11 / 3.3.1.12 / 3.3.1.13 / 3.3.1.14 / 3.3.1.15 / 3.3.12.1 / 3.3.12.3 / 3.3.12.4 / 3.3.12.5 / 3.3.12.6 | ✅ Done | `CareBridgeMobileApp/lib/features/baby/screens/baby_profile_detail_screen.dart` |
+| 12 | **CB-012** | Health Record Timeline | UC-39, UC-40, UC-41, UC-42, UC-211 | 3.3.1.16 / 3.3.1.17 / 3.3.1.18 / 3.3.1.19 / 3.3.15.1 | ✅ Done | `CareBridgeMobileApp/lib/features/healthRecords/screens/health_record_timeline_screen.dart` |
+| 13 | **CB-013** | Today Tasks | UC-45, UC-46, UC-47, UC-48, UC-49, UC-50, UC-212, UC-213, UC-214, UC-215 | 3.3.1.22 / 3.3.1.23 / 3.3.1.24 / 3.3.1.25 / 3.3.1.26 / 3.3.1.27 / 3.3.16.1 / 3.3.16.2 / 3.3.16.3 / 3.3.16.4 | ✅ Done | `CareBridgeMobileApp/lib/features/reminder/screens/today_tasks_screen.dart` |
 | 14 | **CB-014** | Community Feed | UC-54, UC-55, UC-56, UC-57, UC-58, UC-59, UC-198, UC-199, UC-200, UC-201 | 3.3.1.31 / 3.3.1.32 / 3.3.1.33 / 3.3.1.34 / 3.3.1.35 / 3.3.1.36 / 3.3.13.1 / 3.3.13.2 / 3.3.13.3 / 3.3.13.4 | ⬜ Not Started | - |
 | 15 | **CB-015** | AI Symptom Intake | UC-60, UC-131, UC-132 | 3.3.1.37 / 3.1.2.5 / 3.1.2.6 | ⬜ Not Started | - |
 | 16 | **CB-016** | Risk Triage Result | UC-61 | 3.3.1.38 | ⬜ Not Started | - |
@@ -24,13 +24,13 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 18 | **CB-018** | Expert Directory | UC-80, UC-81, UC-164, UC-165 | 3.3.1.57 / 3.3.1.58 / 3.3.9.1 / 3.3.9.2 | ⬜ Not Started | - |
 | 19 | **CB-019** | Consultation Detail | UC-75, UC-76, UC-77, UC-78, UC-79, UC-202, UC-203, UC-204, UC-205, UC-208 | 3.3.1.52 / 3.3.1.53 / 3.3.1.54 / 3.3.1.55 / 3.3.1.56 / 3.3.14.1 / 3.3.14.2 / 3.3.14.3 / 3.3.14.4 / 3.3.14.7 | ⬜ Not Started | - |
 | 20 | **CB-020** | Realtime Consultation Session | UC-77, UC-154 | 3.3.1.54 / 3.1.2.7 | ⬜ Not Started | - |
-| 21 | **CB-021** | Care Groups | UC-70, UC-71, UC-72, UC-73, UC-74, UC-216, UC-217, UC-218, UC-219, UC-220, UC-221, UC-222, UC-223 | 3.3.1.47 / 3.3.1.48 / 3.3.1.49 / 3.3.1.50 / 3.3.1.51 / 3.3.17.1 / 3.3.17.2 / 3.3.17.3 / 3.3.17.4 / 3.3.17.5 / 3.3.17.6 / 3.3.17.7 / 3.3.17.8 | ⬜ Not Started | - |
+| 21 | **CB-021** | Care Groups | UC-70, UC-71, UC-72, UC-73, UC-74, UC-216, UC-217, UC-218, UC-219, UC-220, UC-221, UC-222, UC-223 | 3.3.1.47 / 3.3.1.48 / 3.3.1.49 / 3.3.1.50 / 3.3.1.51 / 3.3.17.1 / 3.3.17.2 / 3.3.17.3 / 3.3.17.4 / 3.3.17.5 / 3.3.17.6 / 3.3.17.7 / 3.3.17.8 | ✅ Done | `CareBridgeMobileApp/lib/features/familySync/screens/care_groups_screen.dart` |
 | 22 | **CB-022** | Connected Devices | UC-66, UC-67, UC-68, UC-69, UC-130 | 3.3.1.43 / 3.3.1.44 / 3.3.1.45 / 3.3.1.46 / 3.1.2.4 | ⬜ Not Started | - |
 | 23 | **CB-023** | Safety Monitoring | UC-133, UC-134, UC-135, UC-136, UC-137, UC-138, UC-139, UC-140, UC-141, UC-176 | 3.3.4.1 / 3.3.4.2 / 3.3.4.3 / 3.3.4.4 / 3.3.4.5 / 3.3.4.6 / 3.3.4.7 / 3.3.4.8 / 3.3.4.9 / 3.3.4.10 | ⬜ Not Started | - |
 | 24 | **CB-024** | Care Group Invitation | UC-83 | 3.3.3.1 | ⬜ Not Started | - |
 | 25 | **CB-025** | Family Member Home | UC-74, UC-85, UC-86 | 3.3.1.51 / 3.3.3.3 / 3.3.3.4 | ⬜ Not Started | - |
-| 26 | **CB-026** | My Care Groups | UC-83, UC-84, UC-216, UC-220 | 3.3.3.1 / 3.3.3.2 / 3.3.17.1 / 3.3.17.5 | ⬜ Not Started | - |
-| 27 | **CB-027** | Shared Care Group Detail | UC-74, UC-84, UC-85, UC-216, UC-219 | 3.3.1.51 / 3.3.3.2 / 3.3.3.3 / 3.3.17.1 / 3.3.17.4 | ⬜ Not Started | - |
+| 26 | **CB-026** | My Care Groups | UC-83, UC-84, UC-216, UC-220 | 3.3.3.1 / 3.3.3.2 / 3.3.17.1 / 3.3.17.5 | ✅ Done | `CareBridgeMobileApp/lib/features/familySync/screens/my_care_groups_screen.dart` |
+| 27 | **CB-027** | Shared Care Group Detail | UC-74, UC-84, UC-85, UC-216, UC-219 | 3.3.1.51 / 3.3.3.2 / 3.3.3.3 / 3.3.17.1 / 3.3.17.4 | ✅ Done | `CareBridgeMobileApp/lib/features/familySync/screens/care_group_detail_screen.dart` |
 | 28 | **CB-028** | Shared Care Calendar | UC-74 | 3.3.1.51 | ⬜ Not Started | - |
 | 29 | **CB-029** | Assigned Tasks | UC-85, UC-221, UC-222, UC-223 | 3.3.3.3 / 3.3.17.6 / 3.3.17.7 / 3.3.17.8 | ⬜ Not Started | - |
 | 30 | **CB-030** | Shared Data | UC-84 | 3.3.3.2 | ⬜ Not Started | - |
@@ -125,9 +125,9 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 119 | **CB-119** | Topic Detail | UC-171 | 3.3.8.4 | ⬜ Not Started | - |
 | 120 | **CB-120** | Edit Community Post | UC-55 | 3.3.1.32 | ⬜ Not Started | - |
 | 121 | **CB-121** | Delete Community Post Confirmation | UC-170 | 3.3.8.3 | ⬜ Not Started | - |
-| 122 | **CB-122** | File Manager | UC-167, UC-168, UC-169 | 3.3.10.1 / 3.3.10.2 / 3.3.10.3 | ⬜ Not Started | - |
+| 122 | **CB-122** | File Manager | UC-167, UC-168, UC-169 | 3.3.10.1 / 3.3.10.2 / 3.3.10.3 | ✅ Done | `CareBridgeMobileApp/lib/features/fileManager/screens/file_manager_screen.dart` |
 | 123 | **CB-123** | File Viewer | UC-168 | 3.3.10.2 | ⬜ Not Started | - |
-| 124 | **CB-124** | Upload File | UC-167 | 3.3.10.1 | ⬜ Not Started | - |
+| 124 | **CB-124** | Upload File | UC-167 | 3.3.10.1 | ✅ Done | `CareBridgeMobileApp/lib/features/fileManager/screens/upload_file_screen.dart` |
 | 125 | **CB-125** | Delete File Confirmation | UC-169 | 3.3.10.3 | ⬜ Not Started | - |
 | 126 | **CB-126** | Expert Search and Filters | UC-164, UC-165 | 3.3.9.1 / 3.3.9.2 | ⬜ Not Started | - |
 | 127 | **CB-127** | Emergency Contacts | UC-176 | 3.3.4.10 | ⬜ Not Started | - |
@@ -160,7 +160,7 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 154 | **CB-154** | Enable Posture Camera Confirmation | UC-180 | 3.3.2.6 | ⬜ Not Started | - |
 | 155 | **CB-155** | Exercise Session Result | UC-183 | 3.3.2.9 | ⬜ Not Started | - |
 | 156 | **CB-156** | Exercise History | UC-184 | 3.3.2.10 | ⬜ Not Started | - |
-| 157 | **CB-157** | Maternal Health Metric Detail | UC-187, UC-188 | 3.3.11.1 / 3.3.11.2 | ⬜ Not Started | - |
+| 157 | **CB-157** | Maternal Health Metric Detail | UC-187, UC-188 | 3.3.11.1 / 3.3.11.2 | ✅ Done | `CareBridgeMobileApp/lib/features/healthRecords/screens/maternal_health_metric_screen.dart` |
 | 158 | **CB-158** | Postpartum Log List | UC-189 | 3.3.11.3 | ⬜ Not Started | - |
 | 159 | **CB-159** | Postpartum Log Detail | UC-190, UC-191 | 3.3.11.4 / 3.3.11.5 | ⬜ Not Started | - |
 | 160 | **CB-160** | Switch Active Baby Selector | UC-193 | 3.3.12.2 | ⬜ Not Started | - |
@@ -170,8 +170,8 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 164 | **CB-164** | Reschedule Consultation | UC-204 | 3.3.14.3 | ⬜ Not Started | - |
 | 165 | **CB-165** | Cancel Consultation Confirmation | UC-205 | 3.3.14.4 | ⬜ Not Started | - |
 | 166 | **CB-166** | Consultation Summary | UC-208 | 3.3.14.7 | ⬜ Not Started | - |
-| 167 | **CB-167** | Reminder Detail | UC-212, UC-213, UC-214, UC-215 | 3.3.16.1 / 3.3.16.2 / 3.3.16.3 / 3.3.16.4 | ⬜ Not Started | - |
-| 168 | **CB-168** | Care Group Members | UC-216, UC-219 | 3.3.17.1 / 3.3.17.4 | ⬜ Not Started | - |
+| 167 | **CB-167** | Reminder Detail | UC-212, UC-213, UC-214, UC-215 | 3.3.16.1 / 3.3.16.2 / 3.3.16.3 / 3.3.16.4 | ✅ Done | `CareBridgeMobileApp/lib/features/reminder/screens/reminder_detail_screen.dart` |
+| 168 | **CB-168** | Care Group Members | UC-216, UC-219 | 3.3.17.1 / 3.3.17.4 | ✅ Done | `CareBridgeMobileApp/lib/features/familySync/screens/care_group_members_screen.dart` |
 | 169 | **CB-169** | Pending Invitations | UC-217 | 3.3.17.2 | ⬜ Not Started | - |
 | 170 | **CB-170** | Family Task Detail | UC-221, UC-222, UC-223 | 3.3.17.6 / 3.3.17.7 / 3.3.17.8 | ⬜ Not Started | - |
 | 171 | **CB-171** | Verified Content Search | UC-224 | 3.3.18.1 | ⬜ Not Started | - |
