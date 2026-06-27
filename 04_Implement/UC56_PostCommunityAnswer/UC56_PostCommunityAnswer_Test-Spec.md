@@ -29,6 +29,19 @@
 
 ---
 
+## MỤC LỤC
+
+1. [Thông tin Module](#1-thông-tin-module)
+2. [Logic Issues Resolved](#2-logic-issues-resolved)
+3. [Test Design Specification (TDS)](#3-test-design-specification-tds)
+4. [Test Case Specification](#4-test-case-specification)
+5. [Red-Green-Refactor Tracker](#5-red-green-refactor-tracker)
+6. [Entry / Exit Criteria](#6-entry--exit-criteria)
+7. [Rollback Plan](#7-rollback-plan)
+8. [CASE 2.0 Anti-Pattern Detection](#8-case-20-anti-pattern-detection-ai-assisted-tcs)
+
+---
+
 ## 1. Thông tin Module
 
 | Field                     | Value                                                            |

@@ -16,6 +16,7 @@ import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.service.CommunityAnswerService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,7 +41,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = CommunityAnswerController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class CommunityAnswerControllerTest {
 
     @Autowired

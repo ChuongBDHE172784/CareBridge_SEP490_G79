@@ -23,6 +23,7 @@ import com.carebridge.backend.community.exception.CommunityTopicNotFoundExceptio
 import com.carebridge.backend.community.service.CommunityQuestionSearchService;
 import com.carebridge.backend.community.service.CommunityQuestionService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +53,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = CommunityQuestionController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class CommunityQuestionControllerTest {
 
     @Autowired

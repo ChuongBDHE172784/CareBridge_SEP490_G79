@@ -1,5 +1,7 @@
 package com.carebridge.backend.security.policy;
 
+import com.carebridge.backend.common.exception.AccountDisabledException;
+import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.entity.OtpVerification;
@@ -7,15 +9,29 @@ import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+
 @Component
 public class AuthenticationPolicy {
 
+    private static final long LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
+
     public void ensureCanAuthenticate(User user) {
         if (user == null || !user.isEnabled()) {
-            throw new AuthenticationException("Account is disabled");
+            throw new AccountDisabledException("Account is disabled");
         }
         if (user.isLocked()) {
-            throw new AuthenticationException("Account is locked");
+            // Check if lockout has expired (auto-unlock)
+            if (user.getLockedAt() != null) {
+                Instant lockExpiresAt = user.getLockedAt().plusSeconds(LOCKOUT_DURATION_SECONDS);
+                if (Instant.now().isAfter(lockExpiresAt)) {
+                    // Lock expired, auto-unlock the account by modifying the entity
+                    user.setLocked(false);
+                    user.setLockedAt(null);
+                    return;
+                }
+            }
+            throw new AccountLockedException("Account is locked");
         }
     }
 

@@ -1,10 +1,10 @@
+// TODO: Implement from design mockup CB-054 — /build-screen CB-054
 export default function ExpertDashboardPage() {
   return (
-    <div style={{ padding: 48 }}>
-      <h2 style={{ margin: '0 0 8px', fontSize: 24, color: '#333' }}>Expert Dashboard</h2>
-      <p style={{ margin: 0, color: '#888', fontSize: 14 }}>
-        Expert consultation and case management features are coming soon.
-      </p>
+    <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
+      <p style={{ fontSize: 32, marginBottom: 8 }}>🚧</p>
+      <h2 style={{ color: '#845143', marginBottom: 8 }}>Expert Dashboard</h2>
+      <p>Chưa được implement. Chạy <code>/build-screen CB-054</code> để tạo giao diện.</p>
     </div>
   );
 }

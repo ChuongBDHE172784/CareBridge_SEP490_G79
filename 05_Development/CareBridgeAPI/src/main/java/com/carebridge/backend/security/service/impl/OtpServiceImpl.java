@@ -7,7 +7,9 @@ import com.carebridge.backend.security.policy.AuthenticationPolicy;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.OtpVerificationRepository;
 import com.carebridge.backend.security.service.OtpService;
+import com.carebridge.backend.security.util.TokenUtils;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,16 +37,18 @@ public class OtpServiceImpl implements OtpService {
             OtpVerification.OtpPurpose purpose,
             String email,
             Role requestedRole) {
+        String rawOtp = OtpGenerator.generate();
         OtpVerification verification = OtpVerification.builder()
                 .phone(phone)
-                .otpCode(OtpGenerator.generate())
+                .codeHash(TokenUtils.hashSha256(rawOtp))
                 .purpose(purpose)
                 .email(email)
                 .requestedRole(requestedRole)
                 .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
                 .build();
         OtpVerification saved = otpVerificationRepository.save(verification);
-        log.info("Mock OTP sent for phoneEnding={}, purpose={}, otp={}", phoneEnding(phone), purpose, saved.getOtpCode());
+        log.info("OTP sent: phoneEnding={}, purpose={}, expiresIn={}s, id={}",
+                phoneEnding(phone), purpose, otpExpirationSeconds, saved.getId());
         return saved;
     }
 
@@ -59,14 +63,15 @@ public class OtpServiceImpl implements OtpService {
             throw new ValidationException("OTP has expired");
         }
         authenticationPolicy.ensureOtpCanBeAttempted(verification, maxAttempts);
-        if (!verification.getOtpCode().equals(otp)) {
+        String inputHash = TokenUtils.hashSha256(otp);
+        if (!inputHash.equals(verification.getCodeHash())) {
             verification.setAttempts(verification.getAttempts() + 1);
             otpVerificationRepository.save(verification);
             throw new ValidationException("Invalid OTP");
         }
 
         verification.setVerified(true);
-        verification.setVerifiedAt(Instant.now());
+        verification.setUsedAt(Instant.now());
         return otpVerificationRepository.save(verification);
     }
 

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Việc cần làm</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#ffdad6",
+                      "primary": "#845143",
+                      "outline": "#84736f",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed": "#e9e1db",
+                      "on-error-container": "#93000a",
+                      "surface-bright": "#fff8f6",
+                      "tertiary": "#625d59",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#ffdbd1",
+                      "primary-container": "#c98c7b",
+                      "surface-container-highest": "#fadcd3",
+                      "inverse-on-surface": "#ffede7",
+                      "on-primary": "#ffffff",
+                      "surface": "#fff8f6",
+                      "primary-fixed-dim": "#fab7a4",
+                      "on-secondary-container": "#735e56",
+                      "error": "#ba1a1a",
+                      "secondary": "#6e5a52",
+                      "on-error": "#ffffff",
+                      "surface-tint": "#845143",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "inverse-primary": "#fab7a4",
+                      "tertiary-container": "#a09a95",
+                      "surface-container": "#ffe9e3",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "on-surface": "#271812",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "surface-variant": "#fadcd3",
+                      "on-primary-container": "#51271b",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-container": "#36322e",
+                      "inverse-surface": "#3e2c26",
+                      "surface-dim": "#f1d4ca",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "on-background": "#271812",
+                      "background": "#fff8f6",
+                      "secondary-fixed": "#f8ddd2",
+                      "on-surface-variant": "#524440",
+                      "on-secondary-fixed": "#271812",
+                      "surface-container-low": "#fff1ec",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#ffe2d9",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "secondary-container": "#f6dacf",
+                      "on-primary-fixed": "#341006"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "48px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "safe-margin": "24px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Lexend"
+                      ],
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "label-md": [
+                              "Lexend"
+                      ],
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "body-md": [
+                              "Lexend"
+                      ],
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md text-on-background min-h-screen pb-32">
+<!-- Top App Bar (Hidden on Mobile as per JSON, but rendering for completeness if needed on larger screens) -->
+<header class="hidden md:flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background docked full-width top-0">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A macro shot of a softly lit, organic shaped ceramic cup in warm beige tones, minimalist lighting, conveying warmth and calm, suitable for a maternal app avatar placeholder." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBR7oJHUnfb-4A3Srs-ghXwSrLVulT3y5S9QVyrfbAUbatVr38-s_ba-PmunLerbtRPqm62CWvI79W3GlvFn0Dl4524O6JMrNSSnHi39EhRPecsb2Y4ECpARWhnxHeMbB1SG0vqiTHhd1QPMDGgakYhenaKk71alWc1w1gopXaTLKNFlDmtdpF3XF3qbhB6LT5OyrUT36t2nc5x8BcxUk72xhCDTfuTHdbJyxC3w1coPnhbDXRnsohdSf8GGDctUZrYy-SW-f2hQFg"/>
+</div>
+</div>
+<div class="font-display-lg text-display-lg text-primary">CareBridge</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<main class="max-w-[844px] mx-auto w-full">
+<!-- Header & Date -->
+<section class="px-safe-margin pt-stack-lg pb-stack-md flex flex-col gap-stack-sm md:mt-8">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Việc cần làm</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Thứ Ba, 12 Tháng 10</p>
+</section>
+<!-- Filters -->
+<section class="px-safe-margin pb-stack-lg">
+<div class="flex gap-stack-sm overflow-x-auto no-scrollbar py-2">
+<button class="px-6 h-touch-target-min bg-primary-container text-on-primary rounded-full font-button text-button shrink-0 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">Tất cả</button>
+<button class="px-6 h-touch-target-min bg-surface text-on-surface-variant rounded-full font-button text-button shrink-0 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant">Cần làm</button>
+<button class="px-6 h-touch-target-min bg-surface text-on-surface-variant rounded-full font-button text-button shrink-0 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant">Đã xong</button>
+</div>
+</section>
+<!-- Task List -->
+<section class="px-safe-margin flex flex-col gap-stack-md">
+<!-- Task Card 1 (Appointment) -->
+<div class="bg-surface rounded-lg p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">calendar_month</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md text-on-surface">Khám thai định kỳ</h3>
+<span class="font-label-md text-label-md text-error px-2 py-1 bg-error-container/30 rounded-full">Quan trọng</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Bệnh viện Phụ Sản, 09:00 AM</p>
+<div class="flex gap-2 mt-2">
+<div class="flex items-center gap-1 bg-secondary-container/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[16px] text-on-secondary-container">person</span>
+<span class="font-label-md text-label-md text-on-secondary-container">Mẹ</span>
+</div>
+</div>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center -mr-2 -mt-2">
+<div class="w-6 h-6 border-2 border-outline rounded-sm"></div>
+</button>
+</div>
+<!-- Task Card 2 (Vitamin) -->
+<div class="bg-surface rounded-lg p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start opacity-70">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary">medication</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md text-on-surface line-through">Uống Vitamin tổng hợp</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Sau bữa sáng</p>
+<div class="flex gap-2 mt-2">
+<div class="flex items-center gap-1 bg-secondary-container/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[16px] text-on-secondary-container">person</span>
+<span class="font-label-md text-label-md text-on-secondary-container">Mẹ</span>
+</div>
+</div>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center -mr-2 -mt-2">
+<div class="w-6 h-6 border-2 border-primary bg-primary rounded-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</button>
+</div>
+<!-- Task Card 3 (Vaccination) -->
+<div class="bg-surface rounded-lg p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start">
+<div class="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-tertiary-container">vaccines</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md text-on-surface">Tiêm phòng phế cầu</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Trạm y tế phường, 14:00 PM</p>
+<div class="flex gap-2 mt-2">
+<div class="flex items-center gap-1 bg-tertiary-container/30 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[16px] text-on-tertiary-container">child_care</span>
+<span class="font-label-md text-label-md text-on-tertiary-container">Bé</span>
+</div>
+</div>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center -mr-2 -mt-2">
+<div class="w-6 h-6 border-2 border-outline rounded-sm"></div>
+</button>
+</div>
+</section>
+<!-- FAB Add Button (Contextually relevant for Tasks) -->
+<div class="fixed bottom-28 right-safe-margin z-40">
+<button class="w-14 h-14 bg-primary-container text-on-primary rounded-2xl shadow-[0px_8px_24px_rgba(90,70,63,0.12)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-display-lg">add</span>
+</button>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Active state: Việc cần làm) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim rounded-t-lg shadow-[0px_-4px_20px_rgba(90,70,63,0.06)]">
+<!-- Inactive: Trang chủ -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<!-- Inactive: Hành trình -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<!-- Inactive: Cộng đồng -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<!-- ACTIVE: Việc cần làm -->
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 active:scale-90 transition-transform duration-150 min-w-[72px]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<!-- Inactive: Hồ sơ -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+</body></html>

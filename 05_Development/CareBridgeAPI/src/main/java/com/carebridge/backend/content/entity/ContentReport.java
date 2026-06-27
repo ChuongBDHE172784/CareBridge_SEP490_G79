@@ -41,8 +41,8 @@ public class ContentReport {
     @Column(name = "status", nullable = false, length = 20)
     private ReportStatus status;
 
-    @Column(name = "reason_code", length = 40)
-    private String reasonCode;
+    @Column(name = "category", length = 50)
+    private String category;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

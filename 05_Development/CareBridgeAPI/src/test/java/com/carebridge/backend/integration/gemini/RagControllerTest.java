@@ -14,6 +14,7 @@ import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
 import com.carebridge.backend.integration.gemini.dto.RagSource;
 import com.carebridge.backend.integration.gemini.service.RagService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -35,7 +36,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = RagController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class RagControllerTest {
 
     @Autowired

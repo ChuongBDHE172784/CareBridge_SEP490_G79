@@ -840,4 +840,22 @@ Theo TDS CB-COMMUNITY-IMP-002:
 
 ---
 
-*EDS v2.0 — CB-COMMUNITY-IMP-002 — UC-56 Post Community Answer*
+## PHỤ LỤC
+
+### A. Glossary (Thuật ngữ)
+
+| Thuật ngữ | Định nghĩa |
+|-----------|------------|
+| isExpertLabeled | Cờ đánh dấu câu trả lời từ chuyên gia — chỉ Moderator/System mới được set |
+| AnswerStatus | Trạng thái duyệt câu trả lời (PENDING, APPROVED, HIDDEN) |
+| isPersonalExperience | Cờ đánh dấu câu trả lời dựa trên trải nghiệm cá nhân của người dùng |
+
+### B. Tài liệu tham chiếu
+
+| Document | Path |
+|----------|------|
+| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*

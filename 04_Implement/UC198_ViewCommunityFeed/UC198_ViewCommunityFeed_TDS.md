@@ -26,6 +26,28 @@
 
 ---
 
+## MỤC LỤC
+
+1. [Tổng quan Module](#1-tổng-quan-module)
+2. [Ma trận Truy vết](#2-ma-trận-truy-vết)
+3. [Architecture Decision Records](#3-architecture-decision-records)
+4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
+5. [Static Modeling](#5-static-modeling-mô-hình-tĩnh)
+6. [Dynamic Modeling](#6-dynamic-modeling-mô-hình-động)
+7. [Domain Event Catalog](#7-domain-event-catalog)
+8. [Interface Specification](#8-interface-specification-đặc-tả-giao-diện)
+9. [API Specification](#9-api-specification)
+10. [Bảng mã lỗi](#10-bảng-mã-lỗi-error-codes)
+11. [Quy trình Triển khai](#11-quy-trình-triển-khai-step-by-step)
+12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
+13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
+14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
+15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế-api-verification-samples)
+16. [Bảng tổng hợp phân quyền](#16-bảng-tổng-hợp-phân-quyền-authorization-matrix)
+17. [AI Prompt Constraints](#17-ai-prompt-constraints-case-20)
+
+---
+
 ## 1. Tổng quan Module
 
 | Field                     | Value                                                                   |
@@ -614,6 +636,32 @@ curl -X GET "https://[host]/api/v1/community/feed"
 | AP-AI-003 | Implicit Decision     | Mapper không mask anonymous author               | Reject — C3 |
 | AP-AI-005 | Hallucinated Contract | Code gọi RecommendationService không có trong §8 | Reject      |
 
+### 17.4 Anti-Pattern Detection
+
+| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
+|-------|-------------|-----------|----------|
+| AP-AI-001 | Unconstrained Gen | Code không match constraint C1-C5 | Reject — inject lại constraints |
+| AP-AI-003 | Implicit Decision | Code assume architecture không có ADR | Reject — viết ADR trước |
+| AP-AI-005 | Hallucinated Contract | Code import không có trong §8 | Reject — verify contract |
+
 ---
 
-*EDS v2.0 — CB-COMMUNITY-IMP-004 — UC-198 View Community Feed*
+## PHỤ LỤC
+
+### A. Glossary (Thuật ngữ)
+
+| Thuật ngữ | Định nghĩa |
+|-----------|------------|
+| Community Feed | Danh sách câu hỏi cộng đồng đã duyệt, sắp xếp theo thời gian mới nhất |
+| authorDisplay | Tên hiển thị tác giả — masked thành "Me an danh" khi isAnonymous=true |
+| Cursor Pagination | Phân trang dựa trên cursor (createdAt) thay vì offset — tối ưu performance |
+
+### B. Tài liệu tham chiếu
+
+| Document | Path |
+|----------|------|
+| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*

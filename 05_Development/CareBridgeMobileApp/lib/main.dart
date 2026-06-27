@@ -1,12 +1,8 @@
+import 'features/auth/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'core/auth/auth_state.dart';
-import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/blocked_account_screen.dart';
-import 'features/community/screens/community_feed_screen.dart';
-import 'features/community/screens/search_questions_screen.dart';
-import 'features/healthRecords/screens/view_content_screen.dart';
-import 'features/healthRecords/screens/search_content_screen.dart';
-import 'features/aiTriage/screens/rag_chat_screen.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,7 +51,7 @@ class CareBridgeApp extends StatelessWidget {
             return const BlockedAccountScreen();
           }
           if (!AuthState.instance.isAuthenticated) {
-            return const LoginScreen();
+            return const WelcomeScreen();
           }
           return const MainShell();
         },
@@ -78,68 +74,31 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-class MainShell extends StatefulWidget {
+class MainShell extends StatelessWidget {
   const MainShell({super.key});
-
-  @override
-  State<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
-
-  static const _screens = <Widget>[
-    CommunityFeedScreen(),
-    SearchQuestionsScreen(),
-    ViewContentScreen(),
-    SearchContentScreen(),
-    RagChatScreen(),
-  ];
-
-  static const _navItems = <BottomNavigationBarItem>[
-    BottomNavigationBarItem(
-      icon: Icon(Icons.people_outline),
-      activeIcon: Icon(Icons.people),
-      label: 'Bảng tin',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.search_outlined),
-      activeIcon: Icon(Icons.search),
-      label: 'Hỏi đáp',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.article_outlined),
-      activeIcon: Icon(Icons.article),
-      label: 'Kiến thức',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.find_in_page_outlined),
-      activeIcon: Icon(Icons.find_in_page),
-      label: 'Tìm kiếm',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.smart_toy_outlined),
-      activeIcon: Icon(Icons.smart_toy),
-      label: 'AI Chat',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      appBar: AppBar(
+        title: const Text('CareBridge'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => AuthState.instance.clear(),
+          ),
+        ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFFC98C7B),
-        unselectedItemColor: Colors.grey,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: _navItems,
+      body: const Center(
+        child: Text(
+          'Chào mừng bạn đến với CareBridge!\nCác chức năng đang được phát triển.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 16,
+            color: Color(0xFF5A463F),
+          ),
+        ),
       ),
     );
   }

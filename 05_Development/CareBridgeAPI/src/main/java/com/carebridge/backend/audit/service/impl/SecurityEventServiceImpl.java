@@ -23,7 +23,7 @@ public class SecurityEventServiceImpl implements SecurityEventService {
     @Override
     public void log(SecurityEventType eventType, java.util.UUID userId, String ipAddress, Object details) {
         SecurityEvent event = SecurityEvent.builder()
-                .timestamp(Instant.now())
+                .occurredAt(Instant.now())
                 .eventType(eventType)
                 .userId(userId)
                 .ipAddress(ipAddress)

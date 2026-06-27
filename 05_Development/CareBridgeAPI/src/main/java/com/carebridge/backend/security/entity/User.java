@@ -32,7 +32,7 @@ public class User {
     @Column(name = "user_id", updatable = false, nullable = false)
     private java.util.UUID id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(unique = true, length = 20)
     private String phone;
 
     @Column(length = 255)
@@ -47,17 +47,33 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private Role role;
+    @Column(name = "account_status", length = 30)
+    private String accountStatus;
+
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
+
+    @Column(name = "phone_verified")
+    private Boolean phoneVerified;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 50, nullable = false)
+    private Role role = Role.MOTHER;
+
+    @Builder.Default
+    @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(name = "locked", nullable = false)
     private boolean locked = false;
+
+    @Column(name = "locked_at")
+    private Instant lockedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

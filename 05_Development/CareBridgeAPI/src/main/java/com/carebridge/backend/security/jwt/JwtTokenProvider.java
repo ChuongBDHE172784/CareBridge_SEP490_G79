@@ -6,10 +6,10 @@ import com.carebridge.backend.security.entity.User;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,25 +32,33 @@ public class JwtTokenProvider {
     @PostConstruct
     void init() {
         if (configuredSecret == null || configuredSecret.isBlank()) {
-            byte[] generated = new byte[32];
-            new SecureRandom().nextBytes(generated);
-            secretBytes = generated;
-            return;
+            throw new IllegalStateException("JWT_SECRET is not configured. Set the JWT_SECRET environment variable with a strong secret (at least 32 characters).");
         }
-        secretBytes = configuredSecret.getBytes(StandardCharsets.UTF_8);
+        String trimmedSecret = configuredSecret.trim();
+        if (trimmedSecret.length() < 32) {
+            throw new IllegalStateException("JWT_SECRET is too weak. Must be at least 32 characters.");
+        }
+        secretBytes = trimmedSecret.getBytes(StandardCharsets.UTF_8);
     }
 
     public String generateAccessToken(User user) {
+        return generateAccessToken(user, null);
+    }
+
+    public String generateAccessToken(User user, UUID sessionId) {
         Instant now = Instant.now();
-        String payload = "{"
-                + "\"sub\":\"" + escape(user.getId().toString()) + "\","
-                + "\"" + SecurityConstants.CLAIM_PHONE + "\":\"" + escape(user.getPhone()) + "\","
-                + "\"" + SecurityConstants.CLAIM_ROLE + "\":\"" + escape(user.getRole().getAuthority()) + "\","
-                + "\"" + SecurityConstants.CLAIM_TOKEN_TYPE + "\":\"" + SecurityConstants.ACCESS_TOKEN_TYPE + "\","
-                + "\"iat\":" + now.getEpochSecond() + ","
-                + "\"exp\":" + now.plusMillis(accessTokenExpirationMs).getEpochSecond()
-                + "}";
-        return sign(payload);
+        StringBuilder payload = new StringBuilder("{")
+                .append("\"sub\":\"").append(escape(user.getId().toString())).append("\",")
+                .append("\"").append(SecurityConstants.CLAIM_PHONE).append("\":\"").append(escape(user.getPhone())).append("\",")
+                .append("\"").append(SecurityConstants.CLAIM_ROLE).append("\":\"").append(escape(user.getRole().getAuthority())).append("\",")
+                .append("\"").append(SecurityConstants.CLAIM_TOKEN_TYPE).append("\":\"").append(SecurityConstants.ACCESS_TOKEN_TYPE).append("\",")
+                .append("\"iat\":").append(now.getEpochSecond()).append(",")
+                .append("\"exp\":").append(now.plusMillis(accessTokenExpirationMs).getEpochSecond());
+        if (sessionId != null) {
+            payload.append(",\"").append(SecurityConstants.CLAIM_SESSION_ID).append("\":\"").append(escape(sessionId.toString())).append("\"");
+        }
+        payload.append("}");
+        return sign(payload.toString());
     }
 
     public boolean validateToken(String token) {
@@ -79,6 +87,18 @@ public class JwtTokenProvider {
             throw new AuthenticationException("JWT subject is missing");
         }
         return subject;
+    }
+
+    public UUID getSessionId(String token) {
+        String sid = getJsonValue(decode(splitToken(token)[1]), SecurityConstants.CLAIM_SESSION_ID);
+        if (sid == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(sid);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public List<SimpleGrantedAuthority> getAuthorities(String token) {

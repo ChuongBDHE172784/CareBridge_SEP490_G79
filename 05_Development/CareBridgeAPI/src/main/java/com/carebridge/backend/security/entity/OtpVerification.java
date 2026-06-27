@@ -8,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -35,17 +37,21 @@ public class OtpVerification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 20)
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Column(name = "code_hash", nullable = false, length = 255)
+    private String codeHash;
+
+    @Column(name = "phone", length = 20)
     private String phone;
 
-    @Column(name = "otp_code", nullable = false, length = 10)
-    private String otpCode;
-
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "purpose", nullable = false, length = 20)
     private OtpPurpose purpose;
 
-    @Column(length = 255)
+    @Column(name = "email", length = 255)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -55,15 +61,15 @@ public class OtpVerification {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "verified_at")
-    private Instant verifiedAt;
+    @Column(name = "used_at")
+    private Instant usedAt;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(name = "verified", nullable = false)
     private boolean verified = false;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(name = "attempts", nullable = false)
     private int attempts = 0;
 
     @CreationTimestamp

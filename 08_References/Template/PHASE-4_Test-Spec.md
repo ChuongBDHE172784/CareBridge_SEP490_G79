@@ -13,6 +13,7 @@
 **Classification:** `Internal — Confidential`
 
 **References:**
+- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` â€” primary CareBridge database schema source
 - `04_testing/SOFTWARE_TEST_PLAN.md` (FPT-EDU-STP-001 v2.0) — Master Test Plan
 - `01_Requirements/SRS.md` — Functional requirements
 - `03_implement/[TECH-SPEC-ID]_[FeatureName].md` — Technical Specification
@@ -20,9 +21,9 @@
 - `[Điều luật]` — Legal basis (Luật 91/2025, NĐ 356/2025)
 
 > **Quy ước TDD:** Tài liệu này mô tả test cases TRƯỚC khi viết production code.
-> Thứ tự bắt buộc: viết test (.spec.ts) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
-> Không mark test là ✅ nếu `npm test` chưa xanh.
-> Test data dùng tenant `fpt-edu` (QA). Không dùng PII thật.
+> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
+> Không mark test là ✅ nếu `./mvnw test` (backend) hoặc `npm test` (web) chưa xanh.
+> Không dùng PII thật trong test data — chỉ dùng SYNTHETIC data.
 
 ---
 
@@ -84,6 +85,8 @@
 
 ## 2. Logic Issues Resolved
 
+> For CareBridge schema disputes, use `V1__init_schema.sql` and approved migrations as the final persistence oracle; ERD is only supporting evidence.
+
 > **Bắt buộc điền trước khi viết test.**
 > Liệt kê mọi sai lệch giữa spec thiết kế và schema/policy/codebase thực tế.
 > Test cases sẽ encode hành vi **đã sửa**, không phải hành vi trong spec gốc.
@@ -97,6 +100,8 @@
 
 ## 3. Test Design Specification (TDS)
 
+> Include `V1__init_schema.sql` and approved Flyway migrations in the test basis whenever database schema facts, constraints, or persistence side effects are part of the oracle.
+
 ### TDS-01 — Scope / Phạm vi
 
 > Mô tả phạm vi của TDD spec này: component nào được kiểm thử, layer nào được bao phủ.
@@ -104,10 +109,10 @@
 ```
 [Module] bao gồm các layer:
 ├── Domain (pure logic — no deps)
-├── Application / Use Cases (mock Prisma inline)
-├── Services (mock Prisma inline)
-├── Controller (mock use cases)
-└── Integration (Testcontainers PostgreSQL + Redis)
+├── Application / Use Cases (mock JPA Repository với Mockito)
+├── Services (mock JPA Repository với Mockito)
+├── Controller (mock Service với @WebMvcTest)
+└── Integration (Testcontainers PostgreSQL + Redis với @SpringBootTest)
 ```
 
 ### TDS-02 — Test Basis / Cơ sở Kiểm thử
@@ -116,12 +121,12 @@
 
 | Source | Items Derived |
 |--------|--------------|
-| `SRS.md` UC-XX | _(hành vi người dùng / business rule)_ |
-| `ADR-0XX` | _(architecture constraint)_ |
-| `BR-XXXX-001` | _(business rule số hiệu)_ |
-| Luật 91/2025 Điều X | _(yêu cầu pháp lý)_ |
-| NĐ 356/2025 Điều X | _(yêu cầu nghị định)_ |
-| `[TECH-SPEC-ID]` §X | _(algorithm / logic từ spec kỹ thuật)_ |
+| `SRS UC-XX` | _(hành vi người dùng / business rule)_ |
+| `ADR-[MODULE]-0XX` | _(architecture constraint)_ |
+| `BR-[MODULE]-XXX` | _(business rule số hiệu)_ |
+| GDPR Art. XX | _(yêu cầu bảo vệ dữ liệu nếu module PII)_ |
+| PDPA / BR-RBAC / BR-SECURITY | _(compliance scope của project)_ |
+| `CB-[MODULE]-IMP-NNN` §X | _(algorithm / logic từ TDS kỹ thuật)_ |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
@@ -162,25 +167,36 @@
 
 > ⭐ **CASE 2.0 Rule:** Mỗi test PHẢI tạo fresh instance qua factory. Không shared mutable state giữa các test cases. Đây là biện pháp chống AP-AI-002 (Green-from-Birth).
 
-```typescript
+```java
 // ═══════════════════════════════════════════════════════════
 // CASE 2.0 — Props Isolation Pattern
-// Đặt ở đầu file test — mỗi it() dùng makeEntity()
+// Đặt ở đầu file test — mỗi @Test dùng makeEntity()
 // ═══════════════════════════════════════════════════════════
 
-const baseProps = {
-  // Giá trị baseline hợp lệ — đồng bộ với FX-001 (§3 TDS-05)
-  id: 'test-uuid-001',
-  tenantId: 'fpt-edu',
-  // [thêm fields...]
-};
+// [ModuleName]TestFactory.java
+class [ModuleName]TestFactory {
 
-const makeEntity = (overrides: Partial<typeof baseProps> = {}) =>
-  Entity.create({ ...baseProps, ...overrides });
+    // Giá trị baseline hợp lệ — đồng bộ với FX-001 (§3 TDS-05)
+    static [Entity] makeEntity() {
+        [Entity] entity = new [Entity]();
+        entity.setId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        // entity.setField(...);
+        return entity;
+    }
 
-// Factory cho related entities (nếu cần)
-const makeRelated = (overrides: Partial<typeof baseRelatedProps> = {}) =>
-  RelatedEntity.create({ ...baseRelatedProps, ...overrides });
+    // Overload để override specific fields
+    static [Entity] makeEntity(Consumer<[Entity]> overrides) {
+        [Entity] entity = makeEntity();
+        overrides.accept(entity);
+        return entity;
+    }
+
+    // Factory cho related entities (nếu cần)
+    static [RelatedEntity] makeRelated() {
+        // ...
+        return related;
+    }
+}
 ```
 
 ---
@@ -266,14 +282,14 @@ _(Lặp lại block trên cho mỗi test case)_
 
 **Severity:** `HIGH`
 **Feature Under Test:** `Full flow: [bước đầu → bước cuối]`
-**Test File:** `apps/core-api/test/modules/[module]/[feature].integration-spec.ts`
+**Test File:** `src/test/java/com/carebridge/backend/[module]/[Feature]IntegrationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-XXX`
 
 **Preconditions:**
-- PostgreSQL container running (Testcontainers auto-start)
-- `prisma db push --skip-generate` applied
-- Seed: _(fixtures cần thiết)_
+- PostgreSQL container running (`@Testcontainers` auto-start)
+- Flyway migration applied tự động khi Spring context start
+- Seed: _(fixtures cần thiết — insert qua JPA hoặc SQL script)_
 
 **Test Steps:**
 1. _(seed minimal data)_
@@ -289,10 +305,11 @@ _(Lặp lại block trên cho mỗi test case)_
 - _(dấu hiệu lỗi integration)_
 
 **DB Assertion:**
-```typescript
-const record = await prisma.client.[model].findUnique({ where: { id } });
-expect(record).not.toBeNull();
-expect(record.status).toBe('[EXPECTED_STATUS]');
+```java
+// Dùng JPA repository hoặc JdbcTemplate để assert DB state
+[Entity] record = [repo].findById(savedId).orElseThrow();
+assertThat(record).isNotNull();
+assertThat(record.getStatus()).isEqualTo([ExpectedStatus].[ENUM_VALUE]);
 ```
 
 **Current Status:** 🔴 Not written
@@ -313,12 +330,17 @@ expect(record.status).toBe('[EXPECTED_STATUS]');
 
 **Stub cho Red Phase:**
 
-```typescript
+```java
 // Red Phase — implementation stub (PHẢI throw)
-export class [ClassName] {
-  [methodName](...args: unknown[]): never {
-    throw new Error('Not implemented — Red Phase stub');
-  }
+@Service
+public class [ClassName] implements I[ClassName] {
+
+    @Override
+    public [ReturnType] [methodName]([ParamType] input) {
+        throw new UnsupportedOperationException("Not implemented — Red Phase stub");
+    }
+
+    // Lặp lại cho mỗi method trong interface
 }
 ```
 
@@ -343,33 +365,33 @@ export class [ClassName] {
 
 ### Entry Criteria (Điều kiện bắt đầu)
 
-- [ ] Spec kỹ thuật `[TECH-SPEC-ID]` đã được review và approve
+- [ ] TDS `CB-[MODULE]-IMP-NNN` đã được review và approve
 - [ ] Logic Issues (Section 2) đã được confirm với Principal Architect
-- [ ] Prisma schema migration cho feature này đã được approved
+- [ ] Flyway migration `V{n}__[name].sql` đã được approved và chạy thành công trên staging
 - [ ] Test fixtures (Section 3 TDS-05) đã được chuẩn bị
 
 ### Exit Criteria (Điều kiện kết thúc — DoD)
 
-- [ ] `npm test` — tất cả unit tests xanh (không có skip)
-- [ ] `npm run test:integration` — tất cả integration tests xanh
-- [ ] Test coverage ≥ 80% lines cho các file mới tạo
-- [ ] Không có `any` type trong production code liên quan
-- [ ] `subjectId` không xuất hiện plaintext trong logs
+- [ ] `./mvnw test` — tất cả unit tests xanh (không có skip)
+- [ ] `./mvnw verify` — tất cả integration tests xanh (Testcontainers)
+- [ ] Test coverage ≥ 80% lines cho Service class mới tạo
+- [ ] Không có business logic trong Controller (chỉ có validation + mapping)
+- [ ] Không có PII/secret xuất hiện plaintext trong logs
 - [ ] _(tiêu chí nghiệp vụ cụ thể của feature này)_
 
 **Exit Criteria bổ sung — CASE 2.0:**
 
 - [ ] **Red Gate (§5.1)** — tất cả tests FAIL với empty/throw stub trước khi implement
-- [ ] **Contract Existence** — mọi import trong test files đều resolve:
+- [ ] **Contract Existence** — mọi class được inject đều tồn tại trong codebase:
   ```bash
-  npx tsc --noEmit [test-files] 2>&1 | grep "Cannot find module"
+  ./mvnw compile 2>&1 | grep "error:"
   # Expected: no output
   ```
 - [ ] **Props Isolation** — không có shared mutable state giữa tests:
   ```bash
-  # Kiểm tra: biến tạo bên ngoài it() có bị mutate không?
-  grep -n "^const.*=.*create\|^let.*=.*build" [test-file]
-  # Mọi instance PHẢI nằm trong it() hoặc dùng factory makeEntity()
+  # Kiểm tra: biến tạo ngoài @Test có bị mutate không?
+  grep -n "^    [A-Z].*=.*new \|^    [a-z].*=.*new " [test-file]
+  # Mọi instance PHẢI nằm trong @Test hoặc dùng factory method
   ```
 - [ ] **Oracle Source** — mọi expected value trong assert có ghi rõ nguồn (BR/AC/ADR)
 
@@ -384,11 +406,16 @@ export class [ClassName] {
 ## 7. Rollback Plan
 
 ```bash
-# Revert migration (dev only — KHÔNG chạy trên production)
-npx prisma migrate reset
+# Revert migration thủ công (dev only — KHÔNG chạy trên production)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -c "DROP TABLE IF EXISTS [table_name] CASCADE;"
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -c "DELETE FROM flyway_schema_history WHERE version = '{n}';"
 
 # Revert implementation files
-git checkout -- [path/to/changed/files]
+git checkout -- src/main/java/com/carebridge/backend/[module]/
+git checkout -- src/main/resources/db/migration/V{n}__[migration_name].sql
+git checkout -- src/test/java/com/carebridge/backend/[module]/
 
 # Gap vẫn OPEN → giữ nguyên entry trong PHASE_GAP_ANALYSIS.md
 ```

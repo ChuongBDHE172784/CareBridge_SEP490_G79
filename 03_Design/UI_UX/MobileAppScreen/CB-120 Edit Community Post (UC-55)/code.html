@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-primary": "#fab7a4",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fff8f6",
+                    "on-primary-fixed": "#341006",
+                    "primary-fixed": "#ffdbd1",
+                    "outline": "#84736f",
+                    "on-tertiary-container": "#36322e",
+                    "surface-container-high": "#ffe2d9",
+                    "surface-tint": "#845143",
+                    "error": "#ba1a1a",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "inverse-surface": "#3e2c26",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container": "#ffe9e3",
+                    "primary-container": "#c98c7b",
+                    "on-background": "#271812",
+                    "tertiary": "#625d59",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-error-container": "#93000a",
+                    "surface": "#fff8f6",
+                    "tertiary-fixed": "#e9e1db",
+                    "primary": "#845143",
+                    "inverse-on-surface": "#ffede7",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#f8ddd2",
+                    "tertiary-container": "#a09a95",
+                    "surface-variant": "#fadcd3",
+                    "on-surface": "#271812",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-container": "#735e56",
+                    "background": "#fff8f6",
+                    "surface-container-low": "#fff1ec",
+                    "surface-container-highest": "#fadcd3",
+                    "on-surface-variant": "#524440",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "gutter": "16px",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "headline-md": ["Lexend"]
+            },
+            "fontSize": {
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fff8f6;
+            color: #271812;
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            user-select: none;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .active-shadow {
+            box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.12);
+        }
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #C98C7B !important;
+            ring: 0 !important;
+        }
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col">
+<!-- Top App Bar -->
+<header class="bg-background fixed top-0 w-full z-50 flex justify-between items-center px-safe-margin h-touch-target-min">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min active:scale-95 transition-transform" onclick="history.back()">
+<span class="material-symbols-outlined text-on-surface">close</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">Chỉnh sửa bài viết</h1>
+<button class="font-button text-button text-primary px-4 py-2 hover:opacity-80 transition-opacity active:scale-95" id="submitPost">
+            Lưu
+        </button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-touch-target-min pb-stack-lg px-safe-margin overflow-y-auto no-scrollbar">
+<form class="space-y-stack-lg py-stack-md" id="editPostForm">
+<!-- Context Header (User / Anonymous) -->
+<div class="flex items-center justify-between bg-surface-container-low p-4 rounded-lg custom-shadow">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="A warm, professional portrait of a Vietnamese mother smiling gently, lit by soft natural morning light in a modern nursery setting. The photo follows a high-key, nurturing aesthetic with soft focus on a warm, earthy-toned background that matches a premium healthcare brand palette." id="userAvatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-6tcy65ysNFNM7b3K8nQNIeF4zE_qdIRMVMKoc5QuDJSY35Q9Bd8vJI7xwUjj6SkH36ndN8ceU_trkevhiwW10h2UDHj6aFSzfAQCajJHYeG8jY40eiBaAWyVws2WfFTtzGE2TDr-YMGjk-sUNwVobS7xLdwclzRq0A8MtsTpH-JSY9pCP3vVMHSNnvdn96IYXZ3jfrpiOYLikg1JAcd_O9iRXzeHeVkoaeZH8GXJ1SMLrY22apkUFBPXwBCoQQYLY90mNM0Ujq4"/>
+</div>
+<div>
+<p class="font-button text-body-md text-on-surface" id="userName">Nguyễn Thảo Anh</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Đang đăng bài</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">Đăng ẩn danh</span>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-outline-variant transition-colors duration-200" id="anonymousToggle" type="button">
+<span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 translate-x-1" id="toggleThumb"></span>
+</button>
+</div>
+</div>
+<!-- Topic & Context Selection -->
+<div class="grid grid-cols-2 gap-gutter">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Chủ đề</label>
+<select class="w-full h-touch-target-min bg-white border border-outline-variant rounded-lg px-4 text-body-md text-on-surface focus:border-primary-container" id="topicSelect">
+<option value="nutrition">Dinh dưỡng</option>
+<option selected="" value="health">Sức khỏe bài tiết</option>
+<option value="sleep">Giấc ngủ của bé</option>
+<option value="development">Phát triển vận động</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Độ tuổi</label>
+<select class="w-full h-touch-target-min bg-white border border-outline-variant rounded-lg px-4 text-body-md text-on-surface focus:border-primary-container" id="ageSelect">
+<option value="0-6">0 - 6 tháng</option>
+<option selected="" value="6-12">6 - 12 tháng</option>
+<option value="12-24">1 - 2 tuổi</option>
+<option value="24+">Trên 2 tuổi</option>
+</select>
+</div>
+</div>
+<!-- Text Content -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Nội dung bài viết</label>
+<div class="relative">
+<textarea class="w-full p-5 bg-white border border-outline-variant rounded-lg text-body-lg text-on-surface resize-none focus:border-primary-container placeholder:text-outline-variant" id="postContent" placeholder="Chia sẻ câu chuyện hoặc thắc mắc của bạn..." rows="8">Bé nhà mình dạo này hay quấy khóc vào ban đêm, không biết có phải do thực đơn ăn dặm mới không ạ? Mình đã thử đổi sang cháo yến mạch nhưng tình hình vẫn không cải thiện. Có mẹ nào gặp trường hợp tương tự không?</textarea>
+<div class="hidden absolute -bottom-6 left-1 text-error text-label-md font-label-md" id="errorText">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">error</span> Vui lòng nhập nội dung bài viết
+                        </span>
+</div>
+</div>
+</div>
+<!-- Attachment Preview Section -->
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Hình ảnh đính kèm (2/4)</label>
+<button class="text-primary font-label-md text-label-md flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">add_photo_alternate</span> Thêm ảnh
+                    </button>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+<!-- Preview Card 1 -->
+<div class="relative min-w-[120px] h-32 rounded-xl overflow-hidden custom-shadow group">
+<div class="w-full h-full bg-cover bg-center" data-alt="A macro close-up photograph of a small bowl of organic baby oatmeal topped with a single fresh blueberry, emphasizing texture and natural ingredients. The lighting is bright and warm, with a soft background blur of a clean, minimalist kitchen counter in a modern Vietnamese home." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAbDvpbsaRmunc9hIzm7UUnv7ECQviX-ArmeomHWt2DHDl9EinbaVNZfJBeFVM3FmyJvZ9XTccOKyn3jwanVZd8DZ3ptYvgKZ18Evb2FXHstpukLOGj2QRMF9zv4m-lDCDTWqcxqiZVnpyIm1dHWMBN8Tdk9cto3lR2axZE1_5IOcZ8PacWWhMlvgan2F5w1Pz5qojWAK2YYt-1fmfhf8nnZCPHlXy9_ehiDvgM-p18PRXwkiRQhZII8oF7-FFjstlr9FolX4kg4tk')"></div>
+<button class="absolute top-1 right-1 w-6 h-6 bg-black/40 text-white rounded-full flex items-center justify-center backdrop-blur-md active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+<!-- Preview Card 2 -->
+<div class="relative min-w-[120px] h-32 rounded-xl overflow-hidden custom-shadow group">
+<div class="w-full h-full bg-cover bg-center" data-alt="A soft, high-fidelity lifestyle photograph of a peaceful nursery interior featuring a wooden crib and a plush toy. The morning sun casts long, gentle shadows across the warm terracotta tiled floor. The overall mood is serene, secure, and clean, reflecting a nurturing childcare environment." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCiVPU5mlFS3nffPNG2KE5V7SOza772Vs0KrHcuded9GeSxpu7V98Mxjrip1fUGrzQ2uI0G2FHQF0xX95XZzirWZvdlJ4Lc9UAd8qXjlq5Ck0Aw9HhjCX0EtfaDXKaH25IeYCzLeRm47EIinJ9IW9qNiSyMxiAJDU9q2rHF4bniGccjqR7VjqkNUpg9tM0iL8a6li9KS0wFkhzyhuH0xogtQK5JjBqMYGPCjt_JwrO07eVyjD8qJriI-mQf-i5PRLXzPN-wAt8L_uY')"></div>
+<button class="absolute top-1 right-1 w-6 h-6 bg-black/40 text-white rounded-full flex items-center justify-center backdrop-blur-md active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+<!-- Placeholder Slot -->
+<button class="min-w-[120px] h-32 border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center text-outline-variant hover:bg-surface-container-low transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">add</span>
+<span class="text-label-md font-label-md">Tải lên</span>
+</button>
+</div>
+</div>
+<!-- Guidelines Callout -->
+<div class="bg-primary-container/10 p-4 rounded-xl border border-primary-container/20 flex gap-3">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="text-body-md text-on-primary-fixed-variant leading-relaxed">
+                    Hãy đảm bảo bài viết tuân thủ <span class="font-bold underline">Quy tắc cộng đồng</span>. Tránh chia sẻ thông tin y tế nhạy cảm mà không có sự tư vấn của bác sĩ.
+                </p>
+</div>
+</form>
+</main>
+<!-- Footer Action -->
+<footer class="p-safe-margin bg-background">
+<button class="w-full h-[52px] bg-primary text-white font-button text-button rounded-full active-shadow active:scale-[0.98] transition-all duration-200" id="saveBtn">
+            Lưu thay đổi
+        </button>
+</footer>
+<script>
+        // Form Interaction Logic
+        const anonToggle = document.getElementById('anonymousToggle');
+        const toggleThumb = document.getElementById('toggleThumb');
+        const userAvatar = document.getElementById('userAvatar');
+        const userNameText = document.getElementById('userName');
+        const postContent = document.getElementById('postContent');
+        const errorText = document.getElementById('errorText');
+        const saveBtn = document.getElementById('saveBtn');
+        const submitLink = document.getElementById('submitPost');
+
+        let isAnonymous = false;
+
+        anonToggle.addEventListener('click', () => {
+            isAnonymous = !isAnonymous;
+            if (isAnonymous) {
+                anonToggle.classList.replace('bg-outline-variant', 'bg-primary');
+                toggleThumb.classList.replace('translate-x-1', 'translate-x-6');
+                userAvatar.parentElement.classList.add('grayscale', 'opacity-50');
+                userNameText.innerText = 'Người dùng ẩn danh';
+                userNameText.classList.add('italic');
+            } else {
+                anonToggle.classList.replace('bg-primary', 'bg-outline-variant');
+                toggleThumb.classList.replace('translate-x-6', 'translate-x-1');
+                userAvatar.parentElement.classList.remove('grayscale', 'opacity-50');
+                userNameText.innerText = 'Nguyễn Thảo Anh';
+                userNameText.classList.remove('italic');
+            }
+        });
+
+        const validateAndSave = (e) => {
+            e.preventDefault();
+            if (postContent.value.trim() === '') {
+                errorText.classList.remove('hidden');
+                postContent.classList.add('border-error');
+                postContent.focus();
+            } else {
+                errorText.classList.add('hidden');
+                postContent.classList.remove('border-error');
+                
+                // Success feedback
+                saveBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><span class="material-symbols-outlined">check_circle</span> Đã lưu</span>';
+                saveBtn.classList.replace('bg-primary', 'bg-tertiary-container');
+                
+                setTimeout(() => {
+                    // Simulating navigation back
+                    console.log('Post Updated Successfully');
+                }, 1000);
+            }
+        };
+
+        saveBtn.addEventListener('click', validateAndSave);
+        submitLink.addEventListener('click', validateAndSave);
+
+        // Remove error on type
+        postContent.addEventListener('input', () => {
+            if (postContent.value.trim() !== '') {
+                errorText.classList.add('hidden');
+                postContent.classList.remove('border-error');
+            }
+        });
+
+        // Micro-interactions for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', () => btn.classList.add('scale-95'));
+            btn.addEventListener('touchend', () => btn.classList.remove('scale-95'));
+        });
+    </script>
+</body></html>

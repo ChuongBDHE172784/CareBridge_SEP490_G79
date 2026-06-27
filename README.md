@@ -6,49 +6,48 @@ CareBridge: A Maternal and Early Childhood Healthcare Platform.
 
 ```text
 CareBridge_SEP490_G79/
-├── 01_Requirements/
-│   ├── SRS/
-│   ├── UseCase/
+├── 01_Planning/
+│   ├── MeetingMinutes/
+│   ├── ProgressReports/
+│   ├── Risks/
+│   └── Schedule/
+├── 02_Requirements/
+│   ├── BusinessRules/
 │   ├── ContextDiagram/
 │   ├── DFD/
-│   ├── BusinessRules/
-│   └── RequirementTraceabilityMatrix/
-├── 02_Design/
-│   ├── Architecture/
-│   ├── Database/
-│   ├── UI_UX/
-│   ├── SequenceDiagram/
+│   ├── RequirementTraceabilityMatrix/
+│   ├── SRS/
+│   └── UseCase/
+├── 03_Design/
 │   ├── ActivityDiagram/
+│   ├── APIDesign/
+│   ├── Architecture/
 │   ├── ClassDiagram/
-│   └── APIDesign/
-├── 03_MachineLearning/
-│   ├── Dataset/
-│   ├── DataPreprocessing/
-│   ├── Training/
-│   ├── Models/
-│   ├── Evaluation/
-│   └── Documentation/
-├── 04_SourceCode/
-│   ├── Backend/
-│   ├── Frontend/
-│   ├── MobileApp/
-│   └── Database/
-├── 05_Testing/
+│   ├── SequenceDiagram/
+│   ├── TechnicalDesign/
+│   └── UI_UX/
+├── 04_Implement/
+│   └── implement_artifacts/
+├── 05_Development/
+│   ├── CareBridgeAPI/
+│   ├── CareBridgeMobileApp/
+│   ├── CareBridgeWebApp/
+│   ├── Contracts/
+│   ├── Database/
+│   ├── Deployment/
+│   ├── DevTools/
+│   └── MachineLearning/
+├── 06_Testing/
+│   ├── AISafety/
+│   ├── Automation/
+│   ├── BugReports/
+│   ├── SecurityPrivacy/
 │   ├── TestCases/
 │   ├── TestReports/
-│   ├── UAT/
-│   └── BugReports/
-├── 06_Deployment/
-│   ├── Docker/
-│   ├── CI_CD/
-│   ├── ReleaseNotes/
-│   └── UserGuide/
-├── 07_ProjectManagement/
-│   ├── Schedule/
-│   ├── MeetingMinutes/
-│   ├── Risks/
-│   └── ProgressReports/
-└── 09_Archive/
+│   └── UAT/
+├── 07_Reports/
+└── 08_References/
+    └── Template/
 ```
 
 Empty folders are kept with `.gitkeep` files so Git can track the SDLC structure.

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pre-exercise Safety Check</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F6F1EC; }
+        .soft-shadow { box-shadow: 0 4px 20px rgba(90, 70, 63, 0.08); }
+        .checkbox-custom:checked { background-color: #C98C7B; border-color: #C98C7B; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-lg text-on-background min-h-screen flex flex-col pb-safe">
+<!-- TopAppBar Component -->
+<header class="bg-background dark:bg-background font-headline-md text-headline-md docked full-width top-0 bg-background dark:bg-background flat no shadows flex justify-between items-center px-gutter-mobile h-16 w-full z-50 sticky">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-container">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-inverse-primary truncate flex-1 text-center px-4">Kiểm tra an toàn</h1>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-container">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">close</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto px-container-margin-mobile pt-4 pb-24 space-y-6">
+<!-- Exercise Info Card -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow p-4 flex items-center gap-4">
+<div class="w-16 h-16 bg-surface-container-highest rounded-lg flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">soba</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Yoga bầu thư giãn</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tam cá nguyệt thứ 2 • 20 phút</p>
+</div>
+</div>
+<!-- Warning Message -->
+<div class="bg-surface-container-high rounded-xl p-4 flex gap-3 text-on-surface-variant border-l-4 border-primary">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="font-body-sm text-body-sm">Để đảm bảo an toàn cho mẹ và bé, vui lòng trả lời trung thực các câu hỏi dưới đây trước khi bắt đầu bài tập.</p>
+</div>
+<!-- Checklist -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow p-5 space-y-4">
+<h3 class="font-headline-md text-headline-md text-on-surface border-b border-surface-variant pb-2">Tình trạng sức khỏe hiện tại</h3>
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="checkbox-custom mt-1 h-5 w-5 rounded border-outline-variant text-primary-container focus:ring-primary-container transition-colors" type="checkbox"/>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Tôi không cảm thấy chóng mặt hay hoa mắt trong 24 giờ qua.</span>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="checkbox-custom mt-1 h-5 w-5 rounded border-outline-variant text-primary-container focus:ring-primary-container transition-colors" type="checkbox"/>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Tôi không bị đau bụng hoặc gò tử cung bất thường.</span>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="checkbox-custom mt-1 h-5 w-5 rounded border-outline-variant text-primary-container focus:ring-primary-container transition-colors" type="checkbox"/>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Tôi chưa bị ra máu hoặc rỉ ối.</span>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="checkbox-custom mt-1 h-5 w-5 rounded border-outline-variant text-primary-container focus:ring-primary-container transition-colors" type="checkbox"/>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Tôi đã uống đủ nước và ăn nhẹ trước khi tập.</span>
+</label>
+</div>
+<!-- Symptom Input -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow p-5">
+<label class="block font-headline-md text-headline-md text-on-surface mb-2" for="symptoms">Ghi chú khác (Không bắt buộc)</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-3">Có triệu chứng nào khác khiến bạn lo lắng không?</p>
+<div class="relative">
+<textarea class="w-full bg-surface-bright border border-outline-variant rounded-lg p-3 font-body-lg text-body-lg text-on-surface focus:ring-2 focus:ring-primary-container focus:border-primary-container transition-shadow resize-none placeholder:text-outline" id="symptoms" placeholder="Ví dụ: Hơi đau lưng nhẹ..." rows="3"></textarea>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Actions -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-surface-container-lowest border-t border-surface-variant shadow-[0_-4px_20px_rgba(90,70,63,0.08)]">
+<div class="flex gap-4 max-w-md mx-auto">
+<button class="flex-1 py-3 px-4 rounded-full border-2 border-primary-container text-primary-container font-headline-md text-headline-md text-center hover:bg-surface-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2">
+                Quay lại
+            </button>
+<button class="flex-[2] py-3 px-4 rounded-full bg-primary-container text-on-primary font-headline-md text-headline-md text-center shadow-md hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 opacity-50 cursor-not-allowed">
+                Bắt đầu buổi tập
+            </button>
+</div>
+</div>
+</body></html>

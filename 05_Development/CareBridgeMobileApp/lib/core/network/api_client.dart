@@ -8,7 +8,8 @@ import 'account_block_parser.dart';
 
 String get _baseUrl {
   if (kIsWeb) return 'http://localhost:8080';
-  if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+  // 10.0.2.2 only works on AVD emulator; use LAN IP for physical devices
+  if (Platform.isAndroid) return 'http://192.168.1.11:8080';
   return 'http://localhost:8080';
 }
 

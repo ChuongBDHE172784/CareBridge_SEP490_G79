@@ -12,6 +12,7 @@ public class AuditEligibilityPolicy {
             AuditAction.LOGIN,
             AuditAction.LOGOUT,
             AuditAction.OTP_SENT,
+            AuditAction.OTP_RESENT,
             AuditAction.OTP_VERIFIED,
             AuditAction.CONSENT_GRANTED,
             AuditAction.CONSENT_REVOKED,

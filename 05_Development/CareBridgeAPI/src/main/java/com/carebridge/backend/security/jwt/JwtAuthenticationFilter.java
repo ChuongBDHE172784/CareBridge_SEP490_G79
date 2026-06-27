@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -25,9 +24,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    // Static mapper is thread-safe after initial configuration and avoids a
-    // constructor dependency that breaks @WebMvcTest slices (ObjectMapper isn't
-    // always resolvable in the filter construction phase of the test context).
     private static final ObjectMapper MAPPER =
             new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -84,18 +80,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                subject, null, jwtTokenProvider.getAuthorities(token));
+        UUID sessionId = jwtTokenProvider.getSessionId(token);
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(
+                subject,
+                null,
+                jwtTokenProvider.getAuthorities(token),
+                sessionId);
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        org.springframework.security.core.context.SecurityContext securityContext =
+                SecurityContextHolder.createEmptyContext();
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
 
         filterChain.doFilter(request, response);
     }
 
     private String resolveToken(HttpServletRequest request) {
-        String header = request.getHeader(SecurityConstants.AUTHORIZATION_HEADER);
-        if (header != null && header.startsWith(SecurityConstants.BEARER_PREFIX)) {
-            return header.substring(SecurityConstants.BEARER_PREFIX.length());
+        String bearerToken = request.getHeader(SecurityConstants.AUTHORIZATION_HEADER);
+        if (bearerToken != null && bearerToken.startsWith(SecurityConstants.BEARER_PREFIX)) {
+            return bearerToken.substring(SecurityConstants.BEARER_PREFIX.length());
         }
         return null;
     }

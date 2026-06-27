@@ -1,10 +1,14 @@
+// TODO: Implement from design mockup CB-083 — /build-screen CB-083
 export default function AdminDashboardPage() {
+  return <PlaceholderPage title="Admin Dashboard" cb="CB-083" />;
+}
+
+function PlaceholderPage({ title, cb }: { title: string; cb: string }) {
   return (
-    <div style={{ padding: 48 }}>
-      <h2 style={{ margin: '0 0 8px', fontSize: 24, color: '#333' }}>System Admin Dashboard</h2>
-      <p style={{ margin: 0, color: '#888', fontSize: 14 }}>
-        Platform administration features are coming soon.
-      </p>
+    <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
+      <p style={{ fontSize: 32, marginBottom: 8 }}>🚧</p>
+      <h2 style={{ color: '#845143', marginBottom: 8 }}>{title}</h2>
+      <p>Chưa được implement. Chạy <code>/build-screen {cb}</code> để tạo giao diện.</p>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.content.controller.ContentController;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
@@ -42,7 +43,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = ContentController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class JwtAuthenticationFilterAccountStateTest {
 
     @Autowired

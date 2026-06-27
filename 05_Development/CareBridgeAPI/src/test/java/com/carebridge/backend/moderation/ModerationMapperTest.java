@@ -22,7 +22,7 @@ class ModerationMapperTest {
         r.setTargetId(targetId);
         r.setTargetType(type);
         r.setStatus(ReportStatus.PENDING);
-        r.setReasonCode("Inappropriate content");
+        r.setCategory("Inappropriate content");
         r.setCreatedAt(Instant.now());
         return r;
     }

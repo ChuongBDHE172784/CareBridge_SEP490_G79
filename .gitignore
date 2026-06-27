@@ -67,6 +67,15 @@ out/
 .github/agents/
 _bmad/
 _bmad-output/
+AGENTS.md
+CLAUDE.md
+
+# Local Claude skills (untracked - keep local only)
+.claude/skills/ui-skill-system/
+.agent/skills/ui-skill-system/
+.agents/skills/ui-skill-system/
+
+# Note: ui-skill-system is intentionally NOT tracked - keep it local
 
 # Local helper scripts and one-off tools
 scripts/

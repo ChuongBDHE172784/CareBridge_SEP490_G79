@@ -47,8 +47,8 @@ public class ModerationMapper {
     }
 
     private String buildReason(ContentReport report) {
-        if (report.getReasonCode() != null && !report.getReasonCode().isBlank()) {
-            return report.getReasonCode();
+        if (report.getCategory() != null && !report.getCategory().isBlank()) {
+            return report.getCategory();
         }
         return report.getDescription() != null ? report.getDescription() : "";
     }

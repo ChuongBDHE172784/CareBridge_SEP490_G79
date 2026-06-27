@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthAdmin Workspace - Update Consultation Price</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#36322e",
+                        "on-surface-variant": "#524440",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "error-container": "#ffdad6",
+                        "on-background": "#271812",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#ffe9e3",
+                        "primary": "#845143",
+                        "surface-container-highest": "#fadcd3",
+                        "outline-variant": "#d6c2bd",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#fff8f6",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#fadcd3",
+                        "secondary": "#6e5a52",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#a09a95",
+                        "outline": "#84736f",
+                        "on-secondary-container": "#735e56",
+                        "surface-container-low": "#fff1ec",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-primary-container": "#51271b",
+                        "primary-container": "#c98c7b",
+                        "surface-tint": "#845143",
+                        "inverse-surface": "#3e2c26",
+                        "background": "#fff8f6",
+                        "inverse-primary": "#fab7a4",
+                        "surface-dim": "#f1d4ca",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "inverse-on-surface": "#ffede7",
+                        "secondary-container": "#f6dacf",
+                        "primary-fixed": "#ffdbd1",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "surface": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-fixed": "#e9e1db",
+                        "tertiary": "#625d59",
+                        "on-surface": "#271812",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-fixed": "#271812",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-primary-fixed": "#341006"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin-desktop": "40px",
+                        "gutter-mobile": "16px",
+                        "container-margin-mobile": "20px",
+                        "gutter-desktop": "24px",
+                        "unit": "8px",
+                        "sidebar-width": "280px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Quicksand"],
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-sm": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); }
+        /* Custom scrollbar for drawer */
+        .drawer-scroll::-webkit-scrollbar { width: 6px; }
+        .drawer-scroll::-webkit-scrollbar-track { background: transparent; }
+        .drawer-scroll::-webkit-scrollbar-thumb { background-color: theme('colors.tertiary-container'); border-radius: 10px; }
+    </style>
+</head>
+<body class="text-on-background font-body-lg overflow-hidden flex h-screen">
+<!-- Intent: Transactional Drawer overlay - Global Nav suppressed intentionally per semantic shell mandate -->
+<!-- Background Canvas (Dimmed) -->
+<div class="fixed inset-0 bg-on-background/30 backdrop-blur-sm z-40 transition-opacity"></div>
+<!-- Right Drawer -->
+<div class="fixed right-0 top-0 h-full w-[480px] bg-surface-container-lowest z-50 shadow-[0_4px_40px_rgba(90,70,63,0.15)] flex flex-col transform transition-transform duration-300 translate-x-0 border-l border-outline-variant/30 rounded-l-[24px]">
+<!-- Drawer Header -->
+<header class="px-8 py-6 flex items-center justify-between border-b border-outline-variant/30">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Update Consultation Price</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">General Initial Assessment</p>
+</div>
+<button class="h-10 w-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</header>
+<!-- Drawer Content -->
+<main class="flex-1 overflow-y-auto drawer-scroll px-8 py-8 space-y-8">
+<!-- Current Value Card -->
+<section class="bg-surface-container-low rounded-DEFAULT p-6 border border-outline-variant/50">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Current Price</span>
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-container/10 text-primary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="check_circle">check_circle</span> Active
+                    </span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">$150.00</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">/ session</span>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="history">history</span>
+<span class="font-body-sm text-body-sm">Effective since Oct 1, 2023</span>
+</div>
+</section>
+<!-- Update Form -->
+<form class="space-y-6">
+<!-- New Price Input -->
+<div class="space-y-2">
+<label class="font-body-sm text-body-sm text-on-surface font-semibold" for="new_price">New Price</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="text-on-surface-variant font-body-lg">$</span>
+</div>
+<input class="block w-full pl-8 pr-4 py-3 rounded-DEFAULT border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface-container-lowest text-on-surface font-body-lg transition-colors placeholder:text-on-surface-variant/50" id="new_price" name="new_price" placeholder="0.00" type="number" value="165.00"/>
+</div>
+</div>
+<!-- Effective Date -->
+<div class="space-y-2">
+<label class="font-body-sm text-body-sm text-on-surface font-semibold" for="effective_date">Effective Date</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="calendar_month">calendar_month</span>
+</div>
+<input class="block w-full pl-12 pr-4 py-3 rounded-DEFAULT border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface-container-lowest text-on-surface font-body-lg transition-colors" id="effective_date" name="effective_date" type="date" value="2024-01-01"/>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Changes take effect at 00:00 on the selected date.</p>
+</div>
+<!-- Rationale -->
+<div class="space-y-2">
+<label class="font-body-sm text-body-sm text-on-surface font-semibold" for="rationale">Rationale (Internal)</label>
+<textarea class="block w-full p-4 rounded-DEFAULT border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface-container-lowest text-on-surface font-body-lg transition-colors resize-none placeholder:text-on-surface-variant/50" id="rationale" name="rationale" placeholder="Explain the reason for this price adjustment..." rows="3">Annual adjustment for inflation and increased operational costs.</textarea>
+</div>
+</form>
+<!-- Version History Accordion (Simplified) -->
+<div class="mt-8 border border-outline-variant/50 rounded-DEFAULT overflow-hidden">
+<button aria-expanded="true" class="w-full flex items-center justify-between p-4 bg-surface-container-lowest hover:bg-surface-container-low transition-colors text-left" type="button">
+<span class="font-body-lg text-body-lg font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="manage_history">manage_history</span>
+                        Version History
+                    </span>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform rotate-180" data-icon="keyboard_arrow_down">keyboard_arrow_down</span>
+</button>
+<div class="p-4 bg-surface-container-lowest border-t border-outline-variant/30">
+<ul class="space-y-4 relative before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-outline-variant/30">
+<li class="relative pl-8">
+<div class="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-surface-container-lowest border-2 border-outline-variant flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-body-lg text-body-lg text-on-surface">$140.00</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Jan 1, 2022</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">System setup initial pricing.</p>
+</li>
+</ul>
+</div>
+</div>
+</main>
+<!-- Drawer Footer Actions -->
+<footer class="p-6 border-t border-outline-variant/30 bg-surface-container-lowest flex items-center justify-end gap-4 rounded-bl-[24px]">
+<button class="px-6 py-3 min-h-[48px] rounded-full border-2 border-primary text-primary font-body-lg text-body-lg font-semibold hover:bg-primary-container/10 transition-colors">
+                Cancel
+            </button>
+<button class="px-6 py-3 min-h-[48px] rounded-full bg-primary text-on-primary font-body-lg text-body-lg font-semibold hover:bg-primary/90 shadow-[0_4px_12px_rgba(90,70,63,0.15)] transition-all">
+                Schedule Update
+            </button>
+</footer>
+</div>
+</body></html>
