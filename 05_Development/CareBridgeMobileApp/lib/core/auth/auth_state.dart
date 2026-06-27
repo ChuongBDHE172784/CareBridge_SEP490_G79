@@ -19,6 +19,7 @@ class AuthState extends ChangeNotifier {
   String? _blockedReason;
 
   String? get accessToken => _accessToken;
+  String? get refreshToken => _refreshToken;
   String? get role => _role;
   String? get userId => _userId;
   bool get isRestoring => _isRestoring;
@@ -32,15 +33,25 @@ class AuthState extends ChangeNotifier {
     try {
       final tokens = await _storage.load();
       final access = tokens['accessToken'];
-      if (access == null || _isJwtExpired(access)) {
-        unawaited(_storage.clear());
-      } else {
+      final refresh = tokens['refreshToken'];
+      if (access != null && !_isJwtExpired(access)) {
         _accessToken = access;
-        _refreshToken = tokens['refreshToken'];
+        _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
+        debugPrint('[AuthState] init: access token valid → authenticated');
+      } else if (refresh != null) {
+        _refreshToken = refresh;
+        _userId = tokens['userId'];
+        _role = tokens['role'];
+        _accessToken = 'expired';
+        debugPrint('[AuthState] init: access expired, refresh present → sentinel set');
+      } else {
+        debugPrint('[AuthState] init: no tokens → clearing, redirect to login');
+        unawaited(_storage.clear());
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[AuthState] init: error → $e → clearing storage');
       unawaited(_storage.clear());
     } finally {
       _isRestoring = false;

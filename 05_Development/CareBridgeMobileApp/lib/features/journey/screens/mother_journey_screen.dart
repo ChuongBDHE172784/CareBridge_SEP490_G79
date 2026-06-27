@@ -109,10 +109,21 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      child: const Text(
-        'Hành trình của Mẹ',
-        style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface),
+      padding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Hành trình của Mẹ',
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface),
+            ),
+          ),
+          IconButton(
+            onPressed: () => context.push('/journey-setup'),
+            icon: const Icon(Icons.edit_outlined, color: _primary),
+            tooltip: 'Cập nhật hành trình',
+          ),
+        ],
       ),
     );
   }

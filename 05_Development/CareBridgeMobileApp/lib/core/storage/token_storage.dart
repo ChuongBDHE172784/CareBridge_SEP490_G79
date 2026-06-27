@@ -52,5 +52,10 @@ class SecureTokenStorage implements TokenStorage {
   }
 
   @override
-  Future<void> clear() => _store.deleteAll();
+  Future<void> clear() => Future.wait([
+    _store.delete(key: _keyAccess),
+    _store.delete(key: _keyRefresh),
+    _store.delete(key: _keyUserId),
+    _store.delete(key: _keyRole),
+  ]);
 }

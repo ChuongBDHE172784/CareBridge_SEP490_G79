@@ -32,18 +32,26 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
 
-  final _service = ReminderService();
+  final _service = ReminderService.instance;
   List<Reminder> _allReminders = [];
   _TaskFilter _filter = _TaskFilter.all;
   bool _loading = true;
 
-  // Local done state for optimistic updates
-  final Set<String> _localDone = {};
-
   @override
   void initState() {
     super.initState();
+    _service.addListener(_onServiceChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _service.removeListener(_onServiceChanged);
+    super.dispose();
+  }
+
+  void _onServiceChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -58,24 +66,12 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
 
   List<Reminder> get _filtered {
     return _allReminders.where((r) {
-      final done = r.status == ReminderStatus.done || _localDone.contains(r.id);
       switch (_filter) {
         case _TaskFilter.all: return true;
-        case _TaskFilter.pending: return !done;
-        case _TaskFilter.done: return done;
+        case _TaskFilter.pending: return !_service.isDone(r);
+        case _TaskFilter.done: return _service.isDone(r);
       }
     }).toList();
-  }
-
-  void _toggleDone(Reminder r) {
-    setState(() {
-      if (_localDone.contains(r.id)) {
-        _localDone.remove(r.id);
-      } else {
-        _localDone.add(r.id);
-        _service.markDone(r.id);
-      }
-    });
   }
 
   String _todayLabel() {
@@ -111,9 +107,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                               separatorBuilder: (_, __) => const SizedBox(height: 12),
                               itemBuilder: (_, i) => _TaskCard(
                                 reminder: _filtered[i],
-                                isDone: _filtered[i].status == ReminderStatus.done ||
-                                    _localDone.contains(_filtered[i].id),
-                                onToggle: () => _toggleDone(_filtered[i]),
+                                isDone: _service.isDone(_filtered[i]),
+                                onToggle: () => _service.toggleDone(_filtered[i]),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -145,8 +140,19 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Việc cần làm',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+          Row(
+            children: [
+              if (Navigator.of(context).canPop())
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back, color: _primary),
+                ),
+              const Expanded(
+                child: Text('Việc cần làm',
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(_todayLabel(),
               style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: Color(0xFF524440))),

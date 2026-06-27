@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'core/auth/auth_state.dart';
 import 'core/routes/app_router.dart';
+import 'features/reminder/services/reminder_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Auth and reminder state must be ready before the router renders.
+  // Running them after runApp() causes a race: HomeShell fires API calls
+  // before init() completes, which clears valid tokens from storage.
+  await AuthState.instance.init();
+  await ReminderService.instance.loadState();
   runApp(const CareBridgeApp());
-  // init() completes async; notifyListeners() inside triggers rebuild
-  AuthState.instance.init();
 }
 
 class CareBridgeApp extends StatelessWidget {

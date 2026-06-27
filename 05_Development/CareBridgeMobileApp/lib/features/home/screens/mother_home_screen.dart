@@ -34,14 +34,11 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   static const _error = Color(0xFFBA1A1A);
 
   final _journeyService = JourneyService();
-  final _reminderService = ReminderService();
+  final _reminderService = ReminderService.instance;
 
   JourneyDashboard? _dashboard;
   List<Reminder> _tasks = [];
   bool _loading = true;
-
-  // Optimistic done-toggle for tasks
-  final Set<String> _localDone = {};
 
   static const _mockArticles = [
     _Article('Dinh dưỡng', 'Bổ sung sắt và canxi đúng cách tuần 24', 0xFF4CAF50),
@@ -52,7 +49,18 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _reminderService.addListener(_onServiceChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _reminderService.removeListener(_onServiceChanged);
+    super.dispose();
+  }
+
+  void _onServiceChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -354,16 +362,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
         else
           ...List.generate(_tasks.length, (i) {
             final t = _tasks[i];
-            final isDone = t.status == ReminderStatus.done || _localDone.contains(t.id);
             return Padding(
               padding: EdgeInsets.only(bottom: i < _tasks.length - 1 ? 10 : 0),
               child: _TaskRow(
                 reminder: t,
-                isDone: isDone,
-                onToggle: () => setState(() {
-                  if (_localDone.contains(t.id)) _localDone.remove(t.id);
-                  else _localDone.add(t.id);
-                }),
+                isDone: _reminderService.isDone(t),
+                onToggle: () => _reminderService.toggleDone(t),
               ),
             );
           }),

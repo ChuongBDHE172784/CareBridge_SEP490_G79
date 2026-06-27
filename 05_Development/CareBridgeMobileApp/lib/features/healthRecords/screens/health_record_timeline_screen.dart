@@ -38,7 +38,7 @@ class _HealthRecordTimelineScreenState
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -255,8 +255,47 @@ class _MonthGroup extends StatelessWidget {
 
   const _MonthGroup({required this.month, required this.records, required this.onTap});
 
+  Widget _dot(bool isFirst) => Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: isFirst ? const Color(0xFFC98C7B) : const Color(0xFFFADCD3),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFFFF8F6), width: 3),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final items = <Widget>[];
+    for (int i = 0; i < records.length; i++) {
+      final r = records[i];
+      // Record row: dot on the left, card on the right.
+      items.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 40,
+            child: Align(alignment: Alignment.topCenter, child: _dot(i == 0)),
+          ),
+          Expanded(child: _RecordCard(record: r, onTap: () => onTap(r))),
+        ],
+      ));
+      // Connector between records: fixed-height 2px line centred under the dot column.
+      if (i < records.length - 1) {
+        items.add(SizedBox(
+          height: 16,
+          child: Row(children: [
+            SizedBox(
+              width: 40,
+              child: Center(child: Container(width: 2, color: const Color(0xFFFFE2D9))),
+            ),
+            const Expanded(child: SizedBox.shrink()),
+          ]),
+        ));
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -268,55 +307,7 @@ class _MonthGroup extends StatelessWidget {
                 color: Color(0xFF271812),
               )),
         ),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left column: dot + line
-              SizedBox(
-                width: 40,
-                child: Column(
-                  children: records.asMap().entries.map((e) {
-                    final isFirst = e.key == 0;
-                    return Column(
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: isFirst
-                                ? const Color(0xFFC98C7B)
-                                : const Color(0xFFFADCD3),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFFFFF8F6), width: 3),
-                          ),
-                        ),
-                        if (e.key < records.length - 1)
-                          Expanded(child: Container(
-                            width: 2,
-                            color: const Color(0xFFFFE2D9),
-                          )),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-              // Right column: cards
-              Expanded(
-                child: Column(
-                  children: records.asMap().entries.map((e) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                          bottom: e.key < records.length - 1 ? 16 : 0),
-                      child: _RecordCard(record: e.value, onTap: () => onTap(e.value)),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
+        ...items,
         const SizedBox(height: 24),
       ],
     );

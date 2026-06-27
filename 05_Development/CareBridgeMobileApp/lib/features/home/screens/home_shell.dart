@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'mother_home_screen.dart';
 import '../../journey/screens/mother_journey_screen.dart';
+import '../../auth/screens/account_profile_screen.dart';
 
 /// Main app shell housing the BottomNavigationBar (5 tabs).
 /// Tabs: Home (CB-008) | Journey (CB-009) | Community | Tasks | Profile
@@ -35,7 +36,7 @@ class _HomeShellState extends State<HomeShell> {
     MotherJourneyScreen(),    // 1: Hành trình (CB-009)
     _PlaceholderTab('Cộng đồng'),  // 2: TODO: community screen (CB-020)
     _PlaceholderTab('Việc cần làm'), // 3: TODO: tasks tab (CB-013 is modal-style)
-    _PlaceholderTab('Hồ sơ'),      // 4: TODO: profile screen
+    AccountProfileScreen(),         // 4: Hồ sơ tài khoản
   ];
 
   @override

@@ -27,11 +27,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   String? _error;
 
   bool get _hasMinLength => _passwordController.text.length >= 8;
+  bool get _hasUppercase => _passwordController.text.contains(RegExp(r'[A-Z]'));
+  bool get _hasLowercase => _passwordController.text.contains(RegExp(r'[a-z]'));
   bool get _hasDigit => _passwordController.text.contains(RegExp(r'\d'));
+  bool get _hasSpecial => _passwordController.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
   bool get _passwordsMatch => _passwordController.text == _confirmController.text && _confirmController.text.isNotEmpty;
 
   Future<void> _submit() async {
-    if (!_hasMinLength || !_hasDigit || !_passwordsMatch) return;
+    if (!_hasMinLength || !_hasUppercase || !_hasLowercase || !_hasDigit || !_hasSpecial || !_passwordsMatch) return;
     setState(() { _isSubmitting = true; _error = null; });
     try {
       await apiPost('/api/v1/auth/reset-password', {
@@ -86,7 +89,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               SizedBox(
                 width: double.infinity, height: 52,
                 child: FilledButton(
-                  onPressed: _isSubmitting || !_hasMinLength || !_hasDigit || !_passwordsMatch ? null : _submit,
+                  onPressed: _isSubmitting || !_hasMinLength || !_hasUppercase || !_hasLowercase || !_hasDigit || !_hasSpecial || !_passwordsMatch ? null : _submit,
                   style: FilledButton.styleFrom(backgroundColor: _primaryContainer, disabledBackgroundColor: _primaryContainer.withValues(alpha: 0.4), shape: const StadiumBorder()),
                   child: _isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -131,7 +134,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 12),
           _requirementRow('Ít nhất 8 ký tự', _hasMinLength),
           const SizedBox(height: 8),
+          _requirementRow('Chứa chữ hoa (A-Z)', _hasUppercase),
+          const SizedBox(height: 8),
+          _requirementRow('Chứa chữ thường (a-z)', _hasLowercase),
+          const SizedBox(height: 8),
           _requirementRow('Chứa ít nhất 1 chữ số', _hasDigit),
+          const SizedBox(height: 8),
+          _requirementRow('Chứa ký tự đặc biệt (!@#\$...)', _hasSpecial),
           const SizedBox(height: 8),
           _requirementRow('Mật khẩu khớp nhau', _passwordsMatch),
         ],

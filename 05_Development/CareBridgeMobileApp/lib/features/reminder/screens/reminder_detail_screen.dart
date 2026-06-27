@@ -28,7 +28,7 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
   static const _errorContainer = Color(0xFFFFDAD6);
   static const _error = Color(0xFFBA1A1A);
 
-  final _service = ReminderService();
+  final _service = ReminderService.instance;
   Reminder? _reminder;
   bool _loading = true;
   String? _error2;
@@ -196,10 +196,7 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
                 fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurfaceVariant),
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.close, color: _primary),
-          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -216,10 +213,6 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            width: 4, height: double.infinity,
-            // top accent bar
-          ),
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),

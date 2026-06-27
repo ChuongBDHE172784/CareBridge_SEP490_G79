@@ -3,16 +3,22 @@
 ## Commands
 
 * Backend (`05_Development/CareBridgeAPI`):
-  * Run: `./mvnw spring-boot:run`
+  * Run: `set -a && source .env && set +a && ./mvnw spring-boot:run`
   * Build/Package: `./mvnw clean package`
   * Test: `./mvnw test`
+  * Requires `.env` file with `SUPABASE_DB_URL`, `JWT_SECRET`, etc. (see `.env.example`).
+  * Values containing `&` or spaces must be quoted in `.env` for bash `source` compatibility.
 * Web (`05_Development/CareBridgeWebApp`):
   * Run: `npm run dev`
   * Build: `npm run build`
 * Mobile (`05_Development/CareBridgeMobileApp`):
-  * Run: `flutter run`
+  * Run on Chrome: `flutter run -d chrome`
+  * Run on emulator: `flutter run` (defaults to `10.0.2.2:8080`)
+  * Run on physical device: `flutter run -d <device-id> --dart-define=API_BASE_URL=http://<LAN_IP>:8080`
   * Build: `flutter build apk`
   * Test: `flutter test`
+  * API base URL is configured via `--dart-define=API_BASE_URL`. When omitted, defaults: web → `localhost:8080`, Android emulator → `10.0.2.2:8080`.
+  * If Android build fails with Kotlin incremental cache errors on Windows, add `kotlin.incremental=false` to `android/gradle.properties` and kill Gradle/Kotlin daemons before retrying.
 
 ## Stack
 

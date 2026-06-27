@@ -71,10 +71,13 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
         height: 48,
         child: Row(
           children: [
-            IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back, color: _primaryColor),
-            ),
+            if (Navigator.of(context).canPop())
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back, color: _primaryColor),
+              )
+            else
+              const SizedBox(width: 48),
             const Expanded(
               child: Text('Hồ sơ tài khoản', textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor)),

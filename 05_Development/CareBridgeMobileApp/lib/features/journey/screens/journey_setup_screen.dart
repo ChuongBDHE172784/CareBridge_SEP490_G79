@@ -142,13 +142,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                         _buildHeader(),
                         const SizedBox(height: 32),
                         _buildStageCards(),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeInOut,
-                          child: _selectedStage != null
-                              ? _buildDynamicFields()
-                              : const SizedBox.shrink(),
-                        ),
                       ],
                     ),
                   ),
@@ -252,6 +245,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             _dueDate = null; _lmpDate = null; _babyBirthDate = null; _error = null;
           }),
         ),
+        _buildInlineForm(
+          visible: _selectedStage == _Stage.prePregnancy,
+          child: const Text(
+            'Tuyệt vời! Chúng tôi sẽ chuẩn bị không gian tối ưu cho hành trình sắp tới của bạn.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5),
+          ),
+        ),
         const SizedBox(height: 16),
         _StageCard(
           icon: Icons.pregnant_woman,
@@ -262,6 +263,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             _selectedStage = _Stage.pregnancy;
             _babyBirthDate = null; _error = null;
           }),
+        ),
+        _buildInlineForm(
+          visible: _selectedStage == _Stage.pregnancy,
+          child: _buildPregnancyFields(),
         ),
         const SizedBox(height: 16),
         _StageCard(
@@ -274,37 +279,33 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             _dueDate = null; _lmpDate = null; _error = null;
           }),
         ),
+        _buildInlineForm(
+          visible: _selectedStage == _Stage.postpartum,
+          child: _buildPostpartumFields(),
+        ),
       ],
     );
   }
 
-  Widget _buildDynamicFields() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _surfaceContainerLow,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _outlineVariant),
-        ),
-        child: switch (_selectedStage) {
-          _Stage.prePregnancy => const Text(
-              'Tuyệt vời! Chúng tôi sẽ chuẩn bị không gian tối ưu cho hành trình sắp tới của bạn.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: _onSurfaceVariant,
-                height: 1.5,
+  Widget _buildInlineForm({required bool visible, required Widget child}) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: visible
+          ? Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _outlineVariant),
+                ),
+                child: child,
               ),
-            ),
-          _Stage.pregnancy => _buildPregnancyFields(),
-          _Stage.postpartum => _buildPostpartumFields(),
-          null => const SizedBox.shrink(),
-        },
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 

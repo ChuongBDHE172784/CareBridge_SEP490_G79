@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -18,6 +19,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
 
   final _contactController = TextEditingController();
+  final _tokenController = TextEditingController();
   bool _isSubmitting = false;
   String? _error;
   bool _sent = false;
@@ -43,8 +45,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
+  void _goToReset() {
+    final token = _tokenController.text.trim();
+    if (token.isEmpty) {
+      setState(() => _error = 'Vui lòng nhập mã xác nhận từ email.');
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => ResetPasswordScreen(token: token)),
+    );
+  }
+
   @override
-  void dispose() { _contactController.dispose(); super.dispose(); }
+  void dispose() { _contactController.dispose(); _tokenController.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -86,20 +99,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _primaryContainer, width: 2)),
                   ),
                 ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBA1A1A))),
-                ],
+              ] else ...[
+                TextField(
+                  controller: _tokenController,
+                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+                  decoration: InputDecoration(
+                    hintText: 'Dán mã xác nhận từ email',
+                    hintStyle: TextStyle(fontFamily: 'Lexend', color: _outlineVariant),
+                    prefixIcon: Icon(Icons.key, color: _outlineVariant),
+                    filled: true, fillColor: _surfaceContainerLowest,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _outlineVariant)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _outlineVariant)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _primaryContainer, width: 2)),
+                  ),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBA1A1A))),
               ],
               const Spacer(),
               SizedBox(
                 width: double.infinity, height: 52,
                 child: FilledButton(
-                  onPressed: _isSubmitting ? null : (_sent ? () => Navigator.of(context).pop() : _submit),
+                  onPressed: _isSubmitting ? null : (_sent ? _goToReset : _submit),
                   style: FilledButton.styleFrom(backgroundColor: _primaryContainer, disabledBackgroundColor: _primaryContainer.withValues(alpha: 0.6), shape: const StadiumBorder()),
                   child: _isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(_sent ? 'Quay lại đăng nhập' : 'Gửi mã', style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                      : Text(_sent ? 'Tiếp tục đặt lại mật khẩu' : 'Gửi mã', style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
               if (!_sent) ...[
