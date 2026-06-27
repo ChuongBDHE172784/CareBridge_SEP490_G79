@@ -1,0 +1,52 @@
+package com.carebridge.backend.triage.controller;
+
+import com.carebridge.backend.common.response.ApiResponse;
+import com.carebridge.backend.common.util.SecurityUtils;
+import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
+import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
+import com.carebridge.backend.triage.dto.response.TriageResultResponse;
+import com.carebridge.backend.triage.service.ITriageService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/triage/intake")
+@RequiredArgsConstructor
+public class IntakeController {
+
+    private final ITriageService triageService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<IntakeSessionResponse>> runIntake(
+            @Valid @RequestBody RunIntakeRequest request,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        IntakeSessionResponse response = triageService.runIntake(request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{sessionId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<TriageResultResponse>> getResult(
+            @PathVariable UUID sessionId,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(triageService.getResult(sessionId, userId)));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<List<IntakeSessionResponse>>> listSessions(Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(triageService.listSessions(userId)));
+    }
+}
