@@ -80,4 +80,20 @@ class AuthService {
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     await apiPost('/api/v1/auth/resend-otp', body);
   }
+
+  // Current authenticated user profile for account-facing UI.
+  Future<UserProfile> getProfile() async {
+    final res = await apiGet('/api/v1/auth/profile');
+    return UserProfile.fromJson(res['data'] as Map<String, dynamic>? ?? {});
+  }
+
+  // UC-04: Logout current session using the backend's real contract.
+  // The request body may be empty because the backend can revoke by JWT sid.
+  Future<void> logout({String? refreshToken}) async {
+    final body = <String, dynamic>{};
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      body['refreshToken'] = refreshToken;
+    }
+    await apiPost('/api/v1/auth/logout', body);
+  }
 }

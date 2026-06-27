@@ -42,4 +42,4 @@ class CareBridgeApp extends StatelessWidget {
       routerConfig: appRouter,
     );
   }
-}
+}

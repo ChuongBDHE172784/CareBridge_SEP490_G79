@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 /// CB-004 — Login (UC-03)
@@ -249,7 +250,9 @@ class _LoginScreenState extends State<LoginScreen> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () {
-              // TODO: navigate to ForgotPasswordScreen (CB-005)
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+              );
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,

@@ -1,6 +1,6 @@
 # TV1 (Phương) — Screen Build Tracking: Sprint 0 & Sprint 1
 
-**Cập nhật lần cuối:** 2026-06-27 (CB-001, CB-002, CB-003, CB-004 — Done)  
+**Cập nhật lần cuối:** 2026-06-27 (All Sprint 0 + Sprint 1 screens — Done)  
 **Phạm vi:** Sprint 0 + Sprint 1  
 **Người phụ trách:** TV1 — Phương  
 
@@ -25,14 +25,14 @@
 | 2 | **CB-002** | Register Account | UC-01 | 3.1.1.1 | ✅ Done | `register_screen.dart` — name field collects UX only; profile update qua CB-111 |
 | 3 | **CB-003** | Verify OTP | UC-02 | 3.1.1.2 | ✅ Done | `otp_verification_screen.dart` — dùng chung cho register & login |
 | 4 | **CB-004** | Login | UC-03 | 3.1.1.3 | ✅ Done | `login_screen.dart` |
-| 5 | **CB-108** | Notifications | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ⬜ Not Started | Danh sách thông báo; đánh dấu đã đọc |
-| 6 | **CB-109** | Notification Detail | UC-11 | 3.1.5.1–3.1.5.4 | ⬜ Not Started | Chi tiết 1 thông báo; CB-109_2 là bản thiết kế thay thế |
-| 7 | **CB-114** | Login Sessions | UC-16 | 3.1.1.16 | ⬜ Not Started | Danh sách các phiên đăng nhập đang hoạt động |
-| 8 | **CB-115** | Revoke Session Confirmation | UC-16 | 3.1.1.16 | ⬜ Not Started | Xác nhận thu hồi 1 phiên cụ thể |
-| 9 | **CB-116** | Logout Confirmation | UC-04 | 3.1.1.4 | ⬜ Not Started | Xác nhận đăng xuất; CB-116_2 đến _6 là các variant thiết kế |
-| 10 | **CB-133** | Emergency Alert Detail | UC-161 | 3.1.5.4 | ⬜ Not Started | Chi tiết cảnh báo khẩn cấp nhận được từ notification |
-| 11 | **CB-219** | Notification Center | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ⬜ Not Started | Trung tâm thông báo; bản thiết kế mới hơn CB-049 |
-| 12 | **CB-220** | Privacy Settings | UC-17, UC-18, UC-19, UC-157 | 3.1.4.1 | ⬜ Not Started | Cài đặt quyền riêng tư; bản thiết kế mới hơn CB-050 |
+| 5 | **CB-108** | Notifications | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ✅ Done | `notification/screens/notifications_screen.dart` — filter chips, pull-to-refresh, mark-all-as-read (TODO: backend chưa có endpoint) |
+| 6 | **CB-109** | Notification Detail | UC-11 | 3.1.5.1–3.1.5.4 | ✅ Done | `notification/screens/notification_detail_screen.dart` — hiển thị chi tiết + CTA theo type; mark-as-read (TODO: backend chưa có endpoint) |
+| 7 | **CB-114** | Login Sessions | UC-16 | 3.1.1.16 | ✅ Done | `session/screens/login_sessions_screen.dart` — current session highlighted, other sessions with revoke button |
+| 8 | **CB-115** | Revoke Session Confirmation | UC-16 | 3.1.1.16 | ✅ Done | `session/screens/revoke_session_sheet.dart` — bottom sheet xác nhận, gọi `DELETE /api/v1/sessions/{id}` |
+| 9 | **CB-116** | Logout Confirmation | UC-04 | 3.1.1.4 | ✅ Done | `CareBridgeMobileApp/lib/features/auth/screens/logout_confirmation_screen.dart`; xác nhận đăng xuất; repo hiện chỉ có variant `_3` khả dụng |
+| 10 | **CB-133** | Emergency Alert Detail | UC-161 | 3.1.5.4 | ✅ Done | `emergency/screens/emergency_alert_detail_screen.dart` — MOCK data (backend chưa có endpoint); call + directions via url_launcher |
+| 11 | **CB-219** | Notification Center | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ✅ Done | Mobile: `notification/screens/notification_center_screen.dart`; Web: `notification/pages/NotificationCenterPage.tsx` |
+| 12 | **CB-220** | Privacy Settings | UC-17, UC-18, UC-19, UC-157 | 3.1.4.1 | ✅ Done | Mobile: `privacy/screens/privacy_settings_screen.dart`; Web: `settings/pages/PrivacySettingsPage.tsx` — wired to `/api/v1/privacy-settings` + `/api/v1/consent/grants` |
 
 ---
 
@@ -40,12 +40,12 @@
 
 | # | Screen ID | Tên màn hình | UC | Function Spec | Trạng thái | Ghi chú |
 | --- | --- | --- | --- | --- | --- | --- |
-| 13 | **CB-005** | Forgot Password | UC-05 | 3.1.1.5 | ⬜ Not Started | Nhập email/phone để nhận link đặt lại mật khẩu |
-| 14 | **CB-006** | Reset Password | UC-06 | 3.1.1.6 | ⬜ Not Started | Nhập mật khẩu mới bằng reset token |
-| 15 | **CB-110** | Account Profile | UC-08, UC-20 | 3.1.1.8 | ⬜ Not Started | Xem thông tin tài khoản hiện tại |
-| 16 | **CB-111** | Edit Account Profile | UC-09, UC-21 | 3.1.1.9 | ⬜ Not Started | Chỉnh sửa tên, số điện thoại, avatar |
-| 17 | **CB-112** | Change Password | UC-07 | 3.1.1.7 | ⬜ Not Started | Đổi mật khẩu khi đã đăng nhập |
-| 18 | **CB-152** ⚠️ | Pre-exercise Safety Check | **UC-177** (+ UC-178, UC-179) | 3.3.2.3 | ⬜ Not Started | Sprint 1: chỉ implement phần UC-177 (xem exercise detail). Phần safety check UC-178, UC-179 để Sprint 2 |
+| 13 | **CB-005** | Forgot Password | UC-05 | 3.1.1.5 | ✅ Done | `auth/screens/forgot_password_screen.dart` — gọi `POST /api/v1/auth/forgot-password` |
+| 14 | **CB-006** | Reset Password | UC-06 | 3.1.1.6 | ✅ Done | `auth/screens/reset_password_screen.dart` — gọi `POST /api/v1/auth/reset-password`, password requirements checklist |
+| 15 | **CB-110** | Account Profile | UC-08, UC-20 | 3.1.1.8 | ✅ Done | `auth/screens/account_profile_screen.dart` — avatar, menu cards, navigates to edit/password/sessions/privacy/logout |
+| 16 | **CB-111** | Edit Account Profile | UC-09, UC-21 | 3.1.1.9 | ✅ Done | `auth/screens/edit_profile_screen.dart` — form name/phone/region/bio, gọi `PUT /api/v1/auth/profile` |
+| 17 | **CB-112** | Change Password | UC-07 | 3.1.1.7 | ✅ Done | `auth/screens/change_password_screen.dart` — current+new+confirm, gọi `PUT /api/v1/auth/change-password` |
+| 18 | **CB-152** ⚠️ | Pre-exercise Safety Check | **UC-177** (+ UC-178, UC-179) | 3.3.2.3 | ✅ Done | `exercise/screens/pre_exercise_safety_check_screen.dart` — health checklist, notes, start button |
 
 ---
 
@@ -61,13 +61,13 @@
 
 | # | Screen ID | Tên màn hình | UC | Function Spec | Trạng thái | Ghi chú |
 | --- | --- | --- | --- | --- | --- | --- |
-| 20 | **CB-142** | Security Events | UC-175 | 3.2.5.2 | ⬜ Not Started | Danh sách security events để admin review |
-| 21 | **CB-143** | Security Event Detail | UC-175 | 3.2.5.2 | ⬜ Not Started | Chi tiết 1 security event |
-| 22 | **CB-144** | Security Incident Investigation | UC-174 | 3.2.5.1 | ⬜ Not Started | Màn hình điều tra sự cố bảo mật |
-| 23 | **CB-145** | Security Incident Resolution | UC-174 | 3.2.5.1 | ⬜ Not Started | Ghi nhận ghi chú và đánh dấu giải quyết sự cố |
-| 24 | **CB-151** | Security Incident List | UC-174 | 3.2.5.1 | ⬜ Not Started | Danh sách tất cả sự cố bảo mật |
-| 25 | **CB-219** | Notification Center (web) | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ⬜ Not Started | Trung tâm thông báo cho user web (admin/expert) |
-| 26 | **CB-220** | Privacy Settings (web) | UC-17, UC-18, UC-19, UC-157 | 3.1.4.1 | ⬜ Not Started | Cài đặt quyền riêng tư cho user web |
+| 20 | **CB-142** | Security Events | UC-175 | 3.2.5.2 | ✅ Done | `security/pages/SecurityEventsPage.tsx` — stats cards, severity filter chips, event log table |
+| 21 | **CB-143** | Security Event Detail | UC-175 | 3.2.5.2 | ✅ Done | `security/pages/SecurityEventDetailPage.tsx` — severity badge, impact/risk, evidence timeline, attack flow |
+| 22 | **CB-144** | Security Incident Investigation | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentInvestigationPage.tsx` — evidence timeline, containment, notes, affected accounts |
+| 23 | **CB-145** | Security Incident Resolution | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentResolutionPage.tsx` — root cause, summary, remediation checklist, activity log |
+| 24 | **CB-151** | Security Incident List | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentListPage.tsx` — search, filters, table with SLA, pagination |
+| 25 | **CB-219** | Notification Center (web) | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ✅ Done | `notification/pages/NotificationCenterPage.tsx` — table layout, filters, pagination |
+| 26 | **CB-220** | Privacy Settings (web) | UC-17, UC-18, UC-19, UC-157 | 3.1.4.1 | ✅ Done | `settings/pages/PrivacySettingsPage.tsx` — split layout, consent table, save bar |
 
 ---
 
