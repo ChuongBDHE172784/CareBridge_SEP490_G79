@@ -1,970 +1,526 @@
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
-# Technical Design Specification — UC-04 Logout
+# Technical Design Specification - UC-04 Logout
 
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-AUTH-IMP-004` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
+| **Version** | `1.1` |
+| **Date** | `2026-06-27` |
 | **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
 | **Approved by** | `[Principal Architect]` |
-| **Last Review** | `2026-06-26` |
+| **Last Review** | `2026-06-27` |
 | **Based on EDS** | `v2.0` |
 
 ---
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
-|------|-----------------|-------------------|
-| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-04 Logout |
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-06-26 | AI Agent | Initial draft created |
+| 2026-06-27 | AI Agent | Realigned contract to match current backend implementation in `AuthController` + `SessionServiceImpl` |
 
 ---
 
-## MỤC LỤC
+## TABLE OF CONTENTS
 
-1. [Tổng quan Module](#1-tổng-quan-module)
-2. [Ma trận Truy vết (Traceability Matrix)](#2-ma-trận-truy-vết-traceability-matrix)
+1. [Module Overview](#1-module-overview)
+2. [Traceability Matrix](#2-traceability-matrix)
 3. [Architecture Decision Records (ADR)](#3-architecture-decision-records-adr)
 4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
-5. [Static Modeling (Mô hình Tĩnh)](#5-static-modeling-mô-hình-tĩnh)
-6. [Dynamic Modeling (Mô hình Động)](#6-dynamic-modeling-mô-hình-động)
+5. [Static Modeling](#5-static-modeling)
+6. [Dynamic Modeling](#6-dynamic-modeling)
 7. [Domain Event Catalog](#7-domain-event-catalog)
-8. [Interface Specification (Đặc tả Giao diện)](#8-interface-specification-đặc-tả-giao-diện)
+8. [Interface Specification](#8-interface-specification)
 9. [API Specification](#9-api-specification)
-10. [Bảng mã lỗi (Error Codes)](#10-bảng-mã-lỗi-error-codes)
-11. [Quy trình Triển khai (Step-by-Step)](#11-quy-trình-triển-khai-step-by-step)
+10. [Error Codes](#10-error-codes)
+11. [Implementation Steps](#11-implementation-steps)
 12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
-13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
-14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
-15. [Mẫu thử thực tế (API Verification Samples)](#15-mẫu-thử-thực-tế-api-verification-samples)
-16. [Bảng tổng hợp phân quyền (Authorization Matrix)](#16-bảng-tổng-hợp-phân-quyền-authorization-matrix)
+13. [Detailed Test Scenarios](#13-detailed-test-scenarios)
+14. [Verification Approach](#14-verification-approach)
+15. [API Verification Samples](#15-api-verification-samples)
+16. [Authorization Matrix](#16-authorization-matrix)
 17. [AI Prompt Constraints (CASE 2.0)](#17-ai-prompt-constraints-case-20)
 
 ---
 
-## 1. Tổng quan Module
+## 1. Module Overview
 
 | Field | Value |
 |-------|-------|
 | **Module Name** | `Logout` |
-| **Bounded Context** | `auth` |
+| **Bounded Context** | `auth / identity` |
 | **UC ID** | `UC-04` |
 | **SRS Reference** | `3.1.1.4` |
-| **Primary Actor** | `Authenticated User (MOTHER / EXPERT — với valid access token)` |
+| **Primary Actor** | `Authenticated User` |
 | **Platform** | `Web App + Mobile App` |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `BR-RBAC, BR-SECURITY, PDPA` |
-| **Upstream Dependencies** | `UC-03 Login (user_sessions table)` |
-| **Downstream Consumers** | `audit (SecurityEventLog), session management` |
+| **Upstream Dependencies** | `UC-03 Login`, `user_sessions`, JWT `sid` claim |
+| **Downstream Consumers** | `AuditService`, `TokenBlacklistRepository`, `RefreshTokenRepository` |
 
-**Mô tả:** Người dùng đã đăng nhập gửi request logout kèm refresh token. Hệ thống thu hồi session tương ứng (partial logout — chỉ thiết bị hiện tại) hoặc thu hồi tất cả sessions (logout-all). Token revocation được ghi nhận bằng `SecurityEventType.TOKEN_REVOKED`. Access token hiện tại vẫn hợp lệ cho đến khi hết hạn (stateless JWT), chỉ refresh token bị vô hiệu hóa.
+**Current backend-aligned behavior**
+
+- Endpoint: `POST /api/v1/auth/logout`
+- Authentication: required via bearer access token
+- Request body: optional; if `refreshToken` is omitted or blank, backend attempts logout by current JWT `sid`
+- Primary behavior: revoke only the current session
+- Response: `ApiResponse<Void>` with success message `"Logged out"`
+- Idempotency: if session is already revoked or not found by token hash, backend treats logout as successful and returns `200`
+- No `logoutAll` support exists in the current endpoint implementation
+
+**Observed implementation note**
+
+- The controller delegates to `SessionService.logout(refreshToken, userId, ipAddress)`, not to a dedicated `AuthService.logout(...)` contract.
+- Current backend stores revoked refresh-token hashes in `token_blacklist` and also revokes matching rows in `refresh_tokens`.
 
 ---
 
-## 2. Ma trận Truy vết (Traceability Matrix)
+## 2. Traceability Matrix
 
-| Requirement ID | Loại | Mô tả yêu cầu | Thành phần Code | Compliance Target | ADR liên quan |
-|----------------|------|---------------|-----------------|-------------------|---------------|
-| UC-04 | Use Case | User logout, thu hồi session | `AuthController.logout()` | BR-RBAC | ADR-AUTH-009 |
-| BR-LOGOUT-001 | Business Rule | Ghi SecurityEventType.TOKEN_REVOKED khi logout | `AuditService.emit(TOKEN_REVOKED)` | Security Audit | ADR-AUTH-009 |
-| BR-LOGOUT-002 | Business Rule | Partial logout chỉ thu hồi session hiện tại | `SessionRepository.revokeById()` | Security | ADR-AUTH-009 |
-| BR-LOGOUT-003 | Business Rule | Logout-all thu hồi mọi session của user | `SessionRepository.revokeAllByUserId()` | Security | ADR-AUTH-009 |
-| BR-LOGOUT-004 | Business Rule | Refresh token không hợp lệ → từ chối | `SessionService.validateRefreshToken()` | Security | ADR-AUTH-009 |
-| BR-LOGOUT-005 | Business Rule | Access token vẫn hợp lệ cho đến hết hạn | Stateless JWT — không blacklist | Architecture | ADR-AUTH-010 |
-| BR-LOGOUT-006 | Business Rule | Refresh token đã revoked không thể dùng lại | `UserSession.revoked == false` check | Security | ADR-AUTH-009 |
-| BR-LOGOUT-007 | Business Rule | Chỉ owner của session mới được logout nó | `session.userId == authenticatedUserId` | Security | ADR-AUTH-009 |
+| Requirement ID | Type | Requirement | Code Component | Notes |
+|----------------|------|-------------|----------------|-------|
+| UC-04 | Use Case | Authenticated user can sign out from current device | `AuthController.logout()` | Implemented |
+| BR-LOGOUT-001 | Business Rule | Successful logout must create audit trail | `AuditService.log(LOGOUT, ...)` | Implemented |
+| BR-LOGOUT-002 | Business Rule | Logout revokes current session only | `SessionServiceImpl.logout()` | Implemented |
+| BR-LOGOUT-003 | Business Rule | Revoked refresh token cannot be used again | `RefreshTokenRepository.revokeByTokenHashAndUserId(...)` | Implemented |
+| BR-LOGOUT-004 | Business Rule | System may identify current session via JWT sid | `extractCurrentSessionId()` fallback path | Implemented |
+| BR-LOGOUT-005 | Business Rule | Access token still expires naturally after logout | Stateless access JWT; refresh revoked | Implemented |
 
 ---
 
 ## 3. Architecture Decision Records (ADR)
 
-### ADR-AUTH-009 — Partial logout (single session) vs logout-all, cả hai supported
+### ADR-AUTH-009 - Current-session logout with optional refresh-token body
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `PhuongNT — Backend Lead` |
-| **Date** | `2026-06-26` |
-| **Supersedes** | `—` |
+| **Status** | `Accepted (as implemented)` |
+| **Date** | `2026-06-27` |
+| **Decision** | Use one endpoint `POST /api/v1/auth/logout`; accept optional request body containing `refreshToken`; if absent, resolve current session by JWT `sid`. |
 
-#### Bối cảnh (Context)
-Người dùng CareBridge sử dụng cả phone (Flutter) và browser. Họ cần khả năng đăng xuất từ một thiết bị cụ thể (ví dụ: điện thoại bị mất) mà không ảnh hưởng các thiết bị khác. Đồng thời cần option đăng xuất toàn bộ.
+**Consequences**
 
-#### Các phương án đã xem xét (Options Considered)
+- Frontend can call logout even when it only has the authenticated access token.
+- Backend keeps the API ergonomic for mobile and web confirmation flows.
+- The endpoint currently represents "logout current session" only.
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
-|-----------|-------|----------|------------|
-| A | Single endpoint, query param `?all=true/false` | + Linh hoạt, 1 endpoint | - Cần validate query param |
-| B | 2 endpoints: `/logout` và `/logout-all` | + Rõ ràng, explicit intent | - Thêm endpoint |
-| C | Chỉ logout-all | + Đơn giản | - Kém UX khi đăng xuất 1 thiết bị |
-
-#### Quyết định (Decision)
-Chọn **Phương án A**: Một endpoint `POST /api/v1/auth/logout` với request body chứa `refreshToken` và optional `logoutAll: boolean`. Default = partial logout.
-
-#### Hệ quả (Consequences)
-
-**Tích cực:**
-- Flexible: hỗ trợ cả 2 use cases
-- Một endpoint để maintain
-
-**Tiêu cực / Trade-offs:**
-- `logoutAll=true` là destructive — cần confirmation trong UI (không phải trách nhiệm backend)
-
-**Compliance Impact:**
-- Tuân thủ PDPA yêu cầu quyền kiểm soát session của người dùng
-
----
-
-### ADR-AUTH-010 — Access token không bị blacklist (stateless); chỉ refresh token được revoke
+### ADR-AUTH-010 - Refresh-token revocation with session blacklist support
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `PhuongNT — Backend Lead` |
-| **Date** | `2026-06-26` |
+| **Status** | `Accepted (as implemented)` |
+| **Date** | `2026-06-27` |
+| **Decision** | Revoke refresh/session artifacts on logout; access token remains valid until normal expiry. |
 
-#### Bối cảnh (Context)
-Blacklisting access token yêu cầu kiểm tra Redis/DB trên mỗi request → tăng latency. Access token TTL chỉ 15 phút — window rủi ro nhỏ.
+**Consequences**
 
-#### Quyết định (Decision)
-Chấp nhận window tối đa 15 phút sau logout trong đó access token vẫn technically valid nhưng không thể refresh. Đây là trade-off tiêu chuẩn trong JWT architecture.
+- Logout immediately blocks refresh-token reuse.
+- Access token may remain usable for the rest of its short TTL.
+- Backend writes token-hash revocation metadata for revoked sessions.
 
-#### Hệ quả (Consequences)
+### ADR-AUTH-011 - Idempotent logout for already-revoked or missing sessions
 
-**Tích cực:**
-- Không tăng latency trên mọi API call
-- Kiến trúc đơn giản hơn
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (as implemented)` |
+| **Date** | `2026-06-27` |
+| **Decision** | Treat "session already revoked / token hash not found" as successful logout instead of surfacing an error. |
 
-**Tiêu cực / Trade-offs:**
-- After logout, stolen access token valid ≤ 15 phút — documented risk, mitigated by short TTL
-- Cần document rõ cho security team
+**Consequences**
+
+- Safer UX for repeated logout taps and stale mobile clients.
+- Frontend should not expect a distinct "already logged out" error state.
 
 ---
 
 ## 4. Non-Functional Requirements & SLA
 
-### 4.1. Performance & Availability
-
-| Category | Requirement | Target SLA | Measurement Method | Compliance Basis |
-|----------|-------------|------------|---------------------|------------------|
-| Latency | Logout API response (p99) | `< 300ms` | k6 load test | — |
-| Availability | Uptime (monthly) | `99.9%` | Uptime monitor | — |
-
-### 4.2. Security
-
-| Category | Requirement | Target | Verification Method | Compliance Basis |
-|----------|-------------|--------|---------------------|------------------|
-| Token Revocation | Revoked session không thể refresh | 100% | Integration test | BR-LOGOUT-004 |
-| Audit | TOKEN_REVOKED event ghi đúng | 100% | Log inspection | BR-LOGOUT-001 |
-| Authorization | Chỉ owner logout session của mình | 100% | Unit test | BR-LOGOUT-007 |
-| Replay Prevention | Revoked refresh token bị từ chối | 100% | Security test | BR-LOGOUT-006 |
+| Category | Requirement | Target |
+|----------|-------------|--------|
+| Latency | Logout API p95 | `< 300ms` |
+| Availability | Monthly uptime | `99.9%` |
+| Auditability | Every successful logout logs an audit event | `100%` |
+| Replay Prevention | Revoked refresh token cannot refresh | `100%` |
+| UX | Repeated logout request remains safe | Idempotent |
 
 ---
 
-## 5. Static Modeling (Mô hình Tĩnh)
+## 5. Static Modeling
 
-### 5.1. Class Diagram (PlantUML)
+### 5.1 Main Components
 
-```plantuml
-@startuml UC04_Logout_ClassDiagram
-skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
-
-class UserSession {
-  + id: UUID
-  + userId: UUID
-  + refreshTokenHash: String
-  + deviceInfo: String
-  + ipAddress: String
-  + expiresAt: LocalDateTime
-  + revoked: boolean
-  + revokedAt: LocalDateTime
-  + createdAt: LocalDateTime
-}
-
-class LogoutRequestDTO {
-  + refreshToken: String
-  + logoutAll: boolean    -- default false
-}
-
-class LogoutResponseDTO {
-  + message: String
-  + revokedCount: int
-}
-
-interface IAuthService <<interface>> {
-  + logout(request: LogoutRequestDTO, userId: UUID): LogoutResponseDTO
-}
-
-class AuthService implements IAuthService {
-  - sessionRepository: SessionRepository
-  - jwtService: JwtService
-  - auditService: AuditService
-  + logout(request: LogoutRequestDTO, userId: UUID): LogoutResponseDTO
-  - validateSessionOwnership(session: UserSession, userId: UUID): void
-}
-
-interface SessionRepository <<interface>> {
-  + findByRefreshTokenHash(hash: String): Optional<UserSession>
-  + findByUserIdAndRevokedFalse(userId: UUID): List<UserSession>
-  + revokeById(sessionId: UUID): void
-  + revokeAllByUserId(userId: UUID): void
-}
-
-AuthService --> SessionRepository : uses
-AuthService --> JwtService : uses
-
-@enduml
+```text
+AuthController
+  -> SessionService
+      -> UserSessionRepository
+      -> TokenBlacklistRepository
+      -> RefreshTokenRepository
+      -> AuditService
+      -> JwtTokenProvider
 ```
 
-### 5.2. Data Structure (PostgreSQL DDL)
+### 5.2 Core Data Elements
 
-```sql
--- Không cần migration mới.
--- user_sessions đã có: revoked BOOLEAN, revoked_at TIMESTAMP.
--- Tham chiếu V3 từ UC-03.
+```text
+RefreshTokenRequest
+  - refreshToken: String?
 
--- Verify cấu trúc hiện tại:
--- SELECT column_name, data_type FROM information_schema.columns
--- WHERE table_name = 'user_sessions';
+UserSession
+  - sessionId: UUID
+  - userId: UUID
+  - refreshTokenHash: String?
+  - revoked: boolean
+  - revokedAt: Instant?
+  - expiresAt: Instant?
+
+TokenBlacklist
+  - tokenHash: String
+  - expiresAt: Instant
+  - revokedAt: Instant
+  - reason: "logout" | "logout_sid" | ...
 ```
 
 ---
 
-## 6. Dynamic Modeling (Mô hình Động)
+## 6. Dynamic Modeling
 
-### 6.1. Sequence Diagram — Happy Path (Partial Logout)
+### 6.1 Flow A - Logout with request body
 
-```plantuml
-@startuml UC04_Logout_SequenceDiagram_PartialLogout
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+```text
+Client -> POST /api/v1/auth/logout
+Authorization: Bearer <access token>
+Body: { "refreshToken": "<raw refresh token>" }
 
-actor       "User"               as Client
-participant "AuthController"     as Controller
-participant "AuthService"        as Service
-participant "JwtService"         as Jwt
-participant "SessionRepository"  as SessionRepo
-participant "AuditService"       as Audit
-database    "PostgreSQL"         as DB
+AuthController
+  -> resolve current userId from Principal
+  -> SessionService.logout(refreshToken, userId, ipAddress)
 
-Client -> Controller : POST /api/v1/auth/logout\n{refreshToken, logoutAll: false}\nAuthorization: Bearer [accessToken]
-activate Controller
-
-Controller -> Controller : Extract userId from access token
-Controller -> Service : logout(request, userId)
-activate Service
-
-Service -> Service : hashToken(refreshToken) → tokenHash
-Service -> SessionRepo : findByRefreshTokenHash(tokenHash)
-SessionRepo -> DB : SELECT * FROM user_sessions WHERE refresh_token_hash=?
-DB --> SessionRepo : session{userId=X, revoked=false}
-SessionRepo --> Service : Optional<UserSession>
-
-Service -> Service : validateSessionOwnership(session.userId == authenticatedUserId)
-Service -> SessionRepo : revokeById(session.id)
-SessionRepo -> DB : UPDATE user_sessions SET revoked=true, revoked_at=NOW() WHERE id=?
-
-Service -> Audit : emit(UserLoggedOut{userId, sessionId, SecurityEventType.TOKEN_REVOKED})
-Service --> Controller : LogoutResponseDTO{message, revokedCount=1}
-deactivate Service
-
-Controller --> Client : HTTP 200 OK\n{message:"Đăng xuất thành công"}
-deactivate Controller
-@enduml
+SessionServiceImpl
+  -> SHA-256 hash refresh token
+  -> find active session by refreshTokenHash
+  -> if not found: revoke matching refresh-token row if present, then return success
+  -> verify session.userId == authenticated userId
+  -> mark session revoked
+  -> add token hash to blacklist
+  -> revoke refresh-token row
+  -> write audit log
+  -> clear security context
 ```
 
-### 6.2. Sequence Diagram — Logout-All
+### 6.2 Flow B - Logout without request body / empty body
 
-```plantuml
-@startuml UC04_Logout_SequenceDiagram_LogoutAll
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+```text
+Client -> POST /api/v1/auth/logout
+Authorization: Bearer <access token>
+Body: {}
 
-actor       "User"               as Client
-participant "AuthController"     as Controller
-participant "AuthService"        as Service
-participant "SessionRepository"  as SessionRepo
-participant "AuditService"       as Audit
-database    "PostgreSQL"         as DB
+AuthController
+  -> refreshToken resolves to null
+  -> SessionService.logout(null, userId, ipAddress)
 
-Client -> Controller : POST /api/v1/auth/logout\n{refreshToken, logoutAll: true}\nAuthorization: Bearer [accessToken]
-activate Controller
-
-Controller -> Service : logout(request, userId)
-activate Service
-
-Service -> SessionRepo : revokeAllByUserId(userId)
-SessionRepo -> DB : UPDATE user_sessions SET revoked=true\nWHERE user_id=? AND revoked=false
-
-DB --> SessionRepo : N rows updated
-Service -> Audit : emit(UserLoggedOut{userId, all=true, revokedCount=N, TOKEN_REVOKED})
-Service --> Controller : LogoutResponseDTO{revokedCount=N}
-deactivate Service
-
-Controller --> Client : HTTP 200 OK\n{message:"Đăng xuất tất cả thiết bị thành công", revokedCount:N}
-deactivate Controller
-@enduml
+SessionServiceImpl
+  -> extract current sessionId from JWT sid
+  -> load current session by sessionId
+  -> if active and owned by user: revoke session + blacklist token hash + revoke refresh row
+  -> write audit log
+  -> clear security context
+  -> return success
 ```
 
-### 6.3. Sequence Diagram — Error Path (Revoked token dùng lại)
+### 6.3 Flow C - Repeated logout
 
-```plantuml
-@startuml UC04_Logout_SequenceDiagram_ErrorPath
-skinparam sequenceArrowThickness 2
-skinparam backgroundColor #FAFAFA
-
-actor       "Attacker"           as Client
-participant "AuthController"     as Controller
-participant "AuthService"        as Service
-participant "SessionRepository"  as SessionRepo
-database    "PostgreSQL"         as DB
-
-Client -> Controller : POST /api/v1/auth/logout\n{refreshToken: [đã revoked]}
-activate Controller
-
-Controller -> Service : logout(request, userId)
-activate Service
-
-Service -> Service : hashToken(refreshToken) → tokenHash
-Service -> SessionRepo : findByRefreshTokenHash(tokenHash)
-SessionRepo -> DB : SELECT * FROM user_sessions WHERE hash=?
-DB --> SessionRepo : session{revoked=true}
-SessionRepo --> Service : session (revoked)
-
-Service -> Service : session.revoked == true → throw
-Service --> Controller : AuthenticationException("AUTH-021")
-deactivate Service
-
-Controller --> Client : HTTP 401\n{code:"AUTH-021", message:"Token đã bị thu hồi"}
-deactivate Controller
-@enduml
-```
-
-### 6.4. State Machine — UserSession Status
-
-```plantuml
-@startuml UC04_UserSession_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> ACTIVE : Session created (UC-03 Login)\n[revoked=false]
-
-ACTIVE --> REVOKED  : Partial logout (UC-04)\n[revokeById()]
-ACTIVE --> REVOKED  : Logout-all (UC-04)\n[revokeAllByUserId()]
-ACTIVE --> EXPIRED  : expires_at < NOW()\n[Cron job / query check]
-
-REVOKED --> [*]
-EXPIRED --> [*]
-
-note right of REVOKED
-  Append-only: Không DELETE record.
-  revoked=true + revokedAt=NOW()
-  Audit trail được giữ lại.
-end note
-@enduml
+```text
+If token hash no longer maps to an active session:
+  - backend does not throw
+  - backend returns 200 success
 ```
 
 ---
 
 ## 7. Domain Event Catalog
 
-### 7.1. Events Published (Phát ra)
+The current implementation does **not** publish a dedicated domain event object for logout.
+It writes an audit log entry instead.
 
-| Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
-|------------|---------|-----------|---------------|----------------|--------|
-| `UserLoggedOut` | Partial logout thành công | `AuthService` | `AuditService` | Xem §7.3 | Yes |
-| `UserLoggedOutAll` | Logout-all thành công | `AuthService` | `AuditService, NotificationService` | `{userId, revokedCount, ip}` | Yes |
-
-### 7.2. Events Consumed (Tiêu thụ)
-
-*(Không có)*
-
-### 7.3. Payload Schema
-
-```java
-// UserLoggedOutEvent.java
-public record UserLoggedOutEvent(
-    String eventId,
-    String eventType,           // "UserLoggedOut"
-    Instant occurredAt,
-    String version,             // "1.0"
-    Payload payload,
-    Metadata metadata
-) {
-    public record Payload(
-        UUID userId,
-        UUID sessionId,          // null nếu logoutAll
-        boolean logoutAll,
-        int revokedCount,
-        String ipAddress,
-        String securityEventType  // "TOKEN_REVOKED"
-    ) {}
-
-    public record Metadata(
-        String correlationId,
-        String causedBy          // userId
-    ) {}
-}
-```
+| Artifact | Trigger | Producer |
+|----------|---------|----------|
+| `AuditAction.LOGOUT` | Successful session logout | `SessionServiceImpl` |
 
 ---
 
-## 8. Interface Specification (Đặc tả Giao diện)
+## 8. Interface Specification
 
-### 8.1. Service Interface
+### 8.1 Controller Interface
 
 ```java
-// IAuthService.java (bổ sung logout)
-// @version 1.0
-package com.carebridge.backend.auth.service;
+@PostMapping("/logout")
+public ResponseEntity<ApiResponse<Void>> logout(
+        @RequestBody(required = false) RefreshTokenRequest request,
+        Principal principal,
+        HttpServletRequest httpRequest)
+```
 
-import com.carebridge.backend.auth.dto.LogoutRequestDTO;
-import com.carebridge.backend.auth.dto.LogoutResponseDTO;
-import java.util.UUID;
+### 8.2 Service Interface
 
-public interface IAuthService {
+```java
+void logout(String refreshToken, UUID userId, String ipAddress);
+```
 
-    /**
-     * Đăng xuất: thu hồi session liên kết với refresh token.
-     * Nếu logoutAll=true, thu hồi tất cả sessions của user.
-     *
-     * @param request       DTO chứa refreshToken và logoutAll flag
-     * @param userId        ID của user đang đăng nhập (từ access token)
-     * @param ipAddress     IP của client
-     * @return LogoutResponseDTO với số session bị thu hồi
-     * @throws AuthenticationException  AUTH-021 khi token đã revoked
-     * @throws AuthorizationException   AUTH-022 khi session không thuộc về user
-     * @throws ResourceNotFoundException AUTH-023 khi session không tìm thấy
-     */
-    LogoutResponseDTO logout(LogoutRequestDTO request, UUID userId, String ipAddress);
+### 8.3 Effective Request DTO
+
+```java
+public class RefreshTokenRequest {
+    private String refreshToken;
 }
 ```
 
-### 8.2. Repository Interface
+**Alignment note**
 
-```java
-// SessionRepository.java (đã khai báo ở UC-03, bổ sung thêm method)
-// @version 1.0
-package com.carebridge.backend.auth.repository;
-
-import com.carebridge.backend.auth.entity.UserSession;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-public interface SessionRepository extends JpaRepository<UserSession, UUID> {
-    Optional<UserSession> findByRefreshTokenHash(String hash);
-    List<UserSession> findByUserIdAndRevokedFalse(UUID userId);
-
-    @Modifying
-    @Query("UPDATE UserSession s SET s.revoked = true, s.revokedAt = CURRENT_TIMESTAMP WHERE s.id = :sessionId")
-    void revokeById(UUID sessionId);
-
-    @Modifying
-    @Query("UPDATE UserSession s SET s.revoked = true, s.revokedAt = CURRENT_TIMESTAMP WHERE s.userId = :userId AND s.revoked = false")
-    int revokeAllByUserId(UUID userId);
-}
-```
-
-### 8.3. DTO Definitions
-
-```java
-// LogoutRequestDTO.java
-package com.carebridge.backend.auth.dto;
-
-import jakarta.validation.constraints.NotBlank;
-
-public record LogoutRequestDTO(
-    @NotBlank
-    String refreshToken,
-
-    boolean logoutAll    // default false — handled in service if null
-) {}
-
-// LogoutResponseDTO.java
-public record LogoutResponseDTO(
-    String message,
-    int revokedCount
-) {}
-```
+- `logoutAll` is not part of the current backend contract.
+- Frontend must not send or depend on `revokedCount`.
 
 ---
 
 ## 9. API Specification
 
-### 9.1. Endpoints Table
+### 9.1 Endpoint Table
 
-| Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
-|--------|------|------------|----------------|------------|-------------|
-| `POST` | `/api/v1/auth/logout` | JWT Bearer | `ROLE_MOTHER, ROLE_EXPERT` | 10/min per user | Yes (idempotent: logout twice → same result) |
+| Method | Path | Auth | Roles | Current Behavior |
+|--------|------|------|-------|------------------|
+| `POST` | `/api/v1/auth/logout` | Bearer JWT | Authenticated user | Logout current session |
 
-### 9.2. Request / Response Schemas
+### 9.2 Request
 
-#### `POST /api/v1/auth/logout` — Đăng xuất thiết bị hiện tại
+**Headers**
 
-**Request Body:**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
-  "logoutAll": false
-}
-```
-
-**Request Headers:**
-```
-Authorization: Bearer [ACCESS_TOKEN]
+```http
+Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
 
-**Response — 200 OK (Partial Logout):**
+**Supported body forms**
+
+With refresh token:
+
+```json
+{
+  "refreshToken": "raw-refresh-token"
+}
+```
+
+Without refresh token:
+
+```json
+{}
+```
+
+Or request body omitted entirely.
+
+### 9.3 Success Response
+
 ```json
 {
   "success": true,
-  "data": {
-    "message": "Đăng xuất thành công",
-    "revokedCount": 1
-  }
+  "data": null,
+  "message": "Logged out"
 }
 ```
 
-**Response — 200 OK (Logout All):**
-```json
-{
-  "success": true,
-  "data": {
-    "message": "Đăng xuất tất cả thiết bị thành công",
-    "revokedCount": 3
-  }
-}
-```
+### 9.4 Known Contract Differences vs old TDS
 
-**Response — 401 (Token đã revoked):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "AUTH-021",
-    "message": "Token đã bị thu hồi hoặc không hợp lệ"
-  }
-}
-```
-
-**Response — 401 (Không có access token):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "AUTH-020",
-    "message": "Yêu cầu xác thực"
-  }
-}
-```
+- No `logoutAll`
+- No `revokedCount`
+- Response payload is `null`
+- Empty request body is valid
 
 ---
 
-## 10. Bảng mã lỗi (Error Codes)
+## 10. Error Codes
 
-| Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
-|------|-------------|--------------|--------------|-------------------|
-| `AUTH-020` | 401 | Authentication required | Yêu cầu xác thực | Không có access token |
-| `AUTH-021` | 401 | Token already revoked | Token đã bị thu hồi | session.revoked == true |
-| `AUTH-022` | 403 | Forbidden: session ownership | Không có quyền thu hồi session này | session.userId != authenticatedUserId |
-| `AUTH-023` | 404 | Session not found | Không tìm thấy session | refresh token hash không có trong DB |
-| `AUTH-024` | 400 | Missing refresh token | Thiếu refresh token | refreshToken null/blank |
+The current endpoint is intentionally narrow and most happy-path retries return success.
+
+| Situation | Current Result |
+|-----------|----------------|
+| Missing/invalid access token | `401` from security layer |
+| Session already revoked / token not found | `200` success |
+| Session ownership mismatch on token-hash path | backend currently throws `IllegalArgumentException`; not expected in normal self-logout UI flow |
+
+**Implementation note**
+
+- The ownership-mismatch case is not modeled as a typed business exception in the current controller path.
+- Frontend for CB-116 does not expose arbitrary session selection, so this path should not occur in standard logout confirmation flow.
 
 ---
 
-## 11. Quy trình Triển khai (Step-by-Step)
+## 11. Implementation Steps
 
-### 11.1. Prerequisites
-
-- [ ] UC-03 đã implement (user_sessions table tồn tại, SessionRepository có sẵn)
-- [ ] `SecurityEventType.TOKEN_REVOKED` đã có trong enum
-- [ ] JwtService có thể extract userId từ access token
-
-### 11.2. Pre-Migration Checklist
-
-- [ ] Không cần migration mới (dùng lại user_sessions từ V3)
-
-### 11.3. Implementation Steps
-
-#### Chặng 1 — AuthService.logout()
-
-```java
-@Override
-@Transactional
-public LogoutResponseDTO logout(LogoutRequestDTO request, UUID userId, String ipAddress) {
-    if (request.logoutAll()) {
-        return logoutAll(userId, ipAddress);
-    }
-    return logoutSingle(request.refreshToken(), userId, ipAddress);
-}
-
-private LogoutResponseDTO logoutSingle(String refreshToken, UUID userId, String ipAddress) {
-    String tokenHash = DigestUtils.sha256Hex(refreshToken);
-
-    UserSession session = sessionRepository.findByRefreshTokenHash(tokenHash)
-        .orElseThrow(() -> new ResourceNotFoundException("AUTH-023", "Không tìm thấy session"));
-
-    if (session.isRevoked()) {
-        throw new AuthenticationException("AUTH-021", "Token đã bị thu hồi");
-    }
-
-    if (!session.getUserId().equals(userId)) {
-        throw new AuthorizationException("AUTH-022", "Không có quyền thu hồi session này");
-    }
-
-    sessionRepository.revokeById(session.getId());
-
-    eventPublisher.publishEvent(new UserLoggedOutEvent(
-        UUID.randomUUID().toString(), "UserLoggedOut", Instant.now(), "1.0",
-        new UserLoggedOutEvent.Payload(userId, session.getId(), false, 1, ipAddress, "TOKEN_REVOKED"),
-        new UserLoggedOutEvent.Metadata(MDC.get("correlationId"), userId.toString())
-    ));
-
-    return new LogoutResponseDTO("Đăng xuất thành công", 1);
-}
-
-private LogoutResponseDTO logoutAll(UUID userId, String ipAddress) {
-    int revokedCount = sessionRepository.revokeAllByUserId(userId);
-
-    eventPublisher.publishEvent(new UserLoggedOutEvent(
-        UUID.randomUUID().toString(), "UserLoggedOut", Instant.now(), "1.0",
-        new UserLoggedOutEvent.Payload(userId, null, true, revokedCount, ipAddress, "TOKEN_REVOKED"),
-        new UserLoggedOutEvent.Metadata(MDC.get("correlationId"), userId.toString())
-    ));
-
-    return new LogoutResponseDTO(
-        "Đăng xuất tất cả thiết bị thành công", revokedCount);
-}
-```
-
-#### Chặng 2 — AuthController
-
-```java
-@PostMapping("/logout")
-@PreAuthorize("isAuthenticated()")
-public ApiResponse<LogoutResponseDTO> logout(
-        @RequestBody @Valid LogoutRequestDTO request,
-        @AuthenticationPrincipal UserDetails userDetails,
-        HttpServletRequest httpRequest) {
-    UUID userId = UUID.fromString(userDetails.getUsername());
-    String ipAddress = httpRequest.getRemoteAddr();
-    return ApiResponse.success(authService.logout(request, userId, ipAddress));
-}
-```
-
-### 11.4. Deployment Checklist
-
-- [ ] Logout single session → revoked=true trong DB
-- [ ] Logout-all → tất cả sessions revoked
-- [ ] SecurityEvent TOKEN_REVOKED ghi đúng
-- [ ] Revoked token không thể được dùng để refresh
+1. Authenticate request via bearer JWT.
+2. Resolve `userId` from `Principal`.
+3. If `refreshToken` is blank/null:
+   - extract current `sessionId` from JWT `sid`
+   - revoke that session if it exists and belongs to the user
+4. If `refreshToken` is present:
+   - hash token
+   - find active session by hash
+   - if not found, treat as success
+   - verify ownership
+   - revoke session
+5. Blacklist the stored refresh-token hash when available.
+6. Revoke matching row in `refresh_tokens`.
+7. Write `AuditAction.LOGOUT`.
+8. Clear security context.
+9. Return `ApiResponse.success(null, "Logged out")`.
 
 ---
 
 ## 12. Rollback & Incident Runbook
 
-### 12.1. Điều kiện kích hoạt Rollback
+### 12.1 Rollback Triggers
 
-| Điều kiện | Ngưỡng | Người quyết định |
-|-----------|--------|------------------|
-| Logout không revoke session (session vẫn active) | Bất kỳ | Tech Lead |
-| Logout-all thu hồi sessions của user khác | Bất kỳ | Tech Lead + DPO |
-| SecurityEvent TOKEN_REVOKED không ghi | > 1% logouts | On-call |
+| Condition | Trigger |
+|-----------|---------|
+| Logout no longer revokes current session | Immediate rollback |
+| Refresh token remains usable after logout | Immediate rollback |
+| Audit log missing for successful logouts | Investigate within same release window |
 
-### 12.2. Rollback Procedure
+### 12.2 Rollback Actions
 
 ```bash
-# Revert service code
-git checkout -- src/main/java/com/carebridge/backend/auth/service/AuthService.java
-git checkout -- src/main/java/com/carebridge/backend/auth/controller/AuthController.java
-
-# Không cần undo migration (không thêm bảng mới)
-
-# Emergency: Re-activate revoked sessions nếu bug rollback
-# UPDATE user_sessions SET revoked=false, revoked_at=NULL
-# WHERE revoked_at > '[deploy_time]' AND revoked_at < '[rollback_time]';
--- CẢNH BÁO: Chỉ dùng khi có lỗi logic nghiêm trọng
+git revert <logout-change-commit>
 ```
 
-### 12.3. Notification Protocol
+Operational validation after rollback:
 
-| Thời điểm | Người nhận | Kênh | Template |
-|-----------|------------|------|----------|
-| Ngay khi phát hiện session leak | On-call + DPO | Slack `#incident` + Email | "SECURITY: Logout bug — sessions not revoked" |
-| Trong 30 phút | DPO | Email | Bắt buộc nếu sessions bị lộ |
+- verify current-session logout works again
+- verify refresh fails for revoked token
+- verify audit entries continue to appear
 
 ---
 
-## 13. Kịch bản Kiểm thử Chi tiết
+## 13. Detailed Test Scenarios
 
-### 13.1. Unit Tests
+### 13.1 Happy Path
 
-#### TC-UNIT-001 — Partial logout: thu hồi đúng session, không ảnh hưởng session khác
+- Authenticated user calls logout with `{ "refreshToken": "<current token>" }`
+- Expect `200`
+- Expect session marked revoked
+- Expect refresh-token row revoked
 
-```gherkin
-Feature: Logout
-  Background:
-    Given test data classification: SYNTHETIC
-    And user "u-001" có 2 active sessions: session-A và session-B
-    And request chứa refreshToken tương ứng session-A
+### 13.2 SID Fallback Path
 
-  Scenario: Partial logout thành công
-    Given user đã đăng nhập với access token hợp lệ
-    When POST /api/v1/auth/logout với {refreshToken:[session-A token], logoutAll:false}
-    Then response status là 200
-    And response body chứa revokedCount = 1
-    And user_sessions: session-A.revoked = true
-    And user_sessions: session-B.revoked = false (KHÔNG bị ảnh hưởng)
-    And SecurityEvent TOKEN_REVOKED được ghi với sessionId=session-A
-```
+- Authenticated user calls logout with empty body
+- JWT includes valid `sid`
+- Expect `200`
+- Expect current session marked revoked
 
-#### TC-UNIT-002 — Logout-all: thu hồi tất cả sessions
+### 13.3 Idempotent Retry
 
-```gherkin
-  Scenario: Logout all devices
-    Given user "u-001" có 3 active sessions
-    When POST /api/v1/auth/logout với {refreshToken:[any], logoutAll:true}
-    Then response body chứa revokedCount = 3
-    And tất cả sessions của user-001 có revoked = true
-    And SecurityEvent TOKEN_REVOKED với revokedCount=3
-```
+- Logout same session twice
+- Expect second call still returns `200`
 
-#### TC-UNIT-003 — Từ chối token đã revoked (replay attack)
+### 13.4 Post-Logout Refresh Rejected
 
-```gherkin
-  Scenario: Token đã bị thu hồi
-    Given session-X có revoked = true
-    When POST /api/v1/auth/logout với refreshToken của session-X
-    Then response status là 401
-    And error code "AUTH-021"
-```
+- Login
+- Logout
+- Attempt refresh with same refresh token
+- Expect refresh denied
 
-#### TC-UNIT-004 — Từ chối khi session thuộc về user khác
+### 13.5 Access Token TTL Window
 
-```gherkin
-  Scenario: Session ownership violation
-    Given session-Y thuộc về user "u-002"
-    And request được gửi bởi user "u-001" (access token của u-001)
-    When POST /api/v1/auth/logout với refreshToken của session-Y
-    Then response status là 403
-    And error code "AUTH-022"
-    And session-Y KHÔNG bị revoke
-```
-
-### 13.2. Integration Tests
-
-#### TC-INT-001 — Full flow: login → logout → refresh token không còn hiệu lực
-
-```gherkin
-  Scenario: Post-logout refresh token rejected
-    Given test data classification: SYNTHETIC
-    And PostgreSQL Testcontainer running
-    When POST /api/v1/auth/login → receive refreshToken
-    And POST /api/v1/auth/logout với refreshToken đó
-    And POST /api/v1/auth/token/refresh với cùng refreshToken
-    Then lần refresh: response status là 401, code AUTH-021
-```
-
-### 13.3. Security Tests
-
-#### TC-SEC-001 — Access token vẫn hợp lệ trong window sau logout (documented behavior)
-
-```gherkin
-  Scenario: Access token window post-logout
-    Given access token với TTL còn 5 phút
-    When user logout thành công
-    And gọi protected endpoint với access token vừa logout
-    Then response status là 200 (access token vẫn valid — stateless JWT)
-    -- NOTE: Đây là documented trade-off (ADR-AUTH-010), không phải bug
-```
+- Logout successfully
+- Call protected API with still-unexpired access token
+- Expect current stateless behavior until access token expires
 
 ---
 
-## 14. Phương pháp Xác minh
+## 14. Verification Approach
 
-### 14.1. Database Inspection
+### 14.1 API Verification
+
+- Call `POST /api/v1/auth/logout` with bearer token and empty `{}` body
+- Confirm `200`
+- Confirm response `data` is `null`
+
+### 14.2 Database Verification
 
 ```sql
--- Verify session bị revoke
-SELECT id, user_id, revoked, revoked_at
+SELECT session_id, revoked, revoked_at
 FROM user_sessions
-WHERE refresh_token_hash = '[hash]';
--- Expected: revoked = true, revoked_at IS NOT NULL
-
--- Verify logout-all
-SELECT id, revoked, revoked_at
-FROM user_sessions
-WHERE user_id = '[userId]';
--- Expected: tất cả rows có revoked = true
-
--- Verify session của user khác không bị ảnh hưởng
-SELECT COUNT(*) FROM user_sessions
-WHERE user_id != '[userId]' AND revoked = true;
--- Expected: count không tăng sau logout
+WHERE user_id = :user_id
+ORDER BY revoked_at DESC;
 ```
 
-### 14.2. Log / Audit Verification
-
-```bash
-# Kiểm tra TOKEN_REVOKED event
-grep '"securityEventType":"TOKEN_REVOKED"' /var/log/carebridge/security.log | tail -5
-
-# Verify refreshToken không xuất hiện trong log
-grep -E '"refreshToken"\s*:\s*"ey' /var/log/carebridge/app.log
-# Expected: No output
+```sql
+SELECT token_hash, revoked
+FROM refresh_tokens
+WHERE user_id = :user_id;
 ```
+
+### 14.3 Audit Verification
+
+Confirm `AuditAction.LOGOUT` exists for the session/user combination.
 
 ---
 
-## 15. Mẫu thử thực tế (API Verification Samples)
+## 15. API Verification Samples
 
-### 15.1. Partial Logout
+### 15.1 Empty-body logout
 
 ```bash
-# Step 1: Login để lấy tokens
-LOGIN_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"identifier":"testmother@example.com","password":"SecureP@ss1","deviceInfo":"test"}')
-
-ACCESS_TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['accessToken'])")
-REFRESH_TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refreshToken'])")
-
-# Step 2: Logout
 curl -X POST http://localhost:8080/api/v1/auth/logout \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-Correlation-Id: $(uuidgen)" \
-  -d "{\"refreshToken\":\"$REFRESH_TOKEN\",\"logoutAll\":false}"
+  -d '{}'
 ```
 
-**Expected Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "message": "Đăng xuất thành công",
-    "revokedCount": 1
-  }
-}
-```
-
-### 15.2. Logout without access token → 401
+### 15.2 Explicit refresh-token logout
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"refreshToken":"some-token","logoutAll":false}'
+  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
 ```
 
-**Expected Response (401):**
+Expected result for both:
+
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "AUTH-020",
-    "message": "Yêu cầu xác thực"
-  }
+  "success": true,
+  "data": null,
+  "message": "Logged out"
 }
 ```
 
 ---
 
-## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
+## 16. Authorization Matrix
 
-| Endpoint | `GUEST` | `MOTHER` | `EXPERT` | `ADMIN` | `SYSTEM` |
-|----------|---------|----------|----------|---------|----------|
-| `POST /api/v1/auth/logout` | ❌ | ✅ Own sessions | ✅ Own sessions | ✅ Any session | ❌ |
-
-**Chú thích:**
-- ✅ Own sessions = chỉ thu hồi sessions của chính mình
-- ADMIN có thể force-logout bất kỳ user (separate admin endpoint, không nằm trong UC-04)
+| Endpoint | Guest | Authenticated User |
+|----------|-------|--------------------|
+| `POST /api/v1/auth/logout` | No | Yes, for current owned session |
 
 ---
 
 ## 17. AI Prompt Constraints (CASE 2.0)
 
-### 17.1 Constraint Summary Table
-
-| # | Constraint | Source (ADR/BR) | Last Verified |
-|---|-----------|-----------------|---------------|
-| C1 | PHẢI ghi `SecurityEventType.TOKEN_REVOKED` khi logout thành công | `BR-LOGOUT-001` | `2026-06-26` |
-| C2 | Partial logout: chỉ revoke session khớp với `SHA-256(refreshToken)` — KHÔNG revoke session khác | `BR-LOGOUT-002`, `ADR-AUTH-009` | `2026-06-26` |
-| C3 | PHẢI verify `session.userId == authenticatedUserId` trước khi revoke | `BR-LOGOUT-007` | `2026-06-26` |
-| C4 | Access token KHÔNG bị blacklist — đây là documented trade-off, KHÔNG thêm token blacklist | `ADR-AUTH-010` | `2026-06-26` |
-| C5 | KHÔNG delete session records — chỉ set `revoked=true, revokedAt=NOW()` (audit trail) | `BR-LOGOUT-001` | `2026-06-26` |
-
-### 17.2 Constraint Injection Block
-
-```
-[CONSTRAINT BLOCK — Module: Logout]
-Theo TDS CB-AUTH-IMP-004 và ADR-AUTH-009, ADR-AUTH-010:
-
-1. PHẢI emit SecurityEventType.TOKEN_REVOKED sau mỗi logout thành công.
-2. Partial logout: revoke chỉ session tương ứng SHA-256(refreshToken). KHÔNG ảnh hưởng sessions khác.
-3. PHẢI verify session.userId == authenticatedUserId trước khi revoke (throw AUTH-022 nếu không khớp).
-4. KHÔNG implement token blacklist cho access token — đây là trade-off đã accepted (ADR-AUTH-010).
-5. KHÔNG DELETE session records — chỉ UPDATE revoked=true, revokedAt=NOW().
-
-[CONTEXT BLOCK]
-- Bounded Context: auth
-- user_sessions: §5.2 DDL (revoked, revokedAt columns)
-- SecurityEventType enum: đã có TOKEN_REVOKED
-- Error codes: §10 (AUTH-020 đến AUTH-024)
-- Auth matrix: §16
-```
-
-### 17.3 Constraint Quality Checklist
-
-- [x] Mỗi constraint traceable về ADR hoặc BR
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 5 constraints cụ thể
-- [x] Reference §16 Auth Matrix
-
-### 17.4 Anti-Pattern Detection
-
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
-|-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Logout không ghi SecurityEvent | Reject — enforce C1 |
-| AP-AI-003 | Implicit Decision | Code thêm JWT blacklist không có ADR | Reject — document trong ADR trước |
-| AP-AI-005 | Hallucinated Contract | Import `TokenBlacklistService` không trong §8 | Reject |
+1. Do not model `logoutAll` in frontend or downstream specs until backend actually supports it.
+2. Treat empty JSON body `{}` as valid logout request.
+3. Expect success response payload `data = null`; do not depend on `revokedCount`.
+4. Use backend behavior as source of truth over older draft TDS text.
+5. Repeated logout must remain safe and idempotent in UI logic.
 
 ---
 
-## PHỤ LỤC
+## References
 
-### A. Glossary
-
-| Thuật ngữ | Định nghĩa |
-|-----------|------------|
-| Partial Logout | Đăng xuất một thiết bị/session cụ thể |
-| Logout-All | Đăng xuất tất cả thiết bị — revoke mọi session |
-| TOKEN_REVOKED | SecurityEventType — ghi nhận khi token bị thu hồi chủ động |
-| Append-only Session | Không DELETE session records — giữ audit trail |
-| Stateless JWT | Access token không thể revoke trước hạn — chấp nhận window tối đa 15 phút |
-
-### B. Tài liệu tham chiếu
-
-| Document | Path |
+| Artifact | Path |
 |----------|------|
-| SRS UC-04 | `02_Requirements/SRS/` |
-| UC-03 Login TDS | `04_Implement/UC03_Login/UC03_Login_TDS.md` |
-| ADR-AUTH-006 | §3 UC-03 TDS |
-| OWASP Session Management Cheat Sheet | https://owasp.org/www-project-cheat-sheets/ |
+| Backend controller | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/controller/AuthController.java` |
+| Backend service | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/service/impl/SessionServiceImpl.java` |
+| Mobile screen | `05_Development/CareBridgeMobileApp/lib/features/auth/screens/logout_confirmation_screen.dart` |

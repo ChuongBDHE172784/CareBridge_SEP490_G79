@@ -18,6 +18,15 @@ import CreateContentPage from '../../features/contentManagement/pages/CreateCont
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
 
+// Security & admin screens (TV1 Sprint 0)
+import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
+import SecurityEventsPage from '../../features/security/pages/SecurityEventsPage';
+import SecurityEventDetailPage from '../../features/security/pages/SecurityEventDetailPage';
+import SecurityIncidentInvestigationPage from '../../features/security/pages/SecurityIncidentInvestigationPage';
+import SecurityIncidentResolutionPage from '../../features/security/pages/SecurityIncidentResolutionPage';
+import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
+import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPage';
+
 const ForbiddenPage = () => (
   <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
     <h2 style={{ color: '#845143' }}>Truy cập bị từ chối</h2>
@@ -79,6 +88,13 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
+              { path: '/security/incidents', element: <SecurityIncidentListPage /> },
+              { path: '/security/events', element: <SecurityEventsPage /> },
+              { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
+              { path: '/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
+              { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
+              { path: '/notifications', element: <NotificationCenterPage /> },
+              { path: '/settings/privacy', element: <PrivacySettingsPage /> },
             ],
           },
           {
