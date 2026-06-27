@@ -88,6 +88,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(authService.login(request), "OTP sent"));
     }
 
+    @PostMapping("/login-direct")
+    @Operation(summary = "Direct login without OTP (dev/test only)")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginDirect(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.loginDirect(request), "Login successful"));
+    }
+
     @PostMapping("/verify-otp")
     @Operation(
         summary = "Verify OTP and complete login/registration",

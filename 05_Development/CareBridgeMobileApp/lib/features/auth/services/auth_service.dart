@@ -33,6 +33,26 @@ class AuthService {
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
   }
 
+  // Dev/test: Login without OTP — returns tokens directly
+  Future<AuthResponse> loginDirect({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    final body = <String, dynamic>{'password': password};
+    if (email != null && email.isNotEmpty) body['email'] = email;
+    if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+    final res = await apiPost('/api/v1/auth/login-direct', body);
+    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    await AuthState.instance.setTokens(
+      accessToken: auth.accessToken,
+      refreshToken: auth.refreshToken,
+      userId: auth.user.id,
+      role: auth.user.role,
+    );
+    return auth;
+  }
+
   // UC-02: Verify OTP — completes login/registration and persists tokens
   Future<AuthResponse> verifyOtp({
     String? email,
