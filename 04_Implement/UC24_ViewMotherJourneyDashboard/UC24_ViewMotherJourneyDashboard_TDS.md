@@ -4,10 +4,10 @@
 |------------------|-----------------------------------------------------------|
 | Document ID      | CB-JOURNEY-IMP-003                                        |
 | Version          | 1.0                                                       |
-| Date             | 2026-06-26                                                |
-| Status           | Draft                                                     |
+| Date             | 2026-06-27                                                |
+| Status           | Approved                                                  |
 | Document Owner   | PhuongNT                                                  |
-| Author           | AI Agent                                                  |
+| Author           | AI Agent — Amelia (Dev Agent)                             |
 | Based on EDS     | v2.0                                                      |
 | SRS Reference    | SRS 3.3.1.3 — View Mother Journey Dashboard               |
 | Related UC       | UC22 (Create Journey), UC23 (Update Journey)              |

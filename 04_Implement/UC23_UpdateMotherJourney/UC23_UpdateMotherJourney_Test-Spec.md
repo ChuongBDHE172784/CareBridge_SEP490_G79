@@ -4,9 +4,9 @@
 |------------------|--------------------------------------------|
 | Document ID      | CB-JOURNEY-IMP-002-TEST                    |
 | Version          | 1.0                                        |
-| Date             | 2026-06-26                                 |
-| Status           | Draft                                      |
-| Author           | AI Agent                                   |
+| Date             | 2026-06-27                                 |
+| Status           | Approved                                   |
+| Author           | AI Agent — Amelia (Dev Agent)              |
 | Related TDS      | CB-JOURNEY-IMP-002                         |
 | SRS Reference    | SRS 3.3.1.2 — Update Mother Journey        |
 | Test ID Prefix   | `JOURNEY-TC-023`                           |
@@ -470,18 +470,18 @@ assertThat(updated.getOwnerUserId()).isEqualTo(MOTHER_ID);             // immuta
 
 ## 8. Acceptance Criteria Checklist
 
-| # | Criterion                                                                              | Verified By              |
-|---|----------------------------------------------------------------------------------------|--------------------------|
-| 1 | PUT /api/v1/journeys/{journeyId} returns HTTP 200 with updated data for own active journey | JOURNEY-TC-023-001     |
-| 2 | status=COMPLETED with delivery_date returns HTTP 200                                   | JOURNEY-TC-023-002       |
-| 3 | status=COMPLETED without delivery_date returns HTTP 400 JOURNEY-013                    | JOURNEY-TC-023-003       |
-| 4 | Updating another user's journey returns HTTP 403 JOURNEY-011                           | JOURNEY-TC-023-004       |
-| 5 | Non-existent journeyId returns HTTP 404 JOURNEY-010                                    | JOURNEY-TC-023-005       |
-| 6 | Updating COMPLETED/ARCHIVED journey returns HTTP 400 JOURNEY-012                       | JOURNEY-TC-023-006       |
-| 7 | No JWT returns HTTP 401                                                                | JOURNEY-TC-023-007       |
-| 8 | DB updated_at advances after successful update                                         | JOURNEY-TC-023-INT-001   |
-| 9 | journey_type and owner_user_id are never modified by PUT                               | JOURNEY-TC-023-INT-001   |
-| 10 | AUDIT event JOURNEY_UPDATED emitted on every successful update                         | JOURNEY-TC-023-001, 002  |
+| # | Criterion                                                                              | Verified By              | Status |
+|---|----------------------------------------------------------------------------------------|--------------------------|--------|
+| 1 | PUT /api/v1/journeys/{journeyId} returns HTTP 200 with updated data for own active journey | JOURNEY-TC-023-001   | 🟢 PASS |
+| 2 | status=COMPLETED with delivery_date returns HTTP 200                                   | JOURNEY-TC-023-002       | 🟢 PASS |
+| 3 | status=COMPLETED without delivery_date returns HTTP 400 JOURNEY-013                    | JOURNEY-TC-023-003       | 🟢 PASS |
+| 4 | Updating another user's journey returns HTTP 403 JOURNEY-011                           | JOURNEY-TC-023-004       | 🟢 PASS |
+| 5 | Non-existent journeyId returns HTTP 404 JOURNEY-010                                    | JOURNEY-TC-023-005       | 🟢 PASS |
+| 6 | Updating COMPLETED/ARCHIVED journey returns HTTP 400 JOURNEY-012                       | JOURNEY-TC-023-006       | 🟢 PASS |
+| 7 | No JWT returns HTTP 401                                                                | JOURNEY-TC-023-007       | 🔴 Not tested (controller/integration — out of scope MVP) |
+| 8 | DB updated_at advances after successful update                                         | JOURNEY-TC-023-INT-001   | 🔴 Not tested (integration — out of scope MVP) |
+| 9 | journey_type and owner_user_id are never modified by PUT                               | JOURNEY-TC-023-INT-001   | 🔴 Not tested (integration — out of scope MVP) |
+| 10 | AUDIT event JOURNEY_UPDATED emitted on every successful update                         | JOURNEY-TC-023-001, 002  | 🟢 PASS |
 
 ---
 

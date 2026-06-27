@@ -7,4 +7,10 @@ class JourneyService {
     final body = data['data'] as Map<String, dynamic>;
     return CreateJourneyResponse.fromJson(body);
   }
+
+  // UC-24: Get dashboard data for Home and Journey screens
+  Future<JourneyDashboard> getDashboard() async {
+    final data = await apiGet('/api/v1/journeys/me/dashboard');
+    return JourneyDashboard.fromJson(data['data'] as Map<String, dynamic>);
+  }
 }

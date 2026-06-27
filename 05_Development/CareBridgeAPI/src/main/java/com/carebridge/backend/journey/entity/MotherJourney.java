@@ -13,7 +13,7 @@ import java.util.UUID;
 @Table(name = "mother_journeys")
 @Getter
 @Setter
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class MotherJourney {
@@ -33,8 +33,14 @@ public class MotherJourney {
     @Column(name = "start_date")
     private LocalDate startDate;
 
+    @Column(name = "last_menstrual_date")
+    private LocalDate lastMenstrualDate;
+
     @Column(name = "estimated_due_date")
     private LocalDate estimatedDueDate;
+
+    @Column(name = "delivery_date")
+    private LocalDate deliveryDate;
 
     @Column(name = "notes", columnDefinition = "text")
     private String notes;

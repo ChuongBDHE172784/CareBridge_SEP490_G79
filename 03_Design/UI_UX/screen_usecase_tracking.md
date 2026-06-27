@@ -11,8 +11,8 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 5 | **CB-005** | Forgot Password | UC-05 | 3.1.1.5 | ⬜ Not Started | - |
 | 6 | **CB-006** | Reset Password | UC-06 | 3.1.1.6 | ⬜ Not Started | - |
 | 7 | **CB-007** | Mother Journey Setup | UC-22 | 3.3.1.1 | ✅ Done | `CareBridgeMobileApp/lib/features/journey/screens/journey_setup_screen.dart` |
-| 8 | **CB-008** | Mother Home | UC-24, UC-49 | 3.3.1.3 / 3.3.1.26 | ⬜ Not Started | - |
-| 9 | **CB-009** | Mother Journey | UC-23, UC-25, UC-26, UC-27, UC-28, UC-51, UC-52, UC-53 | 3.3.1.2 / 3.3.1.4 / 3.3.1.5 / 3.3.1.6 / 3.3.1.7 / 3.3.1.28 / 3.3.1.29 / 3.3.1.30 | ⬜ Not Started | - |
+| 8 | **CB-008** | Mother Home | UC-24, UC-49 | 3.3.1.3 / 3.3.1.26 | ✅ Done | `CareBridgeMobileApp/lib/features/home/screens/mother_home_screen.dart` |
+| 9 | **CB-009** | Mother Journey | UC-23, UC-25, UC-26, UC-27, UC-28, UC-51, UC-52, UC-53 | 3.3.1.2 / 3.3.1.4 / 3.3.1.5 / 3.3.1.6 / 3.3.1.7 / 3.3.1.28 / 3.3.1.29 / 3.3.1.30 | ✅ Done | `CareBridgeMobileApp/lib/features/journey/screens/mother_journey_screen.dart` |
 | 10 | **CB-010** | Baby Profiles | UC-31, UC-32, UC-33, UC-192, UC-193 | 3.3.1.8 / 3.3.1.9 / 3.3.1.10 / 3.3.12.1 / 3.3.12.2 | ✅ Done | `CareBridgeMobileApp/lib/features/baby/screens/baby_profiles_screen.dart` |
 | 11 | **CB-011** | Baby Profile | UC-34, UC-35, UC-36, UC-37, UC-38, UC-192, UC-194, UC-195, UC-196, UC-197 | 3.3.1.11 / 3.3.1.12 / 3.3.1.13 / 3.3.1.14 / 3.3.1.15 / 3.3.12.1 / 3.3.12.3 / 3.3.12.4 / 3.3.12.5 / 3.3.12.6 | ✅ Done | `CareBridgeMobileApp/lib/features/baby/screens/baby_profile_detail_screen.dart` |
 | 12 | **CB-012** | Health Record Timeline | UC-39, UC-40, UC-41, UC-42, UC-211 | 3.3.1.16 / 3.3.1.17 / 3.3.1.18 / 3.3.1.19 / 3.3.15.1 | ✅ Done | `CareBridgeMobileApp/lib/features/healthRecords/screens/health_record_timeline_screen.dart` |
@@ -176,7 +176,7 @@ This file tracks all screens from the UI/UX design prototype, their implementati
 | 170 | **CB-170** | Family Task Detail | UC-221, UC-222, UC-223 | 3.3.17.6 / 3.3.17.7 / 3.3.17.8 | ⬜ Not Started | - |
 | 171 | **CB-171** | Verified Content Search | UC-224 | 3.3.18.1 | ⬜ Not Started | - |
 | 172 | **CB-172** | Verified Content Detail | UC-225 | 3.3.18.2 | ⬜ Not Started | - |
-| 173 | **CB-173** | Vaccination Detail | UC-228, UC-230, UC-231, UC-232, UC-233 | 3.3.19.1 / 3.3.19.3 / 3.3.19.4 / 3.3.19.5 / 3.3.19.6 | ⬜ Not Started | - |
+| 173 | **CB-173** | Vaccination Detail | UC-228, UC-230, UC-231, UC-232, UC-233 | 3.3.19.1 / 3.3.19.3 / 3.3.19.4 / 3.3.19.5 / 3.3.19.6 | ✅ Done | `CareBridgeMobileApp/lib/features/healthRecords/screens/vaccination_detail_screen.dart` |
 | 174 | **CB-174** | Add Vaccination Record | UC-229 | 3.3.19.2 | ⬜ Not Started | - |
 | 175 | **CB-175** | Growth Measurement History | UC-237 | 3.3.19.10 | ⬜ Not Started | - |
 | 176 | **CB-176** | Growth Measurement Detail | UC-234, UC-235, UC-236 | 3.3.19.7 / 3.3.19.8 / 3.3.19.9 | ⬜ Not Started | - |
