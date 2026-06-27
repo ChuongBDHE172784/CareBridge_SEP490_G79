@@ -15,4 +15,7 @@ public class ChangePasswordRequest {
     @NotBlank
     @Size(min = 8, max = 100)
     private String newPassword;
+
+    @NotBlank(message = "Confirm password is required")
+    private String confirmPassword;
 }

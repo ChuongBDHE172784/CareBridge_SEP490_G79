@@ -31,6 +31,8 @@ Acceptance rules for this request:
 - Supporting BMAD skills may assist but must not replace the workflow
 - `08_References/Template/PHASE-3_TDS.md` must be used as the TDS skeleton
 - `08_References/Template/PHASE-4_Test-Spec.md` must be used as the Test-Spec skeleton
+- For database facts, prioritize `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` and approved Flyway migrations over ERD artifacts
+- If the TDS adds or changes schema, the workflow must capture the required migration update and the corresponding sync needed for `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql`
 - Major headings and section order from the templates must be preserved unless a section is marked `Not applicable` with reason
 - Required outputs must exist in `04_Implement/[UCNumber] - [Function Name]/`:
   - `[FolderName]_TDS.md`

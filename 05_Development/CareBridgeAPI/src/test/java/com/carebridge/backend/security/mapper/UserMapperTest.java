@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -38,6 +39,7 @@ class UserMapperTest {
     }
 
     // PRF-TC-005: Response excludes passwordHash and internal fields
+    @DisplayName("PROF-TC-008-002: passwordHash not exposed")
     @Test
     void toProfileResponse_shouldNotContainSensitiveFields() {
         Set<String> responseFields = Arrays.stream(UserProfileResponse.class.getDeclaredFields())
@@ -51,6 +53,7 @@ class UserMapperTest {
     }
 
     // PRF-TC-001 (mapper part): Happy path mapping
+    @DisplayName("PROF-TC-008-001: Retrieve valid user profile")
     @Test
     void toProfileResponse_happyPath_shouldMapAllFields() {
         User user = createTestUser(USER_ID_1, "0900000001", "mother@test.com",

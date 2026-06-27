@@ -10,11 +10,16 @@ import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -30,6 +35,25 @@ public class SessionController {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         List<SessionInfo> sessions = sessionService.getActiveSessions(userId);
         return ApiResponse.success(sessions);
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<Page<SessionInfo>>> getSessionsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "lastActivityAt"));
+        Page<SessionInfo> sessions = sessionService.getActiveSessionsPaged(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(sessions));
+    }
+
+    @DeleteMapping
+    public ApiResponse<Void> revokeAllOtherSessions(Principal principal, HttpServletRequest request) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        String ip = request.getRemoteAddr();
+        int revoked = sessionService.revokeAllExceptCurrent(userId, ip);
+        return ApiResponse.success(null, "Revoked " + revoked + " other session(s)");
     }
 
     @DeleteMapping("/{sessionId}")

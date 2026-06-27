@@ -12,6 +12,7 @@ import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
 import com.carebridge.backend.security.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -74,6 +75,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    @DisplayName("OTP-TC-RESEND-001: Resend OTP via phone")
     void resendOtp_WithPhone_ShouldGenerateNewOtpAndSend() {
         // Given
         String phone = "+84901234567";
@@ -119,6 +121,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    @DisplayName("OTP-TC-RESEND-002: Resend OTP via email")
     void resendOtp_WithEmail_ShouldWorkWithEmailIdentifier() {
         // Given
         String email = "test@example.com";
@@ -182,6 +185,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    @DisplayName("OTP-TC-006: userId not found returns error")
     void resendOtp_WhenUserNotFound_ShouldThrowResourceNotFoundException() {
         // Given
         String phone = "+84999999999";
@@ -199,6 +203,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    @DisplayName("OTP-TC-RESEND-003: No pending OTP throws error")
     void resendOtp_WhenNoPendingOtp_ShouldThrowValidationException() {
         // Given
         String phone = "+84901234567";
@@ -220,6 +225,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    @DisplayName("OTP-TC-RESEND-004: Rate limit exceeded")
     void resendOtp_WhenRateLimited_ShouldThrowRateLimitExceededException() {
         // Given
         String phone = "+84901234567";

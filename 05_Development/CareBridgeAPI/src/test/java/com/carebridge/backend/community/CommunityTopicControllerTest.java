@@ -17,6 +17,7 @@ import com.carebridge.backend.community.controller.CommunityTopicController;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.context.annotation.ComponentScan.Filter;
@@ -37,7 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = CommunityTopicController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class CommunityTopicControllerTest {
 
     @Autowired

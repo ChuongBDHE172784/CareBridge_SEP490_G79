@@ -32,7 +32,7 @@ public class User {
     @Column(name = "user_id", updatable = false, nullable = false)
     private java.util.UUID id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(unique = true, length = 20)
     private String phone;
 
     @Column(length = 255)

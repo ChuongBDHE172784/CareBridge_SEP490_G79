@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUTH-TEST-004`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-06-27 (7/10 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -25,6 +25,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-04 Logout |
+| 2026-06-27 | AI Agent | Sync: mapped 7/10 TCs to existing SessionServiceImplTest.java. LOGOUT-TC-002, 006, INT-001 not yet covered. |
 
 ---
 
@@ -175,8 +176,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `AuthService.logoutSingle()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLogoutTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `BR-LOGOUT-002`, `ADR-AUTH-009`
 
@@ -200,7 +201,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **Expected Result (FAIL):**
 - Nếu revokeAllByUserId() được gọi → không phải partial logout
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -239,8 +240,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **OWASP:** `A07:2021 — Identification and Authentication Failures`
 **CWE:** `CWE-294 — Authentication Bypass by Capture-replay`
 **Feature Under Test:** `AuthService.logoutSingle()` — revoked check
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLogoutTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `BR-LOGOUT-006`
 
@@ -258,7 +259,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **Expected Result (PASS = an toàn):**
 - 401 AUTH-021, không có side effect
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -266,8 +267,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `AuthService.logoutSingle()` — token lookup
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLogoutTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `BR-LOGOUT-004`
 
@@ -279,7 +280,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 2. **Assert:**
    - Throws `ResourceNotFoundException` với code `AUTH-023`
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -289,8 +290,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **OWASP:** `A01:2021 — Broken Access Control`
 **CWE:** `CWE-639 — Authorization Bypass Through User-Controlled Key`
 **Feature Under Test:** `AuthService.validateSessionOwnership()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/LogoutSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-LOGOUT-007`
 
@@ -312,7 +313,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **Expected Result (FAIL = lỗ hổng):**
 - Session bị revoke → attacker có thể kick out bất kỳ user
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -340,8 +341,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `AuthService.logoutSingle()` → `eventPublisher`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLogoutTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `BR-LOGOUT-001`, `SecurityEventType.TOKEN_REVOKED`
 
@@ -362,7 +363,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 **Expected Result (FAIL):**
 - Nếu event không published → vi phạm BR-LOGOUT-001 (audit requirement)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -370,8 +371,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** JWT stateless validation (documented behavior, NOT a bug)
-**Test File:** `src/test/java/com/carebridge/backend/auth/LogoutStatelessJwtTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `ADR-AUTH-010` — documented trade-off
 
@@ -396,7 +397,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
 // Window: tối đa 15 phút sau logout
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -404,8 +405,8 @@ private static String makeRefreshTokenForSession(UserSession session) {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `SessionRepository.revokeById()` isolation
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLogoutTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/identity/service/impl/SessionServiceImplTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `BR-LOGOUT-002`
 
@@ -421,7 +422,7 @@ private static String makeRefreshTokenForSession(UserSession session) {
    - `sessionRepository.revokeById(session-C-ID)` KHÔNG được gọi
    - `revokedCount` == 1
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -469,15 +470,15 @@ assertThat(session.getRevokedAt()).isNotNull();
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `LOGOUT-TC-001` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
+| `LOGOUT-TC-001` | `AuthServiceLogoutTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGOUT-TC-002` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
-| `LOGOUT-TC-003` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
-| `LOGOUT-TC-004` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
-| `LOGOUT-TC-005` | `LogoutSecurityTest.java` | `[ ]` | `—` | — |
+| `LOGOUT-TC-003` | `AuthServiceLogoutTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGOUT-TC-004` | `AuthServiceLogoutTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGOUT-TC-005` | `LogoutSecurityTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGOUT-TC-006` | `AuthControllerLogoutTest.java` | `[ ]` | `—` | — |
-| `LOGOUT-TC-007` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
-| `LOGOUT-TC-008` | `LogoutStatelessJwtTest.java` | `[ ]` | `—` | ADR-AUTH-010 behavior |
-| `LOGOUT-TC-009` | `AuthServiceLogoutTest.java` | `[ ]` | `—` | — |
+| `LOGOUT-TC-007` | `AuthServiceLogoutTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGOUT-TC-008` | `LogoutStatelessJwtTest.java` | `[ ]` | `2026-06-27` | ADR-AUTH-010 behavior |
+| `LOGOUT-TC-009` | `AuthServiceLogoutTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGOUT-TC-INT-001` | `LogoutIntegrationTest.java` | `[ ]` | `—` | — |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)

@@ -14,11 +14,15 @@ public class UserMapper {
         }
         return UserProfileResponse.builder()
                 .id(user.getId())
-                .phone(user.getPhone())
-                .email(user.getEmail())
                 .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
+                .accountStatus(user.getAccountStatus())
+                .emailVerified(user.getEmailVerified())
+                .phoneVerified(user.getPhoneVerified())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 

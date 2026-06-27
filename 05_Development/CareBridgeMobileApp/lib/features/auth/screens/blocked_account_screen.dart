@@ -1,96 +1,102 @@
 import 'package:flutter/material.dart';
-import '../../../core/auth/auth_state.dart';
+import '../../../../core/auth/auth_state.dart';
 
 class BlockedAccountScreen extends StatelessWidget {
   const BlockedAccountScreen({super.key});
 
+  static const _canvasColor = Color(0xFFF6F1EC);
+  static const _textColor = Color(0xFF5A463F);
+  static const _primaryColor = Color(0xFFC98C7B);
+
+  String _humanReadableReason(String code) {
+    return switch (code) {
+      'ACCOUNT_DISABLED' => 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ đội hỗ trợ để được giải quyết.',
+      'ACCOUNT_LOCKED' => 'Tài khoản của bạn tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.',
+      _ => 'Tài khoản của bạn hiện không thể đăng nhập. Vui lòng liên hệ đội hỗ trợ.',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reason = AuthState.instance.blockedReason;
-    final isDisabled = reason == 'ACCOUNT_DISABLED';
-
-    final title = isDisabled ? 'Tài khoản bị vô hiệu hoá' : 'Tài khoản bị khoá tạm thời';
-    final message = isDisabled
-        ? 'Tài khoản của bạn đã bị vô hiệu hoá. Vui lòng liên hệ bộ phận hỗ trợ để được trợ giúp.'
-        : 'Tài khoản của bạn đang bị khoá tạm thời. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.';
+    final reason = AuthState.instance.blockedReason ?? 'ACCOUNT_DISABLED';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F1EC),
-      body: Center(
+      backgroundColor: _canvasColor,
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x145A463F),
-                  blurRadius: 32,
-                  offset: Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              Center(
+                child: Container(
+                  width: 96,
+                  height: 96,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC98C7B).withOpacity(0.12),
+                    color: const Color(0xFFFFDAD6),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.lock_outline,
-                    color: Color(0xFFC98C7B),
-                    size: 28,
+                    size: 48,
+                    color: Color(0xFF93000A),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF5A463F),
-                    height: 1.3,
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Tài khoản bị hạn chế',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: _textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _humanReadableReason(reason),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF524440),
+                  height: 1.6,
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: () => AuthState.instance.clearBlockedReason(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text(
+                    'Quay lại màn hình đăng nhập',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9C857C),
-                    height: 1.6,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () {}, // TODO: open support link or email
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _textColor,
+                  side: const BorderSide(color: _primaryColor, width: 1.5),
+                  shape: const StadiumBorder(),
+                  minimumSize: const Size.fromHeight(52),
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: AuthState.instance.clearBlockedReason,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFC98C7B),
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 0,
-                      shadowColor: const Color(0xFFC98C7B),
-                    ),
-                    child: const Text(
-                      'Quay lại đăng nhập',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                child: const Text(
+                  'Liên hệ hỗ trợ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),

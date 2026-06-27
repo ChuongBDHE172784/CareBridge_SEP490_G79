@@ -3,6 +3,7 @@ package com.carebridge.backend.common.exception;
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
 import com.carebridge.backend.community.exception.CommunityFeedValidationException;
+import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
@@ -147,6 +148,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RagException.class)
     public ResponseEntity<ErrorResponse> handleRag(RagException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ExerciseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExerciseNotFound(
+            ExerciseNotFoundException ex, HttpServletRequest request) {
+        logger.error("Exercise not found: {}", ex.getMessage());
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

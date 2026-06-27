@@ -1,5 +1,6 @@
 package com.carebridge.backend.security.service;
 
+import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -28,4 +29,6 @@ public interface AuthService {
     UserProfileResponse getProfile(java.util.UUID userId);
 
     UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request);
+
+    void changePassword(java.util.UUID userId, ChangePasswordRequest request);
 }

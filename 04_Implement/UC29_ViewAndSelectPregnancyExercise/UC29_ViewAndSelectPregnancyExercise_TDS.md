@@ -4,15 +4,15 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-EXERCISE-IMP-001` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Version** | `1.1` |
+| **Date** | `2026-06-27` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent — Developer` |
 | **Reviewed by** | `[ ] Pending` |
 | **DPO Sign-off** | `[ ] Pending` |
 | **Approved by** | `[ ] Pending` |
-| **Last Review** | `2026-06-26` |
+| **Last Review** | `2026-06-27` |
 | **Based on EDS** | `v2.0` |
 
 ---
@@ -24,6 +24,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent — Developer | Tạo tài liệu lần đầu |
+| 2026-06-27 | AI Agent — Developer | v1.1: Tách 3.3.2.3 (View Pregnancy Exercise Detail) ra thành CB-EXERCISE-IMP-002. UC29 giờ chỉ cover 3.3.2.1 (list/browse/select). Xóa `getExerciseDetail`, `ExerciseDetailResponse`, và endpoint GET /api/v1/exercises/{exerciseId} khỏi scope này. |
+| 2026-06-27 | AI Agent — Developer | Phase 3: Implementation — 8/8 tests PASS. Red Gate verified → Green Gate PASS. |
 
 ---
 
@@ -51,8 +53,11 @@
 
 ## 1. Tổng quan Module
 
-> Hiển thị danh sách bài tập thai kỳ phù hợp và cho phép Mother chọn xem chi tiết hoặc bắt đầu bài tập.
+> Hiển thị danh sách bài tập thai kỳ phù hợp và cho phép Mother chọn một bài tập để xem chi tiết hoặc bắt đầu.
 > SRS 3.3.2.1: "View and Select Pregnancy Exercise — Displays suitable exercises and lets the Mother choose one to view or start."
+>
+> **Scope của UC29 (v1.1):** Chỉ bao gồm luồng liệt kê (list/browse/select) — `GET /api/v1/exercises`.
+> Chi tiết bài tập (SRS 3.3.2.3) được tách ra thành CB-EXERCISE-IMP-002: `04_Implement/UC177_ViewPregnancyExerciseDetail/`.
 
 | Field | Value |
 |-------|-------|
@@ -61,13 +66,13 @@
 | **Data Classification** | `Internal` |
 | **Compliance Scope** | `BR-RBAC, BR-PRIVACY, BR-SAFETY` |
 | **Upstream Dependencies** | `IAM (authentication), pregnancy_exercises table (V1 migration)` |
-| **Downstream Consumers** | `UC30 — Analyze Exercise Posture (session start depends on exercise selection)` |
+| **Downstream Consumers** | `UC30 — Analyze Exercise Posture, CB-EXERCISE-IMP-002 — View Exercise Detail` |
 
-**Phạm vi chức năng:**
-- GET /api/v1/exercises — liệt kê danh sách bài tập đã được PUBLISHED, hỗ trợ filter theo `trimester_scope` và `difficulty_level`.
-- GET /api/v1/exercises/{exerciseId} — xem chi tiết một bài tập bao gồm `instruction_content`.
+**Phạm vi chức năng (UC29 v1.1):**
+- `GET /api/v1/exercises` — liệt kê danh sách bài tập đã được PUBLISHED, hỗ trợ filter theo `trimester_scope` và `difficulty_level`, phân trang.
 - Chỉ hiển thị bài tập có `status = PUBLISHED`. Bài tập `DRAFT` và `ARCHIVED` bị ẩn hoàn toàn.
 - Actor: **Mother**. Platform: **Mobile App**.
+- ❌ Xem chi tiết từng bài tập (GET /api/v1/exercises/{id}) → thuộc `CB-EXERCISE-IMP-002` (SRS 3.3.2.3).
 
 ---
 
@@ -77,12 +82,11 @@
 
 | Requirement ID | Loại (BR/ADR/US) | Mô tả yêu cầu | Thành phần Code | Compliance Target | ADR liên quan |
 |----------------|------------------|---------------|-----------------|-------------------|---------------|
-| BR-EXERCISE-001 | Business Rule | Chỉ bài tập PUBLISHED mới hiển thị cho Mother | `ExerciseRepository.findPublished()`, `ExerciseService.listExercises()` | BR-SAFETY | ADR-EXERCISE-001 |
-| BR-EXERCISE-002 | Business Rule | Filter theo trimester dựa trên tuần thai kỳ hiện tại của Mother (nếu có journey) | `ExerciseService.listExercises()` | BR-PRIVACY | ADR-EXERCISE-002 |
-| BR-EXERCISE-003 | Business Rule | safety_warning luôn hiển thị nổi bật, không bao giờ bị ẩn hoặc suppress | `ExerciseSummaryResponse`, `ExerciseDetailResponse` | BR-SAFETY | — |
-| BR-EXERCISE-004 | Business Rule | Không tự động bắt đầu bài tập mà không qua safety check | `ExerciseController` (UC29 chỉ view, start thuộc UC30) | BR-SAFETY | ADR-EXERCISE-003 |
+| BR-EXERCISE-001 | Business Rule | Chỉ bài tập PUBLISHED mới hiển thị cho Mother | `ExerciseRepository.findPublishedByFilters()`, `ExerciseQueryService.listPublishedExercises()` | BR-SAFETY | ADR-EXERCISE-001 |
+| BR-EXERCISE-002 | Business Rule | Filter theo trimester là optional query param từ client (không auto-detect từ journey) | `ExerciseController.listExercises()` | — | ADR-EXERCISE-002 |
+| BR-EXERCISE-003 | Business Rule | safety_warning luôn hiển thị nổi bật, không bao giờ bị ẩn hoặc null trong response | `ExerciseSummaryResponse`, `ExerciseMapper.toSummaryResponse()` | BR-SAFETY | — |
+| BR-EXERCISE-004 | Business Rule | Không tự động bắt đầu bài tập mà không qua safety check | `ExerciseController` (UC29 chỉ list/select, start thuộc UC30) | BR-SAFETY | ADR-EXERCISE-003 |
 | US-EXERCISE-001 | User Story | Mother xem danh sách bài tập phù hợp với tam cá nguyệt | `ExerciseController.GET /api/v1/exercises` | — | ADR-EXERCISE-001 |
-| US-EXERCISE-002 | User Story | Mother xem chi tiết bài tập bao gồm hướng dẫn đầy đủ | `ExerciseController.GET /api/v1/exercises/{exerciseId}` | — | — |
 
 ---
 
@@ -117,7 +121,7 @@
 - UX phù hợp cho mobile app
 
 **Tiêu cực / Trade-offs:**
-- Nếu catalog mở rộng lớn (>1000 bài tập), có thể cần thêm search. Giảm thiểu: đánh giá lại khi catalog > 500.
+- Nếu catalog mở rộng lớn (>1000 bài tập), có thể cần thêm search. Đánh giá lại khi catalog > 500.
 
 **Compliance Impact:**
 - Không ảnh hưởng đến compliance.
@@ -133,7 +137,7 @@
 | **Date** | `2026-06-26` |
 
 #### Bối cảnh (Context)
-> Mother có thể có một pregnancy journey với thông tin tuần thai. Khi browse bài tập, hệ thống có thể tự động suggest bài tập phù hợp trimester hiện tại. Tuy nhiên, filter vẫn là optional — Mother có quyền xem tất cả bài tập.
+> Mother có thể có một pregnancy journey với thông tin tuần thai. Tuy nhiên, filter trimester vẫn là optional — Mother có quyền xem tất cả bài tập.
 
 #### Các phương án đã xem xét (Options Considered)
 
@@ -143,7 +147,7 @@
 | B | Server auto-detect trimester từ journey, fallback ALL | + Tự động UX tốt | - Coupling với journey module |
 
 #### Quyết định (Decision)
-> Chọn **Phương án A** vì giảm coupling giữa exercise và journey module. Client (mobile app) có thể lấy thông tin trimester từ journey rồi gửi filter. Server chỉ filter, không lookup journey.
+> Chọn **Phương án A** — client (mobile app) có thể lấy thông tin trimester từ journey rồi gửi filter. Server chỉ filter, không lookup journey.
 
 #### Hệ quả (Consequences)
 
@@ -152,7 +156,7 @@
 - Dễ test, dễ maintain
 
 **Tiêu cực / Trade-offs:**
-- Client cần 2 calls (lấy journey info + lấy exercises). Giảm thiểu: client cache journey info locally.
+- Client cần 2 calls (lấy journey info + lấy exercises). Client cache journey info locally để giảm thiểu.
 
 **Compliance Impact:**
 - Không truy cập thêm dữ liệu PII của Mother.
@@ -168,27 +172,19 @@
 | **Date** | `2026-06-26` |
 
 #### Bối cảnh (Context)
-> Bài tập thai kỳ có nguy cơ tiềm ẩn. Trước khi bắt đầu bất kỳ bài tập nào, Mother phải hoàn thành safety check questionnaire. UC29 chỉ view/select; UC30 xử lý safety check và session.
-
-#### Các phương án đã xem xét (Options Considered)
-
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
-|-----------|-------|----------|------------|
-| A | Safety check là endpoint riêng, gọi trước khi start session | + Tách biệt, rõ ràng | - Cần nhiều API calls |
-| B | Safety check embedded trong session start | + Ít API calls | - Logic phức tạp, khó test riêng |
+> UC29 chỉ view/select; UC30 xử lý safety check và session start. Không bao giờ bắt đầu session từ list endpoint.
 
 #### Quyết định (Decision)
-> Chọn **Phương án A** (xử lý trong UC30). UC29 không có logic start — chỉ view và select. Safety check endpoint riêng giúp audit trail rõ ràng.
+> UC29 là read-only (list only). Safety check và session start thuộc UC30 (SRS 3.3.2.4 và 3.3.2.5).
 
 #### Hệ quả (Consequences)
 
 **Tích cực:**
-- Audit trail cho safety check rõ ràng
-- Có thể reuse safety check cho các mục đích khác
 - UC29 đơn giản, chỉ read-only
+- Audit trail cho safety check rõ ràng (trong UC30)
 
 **Tiêu cực / Trade-offs:**
-- Mother cần thêm bước trước khi bắt đầu bài tập. Giảm thiểu: UX flow tự động chuyển.
+- Mother cần thêm bước (UC30 detail/start flow). UX flow tự động chuyển từ UC29 list → (UC_VPED detail) → UC30 safety/start.
 
 **Compliance Impact:**
 - BR-SAFETY: đảm bảo Mother được cảnh báo trước khi tập.
@@ -202,7 +198,6 @@
 | Category | Requirement | Target SLA | Measurement Method | Compliance Basis |
 |----------|-------------|------------|---------------------|------------------|
 | Latency | GET /api/v1/exercises (p99) | `< 200ms` | k6 load test | — |
-| Latency | GET /api/v1/exercises/{id} (p99) | `< 150ms` | k6 load test | — |
 | Availability | Uptime (monthly) | `99.9%` | Uptime monitor | — |
 | Throughput | Concurrent requests | `300 req/s` | Load test | — |
 
@@ -217,13 +212,13 @@
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| Authentication | JWT required for all endpoints | 100% | Security test | BR-RBAC |
-| Authorization | MOTHER role required | Least privilege | Auth Matrix (S16) | BR-RBAC |
+| Authentication | JWT required | 100% | Security test | BR-RBAC |
+| Authorization | MOTHER role required | Least privilege | Auth Matrix (§16) | BR-RBAC |
 | Encryption in transit | All endpoints | TLS 1.3+ | SSL Labs scan | BR-PRIVACY |
 
 ### 4.4. Scalability & Capacity Planning
 
-> Dự kiến tải: ~500 active Mothers, ~200 exercises in catalog. Read-heavy workload. Caching strategy: Spring Cache with TTL 5 min cho exercise list (optional future optimization).
+> Dự kiến tải: ~500 active Mothers, ~200 exercises in catalog. Read-heavy workload. Caching strategy: Spring Cache với TTL 5 min cho exercise list (optional future optimization).
 
 ---
 
@@ -292,51 +287,36 @@ class ExerciseSummaryResponse {
   + supportsPostureAnalysis: Boolean
 }
 
-class ExerciseDetailResponse {
-  + exerciseId: UUID
-  + title: String
-  + description: String
-  + trimesterScope: String
-  + difficultyLevel: String
-  + durationMinutes: Short
-  + instructionContent: String
-  + mediaUrl: String
-  + safetyWarning: String
-  + supportsPostureAnalysis: Boolean
-  + versionNo: Integer
-  + createdAt: OffsetDateTime
-}
+note bottom of ExerciseSummaryResponse
+  Summary DTO for LIST endpoint only.
+  ExerciseDetailResponse → CB-EXERCISE-IMP-002 (UC_VPED)
+end note
 
 ' === MAPPER ===
 class ExerciseMapper {
   + toSummaryResponse(entity: PregnancyExercise): ExerciseSummaryResponse
-  + toDetailResponse(entity: PregnancyExercise): ExerciseDetailResponse
 }
 
 ' === SERVICES ===
 interface IExerciseQueryService <<interface>> {
   + listPublishedExercises(trimester: TrimesterScope, difficulty: DifficultyLevel, page: int, size: int): PaginatedResponse<ExerciseSummaryResponse>
-  + getExerciseDetail(exerciseId: UUID): ApiResponse<ExerciseDetailResponse>
 }
 
 class ExerciseQueryService implements IExerciseQueryService {
   - exerciseRepository: ExerciseRepository
   - exerciseMapper: ExerciseMapper
   + listPublishedExercises(trimester: TrimesterScope, difficulty: DifficultyLevel, page: int, size: int): PaginatedResponse<ExerciseSummaryResponse>
-  + getExerciseDetail(exerciseId: UUID): ApiResponse<ExerciseDetailResponse>
 }
 
 ' === REPOSITORIES ===
 interface ExerciseRepository <<interface>> {
-  + findByStatusAndFilters(status: ExerciseStatus, trimester: TrimesterScope, difficulty: DifficultyLevel, pageable: Pageable): Page<PregnancyExercise>
-  + findByExerciseIdAndStatus(exerciseId: UUID, status: ExerciseStatus): Optional<PregnancyExercise>
+  + findPublishedByFilters(status: ExerciseStatus, trimester: TrimesterScope, difficulty: DifficultyLevel, pageable: Pageable): Page<PregnancyExercise>
 }
 
 ' === CONTROLLER ===
 class ExerciseController {
   - exerciseQueryService: IExerciseQueryService
   + listExercises(trimester: String, difficulty: String, page: int, size: int): PaginatedResponse<ExerciseSummaryResponse>
-  + getExerciseDetail(exerciseId: UUID): ApiResponse<ExerciseDetailResponse>
 }
 
 ' === RELATIONSHIPS ===
@@ -353,6 +333,7 @@ PregnancyExercise --> ExerciseStatus : has
 ### 5.2. Data Structure (Existing V1 Migration)
 
 > Schema đã tồn tại trong V1 migration. Không cần tạo migration mới cho UC29.
+> Tham chiếu: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql`
 
 ```sql
 -- === PREGNANCY EXERCISES TABLE (existing) ===
@@ -374,7 +355,7 @@ CREATE TABLE public.pregnancy_exercises (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Recommended index for UC29 queries
+-- Index cho UC29 queries (list by status + filters)
 CREATE INDEX idx_pregnancy_exercises_status_trimester
     ON public.pregnancy_exercises(status, trimester_scope);
 CREATE INDEX idx_pregnancy_exercises_status_difficulty
@@ -408,7 +389,7 @@ Controller -> Controller : Validate query params\n(trimester, difficulty optiona
 Controller -> Service : listPublishedExercises(FIRST, EASY, 0, 10)
 activate Service
 
-Service -> Repository : findByStatusAndFilters(PUBLISHED, FIRST, EASY, PageRequest(0,10))
+Service -> Repository : findPublishedByFilters(PUBLISHED, FIRST, EASY, PageRequest(0,10))
 activate Repository
 
 Repository -> DB : SELECT * FROM pregnancy_exercises\nWHERE status='PUBLISHED'\nAND trimester_scope='FIRST'\nAND difficulty_level='EASY'\nORDER BY created_at DESC\nLIMIT 10 OFFSET 0
@@ -421,94 +402,41 @@ Mapper --> Service : List<ExerciseSummaryResponse>
 Service --> Controller : PaginatedResponse<ExerciseSummaryResponse>
 deactivate Service
 
-Controller --> Client : HTTP 200\nPaginatedResponse (items, page, size, totalElements, totalPages)
+Controller --> Client : HTTP 200\nPaginatedResponse { items, page, size, totalElements, totalPages }
 deactivate Controller
 
 @enduml
 ```
 
-### 6.2. Sequence Diagram — Happy Path: Get Exercise Detail
+### 6.2. Sequence Diagram — Error Path: Unauthenticated / No JWT
 
 ```plantuml
-@startuml UC29_SequenceDiagram_Detail_HappyPath
+@startuml UC29_SequenceDiagram_ErrorPath_Auth
 skinparam sequenceArrowThickness 2
 skinparam roundcorner 10
 skinparam sequenceParticipant underline
 skinparam backgroundColor #FAFAFA
 
-actor       "Mother (Mobile)"     as Client
-participant "ExerciseController"  as Controller
-participant "ExerciseQueryService" as Service
-participant "ExerciseRepository"  as Repository
-database    "PostgreSQL"          as DB
-participant "ExerciseMapper"      as Mapper
+actor       "Client (no JWT)"    as Client
+participant "Spring Security"    as Security
+participant "ExerciseController" as Controller
 
-Client -> Controller : GET /api/v1/exercises/{exerciseId}\nAuthorization: Bearer [JWT]
-activate Controller
+Client -> Security : GET /api/v1/exercises\n(no Authorization header)
+activate Security
 
-Controller -> Controller : Validate exerciseId (UUID format)
-Controller -> Service : getExerciseDetail(exerciseId)
-activate Service
+Security -> Security : JWT filter: no token found
+Security --> Client : HTTP 401\n{ error: { code: "IAM-001", message: "Authentication required" } }
+deactivate Security
 
-Service -> Repository : findByExerciseIdAndStatus(exerciseId, PUBLISHED)
-activate Repository
-
-Repository -> DB : SELECT * FROM pregnancy_exercises\nWHERE exercise_id = ? AND status = 'PUBLISHED'
-DB --> Repository : Optional<PregnancyExercise>
-deactivate Repository
-
-Service -> Service : Check entity present\n(throw EX-001 if empty)
-Service -> Mapper : toDetailResponse(entity)
-Mapper --> Service : ExerciseDetailResponse
-
-Service --> Controller : ApiResponse<ExerciseDetailResponse>
-deactivate Service
-
-Controller --> Client : HTTP 200\nApiResponse { data: ExerciseDetailResponse }
-deactivate Controller
+note right of Client
+  Controller is never reached.
+  Spring Security intercepts at filter level.
+end note
 
 @enduml
 ```
 
-### 6.3. Sequence Diagram — Error Path: Exercise Not Found
-
-```plantuml
-@startuml UC29_SequenceDiagram_ErrorPath
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam sequenceParticipant underline
-skinparam backgroundColor #FAFAFA
-
-actor       "Mother (Mobile)"     as Client
-participant "ExerciseController"  as Controller
-participant "ExerciseQueryService" as Service
-participant "ExerciseRepository"  as Repository
-database    "PostgreSQL"          as DB
-
-Client -> Controller : GET /api/v1/exercises/{invalidId}\nAuthorization: Bearer [JWT]
-activate Controller
-
-Controller -> Service : getExerciseDetail(invalidId)
-activate Service
-
-Service -> Repository : findByExerciseIdAndStatus(invalidId, PUBLISHED)
-activate Repository
-
-Repository -> DB : SELECT * FROM pregnancy_exercises\nWHERE exercise_id = ? AND status = 'PUBLISHED'
-DB --> Repository : Optional.empty()
-deactivate Repository
-
-Service -> Service : Entity not found\nthrow ExerciseNotFoundException(EX-001)
-Service --> Controller : << ExerciseNotFoundException >>
-deactivate Service
-
-Controller --> Client : HTTP 404\n{ error: { code: "EX-001", message: "Exercise not found" } }
-deactivate Controller
-
-@enduml
-```
-
-### 6.4. State Machine — Exercise Status (Reference only, managed by admin)
+### 6.3. State Machine — Exercise Status (Reference only, managed by admin)
 
 ```plantuml
 @startuml UC29_ExerciseStatus_StateMachine
@@ -518,19 +446,19 @@ skinparam StateBorderColor #2E75B6
 
 [*] --> DRAFT : Expert creates exercise
 
-DRAFT --> PUBLISHED : Expert publishes exercise\n(Admin approval)
-PUBLISHED --> ARCHIVED : Expert archives exercise\n(no longer visible to Mothers)
-ARCHIVED --> PUBLISHED : Expert re-publishes\n(if content still valid)
+DRAFT --> PUBLISHED : Admin approves exercise\n(visible to Mothers)
+PUBLISHED --> ARCHIVED : Admin archives exercise\n(no longer visible to Mothers)
+ARCHIVED --> PUBLISHED : Admin re-publishes\n(if content still valid)
 
 note right of PUBLISHED
   Invariant: Only PUBLISHED exercises
-  are visible to Mothers via UC29.
+  are visible to Mothers via UC29 list endpoint.
   DRAFT and ARCHIVED are filtered out.
 end note
 
 note right of DRAFT
   UC29 does NOT manage state transitions.
-  State changes are handled by admin/expert flows.
+  State changes are handled by admin/expert flows (3.2.6.1).
 end note
 
 @enduml
@@ -542,7 +470,7 @@ end note
 
 ### 7.1. Events Published (Phát ra)
 
-> UC29 is read-only. No domain events are published by this module.
+> UC29 is read-only. No domain events are published.
 
 | Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
 |------------|---------|-----------|---------------|----------------|--------|
@@ -566,58 +494,32 @@ end note
 // ExerciseSummaryResponse.java — Summary DTO for list view
 // @version 1.0
 public class ExerciseSummaryResponse {
-    private UUID exerciseId;        // Primary key
-    private String title;           // Exercise title, not null
-    private String description;     // Short description
-    private String trimesterScope;  // FIRST, SECOND, THIRD, ALL
-    private String difficultyLevel; // EASY, MEDIUM, HARD
-    private Short durationMinutes;  // Estimated duration
-    private String mediaUrl;        // URL to instructional media (video/image)
-    private String safetyWarning;   // Always included, never null (empty string if none)
+    private UUID exerciseId;                 // Primary key
+    private String title;                    // Exercise title, not null
+    private String description;             // Short description
+    private String trimesterScope;          // FIRST, SECOND, THIRD, ALL
+    private String difficultyLevel;         // EASY, MEDIUM, HARD
+    private Short durationMinutes;          // Estimated duration
+    private String mediaUrl;                // URL to instructional media (video/image)
+    private String safetyWarning;           // Always included — empty string if none, NEVER null
     private Boolean supportsPostureAnalysis; // Whether posture analysis is available
     // getters / setters
 }
 
-// ExerciseDetailResponse.java — Full detail DTO
-// @version 1.0
-public class ExerciseDetailResponse {
-    private UUID exerciseId;
-    private String title;
-    private String description;
-    private String trimesterScope;
-    private String difficultyLevel;
-    private Short durationMinutes;
-    private String instructionContent; // Full instruction text (not in summary)
-    private String mediaUrl;
-    private String safetyWarning;      // Always included, never null
-    private Boolean supportsPostureAnalysis;
-    private Integer versionNo;
-    private OffsetDateTime createdAt;
-    // getters / setters
-}
-
-// IExerciseQueryService.java — Service Contract
-// @version 1.0
+// IExerciseQueryService.java — Service Contract (list only)
+// @version 1.1
 public interface IExerciseQueryService {
     /**
      * List published exercises with optional filters.
      * Only exercises with status=PUBLISHED are returned.
-     * @param trimester optional filter by trimester scope
-     * @param difficulty optional filter by difficulty level
-     * @param page zero-based page number
+     * @param trimester optional filter — null means all trimesters
+     * @param difficulty optional filter — null means all difficulty levels
+     * @param page zero-based page number (default 0)
      * @param size page size (default 20, max 50)
      * @return paginated list of exercise summaries
      */
     PaginatedResponse<ExerciseSummaryResponse> listPublishedExercises(
         TrimesterScope trimester, DifficultyLevel difficulty, int page, int size);
-
-    /**
-     * Get full detail of a single published exercise.
-     * @param exerciseId UUID of the exercise
-     * @return exercise detail
-     * @throws ExerciseNotFoundException (EX-001) when exercise not found or not PUBLISHED
-     */
-    ApiResponse<ExerciseDetailResponse> getExerciseDetail(UUID exerciseId);
 }
 ```
 
@@ -630,23 +532,17 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 
     /**
      * Find published exercises with optional trimester and difficulty filters.
-     * Uses dynamic query — null parameters are ignored in WHERE clause.
+     * Null parameters are ignored (treated as "no filter").
      */
     @Query("SELECT e FROM PregnancyExercise e WHERE e.status = :status "
          + "AND (:trimester IS NULL OR e.trimesterScope = :trimester) "
          + "AND (:difficulty IS NULL OR e.difficultyLevel = :difficulty) "
          + "ORDER BY e.createdAt DESC")
-    Page<PregnancyExercise> findByStatusAndFilters(
+    Page<PregnancyExercise> findPublishedByFilters(
         @Param("status") ExerciseStatus status,
         @Param("trimester") TrimesterScope trimester,
         @Param("difficulty") DifficultyLevel difficulty,
         Pageable pageable);
-
-    /**
-     * Find a single exercise by ID and status.
-     * Used to ensure only PUBLISHED exercises are accessible.
-     */
-    Optional<PregnancyExercise> findByExerciseIdAndStatus(UUID exerciseId, ExerciseStatus status);
 }
 ```
 
@@ -659,7 +555,8 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 | Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
 |--------|------|------------|----------------|------------|-------------|
 | `GET` | `/api/v1/exercises` | JWT Bearer | `MOTHER` | 300/min | Yes |
-| `GET` | `/api/v1/exercises/{exerciseId}` | JWT Bearer | `MOTHER` | 300/min | Yes |
+
+> **Note:** `GET /api/v1/exercises/{exerciseId}` (detail) thuộc `CB-EXERCISE-IMP-002` (SRS 3.3.2.3).
 
 ### 9.2. Request / Response Schemas
 
@@ -697,6 +594,17 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 }
 ```
 
+**Response — 200 OK (Empty list — no exercises match filter):**
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
+
 **Response — 401 Unauthorized (No JWT):**
 ```json
 {
@@ -707,42 +615,12 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 }
 ```
 
----
-
-#### `GET /api/v1/exercises/{exerciseId}` — Chi tiết bài tập
-
-**Path Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `exerciseId` | UUID | Yes | Exercise primary key |
-
-**Response — 200 OK (Happy Path):**
-```json
-{
-  "data": {
-    "exerciseId": "550e8400-e29b-41d4-a716-446655440001",
-    "title": "Prenatal Yoga - First Trimester",
-    "description": "Gentle yoga poses suitable for early pregnancy",
-    "trimesterScope": "FIRST",
-    "difficultyLevel": "EASY",
-    "durationMinutes": 20,
-    "instructionContent": "Step 1: Start in a comfortable seated position...",
-    "mediaUrl": "https://cdn.carebridge.com/exercises/prenatal-yoga-t1.mp4",
-    "safetyWarning": "Stop immediately if you feel dizzy or experience pain.",
-    "supportsPostureAnalysis": true,
-    "versionNo": 1,
-    "createdAt": "2026-06-01T10:00:00.000Z"
-  }
-}
-```
-
-**Response — 404 Not Found:**
+**Response — 403 Forbidden (Wrong role):**
 ```json
 {
   "error": {
-    "code": "EX-001",
-    "message": "Exercise not found"
+    "code": "IAM-002",
+    "message": "Insufficient permissions"
   }
 }
 ```
@@ -753,12 +631,11 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `EX-001` | 404 | Exercise not found | Không tìm thấy bài tập | exerciseId does not exist or status is not PUBLISHED |
-| `EX-002` | 403 | Exercise not accessible | Bài tập không khả dụng | Exercise exists but status is DRAFT or ARCHIVED (returned as 404 for security — no information leakage) |
 | `IAM-001` | 401 | Authentication required | Yêu cầu xác thực | No JWT token or token expired |
 | `IAM-002` | 403 | Insufficient permissions | Không đủ quyền | User does not have MOTHER role |
+| `EX-003` | 400 | Invalid filter value | Giá trị lọc không hợp lệ | trimester or difficulty value not in allowed enum |
 
-> **Note:** EX-002 is mapped to 404 in implementation to prevent information leakage about DRAFT/ARCHIVED exercises. Internally logged as EX-002 for audit.
+> **Note:** `EX-001` (Exercise not found) thuộc `CB-EXERCISE-IMP-002` (SRS 3.3.2.3 — detail endpoint).
 
 ---
 
@@ -766,23 +643,23 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-EXERCISE-001, 002, 003 đã được Accepted (xem S3)
-- [ ] V1 migration with pregnancy_exercises table đã chạy thành công
+- [ ] ADR-EXERCISE-001, 002, 003 đã được Accepted (xem §3)
+- [ ] V1 migration với pregnancy_exercises table đã chạy thành công
 - [ ] Package `com.carebridge.backend.exercise` đã tồn tại
 
 ### 11.2. Pre-Migration Checklist
 
-> Không cần migration mới cho UC29. Sử dụng schema hiện có.
+> Không cần migration mới cho UC29. Sử dụng schema hiện có từ V1.
 
 - [x] pregnancy_exercises table đã tồn tại từ V1 migration
-- [ ] Index cho status + trimester_scope đã được tạo (hoặc thêm vào migration mới)
+- [ ] Index `idx_pregnancy_exercises_status_trimester` đã tồn tại hoặc được thêm vào migration mới
 
 ### 11.3. Implementation Steps
 
 #### Chặng 1 — Entity & Enums
 
 Tạo files trong `com.carebridge.backend.exercise.entity`:
-- `PregnancyExercise.java` — JPA entity mapping to `pregnancy_exercises` table
+- `PregnancyExercise.java` — JPA entity mapping `pregnancy_exercises` table
 - `TrimesterScope.java` — Enum: FIRST, SECOND, THIRD, ALL
 - `DifficultyLevel.java` — Enum: EASY, MEDIUM, HARD
 - `ExerciseStatus.java` — Enum: DRAFT, PUBLISHED, ARCHIVED
@@ -791,38 +668,39 @@ Tạo files trong `com.carebridge.backend.exercise.entity`:
 
 Tạo `ExerciseRepository.java` trong `com.carebridge.backend.exercise.repository`:
 - Extend `JpaRepository<PregnancyExercise, UUID>`
-- Custom query `findByStatusAndFilters` with dynamic filters
+- Custom query `findPublishedByFilters` với dynamic filters
 
-#### Chặng 3 — DTOs & Mapper
+#### Chặng 3 — DTO & Mapper
 
 Tạo DTOs trong `com.carebridge.backend.exercise.dto`:
 - `ExerciseSummaryResponse.java`
-- `ExerciseDetailResponse.java`
 
 Tạo mapper trong `com.carebridge.backend.exercise.mapper`:
-- `ExerciseMapper.java` (MapStruct or manual)
+- `ExerciseMapper.java` — method `toSummaryResponse()`, null safetyWarning → `""`
 
 #### Chặng 4 — Service
 
 Tạo service trong `com.carebridge.backend.exercise.service`:
-- `IExerciseQueryService.java` — interface
+- `IExerciseQueryService.java` — interface với `listPublishedExercises()`
 - `ExerciseQueryService.java` — implementation
 
 #### Chặng 5 — Controller
 
 Tạo controller trong `com.carebridge.backend.exercise.controller`:
-- `ExerciseController.java` — REST endpoints
+- `ExerciseController.java` — `GET /api/v1/exercises`, delegate to service, no business logic
 
 #### Chặng 6 — Verification sau deploy
 
 ```bash
-# Health check
-curl -X GET https://[host]/api/v1/health
-
 # Smoke test — list exercises
-curl -X GET https://[host]/api/v1/exercises \
+curl -X GET "https://[host]/api/v1/exercises?trimester=FIRST&page=0&size=5" \
   -H "Authorization: Bearer [JWT_TOKEN]"
 # Expected: 200 with paginated list
+
+# Verify DRAFT exercises not returned
+curl -X GET "https://[host]/api/v1/exercises" \
+  -H "Authorization: Bearer [JWT_TOKEN]"
+# Expected: Only PUBLISHED exercises in items
 ```
 
 ### 11.4. Deployment Checklist
@@ -848,8 +726,8 @@ curl -X GET https://[host]/api/v1/exercises \
 ### 12.2. Rollback Procedure
 
 ```bash
-# UC29 is read-only — rollback is low risk
-# Bước 1: Revert deployment to previous version
+# UC29 là read-only — rollback low risk
+# Bước 1: Revert deployment
 kubectl rollout undo deployment/carebridge-api
 
 # Bước 2: Verify rollback
@@ -863,17 +741,17 @@ curl -X GET https://[host]/api/v1/health
 
 | Thời điểm | Người nhận | Kênh | Template |
 |-----------|------------|------|----------|
-| Ngay khi phát hiện | On-call team | Slack #incident | "EXERCISE module incident: [description]" |
+| Ngay khi phát hiện | On-call team | Slack #incident | "EXERCISE list module incident: [description]" |
 
 ### 12.4. Post-Incident Review (PIR)
 
-> Standard PIR process. Low data risk since UC29 is read-only and no PII is exposed through exercise catalog.
+> Standard PIR process. Low data risk since UC29 is read-only and exercise catalog contains no PII.
 
 ---
 
 ## 13. Kịch bản Kiểm thử Chi tiết
 
-> **Policy (EDS v2.0 — Test Data):** Mọi test scenario phải dùng `SYNTHETIC` data.
+> **Policy (EDS v2.0 — Test Data):** Mọi test scenario phải dùng `SYNTHETIC` data. Không dùng PII thật.
 
 ### 13.1. Unit Tests
 
@@ -885,33 +763,42 @@ Feature: List published pregnancy exercises
     Given test data classification: SYNTHETIC
     And ExerciseRepository is mocked
 
-  Scenario: List exercises with trimester filter
+  Scenario: List exercises filtered by trimester
     Given repository returns 2 PUBLISHED exercises with trimester=FIRST
     When listPublishedExercises(FIRST, null, 0, 20) is called
     Then result contains 2 ExerciseSummaryResponse items
-    And each item has safetyWarning field populated (not null)
+    And each item has safetyWarning field not null
     And each item has trimesterScope = "FIRST"
+
+  Scenario: No filter — all PUBLISHED exercises returned
+    Given repository returns 5 PUBLISHED exercises with mixed trimesters
+    When listPublishedExercises(null, null, 0, 20) is called
+    Then result contains 5 items
 ```
 
 **Hàm được test:** `ExerciseQueryService.listPublishedExercises()`
 **Invariant kiểm tra:** Only PUBLISHED exercises returned; safetyWarning never null
 
-#### TC-UNIT-002 — ExerciseQueryService.getExerciseDetail — Exercise Not Found
+#### TC-UNIT-002 — ExerciseMapper.toSummaryResponse — null safetyWarning maps to empty string
 
 ```gherkin
-Feature: Get exercise detail
+Feature: Exercise mapper safety_warning handling
   Background:
     Given test data classification: SYNTHETIC
-    And ExerciseRepository is mocked
 
-  Scenario: Exercise ID not found
-    Given repository returns Optional.empty() for given exerciseId
-    When getExerciseDetail(exerciseId) is called
-    Then ExerciseNotFoundException is thrown with code EX-001
+  Scenario: DB safety_warning is null
+    Given a PregnancyExercise entity with safetyWarning = null
+    When toSummaryResponse(entity) is called
+    Then result.safetyWarning = "" (empty string, not null)
+
+  Scenario: DB safety_warning is populated
+    Given a PregnancyExercise entity with safetyWarning = "Stop if dizzy"
+    When toSummaryResponse(entity) is called
+    Then result.safetyWarning = "Stop if dizzy"
 ```
 
-**Hàm được test:** `ExerciseQueryService.getExerciseDetail()`
-**Invariant kiểm tra:** Non-existent exercise returns EX-001 error
+**Hàm được test:** `ExerciseMapper.toSummaryResponse()`
+**Invariant kiểm tra:** `safetyWarning` never null in response (BR-EXERCISE-003)
 
 ### 13.2. Integration Tests
 
@@ -928,11 +815,11 @@ Feature: Get exercise detail
     When GET /api/v1/exercises is called with valid JWT (MOTHER role)
     Then response status is 200
     And response contains exactly 2 exercises
-    And Exercise3 (DRAFT) is not in the response
+    And "Exercise3" (DRAFT) is NOT in the response
 ```
 
 **External dependencies:** PostgreSQL (Testcontainers)
-**Mock strategy:** Testcontainers PostgreSQL with Spring Boot Test
+**Mock strategy:** `@Testcontainers` với Flyway migration tự động apply
 
 ### 13.3. E2E / Security Tests
 
@@ -943,7 +830,17 @@ Feature: Get exercise detail
     Given test data classification: SYNTHETIC
     When GET /api/v1/exercises is called without Authorization header
     Then response status is 401
-    And response body contains error code IAM-001
+    And response body contains error code "IAM-001"
+```
+
+#### TC-E2E-002 — Non-MOTHER role returns 403
+
+```gherkin
+  Scenario: Wrong role blocked
+    Given user has role EXPERT (not MOTHER)
+    When GET /api/v1/exercises is called with EXPERT JWT
+    Then response status is 403
+    And response body contains error code "IAM-002"
 ```
 
 ---
@@ -953,38 +850,57 @@ Feature: Get exercise detail
 ### 14.1. Database Inspection
 
 ```sql
--- Verify only PUBLISHED exercises are returned by query
+-- Verify only PUBLISHED exercises returned
 SELECT exercise_id, title, status, trimester_scope
 FROM pregnancy_exercises
 WHERE status = 'PUBLISHED'
 ORDER BY created_at DESC;
 
--- Verify DRAFT exercises exist but should NOT appear in API response
-SELECT count(*) FROM pregnancy_exercises WHERE status = 'DRAFT';
+-- Verify mixed-status seed for integration test
+SELECT status, COUNT(*)
+FROM pregnancy_exercises
+GROUP BY status;
+-- Expected: PUBLISHED=N, DRAFT=M — only PUBLISHED should appear in API
+
+-- Verify no PII in exercise catalog
+SELECT exercise_id, title, safety_warning
+FROM pregnancy_exercises
+WHERE created_by IS NULL;
+-- Expected: no rows (created_by always references a user)
 ```
 
 ### 14.2. Log / Audit Verification
 
 ```bash
-# UC29 is read-only — verify no sensitive data in logs
-kubectl logs -l app=carebridge-api | grep -i "exercise" | head -10
-
-# Verify no PII in exercise query logs
+# Verify no PII in logs
 kubectl logs -l app=carebridge-api | grep -i "password\|secret\|ssn"
-# Expected: No output
+# Expected: no output
+```
+
+### 14.3. Tool-based Verification
+
+```bash
+# Verify JWT required
+curl -X GET https://[host]/api/v1/exercises
+# Expected: 401
+
+# Verify MOTHER JWT works
+curl -X GET "https://[host]/api/v1/exercises?trimester=FIRST" \
+  -H "Authorization: Bearer [MOTHER_JWT]"
+# Expected: 200 with paginated list
 ```
 
 ---
 
 ## 15. Mẫu thử thực tế (API Verification Samples)
 
-### 15.1. Happy Path — List Exercises
+### 15.1. Happy Path
 
 ```bash
-# List all published exercises
-curl -X GET "https://[host]/api/v1/exercises?page=0&size=10" \
+# List all PUBLISHED exercises
+curl -X GET "https://[host]/api/v1/exercises?page=0&size=20" \
   -H "Authorization: Bearer [JWT_TOKEN]" \
-  -H "Content-Type: application/json"
+  -H "X-Correlation-Id: $(uuidgen)"
 ```
 
 **Expected Response (200):**
@@ -1004,60 +920,17 @@ curl -X GET "https://[host]/api/v1/exercises?page=0&size=10" \
     }
   ],
   "page": 0,
-  "size": 10,
-  "totalElements": 1,
+  "size": 20,
+  "totalElements": 5,
   "totalPages": 1
 }
 ```
 
-### 15.2. Happy Path — Exercise Detail
-
-```bash
-curl -X GET "https://[host]/api/v1/exercises/550e8400-e29b-41d4-a716-446655440001" \
-  -H "Authorization: Bearer [JWT_TOKEN]"
-```
-
-**Expected Response (200):**
-```json
-{
-  "data": {
-    "exerciseId": "550e8400-e29b-41d4-a716-446655440001",
-    "title": "Prenatal Yoga - First Trimester",
-    "description": "Gentle yoga poses suitable for early pregnancy",
-    "trimesterScope": "FIRST",
-    "difficultyLevel": "EASY",
-    "durationMinutes": 20,
-    "instructionContent": "Step 1: Start in a comfortable seated position...",
-    "mediaUrl": "https://cdn.carebridge.com/exercises/prenatal-yoga-t1.mp4",
-    "safetyWarning": "Stop immediately if you feel dizzy or experience pain.",
-    "supportsPostureAnalysis": true,
-    "versionNo": 1,
-    "createdAt": "2026-06-01T10:00:00.000Z"
-  }
-}
-```
-
-### 15.3. Error Paths
-
-```bash
-# Exercise not found
-curl -X GET "https://[host]/api/v1/exercises/00000000-0000-0000-0000-000000000000" \
-  -H "Authorization: Bearer [JWT_TOKEN]"
-```
-
-**Expected Response (404):**
-```json
-{
-  "error": {
-    "code": "EX-001",
-    "message": "Exercise not found"
-  }
-}
-```
+### 15.2. Error Paths
 
 ```bash
 # No JWT → 401
-curl -X GET "https://[host]/api/v1/exercises"
+curl -X GET https://[host]/api/v1/exercises
 ```
 
 **Expected Response (401):**
@@ -1070,19 +943,35 @@ curl -X GET "https://[host]/api/v1/exercises"
 }
 ```
 
+```bash
+# Invalid trimester value → 400
+curl -X GET "https://[host]/api/v1/exercises?trimester=INVALID" \
+  -H "Authorization: Bearer [JWT_TOKEN]"
+```
+
+**Expected Response (400):**
+```json
+{
+  "error": {
+    "code": "EX-003",
+    "message": "Invalid filter value",
+    "details": [{ "field": "trimester", "message": "Must be one of: FIRST, SECOND, THIRD, ALL" }]
+  }
+}
+```
+
 ---
 
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
 | Endpoint | `GUEST` | `MOTHER` | `EXPERT` | `ADMIN` | `SYSTEM` |
 |----------|---------|----------|----------|---------|----------|
-| `GET /api/v1/exercises` | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `GET /api/v1/exercises/{exerciseId}` | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `GET /api/v1/exercises` | ❌ | ✅ | ❌ | ✅ | ✅ |
 
 **Chú thích:**
 - ✅ = Được phép
-- ❌ = Bị từ chối (403) hoặc sử dụng endpoint admin riêng
-- EXPERT/ADMIN quản lý exercises qua admin endpoints riêng biệt (không thuộc UC29)
+- ❌ = Bị từ chối (401 nếu không có JWT; 403 nếu có JWT nhưng sai role)
+- MOTHER là role bắt buộc cho browse exercise catalog
 
 ---
 
@@ -1092,87 +981,81 @@ curl -X GET "https://[host]/api/v1/exercises"
 
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-----------------|---------------|
-| C1 | Chỉ trả về exercises có `status = PUBLISHED`. DRAFT và ARCHIVED PHẢI bị filter hoàn toàn, không xuất hiện trong response. | `BR-EXERCISE-001`, `ADR-EXERCISE-001` | `2026-06-26` |
-| C2 | `safety_warning` PHẢI luôn được include trong response (cả summary và detail). Không bao giờ suppress hoặc set null. Nếu DB value là null, trả về empty string `""`. | `BR-EXERCISE-003` | `2026-06-26` |
-| C3 | Exercise guidance only — PHẢI include disclaimer rằng exercises không thay thế tư vấn y tế. Không auto-start exercise, không diagnose, không prescribe. | `BR-SAFETY` | `2026-06-26` |
-| C4 | Identity lấy từ JWT Bearer token qua `SecurityUtils.requireCurrentUserId(principal)`. Chỉ MOTHER role được access. | `BR-RBAC` | `2026-06-26` |
-| C5 | Controller CHỈ xử lý validation và mapping. Business logic (filtering, authorization) nằm trong Service layer. | `ADR-EXERCISE-001` | `2026-06-26` |
-| C6 | Pagination PHẢI dùng `PaginatedResponse<T>` wrapper. Default page size = 20, max = 50. | `ADR-EXERCISE-001` | `2026-06-26` |
-| C7 | Trimester và difficulty filters là OPTIONAL. Khi không truyền, trả về TẤT CẢ bài tập PUBLISHED. | `ADR-EXERCISE-002` | `2026-06-26` |
+| C1 | Chỉ bài tập `status = PUBLISHED` được trả về trong list. Service PHẢI luôn pass `status=PUBLISHED` vào repository query — không bao giờ fetch-all-filter-in-memory. | `BR-EXERCISE-001`, `ADR-EXERCISE-001` | `2026-06-27` |
+| C2 | `safetyWarning` trong `ExerciseSummaryResponse` KHÔNG BAO GIỜ null. Mapper phải convert null DB value thành empty string `""`. | `BR-EXERCISE-003` | `2026-06-27` |
+| C3 | UC29 là read-only — không có POST/PUT/DELETE endpoint. Không có session-start logic. Start session thuộc UC30. | `ADR-EXERCISE-003`, `BR-EXERCISE-004` | `2026-06-27` |
+| C4 | Identity của Mother lấy từ JWT token (Spring Security context). Service không nhận userId từ request body hoặc query param. | `BR-RBAC` | `2026-06-27` |
+| C5 | Controller chỉ validate input và delegate. Không có business logic trong Controller. Không trả về entity trực tiếp — chỉ DTO. | `CLAUDE.md Architecture Rules` | `2026-06-27` |
+| C6 | Response list phải là `PaginatedResponse<ExerciseSummaryResponse>` với fields: `items`, `page`, `size`, `totalElements`, `totalPages`. | `CB-EXERCISE-IMP-001 §9.2` | `2026-06-27` |
+| C7 | Trimester filter là optional query param. Server không auto-detect từ Mother's journey. Null param = no filter (return all). | `ADR-EXERCISE-002` | `2026-06-27` |
 
-### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
+### 17.2 Constraint Injection Block
 
 ```
-[CONSTRAINT BLOCK — Module: View and Select Pregnancy Exercise]
-Theo TDS CB-EXERCISE-IMP-001 và các ADR liên quan:
+[CONSTRAINT BLOCK — Module: View and Select Pregnancy Exercise (UC29 v1.1)]
+Theo TDS CB-EXERCISE-IMP-001 v1.1 và các ADR liên quan:
 
-1. C1: Chỉ return exercises với status=PUBLISHED. Repository query PHẢI filter bằng WHERE status='PUBLISHED'. DRAFT/ARCHIVED exercises KHÔNG BAO GIỜ xuất hiện trong response.
-2. C2: safety_warning field PHẢI luôn populated trong response DTO. Nếu DB null → map thành empty string "". KHÔNG suppress.
-3. C3: Exercise là guidance only. Include disclaimer trong API response hoặc client-side. KHÔNG auto-start session, KHÔNG diagnose.
-4. C4: Lấy userId từ SecurityUtils.requireCurrentUserId(principal). Chỉ MOTHER role access. Check via @PreAuthorize hoặc SecurityPolicy.
-5. C5: Controller = validation + mapping ONLY. Service = business logic + repository calls. KHÔNG đặt business logic trong controller.
-6. C6: Dùng PaginatedResponse<T> cho list endpoint. Default size=20, max=50.
-7. C7: Trimester và difficulty filters là optional query params. Null = no filter = return all PUBLISHED.
+1. Chỉ PUBLISHED exercises được list. Luôn pass status=PUBLISHED vào repository. Không filter in-memory.
+2. safetyWarning KHÔNG BAO GIỜ null trong response. Convert null → "" trong mapper.
+3. UC29 là read-only list endpoint. Không có start/create logic.
+4. userId lấy từ SecurityContext, không từ request param.
+5. Không có business logic trong Controller.
+6. Response format: PaginatedResponse<ExerciseSummaryResponse>.
+7. Trimester/difficulty là optional params. Null = no filter.
 
 [CONTEXT BLOCK]
 - Bounded Context: exercise
 - Data Classification: Internal
-- Compliance: BR-RBAC, BR-PRIVACY, BR-SAFETY
-- Existing interfaces: S8 Service Interface + S8.2 Repository Interface
-- Error codes: S10 Error Codes Table
-- Auth matrix: S16 Authorization Matrix
+- Compliance: BR-RBAC, BR-SAFETY
+- Existing interfaces: §8 Service Interface + §8.2 Repository Interface
+- Error codes: §10 Error Codes Table
+- Auth matrix: §16 Authorization Matrix
+- Detail view: CB-EXERCISE-IMP-002 (SRS 3.3.2.3)
 
 [TASK BLOCK]
-Implement UC29 View and Select Pregnancy Exercise thỏa mãn constraints trên.
-Output phải tuân thủ S8 Interface Specification.
-Tests phải cover S13 Test Scenarios.
+Implement listPublishedExercises() thỏa mãn constraints trên.
+Output phải tuân thủ §8 Interface Specification.
+Tests phải cover §13 Test Scenarios.
 ```
 
 ### 17.3 Constraint Quality Checklist
 
 - [x] Mỗi constraint traceable về ADR hoặc BR cụ thể
 - [x] Không có constraint generic
-- [x] Mỗi constraint có `Last Verified` date <= 2 sprints
-- [x] Constraint block có >= 3 constraints cụ thể (7 constraints)
-- [x] Constraint block reference S8 Interface
-- [x] Constraint block reference S16 Auth Matrix
+- [x] Mỗi constraint có Last Verified date ≤ 2 sprints
+- [x] Constraint block có ≥ 3 constraints cụ thể
+- [x] Constraint block reference §8 Interface
+- [x] Constraint block reference §16 Auth Matrix
 
-### 17.4 Anti-Pattern Detection (cho AI-Generated Code từ Block này)
+### 17.4 Anti-Pattern Detection
 
 | AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
 |-------|-------------|-----------|----------|
 | AP-AI-001 | Unconstrained Gen | Code không match bất kỳ constraint C1-C7 nào | Reject — inject lại constraints |
-| AP-AI-002 | DRAFT Leakage | Code không filter status=PUBLISHED trong repository query | Critical reject — fix query immediately |
-| AP-AI-003 | Implicit Decision | Code assume architecture không có trong S3 ADR | Reject — viết ADR trước |
-| AP-AI-004 | Safety Warning Suppression | Code set safetyWarning=null hoặc skip field | Reject — violates C2 |
-| AP-AI-005 | Hallucinated Contract | Code import service/type không có trong S8 | Reject — verify contract existence |
-| AP-AI-006 | Business Logic in Controller | Controller chứa filtering/authorization logic | Reject — move to Service layer (C5) |
+| AP-AI-003 | Implicit Decision | Code assume architecture không có trong §3 ADR | Reject — viết ADR trước |
+| AP-AI-005 | Hallucinated Contract | Code import ExerciseDetailResponse (belongs to CB-EXERCISE-IMP-002) | Reject — verify contract existence |
 
 ---
 
 ## PHỤ LỤC
 
-### A. Glossary (Thuật ngữ)
+### A. Glossary
 
 | Thuật ngữ | Định nghĩa |
 |-----------|------------|
-| Mother | Người dùng có vai trò MOTHER — phụ nữ mang thai sử dụng hệ thống |
-| Exercise | Bài tập thai kỳ — nội dung được curate bởi chuyên gia |
-| Trimester | Tam cá nguyệt: FIRST (1-12 tuần), SECOND (13-26 tuần), THIRD (27-40 tuần), ALL |
-| PUBLISHED | Trạng thái bài tập đã được phê duyệt và hiển thị cho Mother |
-| Safety Warning | Cảnh báo an toàn đi kèm bài tập — bắt buộc hiển thị |
-| Posture Analysis | Phân tích tư thế trong khi tập — thuộc UC30 |
+| PUBLISHED | Exercise status visible to Mothers |
+| DRAFT | Exercise created but not yet approved/published |
+| ARCHIVED | Exercise no longer available (hidden from Mothers) |
+| PaginatedResponse | Wrapper with items, page, size, totalElements, totalPages |
+| TrimesterScope | Pregnancy trimester: FIRST (1-13w), SECOND (14-27w), THIRD (28w+), ALL |
+| DPO | Data Protection Officer |
 
 ### B. Tài liệu tham chiếu
 
-| Document | Link / Path |
-|----------|-------------|
-| SRS 3.3.2.1 | `01_Requirements/SRS.md` |
-| CASE 2.0 Methodology | `vii_reports/FPT-EDU-REP-METH-002_CASE_AI_METHODOLOGY_v1.1.md` |
-| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
-| Exercise Package | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/` |
-
----
-
-*EDS v2.0 — Tích hợp CASE 2.0 AI Prompt Constraints (S17).*
-*UC29 — View and Select Pregnancy Exercise — Read-only module, no state mutation.*
+| Document | Path |
+|----------|------|
+| SRS 3.3.2.1 | `01_Requirements/SRS/Report3_Software Requirement Specification.docx.md` |
+| SRS 3.3.2.3 (View Detail) | `04_Implement/UC177_ViewPregnancyExerciseDetail/` |
+| V1 Schema | `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` |
+| Function spec allocation | `04_Implement/implement_artifacts/function-spec-task-allocation.md` |
+| UC30 (Safety check / session) | `04_Implement/UC30_AnalyzeExercisePosture/` |

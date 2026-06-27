@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
  * Log nội dung email thay vì gửi thật.
  */
 @Service
-@Profile("dev")
+@Profile({"dev", "supabase"})
 public class MockEmailService implements EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockEmailService.class);
@@ -26,5 +26,11 @@ public class MockEmailService implements EmailService {
     public void sendRegistrationSuccessEmail(String to, String name) {
         logger.info("[MOCK EMAIL] To: {}, Registration success for: {}", to, name);
         System.out.println("[MOCK EMAIL] Registration success email to: " + to + " for user: " + name);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String to, String token, int expiryMinutes) {
+        logger.info("[MOCK EMAIL] Password reset to: {}, token: {}, expires: {} min", to, token, expiryMinutes);
+        System.out.println("[MOCK EMAIL] Password reset to: " + to + ", token: " + token);
     }
 }

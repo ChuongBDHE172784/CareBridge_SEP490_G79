@@ -14,6 +14,7 @@ import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -148,6 +149,8 @@ public class AuthServiceImpl implements AuthService {
                 .passwordHash(passwordHash)
                 .enabled(false)
                 .locked(false)
+                .emailVerified(false)
+                .phoneVerified(false)
                 .accountStatus("PENDING_ACTIVATION")
                 .build();
 
@@ -192,8 +195,10 @@ public class AuthServiceImpl implements AuthService {
                     Map.entry("role", role.name())));
 
         return OtpSendResponse.builder()
-                .message("OTP sent")
+                .message("Registration initiated. Please verify your OTP.")
                 .expiresIn(otpExpirationSeconds)
+                .userId(user.getId())
+                .otpExpiresAt(otpVerification.getExpiresAt())
                 .build();
     }
 
@@ -682,7 +687,12 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return userMapper.toProfileResponse(user);
+        if (user.isLocked()) {
+            throw new com.carebridge.backend.common.exception.AccountLockedException("Account is locked");
+        }
+        UserProfileResponse response = userMapper.toProfileResponse(user);
+        auditService.log(AuditAction.PROFILE_VIEWED, userId, "User", userId.toString(), null);
+        return response;
     }
 
     @Override
@@ -692,6 +702,39 @@ public class AuthServiceImpl implements AuthService {
         user.setName(StringUtils.sanitizeBasicText(request.getName()));
         user.setAvatarUrl(StringUtils.trimToNull(request.getAvatarUrl()));
         return userMapper.toProfileResponse(userRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new ValidationException("Password confirmation does not match the new password");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new ValidationException("Current password is incorrect");
+        }
+
+        if (!passwordComplexityPolicy.isComplexEnough(request.getNewPassword())) {
+            throw new ValidationException(passwordComplexityPolicy.getRequirements());
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new ValidationException("New password must be different from the current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        refreshTokenRepository.findByUser_IdAndRevokedFalse(userId).forEach(token -> {
+            token.setRevoked(true);
+            refreshTokenRepository.save(token);
+        });
+
+        auditService.log(AuditAction.PASSWORD_CHANGED, userId, "User", userId.toString(), null);
     }
 
     private RefreshToken createRefreshToken(User user) {

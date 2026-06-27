@@ -50,10 +50,11 @@ For TDS and Test-Spec authoring, `PHASE-3_TDS.md` and `PHASE-4_Test-Spec.md` are
    - `[FolderName]_TDS.md`
    - `[FolderName]_Test-Spec.md`
 4. Ensure TDS and Test-Spec still follow the major heading skeleton of `PHASE-3_TDS.md` and `PHASE-4_Test-Spec.md`.
-5. Review the specs and mark TDS/Test-Spec as `Approved`.
-6. Request implementation handoff or review using `implement-feature-input-template.md`.
-7. Produce `[FolderName]_Gemini-Task.md` if implementation must be delegated to Gemini.
-8. Review the returned implementation against approved specs, tests, repository rules, and security/privacy requirements.
+5. If the approved TDS introduces schema changes, update the migration plan and keep `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` synchronized with those approved schema decisions.
+6. Review the specs and mark TDS/Test-Spec as `Approved`.
+7. Request implementation handoff or review using `implement-feature-input-template.md`.
+8. Produce `[FolderName]_Gemini-Task.md` if implementation must be delegated to Gemini.
+9. Review the returned implementation against approved specs, tests, repository rules, and security/privacy requirements.
 
 ## Notes
 

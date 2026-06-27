@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUTH-TEST-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-06-27 (existing tests in AuthServiceResendOtpTest cover resend flow; verify OTP TCs not yet mapped)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`

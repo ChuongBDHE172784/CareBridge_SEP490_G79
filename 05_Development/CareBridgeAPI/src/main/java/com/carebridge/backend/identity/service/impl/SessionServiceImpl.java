@@ -15,6 +15,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,6 +70,55 @@ public class SessionServiceImpl implements SessionService {
 
             return builder.build();
         }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SessionInfo> getActiveSessionsPaged(UUID userId, Pageable pageable) {
+        UUID currentSessionId = extractCurrentSessionId();
+        Instant now = Instant.now();
+        return sessionRepository.findByUserIdAndRevokedFalse(userId, pageable)
+                .map(session -> {
+                    SessionInfo.SessionInfoBuilder builder = SessionInfo.builder()
+                            .sessionId(session.getSessionId())
+                            .deviceName(session.getDeviceName())
+                            .browser(session.getBrowser())
+                            .ipAddress(session.getIpAddress())
+                            .location(session.getLocation())
+                            .lastActivityAt(session.getLastActivityAt())
+                            .isCurrent(currentSessionId != null && currentSessionId.equals(session.getSessionId()));
+
+                    if (session.getLastActivityAt() != null &&
+                            session.getLastActivityAt().isBefore(now.minusSeconds(INACTIVE_THRESHOLD_SECONDS))) {
+                        builder.status("inactive");
+                    } else if (session.getExpiresAt() != null && session.getExpiresAt().isBefore(now)) {
+                        builder.status("expired");
+                    } else {
+                        builder.status("active");
+                    }
+                    return builder.build();
+                });
+    }
+
+    @Override
+    @Transactional
+    public int revokeAllExceptCurrent(UUID userId, String ipAddress) {
+        UUID currentSessionId = extractCurrentSessionId();
+        if (currentSessionId == null) {
+            throw new IllegalStateException("No current session found");
+        }
+        int revoked = sessionRepository.revokeAllExceptSession(userId, currentSessionId, Instant.now());
+        if (revoked > 0) {
+            auditService.log(
+                    com.carebridge.backend.audit.entity.AuditAction.SESSION_REVOKED,
+                    userId,
+                    "UserSession",
+                    "all_except_current",
+                    "Revoked " + revoked + " session(s) from IP: " + ipAddress
+            );
+            log.info("Revoked {} session(s) for userId={}, kept sessionId={}", revoked, userId, currentSessionId);
+        }
+        return revoked;
     }
 
     private UUID extractCurrentSessionId() {

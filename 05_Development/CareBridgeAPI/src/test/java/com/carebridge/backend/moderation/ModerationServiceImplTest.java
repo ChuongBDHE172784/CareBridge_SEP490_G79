@@ -23,7 +23,6 @@ import com.carebridge.backend.content.service.ModerationServiceImpl;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,7 +74,7 @@ class ModerationServiceImplTest {
         r.setTargetId(targetId);
         r.setTargetType(type);
         r.setStatus(status);
-        r.setReasonCode("Inappropriate content");
+        r.setCategory("Inappropriate content");
         r.setCreatedAt(Instant.now());
         return r;
     }

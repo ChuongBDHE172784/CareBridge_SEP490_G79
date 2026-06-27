@@ -3,21 +3,25 @@ import AuthLayout from '../layouts/AuthLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
+
+// Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+
+// Admin portal screens (placeholders — replace via /build-screen)
+import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import ModerationQueuePage from '../../features/moderation/pages/ModerationQueuePage';
 import ManageTopicsPage from '../../features/community/pages/ManageTopicsPage';
 import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
-import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
 
 const ForbiddenPage = () => (
-  <div style={{ padding: 48, textAlign: 'center' }}>
-    <h2>Access Denied</h2>
-    <p>You do not have permission to view this page.</p>
+  <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
+    <h2 style={{ color: '#845143' }}>Truy cập bị từ chối</h2>
+    <p>Bạn không có quyền xem trang này.</p>
   </div>
 );
 

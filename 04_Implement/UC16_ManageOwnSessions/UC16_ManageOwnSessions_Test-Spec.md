@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-SES-TDD-001`                                                   |
 | **Version**        | `1.0`                                                              |
 | **Date**           | `2026-06-26`                                                       |
-| **Status**         | `Draft`                                                            |
+| **Status**         | `Approved`                                                         |
 | **Spec gốc**       | `CB-SES-IMP-001` (UC16_ManageOwnSessions_TDS.md)                   |
 | **Standard**       | ISO/IEC/IEEE 29119-3:2021                                          |
 | **Author**         | `AI Agent`                                                         |

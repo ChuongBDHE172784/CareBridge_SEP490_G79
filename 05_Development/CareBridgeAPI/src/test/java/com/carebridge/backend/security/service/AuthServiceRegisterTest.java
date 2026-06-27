@@ -2,6 +2,7 @@ package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.rbac.Role;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +32,7 @@ class AuthServiceRegisterTest {
     }
 
     @Test
+    @DisplayName("AUTH-TC-INT-001: Integration register with email")
     void register_IntegrationTest_Email() {
         // Tạo request
         RegisterRequest request = new RegisterRequest();

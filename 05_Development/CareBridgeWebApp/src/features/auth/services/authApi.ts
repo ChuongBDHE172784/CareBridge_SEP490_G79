@@ -1,21 +1,65 @@
-import axios from 'axios';
-import type { ApiResponse, UserProfile } from '../models/user';
+import apiClient from '../../../shared/api/apiClient';
+import type { ApiResponse } from '../models/user';
+import type {
+  LoginRequest,
+  OtpSendResponse,
+  VerifyOtpRequest,
+  AuthResponse,
+  RefreshTokenRequest,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+} from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
+import type { UserProfile } from '../models/user';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
-  headers: { 'Content-Type': 'application/json' },
-});
+// UC-03: Login — sends OTP, does NOT return tokens yet
+export async function login(request: LoginRequest): Promise<OtpSendResponse> {
+  const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/login', request);
+  return data.data;
+}
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// UC-02: Verify OTP — completes login, returns tokens + user profile
+export async function verifyOtp(request: VerifyOtpRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/verify-otp', request);
+  const { accessToken, refreshToken, user } = data.data;
+  useAuthStore.getState().setTokens(accessToken, refreshToken);
+  useAuthStore.getState().setUser({
+    id: user.id,
+    phone: user.phone ?? '',
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+    role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
+  });
+  return data.data;
+}
 
+// UC-02: Resend OTP
+export async function resendOtp(identifier: { phone?: string; email?: string }): Promise<OtpSendResponse> {
+  const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/resend-otp', identifier);
+  return data.data;
+}
+
+// UC-04: Logout
+export async function logout(refreshToken?: string): Promise<void> {
+  await apiClient.post('/api/v1/auth/logout', refreshToken ? { refreshToken } : {});
+  useAuthStore.getState().logout();
+}
+
+// UC-08: Fetch current user profile
 export async function fetchProfile(): Promise<UserProfile> {
-  const { data } = await api.get<ApiResponse<UserProfile>>('/api/v1/auth/profile');
+  const { data } = await apiClient.get<ApiResponse<UserProfile>>('/api/v1/auth/profile');
+  return data.data;
+}
+
+// UC-05: Forgot password
+export async function forgotPassword(request: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
+  const { data } = await apiClient.post<ApiResponse<ForgotPasswordResponse>>('/api/v1/auth/forgot-password', request);
+  return data.data;
+}
+
+// Token refresh (internal)
+export async function refreshAccessToken(request: RefreshTokenRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/refresh', request);
+  useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
   return data.data;
 }

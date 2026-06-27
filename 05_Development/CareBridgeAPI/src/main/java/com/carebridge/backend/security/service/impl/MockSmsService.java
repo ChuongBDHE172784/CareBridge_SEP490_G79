@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
  * Log nội dung SMS thay vì gửi thật.
  */
 @Service
-@Profile("dev")
+@Profile({"dev", "supabase"})
 public class MockSmsService implements SmsService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockSmsService.class);
@@ -20,5 +20,11 @@ public class MockSmsService implements SmsService {
     public void sendOtpVerificationSms(String to, String otp, int expiryMinutes) {
         logger.info("[MOCK SMS] To: {}, OTP: {}, Expires in: {} minutes", to, otp, expiryMinutes);
         System.out.println("[MOCK SMS] To: " + to + ", OTP: " + otp + ", Expires in: " + expiryMinutes + " minutes");
+    }
+
+    @Override
+    public void sendPasswordResetSms(String to, String token, int expiryMinutes) {
+        logger.info("[MOCK SMS] Password reset to: {}, token: {}, expires: {} min", to, token, expiryMinutes);
+        System.out.println("[MOCK SMS] Password reset to: " + to + ", token: " + token);
     }
 }

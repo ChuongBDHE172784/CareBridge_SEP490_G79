@@ -17,6 +17,7 @@ import com.carebridge.backend.partner.entity.OrganizationStatus;
 import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
@@ -38,7 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = PartnerProfileController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class PartnerProfileControllerTest {
 
     @Autowired

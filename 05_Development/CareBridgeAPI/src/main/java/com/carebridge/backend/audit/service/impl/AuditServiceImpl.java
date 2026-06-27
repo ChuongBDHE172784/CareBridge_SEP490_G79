@@ -37,7 +37,7 @@ public class AuditServiceImpl implements AuditService {
                 .actorUserId(userId)
                 .action(action)
                 .entityType(resourceType)
-                .entityId(resourceId == null ? null : java.util.UUID.fromString(resourceId))
+                .entityId(parseUuidSafely(resourceId))
                 .newValueJson(toJson(details))
                 .build();
         auditLogRepository.save(log);
@@ -59,6 +59,15 @@ public class AuditServiceImpl implements AuditService {
             Pageable pageable) {
         return auditLogRepository.search(userId, action, fromDate, toDate, pageable)
                 .map(auditLogMapper::toResponse);
+    }
+
+    private java.util.UUID parseUuidSafely(String value) {
+        if (value == null) return null;
+        try {
+            return java.util.UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private String toJson(Object details) {

@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-PRF-TDD-001`                                                   |
 | **Version**        | `1.0`                                                              |
 | **Date**           | `2026-06-26`                                                       |
-| **Status**         | `Draft`                                                            |
+| **Status**         | `Partially Implemented — 2026-06-27 (4/10 PASS — PRF-TC-001, 006, 007, 008 in AuthServiceGetProfileTest)` |
 | **Spec gốc**       | `CB-PRF-IMP-001` (UC09_UpdateAccountProfile_TDS.md)                |
 | **Standard**       | ISO/IEC/IEEE 29119-3:2021                                          |
 | **Author**         | `AI Agent`                                                         |

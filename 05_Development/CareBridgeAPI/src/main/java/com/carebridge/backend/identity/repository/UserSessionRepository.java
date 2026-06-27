@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +17,12 @@ import org.springframework.stereotype.Repository;
 public interface UserSessionRepository extends JpaRepository<UserSession, UUID> {
 
     List<UserSession> findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(UUID userId);
+
+    Page<UserSession> findByUserIdAndRevokedFalse(UUID userId, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE UserSession us SET us.revoked = true, us.status = 'revoked', us.updatedAt = :now WHERE us.userId = :userId AND us.sessionId != :excludeSessionId AND us.revoked = false")
+    int revokeAllExceptSession(@Param("userId") UUID userId, @Param("excludeSessionId") UUID excludeSessionId, @Param("now") Instant now);
 
     Optional<UserSession> findByRefreshTokenHashAndRevokedFalse(String refreshTokenHash);
 

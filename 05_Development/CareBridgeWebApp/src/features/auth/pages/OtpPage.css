@@ -1,0 +1,77 @@
+.otp-wrapper {
+  font-family: 'Lexend', sans-serif;
+  background-color: #F6F1EC;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.otp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.otp-inputs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.otp-digit {
+  width: 52px;
+  height: 60px;
+  border-radius: 12px;
+  border: 1px solid #d6c2bd;
+  background: #ffffff;
+  font-family: 'Lexend', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #271812;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  caret-color: transparent;
+}
+
+.otp-digit:focus {
+  border-color: #845143;
+  box-shadow: 0 0 0 1px #845143;
+}
+
+.otp-digit--filled {
+  background: #fff1ec;
+  border-color: #c98c7b;
+}
+
+.otp-resend {
+  text-align: center;
+}
+
+.otp-resend-cooldown {
+  font-size: 14px;
+  color: #524440;
+  margin: 0;
+}
+
+.otp-resend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-family: 'Lexend', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #845143;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.otp-resend-btn:hover {
+  color: #c98c7b;
+}

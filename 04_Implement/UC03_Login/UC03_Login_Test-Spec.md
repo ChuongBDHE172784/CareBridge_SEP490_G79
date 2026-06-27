@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUTH-TEST-003`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-06-27 (7/10 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-03 Login |
+| 2026-06-27 | AI Agent | Sync: mapped 7/10 TCs to existing AuthServiceLoginTest.java. LOGIN-TC-007, 008, INT-001 not yet covered. |
 
 ---
 
@@ -173,8 +174,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `AuthService.login()` + `JwtService.generateAccessToken()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `UC-03 Happy Path`, `BR-LOGIN-004`, `BR-LOGIN-005`
 
@@ -201,7 +202,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 **Expected Result (FAIL):**
 - Nếu session không được save → BR-LOGIN-006 vi phạm
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -209,8 +210,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `HIGH`
 **Feature Under Test:** `AuthService.findUserByIdentifier()` — phone lookup
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `BR-LOGIN-008`
 
@@ -224,7 +225,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
    - Response không null, accessToken hợp lệ
    - userId khớp với FX-LOGIN-002
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -232,8 +233,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `AuthService.validateAccountStatus()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `BR-LOGIN-001`
 
@@ -245,7 +246,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
    - `sessionRepository.save()` KHÔNG được gọi
    - `jwtService.generateAccessToken()` KHÔNG được gọi
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -253,8 +254,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `AuthService.validateAccountStatus()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `BR-LOGIN-001`, `ADR-AUTH-007`
 
@@ -265,7 +266,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
    - Throws `AccountLockedException` với code `AUTH-013`
    - `failedLoginCount` KHÔNG tăng thêm (đã locked, không cần đếm)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -273,8 +274,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `HIGH`
 **Feature Under Test:** `AuthService.handleLoginFailure()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-LOGIN-002`, `BR-LOGIN-003`
 
@@ -290,7 +291,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
    - `eventPublisher` gọi với `LoginFailedEvent{securityEventType="LOGIN_FAILED"}`
    - user.status vẫn ACTIVE (chưa đến 5)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -298,8 +299,8 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `AuthService.handleLoginFailure()` — lockout threshold
-**Test File:** `src/test/java/com/carebridge/backend/auth/AuthServiceLoginTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `BR-LOGIN-002`, `ADR-AUTH-007`
 
@@ -320,7 +321,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 - Nếu status vẫn ACTIVE → lockout không hoạt động
 - Nếu SecurityEvent không ghi → vi phạm BR-LOGIN-003 audit requirement
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -393,8 +394,8 @@ assertThat(exp - iat).isEqualTo(900L);
 **OWASP:** `A07:2021 — Identification and Authentication Failures`
 **CWE:** `CWE-204 — Observable Response Discrepancy`
 **Feature Under Test:** `AuthService.login()` — error message uniformity
-**Test File:** `src/test/java/com/carebridge/backend/auth/LoginSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `TC-SEC-001` TDS §13
 
@@ -411,7 +412,7 @@ assertThat(exp - iat).isEqualTo(900L);
 **Expected Result (FAIL = lỗ hổng):**
 - Case A trả `"User not found"` → attacker có thể enumerate users
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -455,15 +456,15 @@ assertThat(claims.get("role", String.class)).isEqualTo("MOTHER");
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `LOGIN-TC-001` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-002` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-003` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-004` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-005` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-006` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
+| `LOGIN-TC-001` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-002` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-003` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-004` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-005` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-006` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGIN-TC-007` | `JwtServiceTest.java` | `[ ]` | `—` | — |
 | `LOGIN-TC-008` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-009` | `LoginSecurityTest.java` | `[ ]` | `—` | — |
+| `LOGIN-TC-009` | `LoginSecurityTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGIN-TC-INT-001` | `LoginIntegrationTest.java` | `[ ]` | `—` | — |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)

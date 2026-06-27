@@ -24,4 +24,6 @@ public interface EmailService {
      * @param name tên người dùng
      */
     void sendRegistrationSuccessEmail(String to, String name);
+
+    void sendPasswordResetEmail(String to, String token, int expiryMinutes);
 }

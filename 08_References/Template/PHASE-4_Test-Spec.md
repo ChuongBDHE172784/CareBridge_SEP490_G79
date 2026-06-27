@@ -13,6 +13,7 @@
 **Classification:** `Internal — Confidential`
 
 **References:**
+- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` â€” primary CareBridge database schema source
 - `04_testing/SOFTWARE_TEST_PLAN.md` (FPT-EDU-STP-001 v2.0) — Master Test Plan
 - `01_Requirements/SRS.md` — Functional requirements
 - `03_implement/[TECH-SPEC-ID]_[FeatureName].md` — Technical Specification
@@ -84,6 +85,8 @@
 
 ## 2. Logic Issues Resolved
 
+> For CareBridge schema disputes, use `V1__init_schema.sql` and approved migrations as the final persistence oracle; ERD is only supporting evidence.
+
 > **Bắt buộc điền trước khi viết test.**
 > Liệt kê mọi sai lệch giữa spec thiết kế và schema/policy/codebase thực tế.
 > Test cases sẽ encode hành vi **đã sửa**, không phải hành vi trong spec gốc.
@@ -96,6 +99,8 @@
 ---
 
 ## 3. Test Design Specification (TDS)
+
+> Include `V1__init_schema.sql` and approved Flyway migrations in the test basis whenever database schema facts, constraints, or persistence side effects are part of the oracle.
 
 ### TDS-01 — Scope / Phạm vi
 

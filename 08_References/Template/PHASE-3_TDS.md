@@ -207,6 +207,7 @@ Entity *-- ValueObject : contains
 ```
 
 ### 5.2. Data Structure (Flyway SQL Migration)
+> **CareBridge rule:** For actual database structure, constraints, and baseline schema, use `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` and approved Flyway migrations as the primary source. ERD artifacts are supporting context only unless explicitly approved otherwise.
 
 Tạo file: `src/main/resources/db/migration/V{n}__[migration_name].sql`
 
@@ -675,6 +676,7 @@ Feature: [Tên feature]
 ## 14. Phương pháp Xác minh
 
 ### 14.1. Database Inspection
+> **Oracle rule:** Every expected table, column, type, constraint, and persistence-side-effect assertion should trace back to `V1__init_schema.sql` or an approved migration, not to ERD alone.
 
 ```sql
 -- Verify record tồn tại sau khi tạo

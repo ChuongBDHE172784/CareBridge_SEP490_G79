@@ -16,4 +16,6 @@ public interface SmsService {
      * @param expiryMinutes thời gian hết hạn tính bằng phút
      */
     void sendOtpVerificationSms(String to, String otp, int expiryMinutes);
+
+    void sendPasswordResetSms(String to, String token, int expiryMinutes);
 }

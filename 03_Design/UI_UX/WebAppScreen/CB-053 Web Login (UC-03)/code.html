@@ -7,7 +7,6 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -41,7 +40,7 @@
                         "inverse-primary": "#fab7a4",
                         "on-surface-variant": "#524440",
                         "tertiary": "#625d59",
-                        "background": "#fff8f6",
+                        "background": "#F6F1EC", /* Custom light warm accent */
                         "on-background": "#271812",
                         "surface-dim": "#f1d4ca",
                         "on-tertiary-fixed": "#1e1b18",
@@ -99,10 +98,102 @@
         }
     </script>
 <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #F6F1EC;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .login-card-shadow {
+            box-shadow: 0 10px 40px -10px rgba(132, 81, 67, 0.1);
         }
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
-        input:-webkit</style></head><body></body></html>
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+        }
+    </style>
+</head>
+<body class="bg-[#F6F1EC] text-on-surface antialiased h-[1024px] w-[1440px] mx-auto overflow-hidden relative">
+<!-- Decorative subtle background blobs (optional) -->
+<div class="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-surface-container-highest rounded-full blur-[100px] opacity-40 pointer-events-none"></div>
+<div class="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-[#f8ddd2] rounded-full blur-[120px] opacity-30 pointer-events-none"></div>
+<main class="relative z-10 w-full max-w-[480px] p-safe-margin">
+<div class="bg-surface-container-lowest rounded-xl p-8 sm:p-12 login-card-shadow border border-outline-variant/30 flex flex-col gap-8">
+<!-- Logo Header -->
+<div class="text-center flex flex-col items-center gap-4">
+<div class="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined text-display-lg">
+                        healing
+                    </span>
+</div>
+<div>
+<h1 class="text-headline-lg text-primary tracking-tight">CareBridge</h1>
+<p class="text-body-md text-on-surface-variant mt-1">Hệ thống quản lý y tế</p>
+</div>
+</div>
+<!-- Validation Message (Hidden by default, shown here as example) -->
+<!-- <div class="bg-error-container text-on-error-container p-4 rounded-lg flex items-start gap-3">
+                <span class="material-symbols-outlined text-[20px] shrink-0 mt-0.5">error</span>
+                <p class="text-body-md">Email hoặc mật khẩu không chính xác. Vui lòng thử lại.</p>
+            </div> -->
+<!-- Login Form -->
+<form action="#" class="flex flex-col gap-6" method="POST">
+<div class="flex flex-col gap-4">
+<!-- Email/Phone Field -->
+<div class="flex flex-col gap-2">
+<label class="text-label-md text-on-surface" for="username">Email hoặc Số điện thoại</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                                person
+                            </span>
+<input class="w-full h-touch-target-min pl-11 pr-4 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" id="username" name="username" placeholder="Nhập email hoặc SĐT" required="" type="text"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-2">
+<label class="text-label-md text-on-surface" for="password">Mật khẩu</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                                lock
+                            </span>
+<input class="w-full h-touch-target-min pl-11 pr-11 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" id="password" name="password" placeholder="Nhập mật khẩu" required="" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">
+                                    visibility_off
+                                </span>
+</button>
+</div>
+</div>
+</div>
+<!-- Remember Me & Forgot Password -->
+<div class="flex items-center justify-between">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface-container-lowest" type="checkbox"/>
+<span class="text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Ghi nhớ tôi</span>
+</label>
+<a class="text-body-md text-primary font-medium hover:text-primary-container transition-colors" href="#">
+                        Quên mật khẩu?
+                    </a>
+</div>
+<!-- Submit Button -->
+<button class="w-full h-touch-target-min bg-[#C98C7B] hover:bg-primary text-white text-button rounded-full transition-colors flex items-center justify-center gap-2 mt-2" type="submit">
+                    Đăng nhập
+                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</form>
+<!-- Footer Links -->
+<div class="text-center pt-4 border-t border-outline-variant/30">
+<p class="text-body-md text-on-surface-variant">
+                    Cần trợ giúp? <a class="text-primary font-medium hover:underline" href="#">Hỗ trợ kỹ thuật</a>
+</p>
+</div>
+</div>
+</main>
+</body></html>

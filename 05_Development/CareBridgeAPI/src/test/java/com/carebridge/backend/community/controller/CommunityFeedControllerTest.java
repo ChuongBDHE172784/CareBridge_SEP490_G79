@@ -13,6 +13,7 @@ import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.community.dto.response.CommunityFeedItemResponse;
 import com.carebridge.backend.community.service.CommunityFeedService;
 import com.carebridge.backend.security.config.SecurityConfig;
+import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 
@@ -38,7 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
         value = CommunityFeedController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class CommunityFeedControllerTest {
 
     @Autowired

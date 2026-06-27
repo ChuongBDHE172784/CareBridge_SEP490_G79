@@ -7,7 +7,7 @@
 | **Document ID**    | `CB-AUTH-IMP-006`       |
 | **Version**        | `1.0`                   |
 | **Date**           | `2026-06-26`            |
-| **Status**         | `Draft`                 |
+| **Status**         | `Implemented`                 |
 | **Document Owner** | `PhuongNT`              |
 | **Author**         | `AI Agent`              |
 | **Reviewed by**    | `[Tech Lead]`           |

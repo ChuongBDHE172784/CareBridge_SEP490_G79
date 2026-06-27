@@ -3,17 +3,24 @@ package com.carebridge.backend.security.controller;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.identity.service.SessionService;
+import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
+import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
+import com.carebridge.backend.security.dto.request.ResetPasswordRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
+import com.carebridge.backend.security.dto.response.ForgotPasswordResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
+import com.carebridge.backend.security.dto.response.ResetPasswordResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.service.AuthService;
+import com.carebridge.backend.security.service.ForgotPasswordService;
+import com.carebridge.backend.security.service.ResetPasswordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -40,6 +47,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final SessionService sessionService;
+    private final ForgotPasswordService forgotPasswordService;
+    private final ResetPasswordService resetPasswordService;
 
     @PostMapping("/register")
     @Operation(
@@ -192,5 +201,55 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(
                 authService.updateProfile(SecurityUtils.requireCurrentUserId(principal), request),
                 "Profile updated"));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(
+        summary = "Request password reset",
+        description = "Send a password reset link to the user's email or phone. Always returns 200 to prevent account enumeration. Rate limited: 3 requests per hour per contact.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Reset instruction sent (or silently skipped if account not found)", content = @Content(schema = @Schema(implementation = ForgotPasswordResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid contact format"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        }
+    )
+    public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        String ipAddress = httpRequest.getRemoteAddr();
+        return ResponseEntity.ok(ApiResponse.success(
+                forgotPasswordService.forgotPassword(request, ipAddress)));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(
+        summary = "Reset password using token",
+        description = "Set a new password using the reset token received via email or SMS. Token is single-use and expires after 15 minutes.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Password reset successfully", content = @Content(schema = @Schema(implementation = ResetPasswordResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid token, password mismatch, or weak password"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Too many attempts for this token")
+        }
+    )
+    public ResponseEntity<ApiResponse<ResetPasswordResponse>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(resetPasswordService.resetPassword(request)));
+    }
+
+    @PutMapping("/change-password")
+    @Operation(
+        summary = "Change password (authenticated)",
+        description = "Change the current user's password. Requires valid JWT. All active sessions are invalidated after a successful change.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Password changed successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Wrong current password, mismatch, or weak new password"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
+        }
+    )
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            Principal principal,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(SecurityUtils.requireCurrentUserId(principal), request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Password changed successfully. Please log in again."));
     }
 }

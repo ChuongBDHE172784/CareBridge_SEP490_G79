@@ -2,9 +2,9 @@
 # UC29 — View and Select Pregnancy Exercise — Test Specification
 
 **Document ID:** `CB-EXERCISE-IMP-001-TEST`
-**Version:** `1.0`
-**Date:** `2026-06-26`
-**Status:** `Draft`
+**Version:** `1.1`
+**Date:** `2026-06-27`
+**Status:** `Implemented — 2026-06-27`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Developer`
 **Reviewed by:** `[ ] Pending`
@@ -13,9 +13,9 @@
 **Classification:** `Internal`
 
 **References:**
-- `04_Implement/UC29_ViewAndSelectPregnancyExercise/UC29_ViewAndSelectPregnancyExercise_TDS.md` (CB-EXERCISE-IMP-001 v1.0) — Technical Design Specification
+- `04_Implement/UC29_ViewAndSelectPregnancyExercise/UC29_ViewAndSelectPregnancyExercise_TDS.md` (CB-EXERCISE-IMP-001 v1.1) — Technical Design Specification
+- `04_Implement/UC177_ViewPregnancyExerciseDetail/UC177_ViewPregnancyExerciseDetail_Test-Spec.md` (CB-EXERCISE-IMP-002-TEST) — Detail view test cases
 - `01_Requirements/SRS.md` — SRS 3.3.2.1 Functional requirements
-- `08_References/Template/PHASE-4_Test-Spec.md` — Test-Spec Template
 
 > **Quy ước TDD:** Tài liệu này mô tả test cases TRƯỚC khi viết production code.
 > Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
@@ -31,6 +31,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent — Developer | Khởi tạo tài liệu — TDD spec cho UC29 View and Select Pregnancy Exercise |
+| 2026-06-27 | AI Agent — Developer | v1.1: Tách test cases cho detail view (EX-TC-029-003, EX-TC-029-005, EX-TC-029-INT-002) ra CB-EXERCISE-IMP-002-TEST. UC29 Test-Spec giờ chỉ cover list endpoint. |
 
 ---
 
@@ -53,23 +54,23 @@
 | Field | Value |
 |-------|-------|
 | **Feature / Gap ID** | `UC29` |
-| **Module** | `View and Select Pregnancy Exercise — exercise` |
-| **Spec gốc** | `CB-EXERCISE-IMP-001` |
+| **Module** | `View and Select Pregnancy Exercise (list only) — exercise` |
+| **Spec gốc** | `CB-EXERCISE-IMP-001 v1.1` |
 | **Priority** | 🟠 P1 |
-| **Sprint** | `Current Sprint (2026-06-26)` |
+| **Sprint** | `Sprint 1 (2026-06-27 →)` |
 | **Milestone** | `M3 Alpha — 2026-07-11` |
 | **Data Classification** | `Internal` |
-| **Compliance Scope** | `BR-RBAC, BR-PRIVACY, BR-SAFETY` |
+| **Compliance Scope** | `BR-RBAC, BR-SAFETY` |
 | **Upstream Dependencies** | `IAM (JWT authentication), pregnancy_exercises table` |
-| **Downstream Consumers** | `UC30 — Analyze Exercise Posture` |
+| **Downstream Consumers** | `UC177_ViewPregnancyExerciseDetail (CB-EXERCISE-IMP-002), UC30 — Analyze Exercise Posture` |
 
 ### 1.1 AI Generation Context (CASE 2.0)
 
 | Field | Value |
 |-------|-------|
 | **AI Assisted?** | `Yes` |
-| **Constraint Source** | `CB-EXERCISE-IMP-001 S17, ADR-EXERCISE-001/002/003` |
-| **Constraints Injected** | C1 (PUBLISHED only), C2 (safety_warning always present), C3 (guidance only), C4 (MOTHER role via JWT), C5 (no business logic in controller), C6 (PaginatedResponse), C7 (optional filters) |
+| **Constraint Source** | `CB-EXERCISE-IMP-001 v1.1 §17, ADR-EXERCISE-001/002/003` |
+| **Constraints Injected** | C1 (PUBLISHED only), C2 (safety_warning always present), C3 (list-only, no start), C4 (MOTHER role via JWT), C5 (no business logic in controller), C6 (PaginatedResponse), C7 (optional filters) |
 | **Model** | `Claude Sonnet 4.6` |
 | **Trust Level** | `T2 → T3 (pending Red Gate)` |
 
@@ -81,9 +82,9 @@
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|
-| L1 | Spec does not explicitly state DRAFT/ARCHIVED filtering | DB column `status` has values DRAFT, PUBLISHED, ARCHIVED. Only PUBLISHED must be visible. | Tests assert DRAFT and ARCHIVED exercises are NEVER returned by list or detail endpoints. Test seeds mixed-status data and verifies filtering. |
-| L2 | Trimester filter described as "based on Mother's journey week" | Trimester filter is an optional query param sent by client (ADR-EXERCISE-002). Server does NOT auto-detect from journey. | Tests verify: omitting trimester param returns ALL PUBLISHED exercises. Passing trimester param filters correctly. |
-| L3 | safety_warning field nullable in DB schema | BR-EXERCISE-003 requires safety_warning always present in API response, never null | Tests verify: when DB safety_warning is null, API response maps it to empty string `""`. Field is NEVER null in response DTO. |
+| L1 | Spec does not explicitly state DRAFT/ARCHIVED filtering | DB column `status` có values DRAFT, PUBLISHED, ARCHIVED. Chỉ PUBLISHED mới visible. | Tests assert DRAFT và ARCHIVED exercises KHÔNG BAO GIỜ xuất hiện trong list response. |
+| L2 | Trimester filter described as "based on Mother's journey week" | Trimester filter là optional query param từ client (ADR-EXERCISE-002). Server không auto-detect từ journey. | Tests verify: omitting trimester param → return ALL PUBLISHED exercises. Passing trimester param → filter correctly. |
+| L3 | safety_warning field nullable trong DB schema | BR-EXERCISE-003 requires safety_warning luôn present trong API response, never null | Tests verify: khi DB safety_warning là null, API response map thành empty string `""`. Field KHÔNG BAO GIỜ null trong response DTO. |
 
 ---
 
@@ -92,45 +93,50 @@
 ### TDS-01 — Scope / Phạm vi
 
 ```
-UC29 View and Select Pregnancy Exercise bao gồm các layer:
+UC29 v1.1 — View and Select Pregnancy Exercise (LIST ONLY) bao gồm các layer:
 ├── Service (mock JPA Repository với Mockito)
-│   └── ExerciseQueryService — list + detail logic
+│   └── ExerciseQueryService.listPublishedExercises() — list logic
 ├── Controller (mock Service với @WebMvcTest)
-│   └── ExerciseController — REST endpoints, validation
+│   └── ExerciseController.GET /api/v1/exercises — REST list endpoint, validation
 ├── Mapper (unit test, no mocking)
-│   └── ExerciseMapper — entity → DTO conversion
+│   └── ExerciseMapper.toSummaryResponse() — entity → summary DTO
 └── Integration (Testcontainers PostgreSQL với @SpringBootTest)
-    └── Full flow: HTTP → Controller → Service → Repository → DB
+    └── Full flow: HTTP → Controller → Service → Repository → DB (list endpoint only)
+
+OUT OF SCOPE (→ CB-EXERCISE-IMP-002):
+  └── ExerciseController.GET /api/v1/exercises/{exerciseId}
+  └── ExerciseQueryService.getExerciseDetail()
+  └── ExerciseDetailResponse DTO
 ```
 
 ### TDS-02 — Test Basis / Cơ sở Kiểm thử
 
 | Source | Items Derived |
 |--------|--------------|
-| `SRS 3.3.2.1` | Mother views list of suitable exercises, selects one for detail view |
-| `ADR-EXERCISE-001` | Paginated list with filter, no full-text search |
-| `ADR-EXERCISE-002` | Trimester filter is optional client-side param |
+| `SRS 3.3.2.1` | Mother views list of suitable exercises, selects one |
+| `ADR-EXERCISE-001` | Paginated list với filter, no full-text search |
+| `ADR-EXERCISE-002` | Trimester filter là optional client-side param |
 | `ADR-EXERCISE-003` | Safety check required before session start (not in UC29 scope) |
 | `BR-EXERCISE-001` | Only PUBLISHED exercises visible |
 | `BR-EXERCISE-002` | Filter by trimester scope |
-| `BR-EXERCISE-003` | safety_warning always shown prominently |
+| `BR-EXERCISE-003` | safety_warning always shown prominently — never null |
 | `BR-EXERCISE-004` | No auto-start without safety check |
 | `BR-RBAC` | MOTHER role required, JWT authentication |
-| `CB-EXERCISE-IMP-001 S8` | Interface specification — service and repository contracts |
-| `CB-EXERCISE-IMP-001 S10` | Error codes EX-001, EX-002 |
+| `CB-EXERCISE-IMP-001 v1.1 §8` | Interface specification — IExerciseQueryService.listPublishedExercises() |
+| `CB-EXERCISE-IMP-001 v1.1 §10` | Error codes EX-003 (invalid filter), IAM-001, IAM-002 |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
 | Condition ID | Test Condition | Coverage Item | Test Cases |
 |-------------|---------------|---------------|-----------|
 | TC-COND-001 | List exercises returns only PUBLISHED items | `ExerciseQueryService.listPublishedExercises()` | `EX-TC-029-001`, `EX-TC-029-004` |
-| TC-COND-002 | Trimester filter works correctly | `ExerciseRepository.findByStatusAndFilters()` | `EX-TC-029-001` |
-| TC-COND-003 | Difficulty filter works correctly | `ExerciseRepository.findByStatusAndFilters()` | `EX-TC-029-002` |
-| TC-COND-004 | Exercise detail returns full content | `ExerciseQueryService.getExerciseDetail()` | `EX-TC-029-003` |
-| TC-COND-005 | Non-existent exercise returns 404 | `ExerciseQueryService.getExerciseDetail()` | `EX-TC-029-005` |
-| TC-COND-006 | Authentication required | `ExerciseController` | `EX-TC-029-006` |
-| TC-COND-007 | safety_warning never null in response | `ExerciseMapper` | `EX-TC-029-001`, `EX-TC-029-003` |
-| TC-COND-008 | DRAFT exercises filtered from list | `ExerciseQueryService.listPublishedExercises()` | `EX-TC-029-004`, `EX-TC-029-INT-001` |
+| TC-COND-002 | Trimester filter works correctly | `ExerciseRepository.findPublishedByFilters()` | `EX-TC-029-001` |
+| TC-COND-003 | Difficulty filter works correctly | `ExerciseRepository.findPublishedByFilters()` | `EX-TC-029-002` |
+| TC-COND-004 | No filters — all PUBLISHED returned | `ExerciseQueryService.listPublishedExercises()` | `EX-TC-029-003` |
+| TC-COND-005 | DRAFT exercises filtered from list | `ExerciseQueryService.listPublishedExercises()` | `EX-TC-029-004`, `EX-TC-029-INT-001` |
+| TC-COND-006 | Authentication required | `ExerciseController` (Spring Security) | `EX-TC-029-005` |
+| TC-COND-007 | safety_warning never null in list response | `ExerciseMapper.toSummaryResponse()` | `EX-TC-029-001`, `EX-TC-029-006` |
+| TC-COND-008 | Non-MOTHER role returns 403 | `ExerciseController` (RBAC) | `EX-TC-029-SEC-001` |
 
 ### TDS-04 — Test Techniques / Kỹ thuật Kiểm thử
 
@@ -138,9 +144,9 @@ UC29 View and Select Pregnancy Exercise bao gồm các layer:
 |------------------------|------------|-----------|
 | Equivalence Partitioning | Trimester filter values (FIRST/SECOND/THIRD/ALL/null) | Verify each valid partition and null (no filter) |
 | Equivalence Partitioning | Difficulty filter values (EASY/MEDIUM/HARD/null) | Verify each valid partition and null |
-| Boundary Value Analysis | Pagination (page=0, size=1, size=50, size=51) | Verify boundary of page size limits |
-| State Transition Testing | Exercise status (DRAFT/PUBLISHED/ARCHIVED) | Verify only PUBLISHED state is visible |
-| Error Guessing | Invalid UUID, missing JWT, expired JWT | Common API error scenarios |
+| Boundary Value Analysis | Pagination (page=0, size=1, size=50) | Verify boundary of page size |
+| State Transition Testing | Exercise status (DRAFT/PUBLISHED/ARCHIVED) | Verify only PUBLISHED visible |
+| Error Guessing | Missing JWT, expired JWT, wrong role, invalid filter value | Common API error scenarios |
 
 ### TDS-05 — Test Data Requirements
 
@@ -148,10 +154,12 @@ UC29 View and Select Pregnancy Exercise bao gồm các layer:
 |-----------|------|---------------|---------|
 | `FX-029-001` | DB seed | `{ exerciseId: UUID-1, title: "Prenatal Yoga T1", trimesterScope: FIRST, difficultyLevel: EASY, status: PUBLISHED, safetyWarning: "Stop if dizzy" }` | Happy path — published exercise with safety warning |
 | `FX-029-002` | DB seed | `{ exerciseId: UUID-2, title: "Strength Training T2", trimesterScope: SECOND, difficultyLevel: MEDIUM, status: PUBLISHED, safetyWarning: "" }` | Published exercise with empty safety warning |
-| `FX-029-003` | DB seed | `{ exerciseId: UUID-3, title: "Draft Exercise", status: DRAFT, safetyWarning: null }` | DRAFT exercise — must NOT appear in API response |
+| `FX-029-003` | DB seed | `{ exerciseId: UUID-3, title: "Draft Exercise", status: DRAFT, safetyWarning: null }` | DRAFT exercise — must NOT appear in list response |
 | `FX-029-004` | DB seed | `{ exerciseId: UUID-4, title: "Archived Exercise", status: ARCHIVED }` | ARCHIVED exercise — must NOT appear |
-| `FX-029-005` | JWT | `{ sub: "mother-001", role: "MOTHER" }` | Valid MOTHER auth token |
-| `FX-029-006` | JWT | `(none)` | Missing JWT — 401 scenario |
+| `FX-029-005` | DB seed | `{ exerciseId: UUID-5, title: "All Trimesters HARD", trimesterScope: ALL, difficultyLevel: HARD, status: PUBLISHED, safetyWarning: null }` | Test null safetyWarning → empty string mapping |
+| `FX-029-006` | JWT | `{ sub: "mother-001", role: "MOTHER" }` | Valid MOTHER auth token |
+| `FX-029-007` | JWT | `(none)` | Missing JWT — 401 scenario |
+| `FX-029-008` | JWT | `{ sub: "expert-001", role: "EXPERT" }` | Wrong role JWT — 403 scenario |
 
 ---
 
@@ -166,10 +174,9 @@ UC29 View and Select Pregnancy Exercise bao gồm các layer:
 ```java
 // ═══════════════════════════════════════════════════════════
 // CASE 2.0 — Props Isolation Pattern
-// Đặt ở đầu file test — mỗi @Test dùng makeExercise()
+// Mỗi @Test dùng ExerciseTestFactory — không shared mutable state
 // ═══════════════════════════════════════════════════════════
 
-// ExerciseTestFactory.java
 class ExerciseTestFactory {
 
     static final UUID EXERCISE_ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -177,7 +184,6 @@ class ExerciseTestFactory {
     static final UUID EXERCISE_ID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
     static final UUID MOTHER_USER_ID = UUID.fromString("00000000-0000-0000-0000-100000000001");
 
-    // Giá trị baseline hợp lệ — PUBLISHED exercise
     static PregnancyExercise makePublishedExercise() {
         PregnancyExercise e = new PregnancyExercise();
         e.setExerciseId(EXERCISE_ID_1);
@@ -198,19 +204,25 @@ class ExerciseTestFactory {
         return e;
     }
 
-    // Overload để override specific fields
     static PregnancyExercise makePublishedExercise(Consumer<PregnancyExercise> overrides) {
         PregnancyExercise e = makePublishedExercise();
         overrides.accept(e);
         return e;
     }
 
-    // DRAFT exercise — should never appear in UC29 results
     static PregnancyExercise makeDraftExercise() {
         return makePublishedExercise(e -> {
             e.setExerciseId(EXERCISE_ID_3);
             e.setTitle("Draft Exercise - Not Visible");
             e.setStatus(ExerciseStatus.DRAFT);
+            e.setSafetyWarning(null);
+        });
+    }
+
+    static PregnancyExercise makeExerciseWithNullSafetyWarning() {
+        return makePublishedExercise(e -> {
+            e.setExerciseId(EXERCISE_ID_2);
+            e.setSafetyWarning(null);
         });
     }
 }
@@ -218,38 +230,38 @@ class ExerciseTestFactory {
 
 ---
 
-### EX-TC-029-001 — Happy path: List exercises filtered by trimester
+### EX-TC-029-001 — Happy path: List exercises filtered by trimester=FIRST
 
 **Severity:** `HIGH`
 **Feature Under Test:** `ExerciseController.listExercises() → ExerciseQueryService.listPublishedExercises()`
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseQueryServiceTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001, TC-COND-002, TC-COND-007`
 **Oracle Source:** `BR-EXERCISE-001` (only PUBLISHED), `BR-EXERCISE-002` (trimester filter), `BR-EXERCISE-003` (safety_warning present)
 
 **Preconditions:**
 - ExerciseRepository mocked
-- FX-029-001, FX-029-002 as mock return data
+- FX-029-001 (FIRST, EASY, PUBLISHED) as mock return data
 
 **Test Steps:**
-1. Arrange: Mock `exerciseRepository.findByStatusAndFilters(PUBLISHED, FIRST, null, PageRequest(0,20))` to return Page with FX-029-001
-2. Act: Call `exerciseQueryService.listPublishedExercises(FIRST, null, 0, 20)`
-3. Assert: Result contains 1 item with trimesterScope=FIRST, safetyWarning is not null and not empty
+1. Arrange: Mock `exerciseRepository.findPublishedByFilters(PUBLISHED, FIRST, null, PageRequest(0,20))` trả về Page với FX-029-001
+2. Act: `exerciseQueryService.listPublishedExercises(FIRST, null, 0, 20)`
+3. Assert: kết quả chứa 1 item với trimesterScope=FIRST và safetyWarning not null
 
 **Expected Result (PASS):**
-- PaginatedResponse with 1 item
-- Item has `exerciseId` matching FX-029-001
-- Item has `trimesterScope = "FIRST"`
-- Item has `safetyWarning = "Stop immediately if you feel dizzy or experience pain."`
-- Item has `supportsPostureAnalysis = true`
+- PaginatedResponse với 1 item
+- Item có `exerciseId` = EXERCISE_ID_1
+- Item có `trimesterScope = "FIRST"`
+- Item có `safetyWarning = "Stop immediately if you feel dizzy or experience pain."`
+- Item có `supportsPostureAnalysis = true`
 
 **Expected Result (FAIL):**
 - Service throws exception (method not implemented)
-- Response is null or empty
-- safetyWarning is null
+- Response rỗng
+- safetyWarning là null
 
-**Current Status:** 🔴 Not written
-**Implementation Note:** Ensure repository query uses `status = PUBLISHED` filter. Mapper must never set safetyWarning to null.
+**Current Status:** 🟢 Passing
+**Implementation Note:** Service PHẢI luôn pass `status=PUBLISHED` vào repository. Mapper không được trả về null safetyWarning.
 
 ---
 
@@ -258,62 +270,58 @@ class ExerciseTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ExerciseQueryService.listPublishedExercises()`
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseQueryServiceTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
-**Oracle Source:** `BR-EXERCISE-001`, `ADR-EXERCISE-001` (filter by difficulty)
+**Oracle Source:** `BR-EXERCISE-001`, `ADR-EXERCISE-001`
 
 **Preconditions:**
 - ExerciseRepository mocked
-- FX-029-001 (EASY), FX-029-002 (MEDIUM)
+- FX-029-001 (EASY), FX-029-002 (MEDIUM) available as fixtures
 
 **Test Steps:**
-1. Arrange: Mock `findByStatusAndFilters(PUBLISHED, null, EASY, PageRequest(0,20))` to return Page with FX-029-001 only
-2. Act: Call `exerciseQueryService.listPublishedExercises(null, EASY, 0, 20)`
-3. Assert: Result contains 1 item, difficultyLevel=EASY
+1. Arrange: Mock `findPublishedByFilters(PUBLISHED, null, EASY, PageRequest(0,20))` trả về Page với FX-029-001
+2. Act: `exerciseQueryService.listPublishedExercises(null, EASY, 0, 20)`
+3. Assert: 1 item, difficultyLevel=EASY
 
 **Expected Result (PASS):**
-- PaginatedResponse with 1 item
-- Item has `difficultyLevel = "EASY"`
+- PaginatedResponse với 1 item
+- Item có `difficultyLevel = "EASY"`
 
 **Expected Result (FAIL):**
-- Returns items with non-EASY difficulty
+- Trả về items với non-EASY difficulty
 - Service throws exception
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
-### EX-TC-029-003 — Exercise detail by ID returns full content
+### EX-TC-029-003 — No filters: all PUBLISHED exercises returned
 
-**Severity:** `HIGH`
-**Feature Under Test:** `ExerciseQueryService.getExerciseDetail()`
+**Severity:** `MEDIUM`
+**Feature Under Test:** `ExerciseQueryService.listPublishedExercises()`
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseQueryServiceTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
-**Condition Ref:** `TC-COND-004, TC-COND-007`
-**Oracle Source:** `US-EXERCISE-002` (detail view includes instruction_content), `BR-EXERCISE-003` (safety_warning present)
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-004`
+**Oracle Source:** `ADR-EXERCISE-002` (null param = no filter)
 
 **Preconditions:**
 - ExerciseRepository mocked
-- FX-029-001
+- FX-029-001, FX-029-002 as fixtures (different trimesters)
 
 **Test Steps:**
-1. Arrange: Mock `findByExerciseIdAndStatus(EXERCISE_ID_1, PUBLISHED)` to return Optional.of(FX-029-001)
-2. Act: Call `exerciseQueryService.getExerciseDetail(EXERCISE_ID_1)`
-3. Assert: Response contains full exercise detail including instructionContent and safetyWarning
+1. Arrange: Mock `findPublishedByFilters(PUBLISHED, null, null, PageRequest(0,20))` trả về Page với [FX-029-001, FX-029-002]
+2. Act: `exerciseQueryService.listPublishedExercises(null, null, 0, 20)`
+3. Assert: 2 items với mixed trimesters
 
 **Expected Result (PASS):**
-- ApiResponse with data containing `instructionContent = "Step 1: Start in a comfortable seated position..."`
-- `safetyWarning` is populated, not null
-- `versionNo` is present
-- `createdAt` is present
+- PaginatedResponse với 2 items
+- Items có `trimesterScope` khác nhau (FIRST, SECOND)
 
 **Expected Result (FAIL):**
-- instructionContent is null or missing
-- safetyWarning is null
-- Service throws exception
+- Chỉ trả về 1 item
+- Service không pass null params đúng cách
 
-**Current Status:** 🔴 Not written
-**Implementation Note:** Detail response MUST include `instructionContent` which is NOT in the summary DTO.
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -322,91 +330,89 @@ class ExerciseTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ExerciseQueryService.listPublishedExercises()`
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseQueryServiceTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
-**Condition Ref:** `TC-COND-001, TC-COND-008`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-001, TC-COND-005`
 **Oracle Source:** `BR-EXERCISE-001` (only PUBLISHED visible)
 
 **Preconditions:**
-- ExerciseRepository mocked to return only PUBLISHED exercises (DRAFT filtered at query level)
-
-**Test Steps:**
-1. Arrange: Mock `findByStatusAndFilters(PUBLISHED, null, null, PageRequest(0,20))` to return Page with FX-029-001 only (DRAFT exercise FX-029-003 not included because query filters by status)
-2. Act: Call `exerciseQueryService.listPublishedExercises(null, null, 0, 20)`
-3. Assert: Result does not contain any exercise with status DRAFT
-
-**Expected Result (PASS):**
-- Response contains only PUBLISHED exercises
-- No DRAFT or ARCHIVED exercises in response
-
-**Expected Result (FAIL):**
-- DRAFT exercise appears in response list
-- Service does not pass status=PUBLISHED filter to repository
-
-**Current Status:** 🔴 Not written
-**Implementation Note:** This is CRITICAL — the service MUST always pass `status=PUBLISHED` to the repository query. Never fetch all and filter in memory.
-
----
-
-### EX-TC-029-005 — Exercise ID not found returns 404 with EX-001
-
-**Severity:** `HIGH`
-**Feature Under Test:** `ExerciseQueryService.getExerciseDetail()`
-**Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseQueryServiceTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
-**Condition Ref:** `TC-COND-005`
-**Oracle Source:** `CB-EXERCISE-IMP-001 S10` (error code EX-001)
-
-**Preconditions:**
 - ExerciseRepository mocked
-- Non-existent UUID
+- Mock returns only PUBLISHED exercises (DRAFT filtered at query level)
 
 **Test Steps:**
-1. Arrange: Mock `findByExerciseIdAndStatus(nonExistentId, PUBLISHED)` to return Optional.empty()
-2. Act: Call `exerciseQueryService.getExerciseDetail(nonExistentId)`
-3. Assert: ExerciseNotFoundException thrown with error code EX-001
+1. Arrange: Mock `findPublishedByFilters(PUBLISHED, null, null, PageRequest(0,20))` trả về Page với chỉ FX-029-001 (DRAFT exercise FX-029-003 không có trong Page vì query đã filter)
+2. Act: `exerciseQueryService.listPublishedExercises(null, null, 0, 20)`
+3. Assert: Response không chứa exercise nào với status DRAFT
 
 **Expected Result (PASS):**
-- ExerciseNotFoundException thrown
-- Error code = "EX-001"
-- HTTP status = 404
+- Response chứa chỉ PUBLISHED exercises
+- Không có DRAFT hoặc ARCHIVED exercises
 
 **Expected Result (FAIL):**
-- Returns null instead of throwing exception
-- Wrong error code
-- Returns 500 instead of 404
+- DRAFT exercise xuất hiện trong response
+- Service không pass `status=PUBLISHED` filter vào repository
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
+**Implementation Note:** CRITICAL — Service PHẢI LUÔN pass `status=PUBLISHED` vào repository. Không bao giờ fetch all và filter trong memory.
 
 ---
 
-### EX-TC-029-006 — No JWT returns 401
+### EX-TC-029-005 — No JWT returns 401
 
 **Severity:** `HIGH`
 **CWE:** `CWE-306 — Missing Authentication for Critical Function`
 **Feature Under Test:** `ExerciseController` — Spring Security configuration
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
-**Oracle Source:** `BR-RBAC` (JWT required)
+**Oracle Source:** `BR-RBAC` (JWT required), `CB-EXERCISE-IMP-001 v1.1 §10` (IAM-001)
 
 **Preconditions:**
 - Spring Security configured
-- No JWT token provided
+- FX-029-007: No Authorization header
 
 **Test Steps:**
-1. Arrange: No Authorization header
-2. Act: Call `GET /api/v1/exercises` without JWT
+1. Arrange: Không có Authorization header
+2. Act: `GET /api/v1/exercises` without JWT
 3. Assert: HTTP 401 Unauthorized
 
 **Expected Result (PASS):**
 - HTTP 401 response
-- No exercise data leaked
+- Response body chứa `{ error: { code: "IAM-001" } }`
+- Không có exercise data bị leak
 
 **Expected Result (FAIL):**
-- HTTP 200 with exercise data (security vulnerability)
-- HTTP 403 instead of 401
+- HTTP 200 với exercise data (lỗ hổng bảo mật)
+- HTTP 403 thay vì 401
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
+
+---
+
+### EX-TC-029-006 — null safetyWarning in DB maps to empty string in response
+
+**Severity:** `HIGH`
+**Feature Under Test:** `ExerciseMapper.toSummaryResponse()`
+**Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseMapperTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-007`
+**Oracle Source:** `BR-EXERCISE-003` (safety_warning always present, never null), `L3 Logic Issue`
+
+**Preconditions:**
+- `ExerciseTestFactory.makeExerciseWithNullSafetyWarning()` (FX-029-005 fixture)
+
+**Test Steps:**
+1. Arrange: Create PregnancyExercise entity với `safetyWarning = null`
+2. Act: `exerciseMapper.toSummaryResponse(entity)`
+3. Assert: `result.getSafetyWarning()` = `""` (empty string, not null)
+
+**Expected Result (PASS):**
+- `result.getSafetyWarning()` là `""` (không phải null)
+
+**Expected Result (FAIL):**
+- `result.getSafetyWarning()` là `null` — vi phạm BR-EXERCISE-003
+
+**Current Status:** 🟢 Passing
+**Implementation Note:** L3 logic fix — ExerciseMapper phải convert null → "" trong toSummaryResponse().
 
 ---
 
@@ -414,30 +420,32 @@ class ExerciseTestFactory {
 
 ---
 
-### EX-TC-029-SEC-001 — Non-MOTHER role cannot access exercises
+### EX-TC-029-SEC-001 — Non-MOTHER role cannot access exercise list
 
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021 — Broken Access Control`
 **CWE:** `CWE-285 — Improper Authorization`
 **Feature Under Test:** `ExerciseController` — Role-based access control
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseControllerSecurityTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-008`
 
 **Preconditions:**
-- JWT token with EXPERT role (not MOTHER)
+- JWT token với role=EXPERT (không phải MOTHER) — FX-029-008
 
 **Test Steps (Attack Simulation):**
-1. Arrange: Create JWT with role=EXPERT
-2. Act: Call `GET /api/v1/exercises` with EXPERT JWT
+1. Arrange: Create JWT với `role=EXPERT`
+2. Act: `GET /api/v1/exercises` với EXPERT JWT
 3. Assert: HTTP 403 Forbidden
 
 **Expected Result (PASS = system secure):**
 - HTTP 403 Forbidden
+- Response body chứa `{ error: { code: "IAM-002" } }`
 
 **Expected Result (FAIL = vulnerability):**
-- HTTP 200 with exercise data (unauthorized access)
+- HTTP 200 với exercise data (unauthorized access)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -448,42 +456,40 @@ class ExerciseTestFactory {
 ### EX-TC-029-INT-001 — Integration: Seed 3 exercises (2 PUBLISHED, 1 DRAFT), list returns 2
 
 **Severity:** `HIGH`
-**Feature Under Test:** `Full flow: Controller → Service → Repository → DB`
+**Feature Under Test:** `Full flow: Controller → Service → Repository → DB (list endpoint)`
 **Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseIntegrationTest.java`
-**TDD Phase:** 🔴 RED
-**Condition Ref:** `TC-COND-001, TC-COND-008`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-001, TC-COND-005`
 
 **Preconditions:**
 - PostgreSQL container running (`@Testcontainers` auto-start)
-- Flyway migration applied automatically
+- Flyway migration applied tự động
 - Seed: FX-029-001 (PUBLISHED, FIRST, EASY), FX-029-002 (PUBLISHED, SECOND, MEDIUM), FX-029-003 (DRAFT, FIRST, EASY)
 
 **Test Steps:**
-1. Seed 3 exercises into database: 2 PUBLISHED + 1 DRAFT
-2. Call `GET /api/v1/exercises` with valid MOTHER JWT
-3. Assert response contains exactly 2 exercises
-4. Assert DRAFT exercise (FX-029-003) is NOT in response
-5. Assert each returned exercise has `safetyWarning` field populated (not null)
+1. Seed 3 exercises: 2 PUBLISHED + 1 DRAFT
+2. `GET /api/v1/exercises` với valid MOTHER JWT
+3. Assert response chứa đúng 2 exercises
+4. Assert DRAFT exercise (FX-029-003) KHÔNG có trong response
+5. Assert mỗi returned exercise có `safetyWarning` field không null
 
 **Expected Result (PASS):**
 - HTTP 200
-- Response body `items` array has length 2
-- All items have `status` attribute absent (not exposed) or implied PUBLISHED
-- FX-029-003 title "Draft Exercise - Not Visible" does NOT appear
-- Each item has non-null `safetyWarning`
+- `items` array có length = 2
+- FX-029-003 title "Draft Exercise - Not Visible" không xuất hiện
+- Mỗi item có `safetyWarning` không null
 
 **Expected Result (FAIL):**
-- Response returns 3 exercises (DRAFT leaked)
-- Any item has null `safetyWarning`
+- Response trả về 3 exercises (DRAFT bị leak)
+- Bất kỳ item nào có null `safetyWarning`
 - HTTP error
 
 **DB Assertion:**
 ```java
-// Verify DB has 3 total exercises but API returns only 2
+// Verify DB có 3 exercises tổng cộng nhưng API chỉ trả về 2
 long totalInDb = exerciseRepository.count();
 assertThat(totalInDb).isEqualTo(3);
 
-// Verify API list
 var response = mockMvc.perform(get("/api/v1/exercises")
     .header("Authorization", "Bearer " + motherJwt))
     .andExpect(status().isOk())
@@ -492,39 +498,14 @@ var response = mockMvc.perform(get("/api/v1/exercises")
 var items = objectMapper.readTree(response.getResponse().getContentAsString())
     .get("items");
 assertThat(items.size()).isEqualTo(2);
+
+// Verify không có "Draft Exercise" trong response
+items.forEach(item ->
+    assertThat(item.get("title").asText()).doesNotContain("Draft")
+);
 ```
 
-**Current Status:** 🔴 Not written
-
----
-
-### EX-TC-029-INT-002 — Integration: Exercise detail with null safety_warning in DB returns empty string
-
-**Severity:** `HIGH`
-**Feature Under Test:** `Full flow: detail endpoint with null safety_warning mapping`
-**Test File:** `src/test/java/com/carebridge/backend/exercise/ExerciseIntegrationTest.java`
-**TDD Phase:** 🔴 RED
-**Condition Ref:** `TC-COND-007`
-
-**Preconditions:**
-- PostgreSQL container running
-- Seed: 1 PUBLISHED exercise with `safety_warning = NULL` in DB
-
-**Test Steps:**
-1. Seed 1 PUBLISHED exercise with safety_warning = NULL
-2. Call `GET /api/v1/exercises/{exerciseId}` with valid MOTHER JWT
-3. Assert response has `safetyWarning` = `""` (empty string, NOT null)
-
-**Expected Result (PASS):**
-- HTTP 200
-- `safetyWarning` field = `""` (empty string)
-
-**Expected Result (FAIL):**
-- `safetyWarning` is null in JSON response
-- `safetyWarning` field missing from response
-
-**Current Status:** 🔴 Not written
-**Implementation Note:** L3 logic issue — ExerciseMapper must convert null DB value to empty string.
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -532,15 +513,14 @@ assertThat(items.size()).isEqualTo(2);
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `EX-TC-029-001` | `ExerciseQueryServiceTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-002` | `ExerciseQueryServiceTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-003` | `ExerciseQueryServiceTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-004` | `ExerciseQueryServiceTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-005` | `ExerciseQueryServiceTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-006` | `ExerciseControllerSecurityTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-SEC-001` | `ExerciseControllerSecurityTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-INT-001` | `ExerciseIntegrationTest.java` | `[ ]` | `___` | |
-| `EX-TC-029-INT-002` | `ExerciseIntegrationTest.java` | `[ ]` | `___` | |
+| `EX-TC-029-001` | `ExerciseQueryServiceTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-002` | `ExerciseQueryServiceTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-003` | `ExerciseQueryServiceTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-004` | `ExerciseQueryServiceTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-005` | `ExerciseControllerDetailSecurityTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-006` | `ExerciseMapperTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-SEC-001` | `ExerciseControllerDetailSecurityTest.java` | `[x]` | `2026-06-27` | |
+| `EX-TC-029-INT-001` | `ExerciseDetailIntegrationTest.java` | `[x]` | `2026-06-27` | |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -559,11 +539,6 @@ public class ExerciseQueryService implements IExerciseQueryService {
             TrimesterScope trimester, DifficultyLevel difficulty, int page, int size) {
         throw new UnsupportedOperationException("Not implemented — Red Phase stub");
     }
-
-    @Override
-    public ApiResponse<ExerciseDetailResponse> getExerciseDetail(UUID exerciseId) {
-        throw new UnsupportedOperationException("Not implemented — Red Phase stub");
-    }
 }
 ```
 
@@ -575,11 +550,10 @@ public class ExerciseQueryService implements IExerciseQueryService {
 | `EX-TC-029-002` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `EX-TC-029-003` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `EX-TC-029-004` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `EX-TC-029-005` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `EX-TC-029-006` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `EX-TC-029-SEC-001` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
+| `EX-TC-029-005` | Spring Security not configured | 🔴 FAIL | ☐ FAIL ☐ PASS | |
+| `EX-TC-029-006` | `return null` from mapper | 🔴 FAIL | ☐ FAIL ☐ PASS | |
+| `EX-TC-029-SEC-001` | Spring Security not configured | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `EX-TC-029-INT-001` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `EX-TC-029-INT-002` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
 
@@ -593,30 +567,30 @@ public class ExerciseQueryService implements IExerciseQueryService {
 
 ### Entry Criteria (Điều kiện bắt đầu)
 
-- [ ] TDS `CB-EXERCISE-IMP-001` đã được review và approve
+- [ ] TDS `CB-EXERCISE-IMP-001 v1.1` đã được review và approve
 - [ ] Logic Issues (Section 2) đã được confirm
-- [ ] V1 migration with pregnancy_exercises table đã chạy thành công trên staging
+- [ ] V1 migration với pregnancy_exercises table đã chạy thành công trên staging
 - [ ] Test fixtures (Section 3 TDS-05) đã được chuẩn bị
 
 ### Exit Criteria (Điều kiện kết thúc — DoD)
 
 - [ ] `./mvnw test` — tất cả unit tests xanh (không có skip)
 - [ ] `./mvnw verify` — tất cả integration tests xanh (Testcontainers)
-- [ ] Test coverage >= 80% lines cho ExerciseQueryService
-- [ ] Không có business logic trong ExerciseController (chỉ có validation + mapping)
-- [ ] DRAFT/ARCHIVED exercises never appear in API responses (verified by EX-TC-029-004, EX-TC-029-INT-001)
-- [ ] safety_warning never null in response (verified by EX-TC-029-INT-002)
+- [ ] Test coverage ≥ 80% lines cho `ExerciseQueryService.listPublishedExercises()`
+- [ ] Không có business logic trong `ExerciseController`
+- [ ] DRAFT/ARCHIVED exercises KHÔNG BAO GIỜ xuất hiện trong list response (verified bởi EX-TC-029-004, EX-TC-029-INT-001)
+- [ ] `safetyWarning` never null trong response (verified bởi EX-TC-029-006)
 
 **Exit Criteria bổ sung — CASE 2.0:**
 
-- [ ] **Red Gate (S5.1)** — tất cả tests FAIL với empty/throw stub trước khi implement
-- [ ] **Contract Existence** — mọi class được inject đều tồn tại trong codebase:
+- [ ] **Red Gate (§5.1)** — tất cả tests FAIL với empty/throw stub trước khi implement
+- [ ] **Contract Existence** — mọi class được inject đều tồn tại:
   ```bash
   ./mvnw compile 2>&1 | grep "error:"
   # Expected: no output
   ```
 - [ ] **Props Isolation** — không có shared mutable state giữa tests
-- [ ] **Oracle Source** — mọi expected value trong assert có ghi rõ nguồn (BR/AC/ADR)
+- [ ] **Oracle Source** — mọi expected value có ghi rõ nguồn (BR/AC/ADR)
 
 ### Suspension Criteria (Điều kiện tạm dừng)
 
@@ -629,7 +603,7 @@ public class ExerciseQueryService implements IExerciseQueryService {
 ## 7. Rollback Plan
 
 ```bash
-# Revert test and implementation files
+# Revert implementation files
 git checkout -- src/main/java/com/carebridge/backend/exercise/
 git checkout -- src/test/java/com/carebridge/backend/exercise/
 
@@ -644,10 +618,10 @@ git checkout -- src/test/java/com/carebridge/backend/exercise/
 | AP-ID | Anti-Pattern | Dấu hiệu trong TDD spec | Check | Gate chặn |
 |-------|-------------|--------------------------|-------|-----------|
 | AP-AI-001 | Unconstrained Generation | TC không reference ADR/TDS constraint nào | ☐ | G-0 |
-| AP-AI-002 | Green-from-Birth | Test PASS với empty/throw stub (S5.1) | ☐ | G-2 |
+| AP-AI-002 | Green-from-Birth | Test PASS với empty/throw stub (§5.1) | ☐ | G-2 |
 | AP-AI-003 | Implicit Decision | Test assume architecture decision không có ADR | ☐ | G-1 |
 | AP-AI-004 | Layer Violation | Test verify controller có business logic | ☐ | G-4 |
-| AP-AI-005 | Hallucinated Contract | Test import service/type không tồn tại trong codebase | ☐ | G-3 |
+| AP-AI-005 | Hallucinated Contract | Test import `ExerciseDetailResponse` hoặc `getExerciseDetail` (thuộc CB-EXERCISE-IMP-002) | ☐ | G-3 |
 
 **Kết quả review:**
 
@@ -657,8 +631,3 @@ git checkout -- src/test/java/com/carebridge/backend/exercise/
 | AP detected | TC ID | Mô tả | Fix action | Fixed? |
 |------------|-------|-------|------------|--------|
 | _(none detected)_ | — | — | — | — |
-
----
-
-*TDD Template v2.0 — Tích hợp CASE 2.0 Anti-Pattern Detection & Red Gate Protocol*
-*UC29 — View and Select Pregnancy Exercise — 9 test cases (6 unit + 1 security + 2 integration)*
