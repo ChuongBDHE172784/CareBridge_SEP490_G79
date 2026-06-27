@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
-import 'otp_verification_screen.dart';
 import 'register_screen.dart';
 
 /// CB-004 — Login (UC-03)
@@ -52,21 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await AuthService.instance.login(
+      await AuthService.instance.loginDirect(
         email: _isEmailInput ? identifier : null,
         phone: !_isEmailInput ? identifier : null,
         password: password,
       );
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(
-            identifier: identifier,
-            isEmail: _isEmailInput,
-          ),
-        ),
-      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on ApiException catch (e) {
       String msg;
       if (e.statusCode == 403) {

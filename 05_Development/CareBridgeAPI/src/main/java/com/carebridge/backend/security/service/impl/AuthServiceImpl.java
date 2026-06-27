@@ -228,6 +228,73 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
+    public AuthResponse loginDirect(LoginRequest request) {
+        String phone = normalizePhone(request.getPhone());
+        String emailRaw = request.getEmail();
+        String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
+
+        boolean hasPhone = phone != null;
+        boolean hasEmail = email != null;
+        if (hasPhone == hasEmail) {
+            throw new ValidationException("Either phone or email must be provided (exactly one)");
+        }
+
+        User user = hasPhone
+                ? userRepository.findByPhone(phone).orElse(null)
+                : userRepository.findByEmailIgnoreCase(email).orElse(null);
+
+        if (user == null) throw new AuthenticationException("Invalid credentials");
+
+        authenticationPolicy.ensureCanAuthenticate(user);
+
+        String passwordHash = user.getPasswordHash();
+        if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
+            throw new AuthenticationException("Invalid credentials");
+        }
+
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
+
+        RefreshToken refreshToken = createRefreshToken(user);
+        String rawRefreshToken = refreshToken.getToken();
+        String refreshTokenHash = TokenUtils.hashSha256(rawRefreshToken);
+
+        UUID sessionId = UUID.randomUUID();
+        String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
+        String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
+        String deviceName = extractDeviceName(userAgent);
+        String browser = userAgent != null ? userAgent : "Unknown";
+
+        UserSession session = UserSession.builder()
+                .userId(user.getId())
+                .sessionId(sessionId)
+                .refreshTokenHash(refreshTokenHash)
+                .deviceName(deviceName)
+                .browser(browser)
+                .ipAddress(ipAddress)
+                .location(null)
+                .lastActivityAt(Instant.now())
+                .expiresAt(refreshToken.getExpiresAt())
+                .status("active")
+                .isCurrent(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        sessionRepository.save(session);
+        sessionRepository.clearCurrentSessions(user.getId(), sessionId);
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
+        auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(rawRefreshToken)
+                .user(userMapper.toProfileResponse(user))
+                .build();
+    }
+
+    @Override
     public OtpSendResponse login(LoginRequest request) {
         // 1. Normalize identifier (phone or email)
         String phone = normalizePhone(request.getPhone());

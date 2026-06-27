@@ -18,6 +18,8 @@ public interface AuthService {
 
     OtpSendResponse login(LoginRequest request);
 
+    AuthResponse loginDirect(LoginRequest request);
+
     AuthResponse verifyOtp(VerifyOtpRequest request);
 
     OtpResendResponse resendOtp(ResendOtpRequest request);

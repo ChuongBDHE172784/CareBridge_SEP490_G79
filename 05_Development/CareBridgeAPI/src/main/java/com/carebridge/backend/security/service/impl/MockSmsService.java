@@ -3,7 +3,6 @@ package com.carebridge.backend.security.service.impl;
 import com.carebridge.backend.security.service.SmsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 /**
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
  * Log nội dung SMS thay vì gửi thật.
  */
 @Service
-@Profile({"dev", "supabase"})
 public class MockSmsService implements SmsService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockSmsService.class);
