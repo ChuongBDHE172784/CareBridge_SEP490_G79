@@ -1,4 +1,4 @@
-CREATE TABLE safety_events (
+CREATE TABLE imu_safety_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     imu_session_id UUID NOT NULL REFERENCES imu_monitoring_sessions(id),
@@ -11,4 +11,4 @@ CREATE TABLE safety_events (
     created_by VARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT chk_event_type CHECK (event_type IN ('SUSPECTED_FALL', 'SUSPECTED_IMPACT', 'FALSE_ALARM'))
 );
-REVOKE UPDATE, DELETE ON safety_events FROM PUBLIC;
+REVOKE UPDATE, DELETE ON imu_safety_events FROM PUBLIC;

@@ -19,6 +19,7 @@ class AuthState extends ChangeNotifier {
   String? _blockedReason;
 
   String? get accessToken => _accessToken;
+  String? get refreshToken => _refreshToken;
   String? get role => _role;
   String? get userId => _userId;
   bool get isRestoring => _isRestoring;
