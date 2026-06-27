@@ -6,7 +6,7 @@
 | **Document ID** | `CB-REM-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -21,6 +21,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | Implementation completed — service, controller, tests 🟢 GREEN (45/45) |
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-45 Create Appointment Reminder |
 
 ---

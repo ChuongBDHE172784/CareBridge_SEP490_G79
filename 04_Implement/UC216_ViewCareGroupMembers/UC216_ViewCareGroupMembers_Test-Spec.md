@@ -4,7 +4,7 @@
 **Document ID:** `CB-FAM-TDD-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-216 |
 
 ---
@@ -111,7 +112,7 @@ class CareGroupMemberTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareGroupService.listMembers()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-216 Normal Flow`
 
 **Test Steps:**
@@ -124,7 +125,7 @@ class CareGroupMemberTestFactory {
 - Contains member with `memberRole = OWNER`
 - Contains PENDING member in list (visible but marked PENDING)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -132,7 +133,7 @@ class CareGroupMemberTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareGroupAccessPolicy.isMember()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FAM-002`
 
 **Test Steps:**
@@ -151,7 +152,7 @@ verify(memberRepo).existsByGroupIdAndAccountIdAndInviteStatus(
 // → false → throw ForbiddenException
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -159,7 +160,7 @@ verify(memberRepo).existsByGroupIdAndAccountIdAndInviteStatus(
 
 **Severity:** `HIGH`
 **Feature Under Test:** status filter in `findByGroupIdAndStatusIn()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `BR-FAM-011`
 
 **Test Steps:**
@@ -170,18 +171,18 @@ verify(memberRepo).existsByGroupIdAndAccountIdAndInviteStatus(
 - Response does NOT contain ACC-005
 - `memberRepository.findByGroupIdAndInviteStatusIn(GRP-001, [ACCEPTED, PENDING])` called (not REVOKED)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### CGM-TC-004 — Non-member → 403
 
 **Severity:** `CRITICAL`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** throws ForbiddenException (FAM-003)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -190,7 +191,7 @@ verify(memberRepo).existsByGroupIdAndAccountIdAndInviteStatus(
 **Severity:** `HIGH`
 **Feature Under Test:** `CareGroupMemberDto` mapping
 **Oracle Source:** `BR-PRIVACY-002`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
 CareGroupMembersResponse resp = service.listMembers(GRP_001, ACC_001);
@@ -201,7 +202,7 @@ assertThat(json).doesNotContain("email");
 // Members only expose displayName
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

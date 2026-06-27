@@ -4,7 +4,7 @@
 **Document ID:** `CB-HEALTH-TDD-003`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-211 |
 
 ---
@@ -102,7 +103,7 @@ class HealthRecordDetailTestFactory {
 ### HR-TC-001 — Owner views own record → 200
 
 **Severity:** `CRITICAL`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-211 Normal Flow`
 
 **Test Steps:**
@@ -112,7 +113,7 @@ class HealthRecordDetailTestFactory {
 
 **Expected Result:** Response with title, recordType, attachedFiles with presignedUrl
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -120,11 +121,11 @@ class HealthRecordDetailTestFactory {
 
 **Severity:** `CRITICAL`
 **Oracle Source:** `ADR-HEALTH-003`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** ForbiddenException (HEALTH-004)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -132,11 +133,11 @@ class HealthRecordDetailTestFactory {
 
 **Severity:** `HIGH`
 **Oracle Source:** `BR-HEALTH-021`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** NotFoundException (HEALTH-008) — NOT 200
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -145,7 +146,7 @@ class HealthRecordDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `StorageService.generatePresignedUrl()` called in service
 **Oracle Source:** `ADR-FILE-004`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Test Steps:**
 1. Record has 2 attached files (FILE-001, FILE-002)
@@ -161,7 +162,7 @@ class HealthRecordDetailTestFactory {
 verify(storageService, times(2)).generatePresignedUrl(anyString(), eq(15));
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -169,7 +170,7 @@ verify(storageService, times(2)).generatePresignedUrl(anyString(), eq(15));
 
 **Severity:** `HIGH`
 **Oracle Source:** `BR-SAFETY-001`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
 String json = objectMapper.writeValueAsString(response);
@@ -177,7 +178,7 @@ assertThat(json).doesNotContain("diagnosis");
 assertThat(json).doesNotContain("medicalAdvice");
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

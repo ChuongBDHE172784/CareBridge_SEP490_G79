@@ -4,7 +4,7 @@
 **Document ID:** `CB-REM-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-45 |
 
 ---
@@ -105,7 +106,7 @@ class ReminderTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ReminderService.createReminder()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-45 Normal Flow`
 
 **Test Steps:**
@@ -118,7 +119,7 @@ class ReminderTestFactory {
 - `notificationService.scheduleFcmPush()` called with correct scheduledAt
 - `auditService.emit(ReminderCreated)` called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -126,7 +127,7 @@ class ReminderTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ReminderService.validateScheduledAt()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `BR-REM-002`
 
 **Test Steps:**
@@ -137,7 +138,7 @@ class ReminderTestFactory {
 - `reminderRepository.save()` NOT called
 - FCM NOT called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

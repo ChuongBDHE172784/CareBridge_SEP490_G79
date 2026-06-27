@@ -4,7 +4,7 @@
 **Document ID:** `CB-FILE-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-167 |
 
 ---
@@ -119,7 +120,7 @@ class FileTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `FileService.uploadFile()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-167 Normal Flow`
 
 **Test Steps:**
@@ -133,7 +134,7 @@ class FileTestFactory {
 - `storageService.store()` called with UUID-based storageKey (not "ultrasound.jpg")
 - `auditService.emit(FileUploaded)` called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -152,7 +153,7 @@ class FileTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `FileService.validateFileSize()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FILE-001 (max 20MB)`
 
 **Test Steps:**
@@ -162,7 +163,7 @@ class FileTestFactory {
 - Throws `FileSizeExceededException` (FILE-002)
 - `storageService.store()` NOT called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -186,7 +187,7 @@ class FileTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `FileService.validateStorageQuota()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FILE-002`
 
 **Test Steps:**
@@ -195,7 +196,7 @@ class FileTestFactory {
 
 **Expected Result:** throws FILE-003
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -203,7 +204,7 @@ class FileTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `FileService.generateStorageKey()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FILE-003`
 
 **Test Steps:**
@@ -213,7 +214,7 @@ class FileTestFactory {
 **Expected Result (PASS):**
 - storageKey matches pattern `[UUID]\.jpg` (not `ultrasound.jpg`)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

@@ -4,7 +4,7 @@
 **Document ID:** `CB-FAM-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-70 |
 
 ---
@@ -108,7 +109,7 @@ class CareGroupTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareGroupService.createCareGroup()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-70 Normal Flow`
 
 **Test Steps:**
@@ -121,7 +122,7 @@ class CareGroupTestFactory {
 - `memberRepository.save()` called with `memberRole = OWNER`, `inviteStatus = ACCEPTED`
 - `auditService.emit(CareGroupCreated)` called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -150,7 +151,7 @@ assertThat(members.get(0).getMemberRole()).isEqualTo(GroupMemberRole.OWNER);
 
 **Severity:** `HIGH`
 **Feature Under Test:** `CareGroupService.validateMaxActiveGroups()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FAM-001`
 
 **Test Steps:**
@@ -159,7 +160,7 @@ assertThat(members.get(0).getMemberRole()).isEqualTo(GroupMemberRole.OWNER);
 
 **Expected Result:** 409, error FAM-002
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

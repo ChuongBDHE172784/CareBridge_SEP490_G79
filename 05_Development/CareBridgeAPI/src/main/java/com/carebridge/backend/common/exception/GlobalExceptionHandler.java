@@ -87,6 +87,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
+        logger.error("Business exception [{}]: {}", ex.getCode(), ex.getMessage(), ex);
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex, HttpServletRequest request) {
         logger.error("Validation exception: {}", ex.getMessage(), ex);

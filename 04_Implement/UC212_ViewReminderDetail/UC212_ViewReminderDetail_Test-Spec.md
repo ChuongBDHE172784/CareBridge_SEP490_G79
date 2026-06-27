@@ -4,7 +4,7 @@
 **Document ID:** `CB-REM-TDD-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-212 |
 
 ---
@@ -102,7 +103,7 @@ class ReminderDetailTestFactory {
 ### REM-VIEW-TC-001 — Owner views PENDING reminder → 200
 
 **Severity:** `CRITICAL`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Test Steps:**
 1. Mock repo → FX-001
@@ -110,7 +111,7 @@ class ReminderDetailTestFactory {
 
 **Expected Result:** 200 with `status=PENDING`, `reminderType=APPOINTMENT`, `title`
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -118,11 +119,11 @@ class ReminderDetailTestFactory {
 
 **Severity:** `MEDIUM`
 **Oracle Source:** implicit from SRS (status display)
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** 200 with `status=COMPLETED`
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -130,22 +131,22 @@ class ReminderDetailTestFactory {
 
 **Severity:** `CRITICAL`
 **Oracle Source:** `ADR-REM-002`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** throws ForbiddenException (REM-004)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### REM-VIEW-TC-004 — Non-existent → 404
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** NotFoundException (REM-006)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -153,7 +154,7 @@ class ReminderDetailTestFactory {
 
 **Severity:** `HIGH`
 **Oracle Source:** `BR-SAFETY-002`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
 String json = objectMapper.writeValueAsString(response);
@@ -162,7 +163,7 @@ assertThat(json).doesNotContain("medicalAdvice");
 assertThat(json).doesNotContain("prescription");
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

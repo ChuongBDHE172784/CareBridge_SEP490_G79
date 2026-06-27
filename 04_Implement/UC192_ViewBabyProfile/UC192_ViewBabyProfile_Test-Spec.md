@@ -4,7 +4,7 @@
 **Document ID:** `CB-BABY-TDD-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-192 |
 
 ---
@@ -100,7 +101,7 @@ class BabyViewTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `BabyService.getBabyProfile()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Test Steps:**
 1. Mock `babyRepository.findById(BABY-001)` → active profile (accountId=ACC-001)
@@ -109,7 +110,7 @@ class BabyViewTestFactory {
 
 **Expected Result:** Response with nickname, birthDate, gender, status=ACTIVE
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -117,7 +118,7 @@ class BabyViewTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `BabyAccessPolicy.canView()` — group member path
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-BABY-003`
 
 **Test Steps:**
@@ -127,7 +128,7 @@ class BabyViewTestFactory {
 
 **Expected Result:** 200
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -135,22 +136,22 @@ class BabyViewTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `BabyAccessPolicy.canView()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** throws ForbiddenException (BABY-002)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### BABY-VIEW-TC-004 — Non-existent profile → 404
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** 404, error BABY-004
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -158,7 +159,7 @@ class BabyViewTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** archived profile handling
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `BR-BABY-011`
 
 **Test Steps:**
@@ -169,7 +170,7 @@ class BabyViewTestFactory {
 - Response 200 with `status = "ARCHIVED"` (NOT 404)
 - Profile data still returned
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

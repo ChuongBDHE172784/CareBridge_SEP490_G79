@@ -4,7 +4,7 @@
 **Document ID:** `CB-VAC-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-228 |
 
 ---
@@ -115,7 +116,7 @@ class VaccinationTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationService.deriveSchedule()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-VAC-001`
 
 **Test Steps:**
@@ -129,7 +130,7 @@ class VaccinationTestFactory {
 - `expectedDate = 2026-01-31`
 - `administeredDate = null`
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -137,7 +138,7 @@ class VaccinationTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationService.computeStatus()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `BR-VAC-003`
 
 **Test Steps:**
@@ -158,7 +159,7 @@ VaccinationDoseDto bcgDose = doses.stream()
 assertThat(bcgDose.getStatus()).isEqualTo("OVERDUE");
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -166,7 +167,7 @@ assertThat(bcgDose.getStatus()).isEqualTo("OVERDUE");
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** merge logic in `deriveSchedule()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-VAC-001`
 
 **Test Steps:**
@@ -182,7 +183,7 @@ assertThat(bcg.getStatus()).isEqualTo("COMPLETED");
 assertThat(bcg.getAdministeredDate()).isEqualTo(LocalDate.of(2026, 1, 2));
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -190,22 +191,22 @@ assertThat(bcg.getAdministeredDate()).isEqualTo(LocalDate.of(2026, 1, 2));
 
 **Severity:** `CRITICAL`
 **Oracle Source:** `ADR-VAC-001`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** ForbiddenException (VAC-002)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ### VAC-TC-005 — Baby not found → 404
 
 **Severity:** `MEDIUM`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** NotFoundException (VAC-001)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -213,7 +214,7 @@ assertThat(bcg.getAdministeredDate()).isEqualTo(LocalDate.of(2026, 1, 2));
 
 **Severity:** `HIGH`
 **Oracle Source:** `BR-SAFETY-003`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
 String json = objectMapper.writeValueAsString(response);
@@ -223,7 +224,7 @@ assertThat(json).doesNotContain("medicalAdvice");
 // Response only shows reference schedule — no AI recommendations
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 

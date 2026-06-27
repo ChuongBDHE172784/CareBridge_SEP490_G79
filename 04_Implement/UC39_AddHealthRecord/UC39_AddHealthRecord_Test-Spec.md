@@ -4,7 +4,7 @@
 **Document ID:** `CB-HEALTH-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-39 |
 
 ---
@@ -111,7 +112,7 @@ class HealthRecordTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `HealthRecordService.addHealthRecord()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `UC-39 Normal Flow`
 
 **Test Steps:**
@@ -122,7 +123,7 @@ class HealthRecordTestFactory {
 - Returns response with `status = "ACTIVE"`, `recordType = "LAB_RESULT"`
 - `auditService.emit(HealthRecordAdded)` called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -130,7 +131,7 @@ class HealthRecordTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `FileOwnershipValidator`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-HEALTH-002`
 
 **Test Steps:**
@@ -141,7 +142,7 @@ class HealthRecordTestFactory {
 - Throws `ForbiddenFileReferenceException` with code `HEALTH-003`
 - `recordRepository.save()` NOT called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
