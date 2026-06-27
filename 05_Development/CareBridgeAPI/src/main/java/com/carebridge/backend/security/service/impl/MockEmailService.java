@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
  * Log nội dung email thay vì gửi thật.
  */
 @Service
-@Profile({"dev", "supabase"})
+@Profile("test")
 public class MockEmailService implements EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockEmailService.class);
