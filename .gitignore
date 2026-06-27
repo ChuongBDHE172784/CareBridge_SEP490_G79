@@ -69,6 +69,14 @@ _bmad/
 _bmad-output/
 AGENTS.md
 CLAUDE.md
+GEMINI.md
+QODER.md
+.gemini/
+.kiro/
+.qoder/
+.cursorrules
+.windsurfrules
+.opencode.json
 
 # Local Claude skills (untracked - keep local only)
 .claude/skills/ui-skill-system/
@@ -104,3 +112,4 @@ tools/
 # Added by code-review-graph
 .code-review-graph/
 .mcp.json
+.github/code-review-graph.instruction.md
