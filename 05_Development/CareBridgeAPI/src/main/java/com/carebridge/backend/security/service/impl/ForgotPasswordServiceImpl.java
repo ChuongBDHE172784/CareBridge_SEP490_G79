@@ -15,7 +15,7 @@ import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.ForgotPasswordService;
 import com.carebridge.backend.security.service.SmsService;
 import com.carebridge.backend.security.util.TokenUtils;
-import java.security.MessageDigest;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -132,10 +132,5 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
         tokenRepository.markAsUsed(resetToken.getId(), now);
     }
 
-    private static boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) return a == b;
-        return MessageDigest.isEqual(
-                a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    }
+
 }

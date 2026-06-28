@@ -2,7 +2,7 @@ package com.carebridge.backend.security.policy;
 
 import com.carebridge.backend.common.exception.AccountDisabledException;
 import com.carebridge.backend.common.exception.AccountLockedException;
-import com.carebridge.backend.common.exception.AuthenticationException;
+
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;

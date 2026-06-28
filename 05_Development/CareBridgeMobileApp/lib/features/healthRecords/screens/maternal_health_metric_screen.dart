@@ -48,27 +48,33 @@ class _MaternalHealthMetricScreenState
     setState(() { _loading = true; _error = null; });
     try {
       final m = await _service.getMetricDetail(widget.metricId);
-      if (mounted) setState(() { _metric = m; _loading = false; });
+      if (mounted) {
+        setState(() { _metric = m; _loading = false; });
+      }
     } on ApiException catch (e) {
       // Fallback mock for development
-      if (mounted) setState(() {
-        final isBp = widget.metricId == 'blood_pressure';
-        _metric = HealthMetricDetail(
-          id: widget.metricId,
-          journeyId: 'mock-journey-1',
-          metricType: isBp ? MetricType.bloodPressure : MetricType.weight,
-          valueNumeric: isBp ? 120 : 62.5,
-          valueSecondary: isBp ? 80 : null,
-          unit: isBp ? 'mmHg' : 'kg',
-          measuredAt: DateTime.now().subtract(const Duration(hours: 2)),
-          sourceType: SourceType.manual,
-          note: isBp ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.' : 'Cân nặng tăng nhẹ, ổn định.',
-          createdAt: DateTime.now(),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          final isBp = widget.metricId == 'blood_pressure';
+          _metric = HealthMetricDetail(
+            id: widget.metricId,
+            journeyId: 'mock-journey-1',
+            metricType: isBp ? MetricType.bloodPressure : MetricType.weight,
+            valueNumeric: isBp ? 120 : 62.5,
+            valueSecondary: isBp ? 80 : null,
+            unit: isBp ? 'mmHg' : 'kg',
+            measuredAt: DateTime.now().subtract(const Duration(hours: 2)),
+            sourceType: SourceType.manual,
+            note: isBp ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.' : 'Cân nặng tăng nhẹ, ổn định.',
+            createdAt: DateTime.now(),
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+      if (mounted) {
+        setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+      }
     }
   }
 

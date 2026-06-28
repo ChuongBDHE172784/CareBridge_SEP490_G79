@@ -170,7 +170,7 @@ class CommunityAnswerControllerTest {
         mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(makeRequest())))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().is(422))
                 .andExpect(jsonPath("$.error").value("COM-007"));
     }
 

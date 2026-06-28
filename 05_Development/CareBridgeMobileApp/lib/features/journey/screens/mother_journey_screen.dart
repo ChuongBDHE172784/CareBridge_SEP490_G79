@@ -50,22 +50,28 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     setState(() => _loading = true);
     try {
       final d = await _journeyService.getDashboard();
-      if (mounted) setState(() { _dashboard = d; _loading = false; });
+      if (mounted) {
+        setState(() { _dashboard = d; _loading = false; });
+      }
     } on ApiException {
-      if (mounted) setState(() {
-        _dashboard = JourneyDashboard(
-          journeyId: 'mock-journey-1',
-          journeyType: 'PREGNANCY',
-          status: 'ACTIVE_PREGNANCY',
-          pregnancyWeek: 24,
-          trimester: 2,
-          daysUntilDue: 112,
-          estimatedDueDate: DateTime(2024, 10, 15),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _dashboard = JourneyDashboard(
+            journeyId: 'mock-journey-1',
+            journeyType: 'PREGNANCY',
+            status: 'ACTIVE_PREGNANCY',
+            pregnancyWeek: 24,
+            trimester: 2,
+            daysUntilDue: 112,
+            estimatedDueDate: DateTime(2024, 10, 15),
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
