@@ -23,6 +23,18 @@ import SecurityIncidentResolutionPage from '../../features/security/pages/Securi
 import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
 import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPage';
 
+// Content Management screens (CB-073..081)
+import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
+import ContentListPage from '../../features/contentManagement/pages/ContentListPage';
+import ContentDetailPage from '../../features/contentManagement/pages/ContentDetailPage';
+import ContentPreviewPage from '../../features/contentManagement/pages/ContentPreviewPage';
+import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
+import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
+
+// Partner Portal screens (CB-096, CB-097)
+import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
+import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
+
 const ForbiddenPage = () => (
   <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
     <h2 style={{ color: '#845143' }}>Truy cập bị từ chối</h2>
@@ -43,6 +55,10 @@ export const router = createBrowserRouter([
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
 
+  // Partner Portal — public pages (no auth required)
+  { path: '/partner', element: <PartnerLandingPage /> },
+  { path: '/partner/register', element: <RegisterPartnerPage /> },
+
   // Role-aware root redirect — sits outside ProtectedRoute so all roles are handled,
   // including MOTHER/FAMILY who land on /no-web-access without hitting /forbidden.
   { path: '/', element: <RoleAwareRedirect /> },
@@ -50,7 +66,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute
-        requiredRoles={['SYSTEM_ADMIN', 'EXPERT']}
+        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER']}
       />
     ),
     children: [
@@ -72,10 +88,28 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
+            children: [
+              { path: '/content/dashboard', element: <ContentDashboardPage /> },
+              { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
+              { path: '/content/list', element: <ContentListPage /> },
+              { path: '/content/:id', element: <ContentDetailPage /> },
+              { path: '/content/:id/preview', element: <ContentPreviewPage /> },
+              { path: '/content/faq', element: <FaqListPage /> },
+              { path: '/content/checklists', element: <ChecklistListPage /> },
+            ],
+          },
+          {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
               { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
               { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+            ],
+          },
+          {
+            element: <ProtectedRoute requiredRoles={['PARTNER']} />,
+            children: [
+              { path: '/partner/dashboard', element: <AdminDashboardPage /> },
             ],
           },
         ],

@@ -34,13 +34,13 @@ public class DevPortMockConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(name = "safetyLocationConsentPort")
+    @ConditionalOnMissingBean(com.carebridge.backend.safety.service.LocationConsentPort.class)
     public com.carebridge.backend.safety.service.LocationConsentPort safetyLocationConsentPort() {
         return userId -> true;
     }
 
     @Bean
-    @ConditionalOnMissingBean(name = "emergencyLocationConsentPort")
+    @ConditionalOnMissingBean(com.carebridge.backend.emergency.service.LocationConsentPort.class)
     public com.carebridge.backend.emergency.service.LocationConsentPort emergencyLocationConsentPort() {
         return userId -> true;
     }

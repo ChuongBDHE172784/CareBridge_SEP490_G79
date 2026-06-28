@@ -17,4 +17,7 @@ public class OtpSendResponse {
     private long expiresIn;
     private UUID userId;
     private Instant otpExpiresAt;
+
+    /** Non-null when the identifier is already verified — client can use these tokens directly, skipping OTP. */
+    private AuthResponse auth;
 }

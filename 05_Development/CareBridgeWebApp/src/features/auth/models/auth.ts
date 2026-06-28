@@ -7,12 +7,14 @@ export interface LoginRequest {
 export interface OtpSendResponse {
   message: string;
   expiresIn: number;
-  userId: string;
-  otpExpiresAt: string;
+  userId: string | null;
+  otpExpiresAt: string | null;
+  auth: AuthResponse | null;
 }
 
 export interface VerifyOtpRequest {
-  userId: string;
+  email?: string;
+  phone?: string;
   otp: string;
 }
 

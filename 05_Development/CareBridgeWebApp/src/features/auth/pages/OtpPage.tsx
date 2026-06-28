@@ -21,7 +21,7 @@ export default function OtpPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!state?.userId) {
+    if (!state?.identifier) {
       navigate('/login', { replace: true });
     }
     inputRefs.current[0]?.focus();
@@ -69,7 +69,10 @@ export default function OtpPage() {
     setServerError(null);
     setIsSubmitting(true);
     try {
-      const result = await verifyOtp({ userId: state!.userId, otp });
+      const isEmail = state!.identifier.includes('@');
+      const result = await verifyOtp(
+        isEmail ? { email: state!.identifier, otp } : { phone: state!.identifier, otp }
+      );
       const route = getDefaultRouteForRole(result.user.role as Parameters<typeof getDefaultRouteForRole>[0]);
       navigate(route, { replace: true });
     } catch (err: unknown) {

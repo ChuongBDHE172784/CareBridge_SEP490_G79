@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Heart, User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
 import { login } from '../services/authApi';
+import { useAuthStore } from '../../../shared/auth/authStore';
+import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
 import './LoginPage.css';
 
 const loginSchema = z.object({
@@ -38,6 +40,19 @@ export default function LoginPage() {
       const result = await login(
         isEmail(identifier) ? { email: identifier, password: data.password } : { phone: identifier, password: data.password },
       );
+      if (result.auth) {
+        const { accessToken, refreshToken, user } = result.auth;
+        useAuthStore.getState().setTokens(accessToken, refreshToken);
+        useAuthStore.getState().setUser({
+          id: user.id,
+          phone: user.phone ?? '',
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
+        });
+        navigate(getDefaultRouteForRole(user.role as Parameters<typeof getDefaultRouteForRole>[0]), { replace: true });
+        return;
+      }
       navigate('/login/otp', {
         state: {
           userId: result.userId,

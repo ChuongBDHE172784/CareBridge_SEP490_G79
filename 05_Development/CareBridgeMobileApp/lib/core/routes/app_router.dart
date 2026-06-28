@@ -19,6 +19,7 @@ import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
+import '../../features/community/screens/view_content_screen.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -167,6 +168,10 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id'] ?? '';
         return VaccinationDetailScreen(vaccinationId: id);
       },
+    ),
+    GoRoute(
+      path: '/content',
+      builder: (context, state) => const ViewContentScreen(),
     ),
   ],
 );
