@@ -1,14 +1,15 @@
+
 # CareBridge — Startup Guide
 
 ## Prerequisites
 
-| Tool | Version | Required for |
-|------|---------|-------------|
-| Java | 21+ | Backend |
-| Maven | 3.9+ (or `./mvnw`) | Backend |
-| Node.js | 20+ | Web App |
-| Flutter | 3.22+ | Mobile App |
-| Docker | 24+ | Local PostgreSQL (optional) |
+| Tool    | Version             | Required for                |
+| ------- | ------------------- | --------------------------- |
+| Java    | 21+                 | Backend                     |
+| Maven   | 3.9+ (or`./mvnw`) | Backend                     |
+| Node.js | 20+                 | Web App                     |
+| Flutter | 3.22+               | Mobile App                  |
+| Docker  | 24+                 | Local PostgreSQL (optional) |
 
 ---
 
@@ -84,12 +85,12 @@ If not set, defaults to `http://localhost:8080`.
 
 ### Available Pages
 
-| Tab | Route | Use Case | Role |
-|-----|-------|----------|------|
-| Moderation Queue | default | UC99 | MODERATOR |
-| Manage Topics | click tab | UC109 | MODERATOR |
-| Create Content | click tab | UC105 | CONTENT_ADMIN |
-| Create Partner | click tab | UC118 | PARTNER |
+| Tab              | Route     | Use Case | Role          |
+| ---------------- | --------- | -------- | ------------- |
+| Moderation Queue | default   | UC99     | MODERATOR     |
+| Manage Topics    | click tab | UC109    | MODERATOR     |
+| Create Content   | click tab | UC105    | CONTENT_ADMIN |
+| Create Partner   | click tab | UC118    | PARTNER       |
 
 > **Note:** All API calls require a JWT token in `localStorage.accessToken`. Log in via the backend `/api/v1/auth/login` endpoint first and store the token.
 
@@ -123,13 +124,13 @@ const String _baseUrl = 'http://<your-local-ip>:8080';  // physical device
 
 ### Available Screens
 
-| Tab | Screen | Use Case |
-|-----|--------|----------|
-| Feed | Community feed with infinite scroll | UC198 |
-| Questions | Search community questions | UC162 |
-| Content | View articles & checklists | UC82, UC224 |
-| Search | Search verified content | UC224 |
-| AI Chat | RAG-powered AI health assistant | UC132 |
+| Tab       | Screen                              | Use Case    |
+| --------- | ----------------------------------- | ----------- |
+| Feed      | Community feed with infinite scroll | UC198       |
+| Questions | Search community questions          | UC162       |
+| Content   | View articles & checklists          | UC82, UC224 |
+| Search    | Search verified content             | UC224       |
+| AI Chat   | RAG-powered AI health assistant     | UC132       |
 
 > Additional screens for creating questions (UC54) and posting answers (UC56) are launched from within the feed and question detail flows.
 

@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "safety_events")
+@Table(name = "imu_safety_events")
 @Getter
 @Setter
 @NoArgsConstructor
