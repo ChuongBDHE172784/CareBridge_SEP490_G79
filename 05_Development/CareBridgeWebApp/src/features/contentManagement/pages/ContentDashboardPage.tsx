@@ -28,20 +28,20 @@ const MOCK_RECENT: ContentListItem[] = [
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-function statusFromPublished(publishedAt: string | null): { label: string; bg: string; color: string } {
-  if (publishedAt) return { label: 'Da xuat ban', bg: '#E6F4EA', color: '#137333' };
-  return { label: 'Ban nhap', bg: '#FADCD3', color: '#845143' };
+function statusFromPublished(publishedAt: string | null): { label: string; className: string } {
+  if (publishedAt) return { label: 'Đã xuất bản', className: 'bg-[#E6F4EA] text-[#137333]' };
+  return { label: 'Bản nháp', className: 'bg-surface-container-highest text-primary' };
 }
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} phut truoc`;
+  if (mins < 60) return `${mins} phút trước`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} gio truoc`;
+  if (hours < 24) return `${hours} giờ trước`;
   const days = Math.floor(hours / 24);
-  return `${days} ngay truoc`;
+  return `${days} ngày trước`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -49,13 +49,16 @@ function timeAgo(iso: string | null): string {
 /* ------------------------------------------------------------------ */
 function StatCard({ icon, label, value, accent }: { icon: string; label: string; value: number; accent: string }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 24, padding: 24, boxShadow: '0 4px 20px rgba(90,70,63,0.06)', display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="bg-surface rounded-3xl p-6 shadow-md flex items-center gap-4">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: accent + '18' }}
+      >
         <span className="material-symbols-outlined" style={{ fontSize: 24, color: accent }}>{icon}</span>
       </div>
       <div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#271812' }}>{value}</div>
-        <div style={{ fontSize: 13, color: '#84736f', marginTop: 2 }}>{label}</div>
+        <div className="text-[28px] font-bold text-on-surface">{value}</div>
+        <div className="text-[13px] text-outline mt-0.5">{label}</div>
       </div>
     </div>
   );
@@ -88,57 +91,57 @@ export default function ContentDashboardPage() {
   useEffect(() => { loadRecent(); }, [loadRecent]);
 
   return (
-    <div style={{ padding: 32, fontFamily: "'Lexend', sans-serif" }}>
+    <div className="p-8 font-sans">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+      <div className="flex justify-between items-start mb-7">
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#271812', margin: 0 }}>Tong quan noi dung</h1>
-          <p style={{ color: '#524440', fontSize: 14, marginTop: 4 }}>Quan ly va theo doi toan bo noi dung tren he thong CareBridge</p>
+          <h1 className="text-[26px] font-bold text-on-surface m-0">Tổng quan nội dung</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Quản lý và theo dõi toàn bộ nội dung trên hệ thống CareBridge</p>
         </div>
         <button
           onClick={() => navigate('/content/create')}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, background: '#C98C7B', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer"
         >
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
-          Tao noi dung moi
+          Tạo nội dung mới
         </button>
       </div>
 
       {/* Summary cards row 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
-        <StatCard icon="edit_note" label="Ban nhap" value={stats.drafts} accent="#845143" />
-        <StatCard icon="hourglass_top" label="Cho duyet" value={stats.pending} accent="#E65100" />
-        <StatCard icon="check_circle" label="Da xuat ban" value={stats.published} accent="#137333" />
-        <StatCard icon="sync_problem" label="Yeu cau cap nhat" value={stats.updateRequired} accent="#BA1A1A" />
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <StatCard icon="edit_note" label="Bản nháp" value={stats.drafts} accent="#845143" />
+        <StatCard icon="hourglass_top" label="Chờ duyệt" value={stats.pending} accent="#E65100" />
+        <StatCard icon="check_circle" label="Đã xuất bản" value={stats.published} accent="#137333" />
+        <StatCard icon="sync_problem" label="Yêu cầu cập nhật" value={stats.updateRequired} accent="#BA1A1A" />
       </div>
 
       {/* Summary cards row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+      <div className="grid grid-cols-3 gap-4 mb-7">
         <StatCard icon="quiz" label="FAQ" value={stats.faqCount} accent="#845143" />
         <StatCard icon="fact_check" label="Checklist" value={stats.checklistCount} accent="#6e5a52" />
-        <StatCard icon="warning" label="Van de danh muc" value={stats.categoryIssues} accent="#BA1A1A" />
+        <StatCard icon="warning" label="Vấn đề danh mục" value={stats.categoryIssues} accent="#BA1A1A" />
       </div>
 
       {/* Recent content table */}
-      <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(90,70,63,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: '#271812', margin: 0 }}>Noi dung gan day</h2>
+      <div className="bg-surface rounded-2xl p-6 shadow-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-on-surface m-0">Nội dung gần đây</h2>
           <button
             onClick={() => navigate('/content/list')}
-            style={{ padding: '8px 20px', borderRadius: 9999, border: '1px solid #d6c2bd', background: 'transparent', color: '#845143', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            className="py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-[13px] font-semibold cursor-pointer"
           >
-            Xem tat ca
+            Xem tất cả
           </button>
         </div>
 
         {isLoading ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#84736f' }}>Dang tai...</div>
+          <div className="py-12 text-center text-outline">Đang tải...</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ borderBottom: '2px solid #fadcd3', textAlign: 'left' }}>
-                {['TIEU DE', 'LOAI', 'CHU DE', 'TRANG THAI', 'CAP NHAT LAN CUOI'].map(h => (
-                  <th key={h} style={{ padding: '12px 8px', fontSize: 11, fontWeight: 600, color: '#84736f', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{h}</th>
+              <tr className="border-b-2 border-surface-container-highest text-left">
+                {['TIÊU ĐỀ', 'LOẠI', 'CHỦ ĐỀ', 'TRẠNG THÁI', 'CẬP NHẬT LẦN CUỐI'].map(h => (
+                  <th key={h} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -149,37 +152,35 @@ export default function ContentDashboardPage() {
                   <tr
                     key={item.id}
                     onClick={() => navigate(`/content/${item.id}`)}
-                    style={{ borderBottom: '1px solid #fadcd3', cursor: 'pointer' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FFF8F6'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    className="border-b border-surface-container-highest cursor-pointer hover:bg-surface-bright"
                   >
-                    <td style={{ padding: '14px 8px' }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#271812' }}>{item.title}</div>
+                    <td className="py-3.5 px-2">
+                      <div className="font-semibold text-sm text-on-surface">{item.title}</div>
                     </td>
-                    <td style={{ padding: '14px 8px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 9999, background: '#FFF1EC', color: '#845143', fontSize: 12, fontWeight: 600 }}>
+                    <td className="py-3.5 px-2">
+                      <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
                         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
                           {item.type === 'ARTICLE' ? 'article' : item.type === 'FAQ' ? 'quiz' : 'fact_check'}
                         </span>
                         {TYPE_LABELS[item.type]}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 8px', fontSize: 13, color: '#524440' }}>
+                    <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">
                       {STAGE_LABELS[item.stage]}
                     </td>
-                    <td style={{ padding: '14px 8px' }}>
-                      <span style={{ padding: '4px 14px', borderRadius: 9999, background: status.bg, color: status.color, fontSize: 12, fontWeight: 600 }}>
+                    <td className="py-3.5 px-2">
+                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${status.className}`}>
                         {status.label}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 8px', fontSize: 13, color: '#84736f' }}>
+                    <td className="py-3.5 px-2 text-[13px] text-outline">
                       {timeAgo(item.publishedAt)}
                     </td>
                   </tr>
                 );
               })}
               {recentItems.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 32, textAlign: 'center', color: '#84736f' }}>Chua co noi dung nao.</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-outline">Chưa có nội dung nào.</td></tr>
               )}
             </tbody>
           </table>

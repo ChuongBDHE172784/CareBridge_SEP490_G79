@@ -4,22 +4,6 @@ import { registerPartnerAccount } from '../services/partnerApi';
 import { ORG_TYPE_LABELS } from '../models/partner';
 import type { OrganizationType } from '../models/partner';
 
-const FONT_FAMILY = "'Lexend', sans-serif";
-
-const COLORS = {
-  primary: '#845143',
-  primaryContainer: '#C98C7B',
-  surface: '#FFF8F6',
-  bodyBg: '#F6F1EC',
-  onSurface: '#271812',
-  onSurfaceVariant: '#524440',
-  outline: '#84736f',
-  outlineVariant: '#D6C2BD',
-  error: '#BA1A1A',
-  secondaryContainer: '#F6DACF',
-  cardShadow: '0 4px 20px rgba(90,70,63,0.06)',
-};
-
 const MATERIAL_SYMBOLS_URL =
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0';
 
@@ -147,77 +131,34 @@ export default function RegisterPartnerPage() {
     }
   };
 
-  /* ── Shared input styles ── */
-  const inputWrapperStyle = (hasError: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    border: `1px solid ${hasError ? COLORS.error : COLORS.outlineVariant}`,
-    borderRadius: 16,
-    padding: '0 16px',
-    backgroundColor: '#fff',
-    transition: 'border-color 0.2s',
-  });
+  /* ── Shared class builders ── */
+  const inputWrapperCls = (hasError: boolean) =>
+    `flex items-center border rounded-2xl px-4 bg-white transition-[border-color] duration-200 ${hasError ? 'border-error' : 'border-outline-variant'}`;
 
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    border: 'none',
-    outline: 'none',
-    padding: '14px 0 14px 12px',
-    fontFamily: FONT_FAMILY,
-    fontSize: 14,
-    color: COLORS.onSurface,
-    backgroundColor: 'transparent',
-  };
+  const inputCls =
+    'flex-1 border-none outline-none py-3.5 pl-3 pr-0 font-sans text-sm text-on-surface bg-transparent';
 
-  const labelStyle = (hasError: boolean): React.CSSProperties => ({
-    fontSize: 12,
-    fontWeight: 600,
-    color: hasError ? COLORS.error : COLORS.onSurfaceVariant,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  });
+  const labelCls = (hasError: boolean) =>
+    `block text-xs font-semibold mb-[6px] tracking-[0.5px] ${hasError ? 'text-error' : 'text-on-surface-variant'}`;
 
-  const iconStyle: React.CSSProperties = {
-    fontSize: 20,
-    color: COLORS.outline,
-  };
-
-  const errorTextStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: COLORS.error,
-    marginTop: 4,
-  };
+  const errorTextCls = 'text-xs text-error mt-1';
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: COLORS.bodyBg, fontFamily: FONT_FAMILY }}>
+    <div className="min-h-screen bg-[#F6F1EC] font-sans">
       {/* ── Top Nav ── */}
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 48px',
-          backgroundColor: '#fff',
-          boxShadow: COLORS.cardShadow,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+      <nav className="flex items-center justify-between py-4 px-12 bg-white shadow-[0_4px_20px_rgba(90,70,63,0.06)]">
+        <div className="flex items-center gap-8">
           <span
-            style={{ fontSize: 22, fontWeight: 700, color: COLORS.primary, cursor: 'pointer' }}
+            className="text-[22px] font-bold text-primary cursor-pointer"
             onClick={() => navigate('/partner')}
           >
             CareBridge
           </span>
-          <div style={{ display: 'flex', gap: 24 }}>
+          <div className="flex gap-6">
             {['Dịch vụ', 'Về chúng tôi', 'Liên hệ'].map((label) => (
               <span
                 key={label}
-                style={{
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: COLORS.onSurfaceVariant,
-                  cursor: 'pointer',
-                }}
+                className="text-sm font-medium text-on-surface-variant cursor-pointer"
               >
                 {label}
               </span>
@@ -225,14 +166,9 @@ export default function RegisterPartnerPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="flex items-center gap-3">
           <span
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: COLORS.onSurfaceVariant,
-              cursor: 'pointer',
-            }}
+            className="text-sm font-medium text-on-surface-variant cursor-pointer"
             onClick={() => navigate('/login')}
           >
             Đăng nhập
@@ -240,17 +176,7 @@ export default function RegisterPartnerPage() {
           <button
             type="button"
             onClick={() => navigate('/partner/register')}
-            style={{
-              padding: '8px 24px',
-              borderRadius: 9999,
-              border: 'none',
-              backgroundColor: COLORS.primaryContainer,
-              color: '#fff',
-              fontFamily: FONT_FAMILY,
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            className="px-6 py-2 rounded-full border-none bg-primary-container text-white font-sans text-sm font-medium cursor-pointer"
           >
             Đăng ký
           </button>
@@ -258,162 +184,115 @@ export default function RegisterPartnerPage() {
       </nav>
 
       {/* ── Registration Form ── */}
-      <section
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '48px 24px 64px',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: '#fff',
-            borderRadius: 24,
-            padding: '40px 48px',
-            maxWidth: 600,
-            width: '100%',
-            boxShadow: COLORS.cardShadow,
-          }}
-        >
+      <section className="flex justify-center pt-12 px-6 pb-16">
+        <div className="bg-white rounded-3xl py-10 px-12 max-w-[600px] w-full shadow-[0_4px_20px_rgba(90,70,63,0.06)]">
           {/* Header icon */}
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              backgroundColor: COLORS.primaryContainer,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 20px',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 28, color: '#fff' }}>
+          <div className="w-14 h-14 rounded-full bg-primary-container flex items-center justify-center mx-auto mb-5">
+            <span className="material-symbols-outlined text-white" style={{ fontSize: 28 }}>
               handshake
             </span>
           </div>
 
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: COLORS.onSurface,
-              textAlign: 'center',
-              margin: '0 0 8px',
-            }}
-          >
+          <h1 className="text-2xl font-bold text-on-surface text-center mb-2">
             Đăng ký Đối tác
           </h1>
-          <p
-            style={{
-              fontSize: 14,
-              color: COLORS.onSurfaceVariant,
-              textAlign: 'center',
-              margin: '0 0 32px',
-            }}
-          >
+          <p className="text-sm text-on-surface-variant text-center mb-8">
             Tham gia mạng lưới chăm sóc sức khỏe uy tín.
           </p>
 
           {/* Server error banner */}
           {serverError && (
-            <div
-              style={{
-                backgroundColor: '#FDECEA',
-                border: `1px solid ${COLORS.error}`,
-                borderRadius: 12,
-                padding: '12px 16px',
-                marginBottom: 24,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 20, color: COLORS.error }}>
+            <div className="bg-[#FDECEA] border border-error rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-error" style={{ fontSize: 20 }}>
                 error
               </span>
-              <span style={{ fontSize: 13, color: COLORS.error }}>{serverError}</span>
+              <span className="text-[13px] text-error">{serverError}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
             {/* Row 1: Name + Phone */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label style={labelStyle(!!errors.name)}>HỌ VÀ TÊN</label>
-                <div style={inputWrapperStyle(!!errors.name)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>person</span>
+                <label className={labelCls(!!errors.name)}>HỌ VÀ TÊN</label>
+                <div className={inputWrapperCls(!!errors.name)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    person
+                  </span>
                   <input
                     type="text"
                     placeholder="Nguyễn Văn A"
                     value={form.name}
                     onChange={(e) => updateField('name', e.target.value)}
-                    style={inputStyle}
+                    className={inputCls}
                   />
                 </div>
-                {errors.name && <p style={errorTextStyle}>{errors.name}</p>}
+                {errors.name && <p className={errorTextCls}>{errors.name}</p>}
               </div>
               <div>
-                <label style={labelStyle(!!errors.phone)}>SỐ ĐIỆN THOẠI</label>
-                <div style={inputWrapperStyle(!!errors.phone)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>phone</span>
+                <label className={labelCls(!!errors.phone)}>SỐ ĐIỆN THOẠI</label>
+                <div className={inputWrapperCls(!!errors.phone)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    phone
+                  </span>
                   <input
                     type="tel"
                     placeholder="09xx xxx xxx"
                     value={form.phone}
                     onChange={(e) => updateField('phone', e.target.value)}
-                    style={inputStyle}
+                    className={inputCls}
                   />
                 </div>
-                {errors.phone && <p style={errorTextStyle}>{errors.phone}</p>}
+                {errors.phone && <p className={errorTextCls}>{errors.phone}</p>}
               </div>
             </div>
 
             {/* Row 2: Email */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle(!!errors.email)}>EMAIL CÔNG VIỆC</label>
-              <div style={inputWrapperStyle(!!errors.email)}>
-                <span className="material-symbols-outlined" style={iconStyle}>mail</span>
+            <div className="mb-4">
+              <label className={labelCls(!!errors.email)}>EMAIL CÔNG VIỆC</label>
+              <div className={inputWrapperCls(!!errors.email)}>
+                <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  mail
+                </span>
                 <input
                   type="email"
                   placeholder="contact@example.com"
                   value={form.email}
                   onChange={(e) => updateField('email', e.target.value)}
-                  style={inputStyle}
+                  className={inputCls}
                 />
               </div>
-              {errors.email && <p style={errorTextStyle}>{errors.email}</p>}
+              {errors.email && <p className={errorTextCls}>{errors.email}</p>}
             </div>
 
             {/* Row 3: Org name + Org type */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label style={labelStyle(!!errors.orgName)}>TÊN TỔ CHỨC</label>
-                <div style={inputWrapperStyle(!!errors.orgName)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>business</span>
+                <label className={labelCls(!!errors.orgName)}>TÊN TỔ CHỨC</label>
+                <div className={inputWrapperCls(!!errors.orgName)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    business
+                  </span>
                   <input
                     type="text"
                     placeholder="Tên tổ chức"
                     value={form.orgName}
                     onChange={(e) => updateField('orgName', e.target.value)}
-                    style={inputStyle}
+                    className={inputCls}
                   />
                 </div>
-                {errors.orgName && <p style={errorTextStyle}>{errors.orgName}</p>}
+                {errors.orgName && <p className={errorTextCls}>{errors.orgName}</p>}
               </div>
               <div>
-                <label style={labelStyle(!!errors.orgType)}>LOẠI TỔ CHỨC</label>
-                <div style={inputWrapperStyle(!!errors.orgType)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>add_business</span>
+                <label className={labelCls(!!errors.orgType)}>LOẠI TỔ CHỨC</label>
+                <div className={inputWrapperCls(!!errors.orgType)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    add_business
+                  </span>
                   <select
                     value={form.orgType}
                     onChange={(e) => updateField('orgType', e.target.value as OrganizationType | '')}
-                    style={{
-                      ...inputStyle,
-                      appearance: 'none',
-                      cursor: 'pointer',
-                      color: form.orgType ? COLORS.onSurface : COLORS.outline,
-                    }}
+                    className={`${inputCls} appearance-none cursor-pointer ${form.orgType ? 'text-on-surface' : 'text-outline'}`}
                   >
                     <option value="">Chọn loại</option>
                     {(Object.entries(ORG_TYPE_LABELS) as [OrganizationType, string][]).map(
@@ -425,125 +304,98 @@ export default function RegisterPartnerPage() {
                     )}
                   </select>
                 </div>
-                {errors.orgType && <p style={errorTextStyle}>{errors.orgType}</p>}
+                {errors.orgType && <p className={errorTextCls}>{errors.orgType}</p>}
               </div>
             </div>
 
             {/* Divider */}
-            <hr
-              style={{
-                border: 'none',
-                borderTop: `1px solid ${COLORS.outlineVariant}`,
-                margin: '24px 0',
-              }}
-            />
+            <hr className="border-0 border-t border-outline-variant my-6" />
 
             {/* Row 4: Password + Confirm */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label style={labelStyle(!!errors.password)}>MẬT KHẨU</label>
-                <div style={inputWrapperStyle(!!errors.password)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>lock</span>
+                <label className={labelCls(!!errors.password)}>MẬT KHẨU</label>
+                <div className={inputWrapperCls(!!errors.password)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    lock
+                  </span>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Tối thiểu 8 ký tự"
                     value={form.password}
                     onChange={(e) => updateField('password', e.target.value)}
-                    style={inputStyle}
+                    className={inputCls}
                   />
                   <span
-                    className="material-symbols-outlined"
-                    style={{ ...iconStyle, cursor: 'pointer' }}
+                    className="material-symbols-outlined text-outline cursor-pointer"
+                    style={{ fontSize: 20 }}
                     onClick={() => setShowPassword((v) => !v)}
                   >
                     {showPassword ? 'visibility' : 'visibility_off'}
                   </span>
                 </div>
-                {errors.password && <p style={errorTextStyle}>{errors.password}</p>}
+                {errors.password && <p className={errorTextCls}>{errors.password}</p>}
               </div>
               <div>
-                <label style={labelStyle(!!errors.confirmPassword)}>XÁC NHẬN MẬT KHẨU</label>
-                <div style={inputWrapperStyle(!!errors.confirmPassword)}>
-                  <span className="material-symbols-outlined" style={iconStyle}>lock</span>
+                <label className={labelCls(!!errors.confirmPassword)}>XÁC NHẬN MẬT KHẨU</label>
+                <div className={inputWrapperCls(!!errors.confirmPassword)}>
+                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                    lock
+                  </span>
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Nhập lại mật khẩu"
                     value={form.confirmPassword}
                     onChange={(e) => updateField('confirmPassword', e.target.value)}
-                    style={inputStyle}
+                    className={inputCls}
                   />
                   <span
-                    className="material-symbols-outlined"
-                    style={{ ...iconStyle, cursor: 'pointer' }}
+                    className="material-symbols-outlined text-outline cursor-pointer"
+                    style={{ fontSize: 20 }}
                     onClick={() => setShowConfirmPassword((v) => !v)}
                   >
                     {showConfirmPassword ? 'visibility' : 'visibility_off'}
                   </span>
                 </div>
                 {errors.confirmPassword && (
-                  <p style={errorTextStyle}>{errors.confirmPassword}</p>
+                  <p className={errorTextCls}>{errors.confirmPassword}</p>
                 )}
               </div>
             </div>
 
             {/* Terms checkbox */}
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  fontSize: 13,
-                  color: COLORS.onSurfaceVariant,
-                  cursor: 'pointer',
-                  lineHeight: 1.5,
-                }}
-              >
+            <div className="mb-6">
+              <label className="flex items-start gap-[10px] text-[13px] text-on-surface-variant cursor-pointer leading-[1.5]">
                 <input
                   type="checkbox"
                   checked={form.termsAccepted}
                   onChange={(e) => updateField('termsAccepted', e.target.checked)}
-                  style={{ marginTop: 3, accentColor: COLORS.primaryContainer }}
+                  className="mt-[3px] accent-primary-container"
                 />
                 <span>
                   Tôi đồng ý với các{' '}
-                  <span style={{ color: COLORS.primary, fontWeight: 600, cursor: 'pointer' }}>
+                  <span className="text-primary font-semibold cursor-pointer">
                     Điều khoản sử dụng
                   </span>{' '}
                   và{' '}
-                  <span style={{ color: COLORS.primary, fontWeight: 600, cursor: 'pointer' }}>
+                  <span className="text-primary font-semibold cursor-pointer">
                     Chính sách bảo mật
                   </span>{' '}
                   của CareBridge dành cho đối tác.
                 </span>
               </label>
-              {errors.terms && <p style={errorTextStyle}>{errors.terms}</p>}
+              {errors.terms && <p className={errorTextCls}>{errors.terms}</p>}
             </div>
 
             {/* Submit button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{
-                width: '100%',
-                padding: '14px 0',
-                borderRadius: 9999,
-                border: 'none',
-                backgroundColor: isSubmitting ? COLORS.outlineVariant : COLORS.primaryContainer,
-                color: '#fff',
-                fontFamily: FONT_FAMILY,
-                fontSize: 15,
-                fontWeight: 600,
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
+              className={`w-full py-[14px] rounded-full border-none text-white font-sans text-[15px] font-semibold flex items-center justify-center gap-2 ${isSubmitting ? 'bg-outline-variant cursor-not-allowed' : 'bg-primary-container cursor-pointer'}`}
             >
               {isSubmitting ? 'Đang xử lý...' : 'Tiếp tục'}
               {!isSubmitting && (
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#fff' }}>
+                <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>
                   arrow_forward
                 </span>
               )}
@@ -551,18 +403,10 @@ export default function RegisterPartnerPage() {
           </form>
 
           {/* Login link */}
-          <p
-            style={{
-              textAlign: 'center',
-              fontSize: 14,
-              color: COLORS.onSurfaceVariant,
-              marginTop: 24,
-              marginBottom: 0,
-            }}
-          >
+          <p className="text-center text-sm text-on-surface-variant mt-6 mb-0">
             Đã có tài khoản?{' '}
             <span
-              style={{ color: COLORS.primary, fontWeight: 700, cursor: 'pointer' }}
+              className="text-primary font-bold cursor-pointer"
               onClick={() => navigate('/login')}
             >
               Đăng nhập ngay

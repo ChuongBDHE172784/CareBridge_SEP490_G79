@@ -14,6 +14,8 @@ const REMEDIATION_TASKS = [
   { label: 'Kiểm tra log truy cập trong 48h gần nhất', tag: 'AUDIT', done: false },
 ];
 
+const card = 'bg-surface rounded-2xl p-6 shadow-sm';
+
 export default function SecurityIncidentResolutionPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [rootCause, setRootCause] = useState('software');
@@ -34,72 +36,89 @@ export default function SecurityIncidentResolutionPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif" }}>
-      <div style={{ fontSize: 14, color: '#524440', marginBottom: 8 }}>An toàn &gt; Quản lý sự cố &gt; CB-{eventId}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#271812', margin: 0 }}>Giải quyết sự cố CB-{eventId}</h1>
-        <span style={{ padding: '4px 12px', borderRadius: 9999, background: '#ffdad6', color: '#ba1a1a', fontSize: 12, fontWeight: 700 }}>! Mức độ: Cao</span>
+    <div>
+      <div className="text-sm text-on-surface-variant mb-2">An toàn &gt; Quản lý sự cố &gt; CB-{eventId}</div>
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-[22px] font-bold text-on-surface m-0">Giải quyết sự cố CB-{eventId}</h1>
+        <span className="px-3 py-1 rounded-full bg-error-container text-error text-xs font-bold">! Mức độ: Cao</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={cardStyle}>
-            <h2 style={sectionTitle}>1. Phân loại nguyên nhân gốc rễ (Root Cause)</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-[2fr_1fr] gap-6">
+        <div className="flex flex-col gap-6">
+          <div className={card}>
+            <h2 className="text-base font-semibold text-on-surface mt-0 mb-4">1. Phân loại nguyên nhân gốc rễ (Root Cause)</h2>
+            <div className="grid grid-cols-3 gap-3">
               {ROOT_CAUSES.map(rc => (
-                <label key={rc.id} onClick={() => setRootCause(rc.id)}
-                  style={{ padding: 16, borderRadius: 12, border: `2px solid ${rootCause === rc.id ? '#845143' : '#d6c2bd'}`, background: rootCause === rc.id ? '#fff1ec' : '#fff', cursor: 'pointer', textAlign: 'center' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#845143', display: 'block', marginBottom: 8 }}>{rc.icon}</span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#271812' }}>{rc.label}</div>
-                  <div style={{ fontSize: 12, color: '#524440', marginTop: 4 }}>{rc.description}</div>
+                <label
+                  key={rc.id}
+                  onClick={() => setRootCause(rc.id)}
+                  className={`p-4 rounded-xl border-2 cursor-pointer text-center transition-colors ${rootCause === rc.id ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}
+                >
+                  <span className="material-symbols-outlined text-primary block mb-2" style={{ fontSize: 24 }}>{rc.icon}</span>
+                  <div className="text-sm font-semibold text-on-surface">{rc.label}</div>
+                  <div className="text-xs text-on-surface-variant mt-1">{rc.description}</div>
                 </label>
               ))}
             </div>
           </div>
 
-          <div style={cardStyle}>
-            <h2 style={sectionTitle}>2. Tóm tắt quá trình giải quyết</h2>
-            <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={4} placeholder="Mô tả chi tiết các bước đã thực hiện để khắc phục và ngăn chặn sự cố tái diễn..."
-              style={{ width: '100%', padding: 16, borderRadius: 12, border: '1px solid #d6c2bd', fontSize: 14, fontFamily: "'Lexend'", resize: 'vertical' }} />
+          <div className={card}>
+            <h2 className="text-base font-semibold text-on-surface mt-0 mb-4">2. Tóm tắt quá trình giải quyết</h2>
+            <textarea
+              value={summary}
+              onChange={e => setSummary(e.target.value)}
+              rows={4}
+              placeholder="Mô tả chi tiết các bước đã thực hiện để khắc phục và ngăn chặn sự cố tái diễn..."
+              className="w-full px-4 py-4 rounded-xl border border-outline-variant text-sm resize-y"
+            />
           </div>
 
-          <div style={cardStyle}>
-            <h2 style={sectionTitle}>3. Danh mục nhiệm vụ khắc phục (Remediation)</h2>
+          <div className={card}>
+            <h2 className="text-base font-semibold text-on-surface mt-0 mb-4">3. Danh mục nhiệm vụ khắc phục (Remediation)</h2>
             {tasks.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: i < tasks.length - 1 ? '1px solid #fadcd3' : 'none' }}>
-                <span onClick={() => { const next = [...tasks]; next[i].done = !next[i].done; setTasks(next); }}
-                  className="material-symbols-outlined" style={{ fontSize: 24, color: t.done ? '#845143' : '#d6c2bd', cursor: 'pointer' }}>
+              <div
+                key={i}
+                className={`flex items-center gap-3 py-3 ${i < tasks.length - 1 ? 'border-b border-surface-container-highest' : ''}`}
+              >
+                <span
+                  onClick={() => { const next = [...tasks]; next[i].done = !next[i].done; setTasks(next); }}
+                  className={`material-symbols-outlined cursor-pointer ${t.done ? 'text-primary' : 'text-outline-variant'}`}
+                  style={{ fontSize: 24 }}
+                >
                   {t.done ? 'check_circle' : 'circle'}
                 </span>
-                <span style={{ flex: 1, fontSize: 14, color: '#271812', textDecoration: t.done ? 'none' : 'none' }}>{t.label}</span>
-                <span style={{ padding: '3px 10px', borderRadius: 9999, border: '1px solid #d6c2bd', fontSize: 11, fontWeight: 600, color: '#845143' }}>{t.tag}</span>
+                <span className="flex-1 text-sm text-on-surface">{t.label}</span>
+                <span className="px-2.5 py-0.5 rounded-full border border-outline-variant text-[11px] font-semibold text-primary">{t.tag}</span>
               </div>
             ))}
           </div>
 
-          <button onClick={handleResolve} disabled={isSaving}
-            style={{ padding: '14px 32px', borderRadius: 9999, background: '#845143', color: '#fff', border: 'none', fontSize: 16, fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>
+          <button
+            onClick={handleResolve}
+            disabled={isSaving}
+            className="self-start px-8 py-3.5 rounded-full bg-primary text-on-primary border-none text-base font-semibold cursor-pointer disabled:opacity-60"
+          >
             {isSaving ? 'Đang lưu...' : 'Giải quyết sự cố'}
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={cardStyle}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#271812', margin: '0 0 16px' }}>Chi tiết Case</h3>
+        <div className="flex flex-col gap-6">
+          <div className={card}>
+            <h3 className="text-base font-semibold text-on-surface mt-0 mb-4">Chi tiết Case</h3>
             {[['Mã sự cố', `CB-${eventId}`], ['Bắt đầu', '—'], ['Thời gian xử lý', '—'], ['Người phụ trách', '—']].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14 }}>
-                <span style={{ color: '#84736f' }}>{k}</span>
-                <span style={{ fontWeight: 600, color: '#271812' }}>{v}</span>
+              <div key={k} className="flex justify-between py-2 text-sm">
+                <span className="text-outline">{k}</span>
+                <span className="font-semibold text-on-surface">{v}</span>
               </div>
             ))}
           </div>
 
-          <div style={cardStyle}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#271812', margin: '0 0 16px' }}>Nhật ký hoạt động</h3>
-            <div style={{ borderLeft: '2px solid #d6c2bd', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className={card}>
+            <h3 className="text-base font-semibold text-on-surface mt-0 mb-4">Nhật ký hoạt động</h3>
+            <div className="border-l-2 border-outline-variant pl-4 flex flex-col gap-4">
               <div>
-                <div style={{ fontSize: 12, color: '#84736f' }}>Hiện tại</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#271812' }}>Đang điền form giải quyết</div>
+                <div className="text-xs text-outline">Hiện tại</div>
+                <div className="text-sm font-semibold text-on-surface">Đang điền form giải quyết</div>
               </div>
             </div>
           </div>
@@ -108,6 +127,3 @@ export default function SecurityIncidentResolutionPage() {
     </div>
   );
 }
-
-const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(90,70,63,0.06)' };
-const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: 600, color: '#271812', margin: '0 0 16px' };

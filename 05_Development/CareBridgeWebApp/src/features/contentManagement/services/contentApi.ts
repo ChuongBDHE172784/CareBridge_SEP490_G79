@@ -87,3 +87,24 @@ export async function fetchTopics(includeHidden = false): Promise<CommunityTopic
   );
   return res.data.data;
 }
+
+export async function createTopic(data: {
+  name: string;
+  description?: string;
+  icon?: string;
+  sortOrder?: number;
+}): Promise<CommunityTopic> {
+  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/community/topics', data);
+  return res.data.data;
+}
+
+export async function updateTopic(
+  id: string,
+  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
+): Promise<CommunityTopic> {
+  const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
+    `/api/v1/community/topics/${id}`,
+    data,
+  );
+  return res.data.data;
+}

@@ -15,10 +15,10 @@ interface SecurityEvent {
   occurredAt: string;
 }
 
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  HIGH: { bg: '#ffdad6', text: '#ba1a1a', label: 'Cao' },
-  MEDIUM: { bg: '#ffe9e3', text: '#845143', label: 'Trung bình' },
-  LOW: { bg: '#fff1ec', text: '#6e5a52', label: 'Thấp' },
+const SEVERITY_BADGE: Record<string, { cls: string; label: string }> = {
+  HIGH: { cls: 'bg-error-container text-error', label: 'Cao' },
+  MEDIUM: { cls: 'bg-surface-container-high text-primary', label: 'Trung bình' },
+  LOW: { cls: 'bg-surface-container-low text-on-surface-variant', label: 'Thấp' },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,19 +52,32 @@ export default function SecurityIncidentListPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: '#271812', margin: 0 }}>Danh sách Sự cố Bảo mật</h1>
-      <p style={{ color: '#524440', fontSize: 14, marginTop: 4, marginBottom: 24 }}>Theo dõi và quản lý các cảnh báo an toàn hệ thống (CB-151).</p>
+    <div>
+      <h1 className="text-[28px] font-bold text-on-surface m-0">Danh sách Sự cố Bảo mật</h1>
+      <p className="text-on-surface-variant text-sm mt-1 mb-6">Theo dõi và quản lý các cảnh báo an toàn hệ thống (CB-151).</p>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo Case ID, Loại..." style={inputStyle} />
-        <select value={severity} onChange={e => { setSeverity(e.target.value); setPage(0); }} style={selectStyle}>
+      <div className="flex gap-3 flex-wrap mb-5">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Tìm theo Case ID, Loại..."
+          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm w-64"
+        />
+        <select
+          value={severity}
+          onChange={e => { setSeverity(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm bg-surface cursor-pointer"
+        >
           <option value="">Mức độ: Tất cả</option>
           <option value="HIGH">Cao</option>
           <option value="MEDIUM">Trung bình</option>
           <option value="LOW">Thấp</option>
         </select>
-        <select value={status} onChange={e => { setStatus(e.target.value); setPage(0); }} style={selectStyle}>
+        <select
+          value={status}
+          onChange={e => { setStatus(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm bg-surface cursor-pointer"
+        >
           <option value="">Trạng thái: Tất cả</option>
           <option value="DETECTED">Đang mở</option>
           <option value="INVESTIGATING">Đang điều tra</option>
@@ -72,40 +85,40 @@ export default function SecurityIncidentListPage() {
         </select>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(90,70,63,0.06)' }}>
+      <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
         {isLoading ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#84736f' }}>Đang tải...</div>
+          <div className="p-12 text-center text-outline">Đang tải...</div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="w-full border-collapse">
               <thead>
-                <tr style={{ borderBottom: '2px solid #fadcd3', textAlign: 'left' }}>
+                <tr className="border-b-2 border-surface-container-highest text-left">
                   {['Case ID', 'Mức độ', 'Loại sự cố', 'Trạng thái', 'Phạm vi', 'Thời gian mở', 'SLA'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
+                    <th key={h} className="px-4 py-3.5 text-[13px] font-semibold text-outline uppercase tracking-[0.04em]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {events.map(e => {
-                  const sev = SEVERITY_COLORS[e.severity] ?? SEVERITY_COLORS.LOW;
+                  const sev = SEVERITY_BADGE[e.severity] ?? SEVERITY_BADGE.LOW;
                   return (
-                    <tr key={e.id} style={{ borderBottom: '1px solid #fadcd3', cursor: 'pointer' }}>
-                      <td style={{ ...tdStyle, color: '#845143', fontWeight: 600 }}>SEC-{e.id}</td>
-                      <td style={tdStyle}>
-                        <span style={{ padding: '4px 12px', borderRadius: 9999, background: sev.bg, color: sev.text, fontSize: 12, fontWeight: 600 }}>
+                    <tr key={e.id} className="border-b border-surface-container-highest cursor-pointer">
+                      <td className="p-4 text-sm text-primary font-semibold">SEC-{e.id}</td>
+                      <td className="p-4 text-sm">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${sev.cls}`}>
                           {sev.label}
                         </span>
                       </td>
-                      <td style={tdStyle}>{e.eventType}</td>
-                      <td style={tdStyle}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.status === 'RESOLVED' ? '#6e5a52' : '#ba1a1a' }} />
+                      <td className="p-4 text-sm text-on-surface">{e.eventType}</td>
+                      <td className="p-4 text-sm text-on-surface">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${e.status === 'RESOLVED' ? 'bg-outline' : 'bg-error'}`} />
                           {STATUS_LABELS[e.status] ?? e.status}
                         </span>
                       </td>
-                      <td style={tdStyle}>{e.ipAddress || '—'}</td>
-                      <td style={tdStyle}>{formatDateTime(e.occurredAt)}</td>
-                      <td style={{ ...tdStyle, color: e.severity === 'HIGH' ? '#ba1a1a' : '#524440', fontWeight: e.severity === 'HIGH' ? 600 : 400 }}>
+                      <td className="p-4 text-sm text-on-surface">{e.ipAddress || '—'}</td>
+                      <td className="p-4 text-sm text-on-surface">{formatDateTime(e.occurredAt)}</td>
+                      <td className={`p-4 text-sm ${e.severity === 'HIGH' ? 'text-error font-semibold' : 'text-on-surface-variant'}`}>
                         {e.status === 'RESOLVED' ? '—' : '—'}
                       </td>
                     </tr>
@@ -113,11 +126,19 @@ export default function SecurityIncidentListPage() {
                 })}
               </tbody>
             </table>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', fontSize: 14, color: '#524440' }}>
+            <div className="flex justify-between items-center px-6 py-4 text-sm text-on-surface-variant">
               <span>Hiển thị {page * 10 + 1}-{Math.min((page + 1) * 10, total)} trên tổng số {total} sự cố</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={pgBtn(page === 0)}>&lt;</button>
-                <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * 10 >= total} style={pgBtn((page + 1) * 10 >= total)}>&gt;</button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className={`w-9 h-9 rounded-lg border border-outline-variant text-base ${page === 0 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'}`}
+                >&lt;</button>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={(page + 1) * 10 >= total}
+                  className={`w-9 h-9 rounded-lg border border-outline-variant text-base ${(page + 1) * 10 >= total ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'}`}
+                >&gt;</button>
               </div>
             </div>
           </>
@@ -125,15 +146,6 @@ export default function SecurityIncidentListPage() {
       </div>
     </div>
   );
-}
-
-const thStyle: React.CSSProperties = { padding: '14px 16px', fontSize: 13, fontWeight: 600, color: '#84736f', textTransform: 'uppercase', letterSpacing: '0.04em' };
-const tdStyle: React.CSSProperties = { padding: '16px', fontSize: 14, color: '#271812' };
-const inputStyle: React.CSSProperties = { padding: '10px 16px', borderRadius: 8, border: '1px solid #d6c2bd', fontSize: 14, fontFamily: "'Lexend'", width: 260 };
-const selectStyle: React.CSSProperties = { padding: '10px 16px', borderRadius: 8, border: '1px solid #d6c2bd', fontSize: 14, fontFamily: "'Lexend'", background: '#fff', cursor: 'pointer' };
-
-function pgBtn(disabled: boolean): React.CSSProperties {
-  return { width: 36, height: 36, borderRadius: 8, border: '1px solid #d6c2bd', background: disabled ? '#f6f1ec' : '#fff', color: disabled ? '#d6c2bd' : '#524440', cursor: disabled ? 'default' : 'pointer', fontSize: 16 };
 }
 
 function formatDateTime(iso: string): string {

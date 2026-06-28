@@ -30,6 +30,7 @@ import ContentDetailPage from '../../features/contentManagement/pages/ContentDet
 import ContentPreviewPage from '../../features/contentManagement/pages/ContentPreviewPage';
 import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
+import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
 // Partner Portal screens (CB-096, CB-097)
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
               { path: '/content/:id/preview', element: <ContentPreviewPage /> },
               { path: '/content/faq', element: <FaqListPage /> },
               { path: '/content/checklists', element: <ChecklistListPage /> },
+              { path: '/content/topics', element: <ManageTopicsPage /> },
             ],
           },
           {

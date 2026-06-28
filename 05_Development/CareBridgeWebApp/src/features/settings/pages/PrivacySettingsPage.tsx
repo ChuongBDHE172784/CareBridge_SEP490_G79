@@ -92,46 +92,40 @@ export default function PrivacySettingsPage() {
 
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: 48, color: '#84736f', fontFamily: "'Lexend'" }}>
-        Đang tải...
-      </div>
+      <div className="text-center p-12 text-outline">Đang tải...</div>
     );
   }
 
   if (error && !settings) {
     return (
-      <div style={{ textAlign: 'center', padding: 48, color: '#ba1a1a', fontFamily: "'Lexend'" }}>
-        {error}
-      </div>
+      <div className="text-center p-12 text-error">{error}</div>
     );
   }
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif", position: 'relative', paddingBottom: 80 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: '#271812', margin: 0 }}>
-        Cài đặt Quyền riêng tư
-      </h1>
+    <div className="relative pb-20">
+      <h1 className="text-2xl font-bold text-on-surface m-0">Cài đặt Quyền riêng tư</h1>
 
-      <div style={{ marginTop: 24 }}>
-        <div style={{ background: '#fff8f6', borderRadius: 16, padding: 24, marginBottom: 8 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#271812', margin: '0 0 8px' }}>
-            Quản lý Dữ liệu Bệnh nhân & Tuân thủ
+      <div className="mt-6">
+        <div className="bg-background rounded-2xl p-6 mb-2">
+          <h2 className="text-lg font-bold text-on-surface mt-0 mb-2">
+            Quản lý Dữ liệu Bệnh nhân &amp; Tuân thủ
           </h2>
-          <p style={{ fontSize: 14, color: '#524440', margin: '0 0 16px', lineHeight: 1.6 }}>
+          <p className="text-sm text-on-surface-variant mt-0 mb-4 leading-relaxed">
             Thiết lập các cấp độ bảo mật cho hệ thống CareBridge. Những cài đặt này áp dụng trên
             toàn bộ cổng thông tin tổ chức của bạn, đảm bảo tuân thủ các quy định về bảo vệ dữ
             liệu y tế (HIPAA/GDPR).
           </p>
-          <button style={outlineBtn}>
+          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-outline-variant bg-surface text-primary text-sm font-semibold cursor-pointer">
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>security</span>
             Xem chính sách bảo mật
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+      <div className="grid grid-cols-2 gap-6 mt-6">
         {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div className="flex flex-col gap-6">
           <SettingsCard title="Hồ sơ công khai" icon="public">
             <ToggleRow
               label="Hiển thị thông tin liên hệ"
@@ -157,7 +151,7 @@ export default function PrivacySettingsPage() {
             />
           </SettingsCard>
 
-          <SettingsCard title="Bảo mật & Phiên" icon="shield">
+          <SettingsCard title="Bảo mật &amp; Phiên" icon="shield">
             <LinkRow
               icon="devices"
               label="Quản lý thiết bị"
@@ -168,7 +162,7 @@ export default function PrivacySettingsPage() {
               icon="password"
               label="Xác thực 2 yếu tố (2FA)"
               description="Đang bật (Yêu cầu)"
-              descriptionColor="#845143"
+              descriptionClass="text-primary"
             />
           </SettingsCard>
         </div>
@@ -176,80 +170,67 @@ export default function PrivacySettingsPage() {
         {/* Right column */}
         <div>
           <SettingsCard title="Quản lý sự chấp thuận dữ liệu" icon="verified_user">
-            <p style={{ fontSize: 14, color: '#524440', margin: '0 0 16px' }}>
+            <p className="text-sm text-on-surface-variant mt-0 mb-4">
               Kiểm soát các bên thứ 3 và phòng ban có quyền truy cập dữ liệu.
             </p>
-            <button
-              style={{
-                ...primaryBtn,
-                marginBottom: 16,
-                float: 'right',
-              }}
-            >
+            <button className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-on-primary border-none text-sm font-semibold cursor-pointer float-right mb-4">
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
               Cấp quyền mới
             </button>
-            <div style={{ clear: 'both' }} />
+            <div className="clear-both" />
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr style={{ borderBottom: '1px solid #fadcd3', textAlign: 'left' }}>
-                  <th style={thStyle2}>NGƯỜI NHẬN</th>
-                  <th style={thStyle2}>PHẠM VI</th>
-                  <th style={thStyle2}>MỤC ĐÍCH</th>
-                  <th style={thStyle2}>HẾT HẠN</th>
-                  <th style={thStyle2}>TRẠNG THÁI</th>
+                <tr className="border-b border-surface-container-highest text-left">
+                  <th className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">NGƯỜI NHẬN</th>
+                  <th className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">PHẠM VI</th>
+                  <th className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">MỤC ĐÍCH</th>
+                  <th className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">HẾT HẠN</th>
+                  <th className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">TRẠNG THÁI</th>
                 </tr>
               </thead>
               <tbody>
                 {consents.map((c) => (
-                  <tr key={c.id} style={{ borderBottom: '1px solid #fadcd3' }}>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            background: '#c98c7b',
-                            color: '#fff',
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            fontSize: 11,
-                            fontWeight: 700,
-                          }}
-                        >
+                  <tr key={c.id} className="border-b border-surface-container-highest">
+                    <td className="px-2 py-3.5 text-on-surface">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-primary-container text-on-primary rounded-md px-2 py-1 text-[11px] font-bold">
                           {(c.recipient || '').substring(0, 3).toUpperCase()}
                         </span>
                         <span>{c.recipient}</span>
                       </div>
                     </td>
-                    <td style={tdStyle}>{c.scope || c.dataType}</td>
-                    <td style={tdStyle}>{c.purpose}</td>
-                    <td style={tdStyle}>
+                    <td className="px-2 py-3.5 text-on-surface">{c.scope || c.dataType}</td>
+                    <td className="px-2 py-3.5 text-on-surface">{c.purpose}</td>
+                    <td className="px-2 py-3.5 text-on-surface">
                       {c.expiryAt
                         ? new Date(c.expiryAt).toLocaleDateString('vi-VN')
                         : '—'}
                     </td>
-                    <td style={tdStyle}>
+                    <td className="px-2 py-3.5">
                       <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '4px 12px',
-                          borderRadius: 9999,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          border: '1px solid',
-                          ...(isExpired(c.expiryAt)
-                            ? { color: '#84736f', borderColor: '#d6c2bd', background: '#f6f1ec' }
-                            : { color: '#845143', borderColor: '#c98c7b40', background: '#ffdbd1' }),
-                        }}
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${
+                          isExpired(c.expiryAt)
+                            ? 'text-outline border-outline-variant bg-surface-container-low'
+                            : 'text-primary border-primary-container bg-surface-container-highest'
+                        }`}
                       >
                         {isExpired(c.expiryAt) ? 'Đã hết hạn' : 'Đang hiệu lực'}
                       </span>
+                    </td>
+                    <td className="px-2 py-3.5">
+                      <button
+                        onClick={() => handleRevoke(c.id)}
+                        className="px-3 py-1 rounded-full text-xs font-medium border border-error text-error hover:bg-error-container transition-colors"
+                      >
+                        Thu hồi
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {consents.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#84736f' }}>
+                    <td colSpan={5} className="px-2 py-3.5 text-on-surface text-center text-outline">
                       Chưa có quyền truy cập nào.
                     </td>
                   </tr>
@@ -261,43 +242,22 @@ export default function PrivacySettingsPage() {
       </div>
 
       {hasChanges && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: '#fff8f6',
-            borderTop: '1px solid #d6c2bd',
-            padding: '16px 48px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 16,
-            zIndex: 50,
-            boxShadow: '0 -4px 20px rgba(90,70,63,0.06)',
-          }}
-        >
-          <span style={{ fontSize: 14, color: '#524440' }}>Bạn có thay đổi chưa lưu</span>
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-outline-variant px-12 py-4 flex justify-center items-center gap-4 z-50 shadow-[0_-4px_20px_rgba(90,70,63,0.06)]">
+          <span className="text-sm text-on-surface-variant">Bạn có thay đổi chưa lưu</span>
           <button
             onClick={() => {
               setHasChanges(false);
               fetchData();
             }}
-            style={{
-              padding: '10px 24px',
-              borderRadius: 8,
-              border: '1px solid #d6c2bd',
-              background: '#fff',
-              color: '#271812',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className="px-6 py-2.5 rounded-lg border border-outline-variant bg-surface text-on-surface text-sm font-semibold cursor-pointer"
           >
             Hủy
           </button>
-          <button onClick={handleSave} disabled={isSaving} style={saveBtn}>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-6 py-2.5 rounded-lg bg-primary-container text-on-primary border-none text-sm font-semibold cursor-pointer disabled:opacity-60"
+          >
             {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>
         </div>
@@ -316,29 +276,10 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        background: '#fff',
-        borderRadius: 16,
-        padding: 24,
-        boxShadow: '0 4px 20px rgba(90,70,63,0.06)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 20,
-        }}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: 20, color: '#845143' }}
-        >
-          {icon}
-        </span>
-        <h3 style={{ fontSize: 18, fontWeight: 600, color: '#271812', margin: 0 }}>{title}</h3>
+    <div className="bg-surface rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-2 mb-5">
+        <span className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>{icon}</span>
+        <h3 className="text-lg font-semibold text-on-surface m-0">{title}</h3>
       </div>
       {children}
     </div>
@@ -357,50 +298,23 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: '12px 0',
-      }}
-    >
-      <div style={{ flex: 1, marginRight: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#271812' }}>{label}</div>
-        <div style={{ fontSize: 13, color: '#524440', marginTop: 4 }}>{description}</div>
+    <div className="flex justify-between items-start py-3">
+      <div className="flex-1 mr-4">
+        <div className="text-sm font-semibold text-on-surface">{label}</div>
+        <div className="text-[13px] text-on-surface-variant mt-1">{description}</div>
       </div>
-      <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 24, flexShrink: 0, marginTop: 2 }}>
+      <label className="relative inline-block w-12 h-6 shrink-0 mt-0.5">
         <input
           type="checkbox"
           checked={value}
           onChange={(e) => onChange(e.target.checked)}
-          style={{ opacity: 0, width: 0, height: 0 }}
+          className="opacity-0 w-0 h-0"
         />
         <span
-          style={{
-            position: 'absolute',
-            cursor: 'pointer',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: value ? '#c98c7b' : '#d6c2bd',
-            borderRadius: 24,
-            transition: 'background 0.2s',
-          }}
+          className={`absolute cursor-pointer inset-0 rounded-[24px] transition-colors duration-200 ${value ? 'bg-primary-container' : 'bg-outline-variant'}`}
         >
           <span
-            style={{
-              position: 'absolute',
-              height: 20,
-              width: 20,
-              left: value ? 26 : 2,
-              bottom: 2,
-              background: '#fff',
-              borderRadius: '50%',
-              transition: 'left 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-            }}
+            className={`absolute h-5 w-5 bottom-0.5 bg-white rounded-full shadow-sm transition-all duration-200 ${value ? 'left-[26px]' : 'left-0.5'}`}
           />
         </span>
       </label>
@@ -412,100 +326,30 @@ function LinkRow({
   icon,
   label,
   description,
-  descriptionColor,
+  descriptionClass = 'text-on-surface-variant',
 }: {
   icon: string;
   label: string;
   description: string;
-  descriptionColor?: string;
+  descriptionClass?: string;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '16px 0',
-        cursor: 'pointer',
-      }}
-    >
-      <span
-        className="material-symbols-outlined"
-        style={{ fontSize: 20, color: '#524440', marginRight: 12 }}
-      >
-        {icon}
-      </span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#271812' }}>{label}</div>
-        <div style={{ fontSize: 13, color: descriptionColor || '#524440', marginTop: 2 }}>
-          {description}
-        </div>
+    <div className="flex items-center py-4 cursor-pointer">
+      <span className="material-symbols-outlined text-on-surface-variant mr-3" style={{ fontSize: 20 }}>{icon}</span>
+      <div className="flex-1">
+        <div className="text-sm font-semibold text-on-surface">{label}</div>
+        <div className={`text-[13px] mt-0.5 ${descriptionClass}`}>{description}</div>
       </div>
-      <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#84736f' }}>
-        chevron_right
-      </span>
+      <span className="material-symbols-outlined text-outline" style={{ fontSize: 18 }}>chevron_right</span>
     </div>
   );
 }
 
 function Divider() {
-  return <hr style={{ border: 'none', borderTop: '1px solid #fadcd3', margin: 0 }} />;
+  return <hr className="border-0 border-t border-surface-container-highest m-0" />;
 }
 
 function isExpired(expiryAt: string | null): boolean {
   if (!expiryAt) return false;
   return new Date(expiryAt) < new Date();
 }
-
-const outlineBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 20px',
-  borderRadius: 9999,
-  border: '1px solid #d6c2bd',
-  background: '#fff',
-  color: '#845143',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const primaryBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '10px 20px',
-  borderRadius: 9999,
-  border: 'none',
-  background: '#845143',
-  color: '#fff',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const saveBtn: React.CSSProperties = {
-  padding: '10px 24px',
-  borderRadius: 8,
-  border: 'none',
-  background: '#c98c7b',
-  color: '#fff',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const thStyle2: React.CSSProperties = {
-  padding: '12px 8px',
-  fontSize: 11,
-  fontWeight: 600,
-  color: '#84736f',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '14px 8px',
-  fontSize: 13,
-  color: '#271812',
-};

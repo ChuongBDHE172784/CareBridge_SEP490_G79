@@ -30,67 +30,74 @@ export default function SecurityEventsPage() {
   const highCount = events.filter(e => e.severity === 'HIGH').length;
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div>
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#271812', margin: 0 }}>Security Events (CB-142)</h1>
-          <p style={{ color: '#524440', fontSize: 14, marginTop: 4 }}>Theo dõi và giám sát các hoạt động bảo mật hệ thống CareBridge.</p>
+          <h1 className="text-2xl font-bold text-on-surface m-0">Sự kiện Bảo mật (CB-142)</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Theo dõi và giám sát các hoạt động bảo mật hệ thống CareBridge.</p>
         </div>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 9999, background: '#845143', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+        <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-on-primary border-none text-sm font-semibold cursor-pointer">
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span> Xuất báo cáo (CSV)
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <StatCard icon="error" label="Sự cố High Severity" value={String(highCount)} accent="#ba1a1a" />
-        <StatCard icon="shield" label="Đã xử lý" value={String(total)} accent="#845143" />
-        <StatCard icon="group" label="Admin hoạt động" value="—" accent="#6e5a52" />
-        <StatCard icon="monitor_heart" label="Sức khỏe hệ thống" value="Ổn định" accent="#845143" />
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <StatCard icon="error" label="Sự cố High Severity" value={String(highCount)} accentClass="text-error" />
+        <StatCard icon="shield" label="Đã xử lý" value={String(total)} accentClass="text-primary" />
+        <StatCard icon="group" label="Admin hoạt động" value="—" accentClass="text-on-surface-variant" />
+        <StatCard icon="monitor_heart" label="Sức khỏe hệ thống" value="Ổn định" accentClass="text-primary" />
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(90,70,63,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: '#271812', margin: 0 }}>Log sự kiện</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+      <div className="bg-surface rounded-2xl p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-on-surface m-0">Log sự kiện</h2>
+          <div className="flex gap-2">
             {['HIGH', 'MEDIUM', 'LOW'].map(s => (
-              <button key={s} onClick={() => { setSeverityFilter(severityFilter === s ? '' : s); setPage(0); }}
-                style={{ padding: '6px 16px', borderRadius: 9999, border: '1px solid #d6c2bd', background: severityFilter === s ? '#845143' : '#fff', color: severityFilter === s ? '#fff' : '#524440', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <button
+                key={s}
+                onClick={() => { setSeverityFilter(severityFilter === s ? '' : s); setPage(0); }}
+                className={`px-4 py-1.5 rounded-full border text-[13px] font-semibold cursor-pointer transition-colors ${severityFilter === s ? 'bg-primary text-on-primary border-transparent' : 'bg-surface border-outline-variant text-on-surface-variant'}`}
+              >
                 {s === 'HIGH' ? 'High' : s === 'MEDIUM' ? 'Medium' : 'Low'}
               </button>
             ))}
           </div>
         </div>
 
-        {isLoading ? <div style={{ padding: 48, textAlign: 'center', color: '#84736f' }}>Đang tải...</div> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        {isLoading ? (
+          <div className="p-12 text-center text-outline">Đang tải...</div>
+        ) : (
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ borderBottom: '2px solid #fadcd3', textAlign: 'left' }}>
+              <tr className="border-b-2 border-surface-container-highest text-left">
                 {['MỨC ĐỘ', 'LOẠI SỰ KIỆN', 'TÁC NHÂN (ACTOR)', 'ĐỐI TƯỢNG (TARGET)', 'THỜI GIAN', 'TRẠNG THÁI'].map(h => (
-                  <th key={h} style={{ padding: '12px 8px', fontSize: 11, fontWeight: 600, color: '#84736f', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                  <th key={h} className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
                 ))}
               </tr>
+            </thead>
+            <tbody>
               {events.map(e => (
-                <tr key={e.id} style={{ borderBottom: '1px solid #fadcd3', cursor: 'pointer' }}>
-                  <td style={{ padding: '14px 8px', fontSize: 13 }}>
-                    <span style={{ color: e.severity === 'HIGH' ? '#ba1a1a' : e.severity === 'MEDIUM' ? '#845143' : '#6e5a52', fontWeight: 600, fontSize: 12 }}>
+                <tr key={e.id} className="border-b border-surface-container-highest cursor-pointer">
+                  <td className="px-2 py-3.5 text-[13px]">
+                    <span className={`font-semibold text-xs ${e.severity === 'HIGH' ? 'text-error' : e.severity === 'MEDIUM' ? 'text-primary' : 'text-on-surface-variant'}`}>
                       {e.severity}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 8px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#271812' }}>{e.eventType}</div>
-                    <div style={{ fontSize: 12, color: '#524440', marginTop: 2 }}>{e.details?.substring(0, 50)}</div>
+                  <td className="px-2 py-3.5">
+                    <div className="font-semibold text-sm text-on-surface">{e.eventType}</div>
+                    <div className="text-xs text-on-surface-variant mt-0.5">{e.details?.substring(0, 50)}</div>
                   </td>
-                  <td style={{ padding: '14px 8px', fontSize: 13, color: '#271812' }}>{e.userId || '—'}</td>
-                  <td style={{ padding: '14px 8px', fontSize: 12, color: '#84736f', fontFamily: 'monospace' }}>{e.ipAddress}</td>
-                  <td style={{ padding: '14px 8px', fontSize: 13, color: '#524440' }}>{formatTime(e.occurredAt)}</td>
-                  <td style={{ padding: '14px 8px' }}>
-                    <span style={{ padding: '4px 12px', borderRadius: 9999, border: '1px solid #d6c2bd', fontSize: 12, fontWeight: 500, color: e.status === 'RESOLVED' ? '#6e5a52' : '#845143' }}>
+                  <td className="px-2 py-3.5 text-[13px] text-on-surface">{e.userId || '—'}</td>
+                  <td className="px-2 py-3.5 text-xs text-outline font-mono">{e.ipAddress}</td>
+                  <td className="px-2 py-3.5 text-[13px] text-on-surface-variant">{formatTime(e.occurredAt)}</td>
+                  <td className="px-2 py-3.5">
+                    <span className={`px-3 py-1 rounded-full border border-outline-variant text-xs font-medium ${e.status === 'RESOLVED' ? 'text-on-surface-variant' : 'text-primary'}`}>
                       {e.status === 'DETECTED' ? 'Detected' : e.status === 'INVESTIGATING' ? 'Investigating' : 'Resolved'}
                     </span>
                   </td>
                 </tr>
               ))}
-            </thead>
+            </tbody>
           </table>
         )}
       </div>
@@ -98,14 +105,14 @@ export default function SecurityEventsPage() {
   );
 }
 
-function StatCard({ icon, label, value, accent }: { icon: string; label: string; value: string; accent: string }) {
+function StatCard({ icon, label, value, accentClass }: { icon: string; label: string; value: string; accentClass: string }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 4px 20px rgba(90,70,63,0.06)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 20, color: accent }}>{icon}</span>
-        <span style={{ fontSize: 13, color: '#524440' }}>{label}</span>
+    <div className="bg-surface rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`material-symbols-outlined ${accentClass}`} style={{ fontSize: 20 }}>{icon}</span>
+        <span className="text-[13px] text-on-surface-variant">{label}</span>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: '#271812' }}>{value}</div>
+      <div className="text-3xl font-bold text-on-surface">{value}</div>
     </div>
   );
 }
