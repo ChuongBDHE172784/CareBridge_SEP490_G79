@@ -1,4 +1,4 @@
-CREATE TABLE family_alert_log (
+CREATE TABLE IF NOT EXISTS family_alert_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL UNIQUE REFERENCES emergency_sessions(id),
     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

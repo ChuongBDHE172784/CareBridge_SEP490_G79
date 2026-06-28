@@ -1,5 +1,5 @@
 -- UC-167: UploadFile — file storage records
-CREATE TABLE uploaded_files (
+CREATE TABLE IF NOT EXISTS uploaded_files (
     file_id          UUID         NOT NULL DEFAULT gen_random_uuid(),
     owner_user_id    UUID         NOT NULL,
     storage_key      VARCHAR(500) NOT NULL,
@@ -13,5 +13,5 @@ CREATE TABLE uploaded_files (
     CONSTRAINT uq_uploaded_files_storage_key UNIQUE (storage_key)
 );
 
-CREATE INDEX idx_uploaded_files_owner ON uploaded_files(owner_user_id);
-CREATE INDEX idx_uploaded_files_status ON uploaded_files(status);
+CREATE INDEX IF NOT EXISTS idx_uploaded_files_owner ON uploaded_files(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_uploaded_files_status ON uploaded_files(status);

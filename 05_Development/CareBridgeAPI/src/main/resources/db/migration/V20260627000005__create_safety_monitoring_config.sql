@@ -1,4 +1,4 @@
-CREATE TABLE safety_monitoring_config (
+CREATE TABLE IF NOT EXISTS safety_monitoring_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE,
     fall_detection_enabled BOOLEAN NOT NULL DEFAULT FALSE,

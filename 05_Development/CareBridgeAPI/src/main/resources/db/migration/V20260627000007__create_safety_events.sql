@@ -1,4 +1,4 @@
-CREATE TABLE safety_events (
+CREATE TABLE IF NOT EXISTS safety_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     imu_session_id UUID NOT NULL REFERENCES imu_monitoring_sessions(id),

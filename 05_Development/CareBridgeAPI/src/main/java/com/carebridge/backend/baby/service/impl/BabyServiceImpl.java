@@ -6,6 +6,7 @@ import com.carebridge.backend.baby.dto.BabyProfileDetailResponse;
 import com.carebridge.backend.baby.dto.CreateBabyProfileRequest;
 import com.carebridge.backend.baby.dto.CreateBabyProfileResponse;
 import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.baby.service.IBabyService;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -55,6 +57,26 @@ public class BabyServiceImpl implements IBabyService {
                 .status(saved.getStatus().name())
                 .createdAt(saved.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BabyProfileDetailResponse> listBabyProfiles(UUID callerId) {
+        return babyRepository
+                .findByOwnerUserIdAndStatusOrderByCreatedAtAsc(callerId, BabyProfileStatus.ACTIVE)
+                .stream()
+                .map(p -> BabyProfileDetailResponse.builder()
+                        .id(p.getId())
+                        .nickname(p.getNickname())
+                        .birthDate(p.getBirthDate())
+                        .gender(p.getGender() != null ? p.getGender().name() : null)
+                        .birthWeightKg(p.getBirthWeightKg())
+                        .birthLengthCm(p.getBirthLengthCm())
+                        .status(p.getStatus().name())
+                        .createdAt(p.getCreatedAt())
+                        .updatedAt(p.getUpdatedAt())
+                        .build())
+                .toList();
     }
 
     @Override

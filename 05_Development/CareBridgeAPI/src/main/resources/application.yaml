@@ -13,6 +13,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     clean-disabled: true
+    out-of-order: true
 
   docker:
     compose:

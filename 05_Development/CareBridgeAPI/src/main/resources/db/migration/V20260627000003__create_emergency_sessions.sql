@@ -1,4 +1,4 @@
-CREATE TABLE emergency_sessions (
+CREATE TABLE IF NOT EXISTS emergency_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',

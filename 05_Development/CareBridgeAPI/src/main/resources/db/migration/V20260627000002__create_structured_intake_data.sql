@@ -1,4 +1,4 @@
-CREATE TABLE structured_intake_data (
+CREATE TABLE IF NOT EXISTS structured_intake_data (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL UNIQUE REFERENCES intake_sessions(id),
     symptom_list JSONB NOT NULL,
