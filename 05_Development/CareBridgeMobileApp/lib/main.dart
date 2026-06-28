@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'core/auth/auth_state.dart';
 import 'features/auth/screens/blocked_account_screen.dart';
 
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const CareBridgeApp());
@@ -67,9 +66,7 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Color(0xFFF6F1EC),
-      body: Center(
-        child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B))),
     );
   }
 }

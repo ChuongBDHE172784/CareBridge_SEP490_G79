@@ -41,20 +41,31 @@ class _ViewContentScreenState extends State<ViewContentScreen>
   }
 
   Future<void> _loadArticles() async {
-    setState(() { _loadingArticles = true; _articlesError = null; });
+    setState(() {
+      _loadingArticles = true;
+      _articlesError = null;
+    });
     try {
-      final data = await apiGet('/api/v1/content?stage=$_stage&type=ARTICLE&page=0&size=20');
+      final data = await apiGet(
+        '/api/v1/content?stage=$_stage&type=ARTICLE&page=0&size=20',
+      );
       setState(() {
         _articles = (data['data'] as List? ?? []);
         _loadingArticles = false;
       });
     } catch (e) {
-      setState(() { _articlesError = e.toString(); _loadingArticles = false; });
+      setState(() {
+        _articlesError = e.toString();
+        _loadingArticles = false;
+      });
     }
   }
 
   Future<void> _loadChecklists() async {
-    setState(() { _loadingChecklists = true; _checklistsError = null; });
+    setState(() {
+      _loadingChecklists = true;
+      _checklistsError = null;
+    });
     try {
       final data = await apiGet('/api/v1/content/checklists?stage=$_stage');
       setState(() {
@@ -62,7 +73,10 @@ class _ViewContentScreenState extends State<ViewContentScreen>
         _loadingChecklists = false;
       });
     } catch (e) {
-      setState(() { _checklistsError = e.toString(); _loadingChecklists = false; });
+      setState(() {
+        _checklistsError = e.toString();
+        _loadingChecklists = false;
+      });
     }
   }
 
@@ -79,7 +93,10 @@ class _ViewContentScreenState extends State<ViewContentScreen>
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Kiến thức sức khoẻ', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Kiến thức sức khoẻ',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
         bottom: TabBar(
           controller: _tabCtrl,
@@ -99,22 +116,40 @@ class _ViewContentScreenState extends State<ViewContentScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                const Text('Giai đoạn: ', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
+                const Text(
+                  'Giai đoạn: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _stage,
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'PREGNANCY', child: Text('Thai kỳ')),
-                      DropdownMenuItem(value: 'POSTPARTUM', child: Text('Sau sinh')),
-                      DropdownMenuItem(value: 'BABY_CARE', child: Text('Chăm sóc bé')),
+                      DropdownMenuItem(
+                        value: 'PREGNANCY',
+                        child: Text('Thai kỳ'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'POSTPARTUM',
+                        child: Text('Sau sinh'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'BABY_CARE',
+                        child: Text('Chăm sóc bé'),
+                      ),
                     ],
                     onChanged: _onStageChanged,
                   ),
@@ -154,15 +189,28 @@ class _ArticlesTab extends StatelessWidget {
   final VoidCallback onRetry;
 
   const _ArticlesTab({
-    required this.articles, required this.loading,
-    required this.error, required this.onRetry,
+    required this.articles,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B)));
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+      );
+    }
     if (error != null) return _retryView(error!, onRetry);
-    if (articles.isEmpty) return const Center(child: Text('Không tìm thấy bài viết nào', style: TextStyle(color: Colors.grey)));
+    if (articles.isEmpty) {
+      return const Center(
+        child: Text(
+          'Không tìm thấy bài viết nào',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
     return RefreshIndicator(
       color: const Color(0xFFC98C7B),
       onRefresh: () async => onRetry(),
@@ -173,24 +221,43 @@ class _ArticlesTab extends StatelessWidget {
           final a = articles[i];
           return Card(
             margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             child: ListTile(
               contentPadding: const EdgeInsets.all(14),
-              title: Text(a['title'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              title: Text(
+                a['title'] ?? '',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 4),
                   if (a['summary'] != null)
-                    Text(a['summary'], maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                    Text(
+                      a['summary'],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                   const SizedBox(height: 6),
-                  Text(a['publishedAt'] ?? '',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(
+                    a['publishedAt'] ?? '',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ],
               ),
-              trailing: const Icon(Icons.article_outlined, color: Color(0xFFC98C7B)),
+              trailing: const Icon(
+                Icons.article_outlined,
+                color: Color(0xFFC98C7B),
+              ),
             ),
           );
         },
@@ -206,15 +273,28 @@ class _ChecklistsTab extends StatelessWidget {
   final VoidCallback onRetry;
 
   const _ChecklistsTab({
-    required this.checklists, required this.loading,
-    required this.error, required this.onRetry,
+    required this.checklists,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B)));
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+      );
+    }
     if (error != null) return _retryView(error!, onRetry);
-    if (checklists.isEmpty) return const Center(child: Text('Không tìm thấy danh sách nào', style: TextStyle(color: Colors.grey)));
+    if (checklists.isEmpty) {
+      return const Center(
+        child: Text(
+          'Không tìm thấy danh sách nào',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
     return RefreshIndicator(
       color: const Color(0xFFC98C7B),
       onRefresh: () async => onRetry(),
@@ -226,20 +306,39 @@ class _ChecklistsTab extends StatelessWidget {
           final items = (cl['items'] ?? []) as List;
           return Card(
             margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             child: ExpansionTile(
               iconColor: const Color(0xFFC98C7B),
               collapsedIconColor: const Color(0xFFD4A895),
-              title: Text(cl['title'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: Text('${items.length} mục',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              children: items.map<Widget>((item) => ListTile(
-                dense: true,
-                leading: const Icon(Icons.check_circle_outline, color: Color(0xFFD4A895), size: 18),
-                title: Text(item['content'] ?? item['title'] ?? '',
-                    style: const TextStyle(fontSize: 13)),
-              )).toList(),
+              title: Text(
+                cl['title'] ?? '',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                '${items.length} mục',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              children: items
+                  .map<Widget>(
+                    (item) => ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.check_circle_outline,
+                        color: Color(0xFFD4A895),
+                        size: 18,
+                      ),
+                      title: Text(
+                        item['content'] ?? item['title'] ?? '',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           );
         },
@@ -255,12 +354,21 @@ Widget _retryView(String message, VoidCallback onRetry) {
       children: [
         const Icon(Icons.error_outline, size: 40, color: Color(0xFFC98C7B)),
         const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54),
+        ),
         const SizedBox(height: 12),
         ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC98C7B)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFC98C7B),
+          ),
           onPressed: onRetry,
-          child: const Text('Thử lại', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: const Text(
+            'Thử lại',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     ),

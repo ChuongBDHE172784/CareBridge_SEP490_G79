@@ -78,7 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       setState(() => _errorMessage = msg);
     } catch (_) {
-      setState(() => _errorMessage = 'Không thể kết nối đến máy chủ. Kiểm tra kết nối mạng.');
+      setState(
+        () => _errorMessage =
+            'Không thể kết nối đến máy chủ. Kiểm tra kết nối mạng.',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -162,13 +165,17 @@ class _LoginScreenState extends State<LoginScreen> {
           border: Border.all(color: _borderColor),
           boxShadow: [
             BoxShadow(
-              color: _textColor.withOpacity(0.06),
+              color: _textColor.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Icon(Icons.volunteer_activism, size: 48, color: _accentPrimary),
+        child: const Icon(
+          Icons.volunteer_activism,
+          size: 48,
+          color: _accentPrimary,
+        ),
       ),
     );
   }
@@ -245,9 +252,12 @@ class _LoginScreenState extends State<LoginScreen> {
           hint: 'Nhập mật khẩu',
           obscureText: _obscurePassword,
           suffixIcon: IconButton(
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
             icon: Icon(
-              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               size: 20,
               color: const Color(0xFF9C857C),
             ),
@@ -285,13 +295,16 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
               shape: const StadiumBorder(),
-              disabledBackgroundColor: _primaryColor.withOpacity(0.6),
+              disabledBackgroundColor: _primaryColor.withValues(alpha: 0.6),
             ),
             child: _isLoading
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text(
                     'Đăng nhập',
@@ -316,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
         border: Border.all(color: _borderColor),
         boxShadow: [
           BoxShadow(
-            color: _textColor.withOpacity(0.06),
+            color: _textColor.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -328,10 +341,14 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6DACF).withOpacity(0.3),
+              color: const Color(0xFFF6DACF).withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.info_outline, size: 24, color: Color(0xFF6E5A52)),
+            child: const Icon(
+              Icons.info_outline,
+              size: 24,
+              color: Color(0xFF6E5A52),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

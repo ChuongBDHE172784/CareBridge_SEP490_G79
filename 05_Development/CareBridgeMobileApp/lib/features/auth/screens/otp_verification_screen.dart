@@ -33,10 +33,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   static const int _otpLength = 6;
   static const int _resendCooldownSeconds = 60;
 
-  final List<TextEditingController> _cellCtrls =
-      List.generate(_otpLength, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(_otpLength, (_) => FocusNode());
+  final List<TextEditingController> _cellCtrls = List.generate(
+    _otpLength,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(
+    _otpLength,
+    (_) => FocusNode(),
+  );
 
   bool _isLoading = false;
   bool _isResending = false;
@@ -52,8 +56,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   void dispose() {
-    for (final c in _cellCtrls) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    for (final c in _cellCtrls) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -62,7 +70,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     _resendCountdown = _resendCooldownSeconds;
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       setState(() {
         if (_resendCountdown > 0) {
           _resendCountdown--;
@@ -123,7 +134,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       return;
     }
 
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       await AuthService.instance.verifyOtp(
@@ -144,7 +158,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         msg = 'Xác thực thất bại. Vui lòng thử lại.';
       }
       setState(() => _errorMessage = msg);
-      for (final c in _cellCtrls) c.clear();
+      for (final c in _cellCtrls) {
+        c.clear();
+      }
       if (mounted) _focusNodes[0].requestFocus();
     } catch (_) {
       setState(() => _errorMessage = 'Không thể kết nối đến máy chủ.');
@@ -162,7 +178,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         phone: !widget.isEmail ? widget.identifier : null,
       );
       _startCountdown();
-      for (final c in _cellCtrls) c.clear();
+      for (final c in _cellCtrls) {
+        c.clear();
+      }
       if (mounted) _focusNodes[0].requestFocus();
       setState(() => _errorMessage = null);
     } catch (_) {
@@ -211,13 +229,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    disabledBackgroundColor: _primaryColor.withOpacity(0.6),
+                    disabledBackgroundColor: _primaryColor.withValues(
+                      alpha: 0.6,
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text(
                           'Xác nhận',
@@ -304,7 +327,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Widget _buildCell(int index) {
-    final isFocused = _focusNodes[index].hasFocus;
     final hasError = _errorMessage != null;
 
     return KeyboardListener(
@@ -383,7 +405,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: _mutedColor.withOpacity(0.7),
+              color: _mutedColor.withValues(alpha: 0.7),
             ),
           ),
           Text(
@@ -406,7 +428,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ? const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: _primaryColor),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _primaryColor,
+                ),
               )
             : const Text(
                 'Gửi lại mã',

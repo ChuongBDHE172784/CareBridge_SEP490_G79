@@ -35,8 +35,11 @@ Future<dynamic> apiGet(String path, {String? token}) async {
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiPost(String path, Map<String, dynamic> body,
-    {String? token}) async {
+Future<dynamic> apiPost(
+  String path,
+  Map<String, dynamic> body, {
+  String? token,
+}) async {
   final uri = Uri.parse('$_baseUrl$path');
   final response = await http.post(
     uri,

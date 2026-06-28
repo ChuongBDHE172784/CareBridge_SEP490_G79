@@ -5,7 +5,7 @@ import '../storage/token_storage.dart';
 
 class AuthState extends ChangeNotifier {
   AuthState._({TokenStorage? storage})
-      : _storage = storage ?? SecureTokenStorage();
+    : _storage = storage ?? SecureTokenStorage();
 
   static final AuthState instance = AuthState._();
 

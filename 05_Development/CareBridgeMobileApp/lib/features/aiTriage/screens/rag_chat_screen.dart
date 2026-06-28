@@ -47,7 +47,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
     if (question.isEmpty || _sending) return;
 
     setState(() {
-      _messages.add(_Message(text: question, isUser: true, time: DateTime.now()));
+      _messages.add(
+        _Message(text: question, isUser: true, time: DateTime.now()),
+      );
       _sending = true;
     });
     _inputCtrl.clear();
@@ -57,16 +59,20 @@ class _RagChatScreenState extends State<RagChatScreen> {
       final data = await apiPost('/api/v1/rag/answer', {'question': question});
       final answer = data['answer'] as String? ?? data.toString();
       setState(() {
-        _messages.add(_Message(text: answer, isUser: false, time: DateTime.now()));
+        _messages.add(
+          _Message(text: answer, isUser: false, time: DateTime.now()),
+        );
         _sending = false;
       });
     } catch (e) {
       setState(() {
-        _messages.add(_Message(
-          text: 'Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại.',
-          isUser: false,
-          time: DateTime.now(),
-        ));
+        _messages.add(
+          _Message(
+            text: 'Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại.',
+            isUser: false,
+            time: DateTime.now(),
+          ),
+        );
         _sending = false;
       });
     }
@@ -89,8 +95,14 @@ class _RagChatScreenState extends State<RagChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            Text('CareBridge AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('Trợ lý sức khoẻ', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            Text(
+              'CareBridge AI',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Text(
+              'Trợ lý sức khoẻ',
+              style: TextStyle(fontSize: 11, color: Colors.white70),
+            ),
           ],
         ),
         actions: [
@@ -102,11 +114,15 @@ class _RagChatScreenState extends State<RagChatScreen> {
               builder: (_) => AlertDialog(
                 title: const Text('Về Trợ lý AI'),
                 content: const Text(
-                    'CareBridge AI chỉ cung cấp thông tin tham khảo, không thay thế tư vấn y tế chuyên nghiệp, chẩn đoán hoặc điều trị. Trong trường hợp khẩn cấp, hãy liên hệ ngay với dịch vụ cấp cứu.'),
+                  'CareBridge AI chỉ cung cấp thông tin tham khảo, không thay thế tư vấn y tế chuyên nghiệp, chẩn đoán hoặc điều trị. Trong trường hợp khẩn cấp, hãy liên hệ ngay với dịch vụ cấp cứu.',
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Đồng ý', style: TextStyle(color: Color(0xFFC98C7B))),
+                    child: const Text(
+                      'Đồng ý',
+                      style: TextStyle(color: Color(0xFFC98C7B)),
+                    ),
                   ),
                 ],
               ),
@@ -117,27 +133,28 @@ class _RagChatScreenState extends State<RagChatScreen> {
       ),
       body: Column(
         children: [
-          if (_messages.isEmpty)
-            Expanded(child: _WelcomeView()),
+          if (_messages.isEmpty) Expanded(child: _WelcomeView()),
           if (_messages.isNotEmpty)
             Expanded(
               child: ListView.builder(
                 controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
                 itemCount: _messages.length + (_sending ? 1 : 0),
                 itemBuilder: (ctx, i) {
                   if (i == _messages.length) {
                     return const _TypingIndicator();
                   }
-                  return _MessageBubble(message: _messages[i], formatTime: _formatTime);
+                  return _MessageBubble(
+                    message: _messages[i],
+                    formatTime: _formatTime,
+                  );
                 },
               ),
             ),
-          _InputBar(
-            controller: _inputCtrl,
-            sending: _sending,
-            onSend: _send,
-          ),
+          _InputBar(controller: _inputCtrl, sending: _sending, onSend: _send),
         ],
       ),
     );
@@ -160,11 +177,21 @@ class _WelcomeView extends StatelessWidget {
                 color: const Color(0xFFC98C7B).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.health_and_safety, size: 40, color: Color(0xFFC98C7B)),
+              child: const Icon(
+                Icons.health_and_safety,
+                size: 40,
+                color: Color(0xFFC98C7B),
+              ),
             ),
             const SizedBox(height: 20),
-            const Text('Trợ lý AI CareBridge',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFC98C7B))),
+            const Text(
+              'Trợ lý AI CareBridge',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFC98C7B),
+              ),
+            ),
             const SizedBox(height: 12),
             const Text(
               'Hỏi tôi bất cứ điều gì về sức khoẻ mẹ bầu, thai kỳ, chăm sóc sau sinh hoặc sự phát triển của bé.',
@@ -175,7 +202,11 @@ class _WelcomeView extends StatelessWidget {
             const Text(
               'Lưu ý: Phản hồi AI chỉ mang tính tham khảo, không thay thế tư vấn y tế.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
@@ -195,14 +226,20 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
             CircleAvatar(
               radius: 16,
               backgroundColor: const Color(0xFFC98C7B).withValues(alpha: 0.15),
-              child: const Icon(Icons.health_and_safety, size: 16, color: Color(0xFFC98C7B)),
+              child: const Icon(
+                Icons.health_and_safety,
+                size: 16,
+                color: Color(0xFFC98C7B),
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -269,7 +306,11 @@ class _TypingIndicator extends StatelessWidget {
           CircleAvatar(
             radius: 16,
             backgroundColor: const Color(0xFFC98C7B).withValues(alpha: 0.15),
-            child: const Icon(Icons.health_and_safety, size: 16, color: Color(0xFFC98C7B)),
+            child: const Icon(
+              Icons.health_and_safety,
+              size: 16,
+              color: Color(0xFFC98C7B),
+            ),
           ),
           const SizedBox(width: 8),
           Container(
@@ -277,7 +318,12 @@ class _TypingIndicator extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4)],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 4,
+                ),
+              ],
             ),
             child: const SizedBox(
               width: 40,
@@ -297,7 +343,11 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
-  const _InputBar({required this.controller, required this.sending, required this.onSend});
+  const _InputBar({
+    required this.controller,
+    required this.sending,
+    required this.onSend,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +356,11 @@ class _InputBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, -2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
         ],
       ),
       child: SafeArea(
@@ -324,7 +378,10 @@ class _InputBar extends StatelessWidget {
                   hintText: 'Đặt câu hỏi sức khoẻ...',
                   filled: true,
                   fillColor: const Color(0xFFF6F1EC),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -340,13 +397,19 @@ class _InputBar extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: sending ? Colors.grey.shade300 : const Color(0xFFC98C7B),
+                  color: sending
+                      ? Colors.grey.shade300
+                      : const Color(0xFFC98C7B),
                   shape: BoxShape.circle,
                 ),
                 child: sending
                     ? const Padding(
                         padding: EdgeInsets.all(10),
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Icon(Icons.send, color: Colors.white, size: 20),
               ),
             ),

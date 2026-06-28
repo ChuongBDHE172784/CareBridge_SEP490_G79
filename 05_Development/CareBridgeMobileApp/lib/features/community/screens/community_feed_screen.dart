@@ -33,7 +33,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
   void _onScroll() {
     if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 &&
-        !_loading && _hasMore) {
+        !_loading &&
+        _hasMore) {
       _loadFeed();
     }
   }
@@ -76,16 +77,24 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Bảng tin cộng đồng', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Bảng tin cộng đồng',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
       ),
       body: _error != null && _items.isEmpty
-          ? _ErrorView(message: _error!, onRetry: () => _loadFeed(refresh: true))
+          ? _ErrorView(
+              message: _error!,
+              onRetry: () => _loadFeed(refresh: true),
+            )
           : RefreshIndicator(
               color: _primary,
               onRefresh: () => _loadFeed(refresh: true),
               child: _items.isEmpty && _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primary))
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _primary),
+                    )
                   : ListView.builder(
                       controller: _scroll,
                       padding: const EdgeInsets.all(12),
@@ -94,7 +103,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                         if (i == _items.length) {
                           return const Padding(
                             padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator(color: _primary)),
+                            child: Center(
+                              child: CircularProgressIndicator(color: _primary),
+                            ),
                           );
                         }
                         return _FeedCard(item: _items[i]);
@@ -131,45 +142,88 @@ class _FeedCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: urgencyColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(urgency,
-                      style: TextStyle(color: urgencyColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    urgency,
+                    style: TextStyle(
+                      color: urgencyColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (item['topicName'] != null)
                   Flexible(
-                    child: Text('${item['topicName']}',
-                        style: const TextStyle(color: Color(0xFFD4A895), fontSize: 12),
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      '${item['topicName']}',
+                      style: const TextStyle(
+                        color: Color(0xFFD4A895),
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(item['title'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              item['title'] ?? '',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 14, color: Color(0xFF9E9E9E)),
+                const Icon(
+                  Icons.person_outline,
+                  size: 14,
+                  color: Color(0xFF9E9E9E),
+                ),
                 const SizedBox(width: 4),
-                Text(item['authorDisplay'] ?? 'Ẩn danh',
-                    style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 12)),
+                Text(
+                  item['authorDisplay'] ?? 'Ẩn danh',
+                  style: const TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 12,
+                  ),
+                ),
                 const Spacer(),
-                const Icon(Icons.thumb_up_outlined, size: 14, color: Color(0xFFC98C7B)),
+                const Icon(
+                  Icons.thumb_up_outlined,
+                  size: 14,
+                  color: Color(0xFFC98C7B),
+                ),
                 const SizedBox(width: 4),
-                Text('${item['likeCount'] ?? 0}',
-                    style: const TextStyle(color: Color(0xFF757575), fontSize: 12)),
+                Text(
+                  '${item['likeCount'] ?? 0}',
+                  style: const TextStyle(
+                    color: Color(0xFF757575),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFFD4A895)),
+                const Icon(
+                  Icons.chat_bubble_outline,
+                  size: 14,
+                  color: Color(0xFFD4A895),
+                ),
                 const SizedBox(width: 4),
-                Text('${item['answerCount'] ?? 0}',
-                    style: const TextStyle(color: Color(0xFF757575), fontSize: 12)),
+                Text(
+                  '${item['answerCount'] ?? 0}',
+                  style: const TextStyle(
+                    color: Color(0xFF757575),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ],
@@ -194,12 +248,21 @@ class _ErrorView extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFC98C7B)),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC98C7B)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC98C7B),
+              ),
               onPressed: onRetry,
-              child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),

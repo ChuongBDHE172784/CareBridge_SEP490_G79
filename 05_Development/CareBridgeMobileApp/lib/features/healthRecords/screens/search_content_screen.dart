@@ -35,7 +35,10 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
   }
 
   Future<void> _search() async {
-    setState(() { _loading = true; _searched = true; });
+    setState(() {
+      _loading = true;
+      _searched = true;
+    });
     try {
       final params = StringBuffer('/api/v1/content/search?');
       final kw = _searchCtrl.text.trim();
@@ -50,7 +53,10 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
         _loading = false;
       });
     } catch (_) {
-      setState(() { _results = []; _loading = false; });
+      setState(() {
+        _results = [];
+        _loading = false;
+      });
     }
   }
 
@@ -67,7 +73,10 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Tìm kiếm nội dung', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Tìm kiếm nội dung',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
       ),
       body: Column(
@@ -86,12 +95,19 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
                         icon: const Icon(Icons.clear, color: Colors.grey),
                         onPressed: () {
                           _searchCtrl.clear();
-                          setState(() { _results = []; _searched = false; });
-                        })
+                          setState(() {
+                            _results = [];
+                            _searched = false;
+                          });
+                        },
+                      )
                     : null,
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
@@ -111,16 +127,42 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
                     decoration: InputDecoration(
                       labelText: 'Loại',
                       labelStyle: const TextStyle(color: _accent, fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('Tất cả loại', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'ARTICLE', child: Text('Bài viết', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'FAQ', child: Text('Hỏi đáp', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'CHECKLIST', child: Text('Danh sách', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(
+                          'Tất cả loại',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ARTICLE',
+                        child: Text('Bài viết', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'FAQ',
+                        child: Text('Hỏi đáp', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'CHECKLIST',
+                        child: Text(
+                          'Danh sách',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
                     ],
-                    onChanged: (v) { setState(() => _type = v); _search(); },
+                    onChanged: (v) {
+                      setState(() => _type = v);
+                      _search();
+                    },
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -130,16 +172,42 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
                     decoration: InputDecoration(
                       labelText: 'Giai đoạn',
                       labelStyle: const TextStyle(color: _accent, fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('Tất cả giai đoạn', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'PREGNANCY', child: Text('Thai kỳ', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'POSTPARTUM', child: Text('Sau sinh', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'BABY_CARE', child: Text('Chăm sóc bé', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(
+                          'Tất cả giai đoạn',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PREGNANCY',
+                        child: Text('Thai kỳ', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'POSTPARTUM',
+                        child: Text('Sau sinh', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'BABY_CARE',
+                        child: Text(
+                          'Chăm sóc bé',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
                     ],
-                    onChanged: (v) { setState(() => _stage = v); _search(); },
+                    onChanged: (v) {
+                      setState(() => _stage = v);
+                      _search();
+                    },
                   ),
                 ),
               ],
@@ -147,74 +215,114 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: _primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: _primary),
+                  )
                 : !_searched
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.search, size: 64, color: Color(0xFFFFCCB3)),
-                            SizedBox(height: 12),
-                            Text('Tìm kiếm nội dung sức khoẻ', style: TextStyle(color: Colors.grey)),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.search, size: 64, color: Color(0xFFFFCCB3)),
+                        SizedBox(height: 12),
+                        Text(
+                          'Tìm kiếm nội dung sức khoẻ',
+                          style: TextStyle(color: Colors.grey),
                         ),
-                      )
-                    : _results.isEmpty
-                        ? const Center(child: Text('Không tìm thấy kết quả nào', style: TextStyle(color: Colors.grey)))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _results.length,
-                            itemBuilder: (ctx, i) {
-                              final r = _results[i];
-                              final typeColor = _typeColors[r['type']] ?? _primary;
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: typeColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(r['type'] ?? '',
-                                                style: TextStyle(color: typeColor, fontSize: 11, fontWeight: FontWeight.w600)),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          if (r['stage'] != null)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: _accent.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(r['stage'],
-                                                  style: const TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w600)),
-                                            ),
-                                        ],
+                      ],
+                    ),
+                  )
+                : _results.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Không tìm thấy kết quả nào',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _results.length,
+                    itemBuilder: (ctx, i) {
+                      final r = _results[i];
+                      final typeColor = _typeColors[r['type']] ?? _primary;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: typeColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      r['type'] ?? '',
+                                      style: TextStyle(
+                                        color: typeColor,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(r['title'] ?? '',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis),
-                                      if (r['publishedAt'] != null) ...[
-                                        const SizedBox(height: 4),
-                                        Text(r['publishedAt'],
-                                            style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                      ],
-                                    ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (r['stage'] != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _accent.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        r['stage'],
+                                        style: const TextStyle(
+                                          color: _accent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                r['title'] ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (r['publishedAt'] != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  r['publishedAt'],
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
                                   ),
                                 ),
-                              );
-                            },
+                              ],
+                            ],
                           ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

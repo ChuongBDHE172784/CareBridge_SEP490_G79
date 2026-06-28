@@ -68,7 +68,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Trả lời câu hỏi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Trả lời câu hỏi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -89,10 +92,22 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Câu hỏi', style: TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Câu hỏi',
+                        style: TextStyle(
+                          color: _accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(widget.questionTitle!,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(
+                        widget.questionTitle!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -102,7 +117,8 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                 controller: _bodyCtrl,
                 decoration: InputDecoration(
                   labelText: 'Câu trả lời của bạn',
-                  hintText: 'Chia sẻ kiến thức hoặc kinh nghiệm (tối thiểu 20 ký tự)',
+                  hintText:
+                      'Chia sẻ kiến thức hoặc kinh nghiệm (tối thiểu 20 ký tự)',
                   labelStyle: const TextStyle(color: _primary),
                   alignLabelWithHint: true,
                   focusedBorder: OutlineInputBorder(
@@ -138,8 +154,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Đây là kinh nghiệm cá nhân'),
-                subtitle: const Text('Đánh dấu nếu câu trả lời dựa trên kinh nghiệm cá nhân',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                subtitle: const Text(
+                  'Đánh dấu nếu câu trả lời dựa trên kinh nghiệm cá nhân',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 value: _isPersonalExperience,
                 activeThumbColor: _accent,
                 onChanged: (v) => setState(() => _isPersonalExperience = v),
@@ -155,10 +173,20 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
                     ? const SizedBox(
-                        height: 20, width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Gửi câu trả lời',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Gửi câu trả lời',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ],
           ),

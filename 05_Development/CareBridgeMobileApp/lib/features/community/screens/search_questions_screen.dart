@@ -43,14 +43,18 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
 
   void _onScroll() {
     if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 &&
-        !_loading && _hasMore) {
+        !_loading &&
+        _hasMore) {
       _search();
     }
   }
 
   void _onSearchChanged(String _) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () => _search(refresh: true));
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _search(refresh: true),
+    );
   }
 
   Future<void> _loadTopics() async {
@@ -70,7 +74,9 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
       }
     });
     try {
-      final params = StringBuffer('/api/v1/community/questions?page=$_page&size=20');
+      final params = StringBuffer(
+        '/api/v1/community/questions?page=$_page&size=20',
+      );
       final kw = _searchCtrl.text.trim();
       if (kw.isNotEmpty) params.write('&keyword=${Uri.encodeComponent(kw)}');
       if (_selectedTopicId != null) params.write('&topicId=$_selectedTopicId');
@@ -100,7 +106,10 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Tìm câu hỏi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Tìm câu hỏi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
       ),
       body: Column(
@@ -120,11 +129,15 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
                         onPressed: () {
                           _searchCtrl.clear();
                           _search(refresh: true);
-                        })
+                        },
+                      )
                     : null,
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
@@ -144,14 +157,28 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
                     decoration: InputDecoration(
                       labelText: 'Chủ đề',
                       labelStyle: const TextStyle(color: _accent, fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('Tất cả', style: TextStyle(fontSize: 13))),
-                      ..._topics.map((t) => DropdownMenuItem(
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Tất cả', style: TextStyle(fontSize: 13)),
+                      ),
+                      ..._topics.map(
+                        (t) => DropdownMenuItem(
                           value: t['id'].toString(),
-                          child: Text(t['name'] ?? '', style: const TextStyle(fontSize: 13)))),
+                          child: Text(
+                            t['name'] ?? '',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
                     ],
                     onChanged: (v) {
                       setState(() => _selectedTopicId = v);
@@ -166,14 +193,34 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
                     decoration: InputDecoration(
                       labelText: 'Giai đoạn',
                       labelStyle: const TextStyle(color: _accent, fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('Tất cả', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'PREGNANCY', child: Text('Thai kỳ', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'POSTPARTUM', child: Text('Sau sinh', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'BABY_CARE', child: Text('Chăm sóc bé', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text('Tất cả', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PREGNANCY',
+                        child: Text('Thai kỳ', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'POSTPARTUM',
+                        child: Text('Sau sinh', style: TextStyle(fontSize: 13)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'BABY_CARE',
+                        child: Text(
+                          'Chăm sóc bé',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
                     ],
                     onChanged: (v) {
                       setState(() => _selectedStage = v);
@@ -186,53 +233,84 @@ class _SearchQuestionsScreenState extends State<SearchQuestionsScreen> {
           ),
           Expanded(
             child: _results.isEmpty && _loading
-                ? const Center(child: CircularProgressIndicator(color: _primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: _primary),
+                  )
                 : _results.isEmpty
-                    ? const Center(
-                        child: Text('Không tìm thấy câu hỏi nào', style: TextStyle(color: Colors.grey)))
-                    : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _results.length + (_hasMore ? 1 : 0),
-                        itemBuilder: (ctx, i) {
-                          if (i == _results.length) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(child: CircularProgressIndicator(color: _primary)),
-                            );
-                          }
-                          final q = _results[i];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            child: ListTile(
-                              title: Text(q['title'] ?? '',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis),
-                              subtitle: Row(
-                                children: [
-                                  if (q['stage'] != null)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _accent.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(q['stage'],
-                                          style: const TextStyle(color: _accent, fontSize: 11)),
-                                    ),
-                                  const SizedBox(width: 8),
-                                  Text('${q['answerCount'] ?? 0} câu trả lời',
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                                ],
-                              ),
-                              trailing: const Icon(Icons.chevron_right, color: _primary),
+                ? const Center(
+                    child: Text(
+                      'Không tìm thấy câu hỏi nào',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _results.length + (_hasMore ? 1 : 0),
+                    itemBuilder: (ctx, i) {
+                      if (i == _results.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: CircularProgressIndicator(color: _primary),
+                          ),
+                        );
+                      }
+                      final q = _results[i];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            q['title'] ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
-                          );
-                        },
-                      ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Row(
+                            children: [
+                              if (q['stage'] != null)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _accent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    q['stage'],
+                                    style: const TextStyle(
+                                      color: _accent,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${q['answerCount'] ?? 0} câu trả lời',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: _primary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

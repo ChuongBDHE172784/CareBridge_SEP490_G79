@@ -64,8 +64,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng câu hỏi thành công!'),
-              backgroundColor: Color(0xFF4CAF50)),
+          const SnackBar(
+            content: Text('Đăng câu hỏi thành công!'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
         );
         Navigator.of(context).pop(true);
       }
@@ -81,28 +83,28 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   }
 
   InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: const TextStyle(color: _primary),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _primary, width: 2),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      );
+    labelText: label,
+    hintText: hint,
+    labelStyle: const TextStyle(color: _primary),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: _primary, width: 2),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Colors.red),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Colors.red, width: 2),
+    ),
+    filled: true,
+    fillColor: Colors.white,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +113,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        title: const Text('Đặt câu hỏi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Đặt câu hỏi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
       ),
       body: _loading
@@ -125,18 +130,26 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   children: [
                     TextFormField(
                       controller: _titleCtrl,
-                      decoration: _inputDeco('Tiêu đề', hint: 'Nhập tiêu đề câu hỏi'),
+                      decoration: _inputDeco(
+                        'Tiêu đề',
+                        hint: 'Nhập tiêu đề câu hỏi',
+                      ),
                       validator: (v) => (v == null || v.trim().length < 10)
-                          ? 'Tiêu đề phải có ít nhất 10 ký tự' : null,
+                          ? 'Tiêu đề phải có ít nhất 10 ký tự'
+                          : null,
                       maxLength: 200,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _bodyCtrl,
-                      decoration: _inputDeco('Chi tiết', hint: 'Mô tả chi tiết câu hỏi của bạn'),
+                      decoration: _inputDeco(
+                        'Chi tiết',
+                        hint: 'Mô tả chi tiết câu hỏi của bạn',
+                      ),
                       maxLines: 5,
                       validator: (v) => (v == null || v.trim().length < 20)
-                          ? 'Chi tiết phải có ít nhất 20 ký tự' : null,
+                          ? 'Chi tiết phải có ít nhất 20 ký tự'
+                          : null,
                       maxLength: 2000,
                     ),
                     const SizedBox(height: 14),
@@ -144,10 +157,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       initialValue: _selectedTopicId,
                       decoration: _inputDeco('Chủ đề (tuỳ chọn)'),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('-- Chọn chủ đề --')),
-                        ..._topics.map((t) => DropdownMenuItem(
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('-- Chọn chủ đề --'),
+                        ),
+                        ..._topics.map(
+                          (t) => DropdownMenuItem(
                             value: t['id'].toString(),
-                            child: Text(t['name'] ?? t['id'].toString()))),
+                            child: Text(t['name'] ?? t['id'].toString()),
+                          ),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _selectedTopicId = v),
                     ),
@@ -156,9 +175,18 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       initialValue: _stage,
                       decoration: _inputDeco('Giai đoạn'),
                       items: const [
-                        DropdownMenuItem(value: 'PREGNANCY', child: Text('Thai kỳ')),
-                        DropdownMenuItem(value: 'POSTPARTUM', child: Text('Sau sinh')),
-                        DropdownMenuItem(value: 'BABY_CARE', child: Text('Chăm sóc bé')),
+                        DropdownMenuItem(
+                          value: 'PREGNANCY',
+                          child: Text('Thai kỳ'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'POSTPARTUM',
+                          child: Text('Sau sinh'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'BABY_CARE',
+                          child: Text('Chăm sóc bé'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _stage = v!),
                     ),
@@ -167,9 +195,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       initialValue: _urgency,
                       decoration: _inputDeco('Mức độ khẩn cấp'),
                       items: const [
-                        DropdownMenuItem(value: 'NORMAL', child: Text('Bình thường')),
+                        DropdownMenuItem(
+                          value: 'NORMAL',
+                          child: Text('Bình thường'),
+                        ),
                         DropdownMenuItem(value: 'HIGH', child: Text('Khẩn')),
-                        DropdownMenuItem(value: 'EMERGENCY', child: Text('Khẩn cấp')),
+                        DropdownMenuItem(
+                          value: 'EMERGENCY',
+                          child: Text('Khẩn cấp'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _urgency = v!),
                     ),
@@ -177,8 +211,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Đăng ẩn danh'),
-                      subtitle: const Text('Tên của bạn sẽ được ẩn',
-                          style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      subtitle: const Text(
+                        'Tên của bạn sẽ được ẩn',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                       value: _isAnonymous,
                       activeThumbColor: _accent,
                       onChanged: (v) => setState(() => _isAnonymous = v),
@@ -194,9 +230,20 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       onPressed: _submitting ? null : _submit,
                       child: _submitting
                           ? const SizedBox(
-                              height: 20, width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Đăng câu hỏi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Đăng câu hỏi',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ],
                 ),

@@ -57,10 +57,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool get _isEmailInput => _identifierCtrl.text.contains('@');
 
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
-  bool get _hasSpecialChar => RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
-  bool get _passwordsMatch =>
-      _passwordCtrl.text == _confirmPasswordCtrl.text &&
-      _confirmPasswordCtrl.text.isNotEmpty;
+  bool get _hasSpecialChar =>
+      RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
 
   Future<void> _submit() async {
     final identifier = _identifierCtrl.text.trim();
@@ -162,9 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: _canvasColor.withOpacity(0.9),
-      ),
+      decoration: BoxDecoration(color: _canvasColor.withValues(alpha: 0.9)),
       child: Row(
         children: [
           IconButton(
@@ -250,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: _textColor.withOpacity(0.06),
+            color: _textColor.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -287,7 +283,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _passwordCtrl,
             hint: '••••••••',
             obscure: _obscurePassword,
-            onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+            onToggle: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
           const SizedBox(height: 16),
           // Confirm password
@@ -340,7 +337,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _borderColor.withOpacity(0.5)),
+        border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
       ),
       child: Stack(
         children: [
@@ -360,7 +357,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 28, bottom: 4),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 28,
+                bottom: 4,
+              ),
               child: TextField(
                 controller: controller,
                 keyboardType: keyboardType,
@@ -403,7 +405,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasError ? _errorColor : _borderColor.withOpacity(0.5),
+          color: hasError ? _errorColor : _borderColor.withValues(alpha: 0.5),
         ),
       ),
       child: Stack(
@@ -456,7 +458,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: IconButton(
               onPressed: onToggle,
               icon: Icon(
-                obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 size: 20,
                 color: _mutedColor,
               ),
@@ -491,12 +495,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onTap: () => setState(() => _selectedRole = value),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? _primaryColor : _surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: isSelected ? _primaryColor : _borderColor.withOpacity(0.5),
+                    color: isSelected
+                        ? _primaryColor
+                        : _borderColor.withValues(alpha: 0.5),
                   ),
                 ),
                 child: Text(
@@ -521,7 +530,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1EC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFE2D9).withOpacity(0.5)),
+        border: Border.all(
+          color: const Color(0xFFFFE2D9).withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,7 +550,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 8),
           _buildCheckItem('Ít nhất 8 ký tự', _hasMinLength),
           const SizedBox(height: 6),
-          _buildCheckItem('Chứa ký tự đặc biệt (@, #, \$, ...)', _hasSpecialChar),
+          _buildCheckItem(
+            'Chứa ký tự đặc biệt (@, #, \$, ...)',
+            _hasSpecialChar,
+          ),
         ],
       ),
     );
@@ -624,7 +638,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 34),
       decoration: BoxDecoration(
         color: _canvasColor,
-        border: Border(top: BorderSide(color: _borderColor.withOpacity(0.3))),
+        border: Border(
+          top: BorderSide(color: _borderColor.withValues(alpha: 0.3)),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -638,13 +654,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 backgroundColor: _primaryColor,
                 foregroundColor: Colors.white,
                 shape: const StadiumBorder(),
-                disabledBackgroundColor: _primaryColor.withOpacity(0.6),
+                disabledBackgroundColor: _primaryColor.withValues(alpha: 0.6),
               ),
               child: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text(
                       'Tạo tài khoản',
