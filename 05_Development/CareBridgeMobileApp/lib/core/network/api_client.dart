@@ -157,6 +157,21 @@ Future<dynamic> apiPut(String path, Map<String, dynamic> body,
   throw ApiException(response.statusCode, response.body);
 }
 
+Future<dynamic> apiPatch(String path, Map<String, dynamic> body,
+    {String? token}) async {
+  final uri = Uri.parse('$_baseUrl$path');
+  final encoded = jsonEncode(body);
+  var response = await http.patch(uri, headers: _headers(token: token), body: encoded);
+  response = await _handleUnauthorized(
+    response, token, () => http.patch(uri, headers: _headers(), body: encoded));
+  if (response.statusCode >= 200 && response.statusCode < 300) {
+    if (response.body.isEmpty) return null;
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+  if (response.statusCode == 401) await _handle401(response);
+  throw ApiException(response.statusCode, response.body);
+}
+
 Future<dynamic> apiDelete(String path, {String? token}) async {
   final uri = Uri.parse('$_baseUrl$path');
   var response = await http.delete(uri, headers: _headers(token: token));

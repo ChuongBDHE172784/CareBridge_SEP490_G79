@@ -6,7 +6,8 @@ import 'change_password_screen.dart';
 import 'logout_confirmation_screen.dart';
 import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
-import '../../../features/notification/screens/notification_center_screen.dart';
+import '../../../features/baby/screens/baby_profiles_screen.dart';
+import '../../../features/familySync/screens/care_groups_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key});
@@ -82,12 +83,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
               child: Text('Hồ sơ tài khoản', textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor)),
             ),
-            IconButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
-              ),
-              icon: const Icon(Icons.notifications_outlined, color: _primaryColor),
-            ),
+            const SizedBox(width: 48),
           ],
         ),
       ),
@@ -114,6 +110,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             }),
             _menuItem(Icons.notifications_outlined, 'Cài đặt thông báo', () {
               // TODO: navigate to notification preferences (CB-113)
+            }),
+          ]),
+          const SizedBox(height: 16),
+          _buildMenuCard([
+            _menuItem(Icons.child_care_outlined, 'Hồ sơ bé', () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BabyProfilesScreen()));
+            }),
+            _menuItem(Icons.group_outlined, 'Nhóm chăm sóc', () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CareGroupsScreen()));
             }),
           ]),
           const SizedBox(height: 16),

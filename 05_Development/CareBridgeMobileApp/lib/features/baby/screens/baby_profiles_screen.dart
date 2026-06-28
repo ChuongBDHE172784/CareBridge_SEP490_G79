@@ -43,8 +43,9 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
     try {
       final list = await _service.listBabyProfiles();
       if (mounted) setState(() { _profiles = list; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() { _error = 'Không thể tải danh sách hồ sơ.'; _loading = false; });
+    } catch (e) {
+      debugPrint('[BabyProfilesScreen] _loadProfiles error: $e');
+      if (mounted) setState(() { _error = 'Không thể tải danh sách hồ sơ.\n$e'; _loading = false; });
     }
   }
 
@@ -100,17 +101,29 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      child: const Text(
-        'Hồ sơ bé',
-        style: TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: _primary,
-          letterSpacing: -0.24,
-        ),
+    return SizedBox(
+      height: 56,
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back, color: _primary),
+          ),
+          const Expanded(
+            child: Text(
+              'Hồ sơ bé',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+                letterSpacing: -0.24,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
       ),
     );
   }

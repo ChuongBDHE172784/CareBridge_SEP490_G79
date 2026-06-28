@@ -131,8 +131,6 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
               ),
-              const Expanded(child: SizedBox()),
-              IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_outlined, color: _onSurfaceVariant)),
             ],
           ),
           const Text('Nhóm chăm sóc',

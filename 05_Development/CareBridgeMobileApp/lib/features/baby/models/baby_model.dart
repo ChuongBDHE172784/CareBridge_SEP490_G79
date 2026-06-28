@@ -74,7 +74,7 @@ class BabyProfile {
     return BabyProfile(
       id: json['id'] as String,
       nickname: json['nickname'] as String,
-      birthDate: DateTime.parse(json['birthDate'] as String),
+      birthDate: json['birthDate'] != null ? DateTime.parse(json['birthDate'] as String) : DateTime(2000),
       gender: BabyGenderExtension.fromApi(json['gender'] as String?),
       birthWeightKg: (json['birthWeightKg'] as num?)?.toDouble(),
       birthLengthCm: (json['birthLengthCm'] as num?)?.toDouble(),

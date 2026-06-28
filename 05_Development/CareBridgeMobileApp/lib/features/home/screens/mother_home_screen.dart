@@ -4,6 +4,8 @@ import '../../journey/services/journey_service.dart';
 import '../../reminder/models/reminder_model.dart';
 import '../../reminder/services/reminder_service.dart';
 import '../../reminder/screens/today_tasks_screen.dart';
+import '../../notification/screens/notification_center_screen.dart';
+import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
@@ -39,6 +41,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   JourneyDashboard? _dashboard;
   List<Reminder> _tasks = [];
   bool _loading = true;
+  bool _hasUnread = false;
 
   static const _mockArticles = [
     _Article('Dinh dưỡng', 'Bổ sung sắt và canxi đúng cách tuần 24', 0xFF4CAF50),
@@ -63,8 +66,16 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _checkUnread() async {
+    try {
+      final notifs = await NotificationService.instance.getNotifications(size: 20);
+      if (mounted) setState(() => _hasUnread = notifs.any((n) => n.isUnread));
+    } catch (_) {}
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
+    _checkUnread();
     try {
       final results = await Future.wait([
         _journeyService.getDashboard(),
@@ -160,20 +171,23 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
               clipBehavior: Clip.none,
               children: [
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+                  ).then((_) => _checkUnread()),
                   icon: const Icon(Icons.notifications, size: 28, color: _primary),
                 ),
-                Positioned(
-                  top: 8, right: 8,
-                  child: Container(
-                    width: 10, height: 10,
-                    decoration: BoxDecoration(
-                      color: _error,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _canvas, width: 1.5),
+                if (_hasUnread)
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(
+                        color: _error,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _canvas, width: 1.5),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ],

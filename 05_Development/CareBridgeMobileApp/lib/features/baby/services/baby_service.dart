@@ -15,23 +15,12 @@ class BabyService {
     return BabyProfile.fromJson(body);
   }
 
-  // TODO: Replace with GET /api/v1/babies when list endpoint is available (UC-31/32/33)
+  // UC32: List baby profiles for the current user
   Future<List<BabyProfile>> listBabyProfiles() async {
-    return [
-      BabyProfile(
-        id: 'mock-1',
-        nickname: 'Bé Đậu',
-        birthDate: DateTime(2022, 3, 1),
-        gender: BabyGender.male,
-        isActive: true,
-      ),
-      BabyProfile(
-        id: 'mock-2',
-        nickname: 'Bé Dâu',
-        birthDate: DateTime(2024, 9, 1),
-        gender: BabyGender.female,
-        isActive: false,
-      ),
-    ];
+    final data = await apiGet('/api/v1/babies');
+    final items = data['data'] as List<dynamic>;
+    return items
+        .map((e) => BabyProfile.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }
