@@ -36,6 +36,10 @@ import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopic
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 
+// Moderation screens (CB-072, CB-088)
+import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
+import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
+
 const ForbiddenPage = () => (
   <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
     <h2 style={{ color: '#845143' }}>Truy cập bị từ chối</h2>
@@ -67,7 +71,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute
-        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER']}
+        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER', 'MODERATOR']}
       />
     ),
     children: [
@@ -112,6 +116,15 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute requiredRoles={['PARTNER']} />,
             children: [
               { path: '/partner/dashboard', element: <AdminDashboardPage /> },
+            ],
+          },
+          {
+            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
+            children: [
+              { path: '/moderator/dashboard', element: <EscalatedModerationCasesPage /> },
+              { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
+              { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
+              { path: '/moderator', element: <Navigate to="/moderator/safety-cases" replace /> },
             ],
           },
         ],
