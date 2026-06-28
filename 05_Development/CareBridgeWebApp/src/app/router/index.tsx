@@ -12,10 +12,6 @@ import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
 
 // Admin portal screens (placeholders — replace via /build-screen)
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
-import ModerationQueuePage from '../../features/moderation/pages/ModerationQueuePage';
-import ManageTopicsPage from '../../features/community/pages/ManageTopicsPage';
-import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
-import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
 
 // Security & admin screens (TV1 Sprint 0)
@@ -54,35 +50,13 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute
-        requiredRoles={['MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN', 'PARTNER', 'EXPERT']}
+        requiredRoles={['SYSTEM_ADMIN', 'EXPERT']}
       />
     ),
     children: [
       {
         element: <AdminLayout />,
         children: [
-          {
-            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/moderator/dashboard', element: <ModerationQueuePage /> },
-              { path: '/moderator', element: <Navigate to="/moderator/dashboard" replace /> },
-              { path: '/admin/topics', element: <ManageTopicsPage /> },
-            ],
-          },
-          {
-            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/content/dashboard', element: <CreateContentPage /> },
-              { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
-            ],
-          },
-          {
-            element: <ProtectedRoute requiredRoles={['PARTNER', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/partner/dashboard', element: <CreatePartnerProfilePage /> },
-              { path: '/partner', element: <Navigate to="/partner/dashboard" replace /> },
-            ],
-          },
           {
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
