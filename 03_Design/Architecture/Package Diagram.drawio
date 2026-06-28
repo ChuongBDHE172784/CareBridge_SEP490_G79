@@ -1,0 +1,607 @@
+<mxfile host="Electron" agent="Codex" pages="3">
+  <diagram id="backend-package-diagram" name="Backend Package Diagram">
+    <mxGraphModel dx="1373" dy="880" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;" value="CareBridge Backend Package Diagram" vertex="1">
+          <mxGeometry height="50" width="760" x="520" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" value="Base package: com.carebridge.backend | Spring Boot 4.1.0 | Java 21" vertex="1">
+          <mxGeometry height="30" width="760" x="520" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rootPkg" parent="1" style="shape=folder;tabWidth=70;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=14;fontStyle=0;align=center;verticalAlign=middle;" value="&lt;b&gt;backend&lt;/b&gt;&lt;br&gt;BackendApplication" vertex="1">
+          <mxGeometry height="80" width="280" x="760" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="shape=folder;tabWidth=75;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#188038;fontSize=13;align=center;" value="&lt;b&gt;API Boundary&lt;/b&gt;&lt;br&gt;REST controllers&lt;br&gt;request/response DTOs" vertex="1">
+          <mxGeometry height="90" width="250" x="775" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="domain" parent="1" style="shape=folder;tabWidth=85;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#F9AB00;fontSize=13;align=center;" value="&lt;b&gt;Domain Modules&lt;/b&gt;&lt;br&gt;business capabilities and policies" vertex="1">
+          <mxGeometry height="90" width="220" x="130" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="data" parent="1" style="shape=folder;tabWidth=85;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#D93025;fontSize=13;align=center;" value="&lt;b&gt;Persistence&lt;/b&gt;&lt;br&gt;repositories&lt;br&gt;JPA entities" vertex="1">
+          <mxGeometry height="90" width="250" x="1495" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="groupUser" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="User, Identity &amp; Access" vertex="1">
+          <mxGeometry height="230" width="400" x="40" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="identity" parent="groupUser" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" value="identity" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="security" parent="groupUser" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=12;" value="security&lt;br&gt;jwt, otp, rbac, session" vertex="1">
+          <mxGeometry height="70" width="160" x="215" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="family" parent="groupUser" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" value="family" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="consent" parent="groupUser" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#5F6368;fontSize=13;" value="consent" vertex="1">
+          <mxGeometry height="55" width="160" x="215" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="groupCare" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Care Operations" vertex="1">
+          <mxGeometry height="320" width="680" x="560" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="healthrecord" parent="groupCare" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="healthrecord" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="carejourney" parent="groupCare" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="carejourney" vertex="1">
+          <mxGeometry height="55" width="150" x="265" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="reminder" parent="groupCare" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="reminder" vertex="1">
+          <mxGeometry height="55" width="150" x="510" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="consultation" parent="groupCare" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="consultation" vertex="1">
+          <mxGeometry height="55" width="150" x="510" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="triage" parent="groupCare" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="triage" vertex="1">
+          <mxGeometry height="55" width="150" x="265" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="emergency" parent="groupCare" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="emergency" vertex="1">
+          <mxGeometry height="55" width="150" x="510" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="safety" parent="groupCare" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="safety" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="exercise" parent="groupCare" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="exercise" vertex="1">
+          <mxGeometry height="55" width="150" x="265" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" parent="groupCare" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;" value="audit" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="groupEngagement" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Community, Content &amp; Services" vertex="1">
+          <mxGeometry height="320" width="400" x="1420" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="content" parent="groupEngagement" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="content" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="community" parent="groupEngagement" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="community" vertex="1">
+          <mxGeometry height="55" width="150" x="225" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="expert" parent="groupEngagement" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="expert" vertex="1">
+          <mxGeometry height="55" width="150" x="25" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="partner" parent="groupEngagement" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="partner" vertex="1">
+          <mxGeometry height="55" width="150" x="225" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="payment" parent="groupEngagement" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="payment" vertex="1">
+          <mxGeometry height="55" width="150" x="125" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="platform" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Shared Platform Packages" vertex="1">
+          <mxGeometry height="440" width="320" x="440" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="common" parent="platform" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="common&lt;br&gt;config, constants, exception, pagination, response, util, validation" vertex="1">
+          <mxGeometry height="85" width="210" x="55" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="integration" parent="platform" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="integration&lt;br&gt;firebase, storage, gemini, trackasia, vnpay, wearable, zegocloud" vertex="1">
+          <mxGeometry height="95" width="210" x="55" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="external" parent="platform" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5F6368;fontSize=12;" value="External services&lt;br&gt;Firebase | Gemini | TrackAsia |&amp;nbsp;&lt;div&gt;VNPay | Wearable | ZEGOCLOUD&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="285" x="17.5" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeIntegrationExternal" edge="1" parent="platform" source="integration" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" target="external" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="db" parent="1" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FCE8E6;strokeColor=#D93025;fontSize=13;" value="PostgreSQL&lt;br&gt;via Spring Data JPA" vertex="1">
+          <mxGeometry height="90" width="220" x="1200" y="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeRootApi" edge="1" parent="1" source="rootPkg" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" target="api" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeRootDomain" edge="1" parent="1" source="rootPkg" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" target="domain" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeRootData" edge="1" parent="1" source="rootPkg" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" target="data" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeApiUser" edge="1" parent="1" source="api" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" target="groupUser" value="REST endpoints">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeApiCare" edge="1" parent="1" source="api" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" target="groupCare" value="REST endpoints">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeApiEngagement" edge="1" parent="1" source="api" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" target="groupEngagement" value="REST endpoints">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeUserCare" edge="1" parent="1" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" value="patient/caregiver&amp;nbsp;&lt;div&gt;context&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.0363" y="25" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="440" y="760" as="sourcePoint" />
+            <mxPoint x="560" y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeCareEngagement" edge="1" parent="1" source="groupCare" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" value="care content and&amp;nbsp;&lt;div&gt;expert services&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1420" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeEngagementPayment" edge="1" parent="1" source="expert" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="payment" value="booking/payment&amp;nbsp;&lt;div&gt;flow&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.4444" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1520" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeConsultationExpert" edge="1" parent="1" source="consultation" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="expert" value="consults expert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeTriageEmergency" edge="1" parent="1" source="triage" style="endArrow=block;html=1;rounded=0;strokeColor=#D93025;fontSize=11;entryX=0;entryY=0;entryDx=0;entryDy=36.5;entryPerimeter=0;exitX=0;exitY=0;exitDx=150;exitDy=36.5;exitPerimeter=0;" target="emergency" value="escalates">
+          <mxGeometry relative="1" x="-0.0526" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeHealthSafety" edge="1" parent="1" source="healthrecord" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="safety" value="health signals">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeGroupsCommon1" edge="1" parent="1" source="groupUser" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="common" value="shared responses,&amp;nbsp;&lt;div&gt;exceptions, validation&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.2914" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="240" y="1330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeGroupsCommon2" edge="1" parent="1" source="groupCare" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="common" value="shared responses,&amp;nbsp;&lt;div&gt;exceptions, validation&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1398" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="840" y="1290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeGroupsCommon3" edge="1" parent="1" source="groupEngagement" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="common" value="shared responses, exceptions, validation">
+          <mxGeometry relative="1" x="0.3523" as="geometry">
+            <mxPoint x="-1" as="offset" />
+            <Array as="points">
+              <mxPoint x="1600" y="1330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeSecurityCommon" edge="1" parent="1" source="security" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="common" value="auth filters and&amp;nbsp;&lt;div&gt;access checks&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.2221" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="320" y="1290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeCareIntegration" edge="1" parent="1" source="groupCare" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="integration" value="AI, maps, video,&amp;nbsp;&lt;div&gt;wearable integrations&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.2849" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="960" y="1420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeEngagementIntegration" edge="1" parent="1" source="groupEngagement" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="integration" value="payment, storage, video integrations">
+          <mxGeometry relative="1" x="0.3519" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1640" y="1460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeDataDb" edge="1" parent="1" source="data" style="endArrow=block;html=1;rounded=0;strokeColor=#D93025;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="db" value="repositories&amp;nbsp;&lt;div&gt;persist entities&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.2" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1880" y="365" />
+              <mxPoint x="1880" y="1130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeUserDb" edge="1" parent="1" source="groupUser" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="db" value="repository/entity packages">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="1115" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeCareDb" edge="1" parent="1" source="groupCare" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="db" value="repository/entity&amp;nbsp;&lt;div&gt;packages&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="1040" />
+              <mxPoint x="1220" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeEngagementDb" edge="1" parent="1" source="groupEngagement" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="db" value="repository/entity&amp;nbsp;&lt;div&gt;packages&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.4615" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1540" y="1100" />
+            </Array>
+            <mxPoint x="1540.0000000000005" y="1010" as="sourcePoint" />
+            <mxPoint x="1420" y="1320.0526315789475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="frontend-package-diagram" name="Frontend Package Diagram">
+    <mxGraphModel dx="3271" dy="943" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="feTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;" value="CareBridge Frontend Package Diagram" vertex="1">
+          <mxGeometry height="50" width="760" x="520" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="feSubtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" value="Base folder: 04_SourceCode/Frontend/src | React 19 | Vite 8 | TypeScript 6" vertex="1">
+          <mxGeometry height="30" width="840" x="480" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="feEntry" parent="1" style="shape=folder;tabWidth=70;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=14;align=center;" value="&lt;b&gt;main.tsx&lt;/b&gt;&lt;br&gt;React root + StrictMode" vertex="1">
+          <mxGeometry height="80" width="320" x="740" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="feApp" parent="1" style="shape=folder;tabWidth=65;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=13;align=center;" value="&lt;b&gt;App.tsx&lt;/b&gt;&lt;br&gt;root component&lt;br&gt;current Vite starter screen" vertex="1">
+          <mxGeometry height="90" width="320" x="740" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="feAppLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Application Shell" vertex="1">
+          <mxGeometry height="295" width="400" x="-80" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="feAppPkg" parent="feAppLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;fontStyle=1;align=center;" value="app" vertex="1">
+          <mxGeometry height="55" width="150" x="120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="feRouter" parent="feAppLayer" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="router" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="feGuards" parent="feAppLayer" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="guards" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feProviders" parent="feAppLayer" style="shape=folder;tabWidth=65;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="providers" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="feLayouts" parent="feAppLayer" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="layouts" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feFeatureLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Feature Packages" vertex="1">
+          <mxGeometry height="430" width="800" x="500" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="feFeatureConvention" parent="feFeatureLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DADCE0;fontSize=12;align=center;" value="Each feature package convention:&lt;br&gt;pages - components - models - services" vertex="1">
+          <mxGeometry height="55" width="340" x="230" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="feAuth" parent="feFeatureLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="auth" vertex="1">
+          <mxGeometry height="55" width="160" x="35" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feDashboard" parent="feFeatureLayer" style="shape=folder;tabWidth=75;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="dashboard" vertex="1">
+          <mxGeometry height="55" width="160" x="225" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feContent" parent="feFeatureLayer" style="shape=folder;tabWidth=120;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="contentManagement" vertex="1">
+          <mxGeometry height="55" width="160" x="415" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feModeration" parent="feFeatureLayer" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="moderation" vertex="1">
+          <mxGeometry height="55" width="160" x="605" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feExpert" parent="feFeatureLayer" style="shape=folder;tabWidth=115;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="expertVerification" vertex="1">
+          <mxGeometry height="55" width="160" x="35" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="fePartner" parent="feFeatureLayer" style="shape=folder;tabWidth=125;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="partnerGovernance" vertex="1">
+          <mxGeometry height="55" width="160" x="225" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="feConsultation" parent="feFeatureLayer" style="shape=folder;tabWidth=145;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=11;" value="consultationManagement" vertex="1">
+          <mxGeometry height="55" width="160" x="415" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="fePayment" parent="feFeatureLayer" style="shape=folder;tabWidth=105;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="paymentRefunds" vertex="1">
+          <mxGeometry height="55" width="160" x="605" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="feAiRules" parent="feFeatureLayer" style="shape=folder;tabWidth=120;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="aiRuleManagement" vertex="1">
+          <mxGeometry height="55" width="160" x="130" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="fePosture" parent="feFeatureLayer" style="shape=folder;tabWidth=135;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=11;" value="postureConfiguration" vertex="1">
+          <mxGeometry height="55" width="160" x="320" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="feAudit" parent="feFeatureLayer" style="shape=folder;tabWidth=90;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="auditSecurity" vertex="1">
+          <mxGeometry height="55" width="160" x="510" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="feSharedLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Shared Packages" vertex="1">
+          <mxGeometry height="390" width="390" x="30" y="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="feShared" parent="feSharedLayer" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=13;fontStyle=1;align=center;" value="shared" vertex="1">
+          <mxGeometry height="55" width="150" x="120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="feApi" parent="feSharedLayer" style="shape=folder;tabWidth=35;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="api&lt;br&gt;axios clients" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feAuthShared" parent="feSharedLayer" style="shape=folder;tabWidth=40;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="auth&lt;br&gt;session helpers" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="feComponents" parent="feSharedLayer" style="shape=folder;tabWidth=85;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="components" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="feForms" parent="feSharedLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="forms" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="feTablesCharts" parent="feSharedLayer" style="shape=folder;tabWidth=95;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="tables / charts" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="feSharedUtils" parent="feSharedLayer" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="hooks / utils&lt;br&gt;constants" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="feAssetLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Static Assets" vertex="1">
+          <mxGeometry height="160" width="400" x="1480" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="feAssets" parent="feAssetLayer" style="shape=folder;tabWidth=55;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#5F6368;fontSize=13;align=center;" value="assets&lt;br&gt;hero.png, svg files" vertex="1">
+          <mxGeometry height="65" width="200" x="95" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feExternalLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="External Runtime Packages" vertex="1">
+          <mxGeometry height="170" width="1240" x="280" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="feBackendApi" parent="feExternalLayer" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5F6368;fontSize=13;" value="CareBridge Backend API" vertex="1">
+          <mxGeometry height="65" width="210" x="45" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feReactRouter" parent="feExternalLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;" value="react-router-dom" vertex="1">
+          <mxGeometry height="55" width="145" x="510" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feReactQuery" parent="feExternalLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;" value="@tanstack/react-query" vertex="1">
+          <mxGeometry height="55" width="170" x="300" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feStateForms" parent="feExternalLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;" value="zustand&lt;br&gt;react-hook-form + zod" vertex="1">
+          <mxGeometry height="55" width="185" x="695" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feUiLibs" parent="feExternalLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;" value="lucide-react&lt;br&gt;dayjs" vertex="1">
+          <mxGeometry height="55" width="135" x="920" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feVite" parent="feExternalLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;" value="Vite dev/build&lt;br&gt;TypeScript" vertex="1">
+          <mxGeometry height="55" width="125" x="1090" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="feEdgeEntryApp" edge="1" parent="1" source="feEntry" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="feApp" value="renders">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="feEdgeAppShell" edge="1" parent="1" source="feApp" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feAppLayer" value="composition root">
+          <mxGeometry relative="1" x="-0.1652" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="120" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeAppFeatures" edge="1" parent="1" source="feAppLayer" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feFeatureLayer" value="routes to pages">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="548" />
+              <mxPoint x="460" y="548" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeFeaturesShared" edge="1" parent="1" source="feFeatureLayer" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feSharedLayer" value="reuse shared UI,&amp;nbsp;&lt;div&gt;hooks, API clients&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.4783" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="180" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeAppShared" edge="1" parent="1" source="feAppLayer" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feSharedLayer" value="providers, guards,&amp;nbsp;&lt;div&gt;auth helpers&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="120" y="1130" />
+              <mxPoint x="120" y="1130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeAppAssets" edge="1" parent="1" source="feApp" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#D93025;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feAssetLayer" value="imports static media">
+          <mxGeometry relative="1" x="-0.1405" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1680" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeApiBackend" edge="1" parent="1" source="feApi" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feBackendApi" value="HTTP via axios">
+          <mxGeometry relative="1" x="0.3469" as="geometry">
+            <mxPoint y="-1" as="offset" />
+            <Array as="points">
+              <mxPoint x="440" y="1323" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeRouterLib" edge="1" parent="1" source="feRouter" style="endArrow=block;html=1;rounded=0;strokeColor=#1A73E8;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feReactRouter" value="routing">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="213" y="860" />
+              <mxPoint x="863" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeProvidersQuery" edge="1" parent="1" source="feProviders" style="endArrow=block;html=1;rounded=0;strokeColor=#1A73E8;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feReactQuery" value="server state provider">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="18" y="900" />
+              <mxPoint x="665" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feEdgeFormsState" edge="1" parent="1" source="feForms" style="endArrow=block;html=1;rounded=0;strokeColor=#1A73E8;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feStateForms" value="forms and client state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="feEdgeComponentsUi" edge="1" parent="1" source="feComponents" style="endArrow=block;html=1;rounded=0;strokeColor=#1A73E8;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feUiLibs" value="icons, dates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="feEdgeEntryVite" edge="1" parent="1" source="feEntry" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#1A73E8;fontSize=11;edgeStyle=orthogonalEdgeStyle;" target="feVite" value="dev/build runtime">
+          <mxGeometry relative="1" x="0.3179" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="mobileapp-package-diagram" name="MobileApp Package Diagram">
+    <mxGraphModel dx="1288" dy="825" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="maTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;" value="CareBridge MobileApp Package Diagram" vertex="1">
+          <mxGeometry height="50" width="800" x="500" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="maSubtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=14;fontColor=#5F6368;align=center;verticalAlign=middle;" value="Base folder: 04_SourceCode/MobileApp/lib | Flutter | Dart SDK 3.12.2 | package: untitled" vertex="1">
+          <mxGeometry height="30" width="940" x="430" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="maEntry" parent="1" style="shape=folder;tabWidth=70;tabHeight=20;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=14;align=center;" value="&lt;b&gt;main.dart&lt;/b&gt;&lt;br&gt;runApp(MyApp)&lt;br&gt;MaterialApp root" vertex="1">
+          <mxGeometry height="90" width="320" x="740" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="maAppLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Application Shell" vertex="1">
+          <mxGeometry height="310" width="390" x="60" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="maAppPkg" parent="maAppLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=13;fontStyle=1;align=center;" value="app" vertex="1">
+          <mxGeometry height="55" width="150" x="120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="maRouter" parent="maAppLayer" style="shape=folder;tabWidth=50;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="router" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maTheme" parent="maAppLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="theme" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maEnvironment" parent="maAppLayer" style="shape=folder;tabWidth=85;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="environment" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="maLocalization" parent="maAppLayer" style="shape=folder;tabWidth=85;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#E6F4EA;strokeColor=#5F6368;fontSize=12;" value="localization" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="maCoreLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Core Packages" vertex="1">
+          <mxGeometry height="310" width="390" x="60" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="maCorePkg" parent="maCoreLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=13;fontStyle=1;align=center;" value="core" vertex="1">
+          <mxGeometry height="55" width="150" x="120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="maCoreNetwork" parent="maCoreLayer" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="network" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maCoreAuth" parent="maCoreLayer" style="shape=folder;tabWidth=40;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="auth" vertex="1">
+          <mxGeometry height="55" width="145" x="220" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maCoreStorage" parent="maCoreLayer" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="storage" vertex="1">
+          <mxGeometry height="55" width="145" x="25" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="maCoreSupport" parent="maCoreLayer" style="shape=folder;tabWidth=115;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;" value="errors / permissions&lt;br&gt;widgets / utils&lt;br&gt;constants" vertex="1">
+          <mxGeometry height="65" width="145" x="220" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="maFeatureLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Feature Packages" vertex="1">
+          <mxGeometry height="505" width="800" x="500" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="maFeatureConvention" parent="maFeatureLayer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DADCE0;fontSize=12;align=center;" value="Each feature package convention:&lt;br&gt;screens - widgets - models - repositories - services" vertex="1">
+          <mxGeometry height="55" width="380" x="210" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="maOnboarding" parent="maFeatureLayer" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="onboarding" vertex="1">
+          <mxGeometry height="55" width="160" x="35" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maAuth" parent="maFeatureLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="auth" vertex="1">
+          <mxGeometry height="55" width="160" x="225" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maMotherJourney" parent="maFeatureLayer" style="shape=folder;tabWidth=100;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="motherJourney" vertex="1">
+          <mxGeometry height="55" width="160" x="415" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maFamilySync" parent="maFeatureLayer" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="familySync" vertex="1">
+          <mxGeometry height="55" width="160" x="605" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="maHealthRecords" parent="maFeatureLayer" style="shape=folder;tabWidth=95;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="healthRecords" vertex="1">
+          <mxGeometry height="55" width="160" x="35" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="maSafetyMonitoring" parent="maFeatureLayer" style="shape=folder;tabWidth=115;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="safetyMonitoring" vertex="1">
+          <mxGeometry height="55" width="160" x="225" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="maAiTriage" parent="maFeatureLayer" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="aiTriage" vertex="1">
+          <mxGeometry height="55" width="160" x="415" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="maEmergencyMap" parent="maFeatureLayer" style="shape=folder;tabWidth=105;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="emergencyMap" vertex="1">
+          <mxGeometry height="55" width="160" x="605" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="maConsultation" parent="maFeatureLayer" style="shape=folder;tabWidth=90;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=12;" value="consultation" vertex="1">
+          <mxGeometry height="55" width="160" x="35" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="maCommunity" parent="maFeatureLayer" style="shape=folder;tabWidth=80;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="community" vertex="1">
+          <mxGeometry height="55" width="160" x="225" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="maBabyCare" parent="maFeatureLayer" style="shape=folder;tabWidth=70;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=13;" value="babyCare" vertex="1">
+          <mxGeometry height="55" width="160" x="415" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="maPregnancyExercise" parent="maFeatureLayer" style="shape=folder;tabWidth=125;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FFF7E0;strokeColor=#5F6368;fontSize=11;" value="pregnancyExercise" vertex="1">
+          <mxGeometry height="55" width="160" x="605" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="maSharedLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Shared, Localization and Integrations" vertex="1">
+          <mxGeometry height="505" width="390" x="1350" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="maShared" parent="maSharedLayer" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;align=center;" value="shared&lt;br&gt;components, models, services" vertex="1">
+          <mxGeometry height="65" width="200" x="95" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="maL10n" parent="maSharedLayer" style="shape=folder;tabWidth=40;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=13;align=center;" value="l10n" vertex="1">
+          <mxGeometry height="55" width="200" x="95" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="maIntegrations" parent="maSharedLayer" style="shape=folder;tabWidth=85;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#F1F3F4;strokeColor=#5F6368;fontSize=12;align=center;" value="integrations&lt;br&gt;firebaseMessaging, firebaseStorage, wearable, imuSensor, mediapipe, trackasia, zegocloud" vertex="1">
+          <mxGeometry height="90" width="280" x="55" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="maExternalServices" parent="maSharedLayer" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5F6368;fontSize=12;" value="External services&lt;br&gt;Backend API | Firebase | Wearables | MediaPipe | TrackAsia | ZEGOCLOUD" vertex="1">
+          <mxGeometry height="75" width="280" x="55" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="maPlatformLayer" parent="1" style="swimlane;html=1;rounded=0;startSize=30;fillColor=#F8F9FA;strokeColor=#BDC1C6;fontSize=14;fontStyle=1;" value="Flutter Platform Projects" vertex="1">
+          <mxGeometry height="190" width="970" x="500" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="maAndroid" parent="maPlatformLayer" style="shape=folder;tabWidth=60;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#5F6368;fontSize=12;align=center;" value="android&lt;br&gt;Gradle + MainActivity" vertex="1">
+          <mxGeometry height="65" width="160" x="40" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="maIos" parent="maPlatformLayer" style="shape=folder;tabWidth=40;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#5F6368;fontSize=12;align=center;" value="ios&lt;br&gt;Runner + AppDelegate" vertex="1">
+          <mxGeometry height="65" width="160" x="240" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="maWeb" parent="maPlatformLayer" style="shape=folder;tabWidth=45;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#5F6368;fontSize=12;align=center;" value="web&lt;br&gt;index.html + manifest" vertex="1">
+          <mxGeometry height="65" width="160" x="440" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="maDesktop" parent="maPlatformLayer" style="shape=folder;tabWidth=135;tabHeight=18;whiteSpace=wrap;html=1;fillColor=#FCE8E6;strokeColor=#5F6368;fontSize=12;align=center;" value="windows / macos / linux&lt;br&gt;desktop runners" vertex="1">
+          <mxGeometry height="65" width="200" x="640" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="maLegend" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8F9FA;strokeColor=#DADCE0;fontSize=12;align=left;spacing=12;" value="Note: most mobile feature folders are currently scaffolded with .gitkeep. This diagram documents the package layout from the existing Flutter project structure." vertex="1">
+          <mxGeometry height="55" width="760" x="60" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeEntryApp" edge="1" parent="1" source="maEntry" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="maAppLayer" value="boots app shell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeAppFeatures" edge="1" parent="1" source="maAppLayer" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="maFeatureLayer" value="routes to screens">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeFeaturesCore" edge="1" parent="1" source="maFeatureLayer" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" target="maCoreLayer" value="network, auth, storage, permissions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeFeaturesShared" edge="1" parent="1" source="maFeatureLayer" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" target="maShared" value="reuse shared components and models">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeAppShared" edge="1" parent="1" source="maAppLayer" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#5F6368;fontSize=11;" target="maSharedLayer" value="theme, localization, shared services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeCoreIntegration" edge="1" parent="1" source="maCoreLayer" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;fontSize=11;" target="maIntegrations" value="device and external adapters">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeIntegrationExternal" edge="1" parent="1" source="maIntegrations" style="endArrow=block;html=1;rounded=0;strokeColor=#3C4043;" target="maExternalServices" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeNetworkBackend" edge="1" parent="1" source="maCoreNetwork" style="endArrow=block;html=1;rounded=0;strokeColor=#188038;fontSize=11;" target="maExternalServices" value="HTTP/API calls">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgeEntryPlatform" edge="1" parent="1" source="maEntry" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#1A73E8;fontSize=11;" target="maPlatformLayer" value="compiled by Flutter toolchain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maEdgePlatformRuntime" edge="1" parent="1" source="maPlatformLayer" style="endArrow=block;html=1;rounded=0;strokeColor=#1A73E8;fontSize=11;" target="maFlutterRuntime" value="uses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="maFlutterRuntime" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=12;align=center;" value="Flutter SDK&lt;br&gt;Material + Cupertino Icons" vertex="1">
+          <mxGeometry height="65" width="220" x="1610" y="922.5" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
