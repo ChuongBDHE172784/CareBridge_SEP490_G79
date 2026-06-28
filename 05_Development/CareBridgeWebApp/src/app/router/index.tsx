@@ -12,10 +12,6 @@ import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
 
 // Admin portal screens (placeholders — replace via /build-screen)
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
-import ModerationQueuePage from '../../features/moderation/pages/ModerationQueuePage';
-import ManageTopicsPage from '../../features/community/pages/ManageTopicsPage';
-import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
-import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
 
 // Security & admin screens (TV1 Sprint 0)
@@ -26,6 +22,19 @@ import SecurityIncidentInvestigationPage from '../../features/security/pages/Sec
 import SecurityIncidentResolutionPage from '../../features/security/pages/SecurityIncidentResolutionPage';
 import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
 import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPage';
+
+// Content Management screens (CB-073..081)
+import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
+import ContentListPage from '../../features/contentManagement/pages/ContentListPage';
+import ContentDetailPage from '../../features/contentManagement/pages/ContentDetailPage';
+import ContentPreviewPage from '../../features/contentManagement/pages/ContentPreviewPage';
+import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
+import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
+import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
+
+// Partner Portal screens (CB-096, CB-097)
+import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
+import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 
 const ForbiddenPage = () => (
   <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
@@ -47,6 +56,10 @@ export const router = createBrowserRouter([
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
 
+  // Partner Portal — public pages (no auth required)
+  { path: '/partner', element: <PartnerLandingPage /> },
+  { path: '/partner/register', element: <RegisterPartnerPage /> },
+
   // Role-aware root redirect — sits outside ProtectedRoute so all roles are handled,
   // including MOTHER/FAMILY who land on /no-web-access without hitting /forbidden.
   { path: '/', element: <RoleAwareRedirect /> },
@@ -54,35 +67,13 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute
-        requiredRoles={['MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN', 'PARTNER', 'EXPERT']}
+        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER']}
       />
     ),
     children: [
       {
         element: <AdminLayout />,
         children: [
-          {
-            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/moderator/dashboard', element: <ModerationQueuePage /> },
-              { path: '/moderator', element: <Navigate to="/moderator/dashboard" replace /> },
-              { path: '/admin/topics', element: <ManageTopicsPage /> },
-            ],
-          },
-          {
-            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/content/dashboard', element: <CreateContentPage /> },
-              { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
-            ],
-          },
-          {
-            element: <ProtectedRoute requiredRoles={['PARTNER', 'SYSTEM_ADMIN']} />,
-            children: [
-              { path: '/partner/dashboard', element: <CreatePartnerProfilePage /> },
-              { path: '/partner', element: <Navigate to="/partner/dashboard" replace /> },
-            ],
-          },
           {
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
@@ -98,10 +89,29 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
+            children: [
+              { path: '/content/dashboard', element: <ContentDashboardPage /> },
+              { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
+              { path: '/content/list', element: <ContentListPage /> },
+              { path: '/content/:id', element: <ContentDetailPage /> },
+              { path: '/content/:id/preview', element: <ContentPreviewPage /> },
+              { path: '/content/faq', element: <FaqListPage /> },
+              { path: '/content/checklists', element: <ChecklistListPage /> },
+              { path: '/content/topics', element: <ManageTopicsPage /> },
+            ],
+          },
+          {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
               { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
               { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+            ],
+          },
+          {
+            element: <ProtectedRoute requiredRoles={['PARTNER']} />,
+            children: [
+              { path: '/partner/dashboard', element: <AdminDashboardPage /> },
             ],
           },
         ],

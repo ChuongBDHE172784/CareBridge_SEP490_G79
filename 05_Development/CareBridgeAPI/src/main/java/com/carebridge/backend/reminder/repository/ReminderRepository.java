@@ -1,7 +1,7 @@
 package com.carebridge.backend.reminder.repository;
 
 import com.carebridge.backend.reminder.entity.Reminder;
-import com.carebridge.backend.reminder.entity.ReminderStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

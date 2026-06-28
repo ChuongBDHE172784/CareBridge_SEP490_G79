@@ -10,9 +10,12 @@ class BlockedAccountScreen extends StatelessWidget {
 
   String _humanReadableReason(String code) {
     return switch (code) {
-      'ACCOUNT_DISABLED' => 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ đội hỗ trợ để được giải quyết.',
-      'ACCOUNT_LOCKED' => 'Tài khoản của bạn tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.',
-      _ => 'Tài khoản của bạn hiện không thể đăng nhập. Vui lòng liên hệ đội hỗ trợ.',
+      'ACCOUNT_DISABLED' =>
+        'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ đội hỗ trợ để được giải quyết.',
+      'ACCOUNT_LOCKED' =>
+        'Tài khoản của bạn tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.',
+      _ =>
+        'Tài khoản của bạn hiện không thể đăng nhập. Vui lòng liên hệ đội hỗ trợ.',
     };
   }
 
@@ -34,7 +37,7 @@ class BlockedAccountScreen extends StatelessWidget {
                   width: 96,
                   height: 96,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFDAD6),
+                    color: const Color(0xFFC98C7B).withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(

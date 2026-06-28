@@ -1,0 +1,457 @@
+import 'package:flutter/material.dart';
+import '../../../core/network/api_client.dart';
+import '../models/community_model.dart';
+import '../services/community_service.dart';
+
+/// CB-014 — Community Feed (UC-54..UC-59, UC-198..UC-201)
+/// Displays topic filter chips and a scrollable list of community posts.
+/// Rendered as tab index 2 inside HomeShell's IndexedStack (no own bottom nav).
+class CommunityFeedScreen extends StatefulWidget {
+  const CommunityFeedScreen({super.key});
+
+  @override
+  State<CommunityFeedScreen> createState() => _CommunityFeedScreenState();
+}
+
+class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
+  // ── Design tokens (Warm Claymorphism palette) ──
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
+  // ignore: unused_field
+  static const _surface = Color(0xFFFFF8F6);
+  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
+  static const _surfaceContainerLow = Color(0xFFFFF1EC);
+  static const _surfaceContainer = Color(0xFFFFE9E3);
+  static const _surfaceContainerHighest = Color(0xFFFADCD3);
+  // ignore: unused_field
+  static const _surfaceVariant = Color(0xFFFADCD3);
+  static const _secondaryContainer = Color(0xFFF6DACF);
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+  // ignore: unused_field
+  static const _error = Color(0xFFBA1A1A);
+
+  final _service = CommunityService.instance;
+
+  List<CommunityTopic> _topics = [];
+  List<CommunityFeedItem> _items = [];
+  bool _loading = true;
+  String? _selectedTopicId; // null = "Tất cả"
+
+  // ── Mock data for development fallback ──
+  static final _mockTopics = [
+    CommunityTopic(id: 't1', name: 'Dinh dưỡng', description: '', icon: 'restaurant', isHidden: false, sortOrder: 1),
+    CommunityTopic(id: 't2', name: 'Giấc ngủ', description: '', icon: 'bedtime', isHidden: false, sortOrder: 2),
+    CommunityTopic(id: 't3', name: 'Phát triển', description: '', icon: 'child_care', isHidden: false, sortOrder: 3),
+    CommunityTopic(id: 't4', name: 'Tâm lý', description: '', icon: 'psychology', isHidden: false, sortOrder: 4),
+  ];
+
+  static final _mockItems = [
+    CommunityFeedItem(
+      id: 'p1',
+      title: 'Bé 6 tháng lười ăn dặm, mẹ phải làm sao?',
+      topicName: 'Dinh dưỡng',
+      authorDisplay: 'Mẹ Bún Lứt',
+      stage: 'POSTPARTUM',
+      urgency: 'NORMAL',
+      answerCount: 12,
+      likeCount: 24,
+      hasExpertAnswer: true,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+    ),
+    CommunityFeedItem(
+      id: 'p2',
+      title: 'Review bỉm Merries cho bé da nhạy cảm',
+      topicName: 'Chăm bé',
+      authorDisplay: 'Thu Phương',
+      stage: 'POSTPARTUM',
+      urgency: 'NORMAL',
+      answerCount: 34,
+      likeCount: 89,
+      hasExpertAnswer: false,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
+    ),
+    CommunityFeedItem(
+      id: 'p3',
+      title: 'Mẹ bầu tuần 30 bị phù chân có đáng lo?',
+      topicName: 'Tâm lý',
+      authorDisplay: 'Hà My',
+      stage: 'PREGNANCY',
+      urgency: 'NORMAL',
+      answerCount: 8,
+      likeCount: 15,
+      hasExpertAnswer: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait([
+        _service.getTopics(),
+        _service.getFeed(topicId: _selectedTopicId),
+      ]);
+      if (mounted) {
+        setState(() {
+          _topics = results[0] as List<CommunityTopic>;
+          _items = results[1] as List<CommunityFeedItem>;
+          _loading = false;
+        });
+      }
+    } on ApiException {
+      if (mounted) {
+        setState(() {
+          _topics = _mockTopics;
+          _items = _mockItems;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _topics = _mockTopics;
+          _items = _mockItems;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _onTopicSelected(String? topicId) async {
+    if (topicId == _selectedTopicId) return;
+    setState(() {
+      _selectedTopicId = topicId;
+      _loading = true;
+    });
+    try {
+      final feed = await _service.getFeed(topicId: topicId);
+      if (mounted) setState(() { _items = feed; _loading = false; });
+    } on ApiException {
+      if (mounted) setState(() { _items = _mockItems; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _items = _mockItems; _loading = false; });
+    }
+  }
+
+  // ── Relative time formatting ──
+  String _timeAgo(String isoDate) {
+    try {
+      final dt = DateTime.parse(isoDate);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'Vừa xong';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
+      if (diff.inHours < 24) return '${diff.inHours} giờ trước';
+      if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+      return '${(diff.inDays / 7).floor()} tuần trước';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _canvas,
+      floatingActionButton: _buildFab(),
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: _primaryContainer,
+          onRefresh: _load,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildTopBar()),
+              SliverToBoxAdapter(child: _buildTopicChips()),
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              if (_loading)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator(color: _primaryContainer)),
+                )
+              else if (_items.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: Text('Chưa có bài viết nào.',
+                        style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildPostCard(_items[index]),
+                      ),
+                      childCount: _items.length,
+                    ),
+                  ),
+                ),
+              // Extra space for FAB
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Top bar: title + search + bookmark ──
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Cộng đồng',
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w700, color: _primary),
+            ),
+          ),
+          Container(
+            width: 44, height: 44,
+            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.search, color: _onSurfaceVariant, size: 22),
+              onPressed: () {
+                // TODO: navigate to community search screen
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 44, height: 44,
+            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.bookmark_border, color: _onSurfaceVariant, size: 22),
+              onPressed: () {
+                // TODO: navigate to saved posts
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Topic filter chips ──
+  Widget _buildTopicChips() {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _topicChip(label: 'Tất cả', isActive: _selectedTopicId == null, onTap: () => _onTopicSelected(null)),
+          ..._topics.where((t) => !t.isHidden).map(
+            (t) => _topicChip(
+              label: t.name,
+              isActive: _selectedTopicId == t.id,
+              onTap: () => _onTopicSelected(t.id),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _topicChip({required String label, required bool isActive, required VoidCallback onTap}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? _primaryContainer : _surfaceContainer,
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isActive ? Colors.white : _onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Post card ──
+  Widget _buildPostCard(CommunityFeedItem item) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: const Color(0x0F5A463F), blurRadius: 20, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Author row
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _surfaceContainerHigh,
+                  border: Border.all(color: _surfaceContainerHighest, width: 1),
+                ),
+                child: Center(
+                  child: Text(
+                    item.authorDisplay.isNotEmpty ? item.authorDisplay[0] : '?',
+                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _primary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.authorDisplay,
+                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
+                    Text(_timeAgo(item.createdAt),
+                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.more_horiz, size: 24, color: _onSurfaceVariant),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Title
+          Text(item.title,
+              style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _primary, height: 1.3)),
+          const SizedBox(height: 8),
+          // Body preview (3 lines)
+          Text(
+            _mockBodyForItem(item),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5),
+          ),
+          // Expert answer badge
+          if (item.hasExpertAnswer) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _secondaryContainer.withAlpha(77),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: const BoxDecoration(color: _secondaryContainer, shape: BoxShape.circle),
+                    child: const Icon(Icons.verified, size: 18, color: _primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Bác sĩ Nhi khoa đã trả lời',
+                            style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+                        Text('"Mẹ đừng quá lo lắng, giai đoạn...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant.withAlpha(178))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          // Footer: likes, comments, topic tag
+          Row(
+            children: [
+              const Icon(Icons.favorite_border, size: 20, color: _onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text('${item.likeCount}',
+                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+              const SizedBox(width: 16),
+              const Icon(Icons.chat_bubble_outline, size: 20, color: _onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text('${item.answerCount}',
+                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+              const Spacer(),
+              if (item.topicName.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: _surfaceContainerHigh, width: 1),
+                  ),
+                  child: Text(item.topicName,
+                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w500, color: _onSurfaceVariant)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Provides a mock body for items that don't carry body text
+  String _mockBodyForItem(CommunityFeedItem item) {
+    switch (item.id) {
+      case 'p1':
+        return 'Chào các mẹ, bé nhà mình được 6 tháng rưỡi rồi, mình bắt đầu cho bé ăn dặm kiểu Nhật nhưng bé có vẻ không hợp tác, hay nhè ra...';
+      case 'p2':
+        return 'Mình thấy nhiều mẹ hỏi về bỉm cho bé da nhạy cảm nên ngồi lên review chút về dòng...';
+      default:
+        return item.title;
+    }
+  }
+
+  // ── FAB ──
+  Widget _buildFab() {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: _primaryContainer,
+        borderRadius: BorderRadius.circular(99),
+        boxShadow: [BoxShadow(color: _primaryContainer.withAlpha(77), blurRadius: 16, offset: const Offset(0, 4))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(99),
+          onTap: () {
+            // TODO: navigate to create post screen
+          },
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit, size: 20, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Đặt câu hỏi',
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

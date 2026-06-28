@@ -46,15 +46,21 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final p = await _service.getBabyProfile(widget.babyId);
-      if (mounted) setState(() { _profile = p; _loading = false; });
+      if (mounted) {
+        setState(() { _profile = p; _loading = false; });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() {
-        _error = e.statusCode == 403 ? 'Bạn không có quyền xem hồ sơ này.'
-            : 'Không thể tải hồ sơ. Vui lòng thử lại.';
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.statusCode == 403 ? 'Bạn không có quyền xem hồ sơ này.'
+              : 'Không thể tải hồ sơ. Vui lòng thử lại.';
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+      if (mounted) {
+        setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+      }
     }
   }
 

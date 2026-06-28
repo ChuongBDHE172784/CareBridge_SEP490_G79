@@ -13,6 +13,8 @@ interface TimelineEntry {
   severity: string; status: string; occurredAt: string;
 }
 
+const card = 'bg-surface rounded-2xl p-6 shadow-sm';
+
 export default function SecurityEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [event, setEvent] = useState<SecurityEvent | null>(null);
@@ -35,61 +37,63 @@ export default function SecurityEventDetailPage() {
     })();
   }, [eventId]);
 
-  if (isLoading) return <div style={{ padding: 48, textAlign: 'center', color: '#84736f', fontFamily: "'Lexend'" }}>Đang tải...</div>;
-  if (!event) return <div style={{ padding: 48, textAlign: 'center', color: '#ba1a1a', fontFamily: "'Lexend'" }}>Không tìm thấy sự cố.</div>;
+  if (isLoading) return <div className="p-12 text-center text-outline">Đang tải...</div>;
+  if (!event) return <div className="p-12 text-center text-error">Không tìm thấy sự cố.</div>;
 
-  const sevColor = event.severity === 'HIGH' ? '#ba1a1a' : event.severity === 'MEDIUM' ? '#845143' : '#6e5a52';
+  const sevBadgeCls = event.severity === 'HIGH'
+    ? 'bg-error-container text-error'
+    : 'bg-surface-container-high text-primary';
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif" }}>
-      <div style={{ fontSize: 14, color: '#524440', marginBottom: 8 }}>Bảo mật &gt; Sự cố CB-{event.id}</div>
-      <h1 style={{ fontSize: 20, fontWeight: 600, color: '#271812', margin: '0 0 24px' }}>Chi tiết sự cố: {event.eventType}</h1>
+    <div>
+      <div className="text-sm text-on-surface-variant mb-2">Bảo mật &gt; Sự cố CB-{event.id}</div>
+      <h1 className="text-xl font-semibold text-on-surface mt-0 mb-6">Chi tiết sự cố: {event.eventType}</h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, color: '#84736f', fontWeight: 500 }}>MỨC ĐỘ NGUY HIỂM</span>
-            <span style={{ padding: '4px 12px', borderRadius: 8, background: sevColor === '#ba1a1a' ? '#ffdad6' : '#ffe9e3', color: sevColor, fontSize: 12, fontWeight: 700 }}>
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className={card}>
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-sm text-outline font-medium">MỨC ĐỘ NGUY HIỂM</span>
+            <span className={`px-3 py-1 rounded-lg text-xs font-bold ${sevBadgeCls}`}>
               {event.severity === 'HIGH' ? 'High Risk' : event.severity}
             </span>
           </div>
-          <div style={{ fontSize: 14, color: '#524440', marginBottom: 8 }}>Mã sự cố: <strong>CB-{event.id}</strong></div>
-          <div style={{ fontSize: 14, color: '#524440', marginBottom: 8 }}>Thời gian: <strong>{new Date(event.occurredAt).toLocaleString('vi-VN')}</strong></div>
-          <div style={{ fontSize: 14, color: '#524440' }}>Loại hình: <strong>{event.eventType}</strong></div>
+          <div className="text-sm text-on-surface-variant mb-2">Mã sự cố: <strong>CB-{event.id}</strong></div>
+          <div className="text-sm text-on-surface-variant mb-2">Thời gian: <strong>{new Date(event.occurredAt).toLocaleString('vi-VN')}</strong></div>
+          <div className="text-sm text-on-surface-variant">Loại hình: <strong>{event.eventType}</strong></div>
         </div>
 
-        <div style={cardStyle}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#271812', margin: '0 0 16px' }}>Đối tượng bị ảnh hưởng & Chỉ số rủi ro</h3>
-          <div style={{ fontSize: 14, color: '#524440' }}>Tài khoản: <strong>{event.userId || '—'}</strong></div>
-          <div style={{ fontSize: 14, color: '#524440', marginTop: 8 }}>Nguồn (IP): <strong>{event.ipAddress}</strong></div>
+        <div className={card}>
+          <h3 className="text-base font-semibold text-on-surface mt-0 mb-4">Đối tượng bị ảnh hưởng &amp; Chỉ số rủi ro</h3>
+          <div className="text-sm text-on-surface-variant">Tài khoản: <strong>{event.userId || '—'}</strong></div>
+          <div className="text-sm text-on-surface-variant mt-2">Nguồn (IP): <strong>{event.ipAddress}</strong></div>
         </div>
       </div>
 
-      <div style={cardStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#271812', margin: '0 0 16px' }}>Dòng thời gian bằng chứng (Log entries)</h3>
+      <div className={card}>
+        <h3 className="text-base font-semibold text-on-surface mt-0 mb-4">Dòng thời gian bằng chứng (Log entries)</h3>
         {timeline.length === 0 ? (
-          <p style={{ color: '#84736f', fontSize: 14 }}>Không có dữ liệu timeline.</p>
+          <p className="text-outline text-sm">Không có dữ liệu timeline.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ borderBottom: '1px solid #fadcd3', textAlign: 'left' }}>
+              <tr className="border-b border-surface-container-highest text-left">
                 {['Timestamp', 'Hoạt động', 'Nguồn', 'Kết quả', 'Chi tiết'].map(h => (
-                  <th key={h} style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: '#84736f' }}>{h}</th>
+                  <th key={h} className="px-2 py-2.5 text-xs font-semibold text-outline">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {timeline.map(t => (
-                <tr key={t.id} style={{ borderBottom: '1px solid #fadcd3' }}>
-                  <td style={{ padding: '12px 8px', fontSize: 13, color: '#271812' }}>{new Date(t.occurredAt).toLocaleTimeString('vi-VN')}</td>
-                  <td style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: t.status === 'RESOLVED' ? '#845143' : '#271812' }}>{t.eventType}</td>
-                  <td style={{ padding: '12px 8px', fontSize: 13, color: '#524440' }}>{t.ipAddress}</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    <span style={{ color: t.status === 'RESOLVED' ? '#845143' : '#ba1a1a', fontSize: 12, fontWeight: 500 }}>
+                <tr key={t.id} className="border-b border-surface-container-highest">
+                  <td className="px-2 py-3 text-[13px] text-on-surface">{new Date(t.occurredAt).toLocaleTimeString('vi-VN')}</td>
+                  <td className={`px-2 py-3 text-[13px] font-semibold ${t.status === 'RESOLVED' ? 'text-primary' : 'text-on-surface'}`}>{t.eventType}</td>
+                  <td className="px-2 py-3 text-[13px] text-on-surface-variant">{t.ipAddress}</td>
+                  <td className="px-2 py-3">
+                    <span className={`text-xs font-medium ${t.status === 'RESOLVED' ? 'text-primary' : 'text-error'}`}>
                       {t.status === 'RESOLVED' ? 'Thành công' : 'Thất bại'}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 8px', fontSize: 12, color: '#524440' }}>{t.details?.substring(0, 40)}</td>
+                  <td className="px-2 py-3 text-xs text-on-surface-variant">{t.details?.substring(0, 40)}</td>
                 </tr>
               ))}
             </tbody>
@@ -99,5 +103,3 @@ export default function SecurityEventDetailPage() {
     </div>
   );
 }
-
-const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(90,70,63,0.06)' };

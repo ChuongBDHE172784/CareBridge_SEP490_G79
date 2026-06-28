@@ -80,100 +80,42 @@ export default function NotificationCenterPage() {
       : notifications;
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif" }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 24,
-        }}
-      >
+    <div>
+      <div className="flex justify-between items-start mb-6">
         <div>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: '#271812',
-              margin: 0,
-            }}
-          >
-            Trung tâm thông báo
-          </h1>
-          <p style={{ color: '#524440', fontSize: 14, marginTop: 4 }}>
+          <h1 className="text-[28px] font-bold text-on-surface m-0">Trung tâm thông báo</h1>
+          <p className="text-on-surface-variant text-sm mt-1">
             Quản lý và theo dõi các cảnh báo hệ thống và cập nhật trạng thái.
           </p>
         </div>
         <button
           onClick={handleMarkAllRead}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#845143',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
+          className="flex items-center gap-1 bg-transparent border-none text-primary text-sm font-semibold cursor-pointer"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-            done_all
-          </span>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>done_all</span>
           Đánh dấu tất cả đã đọc
         </button>
       </div>
 
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: '0 4px 20px rgba(90,70,63,0.06)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 8 }}>
+      <div className="bg-surface rounded-2xl p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex gap-2">
             {FILTERS.map((f, i) => (
               <button
                 key={f}
                 onClick={() => setActiveFilter(i)}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 9999,
-                  border:
-                    activeFilter === i
-                      ? 'none'
-                      : '1px solid #d6c2bd',
-                  background: activeFilter === i ? '#845143' : '#fff',
-                  color: activeFilter === i ? '#fff' : '#524440',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
+                  activeFilter === i
+                    ? 'bg-primary text-on-primary border-none'
+                    : 'bg-surface text-on-surface-variant border border-outline-variant'
+                }`}
               >
                 {f}
                 {i === 1 && unreadCount > 0 && (
                   <span
-                    style={{
-                      background: activeFilter === 1 ? '#fff' : '#845143',
-                      color: activeFilter === 1 ? '#845143' : '#fff',
-                      borderRadius: 9999,
-                      padding: '2px 8px',
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                      activeFilter === 1 ? 'bg-surface text-primary' : 'bg-primary text-on-primary'
+                    }`}
                   >
                     {unreadCount}
                   </span>
@@ -181,24 +123,15 @@ export default function NotificationCenterPage() {
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14, color: '#524440' }}>Loại:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-on-surface-variant">Loại:</span>
             <select
               value={typeFilter}
               onChange={(e) => {
                 setTypeFilter(e.target.value);
                 setPage(0);
               }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: '1px solid #d6c2bd',
-                fontSize: 14,
-                fontFamily: "'Lexend', sans-serif",
-                color: '#271812',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
+              className="px-4 py-2 rounded-lg border border-outline-variant text-sm text-on-surface bg-surface cursor-pointer"
             >
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -210,31 +143,20 @@ export default function NotificationCenterPage() {
         </div>
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#84736f' }}>
-            Đang tải...
-          </div>
+          <div className="text-center p-12 text-outline">Đang tải...</div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#ba1a1a' }}>
-            {error}
-          </div>
+          <div className="text-center p-12 text-error">{error}</div>
         ) : filteredNotifications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#84736f' }}>
-            Không có thông báo nào.
-          </div>
+          <div className="text-center p-12 text-outline">Không có thông báo nào.</div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="w-full border-collapse">
               <thead>
-                <tr
-                  style={{
-                    borderBottom: '1px solid #fadcd3',
-                    textAlign: 'left',
-                  }}
-                >
-                  <th style={thStyle}>Thông báo</th>
-                  <th style={thStyle}>Thời gian</th>
-                  <th style={thStyle}>Tài nguyên liên quan</th>
-                  <th style={{ ...thStyle, textAlign: 'center' }}>Thao tác</th>
+                <tr className="border-b border-surface-container-highest text-left">
+                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Thông báo</th>
+                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Thời gian</th>
+                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Tài nguyên liên quan</th>
+                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em] text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,39 +165,29 @@ export default function NotificationCenterPage() {
                 ))}
               </tbody>
             </table>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 16,
-                fontSize: 14,
-                color: '#524440',
-              }}
-            >
+            <div className="flex justify-between items-center mt-4 text-sm text-on-surface-variant">
               <span>
-                Hiển thị {page * pageSize + 1}-
-                {Math.min((page + 1) * pageSize, totalElements)} của{' '}
+                Hiển thị {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalElements)} của{' '}
                 {totalElements} thông báo
               </span>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  style={paginationBtn(page === 0)}
+                  className={`w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center ${
+                    page === 0 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
+                  }`}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    chevron_left
-                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= totalPages - 1}
-                  style={paginationBtn(page >= totalPages - 1)}
+                  className={`w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center ${
+                    page >= totalPages - 1 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
+                  }`}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    chevron_right
-                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
                 </button>
               </div>
             </div>
@@ -289,133 +201,47 @@ export default function NotificationCenterPage() {
 function NotificationRow({ notification: n }: { notification: NotificationRecord }) {
   const isUnread = n.status !== 'READ';
   const typeLabel = getTypeLabel(n.referenceType || n.type);
-  const typeColor = getTypeColor(n.referenceType || n.type);
+  const badgeCls = getTypeBadgeClass(n.referenceType || n.type);
 
   return (
-    <tr
-      style={{
-        borderBottom: '1px solid #fadcd3',
-        cursor: 'pointer',
-      }}
-    >
-      <td style={{ padding: '16px 8px', display: 'flex', alignItems: 'start', gap: 12 }}>
+    <tr className="border-b border-surface-container-highest cursor-pointer">
+      <td className="px-2 py-4 flex items-start gap-3">
         {isUnread && (
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: '#ba1a1a',
-              marginTop: 8,
-              flexShrink: 0,
-            }}
-          />
+          <span className="w-2 h-2 rounded-full bg-error mt-2 shrink-0" />
         )}
         <span
-          className="material-symbols-outlined"
-          style={{
-            fontSize: 20,
-            color: '#845143',
-            background: '#ffe2d9',
-            borderRadius: '50%',
-            width: 36,
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
+          className="material-symbols-outlined text-primary bg-surface-container-high rounded-full w-9 h-9 flex items-center justify-center shrink-0"
+          style={{ fontSize: 20 }}
         >
           {getTypeIcon(n.referenceType || n.type)}
         </span>
         <div>
-          <div
-            style={{
-              fontWeight: isUnread ? 700 : 400,
-              fontSize: 14,
-              color: '#271812',
-            }}
-          >
+          <div className={`text-sm text-on-surface ${isUnread ? 'font-bold' : 'font-normal'}`}>
             {n.title}
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: '#524440',
-              marginTop: 2,
-              maxWidth: 400,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <div className="text-[13px] text-on-surface-variant mt-0.5 max-w-[400px] truncate">
             {n.body}
           </div>
         </div>
       </td>
-      <td style={{ padding: '16px 8px', fontSize: 14, color: '#524440', whiteSpace: 'nowrap' }}>
+      <td className="px-2 py-4 text-sm text-on-surface-variant whitespace-nowrap">
         {formatTime(n.createdAt)}
       </td>
-      <td style={{ padding: '16px 8px' }}>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 12px',
-            borderRadius: 9999,
-            border: `1px solid ${typeColor}40`,
-            color: typeColor,
-            fontSize: 12,
-            fontWeight: 500,
-          }}
-        >
+      <td className="px-2 py-4">
+        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${badgeCls}`}>
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
             {getTypeIcon(n.referenceType || n.type)}
           </span>
           {typeLabel}
         </span>
       </td>
-      <td style={{ padding: '16px 8px', textAlign: 'center' }}>
-        <button
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: '#845143',
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-            open_in_new
-          </span>
+      <td className="px-2 py-4 text-center">
+        <button className="bg-transparent border-none cursor-pointer text-primary">
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>open_in_new</span>
         </button>
       </td>
     </tr>
   );
-}
-
-const thStyle: React.CSSProperties = {
-  padding: '12px 8px',
-  fontSize: 13,
-  fontWeight: 600,
-  color: '#84736f',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};
-
-function paginationBtn(disabled: boolean): React.CSSProperties {
-  return {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    border: '1px solid #d6c2bd',
-    background: disabled ? '#f6f1ec' : '#fff',
-    color: disabled ? '#d6c2bd' : '#524440',
-    cursor: disabled ? 'default' : 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
 }
 
 function getTypeLabel(type: string): string {
@@ -428,12 +254,12 @@ function getTypeLabel(type: string): string {
   }
 }
 
-function getTypeColor(type: string): string {
+function getTypeBadgeClass(type: string): string {
   switch (type?.toUpperCase()) {
-    case 'SECURITY': return '#ba1a1a';
-    case 'PARTNER': return '#845143';
-    case 'AUDIT': return '#6e5a52';
-    default: return '#84736f';
+    case 'SECURITY': return 'text-error border-error/30';
+    case 'PARTNER': return 'text-primary border-primary/30';
+    case 'AUDIT': return 'text-on-surface-variant border-outline-variant';
+    default: return 'text-outline border-outline-variant';
   }
 }
 

@@ -6,7 +6,7 @@ import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.content.service.ModerationService;
-import jakarta.validation.constraints.Max;
+
 import jakarta.validation.constraints.Min;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;

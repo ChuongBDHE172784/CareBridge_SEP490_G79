@@ -1,6 +1,6 @@
 package com.carebridge.backend.reminder;
 
-import com.carebridge.backend.audit.entity.AuditAction;
+
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.reminder.dto.CreateReminderRequest;

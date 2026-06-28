@@ -43,7 +43,7 @@ class WelcomeScreen extends StatelessWidget {
                       fontFamily: 'Lexend',
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
-                      color: _textColor.withOpacity(0.8),
+                      color: _textColor.withValues(alpha: 0.8),
                       height: 1.5,
                     ),
                   ),
@@ -62,7 +62,9 @@ class WelcomeScreen extends StatelessWidget {
                     child: FilledButton(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: _primaryColor,
@@ -122,7 +124,7 @@ class WelcomeScreen extends StatelessWidget {
                           fontFamily: 'Lexend',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: _textColor.withOpacity(0.7),
+                          color: _textColor.withValues(alpha: 0.7),
                           letterSpacing: 0.6,
                         ),
                       ),
@@ -130,7 +132,9 @@ class WelcomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           '•',
-                          style: TextStyle(color: _textColor.withOpacity(0.4)),
+                          style: TextStyle(
+                            color: _textColor.withValues(alpha: 0.4),
+                          ),
                         ),
                       ),
                       Text(
@@ -139,7 +143,7 @@ class WelcomeScreen extends StatelessWidget {
                           fontFamily: 'Lexend',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: _textColor.withOpacity(0.7),
+                          color: _textColor.withValues(alpha: 0.7),
                           letterSpacing: 0.6,
                         ),
                       ),
@@ -152,7 +156,7 @@ class WelcomeScreen extends StatelessWidget {
                       fontFamily: 'Lexend',
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
-                      color: _textColor.withOpacity(0.5),
+                      color: _textColor.withValues(alpha: 0.5),
                       height: 1.45,
                     ),
                     textAlign: TextAlign.center,

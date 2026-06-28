@@ -43,24 +43,30 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
     setState(() { _loading = true; _error2 = null; });
     try {
       final r = await _service.getReminderDetail(widget.reminderId);
-      if (mounted) setState(() { _reminder = r; _loading = false; });
+      if (mounted) {
+        setState(() { _reminder = r; _loading = false; });
+      }
     } on ApiException {
       // fallback to mock for development
-      if (mounted) setState(() {
-        _reminder = Reminder(
-          id: widget.reminderId,
-          reminderType: ReminderType.vaccination,
-          title: 'Tiêm ngừa mũi 5 trong 1',
-          scheduledAt: DateTime(2023, 10, 25, 8, 0),
-          recurrenceType: RecurrenceType.monthly,
-          status: ReminderStatus.pending,
-          note: 'Nhớ mang theo sổ tiêm chủng của bé. Cho bé ăn nhẹ trước khi đi tiêm. Theo dõi nhiệt độ sau tiêm.',
-          assignee: ReminderAssignee.baby,
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _reminder = Reminder(
+            id: widget.reminderId,
+            reminderType: ReminderType.vaccination,
+            title: 'Tiêm ngừa mũi 5 trong 1',
+            scheduledAt: DateTime(2023, 10, 25, 8, 0),
+            recurrenceType: RecurrenceType.monthly,
+            status: ReminderStatus.pending,
+            note: 'Nhớ mang theo sổ tiêm chủng của bé. Cho bé ăn nhẹ trước khi đi tiêm. Theo dõi nhiệt độ sau tiêm.',
+            assignee: ReminderAssignee.baby,
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _error2 = 'Lỗi kết nối.'; _loading = false; });
+      if (mounted) {
+        setState(() { _error2 = 'Lỗi kết nối.'; _loading = false; });
+      }
     }
   }
 

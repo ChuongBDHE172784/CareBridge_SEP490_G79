@@ -3,8 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, RotateCcw, AlertCircle } from 'lucide-react';
 import { verifyOtp, resendOtp } from '../services/authApi';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
-import { useAuthStore } from '../../../shared/auth/authStore';
-import './OtpPage.css';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -21,7 +19,7 @@ export default function OtpPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!state?.userId) {
+    if (!state?.identifier) {
       navigate('/login', { replace: true });
     }
     inputRefs.current[0]?.focus();
@@ -69,7 +67,10 @@ export default function OtpPage() {
     setServerError(null);
     setIsSubmitting(true);
     try {
-      const result = await verifyOtp({ userId: state!.userId, otp });
+      const isEmail = state!.identifier.includes('@');
+      const result = await verifyOtp(
+        isEmail ? { email: state!.identifier, otp } : { phone: state!.identifier, otp }
+      );
       const route = getDefaultRouteForRole(result.user.role as Parameters<typeof getDefaultRouteForRole>[0]);
       navigate(route, { replace: true });
     } catch (err: unknown) {
@@ -96,7 +97,6 @@ export default function OtpPage() {
     }
   };
 
-  const user = useAuthStore((s) => s.user);
   const maskedIdentifier = state?.identifier
     ? state.identifier.includes('@')
       ? state.identifier.replace(/(.{2}).+(@.+)/, '$1****$2')
@@ -104,34 +104,34 @@ export default function OtpPage() {
     : '';
 
   return (
-    <div className="otp-wrapper">
-      <div className="login-blob-top" />
-      <div className="login-blob-bottom" />
+    <div className="font-sans bg-[#F6F1EC] min-h-screen flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-surface-container-highest rounded-full blur-[100px] opacity-40 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-[#f8ddd2] rounded-full blur-[120px] opacity-30 pointer-events-none" />
 
-      <main className="login-card">
-        <div className="login-card-inner">
-          <div className="login-header">
-            <div className="login-logo">
+      <main className="relative z-10 w-full max-w-[480px] p-6">
+        <div className="bg-white rounded-3xl p-12 shadow-[0_10px_40px_-10px_rgba(132,81,67,0.1)] border border-[rgba(214,194,189,0.3)] flex flex-col gap-8">
+          <div className="text-center flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-primary-container text-primary-container rounded-full flex items-center justify-center">
               <ShieldCheck size={28} strokeWidth={2} />
             </div>
             <div>
-              <h1 className="login-title">Xác minh OTP</h1>
-              <p className="login-subtitle">
+              <h1 className="text-2xl font-semibold leading-8 text-primary tracking-tight m-0">Xác minh OTP</h1>
+              <p className="text-sm font-normal leading-5 text-on-surface-variant mt-1 mb-0">
                 Nhập mã 6 chữ số đã gửi đến{' '}
-                <strong style={{ color: '#845143' }}>{maskedIdentifier}</strong>
+                <strong className="text-primary">{maskedIdentifier}</strong>
               </p>
             </div>
           </div>
 
           {serverError && (
-            <div className="login-error">
-              <AlertCircle size={20} />
-              <p>{serverError}</p>
+            <div className="bg-[#ffdad6] text-[#93000a] p-4 rounded-xl flex items-start gap-3 text-sm leading-5">
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <p className="m-0">{serverError}</p>
             </div>
           )}
 
-          <form className="otp-form" onSubmit={handleSubmit}>
-            <div className="otp-inputs" onPaste={handlePaste}>
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+            <div className="flex gap-3 justify-center" onPaste={handlePaste}>
               {digits.map((d, i) => (
                 <input
                   key={i}
@@ -140,7 +140,9 @@ export default function OtpPage() {
                   inputMode="numeric"
                   maxLength={1}
                   value={d}
-                  className={`otp-digit${d ? ' otp-digit--filled' : ''}`}
+                  className={`w-[52px] h-[60px] rounded-xl border font-sans text-2xl font-semibold text-on-background text-center outline-none transition-[border-color,box-shadow] duration-200 [caret-color:transparent] focus:border-primary focus:ring-1 focus:ring-primary ${
+                    d ? 'bg-surface-container-low border-primary-container' : 'bg-white border-outline-variant'
+                  }`}
                   onChange={(e) => handleDigitChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
                   aria-label={`Chữ số OTP thứ ${i + 1}`}
@@ -148,27 +150,34 @@ export default function OtpPage() {
               ))}
             </div>
 
-            <button type="submit" className="login-submit" disabled={isSubmitting}>
+            <button
+              type="submit"
+              className="w-full h-12 bg-primary-container text-on-primary border-none rounded-full font-sans text-base font-semibold leading-5 cursor-pointer flex items-center justify-center gap-2 mt-2 transition-colors duration-200 hover:bg-primary disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? 'Đang xác minh...' : 'Xác nhận'}
             </button>
           </form>
 
-          <div className="otp-resend">
+          <div className="text-center">
             {cooldown > 0 ? (
-              <p className="otp-resend-cooldown">
+              <p className="text-sm text-on-surface-variant m-0">
                 Gửi lại sau <strong>{cooldown}s</strong>
               </p>
             ) : (
-              <button className="otp-resend-btn" onClick={handleResend}>
+              <button
+                className="inline-flex items-center gap-1.5 bg-transparent border-none font-sans text-sm font-medium text-primary cursor-pointer p-0 transition-colors duration-200 hover:text-primary-container"
+                onClick={handleResend}
+              >
                 <RotateCcw size={16} />
                 Gửi lại mã OTP
               </button>
             )}
           </div>
 
-          <div className="login-footer">
-            <p>
-              <a href="/login" style={{ color: '#845143', fontWeight: 500, textDecoration: 'none' }}>
+          <div className="text-center pt-4 border-t border-[rgba(214,194,189,0.3)]">
+            <p className="text-sm leading-5 text-on-surface-variant m-0">
+              <a href="/login" className="text-primary font-medium no-underline">
                 ← Quay lại đăng nhập
               </a>
             </p>

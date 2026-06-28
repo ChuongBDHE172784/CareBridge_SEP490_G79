@@ -7,10 +7,10 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
-import '../../features/journey/screens/mother_journey_screen.dart';
+
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
-import '../../features/reminder/screens/today_tasks_screen.dart';
+
 import '../../features/reminder/screens/reminder_detail_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
@@ -19,6 +19,7 @@ import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
+import '../../features/community/screens/view_content_screen.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -167,6 +168,10 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id'] ?? '';
         return VaccinationDetailScreen(vaccinationId: id);
       },
+    ),
+    GoRoute(
+      path: '/content',
+      builder: (context, state) => const ViewContentScreen(),
     ),
   ],
 );

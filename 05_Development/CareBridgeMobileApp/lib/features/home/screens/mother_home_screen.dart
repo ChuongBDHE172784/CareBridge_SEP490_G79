@@ -69,7 +69,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   Future<void> _checkUnread() async {
     try {
       final notifs = await NotificationService.instance.getNotifications(size: 20);
-      if (mounted) setState(() => _hasUnread = notifs.any((n) => n.isUnread));
+      if (mounted) {
+        setState(() => _hasUnread = notifs.any((n) => n.isUnread));
+      }
     } catch (_) {}
   }
 
@@ -81,31 +83,39 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
         _journeyService.getDashboard(),
         _reminderService.listTodayReminders(),
       ]);
-      if (mounted) setState(() {
-        _dashboard = results[0] as JourneyDashboard;
-        _tasks = (results[1] as List).cast<Reminder>().take(3).toList();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _dashboard = results[0] as JourneyDashboard;
+          _tasks = (results[1] as List).cast<Reminder>().take(3).toList();
+          _loading = false;
+        });
+      }
     } on ApiException {
       // Fallback mock for development
-      if (mounted) setState(() {
-        _dashboard = JourneyDashboard(
-          journeyId: 'mock-journey-1',
-          journeyType: 'PREGNANCY',
-          status: 'ACTIVE_PREGNANCY',
-          pregnancyWeek: 24,
-          trimester: 2,
-          daysUntilDue: 112,
-          estimatedDueDate: DateTime(2024, 10, 15),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _dashboard = JourneyDashboard(
+            journeyId: 'mock-journey-1',
+            journeyType: 'PREGNANCY',
+            status: 'ACTIVE_PREGNANCY',
+            pregnancyWeek: 24,
+            trimester: 2,
+            daysUntilDue: 112,
+            estimatedDueDate: DateTime(2024, 10, 15),
+          );
+          _loading = false;
+        });
+      }
       try {
         final tasks = await _reminderService.listTodayReminders();
-        if (mounted) setState(() => _tasks = tasks.take(3).toList());
+        if (mounted) {
+          setState(() => _tasks = tasks.take(3).toList());
+        }
       } catch (_) {}
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 

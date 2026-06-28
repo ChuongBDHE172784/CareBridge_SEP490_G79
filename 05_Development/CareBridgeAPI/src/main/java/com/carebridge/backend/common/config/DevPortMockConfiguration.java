@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Collections;
-import java.util.UUID;
+
 
 /**
  * Fallback / mock configuration for port interfaces that do not have
@@ -34,13 +34,13 @@ public class DevPortMockConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(name = "safetyLocationConsentPort")
+    @ConditionalOnMissingBean(com.carebridge.backend.safety.service.LocationConsentPort.class)
     public com.carebridge.backend.safety.service.LocationConsentPort safetyLocationConsentPort() {
         return userId -> true;
     }
 
     @Bean
-    @ConditionalOnMissingBean(name = "emergencyLocationConsentPort")
+    @ConditionalOnMissingBean(com.carebridge.backend.emergency.service.LocationConsentPort.class)
     public com.carebridge.backend.emergency.service.LocationConsentPort emergencyLocationConsentPort() {
         return userId -> true;
     }

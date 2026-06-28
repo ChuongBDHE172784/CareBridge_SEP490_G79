@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 String? parseAccountBlockedCode(http.Response response) {
   if (response.statusCode != 403) return null;
   try {
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     final code = body['error'] as String?;
     if (code == 'ACCOUNT_DISABLED' || code == 'ACCOUNT_LOCKED') return code;
   } catch (_) {}

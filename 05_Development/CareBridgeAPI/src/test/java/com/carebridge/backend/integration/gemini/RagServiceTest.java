@@ -1,13 +1,14 @@
 package com.carebridge.backend.integration.gemini;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+
 
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
 import com.carebridge.backend.integration.gemini.dto.UserStage;
 import com.carebridge.backend.integration.gemini.service.MockRagServiceImpl;
 import com.carebridge.backend.integration.gemini.service.RagService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

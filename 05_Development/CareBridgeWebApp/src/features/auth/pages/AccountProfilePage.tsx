@@ -50,11 +50,11 @@ export default function AccountProfilePage() {
         <div className="profile-card">
           {loading ? (
             <div className="profile-skeleton">
-              <div className="skeleton-pulse skeleton-circle" style={{ width: 96, height: 96 }} />
-              <div className="skeleton-pulse" style={{ width: 160, height: 24 }} />
-              <div className="skeleton-pulse" style={{ width: 100, height: 20 }} />
-              <div className="skeleton-pulse" style={{ width: '100%', height: 56 }} />
-              <div className="skeleton-pulse" style={{ width: '100%', height: 56 }} />
+              <div className="skeleton-pulse skeleton-circle w-24 h-24" />
+              <div className="skeleton-pulse w-40 h-6" />
+              <div className="skeleton-pulse w-[100px] h-5" />
+              <div className="skeleton-pulse w-full h-14" />
+              <div className="skeleton-pulse w-full h-14" />
             </div>
           ) : error ? (
             <div className="profile-error">

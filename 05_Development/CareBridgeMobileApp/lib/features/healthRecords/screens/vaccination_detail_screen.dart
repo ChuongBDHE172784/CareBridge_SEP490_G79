@@ -45,27 +45,33 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     setState(() { _loading = true; _error2 = null; });
     try {
       final r = await _service.getVaccination(widget.vaccinationId);
-      if (mounted) setState(() { _record = r; _loading = false; });
+      if (mounted) {
+        setState(() { _record = r; _loading = false; });
+      }
     } on ApiException {
       // Fallback mock for development
-      if (mounted) setState(() {
-        _record = VaccinationRecord(
-          vaccinationId: widget.vaccinationId,
-          vaccineName: 'Vắc xin 6 trong 1 (Hexaxim)',
-          status: VaccinationStatus.completed,
-          plannedDate: DateTime(2023, 10, 15),
-          actualDate: DateTime(2023, 10, 16),
-          facilityName: 'Bệnh viện Nhi Đồng 1',
-          facilityAddress: '341 Sư Vạn Hạnh, Phường 10, Quận 10, TP. Hồ Chí Minh',
-          childId: 'child-1',
-          childName: 'Nguyễn Văn A',
-          childBirthDate: DateTime(2023, 4, 12),
-          note: 'Trẻ có biểu hiện sốt nhẹ sau khi tiêm. Đã dùng thuốc hạ sốt theo chỉ định của bác sĩ. Cần theo dõi thêm trong 24h.',
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _record = VaccinationRecord(
+            vaccinationId: widget.vaccinationId,
+            vaccineName: 'Vắc xin 6 trong 1 (Hexaxim)',
+            status: VaccinationStatus.completed,
+            plannedDate: DateTime(2023, 10, 15),
+            actualDate: DateTime(2023, 10, 16),
+            facilityName: 'Bệnh viện Nhi Đồng 1',
+            facilityAddress: '341 Sư Vạn Hạnh, Phường 10, Quận 10, TP. Hồ Chí Minh',
+            childId: 'child-1',
+            childName: 'Nguyễn Văn A',
+            childBirthDate: DateTime(2023, 4, 12),
+            note: 'Trẻ có biểu hiện sốt nhẹ sau khi tiêm. Đã dùng thuốc hạ sốt theo chỉ định của bác sĩ. Cần theo dõi thêm trong 24h.',
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _error2 = 'Không thể tải dữ liệu.'; _loading = false; });
+      if (mounted) {
+        setState(() { _error2 = 'Không thể tải dữ liệu.'; _loading = false; });
+      }
     }
   }
 

@@ -4,7 +4,11 @@ import { useAuth } from '../../shared/auth/useAuth';
 const NAV_LINKS = [
   { to: '/admin/dashboard', label: 'Dashboard', roles: ['SYSTEM_ADMIN'] },
   { to: '/moderator/dashboard', label: 'Moderation Queue', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
-  { to: '/content/dashboard', label: 'Content', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/dashboard', label: 'Tổng quan CMS', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/list', label: 'Thư viện', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/faq', label: 'FAQ', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/checklists', label: 'Checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/topics', label: 'Danh mục', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN', 'MODERATOR'] },
   { to: '/expert/dashboard', label: 'Expert', roles: ['EXPERT'] },
   { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER', 'SYSTEM_ADMIN'] },
   { to: '/admin/topics', label: 'Topics', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
@@ -24,47 +28,41 @@ export default function AdminLayout() {
   );
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
-      <aside style={{
-        width: 220, background: '#fff8f4', borderRight: '1px solid #ffe4c4',
-        display: 'flex', flexDirection: 'column', padding: '24px 0',
-      }}>
-        <div style={{ padding: '0 20px 20px', fontSize: 18, fontWeight: 800, color: '#ff6b35' }}>
+    <div className="flex min-h-screen font-sans">
+      <aside className="w-64 fixed left-0 top-0 h-screen bg-surface flex flex-col py-6 px-3 border-r border-outline-variant">
+        <div className="px-4 pb-5 text-lg font-extrabold text-primary">
           CareBridge
         </div>
-        <nav style={{ flex: 1 }}>
+        <nav className="flex-1">
           {visibleLinks.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
-              style={({ isActive }) => ({
-                display: 'block', padding: '10px 20px', textDecoration: 'none', fontSize: 14,
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? '#ff6b35' : '#555',
-                background: isActive ? '#fff0e8' : 'transparent',
-                borderLeft: isActive ? '3px solid #ff6b35' : '3px solid transparent',
-              })}
+              className={({ isActive }) =>
+                `block px-4 py-2.5 text-sm no-underline transition-colors rounded-xl ${
+                  isActive
+                    ? 'bg-surface-container-low text-primary font-semibold'
+                    : 'text-on-surface-variant hover:bg-surface-container-low font-normal'
+                }`
+              }
             >
               {l.label}
             </NavLink>
           ))}
         </nav>
-        <div style={{ padding: '0 20px' }}>
-          <div style={{ fontSize: 12, color: '#999', marginBottom: 6 }}>
+        <div className="px-4 pt-3 border-t border-outline-variant">
+          <div className="text-xs text-outline mb-1.5">
             {user?.name ?? user?.phone} · {user?.role}
           </div>
           <button
             onClick={handleLogout}
-            style={{
-              width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid #ffd0b0',
-              background: '#fff', color: '#ff6b35', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-            }}
+            className="w-full py-2 rounded-xl border border-outline-variant bg-surface text-primary cursor-pointer text-sm font-semibold hover:bg-surface-container-low transition-colors"
           >
             Sign out
           </button>
         </div>
       </aside>
-      <main style={{ flex: 1, background: '#fef9f5', overflow: 'auto' }}>
+      <main className="ml-64 min-h-screen bg-background overflow-auto flex-1">
         <Outlet />
       </main>
     </div>

@@ -41,23 +41,27 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
     setState(() => _loading = true);
     try {
       final g = await _service.getGroupMembers(widget.groupId);
-      if (mounted) setState(() { _group = g; _loading = false; });
+      if (mounted) {
+        setState(() { _group = g; _loading = false; });
+      }
     } catch (_) {
       // Fallback mock
-      if (mounted) setState(() {
-        _group = CareGroup(
-          id: widget.groupId,
-          groupName: widget.groupName,
-          isActive: true,
-          memberCount: 3,
-          members: [
-            CareGroupMember(memberId: 'm-1', displayName: 'Mẹ Linh', memberRole: 'ADMIN', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 1, 5)),
-            CareGroupMember(memberId: 'm-2', displayName: 'Bố Tuấn', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 1, 10)),
-            CareGroupMember(memberId: 'm-3', displayName: 'Bà Ngoại', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 2, 3)),
-          ],
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _group = CareGroup(
+            id: widget.groupId,
+            groupName: widget.groupName,
+            isActive: true,
+            memberCount: 3,
+            members: [
+              CareGroupMember(memberId: 'm-1', displayName: 'Mẹ Linh', memberRole: 'ADMIN', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 1, 5)),
+              CareGroupMember(memberId: 'm-2', displayName: 'Bố Tuấn', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 1, 10)),
+              CareGroupMember(memberId: 'm-3', displayName: 'Bà Ngoại', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED', joinedAt: DateTime(2024, 2, 3)),
+            ],
+          );
+          _loading = false;
+        });
+      }
     }
   }
 

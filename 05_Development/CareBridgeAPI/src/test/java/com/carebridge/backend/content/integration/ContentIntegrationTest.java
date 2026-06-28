@@ -14,7 +14,7 @@ import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
