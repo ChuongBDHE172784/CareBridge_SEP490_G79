@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Khiếu nại &amp; Hoàn tiền</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-reason {
+            background-color: #c98c7b !important;
+            color: white !important;
+            border-color: #c98c7b !important;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(242, 234, 228, 0.5);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-24 md:pb-0">
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 w-full z-50 bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<div class="flex items-center justify-between px-6 h-16 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Gửi khiếu nại</h1>
+</div>
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</div>
+</header>
+<main class="pt-24 px-4 md:px-8 max-w-5xl mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-panel-gap">
+<!-- Left Column: Summary & Progress -->
+<div class="lg:col-span-5 flex flex-col gap-panel-gap">
+<!-- Consultation Summary Card -->
+<div class="bg-surface-container-lowest p-8 rounded-lg shadow-[0_4px_20px_rgba(201,140,123,0.08)]">
+<h2 class="font-headline-sm text-headline-sm text-text-heading mb-6">Tóm tắt tư vấn</h2>
+<div class="space-y-6">
+<div class="flex items-start gap-4">
+<div class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a female medical expert with a warm smile, wearing a white lab coat and stethoscope. The background is a clean, modern medical office with soft, warm lighting in a high-fidelity B2B style. The color palette features soft neutrals and a touch of terracotta brown, reflecting a professional and empathetic healthcare environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4HwRZXEdOlJLF-mCj2XH_9EvucCC9rl5xCof23jGqPCx8UdX9QKEnHa89FS9CBm8izRntjAJ7NNMH5Qk7k2UPJBHPCKACiraPQrhFAk8sNhiMfuutp0HFQVSH_LHbgt6S_kPzmPcAF5TqRenFhb2EQeqIXNLr2yIMJRaBCB8JYWjv2fMKiYrFLzbosfOQ0X58qTll7wFEUbp5U_32-sqOLTN6E7SlNwf0QGon8s_yxuzW_STt2QXbIsCPV2szykov6VFHTRF2TcQ"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary uppercase tracking-wider">Chuyên gia</p>
+<p class="font-body-lg text-body-lg text-text-heading font-bold">BS. Đặng Minh Thu</p>
+<p class="font-body-md text-body-md text-secondary">Tâm lý học lâm sàng</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-accent-light p-4 rounded-xl">
+<p class="font-label-md text-label-md text-secondary mb-1">Ngày tư vấn</p>
+<p class="font-body-md text-body-md text-text-heading font-semibold">24/10/2023</p>
+</div>
+<div class="bg-surface-accent-light p-4 rounded-xl">
+<p class="font-label-md text-label-md text-secondary mb-1">Phí dịch vụ</p>
+<p class="font-body-md text-body-md text-primary font-bold">500.000đ</p>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-surface-accent-muted">
+<div class="flex items-center gap-2 text-secondary mb-2">
+<span class="material-symbols-outlined text-sm">verified_user</span>
+<span class="text-label-md font-label-md">Giao dịch được bảo mật bởi CareBridge</span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">Khiếu nại được tiếp nhận trong vòng 7 ngày kể từ khi kết thúc tư vấn.</p>
+</div>
+</div>
+<!-- Processing Timeline Card -->
+<div class="bg-primary-container/10 p-8 rounded-lg border border-primary-container/20">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined">schedule</span>
+                        Thời gian xử lý
+                    </h3>
+<div class="space-y-4">
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<div class="w-0.5 h-full bg-primary/20"></div>
+</div>
+<div class="pb-4">
+<p class="font-body-md text-body-md font-bold text-text-heading">Tiếp nhận yêu cầu</p>
+<p class="font-body-md text-body-md text-secondary">Ngay lập tức sau khi gửi</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full border-2 border-primary-container/40 bg-white"></div>
+<div class="w-0.5 h-full bg-primary/20"></div>
+</div>
+<div class="pb-4">
+<p class="font-body-md text-body-md font-bold text-text-heading">Xác minh thông tin</p>
+<p class="font-body-md text-body-md text-secondary">24 - 48 giờ làm việc</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full border-2 border-primary-container/40 bg-white"></div>
+</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-text-heading">Phản hồi kết quả</p>
+<p class="font-body-md text-body-md text-secondary">Tối đa 7 ngày làm việc</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Form -->
+<div class="lg:col-span-7">
+<div class="bg-surface-container-lowest p-8 rounded-lg shadow-[0_4px_20px_rgba(201,140,123,0.08)] h-full">
+<form class="space-y-8" id="disputeForm">
+<!-- Reason Selector -->
+<div>
+<label class="font-headline-sm text-headline-sm text-text-heading block mb-4">Lý do khiếu nại</label>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<button class="reason-btn flex items-center gap-3 p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary-container transition-all text-left" onclick="selectReason(this)" type="button">
+<span class="material-symbols-outlined text-primary">person_off</span>
+<span class="font-body-md text-body-md">Chuyên gia vắng mặt</span>
+</button>
+<button class="reason-btn flex items-center gap-3 p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary-container transition-all text-left" onclick="selectReason(this)" type="button">
+<span class="material-symbols-outlined text-primary">warning</span>
+<span class="font-body-md text-body-md">Sai phạm chuyên môn</span>
+</button>
+<button class="reason-btn flex items-center gap-3 p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary-container transition-all text-left" onclick="selectReason(this)" type="button">
+<span class="material-symbols-outlined text-primary">wifi_off</span>
+<span class="font-body-md text-body-md">Lỗi kỹ thuật hệ thống</span>
+</button>
+<button class="reason-btn flex items-center gap-3 p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary-container transition-all text-left" onclick="selectReason(this)" type="button">
+<span class="material-symbols-outlined text-primary">more_horiz</span>
+<span class="font-body-md text-body-md">Lý do khác</span>
+</button>
+</div>
+</div>
+<!-- Description -->
+<div>
+<label class="font-headline-sm text-headline-sm text-text-heading block mb-2">Giải trình chi tiết</label>
+<p class="font-body-md text-body-md text-secondary mb-4">Vui lòng mô tả cụ thể vấn đề bạn gặp phải để chúng tôi hỗ trợ tốt nhất.</p>
+<textarea class="w-full min-h-[160px] p-4 rounded-xl border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 transition-colors font-body-md text-body-md" placeholder="Nhập nội dung giải trình tại đây..."></textarea>
+</div>
+<!-- Evidence Upload -->
+<div>
+<label class="font-headline-sm text-headline-sm text-text-heading block mb-4">Tải lên bằng chứng (Tùy chọn)</label>
+<div class="border-2 border-dashed border-surface-accent-muted rounded-xl p-8 flex flex-col items-center justify-center hover:bg-surface-accent-light transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-4xl text-secondary group-hover:text-primary transition-colors mb-2">cloud_upload</span>
+<p class="font-body-lg text-body-lg text-text-heading font-semibold">Nhấn để tải lên hoặc kéo thả</p>
+<p class="font-body-md text-body-md text-secondary">PNG, JPG hoặc PDF (Tối đa 10MB)</p>
+<input class="hidden" type="file"/>
+</div>
+</div>
+<!-- Submit Button -->
+<div class="pt-4">
+<button class="w-full py-4 bg-primary text-white rounded-full font-headline-sm text-headline-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" type="submit">
+                                Gửi yêu cầu hoàn tiền
+                            </button>
+<p class="text-center text-label-md font-label-md text-secondary mt-4">
+                                Bằng cách gửi yêu cầu, bạn đồng ý với <a class="text-primary underline" href="#">Chính sách hoàn tiền</a> của chúng tôi.
+                            </p>
+</div>
+</form>
+<!-- Success State (Hidden by default) -->
+<div class="hidden flex-col items-center justify-center h-full py-12 text-center" id="successState">
+<div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-6xl text-green-600">check_circle</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-text-heading mb-2">Đã gửi yêu cầu</h2>
+<div class="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-700 rounded-full font-label-md text-label-md mb-6">
+<span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span>
+                            Đang chờ xử lý
+                        </div>
+<p class="font-body-lg text-body-lg text-secondary max-w-md mx-auto mb-8">
+                            Yêu cầu hoàn tiền cho buổi tư vấn ngày 24/10 đã được tiếp nhận thành công. Mã khiếu nại: #CB-98234.
+                        </p>
+<button class="px-8 py-3 border-2 border-primary text-primary font-body-lg text-body-lg rounded-full hover:bg-primary/5 transition-colors" onclick="window.location.reload()">
+                            Quay lại trang chủ
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Navigation (JSON Anchor) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg z-50">
+<div class="flex flex-col items-center justify-center text-secondary font-nav-item text-label-caps hover:bg-surface-container-low transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined">home</span>
+<span>Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary font-bold font-nav-item text-label-caps hover:bg-surface-container-low transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span>Sức khỏe</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary font-nav-item text-label-caps hover:bg-surface-container-low transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+<span>Thông báo</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary font-nav-item text-label-caps hover:bg-surface-container-low transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined">person</span>
+<span>Cá nhân</span>
+</div>
+</nav>
+<script>
+        function selectReason(element) {
+            const buttons = document.querySelectorAll('.reason-btn');
+            buttons.forEach(btn => btn.classList.remove('active-reason'));
+            element.classList.add('active-reason');
+        }
+
+        document.getElementById('disputeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Basic UI feedback for submission
+            const form = this;
+            const success = document.getElementById('successState');
+            
+            form.style.opacity = '0.5';
+            form.style.pointerEvents = 'none';
+            
+            setTimeout(() => {
+                form.classList.add('hidden');
+                success.classList.remove('hidden');
+                success.classList.add('flex');
+                
+                // Scroll to top of the card
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 800);
+        });
+
+        // Add file selection feedback
+        const fileUpload = document.querySelector('input[type="file"]');
+        const uploadZone = fileUpload.parentElement;
+        
+        uploadZone.addEventListener('click', () => fileUpload.click());
+        fileUpload.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                uploadZone.querySelector('p.font-body-lg').textContent = `Đã chọn: ${fileName}`;
+                uploadZone.querySelector('span.material-symbols-outlined').textContent = 'check_circle';
+                uploadZone.querySelector('span.material-symbols-outlined').style.color = '#16a34a';
+            }
+        });
+    </script>
+</body></html>

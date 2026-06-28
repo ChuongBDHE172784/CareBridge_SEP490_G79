@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hoàn thành nhắc nhở - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-accent-muted": "#F2EAE4",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "primary-fixed": "#ffdbd1",
+                    "on-surface-variant": "#524440",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "on-primary-fixed": "#341006",
+                    "text-heading": "#2D2A28",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "inverse-surface": "#32302d",
+                    "surface-variant": "#e7e1dd",
+                    "on-surface": "#1d1b19",
+                    "on-error": "#ffffff",
+                    "surface-accent-light": "#F6F1EC",
+                    "surface-container": "#f3ede8",
+                    "background": "#fef8f4",
+                    "tertiary-container": "#9e9a96",
+                    "on-tertiary-container": "#34322f",
+                    "status-active": "#C98C7B",
+                    "surface-container-low": "#f9f2ee",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-primary": "#fab7a4",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "secondary-container": "#e9e1db",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface": "#fef8f4",
+                    "primary-container": "#c98c7b",
+                    "outline-variant": "#d6c2bd",
+                    "surface-container-highest": "#e7e1dd",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-tint": "#845143",
+                    "surface-container-high": "#ede7e3",
+                    "surface-dim": "#dfd9d5",
+                    "secondary": "#625d59",
+                    "on-secondary-container": "#68635f",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#51271b",
+                    "on-background": "#1d1b19",
+                    "outline": "#84736f",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-fixed": "#1e1b18",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#fef8f4",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#e9e1db",
+                    "primary": "#845143",
+                    "on-tertiary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-md": "16px",
+                    "stack-sm": "8px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"],
+                    "label-md": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fef8f4;
+            font-family: 'Quicksand', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08), 
+                        inset 0 -4px 6px rgba(201, 140, 123, 0.02),
+                        inset 0 4px 6px rgba(255, 255, 255, 0.8);
+        }
+
+        .success-animation {
+            animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .tab-active {
+            transition: all 0.3s ease;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+<!-- Top AppBar (Mobile Style) -->
+<header class="fixed top-0 w-full z-50 bg-surface flex items-center justify-between px-6 h-16 shadow-sm">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low hover:opacity-80 active:scale-95 transition-transform" onclick="window.history.back()">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Hoàn thành nhắc nhở</h1>
+<div class="w-10 h-10 overflow-hidden rounded-full border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="A professional profile portrait of a compassionate female caregiver in her 40s, wearing a clean white clinical uniform. She is smiling warmly against a soft-focus background of a sunlit home interior with warm wooden accents and potted plants. The lighting is bright and natural, emphasizing a professional yet empathetic Care-Tech aesthetic with a soft color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnYrVOnfQdVtXBs6VPSyHpP7HR3Ps9jDp1raEcZI38x9dPJYrB_W5tKOBISkz_dw5rvPZXX7hdjOuUugzsz9vkan3FZKTgZ0HmcnUvxaR1Uj-biTF9-KfiCYm_0dzW5ln4KdGlIAxfU3ZhFg_Boj_xOwrdBTq1XTW1CwKXMutHEOEdHIMxFkIi2D96Bq4jCaLhyJYVXfq4K1twz3b4exya_tsUtzN5XE0HmD2h8i2g_SdTQhfZ_9KTNHwbZPurNmvF5oHETPg7LlA"/>
+</div>
+</header>
+<main class="w-full max-w-md px-6 pt-24 pb-12 flex flex-col gap-6">
+<!-- Reminder Summary Panel -->
+<div class="clay-card p-8 flex flex-col gap-6" id="main-panel">
+<!-- Summary Header -->
+<div class="flex items-start gap-4">
+<div class="w-14 h-14 bg-primary-container rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-3xl" data-icon="pill">pill</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-text-heading">Uống thuốc huyết áp</h2>
+<p class="font-body-md text-body-md text-text-body">Hôm nay, 08:00 AM</p>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Info Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-accent-light p-4 rounded-xl">
+<p class="font-label-md text-label-md text-outline uppercase tracking-wider">Người nhận</p>
+<p class="font-body-lg text-body-lg text-text-heading mt-1">Bà Nội</p>
+</div>
+<div class="bg-surface-accent-light p-4 rounded-xl">
+<p class="font-label-md text-label-md text-outline uppercase tracking-wider">Định kỳ</p>
+<p class="font-body-lg text-body-lg text-text-heading mt-1">Hàng ngày</p>
+</div>
+</div>
+<!-- State Indicator -->
+<div class="flex items-center gap-3 p-4 bg-error-container/30 rounded-xl">
+<span class="material-symbols-outlined text-error" data-icon="history">history</span>
+<div>
+<p class="font-body-md text-body-md text-on-error-container font-semibold">Đang chờ xử lý</p>
+<p class="font-label-md text-label-md text-on-error-container opacity-80">Đã quá hạn 15 phút</p>
+</div>
+</div>
+</div>
+<!-- Primary Action -->
+<button class="w-full py-4 bg-primary hover:bg-on-primary-fixed-variant text-on-primary rounded-full font-headline-sm transition-all duration-300 shadow-lg active:scale-[0.98] flex items-center justify-center gap-2" id="complete-btn">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+<span>Đánh dấu hoàn thành</span>
+</button>
+</div>
+<!-- Next Occurrence Preview -->
+<div class="clay-card p-6 flex items-center justify-between border border-transparent hover:border-outline-variant transition-colors group cursor-pointer" id="next-occurrence">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="calendar_today">calendar_today</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-outline">Lần nhắc tiếp theo</p>
+<p class="font-body-lg text-body-lg text-text-heading">Mai, lúc 08:00 AM</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Success Toast (Hidden by default) -->
+<div class="hidden fixed inset-0 z-[60] bg-surface/80 backdrop-blur-md flex items-center justify-center p-6" id="success-state">
+<div class="clay-card p-10 flex flex-col items-center text-center gap-6 max-w-sm success-animation">
+<div class="w-20 h-20 bg-primary-container/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-5xl" data-icon="task_alt" style="font-variation-settings: 'FILL' 1;">task_alt</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-text-heading">Tuyệt vời!</h3>
+<p class="font-body-lg text-body-lg text-text-body mt-2">Bạn đã hoàn thành nhắc nhở này đúng lịch trình.</p>
+</div>
+<div class="w-full flex flex-col gap-3">
+<button class="w-full py-3 bg-surface-container-highest text-primary rounded-full font-nav-item hover:bg-surface-accent-muted transition-colors" id="undo-btn">
+                        Hoàn tác
+                    </button>
+<button class="w-full py-3 text-outline font-nav-item hover:text-text-heading" onclick="window.history.back()">
+                        Quay lại trang chủ
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual Decoration -->
+<div class="fixed bottom-0 left-0 w-full h-32 pointer-events-none opacity-40">
+
+</div>
+<script>
+        const completeBtn = document.getElementById('complete-btn');
+        const successState = document.getElementById('success-state');
+        const undoBtn = document.getElementById('undo-btn');
+        const mainPanel = document.getElementById('main-panel');
+        const nextOcc = document.getElementById('next-occurrence');
+
+        completeBtn.addEventListener('click', () => {
+            // Simulate processing
+            completeBtn.disabled = true;
+            completeBtn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span>';
+            
+            setTimeout(() => {
+                successState.classList.remove('hidden');
+                successState.classList.add('flex');
+            }, 800);
+        });
+
+        undoBtn.addEventListener('click', () => {
+            successState.classList.add('hidden');
+            successState.classList.remove('flex');
+            
+            // Reset button state
+            completeBtn.disabled = false;
+            completeBtn.innerHTML = `
+                <span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+                <span>Đánh dấu hoàn thành</span>
+            `;
+        });
+
+        // Add some tactile feedback to cards
+        [mainPanel, nextOcc].forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.99)';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

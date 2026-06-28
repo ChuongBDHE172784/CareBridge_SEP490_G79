@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Tìm kiếm hỗ trợ gần đây</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "primary": "#845143",
+                "surface-accent-light": "#F6F1EC",
+                "on-background": "#1d1b19",
+                "text-body": "#524F4C",
+                "surface-accent-muted": "#F2EAE4",
+                "outline-variant": "#d6c2bd",
+                "on-secondary-fixed-variant": "#4a4642",
+                "on-error-container": "#93000a",
+                "secondary-container": "#e9e1db",
+                "on-primary-fixed": "#341006",
+                "on-primary": "#ffffff",
+                "surface-dim": "#dfd9d5",
+                "tertiary-fixed": "#e6e2dd",
+                "on-tertiary-fixed-variant": "#484643",
+                "primary-container": "#c98c7b",
+                "surface-variant": "#e7e1dd",
+                "on-secondary-fixed": "#1e1b18",
+                "surface-container-lowest": "#ffffff",
+                "on-tertiary-container": "#34322f",
+                "on-secondary-container": "#68635f",
+                "on-surface": "#1d1b19",
+                "surface-container-low": "#f9f2ee",
+                "surface": "#fef8f4",
+                "inverse-primary": "#fab7a4",
+                "surface-tint": "#845143",
+                "tertiary": "#605e5a",
+                "on-primary-fixed-variant": "#693a2d",
+                "text-heading": "#2D2A28",
+                "on-error": "#ffffff",
+                "surface-container-highest": "#e7e1dd",
+                "surface-container-high": "#ede7e3",
+                "status-active": "#C98C7B",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#fab7a4",
+                "surface-bright": "#fef8f4",
+                "on-surface-variant": "#524440",
+                "outline": "#84736f",
+                "on-primary-container": "#51271b",
+                "secondary-fixed-dim": "#ccc5c0",
+                "on-tertiary-fixed": "#1d1b19",
+                "on-secondary": "#ffffff",
+                "surface-container": "#f3ede8",
+                "error-container": "#ffdad6",
+                "tertiary-container": "#9e9a96",
+                "tertiary-fixed-dim": "#cac6c1",
+                "surface-main": "#FFFFFF",
+                "background": "#fef8f4",
+                "secondary-fixed": "#e9e1db",
+                "secondary": "#625d59",
+                "on-tertiary": "#ffffff",
+                "primary-fixed": "#ffdbd1",
+                "inverse-on-surface": "#f6f0eb",
+                "inverse-surface": "#32302d"
+            },
+            "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "stack-md": "16px",
+                "sidebar-width": "280px",
+                "panel-gap": "24px",
+                "grid-gutter": "24px",
+                "container-padding": "32px",
+                "stack-sm": "8px"
+            },
+            "fontFamily": {
+                "body-lg": ["Quicksand"],
+                "headline-sm": ["Quicksand"],
+                "headline-md": ["Quicksand"],
+                "display-lg": ["Quicksand"],
+                "label-md": ["Quicksand"],
+                "body-md": ["Quicksand"],
+                "nav-item": ["Quicksand"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .clay-card {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08), 
+                        inset 0 -4px 10px rgba(201, 140, 123, 0.02);
+            border-radius: 1.5rem;
+        }
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-accent-light text-on-surface">
+<!-- Mobile Screen Wrapper (390x844 simulated) -->
+<div class="max-w-[390px] mx-auto h-screen relative bg-surface-accent-light overflow-hidden flex flex-col">
+<!-- Top Navigation (Shell Implementation) -->
+<header class="fixed top-0 w-full z-50 bg-surface h-16 flex items-center justify-between px-4 shadow-sm">
+<button class="p-2 text-primary hover:opacity-80 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Hỗ trợ gần bạn</h1>
+<button class="p-2 text-primary hover:opacity-80 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 mt-16 overflow-y-auto pb-24 scroll-smooth">
+<!-- Map Preview Area -->
+<div class="relative w-full h-[300px] mb-[-24px]">
+<div class="w-full h-full bg-surface-dim overflow-hidden" data-location="Ho Chi Minh City" style="">
+<img class="w-full h-full object-cover" data-alt="A soft, high-fidelity map of Ho Chi Minh City districts using a warm pastel color palette of creams and subtle peaches. The map features gentle vector lines for roads and a glowing primary-colored pin at the center indicating the user's location. The overall aesthetic is clean, professional, and empathetic, matching a care-technology brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCffuz42trz0RI2rKgvOhNffhDXHm_g0F1-j-WguatjP6A3mjMGfqpC5jfbEjlHTVLquNHxXoI8qfYm84hHWWbNnKNsdyeBKyHqkDi6zfs8tgbJwWZKftg_3iSaJ6gOqHk3RnBL1qDNL2mBJ3Kj6VsTLN8HFmv0lRs9wtihQGXTBzWNJIBEBQTdC5vQ15rTH9RRMqlxtmCjUQn9rV9_b3p2uUJDSSASx8VPDWkxt7S25a0C62sFZkKx7O2dfLp12uLRmUQbPJ9Bc4U"/>
+</div>
+<!-- Map UI Overlays -->
+<div class="absolute top-4 left-4 right-4 flex justify-between items-start">
+<div class="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">my_location</span>
+<span class="text-xs font-bold text-on-surface-variant">Bán kính: 5km</span>
+</div>
+<!-- Map/List Toggle -->
+<div class="bg-primary p-1 rounded-full shadow-lg flex">
+<button class="bg-white text-primary rounded-full px-4 py-1.5 text-xs font-bold transition-all" id="mapToggle">Bản đồ</button>
+<button class="text-white rounded-full px-4 py-1.5 text-xs font-bold transition-all" id="listToggle">Danh sách</button>
+</div>
+</div>
+<!-- Gradient Mask to blend with cards -->
+<div class="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-surface-accent-light to-transparent"></div>
+</div>
+<!-- Content Container -->
+<div class="px-4 space-y-6 relative z-10">
+<!-- Filter Chips (Horizontal Scroll) -->
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+<button class="flex-shrink-0 bg-primary text-white px-4 py-2 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">Cơ sở chăm sóc</button>
+<button class="flex-shrink-0 bg-white border-2 border-surface-accent-muted text-on-surface-variant px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Chuyên gia</button>
+<button class="flex-shrink-0 bg-white border-2 border-surface-accent-muted text-on-surface-variant px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Nhi khoa</button>
+<button class="flex-shrink-0 bg-white border-2 border-surface-accent-muted text-on-surface-variant px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Đang mở cửa</button>
+<button class="flex-shrink-0 bg-white border-2 border-surface-accent-muted p-2 rounded-full">
+<span class="material-symbols-outlined text-sm leading-none">tune</span>
+</button>
+</div>
+<!-- Emergency Disclaimer -->
+<div class="bg-error-container/40 border border-error/20 p-3 rounded-2xl flex items-start gap-3">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+<p class="text-xs text-on-error-container leading-relaxed">
+<span class="font-bold">Khẩn cấp:</span> Trong trường hợp khẩn cấp, vui lòng gọi <span class="font-bold text-error">115</span> ngay lập tức.
+                    </p>
+</div>
+<!-- Results Section -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Tìm thấy 12 kết quả</h2>
+<button class="text-xs font-bold text-primary flex items-center gap-1">
+                            Xem tất cả <span class="material-symbols-outlined text-xs">arrow_forward</span>
+</button>
+</div>
+<!-- Result Card 1 -->
+<article class="clay-card p-4 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="flex gap-4">
+<div class="w-20 h-20 rounded-2xl bg-surface-container overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A clean, modern medical clinic interior with soft wood paneling, warm ambient lighting, and white comfortable seating. A female pediatrician in a white coat is smiling warmly in the background. The scene exudes a sense of safety, professionalism, and high-quality maternal and child care, following a minimalist and warm brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj5TScUUcgWZh8Glinxf_ooLrMjmVy6vzg4hfsAumsbP7gDe_BivGJboF2Gdlerwc3xvMSLNy1ZGTSgHkP52O4bpjcgbxTxMvBc48zOD8FUPbKUy9npRCbWYVhShDvFzzlPAP27IRNqMspdiH-Dpo_xsvHMhgc-IKOGTQNsDeW42Ra-B4X2Pr2bHfdlUIVp078H5pNAcPE22SvNtosqC_varU1U_LOtZj_VwZvimuzdCdvoG9l5ol7KK6Oi6b8e2StwoQEZ3VqJmk"/>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-fixed-dim/20 px-2 py-0.5 rounded-full">Xác thực</span>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] font-bold ml-0.5">4.8</span>
+</div>
+</div>
+<h3 class="font-bold text-on-surface text-body-lg leading-tight">Phòng khám Đa khoa Quốc tế</h3>
+</div>
+<div class="flex items-center gap-4 text-xs text-on-surface-variant font-medium">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">distance</span>2.4 km</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span>12 mins</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-surface-accent-muted text-primary py-3 rounded-full text-xs font-bold active:scale-95 transition-transform">Nhắn tin</button>
+<button class="flex-1 bg-primary text-white py-3 rounded-full text-xs font-bold shadow-md active:scale-95 transition-transform">Xem chi tiết</button>
+</div>
+</article>
+<!-- Safe Fallback / Location Info -->
+<div class="clay-card p-4 bg-surface-accent-muted/30 border-2 border-dashed border-outline-variant/30">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">location_on</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Đã cấp quyền vị trí chính xác</p>
+<p class="text-[10px] text-on-surface-variant">Hết hạn lúc 18:00 hôm nay</p>
+</div>
+</div>
+<button class="w-full text-center py-2 text-xs font-bold text-primary hover:underline decoration-2 underline-offset-4">
+                            Nhập khu vực thủ công
+                        </button>
+</div>
+</div>
+<!-- Decorative Atmospheric Element -->
+<div class="py-4 opacity-40">
+<div class="w-full h-px bg-gradient-to-r from-transparent via-outline-variant to-transparent"></div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button for Emergency -->
+<div class="fixed bottom-8 right-6 z-50">
+<button class="w-14 h-14 bg-error rounded-full shadow-[0_8px_30px_rgba(186,26,26,0.3)] flex items-center justify-center text-white active:scale-90 transition-all hover:rotate-12">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">emergency</span>
+</button>
+</div>
+</div>
+<script>
+        // Simple Interaction Logic
+        const mapBtn = document.getElementById('mapToggle');
+        const listBtn = document.getElementById('listToggle');
+
+        mapBtn.addEventListener('click', () => {
+            mapBtn.classList.add('bg-white', 'text-primary');
+            mapBtn.classList.remove('text-white');
+            listBtn.classList.remove('bg-white', 'text-primary');
+            listBtn.classList.add('text-white');
+        });
+
+        listBtn.addEventListener('click', () => {
+            listBtn.classList.add('bg-white', 'text-primary');
+            listBtn.classList.remove('text-white');
+            mapBtn.classList.remove('bg-white', 'text-primary');
+            mapBtn.classList.add('text-white');
+        });
+
+        // Soft visual hover/click states handled by Tailwind active: classes
+    </script>
+</body></html>
