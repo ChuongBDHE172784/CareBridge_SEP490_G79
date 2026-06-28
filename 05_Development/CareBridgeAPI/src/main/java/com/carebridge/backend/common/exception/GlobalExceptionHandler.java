@@ -165,13 +165,6 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
-    @ExceptionHandler(ExerciseNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleExerciseNotFound(
-            ExerciseNotFoundException ex, HttpServletRequest request) {
-        logger.error("Exercise not found: {}", ex.getMessage());
-        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
-    }
-
     @ExceptionHandler(ConsentException.class)
     public ResponseEntity<ErrorResponse> handleConsent(ConsentException ex, HttpServletRequest request) {
         logger.error("Consent denied: {}", ex.getMessage(), ex);
