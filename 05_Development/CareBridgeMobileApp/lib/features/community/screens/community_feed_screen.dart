@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
+import 'community_search_screen.dart';
+import 'post_answer_screen.dart';
+import 'verified_content_search_screen.dart';
 
 /// CB-014 — Community Feed (UC-54..UC-59, UC-198..UC-201)
 /// Displays topic filter chips and a scrollable list of community posts.
@@ -220,9 +223,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
             child: IconButton(
               icon: const Icon(Icons.search, color: _onSurfaceVariant, size: 22),
-              onPressed: () {
-                // TODO: navigate to community search screen
-              },
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CommunitySearchScreen()),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -230,10 +233,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             width: 44, height: 44,
             decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.bookmark_border, color: _onSurfaceVariant, size: 22),
-              onPressed: () {
-                // TODO: navigate to saved posts
-              },
+              icon: const Icon(Icons.article_outlined, color: _onSurfaceVariant, size: 22),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VerifiedContentSearchScreen()),
+              ),
             ),
           ),
         ],
@@ -287,9 +290,23 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
+  void _navigateToPostAnswer(CommunityFeedItem item) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PostAnswerScreen(
+        questionId: item.id,
+        questionTitle: item.title,
+        authorName: item.authorDisplay,
+        topicName: item.topicName.isNotEmpty ? item.topicName : null,
+        timeAgo: _timeAgo(item.createdAt),
+      ),
+    ));
+  }
+
   // ── Post card ──
   Widget _buildPostCard(CommunityFeedItem item) {
-    return Container(
+    return GestureDetector(
+      onTap: () => _navigateToPostAnswer(item),
+      child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -405,9 +422,31 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 ),
             ],
           ),
+          const SizedBox(height: 12),
+          // Reply CTA
+          GestureDetector(
+            onTap: () => _navigateToPostAnswer(item),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: _surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.reply, size: 16, color: _primary),
+                  SizedBox(width: 6),
+                  Text('Trả lời câu hỏi',
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary)),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   // Provides a mock body for items that don't carry body text
