@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,6 +34,16 @@ public class BabyController {
         var response = babyService.createBabyProfile(request, callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Baby profile created successfully"));
+    }
+
+    // UC32: List baby profiles for the current user
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<BabyProfileDetailResponse>>> listBabyProfiles(
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var list = babyService.listBabyProfiles(callerId);
+        return ResponseEntity.ok(ApiResponse.success(list));
     }
 
     // UC192: View baby profile

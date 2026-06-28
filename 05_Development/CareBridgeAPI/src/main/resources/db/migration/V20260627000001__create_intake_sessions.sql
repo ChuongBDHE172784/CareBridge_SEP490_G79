@@ -1,4 +1,4 @@
-CREATE TABLE intake_sessions (
+CREATE TABLE IF NOT EXISTS intake_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     baby_profile_id UUID,
