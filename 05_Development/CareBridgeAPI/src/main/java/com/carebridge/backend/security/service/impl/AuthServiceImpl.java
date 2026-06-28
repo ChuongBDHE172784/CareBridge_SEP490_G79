@@ -4,12 +4,14 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
+import com.carebridge.backend.common.exception.AuthorizationException;
 import com.carebridge.backend.common.exception.InvalidRefreshTokenException;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
 import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
@@ -74,6 +76,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final SmsService smsService;
     private final PasswordEncoder passwordEncoder;
+    private final DeviceTokenRepository deviceTokenRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
@@ -844,6 +847,43 @@ public class AuthServiceImpl implements AuthService {
         });
 
         auditService.log(AuditAction.PASSWORD_CHANGED, userId, "User", userId.toString(), null);
+    }
+
+    @Override
+    @Transactional
+    public void deactivate(UUID userId, String confirmPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // AUTH-083: Block SYSTEM_ADMIN from self-deactivation
+        if (user.getRole() == Role.SYSTEM_ADMIN) {
+            throw new AuthorizationException("SYSTEM_ADMIN accounts cannot be self-deactivated");
+        }
+
+        // AUTH-082: Already deactivated
+        if ("DEACTIVATED".equals(user.getAccountStatus())) {
+            throw new ValidationException("AUTH-082: Account is already deactivated");
+        }
+
+        // AUTH-081: Wrong password
+        if (!passwordEncoder.matches(confirmPassword, user.getPasswordHash())) {
+            throw new AuthenticationException("AUTH-081: Incorrect password");
+        }
+
+        // Deactivate account
+        user.setAccountStatus("DEACTIVATED");
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        // Revoke all refresh tokens
+        refreshTokenRepository.revokeAllByUserId(userId);
+
+        // Deactivate device tokens
+        deviceTokenRepository.deactivateAllForUser(userId, Instant.now());
+
+        // Audit
+        auditService.log(AuditAction.SECURITY_EVENT, userId, "User", userId.toString(),
+                Map.of("action", "ACCOUNT_DEACTIVATED"));
     }
 
     private RefreshToken createRefreshToken(User user) {

@@ -84,7 +84,8 @@ class AuthServiceRefreshTest {
                 tokenBlacklistRepository,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
-                passwordEncoder
+                passwordEncoder,
+                mock(com.carebridge.backend.notification.repository.DeviceTokenRepository.class)
         );
 
         userId = UUID.randomUUID();

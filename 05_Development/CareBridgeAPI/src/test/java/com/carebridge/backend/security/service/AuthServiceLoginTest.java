@@ -76,7 +76,8 @@ class AuthServiceLoginTest {
                 tokenBlacklistRepository,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
-                passwordEncoder
+                passwordEncoder,
+                mock(com.carebridge.backend.notification.repository.DeviceTokenRepository.class)
         );
     }
 
@@ -457,7 +458,8 @@ class AuthServiceLoginTest {
                 tokenBlacklistRepo,
                 mock(com.carebridge.backend.security.service.EmailService.class),
                 mock(com.carebridge.backend.security.service.SmsService.class),
-                passwordEncoder
+                passwordEncoder,
+                mock(com.carebridge.backend.notification.repository.DeviceTokenRepository.class)
         );
 
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);

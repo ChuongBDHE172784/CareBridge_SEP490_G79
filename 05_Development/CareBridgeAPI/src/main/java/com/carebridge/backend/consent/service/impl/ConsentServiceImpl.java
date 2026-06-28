@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.constants.ConsentConstants;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.consent.dto.request.GrantConsentRequest;
 import com.carebridge.backend.consent.dto.response.ConsentGrantResponse;
@@ -61,6 +62,9 @@ public class ConsentServiceImpl implements ConsentService {
     public ConsentGrantResponse revokeConsent(java.util.UUID userId, Long consentId) {
         ConsentGrant grant = consentGrantRepository.findByIdAndUserId(consentId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Consent grant not found"));
+        if (grant.getRevokedAt() != null) {
+            throw new ValidationException("CONSENT-012: Consent has already been revoked");
+        }
         grant.setRevokedAt(Instant.now());
         grant.setRevokedBy(userId);
         ConsentGrant saved = consentGrantRepository.save(grant);

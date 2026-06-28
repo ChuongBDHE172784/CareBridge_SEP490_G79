@@ -3,7 +3,13 @@ package com.carebridge.backend.common.exception;
 import com.carebridge.backend.common.response.ErrorDetail;
 import com.carebridge.backend.common.response.ErrorResponse;
 import com.carebridge.backend.community.exception.CommunityFeedValidationException;
-
+import com.carebridge.backend.exercise.exception.DuplicateSessionException;
+import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
+import com.carebridge.backend.exercise.exception.InvalidSessionStateException;
+import com.carebridge.backend.exercise.exception.SafetyCheckNotClearedException;
+import com.carebridge.backend.exercise.exception.SafetyCheckNotFoundException;
+import com.carebridge.backend.exercise.exception.SessionNotCompletedException;
+import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
@@ -131,7 +137,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(QuestionNotAnswerableException.class)
     public ResponseEntity<ErrorResponse> handleQuestionNotAnswerable(
             QuestionNotAnswerableException ex, HttpServletRequest request) {
-        return error(HttpStatus.valueOf(422), "COM-007", ex.getMessage(), request);
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "COM-007", ex.getMessage(), request);
     }
 
     @ExceptionHandler(CommunityFeedValidationException.class)
@@ -162,6 +168,49 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SafetyException.class)
     public ResponseEntity<ErrorResponse> handleSafety(SafetyException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ExerciseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExerciseNotFound(
+            ExerciseNotFoundException ex, HttpServletRequest request) {
+        logger.error("Exercise not found: {}", ex.getMessage());
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(SafetyCheckNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSafetyCheckNotFound(
+            SafetyCheckNotFoundException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(SafetyCheckNotClearedException.class)
+    public ResponseEntity<ErrorResponse> handleSafetyCheckNotCleared(
+            SafetyCheckNotClearedException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DuplicateSessionException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateSession(
+            DuplicateSessionException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidSessionStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSessionState(
+            InvalidSessionStateException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(SessionOwnershipException.class)
+    public ResponseEntity<ErrorResponse> handleSessionOwnership(
+            SessionOwnershipException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(SessionNotCompletedException.class)
+    public ResponseEntity<ErrorResponse> handleSessionNotCompleted(
+            SessionNotCompletedException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
+import com.carebridge.backend.security.dto.request.DeactivateRequest;
 import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -257,5 +259,24 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(SecurityUtils.requireCurrentUserId(principal), request);
         return ResponseEntity.ok(ApiResponse.success(null, "Password changed successfully. Please log in again."));
+    }
+
+    @DeleteMapping("/deactivate")
+    @Operation(
+        summary = "Deactivate own account",
+        description = "Permanently deactivate the authenticated user's account. Requires password confirmation. All sessions and device tokens are revoked immediately.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Account deactivated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Incorrect password or account already deactivated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "SYSTEM_ADMIN cannot self-deactivate")
+        }
+    )
+    public ResponseEntity<ApiResponse<Void>> deactivate(
+            Principal principal,
+            @Valid @RequestBody DeactivateRequest request) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        authService.deactivate(userId, request.getConfirmPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Account deactivated successfully"));
     }
 }

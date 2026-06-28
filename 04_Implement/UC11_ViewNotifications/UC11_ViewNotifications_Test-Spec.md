@@ -5,7 +5,7 @@
 | Document ID      | CB-NOTIF-IMP-011-TEST          |
 | Version          | 1.0                            |
 | Date             | 2026-06-26                     |
-| Status           | Draft                          |
+| Status           | Implemented                          |
 | Author           | AI Agent                       |
 | Related TDS      | CB-NOTIF-IMP-011               |
 | Based on EDS     | v2.0 / CASE 2.0                |

@@ -5,7 +5,7 @@
 | Document ID      | CB-NOTIF-IMP-011               |
 | Version          | 1.0                            |
 | Date             | 2026-06-26                     |
-| Status           | Draft                          |
+| Status           | Approved                          |
 | Document Owner   | PhuongNT                       |
 | Author           | AI Agent                       |
 | Based on EDS     | v2.0                           |

@@ -6,7 +6,7 @@
 | Document ID      | CB-NOTIF-IMP-012-TEST                      |
 | Version          | 1.0                                        |
 | Date             | 2026-06-26                                 |
-| Status           | Draft                                      |
+| Status           | Implemented                                      |
 | Document Owner   | PhuongNT                                   |
 | Author           | AI Agent                                   |
 | Related TDS      | CB-NOTIF-IMP-012                           |

@@ -2,6 +2,7 @@ package com.carebridge.backend.notification.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.notification.dto.NotificationRecordResponse;
 import com.carebridge.backend.notification.dto.RegisterDeviceTokenRequest;
 import com.carebridge.backend.notification.dto.SendNotificationRequest;
@@ -16,6 +17,7 @@ import com.carebridge.backend.notification.service.NotificationService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -126,6 +128,58 @@ public class NotificationServiceImpl implements NotificationService {
         }
         return page.map(this::toResponse);
     }
+
+    // =========================================================================
+    // UC-12: Mark as Read
+    // =========================================================================
+
+    /**
+     * UC-12: Mark a single notification as read (idempotent).
+     * Ownership is verified before any mutation (C1 — prevents TOCTOU).
+     * Both is_read and read_at are updated atomically in one UPDATE (ADR-012-003).
+     * Audit is emitted only when a state change actually occurred (C4).
+     */
+    @Override
+    @Transactional
+    public void markAsRead(UUID userId, UUID notificationId) {
+        // C1: verify ownership before mutating — throws 404 if not found or wrong user
+        notificationRecordRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Notification not found or not owned by user: " + notificationId));
+
+        // ADR-012-003: atomic UPDATE; WHERE is_read=false makes it idempotent (C3)
+        int affected = notificationRecordRepository.markAsReadById(notificationId, userId, Instant.now());
+
+        // C4: emit audit only when state actually changed
+        if (affected > 0) {
+            auditService.log(AuditAction.NOTIFICATIONS_READ, userId,
+                    "NotificationRecord", notificationId.toString(),
+                    Map.of("count", 1, "scope", "single"));
+        }
+    }
+
+    /**
+     * UC-12: Mark all unread notifications of a user as read (idempotent).
+     * Returns the number of notifications that were actually updated.
+     */
+    @Override
+    @Transactional
+    public int markAllAsRead(UUID userId) {
+        // ADR-012-003: atomic UPDATE with WHERE is_read=false
+        int affected = notificationRecordRepository.markAllAsReadByUserId(userId, Instant.now());
+
+        // C4: emit audit only when at least one notification was marked
+        if (affected > 0) {
+            auditService.log(AuditAction.NOTIFICATIONS_READ, userId,
+                    "NotificationRecord", userId.toString(),
+                    Map.of("count", affected, "scope", "all"));
+        }
+        return affected;
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
 
     private NotificationRecordResponse toResponse(NotificationRecord r) {
         return new NotificationRecordResponse(

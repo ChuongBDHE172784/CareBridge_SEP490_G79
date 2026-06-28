@@ -33,4 +33,6 @@ public interface AuthService {
     UserProfileResponse updateProfile(java.util.UUID userId, UpdateProfileRequest request);
 
     void changePassword(java.util.UUID userId, ChangePasswordRequest request);
+
+    void deactivate(java.util.UUID userId, String confirmPassword);
 }

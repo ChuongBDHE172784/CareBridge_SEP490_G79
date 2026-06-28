@@ -72,4 +72,13 @@ public class NotificationRecord {
 
     @Column(name = "failed_at")
     private Instant failedAt;
+
+    /** UC-12: Whether the user has read this notification (added via V20260628120000). */
+    @Builder.Default
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
+
+    /** UC-12: Timestamp when the user marked this notification as read. */
+    @Column(name = "read_at")
+    private Instant readAt;
 }

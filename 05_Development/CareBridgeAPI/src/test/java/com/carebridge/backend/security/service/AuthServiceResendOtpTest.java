@@ -69,7 +69,8 @@ class AuthServiceResendOtpTest {
                 tokenBlacklistRepository,
                 emailService,
                 smsService,
-                mock(org.springframework.security.crypto.password.PasswordEncoder.class)
+                mock(org.springframework.security.crypto.password.PasswordEncoder.class),
+                mock(com.carebridge.backend.notification.repository.DeviceTokenRepository.class)
         );
         ReflectionTestUtils.setField(authService, "otpExpirationSeconds", 300L);
     }
