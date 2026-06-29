@@ -8,6 +8,7 @@ import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/baby/screens/baby_profiles_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
+import '../../../features/expert/screens/expert_profile_setup_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key});
@@ -21,7 +22,6 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   static const _primaryColor = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _onSurface = Color(0xFF271812);
-  // ignore: unused_field
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outlineVariant = Color(0xFFD6C2BD);
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
@@ -81,7 +81,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
               const SizedBox(width: 48),
             const Expanded(
               child: Text('Hồ sơ tài khoản', textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor)),
+                style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor)),
             ),
             const SizedBox(width: 48),
           ],
@@ -92,6 +92,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   Widget _buildContent() {
     final p = _profile;
+    final isExpert = p?.role == 'EXPERT';
     return RefreshIndicator(
       color: _primaryContainer,
       onRefresh: _loadProfile,
@@ -113,6 +114,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             }),
           ]),
           const SizedBox(height: 16),
+          if (isExpert)
+            _buildMenuCard([
+              _menuItem(Icons.badge_outlined, 'Thiết lập hồ sơ chuyên gia', () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const ExpertProfileSetupScreen(),
+                ));
+              }),
+            ]),
+          if (isExpert) const SizedBox(height: 16),
           _buildMenuCard([
             _menuItem(Icons.child_care_outlined, 'Hồ sơ bé', () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BabyProfilesScreen()));
