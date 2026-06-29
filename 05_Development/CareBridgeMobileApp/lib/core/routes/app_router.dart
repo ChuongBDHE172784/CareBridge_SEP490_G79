@@ -20,6 +20,8 @@ import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
+import '../../features/expert/screens/expert_profile_setup_screen.dart';
+import '../../features/expert/screens/expert_home_shell.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -33,12 +35,13 @@ final GoRouter appRouter = GoRouter(
     final isAuth = auth.isAuthenticated;
     final isRestoring = auth.isRestoring;
     final blockedReason = auth.blockedReason;
+    final role = auth.role;
 
     // Do not redirect while restoring state
     if (isRestoring) return null;
 
     final isAuthRoute = state.matchedLocation.startsWith('/welcome') ||
-                        state.matchedLocation.startsWith('/login');
+        state.matchedLocation.startsWith('/login');
 
     if (blockedReason != null && state.matchedLocation != '/blocked') {
       return '/blocked';
@@ -49,11 +52,11 @@ final GoRouter appRouter = GoRouter(
     }
 
     if (isAuth && isAuthRoute) {
-      // Logic kiểm tra xem có Mother Journey chưa (mock).
-      // Thực tế bạn có thể fetch JourneyService() trong một Provider / Bloc,
-      // hoặc AuthState để biết có journey chưa.
-      // Tạm thời redirect thẳng về trang Home / Dashboard.
-      return '/'; 
+      // Role-based redirect after login
+      if (role == 'EXPERT') {
+        return '/expert-home';
+      }
+      return '/';
     }
 
     return null;
@@ -74,11 +77,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) {
-        // Tab index query param (e.g. /?tab=1 for Journey Dashboard)
         final tabParam = state.uri.queryParameters['tab'];
         final int initialIndex = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
         return HomeShell(initialIndex: initialIndex);
       },
+    ),
+    GoRoute(
+      path: '/expert-home',
+      builder: (context, state) => const ExpertHomeShell(),
     ),
     GoRoute(
       path: '/journey-setup',
@@ -172,6 +178,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/content',
       builder: (context, state) => const ViewContentScreen(),
+    ),
+    GoRoute(
+      path: '/expert-profile-setup',
+      builder: (context, state) => const ExpertProfileSetupScreen(),
     ),
   ],
 );
