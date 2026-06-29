@@ -1,70 +1,59 @@
-spring:
-  application:
-    name: backend
 
-  datasource:
-    url: ${SUPABASE_DB_URL}
-    username: ${SUPABASE_DB_USERNAME}
-    password: ${SUPABASE_DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
+  spring:
+    application:
+      name: backend
 
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    clean-disabled: true
-    out-of-order: true
+    datasource:
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require}
+      username: ${SPRING_DATASOURCE_USERNAME:postgres.wqsunmakzdaxwyknegkq}
+      password: ${SPRING_DATASOURCE_PASSWORD:sdSjTLr8eWTgA7WI}
+      driver-class-name: org.postgresql.Driver
 
-  docker:
-    compose:
-      enabled: false
+    flyway:
+      enabled: true
+      locations: classpath:db/migration
+      baseline-on-migrate: true
 
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
+
+    docker:
+      compose:
+         enabled: false
+    jpa:
       hibernate:
-        format_sql: true
+        ddl-auto: validate
+      open-in-view: false
+      properties:
+        hibernate:
+          format_sql: true
 
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-        debug: false
+  carebridge:
+    security:
+      jwt:
+        secret: ${JWT_SECRET:carebridge-local-dev-secret-key-must-be-at-least-32-characters}
+        access-token-expiration-ms: 900000
+        refresh-token-expiration-ms: 604800000
+      otp:
+        expiration-seconds: 300
+        max-attempts: 5
 
-carebridge:
-  dev-seed:
-    enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
-    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:Test@1234}
-  security:
-    jwt:
-      secret: ${JWT_SECRET}
-      access-token-expiration-ms: 900000
-      refresh-token-expiration-ms: 604800000
-    otp:
-      expiration-seconds: 300
-      max-attempts: 5
-  gemini:
-    api-key: ${GEMINI_API_KEY:}
-    timeout-ms: 5000
-    max-context-chunks: 5
-    base-url: https://generativelanguage.googleapis.com/v1beta
-    model: gemini-1.5-flash
+    expert:
+      price:
+        min: ${EXPERT_PRICE_BAND_MIN:50000}
+        max: ${EXPERT_PRICE_BAND_MAX:500000}
+        default-duration-minutes: 30
 
-  supabase:
-    url: ${SUPABASE_URL}
-    anon-key: ${SUPABASE_ANON_KEY}
-    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
-    storage-bucket: ${SUPABASE_STORAGE_BUCKET:carebridge}
-  mail:
-    from-address: ${MAIL_USERNAME:noreply@carebridge.app}
-    from-name: "CareBridge"
+    payment:
+      mock:
+        enabled: ${PAYMENT_MOCK_ENABLED:true}
+      gateway:
+        vnpay:
+          url: ${VNPAY_URL:https://mock.vnpay.vn}
+          tmn-code: ${VNPAY_TMN_CODE:TEST_TMN}
+          hash-secret: ${VNPAY_HASH_SECRET:test-secret}
+
+    realtime:
+      provider: ${REALTIME_PROVIDER:mock}
+      zego:
+        app-id: ${ZEGO_APP_ID:0}
+        server-secret: ${ZEGO_SERVER_SECRET:test-secret}
+

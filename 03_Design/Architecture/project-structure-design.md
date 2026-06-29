@@ -1,16 +1,15 @@
----
+﻿---
 title: CareBridge Project Structure Design
 project: CareBridge_SEP490_G79
 source_documents:
-  - 02_Requirements/SRS/Report1_Project Introduction.docx.md
-  - 02_Requirements/SRS/Report2_Project Management Plan.docx.md
-  - 02_Requirements/SRS/Report3_Software Requirement Specification.docx.md
+  - 01_Requirements/SRS/Report1_Project Introduction.docx.md
+  - 01_Requirements/SRS/Report2_Project Management Plan.docx.md
+  - 01_Requirements/SRS/Report3_Software Requirement Specification.docx.md
 created_by: bmad-create-architecture
 date: 2026-06-17
 status: draft
 architecture_style: Layered Architecture using Controller-Service-Repository pattern
 ---
-
 # CareBridge Project Structure Design
 
 ## 1. Reading Report
@@ -18,7 +17,7 @@ architecture_style: Layered Architecture using Controller-Service-Repository pat
 This design is derived from the three supplied project documents:
 
 - Report 1 - Project Introduction: CareBridge is a maternal and early childhood healthcare support platform for pre-pregnancy, pregnancy, postpartum, baby care, family coordination, expert guidance, moderated community, AI-assisted triage, emergency support, and legal-safe healthcare boundaries.
-- Report 2 - Project Management Plan: the MVP is Hanoi-first, academic-scope, and uses Flutter, Java Spring Boot, PostgreSQL, MongoDB, Redis or lightweight caching, Firebase Cloud Messaging, TrackAsia, Firebase Storage, GitLab CI/CD, AWS, and Vercel.
+- Report 2 - Project Management Plan: the MVP is Hanoi-first, academic-scope, and uses Flutter, Java Spring Boot, PostgreSQL,  Redis or lightweight caching, Firebase Cloud Messaging, TrackAsia, Firebase Storage, GitLab CI/CD, AWS, and Vercel.
 - Report 3 - Software Requirement Specification: the system includes mobile app, web portal, backend services, Gemini AI/RAG, ZegoCloud, Firebase chat/storage/notification, TrackAsia, smartwatch data, phone IMU, MediaPipe posture analysis, VNPay, consent, audit, and security event workflows.
 
 ## 2. Architecture Position
@@ -34,21 +33,20 @@ Recommended shape:
 - Flutter mobile app organized by feature and simple UI/API/state layers.
 - Web portal organized by feature and simple page/service/API layers.
 - PostgreSQL for structured relational data.
-- MongoDB for flexible content, logs, RAG chunks, and metadata-heavy records.
 - Firebase Storage or compatible object storage for uploaded files.
 - Integration services for Gemini, TrackAsia, Firebase, ZegoCloud, VNPay, wearable/smartwatch, and MediaPipe-related data.
 
 ## 3. Layered Architecture Rules
 
-| Layer | Backend package | Responsibility |
-| --- | --- | --- |
-| Presentation Layer | `controller`, `dto.request`, `dto.response` | Receive API requests, validate input shape, call services, return responses |
-| Business Layer | `service`, `policy` | Implement business workflows, healthcare safety rules, consent checks, RBAC decisions, audit triggers |
-| Data Access Layer | `repository` | Query and persist data through Spring Data JPA/Mongo repositories |
-| Persistence Model | `entity`, `document` | Represent database tables/collections |
-| Mapping Layer | `mapper` | Convert request/response/entity objects |
-| Integration Layer | `integration`, external service clients | Wrap Firebase, Gemini, TrackAsia, ZegoCloud, VNPay, storage, wearable APIs |
-| Shared Layer | `shared`, `common` | Exceptions, constants, response wrappers, validation helpers, utilities |
+| Layer              | Backend package                                   | Responsibility                                                                                        |
+| ------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Presentation Layer | `controller`, `dto.request`, `dto.response` | Receive API requests, validate input shape, call services, return responses                           |
+| Business Layer     | `service`, `policy`                           | Implement business workflows, healthcare safety rules, consent checks, RBAC decisions, audit triggers |
+| Data Access Layer  | `repository`                                    | Query and persist data through Spring Data JPA/, repositories                                        |
+| Persistence Model  | `entity`, `document`                          | Represent database tables/collections                                                                 |
+| Mapping Layer      | `mapper`                                        | Convert request/response/entity objects                                                               |
+| Integration Layer  | `integration`, external service clients         | Wrap Firebase, Gemini, TrackAsia, ZegoCloud, VNPay, storage, wearable APIs                            |
+| Shared Layer       | `shared`, `common`                            | Exceptions, constants, response wrappers, validation helpers, utilities                               |
 
 Dependency direction:
 
@@ -71,46 +69,38 @@ Rules:
 
 ## 4. Repository Structure
 
-This repository follows an SDLC folder layout reorganized to separate concerns cleanly.
+Preserve the current SDLC folders. Expand implementation detail under `04_SourceCode`.
 
 ```text
 CareBridge_SEP490_G79/
-├── 01_Planning/
+├── 01_Planning/                        ← Kế hoạch dự án
 │   ├── MeetingMinutes/
 │   ├── ProgressReports/
 │   ├── Risks/
 │   └── Schedule/
-├── 02_Requirements/
+├── 02_Requirements/                    ← Yêu cầu phần mềm
 │   ├── BusinessRules/
 │   ├── ContextDiagram/
 │   ├── DFD/
 │   ├── RequirementTraceabilityMatrix/
 │   ├── SRS/
 │   └── UseCase/
-├── 03_Design/
+├── 03_Design/                          ← Thiết kế hệ thống
 │   ├── ActivityDiagram/
 │   ├── APIDesign/
 │   ├── Architecture/
-│   │   ├── project-structure-design.md
-│   │   ├── system-architecture.md
-│   │   ├── integration-architecture.md
-│   │   └── security-consent-audit-architecture.md
 │   ├── ClassDiagram/
-│   ├── SequenceDiagram/
-│   ├── TechnicalDesign/
-│   └── UI_UX/
-├── 04_Implement/
+├── 04_Implement/                       ← Kế hoạch triển khai
 │   └── implement_artifacts/
-├── 05_Development/
-│   ├── CareBridgeAPI/
-│   ├── CareBridgeMobileApp/
-│   ├── CareBridgeWebApp/
+├── 05_Development/                     ← Source code đầy đủ
+│   ├── CareBridgeAPI/                     (Backend — Spring Boot)
+│   ├── CareBridgeMobileApp/               (Mobile — Flutter)
+│   ├── CareBridgeWebApp/                  (Web Portal — React + Vite)
 │   ├── Contracts/
 │   ├── Database/
 │   ├── Deployment/
-│   ├── DevTools/
-│   └── MachineLearning/
-├── 06_Testing/
+│   └── DevTools/
+├── 06_Testing/                         ← Kiểm thử
 │   ├── AISafety/
 │   ├── Automation/
 │   ├── BugReports/
@@ -118,8 +108,8 @@ CareBridge_SEP490_G79/
 │   ├── TestCases/
 │   ├── TestReports/
 │   └── UAT/
-├── 07_Reports/
-└── 08_References/
+├── 07_Reports/                         ← Báo cáo nộp trường
+└── 08_References/                      ← Tài liệu tham khảo
     └── Template/
 ```
 
@@ -127,28 +117,19 @@ CareBridge_SEP490_G79/
 
 Use one Spring Boot application. Organize packages by domain first, then by layer inside each domain. This is easier to maintain than putting all controllers in one global folder and all services in another global folder.
 
-The backend project has already been initialized directly under `05_Development/CareBridgeAPI` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below reflect the current package ownership under the existing package root `com.carebridge.backend`.
+The backend project has already been initialized directly under `04_SourceCode/Backend` with Maven wrapper, `pom.xml`, `compose.yaml`, `src/main/java/com/carebridge/backend/BackendApplication.java`, `src/main/resources/application.yaml`, and `src/test/java/com/carebridge/backend/BackendApplicationTests.java`. The domain packages shown below are the recommended next folders to add under the existing package root `com.carebridge.backend`.
 
 Current backend baseline:
 
-- Spring Boot application root: `05_Development/CareBridgeAPI`
+- Spring Boot application root: `04_SourceCode/Backend`
 - Java package root: `com.carebridge.backend`
 - Main class: `BackendApplication`
 - Build tool: Maven
 - Current dependencies: Spring Web MVC, Spring Data JPA, Spring Security, PostgreSQL driver, Lombok, Spring Boot Docker Compose, test starters
 - Current local infrastructure: `compose.yaml` with PostgreSQL
-- Current Supabase support: `application.yaml` includes a `supabase` profile that reads database and Supabase values from environment variables.
-
-Current entity ownership rule:
-
-- Business capability owns its `entity` package.
-- Existing behavior modules win over broad generated packages when they are clearer bounded contexts.
-- `users` stays in `security.entity` because authentication owns account behavior.
-- `audit_logs` stays in `audit.entity` because audit owns sensitive action history.
-- ERD entity packages must not use a catch-all package such as `database.entity`.
 
 ```text
-05_Development/CareBridgeAPI/
+04_SourceCode/Backend/
 ├── .mvn/
 │   └── wrapper/
 ├── .gitattributes
@@ -219,27 +200,7 @@ Current entity ownership rule:
 │   │   │   └── response/
 │   │   ├── mapper/
 │   │   └── policy/
-│   ├── babycare/
-│   │   ├── controller/
-│   │   ├── service/
-│   │   ├── repository/
-│   │   ├── entity/
-│   │   ├── dto/
-│   │   │   ├── request/
-│   │   │   └── response/
-│   │   ├── mapper/
-│   │   └── policy/
 │   ├── healthrecord/
-│   │   ├── controller/
-│   │   ├── service/
-│   │   ├── repository/
-│   │   ├── entity/
-│   │   ├── dto/
-│   │   │   ├── request/
-│   │   │   └── response/
-│   │   ├── mapper/
-│   │   └── policy/
-│   ├── carecoordination/
 │   │   ├── controller/
 │   │   ├── service/
 │   │   ├── repository/
@@ -258,6 +219,16 @@ Current entity ownership rule:
 │   │   │   ├── request/
 │   │   │   └── response/
 │   │   └── mapper/
+│   ├── family/
+│   │   ├── controller/
+│   │   ├── service/
+│   │   ├── repository/
+│   │   ├── entity/
+│   │   ├── dto/
+│   │   │   ├── request/
+│   │   │   └── response/
+│   │   ├── mapper/
+│   │   └── policy/
 │   ├── community/
 │   │   ├── controller/
 │   │   ├── service/
@@ -338,16 +309,6 @@ Current entity ownership rule:
 │   │   │   └── response/
 │   │   ├── mapper/
 │   │   └── policy/
-│   ├── device/
-│   │   ├── controller/
-│   │   ├── service/
-│   │   ├── repository/
-│   │   ├── entity/
-│   │   ├── dto/
-│   │   │   ├── request/
-│   │   │   └── response/
-│   │   ├── mapper/
-│   │   └── policy/
 │   ├── partner/
 │   │   ├── controller/
 │   │   ├── service/
@@ -380,6 +341,9 @@ Current entity ownership rule:
 │       └── policy/
 ├── src/main/resources/
 │   ├── application.yaml
+│   ├── application-local.yaml
+│   ├── application-dev.yaml
+│   ├── application-demo.yaml
 │   ├── db/migration/
 │   ├── messages/
 │   ├── static/
@@ -449,40 +413,7 @@ consultation/
 └── policy/
 ```
 
-## 7. Current Backend Entity Ownership
-
-The current JPA entity packages are aligned with the updated ERD data dictionary and the backend capability modules.
-
-| Backend package | Entity ownership |
-| --- | --- |
-| `security.entity` | `User`, `RefreshToken`, `OtpVerification` |
-| `audit.entity` | `AuditLog`, `SecurityEvent`, audit enums |
-| `consent.entity` | `ConsentGrant`, consent enums |
-| `identity.entity` | `Role`, `UserRole`, `UserSession`, `CommunityProfile`, `NotificationPreference`, `Notification`, `DataPermission` |
-| `carejourney.entity` | `MotherJourney`, `MaternalHealthMetric`, `PostpartumLog` |
-| `babycare.entity` | `BabyProfile`, `BabyDailyLog`, `DevelopmentMilestone`, `GrowthMeasurement`, `VaccinationRecord` |
-| `healthrecord.entity` | `HealthRecord`, `HealthSummary` |
-| `carecoordination.entity` | `CareGroup`, `CareGroupMember`, `CareTask`, `Expense` |
-| `reminder.entity` | `Reminder` |
-| `community.entity` | `CommunityTopic`, `CommunityQuestion`, `CommunityAnswer`, `ContributionPoint` |
-| `content.entity` | `ContentItem`, `ContentReport`, `ModerationAction`, `ChecklistTemplate`, `ChecklistItem` |
-| `expert.entity` | `ExpertProfile`, `ExpertCredential`, `ExpertAvailability`, `ExpertLocationShare`, `ExpertReview` |
-| `consultation.entity` | `ConsultationBooking`, `ConsultationSession`, `ConsultationMessage` |
-| `payment.entity` | `PaymentTransaction`, `CommissionRecord`, `ConsultationPriceBand`, `ExpertConsultationPrice`, `ConsultationDispute`, `RefundRecord`, `SettlementRecord` |
-| `partner.entity` | `PartnerOrganization`, `PartnerExpertLink`, `PartnerService`, `SponsoredCampaign`, `CareFacility` |
-| `emergency.entity` | `EmergencyEvent`, `LocationSnapshot` |
-| `device.entity` | `HealthDeviceConnection`, `DeviceMeasurement` |
-| `safety.entity` | `SafetyMonitoringSetting`, `SafetyEvent`, `SafetyAlert` |
-| `exercise.entity` | `PregnancyExercise`, `ExerciseSafetyCheck`, `ExerciseSession`, `PostureAnalysisConfig`, `PostureFeedbackEvent` |
-| `triage.entity` | `TriageAssessment`, `TriageAnswer` |
-
-Notes:
-
-- `family` remains a future capability module only. The current ERD does not define `families`, `family_members`, or similar family-owned tables. Family coordination data is currently represented through `carecoordination.entity`.
-- `ai` is not an entity-owning module. AI triage persistence belongs to `triage.entity`; AI providers and RAG clients belong under `integration.gemini` or future AI integration packages.
-- `database.entity` must remain empty or absent. It is too broad and hides business ownership.
-
-## 8. Example: Consultation Module
+## 7. Example: Consultation Module
 
 ```text
 consultation/
@@ -545,32 +476,31 @@ ConsultationBookingService
   -> AuditLogRepository
 ```
 
-## 9. Backend Domain Module Map
+## 8. Backend Domain Module Map
 
-| SRS domain | Backend package | Key responsibilities |
-| --- | --- | --- |
-| Authentication, profile, role | `security`, `identity` | Login, OTP, JWT/session, profile, role, account lifecycle |
-| Privacy and consent | `consent`, `audit` | Permission scope, sharing grant, expiry, revoke, sharing history |
-| Mother, baby, and care journey | `carejourney`, `babycare`, `healthrecord`, `reminder` | Mother journey, baby profile, health metrics, health records, reminders |
-| Care coordination and family sync | `carecoordination`, `consent`, `reminder` | Care group, invitation, shared permissions, shared tasks, shared expenses |
-| Community Q&A | `community` | Topics, questions, answers, anonymous display, contribution points |
-| Content and moderation | `content` | Articles/content items, reports, moderation actions, checklist templates/items |
-| Expert ecosystem | `expert`, `consultation` | Expert profile, verification, credentials, availability, expert reviews, consultation |
-| AI triage and RAG | `triage`, `integration.gemini` | Intake, triage answers, red-flag rules, safe recommendation, AI provider integration |
-| Emergency map and nearby care | `emergency`, `partner`, `integration.trackasia` | Emergency flow, nearby care search, route, location snapshot, care facilities |
-| Safety monitoring | `safety`, `device`, `emergency`, `integration.firebase` | Device measurements, safety settings, safety events, alerts, false-positive feedback |
-| Pregnancy exercise and posture | `exercise` | Exercise library, safety checks, sessions, posture config/feedback |
-| Partner and sponsored content | `partner`, `content` | Partner profile, service listing, sponsored content governance |
-| Payment, refund, commission | `payment`, `consultation`, `integration.vnpay` | Transactions, refunds, settlement, commission |
-| Audit and security incident | `audit`, `security` | Audit log, security event, incident investigation, access review |
+| SRS domain                     | Backend package                                      | Key responsibilities                                                    |
+| ------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| Authentication, profile, role  | `security`, `identity`                           | Login, OTP, JWT/session, profile, role, account lifecycle               |
+| Privacy and consent            | `consent`, `audit`                               | Permission scope, sharing grant, expiry, revoke, sharing history        |
+| Mother and baby journey        | `carejourney`, `healthrecord`, `reminder`      | Mother journey, baby profile, health metrics, health records, reminders |
+| Community Q&A                  | `community`                                        | Posts, answers, anonymous display, reports, moderation queue            |
+| Expert ecosystem               | `expert`, `consultation`                         | Expert profile, verification, availability, expert answer, consultation |
+| AI triage and RAG              | `triage`, `content`, `integration.gemini`      | Intake, RAG answer, red-flag rules, safe recommendation, AI logs        |
+| Emergency map and nearby care  | `emergency`, `integration.trackasia`             | Emergency flow, nearby care search, route, location snapshot            |
+| Family sync                    | `family`, `consent`, `reminder`                | Care group, invitation, shared permissions, shared tasks                |
+| Safety monitoring              | `safety`, `emergency`, `integration.firebase`  | Safety settings, safety events, alerts, false-positive feedback         |
+| Pregnancy exercise and posture | `exercise`                                         | Exercise library, safety checks, sessions, posture config/feedback      |
+| Partner and sponsored content  | `partner`, `content`                             | Partner profile, service listing, sponsored content governance          |
+| Payment, refund, commission    | `payment`, `consultation`, `integration.vnpay` | Transactions, refunds, settlement, commission                           |
+| Audit and security incident    | `audit`, `security`                              | Audit log, security event, incident investigation, access review        |
 
-## 10. Web Portal Structure
+## 9. Web Portal Structure
 
-Use one Vite React TypeScript application initialized directly under `05_Development/CareBridgeWebApp`. Keep Vite project files at the frontend root, then organize application code with feature-based folders inside `src/`.
+Use one Vite React TypeScript application initialized directly under `04_SourceCode/Frontend`. Keep Vite project files at the frontend root, then organize application code with feature-based folders inside `src/`.
 
 Current frontend baseline:
 
-- React application root: `05_Development/CareBridgeWebApp`
+- React application root: `04_SourceCode/Frontend`
 - Build tool: Vite
 - Language: TypeScript
 - Entry point: `src/main.tsx`
@@ -581,7 +511,6 @@ Current frontend baseline:
 Primary frontend dependencies:
 
 - `react`, `react-dom`
-- `@supabase/supabase-js`
 - `react-router-dom`
 - `@tanstack/react-query`
 - `axios`
@@ -593,7 +522,7 @@ Primary frontend dependencies:
 Recommended structure:
 
 ```text
-05_Development/CareBridgeWebApp/
+04_SourceCode/Frontend/
 ├── .gitignore
 ├── README.md
 ├── eslint.config.js
@@ -693,12 +622,12 @@ Web route groups:
 - `/expert`: profile, credential upload, availability, question queue, consultations, summaries, earnings.
 - `/partner`: partner profile, service listing, sponsored content, performance.
 
-## 11. Mobile App Structure
+## 10. Mobile App Structure
 
 Use feature-based Flutter structure with simple UI, service, model, and repository folders.
 
 ```text
-05_Development/CareBridgeMobileApp/
+04_SourceCode/MobileApp/
 ├── pubspec.yaml
 ├── android/
 ├── ios/
@@ -814,10 +743,10 @@ Flutter rule:
 Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 ```
 
-## 12. Database and Contracts
+## 11. Database and Contracts
 
 ```text
-05_Development/Database/
+04_SourceCode/Database/
 ├── postgres/
 │   ├── migrations/
 │   ├── seeds/
@@ -831,7 +760,7 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 ├── sample-data/
 └── docs/
 
-05_Development/Contracts/
+04_SourceCode/Contracts/
 ├── openapi/
 │   └── carebridge-api.yaml
 ├── events/
@@ -854,11 +783,10 @@ Screen/Widget -> Service -> Repository -> API/Local Storage/Device SDK
 
 Recommended data split:
 
-- PostgreSQL: identity, RBAC, consent, care journey, baby profile, health metadata, care coordination groups, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes.
-- MongoDB: community post bodies, content versions, FAQ/checklist rich content, AI prompt/response metadata, flexible safety logs, RAG document chunks, device raw metadata.
+- PostgreSQL: identity, RBAC, consent, care journey, baby profile, health metadata, family group, reminders, consultation lifecycle, payments, partner profile, moderation state, audit indexes.
 - Object storage: health record files, credential documents, content media, exercise media.
 
-## 13. Cross-Cutting Policies
+## 12. Cross-Cutting Policies
 
 Security:
 
@@ -894,10 +822,10 @@ Integration reliability:
 - VNPay failure: booking remains unpaid/unconfirmed.
 - ZegoCloud unavailable: fallback to chat or reschedule.
 
-## 14. Testing Structure
+## 13. Testing Structure
 
 ```text
-06_Testing/
+05_Testing/
 ├── TestCases/
 │   ├── backend/
 │   ├── mobile/
@@ -932,7 +860,7 @@ Minimum gates:
 - AI safety tests for red flags, medication advice, emergency symptoms, postpartum mental health, child fever, and unsupported diagnosis requests.
 - E2E tests for critical mother, family, expert, moderator, admin, and partner flows.
 
-## 15. Implementation Order
+## 14. Implementation Order
 
 1. Foundation: backend app, Flutter app, web portal, database migration baseline, OpenAPI contracts, CI pipeline.
 2. Security core: auth, OTP, sessions, RBAC, profile, privacy settings.
@@ -945,17 +873,16 @@ Minimum gates:
 9. Safety monitoring and exercise: IMU detection demo, family alert, pregnancy exercise, MediaPipe posture support.
 10. Partner, dashboard, hardening: partner governance, impact dashboards, security review, UAT, release package.
 
-## 16. Decisions
+## 15. Decisions
 
-| Decision | Recommendation | Reason |
-| --- | --- | --- |
-| Repository shape | Use the reorganized 8-folder SDLC structure and expand `05_Development` | Matches current repo and academic deliverable structure. |
-| Backend architecture | Layered Architecture using Controller-Service-Repository pattern | Familiar, simple, and suitable for Spring Boot MVP delivery. |
-| Backend package style | Package by domain, layer inside each domain | Keeps related code together while preserving layered responsibilities. |
-| Backend module structure | `controller/service/repository/entity/dto/mapper/policy` | Directly matches common Spring Boot practice. |
-| Frontend architecture | Feature-based pages/components/services/models | Practical for admin/expert/partner portal development. |
-| Mobile architecture | Feature-based screens/widgets/services/repositories/models | Practical for Flutter team implementation. |
-| Data architecture | PostgreSQL plus MongoDB plus object storage | Matches structured workflows, flexible content/logs, and file uploads. |
-| Integration strategy | Dedicated integration services with fallback behavior | Reduces schedule risk and supports demo mode. |
-| Safety strategy | Centralized consent, audit, RBAC, and triage policies | Required by healthcare-safe positioning and sensitive data handling. |
-
+| Decision                 | Recommendation                                                   | Reason                                                                 |
+| ------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Repository shape         | Preserve SDLC folders and expand`04_SourceCode`                | Matches current repo and academic deliverable structure.               |
+| Backend architecture     | Layered Architecture using Controller-Service-Repository pattern | Familiar, simple, and suitable for Spring Boot MVP delivery.           |
+| Backend package style    | Package by domain, layer inside each domain                      | Keeps related code together while preserving layered responsibilities. |
+| Backend module structure | `controller/service/repository/entity/dto/mapper/policy`       | Directly matches common Spring Boot practice.                          |
+| Frontend architecture    | Feature-based pages/components/services/models                   | Practical for admin/expert/partner portal development.                 |
+| Mobile architecture      | Feature-based screens/widgets/services/repositories/models       | Practical for Flutter team implementation.                             |
+| Data architecture        | PostgreSQL plus object storage                                  | Matches structured workflows, flexible content/logs, and file uploads. |
+| Integration strategy     | Dedicated integration services with fallback behavior            | Reduces schedule risk and supports demo mode.                          |
+| Safety strategy          | Centralized consent, audit, RBAC, and triage policies            | Required by healthcare-safe positioning and sensitive data handling.   |
