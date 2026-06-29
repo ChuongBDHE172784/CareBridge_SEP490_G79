@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quản lý Danh mục - Admin Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "surface-container": "#ffe9e3",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#fadcd3",
+                        "secondary": "#6e5a52",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "on-tertiary-container": "#36322e",
+                        "surface-container-low": "#fff1ec",
+                        "on-surface": "#271812",
+                        "on-primary-container": "#51271b",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "background": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-error": "#ffffff",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#84736f",
+                        "inverse-on-surface": "#ffede7",
+                        "secondary-container": "#f6dacf",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "surface-bright": "#fff8f6",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-surface-variant": "#524440",
+                        "primary": "#845143",
+                        "on-primary-fixed": "#341006",
+                        "on-background": "#271812",
+                        "on-secondary-container": "#735e56",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "inverse-surface": "#3e2c26",
+                        "on-secondary-fixed": "#271812",
+                        "primary-container": "#c98c7b",
+                        "surface-tint": "#845143",
+                        "on-secondary-fixed-variant": "#55433b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "safe-margin": "24px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "headline-lg": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d6c2bd;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a09a95;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface shadow-sm h-screen w-64 fixed left-0 top-0 flex flex-col py-6 gap-2 z-50">
+<div class="px-6 mb-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Admin Portal</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Quản lý nội dung</p>
+</div>
+<div class="flex-1 overflow-y-auto flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Tổng quan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="subscriptions">subscriptions</span>
+<span class="font-body-md text-body-md">Thư viện</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-body-md text-body-md">FAQ &amp; Checklist</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="exercise">exercise</span>
+<span class="font-body-md text-body-md">Bài tập</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined fill" data-icon="category">category</span>
+<span class="font-body-md text-body-md font-bold">Danh mục</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-xl mx-2 active:scale-95 duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="font-body-md text-body-md">Phê duyệt</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-64 w-[calc(100%-16rem)] min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface/80 backdrop-blur-md shadow-sm h-16 w-full sticky top-0 z-40 flex justify-between items-center px-6">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Mẹ &amp; Bé CMS</h2>
+<!-- Search Bar -->
+<div class="relative hidden lg:block ml-8">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all" placeholder="Tìm kiếm danh mục..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-surface-container-high ml-2 cursor-pointer">
+<img alt="Ảnh đại diện quản trị viên" class="w-full h-full object-cover" data-alt="A professional headshot of a young Vietnamese woman, smiling warmly, acting as an admin profile picture. Soft studio lighting, neutral background, high resolution, soft warm tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4G2aqczokpJqTPvAwyy8P-QNOtJZbGMUjLo2YSqtrAU4a4RaDAEMDUYl-_fYRcZ12k88Lz0PjFTD5SXnVnhT2QFgrRnHHhZYNwihVFxLNo2ASrxB2U5_j23d2WpinVZPKdpTiCdx5d3wZ_r_Um3XWyh9NmPs9vWZokj6BkPwktzTDXdJtqrUOZm4wgxpjZO4K1U9HFLoO04VTBkTSqwt7WsduobbMAaRXAowkwsolrI_IUyht2-hfhup6oa0to2nQMde_a5UlvN0"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="flex-1 p-8 pb-24">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Quản lý Chủ đề &amp; Danh mục</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Tổ chức và sắp xếp cấu trúc nội dung hiển thị trên ứng dụng.</p>
+</div>
+<button class="bg-primary-container text-on-primary h-[52px] px-6 rounded-full font-button text-button flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-[0_4px_20px_rgba(90,70,63,0.12)]" id="btn-open-drawer">
+<span class="material-symbols-outlined">add</span>
+                    Tạo mới
+                </button>
+</div>
+<!-- Main Panel: Bento Grid style layout -->
+<div class="bg-surface rounded-[24px] shadow-[0_4px_20px_rgba(90,70,63,0.06)] overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-surface-container-high font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+<div class="col-span-4">Tên / Chủ đề</div>
+<div class="col-span-2">Loại</div>
+<div class="col-span-2 text-center">Nội dung</div>
+<div class="col-span-2 text-center">Sắp xếp</div>
+<div class="col-span-2 text-right">Trạng thái &amp; Thao tác</div>
+</div>
+<!-- Table Body (Hierarchical List) -->
+<div class="flex flex-col">
+<!-- Item 1: Topic -->
+<div class="group border-b border-surface-container-low last:border-0 hover:bg-surface-bright transition-colors">
+<div class="grid grid-cols-12 gap-4 px-6 py-4 items-center">
+<div class="col-span-4 flex items-center gap-3">
+<button class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-xl">expand_more</span>
+</button>
+<div>
+<h3 class="font-button text-button text-on-surface">Dinh dưỡng Thai kỳ</h3>
+<p class="font-body-md text-[13px] text-on-surface-variant">dinh-duong-thai-ky</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed font-label-md text-label-md rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">folder</span> Chủ đề
+                                </span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<span class="font-body-md text-body-md text-on-surface">24 bài</span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-grab">
+<span class="material-symbols-outlined">drag_indicator</span>
+</button>
+</div>
+<div class="col-span-2 flex justify-end items-center gap-4">
+<!-- Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Children (Categories) -->
+<div class="bg-surface-bright pb-2">
+<!-- Child 1 -->
+<div class="grid grid-cols-12 gap-4 px-6 py-3 items-center pl-16 hover:bg-surface-container-low transition-colors">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div>
+<h4 class="font-body-md text-body-md font-medium text-on-surface">Thực đơn 3 tháng đầu</h4>
+<p class="font-body-md text-[12px] text-on-surface-variant">thuc-don-3-thang-dau</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface font-label-md text-label-md rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">label</span> Danh mục
+                                    </span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<span class="font-body-md text-body-md text-on-surface">12 bài</span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-grab">
+<span class="material-symbols-outlined">drag_indicator</span>
+</button>
+</div>
+<div class="col-span-2 flex justify-end items-center gap-4">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+</div>
+<!-- Child 2 -->
+<div class="grid grid-cols-12 gap-4 px-6 py-3 items-center pl-16 hover:bg-surface-container-low transition-colors">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div>
+<h4 class="font-body-md text-body-md font-medium text-on-surface">Vitamin &amp; Khoáng chất</h4>
+<p class="font-body-md text-[12px] text-on-surface-variant">vitamin-khoang-chat</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface font-label-md text-label-md rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">label</span> Danh mục
+                                    </span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<span class="font-body-md text-body-md text-on-surface">8 bài</span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-grab">
+<span class="material-symbols-outlined">drag_indicator</span>
+</button>
+</div>
+<div class="col-span-2 flex justify-end items-center gap-4">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2: Topic (Collapsed) -->
+<div class="group border-b border-surface-container-low last:border-0 hover:bg-surface-bright transition-colors">
+<div class="grid grid-cols-12 gap-4 px-6 py-4 items-center">
+<div class="col-span-4 flex items-center gap-3">
+<button class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+<div>
+<h3 class="font-button text-button text-on-surface">Chăm sóc trẻ sơ sinh</h3>
+<p class="font-body-md text-[13px] text-on-surface-variant">cham-soc-tre-so-sinh</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed font-label-md text-label-md rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">folder</span> Chủ đề
+                                </span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<span class="font-body-md text-body-md text-on-surface">45 bài</span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-grab">
+<span class="material-symbols-outlined">drag_indicator</span>
+</button>
+</div>
+<div class="col-span-2 flex justify-end items-center gap-4">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 3: Standalone Tag -->
+<div class="group border-b border-surface-container-low last:border-0 hover:bg-surface-bright transition-colors">
+<div class="grid grid-cols-12 gap-4 px-6 py-4 items-center">
+<div class="col-span-4 flex items-center gap-3 pl-11">
+<div>
+<h3 class="font-button text-button text-on-surface">Cẩm nang đi đẻ</h3>
+<p class="font-body-md text-[13px] text-on-surface-variant">cam-nang-di-de</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="px-3 py-1 bg-surface-dim text-on-surface font-label-md text-label-md rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sell</span> Thẻ (Tag)
+                                </span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<span class="font-body-md text-body-md text-on-surface">15 bài</span>
+</div>
+<div class="col-span-2 flex justify-center items-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-grab">
+<span class="material-symbols-outlined">drag_indicator</span>
+</button>
+</div>
+<div class="col-span-2 flex justify-end items-center gap-4">
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Side Drawer Overlay (Hidden by default) -->
+<div class="fixed inset-0 bg-on-background/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300" id="drawer-overlay"></div>
+<!-- Side Drawer for Creating/Editing (Hidden by default) -->
+<div class="fixed right-0 top-0 h-full w-[400px] bg-surface shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col" id="side-drawer">
+<!-- Drawer Header -->
+<div class="px-6 py-5 border-b border-surface-container-high flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md text-on-surface">Tạo mới Phân loại</h3>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors" id="btn-close-drawer">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Body (Form) -->
+<div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+<!-- Type Selection -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">Loại phân loại</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="py-2 border-2 border-primary bg-primary-container/10 text-primary font-button text-body-md rounded-xl">Chủ đề</button>
+<button class="py-2 border border-outline-variant text-on-surface-variant font-button text-body-md rounded-xl hover:bg-surface-container-low">Danh mục</button>
+<button class="py-2 border border-outline-variant text-on-surface-variant font-button text-body-md rounded-xl hover:bg-surface-container-low">Thẻ (Tag)</button>
+</div>
+</div>
+<!-- Name Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2" for="input-name">Tên hiển thị <span class="text-error">*</span></label>
+<input class="w-full h-14 px-4 bg-surface border border-outline-variant rounded-xl font-body-md text-body-lg text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="input-name" placeholder="VD: Sức khỏe bà bầu" type="text"/>
+</div>
+<!-- Slug Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2" for="input-slug">Đường dẫn tĩnh (Slug)</label>
+<div class="relative">
+<input class="w-full h-14 px-4 bg-surface-container-low border border-surface-container-highest rounded-xl font-body-md text-body-md text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="input-slug" placeholder="VD: suc-khoe-ba-bau" type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-primary text-label-md font-button hover:opacity-80">Tạo tự động</button>
+</div>
+<p class="mt-1 font-body-md text-[12px] text-error hidden" id="slug-error">Đường dẫn tĩnh này đã tồn tại. Vui lòng chọn tên khác.</p>
+</div>
+<!-- Parent Selection (Bento style select) -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">Chủ đề cha</label>
+<div class="relative">
+<select class="w-full h-14 px-4 appearance-none bg-surface border border-outline-variant rounded-xl font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+<option value="">-- Không có (Làm chủ đề gốc) --</option>
+<option value="1">Dinh dưỡng Thai kỳ</option>
+<option value="2">Chăm sóc trẻ sơ sinh</option>
+<option value="3">Vận động &amp; Bài tập</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- Display Order -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2" for="input-order">Thứ tự hiển thị</label>
+<input class="w-full h-14 px-4 bg-surface border border-outline-variant rounded-xl font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="input-order" type="number" value="0"/>
+</div>
+</div>
+<!-- Drawer Footer -->
+<div class="p-6 border-t border-surface-container-high bg-surface flex justify-end gap-3">
+<button class="h-[52px] px-6 rounded-full font-button text-button text-on-surface-variant bg-surface border border-outline-variant hover:bg-surface-container-low transition-colors" id="btn-cancel-drawer">Hủy</button>
+<button class="h-[52px] px-8 rounded-full font-button text-button text-on-primary bg-primary-container hover:opacity-90 shadow-md transition-all active:scale-95">Lưu thay đổi</button>
+</div>
+</div>
+<script>
+        // Simple logic to toggle the side drawer
+        const btnOpen = document.getElementById('btn-open-drawer');
+        const btnClose = document.getElementById('btn-close-drawer');
+        const btnCancel = document.getElementById('btn-cancel-drawer');
+        const drawer = document.getElementById('side-drawer');
+        const overlay = document.getElementById('drawer-overlay');
+
+        function openDrawer() {
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            drawer.classList.remove('translate-x-full');
+        }
+
+        function closeDrawer() {
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            drawer.classList.add('translate-x-full');
+        }
+
+        btnOpen.addEventListener('click', openDrawer);
+        btnClose.addEventListener('click', closeDrawer);
+        btnCancel.addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', closeDrawer);
+
+        // Simple validation mock interaction
+        const slugInput = document.getElementById('input-slug');
+        const slugError = document.getElementById('slug-error');
+        slugInput.addEventListener('input', (e) => {
+            if(e.target.value === 'dinh-duong-thai-ky') {
+                slugInput.classList.add('border-error');
+                slugError.classList.remove('hidden');
+            } else {
+                slugInput.classList.remove('border-error');
+                slugError.classList.add('hidden');
+            }
+        });
+    </script>
+</body></html>

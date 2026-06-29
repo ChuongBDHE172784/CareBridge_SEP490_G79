@@ -1,0 +1,55 @@
+package com.carebridge.backend.content.mapper;
+
+import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
+import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.entity.ContentReport;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ModerationMapper {
+
+    private static final int MAX_PREVIEW_LENGTH = 200;
+    private static final String ELLIPSIS = "...";
+
+    public ModerationQueueItemResponse toQueueItemResponse(
+            ContentReport report, String rawPreview, long reportCount) {
+        return new ModerationQueueItemResponse(
+                report.getId(),
+                report.getTargetType(),
+                truncate(rawPreview),
+                reportCount,
+                report.getCreatedAt(),
+                buildReason(report),
+                report.getStatus()
+        );
+    }
+
+    public ModerationQueueResponse toQueueResponse(
+            Page<ContentReport> page, List<ModerationQueueItemResponse> items) {
+        return new ModerationQueueResponse(
+                items,
+                page.getTotalElements(),
+                page.getNumber(),
+                page.getSize()
+        );
+    }
+
+    private String truncate(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        if (text.length() <= MAX_PREVIEW_LENGTH) {
+            return text;
+        }
+        return text.substring(0, MAX_PREVIEW_LENGTH - ELLIPSIS.length()) + ELLIPSIS;
+    }
+
+    private String buildReason(ContentReport report) {
+        if (report.getCategory() != null && !report.getCategory().isBlank()) {
+            return report.getCategory();
+        }
+        return report.getDescription() != null ? report.getDescription() : "";
+    }
+}

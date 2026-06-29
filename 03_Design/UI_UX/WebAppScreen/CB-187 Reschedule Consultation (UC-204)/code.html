@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthAdmin Pro - Đổi lịch tư vấn</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-tertiary-container": "#34322f",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#e9e1db",
+                        "secondary-container": "#e9e1db",
+                        "on-background": "#1d1b19",
+                        "secondary": "#625d59",
+                        "outline": "#84736f",
+                        "tertiary-container": "#9e9a96",
+                        "on-primary-fixed": "#341006",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f9f2ee",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "on-secondary-container": "#68635f",
+                        "surface-accent-light": "#F6F1EC",
+                        "background": "#fef8f4",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#c98c7b",
+                        "text-heading": "#2D2A28",
+                        "surface": "#fef8f4",
+                        "inverse-on-surface": "#f6f0eb",
+                        "surface-container": "#f3ede8",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-high": "#ede7e3",
+                        "text-body": "#524F4C",
+                        "primary": "#845143",
+                        "tertiary": "#605e5a",
+                        "outline-variant": "#d6c2bd",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#fab7a4",
+                        "surface-variant": "#e7e1dd",
+                        "surface-dim": "#dfd9d5",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#524440",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "tertiary-fixed": "#e6e2dd",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "inverse-surface": "#32302d",
+                        "on-surface": "#1d1b19",
+                        "on-primary-container": "#51271b",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "surface-bright": "#fef8f4",
+                        "surface-container-highest": "#e7e1dd",
+                        "surface-accent-muted": "#F2EAE4",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "surface-main": "#FFFFFF",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-tint": "#845143",
+                        "status-active": "#C98C7B"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "sidebar-width": "280px",
+                        "stack-md": "16px",
+                        "panel-gap": "24px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "label-md": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; background-color: theme('colors.background'); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .shadow-panel { box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08); }
+        .input-ring:focus { outline: none; border-color: theme('colors.primary-container'); box-shadow: 0 0 0 2px rgba(201, 140, 123, 0.2); }
+    </style>
+</head>
+<body class="flex min-h-screen text-text-body bg-background">
+<!-- SideNavBar -->
+<nav class="bg-surface-accent-muted dark:bg-surface-dim w-sidebar-width h-screen fixed left-0 top-0 hidden md:flex flex-col py-container-padding px-stack-md gap-panel-gap z-50 flat no shadows">
+<div class="px-4">
+<h1 class="font-display-lg text-display-lg font-bold text-primary dark:text-primary-fixed-dim">HealthAdmin Pro</h1>
+<p class="font-label-md text-label-md text-secondary mt-1">Expert Portal</p>
+</div>
+<div class="flex-1 overflow-y-auto mt-4 space-y-2">
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-nav-item text-nav-item">Dashboard</span>
+</a>
+<a class="bg-status-active text-on-primary rounded-lg flex items-center gap-3 px-4 py-3 shadow-sm scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-nav-item text-nav-item">Consultation Schedule</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="event_note">event_note</span>
+<span class="font-nav-item text-nav-item">Work Schedule</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-nav-item text-nav-item">Community</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-nav-item text-nav-item">Revenue</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-nav-item text-nav-item">Profile</span>
+</a>
+</div>
+<button class="w-full bg-primary-container text-white rounded-full py-3 px-6 font-nav-item text-nav-item hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-sm">add</span>
+            New Consultation
+        </button>
+<div class="mt-auto space-y-2 pt-4 border-t border-surface-variant">
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-nav-item text-nav-item">Settings</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light dark:hover:bg-surface-container hover:text-primary rounded-lg flex items-center gap-3 px-4 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-nav-item text-nav-item">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-sidebar-width w-full">
+<!-- TopNavBar -->
+<header class="bg-surface-main dark:bg-surface h-20 w-full sticky top-0 z-40 flex items-center justify-between px-container-padding shadow-[0_4px_20px_rgba(201,140,123,0.08)]">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-secondary hover:bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md font-bold text-text-heading dark:text-on-surface hidden md:block">HealthAdmin Workspace</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-accent-muted rounded-full border-none text-body-md font-body-md focus:ring-2 focus:ring-primary-container outline-none w-64" placeholder="Search..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-secondary hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-full transition-all relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-secondary hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-full transition-all hidden sm:block">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</button>
+<button class="p-2 text-secondary hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-full transition-all hidden sm:block">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-accent-light overflow-hidden border-2 border-surface-variant cursor-pointer">
+<img alt="Administrator Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female doctor with a warm smile, wearing a white coat, brightly lit against a neutral background. The lighting is soft and even, typical of a modern medical corporate portrait, emphasizing approachability and competence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuColkmLh5kqQsThCtrvPNjpfiy9lFdRcbEC84Hz0p-V6SfzHKKoJfrst0P2DpkzvztHxW0Eu2D71E1HUVv7gqnabbD4kXvGLpBryqGrle1deNIUFdel1pswaOYhNJxkoFiMC4AptbHV9OJc1ORZLvuZIUuKq0Y1-7vEj_31BQjNzzwwJk_KtqyjIDLzwNMbe_qEn824XmJk3aUbA-eezEkj7ZOVqPZV2W2xBrzg-jLA_XeGPtqPxRTmH_v1rSvqqiJH23mLaXkELUU"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-4 md:p-container-padding max-w-7xl mx-auto space-y-6">
+<!-- Breadcrumb & Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 text-secondary mb-1">
+<span class="font-body-md text-body-md hover:text-primary cursor-pointer">Consultation Schedule</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="font-body-md text-body-md text-primary">Reschedule</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-text-heading">Yêu cầu đổi lịch</h1>
+</div>
+<button class="text-secondary hover:bg-surface-accent-muted px-4 py-2 rounded-full font-body-md transition-colors flex items-center gap-2 self-start sm:self-auto">
+<span class="material-symbols-outlined">close</span>
+                    Hủy
+                </button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-grid-gutter">
+<!-- Left Column: Form & Calendar (col-span-2) -->
+<div class="lg:col-span-2 space-y-6">
+<!-- Original Booking Summary Card -->
+<div class="bg-surface-main rounded-DEFAULT p-6 shadow-panel">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+                            Lịch hẹn hiện tại
+                        </h3>
+<div class="flex flex-col sm:flex-row gap-6 p-4 bg-surface-accent-muted rounded-lg border border-surface-variant">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary font-bold text-lg shadow-sm">
+                                    NH
+                                </div>
+<div>
+<p class="font-body-lg text-body-lg text-text-heading font-semibold">Nguyễn Văn Hải</p>
+<p class="font-body-md text-body-md text-secondary">Bệnh nhân - ID: P8923</p>
+</div>
+</div>
+<div class="flex-1 grid grid-cols-2 gap-4 border-t sm:border-t-0 sm:border-l border-surface-variant pt-4 sm:pt-0 sm:pl-6">
+<div>
+<p class="font-label-md text-label-md text-secondary mb-1 uppercase tracking-wider">Ngày</p>
+<p class="font-body-md text-body-md text-text-heading">15/10/2023</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-secondary mb-1 uppercase tracking-wider">Giờ</p>
+<p class="font-body-md text-body-md text-text-heading">09:00 - 09:45</p>
+</div>
+<div class="col-span-2">
+<p class="font-label-md text-label-md text-secondary mb-1 uppercase tracking-wider">Hình thức</p>
+<p class="font-body-md text-body-md text-text-heading flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-primary">videocam</span> Tư vấn Video
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- New Schedule Selection -->
+<div class="bg-surface-main rounded-DEFAULT p-6 shadow-panel">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-6">Chọn thời gian mới</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Calendar Picker -->
+<div>
+<div class="flex items-center justify-between mb-4">
+<button class="p-1 rounded-full hover:bg-surface-accent-muted text-secondary"><span class="material-symbols-outlined">chevron_left</span></button>
+<span class="font-body-lg text-body-lg font-semibold text-text-heading">Tháng 10, 2023</span>
+<button class="p-1 rounded-full hover:bg-surface-accent-muted text-secondary"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center mb-2">
+<div class="font-label-md text-label-md text-secondary py-1">T2</div>
+<div class="font-label-md text-label-md text-secondary py-1">T3</div>
+<div class="font-label-md text-label-md text-secondary py-1">T4</div>
+<div class="font-label-md text-label-md text-secondary py-1">T5</div>
+<div class="font-label-md text-label-md text-secondary py-1">T6</div>
+<div class="font-label-md text-label-md text-secondary py-1">T7</div>
+<div class="font-label-md text-label-md text-secondary py-1">CN</div>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center font-body-md text-body-md">
+<!-- Empty days -->
+<div class="py-2 text-tertiary-fixed-dim">25</div>
+<div class="py-2 text-tertiary-fixed-dim">26</div>
+<div class="py-2 text-tertiary-fixed-dim">27</div>
+<div class="py-2 text-tertiary-fixed-dim">28</div>
+<div class="py-2 text-tertiary-fixed-dim">29</div>
+<div class="py-2 text-tertiary-fixed-dim">30</div>
+<div class="py-2 text-tertiary-fixed-dim">1</div>
+<!-- Current month days -->
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">2</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">3</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">4</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">5</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">6</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full text-secondary">7</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full text-secondary">8</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">9</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">10</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">11</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">12</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">13</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full text-secondary">14</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full bg-surface-variant line-through text-tertiary-fixed-dim relative" title="Original date">15</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">16</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">17</div>
+<div class="py-2 cursor-pointer bg-status-active text-white rounded-full shadow-md font-semibold">18</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">19</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full">20</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full text-secondary">21</div>
+<div class="py-2 cursor-pointer hover:bg-surface-accent-muted rounded-full text-secondary">22</div>
+</div>
+</div>
+<!-- Time Slots -->
+<div>
+<h4 class="font-body-md text-body-md font-semibold text-text-heading mb-4 flex justify-between items-center border-b border-surface-variant pb-2">
+                                    Thứ 4, 18/10/2023
+                                    <span class="text-secondary text-xs font-normal">Sáng</span>
+</h4>
+<div class="grid grid-cols-2 gap-3 mb-6">
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-secondary font-body-md hover:border-primary-container transition-colors disabled:opacity-50 disabled:bg-surface-accent-light" disabled="">
+                                        08:00 - 08:45
+                                    </button>
+<button class="py-2 px-3 border-2 border-primary rounded-lg bg-surface-accent-muted text-primary font-body-md font-semibold shadow-sm">
+                                        09:00 - 09:45
+                                    </button>
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-text-body font-body-md hover:border-primary-container transition-colors">
+                                        10:00 - 10:45
+                                    </button>
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-text-body font-body-md hover:border-primary-container transition-colors">
+                                        11:00 - 11:45
+                                    </button>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-text-heading mb-4 flex justify-between items-center border-b border-surface-variant pb-2">
+<span class="opacity-0">Thứ 4, 18/10/2023</span>
+<span class="text-secondary text-xs font-normal">Chiều</span>
+</h4>
+<div class="grid grid-cols-2 gap-3">
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-text-body font-body-md hover:border-primary-container transition-colors">
+                                        13:30 - 14:15
+                                    </button>
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-text-body font-body-md hover:border-primary-container transition-colors">
+                                        14:30 - 15:15
+                                    </button>
+<button class="py-2 px-3 border-2 border-surface-variant rounded-lg text-text-body font-body-md hover:border-primary-container transition-colors">
+                                        15:30 - 16:15
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Reason Field -->
+<div class="bg-surface-main rounded-DEFAULT p-6 shadow-panel">
+<label class="block font-headline-sm text-headline-sm text-text-heading mb-2" for="reason">Lý do đổi lịch <span class="text-error">*</span></label>
+<p class="text-secondary font-body-md mb-4 text-sm">Vui lòng cung cấp lý do để khách hàng có thể thông cảm cho sự bất tiện này.</p>
+<textarea class="w-full border-2 border-surface-variant rounded-lg p-3 font-body-md text-text-body input-ring bg-white resize-none" id="reason" placeholder="Nhập lý do chi tiết... (VD: Lịch trình công tác đột xuất)" rows="3"></textarea>
+</div>
+</div>
+<!-- Right Column: Summary & CTA (col-span-1) -->
+<div class="lg:col-span-1">
+<div class="bg-surface-main rounded-DEFAULT p-6 shadow-panel sticky top-28">
+<h3 class="font-headline-sm text-headline-sm text-text-heading mb-6 border-b border-surface-variant pb-4">Tóm tắt yêu cầu</h3>
+<div class="space-y-4 mb-6">
+<div class="flex justify-between items-start">
+<span class="font-body-md text-body-md text-secondary">Từ:</span>
+<div class="text-right">
+<p class="font-body-md text-body-md text-text-heading line-through text-tertiary-fixed-dim">15/10/2023</p>
+<p class="font-body-md text-body-md text-text-heading line-through text-tertiary-fixed-dim">09:00 - 09:45</p>
+</div>
+</div>
+<div class="flex justify-center my-2 text-primary-container">
+<span class="material-symbols-outlined">arrow_downward</span>
+</div>
+<div class="flex justify-between items-start bg-surface-accent-muted p-3 rounded-lg border border-surface-variant">
+<span class="font-body-md text-body-md text-secondary">Sang:</span>
+<div class="text-right">
+<p class="font-body-md text-body-md text-text-heading font-semibold">18/10/2023</p>
+<p class="font-body-md text-body-md text-primary font-semibold">09:00 - 09:45</p>
+</div>
+</div>
+<div class="flex justify-between items-center border-t border-surface-variant pt-4">
+<span class="font-body-lg text-body-lg text-text-heading font-semibold">Phí tư vấn</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">500,000 đ</span>
+</div>
+<p class="text-xs text-secondary text-right italic">(Chi phí không đổi)</p>
+</div>
+<!-- Policy & Warnings -->
+<div class="bg-surface-container-low p-4 rounded-lg mb-6 flex items-start gap-3 border border-surface-variant">
+<span class="material-symbols-outlined text-primary-container mt-0.5 text-[20px]">info</span>
+<div class="text-sm font-body-md text-text-body space-y-2">
+<p><strong>Chính sách đổi lịch:</strong></p>
+<ul class="list-disc pl-4 space-y-1 text-secondary">
+<li>Chỉ được đổi tối đa 1 lần miễn phí.</li>
+<li>Cần sự xác nhận đồng ý từ khách hàng.</li>
+<li>Nếu khách hàng từ chối, lịch cũ sẽ bị hủy và hoàn tiền.</li>
+</ul>
+</div>
+</div>
+<!-- CTA -->
+<button class="w-full bg-primary-container text-white rounded-full py-4 px-6 font-nav-item text-nav-item font-semibold hover:opacity-90 hover:shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">send</span>
+                            Gửi yêu cầu đổi lịch
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

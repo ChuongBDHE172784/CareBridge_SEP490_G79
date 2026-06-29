@@ -67,6 +67,23 @@ out/
 .github/agents/
 _bmad/
 _bmad-output/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+QODER.md
+.gemini/
+.kiro/
+.qoder/
+.cursorrules
+.windsurfrules
+.opencode.json
+
+# Local Claude skills (untracked - keep local only)
+.claude/skills/
+.agent/skills/
+.agents/skills/
+
+# Note: ui-skill-system is intentionally NOT tracked - keep it local
 
 # Local helper scripts and one-off tools
 scripts/
@@ -92,3 +109,7 @@ tools/
 
 # Keep empty project structure markers
 !.gitkeep
+# Added by code-review-graph
+.code-review-graph/
+.mcp.json
+.github/code-review-graph.instruction.md

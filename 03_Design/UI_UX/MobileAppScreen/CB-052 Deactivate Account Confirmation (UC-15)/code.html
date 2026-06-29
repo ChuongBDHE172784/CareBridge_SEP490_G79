@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tạm ngưng tài khoản - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#271812",
+                      "outline": "#84736f",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "tertiary-container": "#a09a95",
+                      "secondary-container": "#f6dacf",
+                      "primary-container": "#c98c7b",
+                      "on-primary-fixed": "#341006",
+                      "surface-tint": "#845143",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#fff8f6",
+                      "inverse-on-surface": "#ffede7",
+                      "surface-container": "#ffe9e3",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "inverse-surface": "#3e2c26",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "on-surface": "#271812",
+                      "on-error": "#ffffff",
+                      "surface-container-highest": "#fadcd3",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "on-surface-variant": "#524440",
+                      "secondary-fixed": "#f8ddd2",
+                      "surface-variant": "#fadcd3",
+                      "background": "#fff8f6",
+                      "on-secondary-container": "#735e56",
+                      "on-tertiary-container": "#36322e",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#fab7a4",
+                      "on-secondary-fixed": "#271812",
+                      "primary-fixed": "#ffdbd1",
+                      "on-primary-container": "#51271b",
+                      "surface-container-high": "#ffe2d9",
+                      "on-primary": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "tertiary": "#625d59",
+                      "primary-fixed-dim": "#fab7a4",
+                      "secondary": "#6e5a52",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "surface-dim": "#f1d4ca",
+                      "surface-bright": "#fff8f6",
+                      "primary": "#845143",
+                      "on-error-container": "#93000a",
+                      "surface-container-low": "#fff1ec",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed": "#e9e1db"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "gutter": "16px",
+                      "stack-sm": "8px",
+                      "stack-lg": "24px",
+                      "safe-margin": "24px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Lexend"
+                      ],
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "body-md": [
+                              "Lexend"
+                      ],
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "headline-md": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Lexend', sans-serif;
+        }
+
+        .mobile-frame {
+            width: 390px;
+            height: 844px;
+            background-color: theme('colors.background');
+            position: relative;
+            overflow: hidden;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: theme('colors.surface');
+            border-top-left-radius: 32px;
+            border-top-right-radius: 32px;
+            padding: theme('spacing.stack-lg') theme('spacing.safe-margin');
+            box-shadow: 0px -8px 24px rgba(90, 70, 63, 0.12);
+            transform: translateY(0);
+            transition: transform 0.3s ease-out;
+            z-index: 50;
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(39, 24, 18, 0.4);
+            z-index: 40;
+        }
+
+        .drag-handle {
+            width: 40px;
+            height: 4px;
+            background-color: theme('colors.outline-variant');
+            border-radius: 2px;
+            margin: 0 auto theme('spacing.stack-lg') auto;
+        }
+        
+        .bg-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background-image: radial-gradient(circle at 50% -20%, theme('colors.surface-container-high') 0%, transparent 70%);
+            z-index: 0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="mobile-frame">
+<!-- Dummy Background Content to show context -->
+<div class="bg-pattern"></div>
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full z-10 pt-4">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-start text-on-surface hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Cài đặt tài khoản</h1>
+<div class="w-touch-target-min"></div>
+</header>
+<main class="flex-1 px-safe-margin pt-stack-lg z-10 opacity-30">
+<!-- Blurred background content -->
+<div class="bg-surface rounded-lg p-5 mb-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="h-4 bg-surface-container rounded w-3/4 mb-3"></div>
+<div class="h-4 bg-surface-container rounded w-1/2"></div>
+</div>
+<div class="bg-surface rounded-lg p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="h-4 bg-surface-container rounded w-full mb-3"></div>
+<div class="h-4 bg-surface-container rounded w-5/6 mb-3"></div>
+<div class="h-4 bg-surface-container rounded w-2/3"></div>
+</div>
+</main>
+<!-- Overlay -->
+<div class="overlay"></div>
+<!-- Bottom Sheet -->
+<div class="bottom-sheet">
+<div class="drag-handle"></div>
+<div class="flex flex-col items-center text-center mb-6">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 text-primary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 0;">pause_circle</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Tạm ngưng tài khoản?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                Bạn sắp tạm ngưng hoạt động trên CareBridge. Hành động này có thể được hoàn tác bất cứ lúc nào.
+            </p>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex items-start gap-3 bg-surface-container-lowest p-4 rounded-xl border border-surface-container">
+<span class="material-symbols-outlined text-outline mt-0.5" style="font-variation-settings: 'FILL' 0;">visibility_off</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface mb-1">Hồ sơ của bạn sẽ bị ẩn</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Cộng đồng và người thân sẽ không thể xem thông tin hoặc tương tác với bạn.</p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-lowest p-4 rounded-xl border border-surface-container">
+<span class="material-symbols-outlined text-outline mt-0.5" style="font-variation-settings: 'FILL' 0;">notifications_paused</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface mb-1">Tạm dừng thông báo</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Bạn sẽ không nhận được thông báo nhắc nhở lịch tiêm hay nhật ký mới.</p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-lowest p-4 rounded-xl border border-surface-container">
+<span class="material-symbols-outlined text-primary mt-0.5" style="font-variation-settings: 'FILL' 0;">settings_backup_restore</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface mb-1">Dễ dàng khôi phục</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Chỉ cần đăng nhập lại, mọi dữ liệu của bạn sẽ được giữ nguyên vẹn.</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 pb-safe-margin">
+<button class="w-full h-[52px] bg-[#F2EAE4] text-[#5A463F] font-button text-button rounded-full active:scale-95 transition-transform duration-200">
+                Quay lại
+            </button>
+<!-- Using a softer warning color for the destructive action, maintaining the warm style -->
+<button class="w-full h-[52px] bg-[#E8A87C] text-[#341006] font-button text-button rounded-full active:scale-95 transition-transform duration-200">
+                Tạm ngưng tài khoản
+            </button>
+</div>
+</div>
+</div>
+</body></html>

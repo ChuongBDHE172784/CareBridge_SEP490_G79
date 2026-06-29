@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hồ sơ Đối tác - CareBridge Partner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary": "#6e5a52",
+                      "outline": "#84736f",
+                      "primary-fixed-dim": "#fab7a4",
+                      "surface-tint": "#845143",
+                      "inverse-surface": "#3e2c26",
+                      "primary-fixed": "#ffdbd1",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "outline-variant": "#d6c2bd",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "on-background": "#271812",
+                      "background": "#fff8f6",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-bright": "#fff8f6",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "on-surface-variant": "#524440",
+                      "error": "#ba1a1a",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed": "#341006",
+                      "on-secondary-container": "#735e56",
+                      "primary": "#845143",
+                      "on-tertiary-container": "#36322e",
+                      "secondary-container": "#f6dacf",
+                      "surface-dim": "#f1d4ca",
+                      "surface-container-highest": "#fadcd3",
+                      "surface": "#fff8f6",
+                      "surface-container-low": "#fff1ec",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#625d59",
+                      "secondary-fixed": "#f8ddd2",
+                      "surface-variant": "#fadcd3",
+                      "on-secondary-fixed": "#271812",
+                      "on-primary-container": "#51271b",
+                      "surface-container-high": "#ffe2d9",
+                      "inverse-primary": "#fab7a4",
+                      "tertiary-container": "#a09a95",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#271812",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#ffede7",
+                      "surface-container": "#ffe9e3",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "tertiary-fixed": "#e9e1db",
+                      "primary-container": "#c98c7b"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "safe-margin": "24px",
+                      "stack-lg": "24px",
+                      "gutter": "16px",
+                      "touch-target-min": "48px",
+                      "stack-md": "16px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ],
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "label-md": [
+                              "Lexend"
+                      ],
+                      "headline-md": [
+                              "Lexend"
+                      ],
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "body-md": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col bg-surface-container-low dark:bg-surface-container-lowest h-screen w-72 shadow-lg fixed left-0 top-0 bottom-0 z-40 py-6" style="box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.12);">
+<div class="px-6 mb-8 flex flex-col items-start">
+<div class="w-12 h-12 rounded-full overflow-hidden mb-4 bg-primary-container flex items-center justify-center">
+<img alt="CareBridge Logo" class="w-full h-full object-cover" data-alt="A clean, minimalist abstract logo representing connection and care, using soft organic shapes in warm terracotta and cream tones. The design is simple, professional, and evocative of a nurturing environment, suitable for a healthcare or childcare partner portal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-0z2oj_kf-2T_PlGFIQ_DedKXGOj9JMQnd7DdcIMFILCsw-IdiFDBkfBqn5QTu0ZlSK5Wmm73LziG5lUd4Zzw4F-BmZwfM35LtTE20ooAoJV8FRi4JbFKwq39pnDdkzKmI02PrSzSulKwPFsQ5H5qVj4AY0dBli2bm2vp4ADr9gxqTVvmEE4bH_TuV5_tbnknoYUaOoG_kkrnnE7HTmu2YYvUhWDwk3TGmFSM1V3EFxTqTM0R98CJIWZXi4rMBjhm3Qdo7ed-9qY"/>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary font-bold">CareBridge</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">B2B Partner Portal</p>
+</div>
+<div class="flex-1 overflow-y-auto px-2">
+<ul class="space-y-2">
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Tổng quan</span>
+</a>
+</li>
+<li>
+<a class="bg-primary text-on-primary rounded-full mx-2 flex items-center gap-3 px-4 py-3 translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-md text-label-md">Chuyên gia liên kết</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+<span class="font-label-md text-label-md">Dịch vụ</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="event_note">event_note</span>
+<span class="font-label-md text-label-md">Giới thiệu lịch</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+<span class="font-label-md text-label-md">Chiến dịch</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-label-md text-label-md">Hiệu quả</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full bg-primary-container text-on-primary-container font-button text-button h-12 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+                Nâng cấp gói
+            </button>
+<ul class="space-y-2">
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Cài đặt</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container dark:hover:bg-secondary-fixed rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Đăng xuất</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-1 md:ml-72 flex flex-col min-h-screen">
+<!-- TopNavBar (Mobile Only / Content Header on Desktop) -->
+<header class="w-full h-16 bg-surface dark:bg-surface-dim shadow-sm flex justify-between items-center px-safe-margin border-b border-outline-variant/30 sticky top-0 z-30" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed-dim font-bold">Hồ sơ Đối tác</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:bg-secondary-container/50 p-2 rounded-full transition-colors w-12 h-12 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-secondary-container/50 p-2 rounded-full transition-colors w-12 h-12 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant border border-outline-variant">
+<img alt="Partner Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a smiling woman in her 30s, wearing a soft beige blazer over a white blouse. The background is a gently blurred modern office space with warm lighting. She looks welcoming and competent, fitting for a healthcare or childcare administration role." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfpiCAKemV9gFI9Fx11D8h4brdJBr0Bt9CT-BvnfvgC7dUG_lOKwpkO4pee-vbq42t8lO6c5r2CQIC5v6Ba4FRS6hiC-QMjpyjtMOHYquBFSQHt2j1nxltKTqR5HeFgfj8Tn5PiF-BF6j0XJQJJc4CbUrnIupgCOprCp1mSPvO4QsZX70y2vjWPw7dk5e_cvNMd6_1WwyUkkOP-shjJjBNcmdh8eJzQuHepMSpw5lZCeVmugrbdrGb1SBL3L8-TIap_2CXW6H9MCo"/>
+</div>
+</div>
+</header>
+<div class="flex-1 p-safe-margin overflow-y-auto">
+<div class="max-w-5xl mx-auto space-y-stack-lg">
+<!-- Action Bar -->
+<div class="flex justify-between items-center">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Thông tin tổ chức</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Quản lý và cập nhật hồ sơ hiển thị công khai.</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface text-primary border border-primary font-button text-button h-12 px-6 rounded-full flex items-center justify-center hover:bg-surface-variant transition-colors min-w-[120px]">
+                            Hủy
+                        </button>
+<button class="bg-primary-container text-on-primary-container font-button text-button h-12 px-6 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors min-w-[120px]">
+                            Lưu thay đổi
+                        </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Main Profile Info (Spans 2 columns) -->
+<div class="lg:col-span-2 space-y-6">
+<!-- Public Identity Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex justify-between items-start mb-6">
+<h4 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">badge</span>
+                                    Nhận diện công khai
+                                </h4>
+<div class="bg-surface-variant text-on-surface px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-sm" data-weight="fill">verified</span>
+<span class="font-label-md text-label-md">Đã duyệt</span>
+</div>
+</div>
+<div class="flex flex-col md:flex-row gap-6 items-start">
+<!-- Avatar Upload -->
+<div class="flex flex-col items-center gap-3">
+<div class="w-32 h-32 rounded-full overflow-hidden bg-surface-variant border-4 border-surface shadow-sm relative group cursor-pointer">
+<img alt="Organization Logo" class="w-full h-full object-cover" data-alt="A modern, high-quality logo of a pediatric clinic. The design features a stylized, warm-toned tree or leaf motif intertwined with a subtle medical cross in soft earthy colors like terracotta and sage green. Set against a clean white background, reflecting a nurturing and professional brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXjdfriYO1qnZKEiYzvbwhHecnjT3QNlGOTG_A2l87uML1FLqqp4LNGdcZ2Bd61-nMRzxh1AUXVnALzp73JVy5JA0uOwqAm5ybGEW5rKqKiS86CNq_BCU4-l3o4HaRvLQxfZQtSxDskaH3A0_P_7but0tDQRSay3cNlZuaygoc5X5x3cO4mDX8-R15Zco6pAs4WRCISv6SE98M8vHTuP3W_0T3ShzlP8BJKm_0rs78Q6g7IF7209oaVbhufVHx6p9wx1Y1OPa8U3g"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white">photo_camera</span>
+</div>
+</div>
+<button class="text-primary font-button text-button text-sm hover:underline">Thay đổi Logo</button>
+</div>
+<!-- Form Fields -->
+<div class="flex-1 w-full space-y-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Tên tổ chức/Phòng khám</label>
+<input class="w-full h-14 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-lg" type="text" value="Phòng Khám Nhi Đồng Tâm An"/>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Loại hình</label>
+<select class="w-full h-14 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-lg">
+<option>Phòng khám chuyên khoa Nhi</option>
+<option>Bệnh viện Đa khoa</option>
+<option>Trung tâm tiêm chủng</option>
+</select>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Mã số thuế</label>
+<input class="w-full h-14 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-lg bg-surface-variant cursor-not-allowed" disabled="" type="text" value="0315892345"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Description Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<h4 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary">description</span>
+                                Mô tả hiển thị
+                            </h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Phần giới thiệu này sẽ xuất hiện trên ứng dụng của phụ huynh.</p>
+<textarea class="w-full p-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-lg resize-none" rows="4">Phòng khám Nhi đồng Tâm An tự hào mang đến dịch vụ chăm sóc sức khỏe toàn diện cho trẻ sơ sinh và trẻ nhỏ. Với đội ngũ bác sĩ giàu kinh nghiệm từ Bệnh viện Nhi Đồng, chúng tôi cam kết một môi trường khám chữa bệnh thân thiện, an toàn và chuyên nghiệp.</textarea>
+<div class="flex justify-end mt-2">
+<span class="font-label-md text-label-md text-on-surface-variant">256/500 ký tự</span>
+</div>
+</div>
+</div>
+<!-- Sidebar Info (1 column) -->
+<div class="space-y-6">
+<!-- Contact Info Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<h4 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">contact_phone</span>
+                                Liên hệ chính
+                            </h4>
+<div class="space-y-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Email hỗ trợ</label>
+<input class="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-md" type="email" value="hotro@tamanclinic.vn"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Hotline (Hiển thị KH)</label>
+<input class="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-md" type="tel" value="1900 1234"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Người đại diện (Nội bộ)</label>
+<input class="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-on-surface font-body-md" type="text" value="BS. Nguyễn Thị Lan"/>
+</div>
+</div>
+</div>
+<!-- Locations Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">location_on</span>
+                                    Cơ sở đã duyệt
+                                </h4>
+<button class="text-primary hover:bg-surface-variant p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<ul class="space-y-3">
+<li class="p-3 border border-outline-variant/50 rounded-lg flex gap-3 items-start hover:bg-surface transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary mt-0.5">store</span>
+<div>
+<p class="font-body-md font-semibold text-on-surface">Cơ sở 1 - Quận 1</p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1 line-clamp-1">123 Nguyễn Thị Minh Khai, Phường Đa Kao, Quận 1, TP.HCM</p>
+</div>
+</li>
+<li class="p-3 border border-outline-variant/50 rounded-lg flex gap-3 items-start hover:bg-surface transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary mt-0.5">store</span>
+<div>
+<p class="font-body-md font-semibold text-on-surface">Cơ sở 2 - Quận 7</p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1 line-clamp-1">45 Nguyễn Văn Linh, Tân Phong, Quận 7, TP.HCM</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

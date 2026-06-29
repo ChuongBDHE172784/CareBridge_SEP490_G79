@@ -1,0 +1,440 @@
+/* ═══════════════════════════════════════════════════════
+   CareBridge — Account Profile Page
+   Design System: Warm Claymorphism (EDS UI Skill System)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap');
+
+:root {
+  --clay-bg: #F6F1EC;
+  --clay-surface: #FFFFFF;
+  --clay-surface-nested: #F2EAE4;
+  --clay-accent: #C98C7B;
+  --clay-accent-hover: #B67868;
+  --clay-text: #5A463F;
+  --clay-text-secondary: #9C857C;
+  --clay-border: #E8DDD6;
+  --clay-shadow: 0 12px 32px rgba(90, 70, 63, 0.06);
+  --clay-shadow-hover: 0 16px 40px rgba(90, 70, 63, 0.1);
+  --clay-shadow-inner: inset 0 4px 8px rgba(90, 70, 63, 0.05);
+  --clay-radius-card: 32px;
+  --clay-radius-button: 9999px;
+  --clay-radius-input: 16px;
+  --clay-font: 'Nunito', sans-serif;
+}
+
+.profile-page {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--clay-bg);
+  color: var(--clay-text);
+  font-family: var(--clay-font);
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.profile-container {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Profile Card ── */
+.profile-card {
+  background: var(--clay-surface);
+  border-radius: var(--clay-radius-card);
+  box-shadow: var(--clay-shadow);
+  border: 1px solid rgba(232, 221, 214, 0.5);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  transition: box-shadow 0.5s ease, transform 0.5s ease;
+}
+
+.profile-card:hover {
+  box-shadow: var(--clay-shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* ── Avatar ── */
+.profile-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--clay-surface-nested);
+  box-shadow: 0 6px 20px rgba(90, 70, 63, 0.1);
+}
+
+.profile-avatar-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--clay-accent), var(--clay-accent-hover));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  font-weight: 900;
+  border: 4px solid var(--clay-surface-nested);
+  box-shadow: 0 6px 20px rgba(201, 140, 123, 0.25);
+}
+
+.profile-status-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6BBF8A;
+  border: 3px solid var(--clay-surface);
+}
+
+/* ── Name & Role ── */
+.profile-name {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--clay-text);
+  margin: 0;
+  text-align: center;
+}
+
+.profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: rgba(201, 140, 123, 0.12);
+  color: var(--clay-accent);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.375rem 1rem;
+  border-radius: var(--clay-radius-button);
+}
+
+.profile-role-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Info Fields ── */
+.profile-info-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.profile-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--clay-surface-nested);
+  border-radius: var(--clay-radius-input);
+  transition: all 0.3s ease;
+}
+
+.profile-info-row:hover {
+  box-shadow: var(--clay-shadow-inner);
+}
+
+.profile-info-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(201, 140, 123, 0.15);
+  color: var(--clay-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-info-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.profile-info-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-info-label {
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--clay-text-secondary);
+}
+
+.profile-info-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clay-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-info-value.empty {
+  color: var(--clay-text-secondary);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.profile-verified-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #6BBF8A;
+  background: rgba(107, 191, 138, 0.1);
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--clay-radius-button);
+}
+
+.profile-verified-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Edit Button ── */
+.profile-edit-btn {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: var(--clay-radius-button);
+  background: var(--clay-accent);
+  color: white;
+  font-family: var(--clay-font);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(201, 140, 123, 0.25);
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.profile-edit-btn:hover {
+  background: var(--clay-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(201, 140, 123, 0.3);
+}
+
+.profile-edit-btn:active {
+  transform: scale(0.95);
+}
+
+.profile-edit-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(201, 140, 123, 0.2);
+}
+
+.profile-edit-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Settings Card ── */
+.settings-card {
+  background: var(--clay-surface);
+  border-radius: var(--clay-radius-card);
+  box-shadow: var(--clay-shadow);
+  border: 1px solid rgba(232, 221, 214, 0.5);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-title {
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--clay-text-secondary);
+  padding: 0 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--clay-radius-input);
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: transparent;
+  width: 100%;
+  font-family: var(--clay-font);
+  color: var(--clay-text);
+  text-align: left;
+  transition: all 0.3s ease;
+}
+
+.settings-item:hover {
+  background: var(--clay-surface-nested);
+  transform: translateY(-1px);
+}
+
+.settings-item:active {
+  transform: scale(0.98);
+}
+
+.settings-item:focus {
+  outline: none;
+  border-color: rgba(201, 140, 123, 0.2);
+  box-shadow: 0 0 0 4px rgba(201, 140, 123, 0.05);
+}
+
+.settings-item-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(201, 140, 123, 0.12);
+  color: var(--clay-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-item-label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.settings-item-desc {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--clay-text-secondary);
+}
+
+.settings-item-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--clay-text-secondary);
+}
+
+.settings-item-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Loading State ── */
+.profile-skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 2rem;
+}
+
+.skeleton-pulse {
+  background: linear-gradient(90deg, var(--clay-border) 25%, var(--clay-surface-nested) 50%, var(--clay-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--clay-radius-input);
+}
+
+.skeleton-circle {
+  border-radius: 50%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Error State ── */
+.profile-error {
+  text-align: center;
+  padding: 2rem;
+}
+
+.profile-error-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(209, 110, 97, 0.1);
+  color: #D16E61;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.profile-error-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.profile-error-msg {
+  font-weight: 700;
+  color: var(--clay-text);
+  margin-bottom: 1rem;
+}
+
+.profile-retry-btn {
+  height: 40px;
+  border: none;
+  border-radius: var(--clay-radius-button);
+  background: var(--clay-surface-nested);
+  color: var(--clay-text);
+  font-family: var(--clay-font);
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.profile-retry-btn:hover {
+  background: var(--clay-border);
+}
+
+.profile-retry-btn:active {
+  transform: scale(0.95);
+}
+
+.profile-retry-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(201, 140, 123, 0.15);
+}
