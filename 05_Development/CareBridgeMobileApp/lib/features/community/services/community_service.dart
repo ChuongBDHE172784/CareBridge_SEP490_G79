@@ -5,8 +5,11 @@ class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  Future<List<CommunityTopic>> getTopics() async {
-    final json = await apiGet('/api/v1/community/topics');
+  Future<List<CommunityTopic>> getTopics({String? keyword}) async {
+    final params = <String, String>{};
+    if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    final query = params.isEmpty ? '' : '?${params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&')}';
+    final json = await apiGet('/api/v1/community/topics$query');
     final list = json['data'] as List? ?? [];
     return list.map((e) => CommunityTopic.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -37,5 +40,33 @@ class CommunityService {
     final json = await apiGet('/api/v1/community/questions?$query');
     final content = json['data']?['content'] as List? ?? [];
     return content.map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // UC-199: Get question detail with answers
+  Future<QuestionDetail> getQuestionDetail(String questionId) async {
+    final json = await apiGet('/api/v1/community/questions/$questionId');
+    return QuestionDetail.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // UC-58: Toggle bookmark on a question
+  Future<BookmarkToggleResult> toggleBookmark(String questionId) async {
+    final json = await apiPost('/api/v1/community/questions/$questionId/bookmark', {});
+    return BookmarkToggleResult.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // UC-59: Toggle like on an answer
+  Future<LikeToggleResult> toggleAnswerLike(String answerId) async {
+    final json = await apiPost('/api/v1/community/answers/$answerId/like', {});
+    return LikeToggleResult.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // UC-55: Edit an existing question
+  Future<void> editQuestion(String questionId, {String? title, String? body, bool? isAnonymous, String? urgency}) async {
+    final request = <String, dynamic>{};
+    if (title != null) request['title'] = title;
+    if (body != null) request['body'] = body;
+    if (isAnonymous != null) request['isAnonymous'] = isAnonymous;
+    if (urgency != null) request['urgency'] = urgency;
+    await apiPatch('/api/v1/community/questions/$questionId', request);
   }
 }

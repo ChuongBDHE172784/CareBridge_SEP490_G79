@@ -3,14 +3,18 @@ import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'community_search_screen.dart';
-import 'post_answer_screen.dart';
+import 'create_question_screen.dart';
+import 'question_detail_screen.dart';
+import 'topic_directory_screen.dart';
 import 'verified_content_search_screen.dart';
 
 /// CB-014 — Community Feed (UC-54..UC-59, UC-198..UC-201)
 /// Displays topic filter chips and a scrollable list of community posts.
 /// Rendered as tab index 2 inside HomeShell's IndexedStack (no own bottom nav).
+/// Accepts [initialTopicId] when navigated from TopicDirectoryScreen (UC-163).
 class CommunityFeedScreen extends StatefulWidget {
-  const CommunityFeedScreen({super.key});
+  final String? initialTopicId;
+  const CommunityFeedScreen({super.key, this.initialTopicId});
 
   @override
   State<CommunityFeedScreen> createState() => _CommunityFeedScreenState();
@@ -41,6 +45,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   List<CommunityFeedItem> _items = [];
   bool _loading = true;
   String? _selectedTopicId; // null = "Tất cả"
+
+  // UC-58: track bookmarked questions locally (optimistic)
+  final Set<String> _bookmarkedIds = {};
 
   // ── Mock data for development fallback ──
   static final _mockTopics = [
@@ -92,6 +99,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTopicId = widget.initialTopicId;
     _load();
   }
 
@@ -206,7 +214,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  // ── Top bar: title + search + bookmark ──
+  // ── Top bar: title + search + topic library + article ──
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
@@ -218,6 +226,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w700, color: _primary),
             ),
           ),
+          // Search button (UC-162)
           Container(
             width: 44, height: 44,
             decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
@@ -229,13 +238,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // Topic directory button (UC-163 / CB-118)
           Container(
             width: 44, height: 44,
             decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.article_outlined, color: _onSurfaceVariant, size: 22),
+              icon: const Icon(Icons.bookmarks_outlined, color: _onSurfaceVariant, size: 22),
+              tooltip: 'Thư viện chủ đề',
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VerifiedContentSearchScreen()),
+                MaterialPageRoute(builder: (_) => const TopicDirectoryScreen()),
               ),
             ),
           ),
@@ -290,22 +301,37 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  void _navigateToPostAnswer(CommunityFeedItem item) {
+  // UC-199: navigate to full question detail instead of jumping straight to answer
+  void _navigateToQuestionDetail(CommunityFeedItem item) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PostAnswerScreen(
-        questionId: item.id,
-        questionTitle: item.title,
-        authorName: item.authorDisplay,
-        topicName: item.topicName.isNotEmpty ? item.topicName : null,
-        timeAgo: _timeAgo(item.createdAt),
-      ),
+      builder: (_) => QuestionDetailScreen(questionId: item.id),
     ));
+  }
+
+  // UC-58: toggle bookmark with optimistic UI
+  Future<void> _toggleBookmark(String questionId) async {
+    final was = _bookmarkedIds.contains(questionId);
+    setState(() {
+      if (was) _bookmarkedIds.remove(questionId); else _bookmarkedIds.add(questionId);
+    });
+    try {
+      final result = await _service.toggleBookmark(questionId);
+      if (mounted) {
+        setState(() {
+          if (result.bookmarked) _bookmarkedIds.add(questionId); else _bookmarkedIds.remove(questionId);
+        });
+      }
+    } catch (_) {
+      // Rollback on error
+      if (mounted) setState(() { if (was) _bookmarkedIds.add(questionId); else _bookmarkedIds.remove(questionId); });
+    }
   }
 
   // ── Post card ──
   Widget _buildPostCard(CommunityFeedItem item) {
+    final bookmarked = _bookmarkedIds.contains(item.id);
     return GestureDetector(
-      onTap: () => _navigateToPostAnswer(item),
+      onTap: () => _navigateToQuestionDetail(item),
       child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -346,7 +372,18 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.more_horiz, size: 24, color: _onSurfaceVariant),
+              // UC-58: bookmark toggle
+              GestureDetector(
+                onTap: () => _toggleBookmark(item.id),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                    size: 22,
+                    color: bookmarked ? _primary : _onSurfaceVariant,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -423,22 +460,22 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // Reply CTA
+          // UC-199: view detail + UC-56: reply CTA
           GestureDetector(
-            onTap: () => _navigateToPostAnswer(item),
+            onTap: () => _navigateToQuestionDetail(item),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: _surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.reply, size: 16, color: _primary),
-                  SizedBox(width: 6),
-                  Text('Trả lời câu hỏi',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary)),
+                  const Icon(Icons.open_in_new, size: 16, color: _primary),
+                  const SizedBox(width: 6),
+                  Text('Xem chi tiết (${item.answerCount} câu trả lời)',
+                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary)),
                 ],
               ),
             ),
@@ -461,7 +498,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     }
   }
 
-  // ── FAB ──
+  // ── FAB — UC-54: create new question ──
   Widget _buildFab() {
     return Container(
       height: 48,
@@ -474,9 +511,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(99),
-          onTap: () {
-            // TODO: navigate to create post screen
-          },
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CreateQuestionScreen()),
+          ).then((_) => _load()),
           child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Row(
