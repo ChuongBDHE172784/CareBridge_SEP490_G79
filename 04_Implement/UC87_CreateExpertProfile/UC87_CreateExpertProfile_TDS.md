@@ -1,22 +1,23 @@
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
+
 # UC-87 Create Expert Profile
 
-| Field | Value |
-|-------|-------|
-| **Document ID** | `CB-EXP-IMP-001` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
-| **Status** | `Draft` |
-| **Author** | `AI Agent` |
-| **Based on EDS** | `v2.0` |
+| Field                  | Value              |
+| ---------------------- | ------------------ |
+| **Document ID**  | `CB-EXP-IMP-001` |
+| **Version**      | `1.0`            |
+| **Date**         | `2026-06-26`     |
+| **Status**       | Approved           |
+| **Author**       | `AI Agent`       |
+| **Based on EDS** | `v2.0`           |
 
 ---
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
-|------|-----------------|-------------------|
-| 2026-06-26 | AI Agent | Khởi tạo TDS cho UC-87 |
+| Ngày      | Người thực hiện | Nội dung thay đổi     |
+| ---------- | ------------------- | ------------------------ |
+| 2026-06-26 | AI Agent            | Khởi tạo TDS cho UC-87 |
 
 ---
 
@@ -25,7 +26,7 @@
 1. [Tổng quan Module](#1-tổng-quan-module)
 2. [Ma trận Truy vết](#2-ma-trận-truy-vết-traceability-matrix)
 3. [Architecture Decision Records (ADR)](#3-architecture-decision-records-adr)
-4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
+4. [Non-Functional Requirements &amp; SLA](#4-non-functional-requirements--sla)
 5. [Static Modeling](#5-static-modeling)
 6. [Dynamic Modeling](#6-dynamic-modeling)
 7. [Domain Event Catalog](#7-domain-event-catalog)
@@ -33,7 +34,7 @@
 9. [API Specification](#9-api-specification)
 10. [Bảng mã lỗi](#10-bảng-mã-lỗi)
 11. [Quy trình Triển khai](#11-quy-trình-triển-khai-step-by-step)
-12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
+12. [Rollback &amp; Incident Runbook](#12-rollback--incident-runbook)
 13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
 14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
 15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế-api-verification-samples)
@@ -44,14 +45,14 @@
 
 ## 1. Tổng quan Module
 
-| Field | Value |
-|-------|-------|
-| **Module Name** | `CreateExpertProfile` |
-| **Bounded Context** | `expert` |
-| **Data Classification** | `PII` |
-| **Compliance Scope** | `PDPA` |
-| **Upstream Dependencies** | `auth (AccountId from JWT)` |
-| **Downstream Consumers** | `expert-directory, consultation, search` |
+| Field                           | Value                                      |
+| ------------------------------- | ------------------------------------------ |
+| **Module Name**           | `CreateExpertProfile`                    |
+| **Bounded Context**       | `expert`                                 |
+| **Data Classification**   | `PII`                                    |
+| **Compliance Scope**      | `PDPA`                                   |
+| **Upstream Dependencies** | `auth (AccountId from JWT)`              |
+| **Downstream Consumers**  | `expert-directory, consultation, search` |
 
 **Mô tả:** Expert tạo hồ sơ chuyên gia bao gồm chuyên môn, kinh nghiệm, phạm vi hỗ trợ. Hồ sơ bắt đầu ở trạng thái `PENDING_VERIFICATION` cho đến khi Admin duyệt.
 
@@ -59,12 +60,12 @@
 
 ## 2. Ma trận Truy vết
 
-| Requirement ID | Loại | Mô tả | Thành phần Code | ADR liên quan |
-|----------------|------|-------|-----------------|---------------|
-| UC-87 | User Story | Create Expert Profile | `ExpertProfileController.POST /api/v1/expert-profiles` | ADR-EXP-001 |
-| BR-RBAC | Business Rule | ROLE_EXPERT only | `ExpertProfileService.createProfile()` | ADR-EXP-001 |
-| BR-CON | Business Rule | Auditable lifecycle | `AuditService.emit(ExpertProfileCreated)` | ADR-EXP-002 |
-| ADR-EXP-001 | Decision | 1 active profile per account | `ExpertProfileRepository` | — |
+| Requirement ID | Loại         | Mô tả                      | Thành phần Code                                        | ADR liên quan |
+| -------------- | ------------- | ---------------------------- | -------------------------------------------------------- | -------------- |
+| UC-87          | User Story    | Create Expert Profile        | `ExpertProfileController.POST /api/v1/expert-profiles` | ADR-EXP-001    |
+| BR-RBAC        | Business Rule | ROLE_EXPERT only             | `ExpertProfileService.createProfile()`                 | ADR-EXP-001    |
+| BR-CON         | Business Rule | Auditable lifecycle          | `AuditService.emit(ExpertProfileCreated)`              | ADR-EXP-002    |
+| ADR-EXP-001    | Decision      | 1 active profile per account | `ExpertProfileRepository`                              | —             |
 
 ---
 
@@ -72,39 +73,43 @@
 
 ### ADR-EXP-001 — One active expert profile per account
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Date** | `2026-06-26` |
+| Field            | Value          |
+| ---------------- | -------------- |
+| **Status** | `Accepted`   |
+| **Date**   | `2026-06-26` |
 
 #### Bối cảnh
+
 Mỗi tài khoản Expert chỉ nên có 1 hồ sơ chuyên gia đang hoạt động để tránh thông tin mâu thuẫn.
 
 #### Quyết định
-Unique constraint `(account_id)` trên `expert_profiles` với `status IN (DRAFT, PENDING_VERIFICATION, VERIFIED)`. Tạo profile khi đã có 1 profile active → 409.
+
+Unique constraint `(user_id)` trên `expert_profiles` với `status IN (DRAFT, PENDING_VERIFICATION, VERIFIED)`. Tạo profile khi đã có 1 profile active → 409.
 
 #### Hệ quả
+
 - Tích cực: Tính nhất quán dữ liệu, tránh duplicate.
 - Tiêu cực: Expert cần xóa profile cũ trước khi tạo mới.
 
 ### ADR-EXP-002 — Expert profile lifecycle
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Date** | `2026-06-26` |
+| Field            | Value          |
+| ---------------- | -------------- |
+| **Status** | `Accepted`   |
+| **Date**   | `2026-06-26` |
 
 #### Quyết định
+
 State machine: `DRAFT → PENDING_VERIFICATION → VERIFIED → SUSPENDED`. Expert tạo → `PENDING_VERIFICATION`. Admin duyệt → `VERIFIED`. Vi phạm → `SUSPENDED`. Mọi transition emit domain event.
 
 ---
 
 ## 4. Non-Functional Requirements & SLA
 
-| Category | Requirement | Target SLA |
-|----------|-------------|------------|
-| Latency | POST /expert-profiles (p99) | `< 300ms` |
-| Audit | Profile creation logged | 100% |
+| Category | Requirement                 | Target SLA  |
+| -------- | --------------------------- | ----------- |
+| Latency  | POST /expert-profiles (p99) | `< 300ms` |
+| Audit    | Profile creation logged     | 100%        |
 
 ---
 
@@ -116,7 +121,7 @@ State machine: `DRAFT → PENDING_VERIFICATION → VERIFIED → SUSPENDED`. Expe
 @startuml ExpertProfile_ClassDiagram
 class ExpertProfile {
   + id: UUID
-  + accountId: UUID
+  + userId: UUID
   + displayName: String
   + bio: String
   + specialties: List<String>
@@ -139,7 +144,7 @@ enum ConsultationModality {
   VIDEO
 }
 interface IExpertProfileService {
-  + createProfile(CreateExpertProfileRequest, UUID accountId): ExpertProfileResponse
+  + createProfile(CreateExpertProfileRequest, UUID userId): ExpertProfileResponse
 }
 class ExpertProfileService implements IExpertProfileService {
   - profileRepository: IExpertProfileRepository
@@ -160,7 +165,7 @@ CREATE TYPE consultation_modality AS ENUM ('CHAT', 'VOICE', 'VIDEO');
 
 CREATE TABLE expert_profiles (
   id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id              UUID          NOT NULL UNIQUE,
+  user_id              UUID          NOT NULL UNIQUE,
   display_name            VARCHAR(200)  NOT NULL,
   bio                     TEXT,
   specialties             TEXT[]        NOT NULL DEFAULT '{}',
@@ -172,7 +177,7 @@ CREATE TABLE expert_profiles (
   updated_at              TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_expert_profiles_account ON expert_profiles(account_id);
+CREATE INDEX idx_expert_profiles_account ON expert_profiles(user_id);
 CREATE INDEX idx_expert_profiles_status ON expert_profiles(status);
 ```
 
@@ -192,8 +197,8 @@ database "PostgreSQL" as DB
 participant "AuditService" as A
 
 E -> C : POST /api/v1/expert-profiles\n{displayName, bio, specialties, fee, modalities}
-C -> S : createProfile(request, accountId)
-S -> R : existsByAccountId(accountId)
+C -> S : createProfile(request, userId)
+S -> R : existsByAccountId(userId)
 R --> S : false
 S -> R : save(profile)
 R -> DB : INSERT expert_profiles
@@ -222,8 +227,8 @@ PENDING_VERIFICATION --> DRAFT : Expert saves as draft
 
 ### 7.1. Events Published
 
-| Event Name | Trigger | Publisher | Subscriber(s) |
-|------------|---------|-----------|---------------|
+| Event Name               | Trigger       | Publisher                | Subscriber(s)                         |
+| ------------------------ | ------------- | ------------------------ | ------------------------------------- |
 | `ExpertProfileCreated` | Profile saved | `ExpertProfileService` | `AuditService, NotificationService` |
 
 ---
@@ -249,7 +254,7 @@ public class CreateExpertProfileRequest {
 
 // IExpertProfileService.java
 public interface IExpertProfileService {
-    ExpertProfileResponse createProfile(CreateExpertProfileRequest request, UUID accountId);
+    ExpertProfileResponse createProfile(CreateExpertProfileRequest request, UUID userId);
 }
 ```
 
@@ -259,13 +264,14 @@ public interface IExpertProfileService {
 
 ### 9.1. Endpoints
 
-| Method | Path | Auth | Required Roles | Idempotent? |
-|--------|------|------|----------------|-------------|
-| `POST` | `/api/v1/expert-profiles` | JWT Bearer | `ROLE_EXPERT` | No |
+| Method   | Path                        | Auth       | Required Roles  | Idempotent? |
+| -------- | --------------------------- | ---------- | --------------- | ----------- |
+| `POST` | `/api/v1/expert-profiles` | JWT Bearer | `ROLE_EXPERT` | No          |
 
 ### 9.2. Request / Response
 
 **POST /api/v1/expert-profiles — 201 Created:**
+
 ```json
 {
   "id": "uuid",
@@ -280,12 +286,12 @@ public interface IExpertProfileService {
 
 ## 10. Bảng mã lỗi
 
-| Code | HTTP | Message | Trigger |
-|------|------|---------|---------|
-| `EXP-001` | 400 | Validation failed | Missing required fields |
-| `EXP-002` | 409 | Expert profile already exists | accountId has active profile |
-| `EXP-003` | 403 | Access denied | Non-EXPERT role |
-| `EXP-004` | 500 | Internal error | Unexpected failure |
+| Code        | HTTP | Message                       | Trigger                      |
+| ----------- | ---- | ----------------------------- | ---------------------------- |
+| `EXP-001` | 400  | Validation failed             | Missing required fields      |
+| `EXP-002` | 409  | Expert profile already exists | userId has active profile |
+| `EXP-003` | 403  | Access denied                 | Non-EXPERT role              |
+| `EXP-004` | 500  | Internal error                | Unexpected failure           |
 
 ---
 
@@ -313,7 +319,7 @@ Tạo file: `src/main/resources/db/migration/V28__create_expert_profiles.sql`
 ./mvnw flyway:migrate
 ```
 
-> ⚠️ **Chú ý:** `account_id UNIQUE` constraint sẽ reject duplicate nếu insert 2 profiles cùng account — đây là last line of defense sau application-level check (ADR-EXP-001).
+> ⚠️ **Chú ý:** `user_id UNIQUE` constraint sẽ reject duplicate nếu insert 2 profiles cùng account — đây là last line of defense sau application-level check (ADR-EXP-001).
 
 #### Chặng 2 — Implement Entity và Repository
 
@@ -323,7 +329,7 @@ Tạo file: `src/main/resources/db/migration/V28__create_expert_profiles.sql`
 @Table(name = "expert_profiles")
 public class ExpertProfile {
     @Id @GeneratedValue private UUID id;
-    @Column(nullable = false, unique = true) private UUID accountId;
+    @Column(nullable = false, unique = true) private UUID userId;
     @Column(nullable = false) private String displayName;
     @Enumerated(EnumType.STRING)
     private ExpertProfileStatus status; // default PENDING_VERIFICATION
@@ -332,7 +338,7 @@ public class ExpertProfile {
 
 // IExpertProfileRepository.java
 public interface IExpertProfileRepository extends JpaRepository<ExpertProfile, UUID> {
-    boolean existsByAccountId(UUID accountId);
+    boolean existsByAccountId(UUID userId);
 }
 ```
 
@@ -340,15 +346,15 @@ public interface IExpertProfileRepository extends JpaRepository<ExpertProfile, U
 
 ```java
 @Override
-public ExpertProfileResponse createProfile(CreateExpertProfileRequest request, UUID accountId) {
-    if (profileRepository.existsByAccountId(accountId)) {
+public ExpertProfileResponse createProfile(CreateExpertProfileRequest request, UUID userId) {
+    if (profileRepository.existsByAccountId(userId)) {
         throw new ConflictException("EXP-002");
     }
     ExpertProfile profile = mapper.toEntity(request);
-    profile.setAccountId(accountId);
+    profile.setAccountId(userId);
     profile.setStatus(ExpertProfileStatus.PENDING_VERIFICATION);
     ExpertProfile saved = profileRepository.save(profile);
-    auditService.emit(new ExpertProfileCreated(saved.getId(), accountId));
+    auditService.emit(new ExpertProfileCreated(saved.getId(), userId));
     return mapper.toResponse(saved);
 }
 ```
@@ -389,12 +395,12 @@ curl -X GET https://[host]/api/v1/health
 
 ### 12.1. Điều kiện kích hoạt Rollback
 
-| Điều kiện | Ngưỡng | Người quyết định |
-|-----------|--------|------------------|
-| Error rate tăng đột biến | > 5% trong 5 phút | On-call Engineer |
-| Latency p99 vượt ngưỡng | > 2x baseline | On-call Engineer |
-| Expert profile status sai (VERIFIED thay vì PENDING_VERIFICATION) | Bất kỳ case nào | Tech Lead |
-| Audit log ngừng hoạt động | > 1 phút | On-call Engineer |
+| Điều kiện                                                       | Ngưỡng           | Người quyết định |
+| ------------------------------------------------------------------ | ------------------ | --------------------- |
+| Error rate tăng đột biến                                       | > 5% trong 5 phút | On-call Engineer      |
+| Latency p99 vượt ngưỡng                                        | > 2x baseline      | On-call Engineer      |
+| Expert profile status sai (VERIFIED thay vì PENDING_VERIFICATION) | Bất kỳ case nào | Tech Lead             |
+| Audit log ngừng hoạt động                                      | > 1 phút          | On-call Engineer      |
 
 ### 12.2. Rollback Procedure
 
@@ -419,10 +425,10 @@ curl -X GET https://[host]/api/v1/health
 
 ### 12.3. Notification Protocol
 
-| Thời điểm | Người nhận | Kênh | Template |
-|-----------|------------|------|----------|
-| Ngay khi phát hiện | On-call team | Slack `#incident` | "🚨 UC-87 expert profile incident: [mô tả]" |
-| Trong 30 phút nếu PII bị ảnh hưởng | DPO | Email | Bắt buộc — PDPA |
+| Thời điểm                             | Người nhận | Kênh              | Template                                      |
+| ---------------------------------------- | ------------- | ------------------ | --------------------------------------------- |
+| Ngay khi phát hiện                     | On-call team  | Slack`#incident` | "🚨 UC-87 expert profile incident: [mô tả]" |
+| Trong 30 phút nếu PII bị ảnh hưởng | DPO           | Email              | Bắt buộc — PDPA                            |
 
 ### 12.4. Post-Incident Review (PIR)
 
@@ -480,12 +486,12 @@ Feature: Create Expert Profile
 #### TC-INT-001 — Profile persisted đúng trong DB
 
 ```gherkin
-  Scenario: Profile persisted với đúng accountId và status
+  Scenario: Profile persisted với đúng userId và status
     Given test data classification: SYNTHETIC
     And ACC-EXPERT-001 chưa có profile trong DB
     When createProfile() được gọi
     Then expert_profiles table có 1 row với:
-      | account_id | [ACC-EXPERT-001] |
+      | user_id | [ACC-EXPERT-001] |
       | status     | PENDING_VERIFICATION |
 ```
 
@@ -513,9 +519,9 @@ Feature: Create Expert Profile
 
 ```sql
 -- Verify profile tồn tại sau khi tạo
-SELECT id, account_id, display_name, status, created_at
+SELECT id, user_id, display_name, status, created_at
 FROM expert_profiles
-WHERE account_id = '<uuid>';
+WHERE user_id = '<uuid>';
 -- Expected: 1 row với status='PENDING_VERIFICATION'
 
 -- Verify không có VERIFIED profile được tạo trực tiếp
@@ -523,7 +529,7 @@ SELECT COUNT(*) FROM expert_profiles WHERE status = 'VERIFIED';
 -- Expected: 0 (chỉ Admin mới có thể VERIFY)
 
 -- Verify unique constraint
-SELECT account_id, COUNT(*) FROM expert_profiles GROUP BY account_id HAVING COUNT(*) > 1;
+SELECT user_id, COUNT(*) FROM expert_profiles GROUP BY user_id HAVING COUNT(*) > 1;
 -- Expected: 0 rows
 ```
 
@@ -560,6 +566,7 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 ```
 
 **Expected Response (201):**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -581,6 +588,7 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 ```
 
 **Expected Response (409):**
+
 ```json
 {
   "error": {
@@ -597,6 +605,7 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 ```
 
 **Expected Response (403):**
+
 ```json
 {
   "error": {
@@ -610,9 +619,9 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 
 ## 16. Bảng phân quyền
 
-| Endpoint | `GUEST` | `ROLE_MOTHER` | `ROLE_EXPERT` | `ROLE_ADMIN` |
-|----------|---------|---------------|---------------|--------------|
-| `POST /api/v1/expert-profiles` | ❌ | ❌ | ✅ Own | ✅ |
+| Endpoint                         | `GUEST` | `ROLE_MOTHER` | `ROLE_EXPERT` | `ROLE_ADMIN` |
+| -------------------------------- | --------- | --------------- | --------------- | -------------- |
+| `POST /api/v1/expert-profiles` | ❌        | ❌              | ✅ Own          | ✅             |
 
 ---
 
@@ -620,13 +629,13 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 
 ### 17.1 Constraint Summary
 
-| # | Constraint | Source |
-|---|-----------|--------|
-| C1 | accountId MUST be extracted from JWT SecurityContext, NEVER from request body | ADR-EXP-001 |
-| C2 | ROLE_EXPERT check before any write operation | BR-RBAC |
+| #  | Constraint                                                                       | Source      |
+| -- | -------------------------------------------------------------------------------- | ----------- |
+| C1 | userId MUST be extracted from JWT SecurityContext, NEVER from request body    | ADR-EXP-001 |
+| C2 | ROLE_EXPERT check before any write operation                                     | BR-RBAC     |
 | C3 | Check duplicate profile (existsByAccountId) before save; throw EXP-002 if exists | ADR-EXP-001 |
-| C4 | New profile status MUST be PENDING_VERIFICATION, not VERIFIED | ADR-EXP-002 |
-| C5 | AuditService.emit(ExpertProfileCreated) after successful save | BR-CON |
+| C4 | New profile status MUST be PENDING_VERIFICATION, not VERIFIED                    | ADR-EXP-002 |
+| C5 | AuditService.emit(ExpertProfileCreated) after successful save                    | BR-CON      |
 
 ### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
 
@@ -634,9 +643,9 @@ curl -X POST https://[host]/api/v1/expert-profiles \
 [CONSTRAINT BLOCK — Module: CreateExpertProfile (CB-EXP-IMP-001)]
 Theo TDS CB-EXP-IMP-001 và các ADR liên quan:
 
-1. (C1 — ADR-EXP-001) accountId PHẢI extract từ JWT SecurityContext — KHÔNG nhận từ request body.
+1. (C1 — ADR-EXP-001) userId PHẢI extract từ JWT SecurityContext — KHÔNG nhận từ request body.
 2. (C2 — BR-RBAC) ROLE_EXPERT required; ROLE_MOTHER và unauthenticated → 403 EXP-003.
-3. (C3 — ADR-EXP-001) existsByAccountId(accountId) PHẢI được gọi trước save() → throw EXP-002 nếu đã tồn tại.
+3. (C3 — ADR-EXP-001) existsByAccountId(userId) PHẢI được gọi trước save() → throw EXP-002 nếu đã tồn tại.
 4. (C4 — ADR-EXP-002) Initial status = PENDING_VERIFICATION — KHÔNG bao giờ là VERIFIED hay DRAFT ngay khi tạo.
 5. (C5 — BR-CON) Emit ExpertProfileCreated event qua AuditService SAU KHI save() thành công.
 
@@ -656,19 +665,19 @@ Tests phải cover §13 Test Scenarios.
 
 ### 17.3 Constraint Quality Checklist
 
-- [x] Mỗi constraint traceable về ADR hoặc BR cụ thể
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 5 constraints cụ thể
-- [x] Reference §8 Interface
-- [x] Reference §16 Auth Matrix
+- [X] Mỗi constraint traceable về ADR hoặc BR cụ thể
+- [X] Không có constraint generic
+- [X] Constraint block có ≥ 5 constraints cụ thể
+- [X] Reference §8 Interface
+- [X] Reference §16 Auth Matrix
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
-|-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Code không check existsByAccountId trước save | Reject — C3 violation |
-| AP-AI-003 | Implicit Decision | Code set status=VERIFIED thay vì PENDING_VERIFICATION | Reject — ADR-EXP-002 violation |
-| AP-AI-005 | Hallucinated Contract | Code import IExpertProfileService method không có trong §8 | Reject — verify contract |
+| AP-ID     | Anti-Pattern          | Dấu hiệu                                                    | Hành động                    |
+| --------- | --------------------- | ------------------------------------------------------------- | ------------------------------- |
+| AP-AI-001 | Unconstrained Gen     | Code không check existsByAccountId trước save              | Reject — C3 violation          |
+| AP-AI-003 | Implicit Decision     | Code set status=VERIFIED thay vì PENDING_VERIFICATION        | Reject — ADR-EXP-002 violation |
+| AP-AI-005 | Hallucinated Contract | Code import IExpertProfileService method không có trong §8 | Reject — verify contract       |
 
 ---
 
@@ -676,22 +685,22 @@ Tests phải cover §13 Test Scenarios.
 
 ### A. Glossary (Thuật ngữ)
 
-| Thuật ngữ | Định nghĩa |
-|-----------|------------|
-| Expert Profile | Hồ sơ chuyên gia: thông tin chuyên môn, kinh nghiệm, phí tư vấn |
-| PENDING_VERIFICATION | Trạng thái hồ sơ: chờ Admin duyệt trước khi được hiển thị public |
-| Consultation Modality | Hình thức tư vấn: CHAT, VOICE, VIDEO |
-| ADR-EXP-001 | Architecture Decision: 1 active profile per account |
-| ADR-EXP-002 | Architecture Decision: lifecycle DRAFT → PENDING_VERIFICATION → VERIFIED → SUSPENDED |
-| Append-only | Không DELETE profile — chỉ thay đổi status |
+| Thuật ngữ           | Định nghĩa                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| Expert Profile        | Hồ sơ chuyên gia: thông tin chuyên môn, kinh nghiệm, phí tư vấn               |
+| PENDING_VERIFICATION  | Trạng thái hồ sơ: chờ Admin duyệt trước khi được hiển thị public           |
+| Consultation Modality | Hình thức tư vấn: CHAT, VOICE, VIDEO                                                |
+| ADR-EXP-001           | Architecture Decision: 1 active profile per account                                     |
+| ADR-EXP-002           | Architecture Decision: lifecycle DRAFT → PENDING_VERIFICATION → VERIFIED → SUSPENDED |
+| Append-only           | Không DELETE profile — chỉ thay đổi status                                         |
 
 ### B. Tài liệu tham chiếu
 
-| Document | Link / Path |
-|----------|-------------|
-| PDPA Vietnam | [Link] |
-| EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
-| CASE 2.0 Methodology | `08_References/` |
+| Document                | Link / Path                                                           |
+| ----------------------- | --------------------------------------------------------------------- |
+| PDPA Vietnam            | [Link]                                                                |
+| EDS v2.0 Template       | `08_References/Template/PHASE-3_TDS.md`                             |
+| CASE 2.0 Methodology    | `08_References/`                                                    |
 | ExpertProfileRepository | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/expert/` |
 
 ---

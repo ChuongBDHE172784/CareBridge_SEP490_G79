@@ -1,22 +1,23 @@
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
+
 # UC-89 Upload Verification Documents
 
-| Field | Value |
-|-------|-------|
-| **Document ID** | `CB-EXP-IMP-002` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
-| **Status** | `Draft` |
-| **Author** | `AI Agent` |
-| **Based on EDS** | `v2.0` |
+| Field                  | Value              |
+| ---------------------- | ------------------ |
+| **Document ID**  | `CB-EXP-IMP-002` |
+| **Version**      | `1.0`            |
+| **Date**         | `2026-06-26`     |
+| **Status**       | `Approved`       |
+| **Author**       | `AI Agent`       |
+| **Based on EDS** | `v2.0`           |
 
 ---
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
-|------|-----------------|-------------------|
-| 2026-06-26 | AI Agent | Khởi tạo TDS cho UC-89 |
+| Ngày      | Người thực hiện | Nội dung thay đổi     |
+| ---------- | ------------------- | ------------------------ |
+| 2026-06-26 | AI Agent            | Khởi tạo TDS cho UC-89 |
 
 ---
 
@@ -25,7 +26,7 @@
 1. [Tổng quan Module](#1-tổng-quan-module)
 2. [Ma trận Truy vết](#2-ma-trận-truy-vết-traceability-matrix)
 3. [Architecture Decision Records (ADR)](#3-architecture-decision-records-adr)
-4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
+4. [Non-Functional Requirements &amp; SLA](#4-non-functional-requirements--sla)
 5. [Static Modeling](#5-static-modeling)
 6. [Dynamic Modeling](#6-dynamic-modeling)
 7. [Domain Event Catalog](#7-domain-event-catalog)
@@ -33,7 +34,7 @@
 9. [API Specification](#9-api-specification)
 10. [Bảng mã lỗi](#10-bảng-mã-lỗi)
 11. [Quy trình Triển khai](#11-quy-trình-triển-khai-step-by-step)
-12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
+12. [Rollback &amp; Incident Runbook](#12-rollback--incident-runbook)
 13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
 14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
 15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế-api-verification-samples)
@@ -44,14 +45,14 @@
 
 ## 1. Tổng quan Module
 
-| Field | Value |
-|-------|-------|
-| **Module Name** | `UploadVerificationDocuments` |
-| **Bounded Context** | `expert` |
-| **Data Classification** | `Confidential` |
-| **Compliance Scope** | `PDPA` |
+| Field                           | Value                                       |
+| ------------------------------- | ------------------------------------------- |
+| **Module Name**           | `UploadVerificationDocuments`             |
+| **Bounded Context**       | `expert`                                  |
+| **Data Classification**   | `Confidential`                            |
+| **Compliance Scope**      | `PDPA`                                    |
 | **Upstream Dependencies** | `expert_profiles, file (IStorageService)` |
-| **Downstream Consumers** | `admin-verification workflow` |
+| **Downstream Consumers**  | `admin-verification workflow`             |
 
 **Mô tả:** Expert upload bằng cấp, chứng chỉ, hoặc tài liệu liên quan cho Admin xác minh. Tái sử dụng `IStorageService` từ `file` domain. Tài liệu gắn với `expert_profile_id`.
 
@@ -59,13 +60,13 @@
 
 ## 2. Ma trận Truy vết
 
-| Requirement ID | Loại | Mô tả | Thành phần Code | ADR liên quan |
-|----------------|------|-------|-----------------|---------------|
-| UC-89 | User Story | Upload verification docs | `ExpertDocumentController` | ADR-EXP-003 |
-| BR-RBAC | Business Rule | ROLE_EXPERT only | `ExpertDocumentService` | — |
-| ADR-FILE-001 | Decision | MIME types: PDF/JPEG/PNG/HEIC | `DocumentMimeValidator` | ADR-FILE-001 |
-| ADR-FILE-004 | Decision | Presigned URL 15min TTL | `IStorageService` | ADR-FILE-004 |
-| ADR-EXP-003 | Decision | Max 10 docs per profile | `ExpertDocumentService` | — |
+| Requirement ID | Loại         | Mô tả                       | Thành phần Code            | ADR liên quan |
+| -------------- | ------------- | ----------------------------- | ---------------------------- | -------------- |
+| UC-89          | User Story    | Upload verification docs      | `ExpertDocumentController` | ADR-EXP-003    |
+| BR-RBAC        | Business Rule | ROLE_EXPERT only              | `ExpertDocumentService`    | —             |
+| ADR-FILE-001   | Decision      | MIME types: PDF/JPEG/PNG/HEIC | `DocumentMimeValidator`    | ADR-FILE-001   |
+| ADR-FILE-004   | Decision      | Presigned URL 15min TTL       | `IStorageService`          | ADR-FILE-004   |
+| ADR-EXP-003    | Decision      | Max 10 docs per profile       | `ExpertDocumentService`    | —             |
 
 ---
 
@@ -73,15 +74,17 @@
 
 ### ADR-EXP-003 — Verification document storage and limits
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Date** | `2026-06-26` |
+| Field            | Value          |
+| ---------------- | -------------- |
+| **Status** | `Accepted`   |
+| **Date**   | `2026-06-26` |
 
 #### Bối cảnh
+
 Expert cần upload nhiều loại tài liệu (bằng cấp, chứng chỉ) để Admin xác minh. Tài liệu cần được lưu trữ an toàn và gắn với profile.
 
 #### Quyết định
+
 - Max **10 documents** per expert profile.
 - Allowed MIME: `application/pdf`, `image/jpeg`, `image/png`, `image/heic`.
 - Max size: **20MB** per document (re-use ADR-FILE-001).
@@ -90,6 +93,7 @@ Expert cần upload nhiều loại tài liệu (bằng cấp, chứng chỉ) đ�
 - Expert chỉ được upload khi profile ở status `PENDING_VERIFICATION` hoặc `DRAFT`.
 
 #### Hệ quả
+
 - Tích cực: Tài liệu có audit trail rõ ràng.
 - Tiêu cực: Expert cần upload lại nếu Admin reject.
 
@@ -99,20 +103,20 @@ Expert cần upload nhiều loại tài liệu (bằng cấp, chứng chỉ) đ�
 
 ### 4.1. Performance & Availability
 
-| Category | Requirement | Target SLA |
-|----------|-------------|------------|
-| Latency | File upload (p99) | < 2000ms |
-| Availability | Uptime (monthly) | 99.9% |
-| File limit | Max documents per expert | 10 |
-| File size | Max per file | 5MB |
+| Category     | Requirement              | Target SLA |
+| ------------ | ------------------------ | ---------- |
+| Latency      | File upload (p99)        | < 2000ms   |
+| Availability | Uptime (monthly)         | 99.9%      |
+| File limit   | Max documents per expert | 10         |
+| File size    | Max per file             | 5MB        |
 
 ### 4.2. Security
 
-| Category | Requirement | Target |
-|----------|-------------|--------|
-| Access control | Expert owner only | Least privilege (§16) |
-| File validation | Type + size check before storage | BR-SECURITY |
-| Storage key | UUID-based, non-guessable | BR-PRIVACY |
+| Category        | Requirement                      | Target                 |
+| --------------- | -------------------------------- | ---------------------- |
+| Access control  | Expert owner only                | Least privilege (§16) |
+| File validation | Type + size check before storage | BR-SECURITY            |
+| Storage key     | UUID-based, non-guessable        | BR-PRIVACY             |
 
 ---
 
@@ -180,15 +184,15 @@ ExpertDirectoryController --> Expert: 201 Created
 
 ### 7.1. Events Published
 
-| Event Name | Trigger | Publisher | Async? |
-|------------|---------|-----------|--------|
-| DocumentUploaded | New verification document uploaded | VerificationDocService | No |
+| Event Name       | Trigger                            | Publisher              | Async? |
+| ---------------- | ---------------------------------- | ---------------------- | ------ |
+| DocumentUploaded | New verification document uploaded | VerificationDocService | No     |
 
 ### 7.2. Events Consumed
 
 | Event Name | Source | Handler | Action |
-|------------|--------|---------|--------|
-| — | — | — | — |
+| ---------- | ------ | ------- | ------ |
+| —         | —     | —      | —     |
 
 ---
 
@@ -213,12 +217,13 @@ public interface IExpertDocumentService {
 
 ## 9. API Specification
 
-| Method | Path | Auth | Required Roles |
-|--------|------|------|----------------|
-| `POST` | `/api/v1/expert-profiles/{expertId}/documents` | JWT Bearer | `ROLE_EXPERT` |
-| `GET` | `/api/v1/expert-profiles/{expertId}/documents` | JWT Bearer | `ROLE_EXPERT` (own), `ROLE_ADMIN` |
+| Method   | Path                                             | Auth       | Required Roles                        |
+| -------- | ------------------------------------------------ | ---------- | ------------------------------------- |
+| `POST` | `/api/v1/expert-profiles/{expertId}/documents` | JWT Bearer | `ROLE_EXPERT`                       |
+| `GET`  | `/api/v1/expert-profiles/{expertId}/documents` | JWT Bearer | `ROLE_EXPERT` (own), `ROLE_ADMIN` |
 
 **POST — 201 Created:**
+
 ```json
 {
   "id": "uuid",
@@ -233,13 +238,13 @@ public interface IExpertDocumentService {
 
 ## 10. Bảng mã lỗi
 
-| Code | HTTP | Trigger |
-|------|------|---------|
-| `EXP-005` | 409 | Max 10 documents per profile exceeded |
-| `EXP-006` | 400 | MIME type not allowed (non-PDF/JPEG/PNG/HEIC) |
-| `EXP-007` | 400 | File size > 20MB |
-| `EXP-008` | 403 | Not owner of expert profile |
-| `EXP-009` | 404 | Expert profile not found |
+| Code        | HTTP | Trigger                                       |
+| ----------- | ---- | --------------------------------------------- |
+| `EXP-005` | 409  | Max 10 documents per profile exceeded         |
+| `EXP-006` | 400  | MIME type not allowed (non-PDF/JPEG/PNG/HEIC) |
+| `EXP-007` | 400  | File size > 20MB                              |
+| `EXP-008` | 403  | Not owner of expert profile                   |
+| `EXP-009` | 404  | Expert profile not found                      |
 
 ---
 
@@ -308,10 +313,10 @@ public ExpertDocumentResponse uploadDocument(UUID expertId, UUID accountId, Mult
 
 ### 12.1. Điều kiện kích hoạt Rollback
 
-| Điều kiện | Ngưỡng | Người quyết định |
-|-----------|--------|------------------|
-| Error rate > 5% | 5 phút | On-call Engineer |
-| Files không validate đúng MIME | Bất kỳ case | Tech Lead |
+| Điều kiện                      | Ngưỡng      | Người quyết định |
+| --------------------------------- | ------------- | --------------------- |
+| Error rate > 5%                   | 5 phút       | On-call Engineer      |
+| Files không validate đúng MIME | Bất kỳ case | Tech Lead             |
 
 ### 12.2. Rollback Procedure
 
@@ -406,6 +411,7 @@ curl -X POST https://[host]/api/v1/expert-profiles/EXPERT-UUID/documents \
 ```
 
 **Expected Response (201):**
+
 ```json
 {
   "id": "doc-uuid",
@@ -420,10 +426,10 @@ curl -X POST https://[host]/api/v1/expert-profiles/EXPERT-UUID/documents \
 
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
-| Endpoint | `ROLE_MOTHER` | `ROLE_EXPERT` | `ROLE_ADMIN` |
-|----------|---------------|---------------|--------------|
-| `POST /expert-profiles/{id}/documents` | ❌ | ✅ Own only | ✅ |
-| `GET /expert-profiles/{id}/documents` | ❌ | ✅ Own only | ✅ All |
+| Endpoint                                 | `ROLE_MOTHER` | `ROLE_EXPERT` | `ROLE_ADMIN` |
+| ---------------------------------------- | --------------- | --------------- | -------------- |
+| `POST /expert-profiles/{id}/documents` | ❌              | ✅ Own only     | ✅             |
+| `GET /expert-profiles/{id}/documents`  | ❌              | ✅ Own only     | ✅ All         |
 
 ---
 
@@ -431,13 +437,13 @@ curl -X POST https://[host]/api/v1/expert-profiles/EXPERT-UUID/documents \
 
 ### 17.1 Constraint Summary Table
 
-| # | Constraint | Source |
-|---|-----------|--------|
-| C1 | Verify expert profile ownership (accountId from JWT matches profile.accountId) | ADR-EXP-003 |
-| C2 | Max 10 docs: count existing before save | ADR-EXP-003 |
-| C3 | MIME validation: only PDF/JPEG/PNG/HEIC | ADR-FILE-001 |
-| C4 | storageKey = UUID.randomUUID().toString() (not originalFilename) | ADR-FILE-003 |
-| C5 | Initial doc status = PENDING_REVIEW | ADR-EXP-003 |
+| #  | Constraint                                                                     | Source       |
+| -- | ------------------------------------------------------------------------------ | ------------ |
+| C1 | Verify expert profile ownership (accountId from JWT matches profile.accountId) | ADR-EXP-003  |
+| C2 | Max 10 docs: count existing before save                                        | ADR-EXP-003  |
+| C3 | MIME validation: only PDF/JPEG/PNG/HEIC                                        | ADR-FILE-001 |
+| C4 | storageKey = UUID.randomUUID().toString() (not originalFilename)               | ADR-FILE-003 |
+| C5 | Initial doc status = PENDING_REVIEW                                            | ADR-EXP-003  |
 
 ### 17.2 Constraint Injection Block
 
@@ -452,16 +458,16 @@ curl -X POST https://[host]/api/v1/expert-profiles/EXPERT-UUID/documents \
 
 ### 17.3 Constraint Quality Checklist
 
-- [x] Mỗi constraint traceable về ADR cụ thể
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 5 constraints cụ thể
+- [X] Mỗi constraint traceable về ADR cụ thể
+- [X] Không có constraint generic
+- [X] Constraint block có ≥ 5 constraints cụ thể
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Hành động |
-|-------|-------------|----------|
-| AP-AI-001 | storageKey = originalFilename | Reject — C4 violation |
-| AP-AI-003 | Status = APPROVED ngay khi upload | Reject — C5 violation |
+| AP-ID     | Anti-Pattern                          | Hành động           |
+| --------- | ------------------------------------- | ---------------------- |
+| AP-AI-001 | storageKey = originalFilename         | Reject — C4 violation |
+| AP-AI-003 | Status = APPROVED ngay khi upload     | Reject — C5 violation |
 | AP-AI-005 | Không check quota trước khi upload | Reject — C2 violation |
 
 ---
@@ -470,16 +476,16 @@ curl -X POST https://[host]/api/v1/expert-profiles/EXPERT-UUID/documents \
 
 ### A. Glossary
 
-| Thuật ngữ | Định nghĩa |
-|-----------|------------|
-| storageKey | UUID-based key trong cloud storage — không reveal original filename |
-| PENDING_REVIEW | Status mặc định của document khi vừa upload — chờ Admin xác minh |
-| MIME validation | Kiểm tra content type theo ADR-FILE-001 |
+| Thuật ngữ     | Định nghĩa                                                            |
+| --------------- | ------------------------------------------------------------------------ |
+| storageKey      | UUID-based key trong cloud storage — không reveal original filename    |
+| PENDING_REVIEW  | Status mặc định của document khi vừa upload — chờ Admin xác minh |
+| MIME validation | Kiểm tra content type theo ADR-FILE-001                                 |
 
 ### B. Tài liệu tham chiếu
 
-| Document | Path |
-|----------|------|
+| Document          | Path                                      |
+| ----------------- | ----------------------------------------- |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 
 ---

@@ -1,13 +1,15 @@
 # TEST-DRIVEN DEVELOPMENT SPECIFICATION
+
 # UC-87 Create Expert Profile
 
-**Document ID:** `CB-EXP-TDD-001`
+**Document D:** `CB-EXP-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Author:** `AI Agent`
 
 **References:**
+
 - TDS: `04_Implement/UC87_CreateExpertProfile/UC87_CreateExpertProfile_TDS.md` (CB-EXP-IMP-001)
 - SRS: §3.2.1.1
 
@@ -15,9 +17,9 @@
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
-|------|-----------------|-------------------|
-| 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-87 |
+| Ngày      | Người thực hiện | Nội dung thay đổi          |
+| ---------- | ------------------- | ----------------------------- |
+| 2026-06-26 | AI Agent            | Khởi tạo TDD spec cho UC-87 |
 
 ---
 
@@ -36,21 +38,21 @@
 
 ## 1. Thông tin Module
 
-| Field | Value |
-|-------|-------|
-| **Feature / Gap ID** | `UC-87` |
-| **Module** | `CreateExpertProfile — expert` |
-| **Priority** | 🟠 P1 |
-| **Data Classification** | `PII` |
+| Field                         | Value                             |
+| ----------------------------- | --------------------------------- |
+| **Feature / Gap ID**    | `UC-87`                         |
+| **Module**              | `CreateExpertProfile — expert` |
+| **Priority**            | 🟠 P1                             |
+| **Data Classification** | `PII`                           |
 
 ---
 
 ## 2. Logic Issues Resolved
 
-| # | Spec gốc | Thực tế | Fix |
-|---|----------|---------|-----|
+| #  | Spec gốc                                                          | Thực tế                                          | Fix                                             |
+| -- | ------------------------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------- |
 | L1 | SRS: "creates a professional profile" — không rõ initial status | ADR-EXP-002: initial status = PENDING_VERIFICATION | Test status = PENDING_VERIFICATION after create |
-| L2 | SRS: không rõ duplicate handling | ADR-EXP-001: 1 active profile per account | Test duplicate → 409 |
+| L2 | SRS: không rõ duplicate handling                                 | ADR-EXP-001: 1 active profile per account          | Test duplicate → 409                           |
 
 ---
 
@@ -58,13 +60,13 @@
 
 ### TDS-03 — Test Conditions
 
-| Condition ID | Test Condition | Coverage Item | Test Cases |
-|-------------|---------------|---------------|-----------|
-| TC-COND-001 | ROLE_EXPERT creates profile | `ExpertProfileService.createProfile()` | `EXP-TC-001` |
-| TC-COND-002 | Duplicate profile → 409 | `existsByAccountId()` | `EXP-TC-002` |
-| TC-COND-003 | ROLE_MOTHER → 403 | RBAC check | `EXP-TC-003` |
-| TC-COND-004 | Missing displayName → 400 | validation | `EXP-TC-004` |
-| TC-COND-005 | Initial status is PENDING_VERIFICATION | status guard | `EXP-TC-005` |
+| Condition ID | Test Condition                         | Coverage Item                            | Test Cases     |
+| ------------ | -------------------------------------- | ---------------------------------------- | -------------- |
+| TC-COND-001  | ROLE_EXPERT creates profile            | `ExpertProfileService.createProfile()` | `EXP-TC-001` |
+| TC-COND-002  | Duplicate profile → 409               | `existsByAccountId()`                  | `EXP-TC-002` |
+| TC-COND-003  | ROLE_MOTHER → 403                     | RBAC check                               | `EXP-TC-003` |
+| TC-COND-004  | Missing displayName → 400             | validation                               | `EXP-TC-004` |
+| TC-COND-005  | Initial status is PENDING_VERIFICATION | status guard                             | `EXP-TC-005` |
 
 ---
 
@@ -95,6 +97,7 @@ class ExpertProfileTestFactory {
 **TDD Phase:** 🔴 RED
 
 **Test Steps:**
+
 1. Caller = ACC-EXPERT-001 with ROLE_EXPERT
 2. Call `createProfile(makeValidRequest(), ACC-EXPERT-001)`
 
@@ -146,7 +149,7 @@ class ExpertProfileTestFactory {
 **TDD Phase:** 🔴 RED
 
 ```java
-ExpertProfileResponse resp = service.createProfile(req, accountId);
+ExpertProfileResponse resp = service.createProfile(req, userId);
 assertThat(resp.getStatus()).isEqualTo(ExpertProfileStatus.PENDING_VERIFICATION);
 // NOT VERIFIED, NOT DRAFT
 ```
@@ -160,7 +163,7 @@ assertThat(resp.getStatus()).isEqualTo(ExpertProfileStatus.PENDING_VERIFICATION)
 **Severity:** `HIGH`
 **TDD Phase:** 🔴 RED
 
-**Expected Result:** `expert_profiles` table has 1 row with correct accountId and status
+**Expected Result:** `expert_profiles` table has 1 row with correct userId and status
 
 **Current Status:** 🔴 Not written
 
@@ -168,12 +171,12 @@ assertThat(resp.getStatus()).isEqualTo(ExpertProfileStatus.PENDING_VERIFICATION)
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID | 🔴 RED | 🟢 GREEN | 🔵 REFACTOR |
-|-------|--------|----------|------------|
-| `EXP-TC-001` | `[ ]` | `___` | — |
-| `EXP-TC-002` | `[ ]` | `___` | — |
-| `EXP-TC-003` | `[ ]` | `___` | — |
-| `EXP-TC-005` | `[ ]` | `___` | — |
+| TC ID          | 🔴 RED  | 🟢 GREEN | 🔵 REFACTOR |
+| -------------- | ------- | -------- | ----------- |
+| `EXP-TC-001` | `[ ]` | `___`  | —          |
+| `EXP-TC-002` | `[ ]` | `___`  | —          |
+| `EXP-TC-003` | `[ ]` | `___`  | —          |
+| `EXP-TC-005` | `[ ]` | `___`  | —          |
 
 ---
 
@@ -204,7 +207,7 @@ git checkout -- src/test/java/com/carebridge/backend/expert/
 
 ## 8. CASE 2.0 Anti-Pattern Detection
 
-| AP-ID | Check | Gate |
-|-------|-------|------|
-| AP-AI-002 | ☐ Tests FAIL with stub | G-2 ★ |
-| AP-AI-003 | ☐ ADR-EXP-001/002 cited for status and uniqueness | G-1 |
+| AP-ID     | Check                                              | Gate   |
+| --------- | -------------------------------------------------- | ------ |
+| AP-AI-002 | ☐ Tests FAIL with stub                            | G-2 ★ |
+| AP-AI-003 | ☐ ADR-EXP-001/002 cited for status and uniqueness | G-1    |

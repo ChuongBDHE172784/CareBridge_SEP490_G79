@@ -79,9 +79,9 @@ QODER.md
 .opencode.json
 
 # Local Claude skills (untracked - keep local only)
-.claude/skills/ui-skill-system/
-.agent/skills/ui-skill-system/
-.agents/skills/ui-skill-system/
+.claude/skills/
+.agent/skills/
+.agents/skills/
 
 # Note: ui-skill-system is intentionally NOT tracked - keep it local
 
