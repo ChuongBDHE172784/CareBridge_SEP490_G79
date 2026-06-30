@@ -25,7 +25,6 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   static const _outlineVariant = Color(0xFFD6C2BD);
   static const _secondary = Color(0xFF6E5A52);
 
-  static const _recentSearches = ['Bé lười ăn dặm', 'Lịch tiêm chủng', 'Sữa mẹ'];
   static const _stageFilters = ['Tất cả', 'Mang thai', 'Chăm sóc bé'];
 
   final _searchCtrl = TextEditingController();
@@ -170,45 +169,6 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
               ),
             ),
           ),
-          if (_searchCtrl.text.isEmpty) ...[
-            // Recent searches
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('TÌM KIẾM GẦN ĐÂY', style: TextStyle(fontSize: 11, color: _onSurfaceVariant, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-                    TextButton(onPressed: () {}, child: const Text('Xóa tất cả', style: TextStyle(color: _primary, fontSize: 12))),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _recentSearches.map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF6DACF).withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(s, style: const TextStyle(fontSize: 13, color: _onSurfaceVariant)),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.close, size: 14, color: _onSurfaceVariant),
-                      ],
-                    ),
-                  )).toList(),
-                ),
-              ),
-            ),
-          ],
           // Results count
           if (_hasSearched)
             SliverToBoxAdapter(

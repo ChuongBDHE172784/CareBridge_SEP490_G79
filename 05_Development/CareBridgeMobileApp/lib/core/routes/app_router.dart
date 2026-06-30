@@ -20,6 +20,8 @@ import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
+import '../../features/aiTriage/screens/rag_chat_screen.dart';
+import '../../features/community/screens/expert_question_queue_screen.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -172,6 +174,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/content',
       builder: (context, state) => const ViewContentScreen(),
+    ),
+    GoRoute(
+      path: '/rag-chat',
+      builder: (context, state) => const RagChatScreen(),
+    ),
+    GoRoute(
+      path: '/expert-queue',
+      builder: (context, state) => const ExpertQuestionQueueScreen(),
     ),
   ],
 );

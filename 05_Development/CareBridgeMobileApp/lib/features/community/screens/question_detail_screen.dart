@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'post_answer_screen.dart';
@@ -141,6 +142,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.smart_toy_outlined, color: _onSurfaceVariant),
+            onPressed: () => context.push('/rag-chat'),
+            tooltip: 'Hỏi AI CareBridge (UC-132)',
+          ),
           IconButton(
             icon: Icon(
               _bookmarked ? Icons.bookmark : Icons.bookmark_border,

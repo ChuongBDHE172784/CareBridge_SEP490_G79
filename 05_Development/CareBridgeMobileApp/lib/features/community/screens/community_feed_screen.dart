@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'community_search_screen.dart';
@@ -49,52 +48,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   // UC-58: track bookmarked questions locally (optimistic)
   final Set<String> _bookmarkedIds = {};
 
-  // ── Mock data for development fallback ──
-  static final _mockTopics = [
-    CommunityTopic(id: 't1', name: 'Dinh dưỡng', description: '', icon: 'restaurant', isHidden: false, sortOrder: 1),
-    CommunityTopic(id: 't2', name: 'Giấc ngủ', description: '', icon: 'bedtime', isHidden: false, sortOrder: 2),
-    CommunityTopic(id: 't3', name: 'Phát triển', description: '', icon: 'child_care', isHidden: false, sortOrder: 3),
-    CommunityTopic(id: 't4', name: 'Tâm lý', description: '', icon: 'psychology', isHidden: false, sortOrder: 4),
-  ];
-
-  static final _mockItems = [
-    CommunityFeedItem(
-      id: 'p1',
-      title: 'Bé 6 tháng lười ăn dặm, mẹ phải làm sao?',
-      topicName: 'Dinh dưỡng',
-      authorDisplay: 'Mẹ Bún Lứt',
-      stage: 'POSTPARTUM',
-      urgency: 'NORMAL',
-      answerCount: 12,
-      likeCount: 24,
-      hasExpertAnswer: true,
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-    ),
-    CommunityFeedItem(
-      id: 'p2',
-      title: 'Review bỉm Merries cho bé da nhạy cảm',
-      topicName: 'Chăm bé',
-      authorDisplay: 'Thu Phương',
-      stage: 'POSTPARTUM',
-      urgency: 'NORMAL',
-      answerCount: 34,
-      likeCount: 89,
-      hasExpertAnswer: false,
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-    ),
-    CommunityFeedItem(
-      id: 'p3',
-      title: 'Mẹ bầu tuần 30 bị phù chân có đáng lo?',
-      topicName: 'Tâm lý',
-      authorDisplay: 'Hà My',
-      stage: 'PREGNANCY',
-      urgency: 'NORMAL',
-      answerCount: 8,
-      likeCount: 15,
-      hasExpertAnswer: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-    ),
-  ];
 
   @override
   void initState() {
@@ -117,19 +70,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           _loading = false;
         });
       }
-    } on ApiException {
-      if (mounted) {
-        setState(() {
-          _topics = _mockTopics;
-          _items = _mockItems;
-          _loading = false;
-        });
-      }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _topics = _mockTopics;
-          _items = _mockItems;
+          _topics = [];
+          _items = [];
           _loading = false;
         });
       }
@@ -145,10 +90,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     try {
       final feed = await _service.getFeed(topicId: topicId);
       if (mounted) setState(() { _items = feed; _loading = false; });
-    } on ApiException {
-      if (mounted) setState(() { _items = _mockItems; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _items = _mockItems; _loading = false; });
+      if (mounted) setState(() { _items = []; _loading = false; });
     }
   }
 
@@ -247,6 +190,19 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               tooltip: 'Thư viện chủ đề',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const TopicDirectoryScreen()),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Verified content search button (UC-224)
+          Container(
+            width: 44, height: 44,
+            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.verified_outlined, color: _onSurfaceVariant, size: 22),
+              tooltip: 'Nội dung đã kiểm duyệt',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VerifiedContentSearchScreen()),
               ),
             ),
           ),

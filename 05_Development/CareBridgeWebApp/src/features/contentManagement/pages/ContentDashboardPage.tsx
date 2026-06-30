@@ -4,26 +4,6 @@ import { fetchContentList } from '../services/contentApi';
 import type { ContentListItem } from '../models/content';
 import { TYPE_LABELS, STAGE_LABELS } from '../models/content';
 
-/* ------------------------------------------------------------------ */
-/*  Mock data (fallback when backend stats endpoint is unavailable)   */
-/* ------------------------------------------------------------------ */
-const MOCK_STATS = {
-  drafts: 12,
-  pending: 5,
-  published: 87,
-  updateRequired: 3,
-  faqCount: 42,
-  checklistCount: 18,
-  categoryIssues: 2,
-};
-
-const MOCK_RECENT: ContentListItem[] = [
-  { id: '1', type: 'ARTICLE', title: 'Dinh duong trong 3 thang dau thai ky', stage: 'PREGNANCY', topicId: 't1', publishedAt: '2026-06-25T10:00:00Z' },
-  { id: '2', type: 'FAQ', title: 'Khi nao can gap bac si san khoa?', stage: 'PREGNANCY', topicId: 't2', publishedAt: null },
-  { id: '3', type: 'CHECKLIST', title: 'Checklist chuan bi do so sinh', stage: 'POSTPARTUM', topicId: 't3', publishedAt: '2026-06-20T08:30:00Z' },
-  { id: '4', type: 'ARTICLE', title: 'Cac bai tap an toan cho ba bau', stage: 'PREGNANCY', topicId: 't1', publishedAt: '2026-06-18T14:00:00Z' },
-  { id: '5', type: 'ARTICLE', title: 'Tam ly sau sinh va cach vuot qua', stage: 'POSTPARTUM', topicId: 't4', publishedAt: null },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -71,18 +51,16 @@ export default function ContentDashboardPage() {
   const navigate = useNavigate();
   const [recentItems, setRecentItems] = useState<ContentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // TODO: wire to backend stats endpoint when available
-  const stats = MOCK_STATS;
+  const [stats, setStats] = useState({ drafts: 0, pending: 0, published: 0, updateRequired: 0, faqCount: 0, checklistCount: 0, categoryIssues: 0 });
 
   const loadRecent = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchContentList({ page: 0, size: 5 });
       setRecentItems(data.content);
+      setStats(s => ({ ...s, published: data.totalElements }));
     } catch {
-      // Fallback to mock data when endpoint is unavailable
-      setRecentItems(MOCK_RECENT);
+      setRecentItems([]);
     } finally {
       setIsLoading(false);
     }

@@ -141,24 +141,7 @@ export default function EscalatedSafetyCasePage() {
       if (found) {
         setCaseDetail(found);
       } else {
-        // Placeholder mock when not found in queue
-        setCaseDetail({
-          id: caseId ?? 'CB-072',
-          caseCode: caseId ?? 'CB-072',
-          riskLevel: 'CRITICAL',
-          summary: 'Ca an toàn cấp bách — cần xử lý ngay',
-          description: 'Nội dung vi phạm nghiêm trọng liên quan đến an toàn sức khoẻ trẻ em. Đã được báo cáo bởi 3+ người dùng trong 1 giờ.',
-          assignedTo: 'Moderator A',
-          reportedBy: 'Hệ thống',
-          slaDeadline: new Date(Date.now() + 12 * 60 * 1000).toISOString(),
-          createdAt: new Date().toISOString(),
-          status: 'OPEN',
-          linkedReports: [
-            { id: 'R-001', type: 'Báo cáo bài viết', summary: 'Nội dung nguy hiểm', createdAt: new Date().toISOString() },
-            { id: 'R-002', type: 'Báo cáo bình luận', summary: 'Lời khuyên có hại', createdAt: new Date().toISOString() },
-          ],
-          evidenceUrls: [],
-        });
+        setError('Không tìm thấy ca an toàn này trong hàng đợi.');
       }
     } catch {
       setError('Không tải được thông tin ca an toàn.');
@@ -175,9 +158,8 @@ export default function EscalatedSafetyCasePage() {
     if (!resolution) return;
     setSubmitting(true);
     try {
-      // TODO: wire to resolution endpoint when backend implements it
+      // TODO: wire to resolution endpoint when backend implements it (CB-072)
       console.log('Resolve case', caseId, { resolution, resolutionNote });
-      alert('Ca an toàn đã được đóng (mock).');
     } catch {
       alert('Có lỗi xảy ra khi đóng ca.');
     } finally {

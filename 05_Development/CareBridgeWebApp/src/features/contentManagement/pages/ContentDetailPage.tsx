@@ -4,21 +4,6 @@ import { fetchContentDetail } from '../services/contentApi';
 import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
 
-/* ------------------------------------------------------------------ */
-/*  Mock data fallback                                                 */
-/* ------------------------------------------------------------------ */
-const MOCK_DETAIL: ContentDetail = {
-  id: '1',
-  type: 'ARTICLE',
-  title: 'Dinh duong trong 3 thang dau thai ky',
-  body: '<h2>Gioi thieu</h2><p>Trong 3 thang dau thai ky, che do dinh duong dong vai tro vo cung quan trong doi voi su phat trien cua thai nhi va suc khoe cua nguoi me. Day la giai doan hinh thanh cac co quan quan trong cua be.</p><h2>Cac duong chat can thiet</h2><p><strong>Axit folic:</strong> Day la duong chat thiet yeu giup ngan ngua di tat ong than kinh. Me bau nen bo sung 400-800mcg axit folic moi ngay.</p><p><strong>Sat:</strong> Giup tang luong mau va phong ngua thieu mau. Can bo sung 27mg sat moi ngay thong qua thuc pham va vien uong.</p><p><strong>Canxi:</strong> Can thiet cho su phat trien xuong va rang cua be. Me bau can 1000mg canxi moi ngay.</p><h2>Thuc pham nen an</h2><ul><li>Rau xanh dam (cai bo xoi, bong cai xanh)</li><li>Trai cay tuoi (cam, buoi, chuoi)</li><li>Ngu coc nguyen hat</li><li>Thit nac, ca, trung</li><li>Sua va cac san pham tu sua</li></ul><h2>Thuc pham nen tranh</h2><ul><li>Do song hoac tai (sushi, thit tai)</li><li>Ca co ham luong thuy ngan cao</li><li>Ruou bia va do uong co con</li><li>Caffeine qua nhieu (gioi han 200mg/ngay)</li></ul>',
-  stage: 'PREGNANCY',
-  topicId: 't1',
-  version: 3,
-  publishedAt: '2026-06-25T10:00:00Z',
-  status: 'APPROVED',
-  createdAt: '2026-06-01T08:00:00Z',
-};
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -34,14 +19,6 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-/* ------------------------------------------------------------------ */
-/*  Version timeline mock                                              */
-/* ------------------------------------------------------------------ */
-const MOCK_VERSIONS = [
-  { version: 3, date: '25/06/2026', author: 'Content Admin', note: 'Cập nhật nội dung dinh dưỡng' },
-  { version: 2, date: '15/06/2026', author: 'Content Admin', note: 'Bổ sung phần thực phẩm nên tránh' },
-  { version: 1, date: '01/06/2026', author: 'Content Admin', note: 'Tạo bài viết mới' },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Page Component                                                     */
@@ -61,8 +38,7 @@ export default function ContentDetailPage() {
       const data = await fetchContentDetail(id);
       setDetail(data);
     } catch {
-      // Fallback to mock
-      setDetail({ ...MOCK_DETAIL, id });
+      setError('Không tải được nội dung. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -183,25 +159,8 @@ export default function ContentDetailPage() {
 
           {/* Version history */}
           <div className="bg-surface rounded-2xl p-5 shadow-md">
-            <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-4">LỊCH SỬ PHIÊN BẢN</div>
-            <div className="flex flex-col">
-              {MOCK_VERSIONS.map((v, idx) => (
-                <div key={v.version} className={`flex gap-3 ${idx < MOCK_VERSIONS.length - 1 ? 'pb-4' : ''}`}>
-                  {/* Timeline dot and line */}
-                  <div className="flex flex-col items-center min-w-4">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${idx === 0 ? 'bg-[#C98C7B]' : 'bg-outline-variant'}`} />
-                    {idx < MOCK_VERSIONS.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-surface-container-highest mt-1" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold text-on-surface">v{v.version} - {v.date}</div>
-                    <div className="text-xs text-outline mt-0.5">{v.author}</div>
-                    <div className="text-xs text-on-surface-variant mt-0.5">{v.note}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">LỊCH SỬ PHIÊN BẢN</div>
+            <p className="text-xs text-outline">Phiên bản hiện tại: v{detail.version}</p>
           </div>
         </div>
       </div>

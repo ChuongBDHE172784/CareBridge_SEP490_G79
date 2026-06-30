@@ -40,10 +40,6 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   // Local follow state (TODO: wire to subscription API when backend implements it)
   final Set<String> _followedTopics = {};
 
-  // Mock featured content — matches CB-118 design hero card
-  static const _featuredTitle = 'Dinh dưỡng 1000 ngày đầu đời';
-  static const _featuredSubtitle = 'Hành trình xây dựng nền tảng sức khoẻ vững chắc cho bé.';
-  static const _featuredBadge = 'CẦN CHÚ Ý';
 
   @override
   void initState() {
@@ -194,94 +190,6 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
               child: Center(child: CircularProgressIndicator(color: _primary)),
             )
           else ...[
-            // Featured banner
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Chủ đề nổi bật',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const CommunityTopicSearchScreen()),
-                          ),
-                          child: const Text('Xem thêm', style: TextStyle(color: _primary, fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Hero banner card
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 160,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF693A2D), Color(0xFF845143)],
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                  colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    _featuredBadge,
-                                    style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  _featuredTitle,
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  _featuredSubtitle,
-                                  style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
             // Topic grid header
             SliverToBoxAdapter(
               child: Padding(
