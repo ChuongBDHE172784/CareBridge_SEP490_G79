@@ -4,7 +4,7 @@ CREATE TABLE community_bookmarks (
     user_id     UUID        NOT NULL,
     question_id UUID        NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_bookmark_user     FOREIGN KEY (user_id)     REFERENCES users(id)              ON DELETE CASCADE,
+    CONSTRAINT fk_bookmark_user     FOREIGN KEY (user_id)     REFERENCES users(user_id)         ON DELETE CASCADE,
     CONSTRAINT fk_bookmark_question FOREIGN KEY (question_id) REFERENCES community_questions(id) ON DELETE CASCADE,
     CONSTRAINT uq_bookmark          UNIQUE (user_id, question_id)
 );
