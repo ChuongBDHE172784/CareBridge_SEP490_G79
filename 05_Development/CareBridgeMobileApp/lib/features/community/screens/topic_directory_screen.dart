@@ -239,22 +239,6 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                     ),
             ),
 
-            // Community suggestions row
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: const Text(
-                  'Cộng đồng gợi ý',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                child: _CommunitysuggestionCard(),
-              ),
-            ),
           ],
         ],
       ),
@@ -354,47 +338,3 @@ class _TopicGridCard extends StatelessWidget {
   }
 }
 
-class _CommunitysuggestionCard extends StatelessWidget {
-  static const _primary = Color(0xFF845143);
-  static const _surface = Colors.white;
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 3))],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: const Color(0xFFF6DACF),
-            child: const Icon(Icons.groups, color: _primary, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              text: const TextSpan(
-                style: TextStyle(fontSize: 13, color: _onSurface, height: 1.4),
-                children: [
-                  TextSpan(text: 'Hơn 500+ mẹ đang thảo luận về '),
-                  TextSpan(
-                    text: 'Chế độ ăn Keto cho mẹ bầu',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: _primary, size: 20),
-        ],
-      ),
-    );
-  }
-}
