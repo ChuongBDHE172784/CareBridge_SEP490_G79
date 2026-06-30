@@ -85,7 +85,7 @@ export default function ChecklistListPage() {
             onClick={() => navigate('/content/create?type=CHECKLIST')}
             className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+            <span className="material-symbols-outlined text-lg">add</span>
             Tạo Checklist
           </button>
         </div>
@@ -125,7 +125,7 @@ export default function ChecklistListPage() {
                       </td>
                       <td className="py-3.5 px-2">
                         <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>checklist</span>
+                          <span className="material-symbols-outlined text-primary text-base">checklist</span>
                           <span className="text-sm font-semibold text-on-surface">{cl.items.length}</span>
                           <span className="text-xs text-outline">mục</span>
                         </div>
@@ -145,13 +145,13 @@ export default function ChecklistListPage() {
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Xem chi tiết"
                           >
-                            <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>visibility</span>
+                            <span className="material-symbols-outlined text-primary text-base">visibility</span>
                           </button>
                           <button
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Chỉnh sửa"
                           >
-                            <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>edit</span>
+                            <span className="material-symbols-outlined text-primary text-base">edit</span>
                           </button>
                         </div>
                       </td>
@@ -175,7 +175,7 @@ export default function ChecklistListPage() {
                   disabled={page === 0}
                   className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                 >
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_left</span>
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
                 </button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const startPage = Math.max(0, Math.min(page - 2, totalPages - 5));
@@ -196,7 +196,7 @@ export default function ChecklistListPage() {
                   disabled={page >= totalPages - 1}
                   className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                 >
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_right</span>
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
                 </button>
               </div>
             </div>

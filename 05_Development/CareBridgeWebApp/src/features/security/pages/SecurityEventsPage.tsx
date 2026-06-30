@@ -37,7 +37,7 @@ export default function SecurityEventsPage() {
           <p className="text-on-surface-variant text-sm mt-1">Theo dõi và giám sát các hoạt động bảo mật hệ thống CareBridge.</p>
         </div>
         <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-on-primary border-none text-sm font-semibold cursor-pointer">
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span> Xuất báo cáo (CSV)
+          <span className="material-symbols-outlined text-lg">download</span> Xuất báo cáo (CSV)
         </button>
       </div>
 
@@ -109,7 +109,7 @@ function StatCard({ icon, label, value, accentClass }: { icon: string; label: st
   return (
     <div className="bg-surface rounded-2xl p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
-        <span className={`material-symbols-outlined ${accentClass}`} style={{ fontSize: 20 }}>{icon}</span>
+        <span className={`material-symbols-outlined text-xl ${accentClass}`}>{icon}</span>
         <span className="text-[13px] text-on-surface-variant">{label}</span>
       </div>
       <div className="text-3xl font-bold text-on-surface">{value}</div>

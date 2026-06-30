@@ -116,14 +116,14 @@ export default function FaqListPage() {
         </div>
         <div className="flex gap-2.5">
           <button className="flex items-center gap-1.5 py-3 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
+            <span className="material-symbols-outlined text-lg">download</span>
             Xuất dữ liệu
           </button>
           <button
             onClick={() => navigate('/content/create?type=FAQ')}
             className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+            <span className="material-symbols-outlined text-lg">add</span>
             Tạo FAQ Mới
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function FaqListPage() {
             <option>Sau sinh</option>
           </select>
           <button className="py-2 px-4 rounded-2xl border border-outline-variant bg-transparent text-on-surface-variant text-[13px] font-semibold cursor-pointer flex items-center gap-1">
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>tune</span>
+            <span className="material-symbols-outlined text-base">tune</span>
             Lọc thêm
           </button>
         </div>
@@ -221,7 +221,7 @@ export default function FaqListPage() {
                       </td>
                       <td className="py-3.5 px-2">
                         <div className="flex items-center gap-1">
-                          {faq.isVerified && <span className="material-symbols-outlined text-[#137333]" style={{ fontSize: 16 }}>verified</span>}
+                          {faq.isVerified && <span className="material-symbols-outlined text-[#137333] text-base">verified</span>}
                           <span className="text-[13px] text-on-surface-variant">{faq.source}</span>
                         </div>
                       </td>
@@ -237,13 +237,13 @@ export default function FaqListPage() {
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Chỉnh sửa"
                           >
-                            <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>edit</span>
+                            <span className="material-symbols-outlined text-primary text-base">edit</span>
                           </button>
                           <button
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Xóa"
                           >
-                            <span className="material-symbols-outlined text-error" style={{ fontSize: 16 }}>delete</span>
+                            <span className="material-symbols-outlined text-error text-base">delete</span>
                           </button>
                         </div>
                       </td>
@@ -263,7 +263,7 @@ export default function FaqListPage() {
                 disabled={page === 0}
                 className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
               >
-                <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_left</span>
+                <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
               </button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const startPage = Math.max(0, Math.min(page - 2, totalPages - 5));
@@ -284,7 +284,7 @@ export default function FaqListPage() {
                 disabled={page >= totalPages - 1}
                 className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
               >
-                <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_right</span>
+                <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
               </button>
             </div>
           </>

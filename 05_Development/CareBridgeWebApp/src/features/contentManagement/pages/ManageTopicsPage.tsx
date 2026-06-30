@@ -60,7 +60,7 @@ function TypeBadge({ icon }: TypeBadgeProps) {
   if (icon === 'label') {
     return (
       <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-surface-container-high text-on-surface text-xs font-medium">
-        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>label</span>
+        <span className="material-symbols-outlined text-sm">label</span>
         Danh mục
       </span>
     );
@@ -68,14 +68,14 @@ function TypeBadge({ icon }: TypeBadgeProps) {
   if (icon === 'sell') {
     return (
       <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-surface-dim text-on-surface text-xs font-medium">
-        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>sell</span>
+        <span className="material-symbols-outlined text-sm">sell</span>
         Thẻ (Tag)
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-medium">
-      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>folder</span>
+      <span className="material-symbols-outlined text-sm">folder</span>
       Chủ đề
     </span>
   );
@@ -288,8 +288,7 @@ export default function ManageTopicsPage() {
           {/* Search */}
           <div className="relative">
             <span
-              className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline"
-              style={{ fontSize: 20 }}
+              className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl"
             >
               search
             </span>
@@ -305,7 +304,7 @@ export default function ManageTopicsPage() {
             onClick={openCreateDrawer}
             className="flex items-center gap-2 h-[52px] px-6 rounded-full bg-primary-container text-white border-none text-[15px] font-semibold cursor-pointer shadow-[0_4px_20px_rgba(90,70,63,0.12)] font-sans"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add</span>
+            <span className="material-symbols-outlined text-xl">add</span>
             Tạo mới
           </button>
         </div>
@@ -364,7 +363,7 @@ export default function ManageTopicsPage() {
                         onClick={() => toggleExpand(item.id)}
                         className="w-8 h-8 rounded-full border-none bg-transparent cursor-pointer flex items-center justify-center text-on-surface-variant flex-shrink-0"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                        <span className="material-symbols-outlined text-xl">
                           {isExpanded ? 'expand_more' : 'chevron_right'}
                         </span>
                       </button>
@@ -399,7 +398,7 @@ export default function ManageTopicsPage() {
                       className="border-none bg-transparent cursor-grab text-outline p-1"
                       title="Kéo để sắp xếp"
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>drag_indicator</span>
+                      <span className="material-symbols-outlined text-xl">drag_indicator</span>
                     </button>
                   </div>
 
@@ -411,7 +410,7 @@ export default function ManageTopicsPage() {
                       title="Chỉnh sửa"
                       className="border-none bg-transparent cursor-pointer text-outline p-1 flex items-center"
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>edit</span>
+                      <span className="material-symbols-outlined text-xl">edit</span>
                     </button>
                     {isTopic && (
                       <button
@@ -419,7 +418,7 @@ export default function ManageTopicsPage() {
                         title="Ẩn"
                         className="border-none bg-transparent cursor-pointer text-outline p-1 flex items-center"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>delete</span>
+                        <span className="material-symbols-outlined text-xl">delete</span>
                       </button>
                     )}
                   </div>
@@ -453,7 +452,7 @@ export default function ManageTopicsPage() {
             onClick={closeDrawer}
             className="w-10 h-10 rounded-full border-none bg-transparent cursor-pointer flex items-center justify-center text-on-surface-variant"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>close</span>
+            <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
 
@@ -533,8 +532,7 @@ export default function ManageTopicsPage() {
                 ))}
               </select>
               <span
-                className="material-symbols-outlined absolute right-[14px] top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant"
-                style={{ fontSize: 20 }}
+                className="material-symbols-outlined absolute right-[14px] top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-xl"
               >
                 expand_more
               </span>

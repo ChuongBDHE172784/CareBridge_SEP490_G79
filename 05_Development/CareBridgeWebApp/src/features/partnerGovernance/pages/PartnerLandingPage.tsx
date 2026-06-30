@@ -66,7 +66,7 @@ export default function PartnerLandingPage() {
         <div className="bg-white rounded-3xl py-12 px-14 max-w-[680px] w-full text-center shadow-[0_4px_20px_rgba(90,70,63,0.06)]">
           {/* Icon */}
           <div className="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-white" style={{ fontSize: 32 }}>
+            <span className="material-symbols-outlined text-white text-[32px]">
               handshake
             </span>
           </div>
@@ -124,7 +124,7 @@ export default function PartnerLandingPage() {
               className="bg-white rounded-[20px] py-8 px-6 text-center shadow-[0_4px_20px_rgba(90,70,63,0.06)]"
             >
               <div className="w-[52px] h-[52px] rounded-full bg-primary-container flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-white" style={{ fontSize: 26 }}>
+                <span className="material-symbols-outlined text-white text-[26px]">
                   {feature.icon}
                 </span>
               </div>

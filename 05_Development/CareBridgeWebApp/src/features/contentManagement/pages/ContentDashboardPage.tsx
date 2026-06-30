@@ -54,7 +54,7 @@ function StatCard({ icon, label, value, accent }: { icon: string; label: string;
         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
         style={{ background: accent + '18' }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 24, color: accent }}>{icon}</span>
+        <span className="material-symbols-outlined text-2xl" style={{ color: accent }}>{icon}</span>
       </div>
       <div>
         <div className="text-[28px] font-bold text-on-surface">{value}</div>
@@ -102,7 +102,7 @@ export default function ContentDashboardPage() {
           onClick={() => navigate('/content/create')}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+          <span className="material-symbols-outlined text-lg">add</span>
           Tạo nội dung mới
         </button>
       </div>
@@ -159,7 +159,7 @@ export default function ContentDashboardPage() {
                     </td>
                     <td className="py-3.5 px-2">
                       <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                        <span className="material-symbols-outlined text-sm">
                           {item.type === 'ARTICLE' ? 'article' : item.type === 'FAQ' ? 'quiz' : 'fact_check'}
                         </span>
                         {TYPE_LABELS[item.type]}
