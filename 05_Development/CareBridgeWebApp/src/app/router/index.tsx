@@ -39,6 +39,7 @@ import RegisterPartnerPage from '../../features/partnerGovernance/pages/Register
 // Moderation screens (CB-072, CB-088)
 import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
 import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
+import ModeratorPlaceholderPage from '../../features/moderation/pages/ModeratorPlaceholderPage';
 
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
@@ -129,6 +130,27 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
             children: [
               { path: '/moderator/dashboard', element: <EscalatedModerationCasesPage /> },
+              { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
+              {
+                path: '/moderator/reports',
+                element: (
+                  <ModeratorPlaceholderPage
+                    icon="flag"
+                    title="Báo cáo"
+                    description="Theo dõi các báo cáo nội dung và hoạt động cần kiểm duyệt."
+                  />
+                ),
+              },
+              {
+                path: '/moderator/violations',
+                element: (
+                  <ModeratorPlaceholderPage
+                    icon="gavel"
+                    title="Vi phạm"
+                    description="Quản lý các vi phạm chính sách đã được ghi nhận trong hệ thống."
+                  />
+                ),
+              },
               { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
               { path: '/moderator', element: <Navigate to="/moderator/safety-cases" replace /> },
