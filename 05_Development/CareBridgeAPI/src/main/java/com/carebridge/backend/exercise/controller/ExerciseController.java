@@ -44,7 +44,7 @@ public class ExerciseController {
     private final IPostureConfigService postureConfigService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<PaginatedResponse<ExerciseSummaryResponse>> listExercises(
             @RequestParam(required = false) TrimesterScope trimester,
             @RequestParam(required = false) DifficultyLevel difficulty,
@@ -55,7 +55,7 @@ public class ExerciseController {
     }
 
     @GetMapping("/{exerciseId}")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<ExerciseDetailResponse>> getExerciseDetail(
             @PathVariable UUID exerciseId) {
         return ResponseEntity.ok(exerciseDetailQueryService.getExerciseDetail(exerciseId));
@@ -63,7 +63,7 @@ public class ExerciseController {
 
     // UC178 — Complete Pre-Exercise Safety Check
     @PostMapping("/{exerciseId}/safety-check")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> submitSafetyCheck(
             @PathVariable UUID exerciseId,
             @RequestBody @Valid SubmitSafetyCheckRequest request,
@@ -74,7 +74,7 @@ public class ExerciseController {
     }
 
     @GetMapping("/{exerciseId}/safety-check/latest")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> getLatestSafetyCheck(
             @PathVariable UUID exerciseId,
             Principal principal) {
@@ -84,7 +84,7 @@ public class ExerciseController {
 
     // UC179 — Start Exercise Session
     @PostMapping("/{exerciseId}/sessions")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<StartSessionResponse>> startSession(
             @PathVariable UUID exerciseId,
             @RequestBody @Valid StartSessionRequest request,
@@ -96,7 +96,7 @@ public class ExerciseController {
 
     // UC180 — Enable Posture Camera (active posture config lookup)
     @GetMapping("/{exerciseId}/posture-config")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<PostureConfigResponse>> getPostureConfig(
             @PathVariable UUID exerciseId) {
         return ResponseEntity.ok(postureConfigService.getActiveConfig(exerciseId));
