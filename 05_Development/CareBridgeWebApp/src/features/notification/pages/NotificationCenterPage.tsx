@@ -92,7 +92,7 @@ export default function NotificationCenterPage() {
           onClick={handleMarkAllRead}
           className="flex items-center gap-1 bg-transparent border-none text-primary text-sm font-semibold cursor-pointer"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>done_all</span>
+          <span className="material-symbols-outlined text-lg">done_all</span>
           Đánh dấu tất cả đã đọc
         </button>
       </div>
@@ -178,7 +178,7 @@ export default function NotificationCenterPage() {
                     page === 0 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
                   }`}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
+                  <span className="material-symbols-outlined text-lg">chevron_left</span>
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
@@ -187,7 +187,7 @@ export default function NotificationCenterPage() {
                     page >= totalPages - 1 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
                   }`}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+                  <span className="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
               </div>
             </div>
@@ -210,8 +210,7 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
           <span className="w-2 h-2 rounded-full bg-error mt-2 shrink-0" />
         )}
         <span
-          className="material-symbols-outlined text-primary bg-surface-container-high rounded-full w-9 h-9 flex items-center justify-center shrink-0"
-          style={{ fontSize: 20 }}
+          className="material-symbols-outlined text-primary bg-surface-container-high rounded-full w-9 h-9 flex items-center justify-center shrink-0 text-xl"
         >
           {getTypeIcon(n.referenceType || n.type)}
         </span>
@@ -229,7 +228,7 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
       </td>
       <td className="px-2 py-4">
         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${badgeCls}`}>
-          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+          <span className="material-symbols-outlined text-sm">
             {getTypeIcon(n.referenceType || n.type)}
           </span>
           {typeLabel}
@@ -237,7 +236,7 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
       </td>
       <td className="px-2 py-4 text-center">
         <button className="bg-transparent border-none cursor-pointer text-primary">
-          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>open_in_new</span>
+          <span className="material-symbols-outlined text-xl">open_in_new</span>
         </button>
       </td>
     </tr>

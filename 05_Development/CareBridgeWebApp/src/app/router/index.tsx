@@ -41,8 +41,8 @@ import EscalatedModerationCasesPage from '../../features/moderation/pages/Escala
 import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
 
 const ForbiddenPage = () => (
-  <div style={{ padding: 48, textAlign: 'center', fontFamily: "'Lexend', sans-serif", color: '#524440' }}>
-    <h2 style={{ color: '#845143' }}>Truy cập bị từ chối</h2>
+  <div className="p-12 text-center font-sans text-on-surface-variant">
+    <h2 className="text-primary">Truy cập bị từ chối</h2>
     <p>Bạn không có quyền xem trang này.</p>
   </div>
 );

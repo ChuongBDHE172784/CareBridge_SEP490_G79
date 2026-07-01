@@ -66,9 +66,9 @@ export default function ContentDetailPage() {
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-[13px] text-outline mb-4">
         <span className="cursor-pointer" onClick={() => navigate('/content')}>Thư viện</span>
-        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_right</span>
+        <span className="material-symbols-outlined text-base">chevron_right</span>
         <span className="cursor-pointer" onClick={() => navigate('/content/list')}>{STAGE_LABELS[detail.stage]}</span>
-        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_right</span>
+        <span className="material-symbols-outlined text-base">chevron_right</span>
         <span className="text-on-surface-variant">Chi tiết bài viết</span>
       </div>
 
@@ -77,7 +77,7 @@ export default function ContentDetailPage() {
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+        <span className="material-symbols-outlined text-lg">arrow_back</span>
         Quay lại
       </button>
 
@@ -114,10 +114,9 @@ export default function ContentDetailPage() {
           <div className="bg-surface rounded-2xl p-8 shadow-md">
             {/* Hero image placeholder */}
             <div
-              className="w-full h-[220px] rounded-xl flex items-center justify-center mb-6"
-              style={{ background: 'linear-gradient(135deg, #FFE9E3 0%, #F6DACF 100%)' }}
+              className="w-full h-[220px] rounded-xl flex items-center justify-center mb-6 bg-[linear-gradient(135deg,#FFE9E3_0%,#F6DACF_100%)]"
             >
-              <span className="material-symbols-outlined text-[#C98C7B]" style={{ fontSize: 48 }}>image</span>
+              <span className="material-symbols-outlined text-[#C98C7B] text-5xl">image</span>
             </div>
 
             {/* Body content */}
@@ -146,14 +145,14 @@ export default function ContentDetailPage() {
             onClick={() => navigate(`/content/${detail.id}/edit`)}
             className="w-full py-3.5 rounded-2xl bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+            <span className="material-symbols-outlined text-lg">edit</span>
             Chỉnh sửa nội dung
           </button>
           <button
             onClick={() => navigate(`/content/${detail.id}/preview`)}
             className="w-full py-3.5 rounded-2xl bg-transparent text-primary border border-outline-variant text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>send</span>
+            <span className="material-symbols-outlined text-lg">send</span>
             Gửi phê duyệt
           </button>
 

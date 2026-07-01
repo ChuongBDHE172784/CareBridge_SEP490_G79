@@ -54,7 +54,7 @@ export default function SecurityIncidentResolutionPage() {
                   onClick={() => setRootCause(rc.id)}
                   className={`p-4 rounded-xl border-2 cursor-pointer text-center transition-colors ${rootCause === rc.id ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}
                 >
-                  <span className="material-symbols-outlined text-primary block mb-2" style={{ fontSize: 24 }}>{rc.icon}</span>
+                  <span className="material-symbols-outlined text-primary block mb-2 text-2xl">{rc.icon}</span>
                   <div className="text-sm font-semibold text-on-surface">{rc.label}</div>
                   <div className="text-xs text-on-surface-variant mt-1">{rc.description}</div>
                 </label>
@@ -82,8 +82,7 @@ export default function SecurityIncidentResolutionPage() {
               >
                 <span
                   onClick={() => { const next = [...tasks]; next[i].done = !next[i].done; setTasks(next); }}
-                  className={`material-symbols-outlined cursor-pointer ${t.done ? 'text-primary' : 'text-outline-variant'}`}
-                  style={{ fontSize: 24 }}
+                  className={`material-symbols-outlined cursor-pointer text-2xl ${t.done ? 'text-primary' : 'text-outline-variant'}`}
                 >
                   {t.done ? 'check_circle' : 'circle'}
                 </span>

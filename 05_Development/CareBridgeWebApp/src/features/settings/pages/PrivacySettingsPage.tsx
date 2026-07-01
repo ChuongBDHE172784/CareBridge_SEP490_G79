@@ -117,7 +117,7 @@ export default function PrivacySettingsPage() {
             liệu y tế (HIPAA/GDPR).
           </p>
           <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-outline-variant bg-surface text-primary text-sm font-semibold cursor-pointer">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>security</span>
+            <span className="material-symbols-outlined text-lg">security</span>
             Xem chính sách bảo mật
           </button>
         </div>
@@ -174,7 +174,7 @@ export default function PrivacySettingsPage() {
               Kiểm soát các bên thứ 3 và phòng ban có quyền truy cập dữ liệu.
             </p>
             <button className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-on-primary border-none text-sm font-semibold cursor-pointer float-right mb-4">
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+              <span className="material-symbols-outlined text-base">add</span>
               Cấp quyền mới
             </button>
             <div className="clear-both" />
@@ -278,7 +278,7 @@ function SettingsCard({
   return (
     <div className="bg-surface rounded-2xl p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-5">
-        <span className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>{icon}</span>
+        <span className="material-symbols-outlined text-primary text-xl">{icon}</span>
         <h3 className="text-lg font-semibold text-on-surface m-0">{title}</h3>
       </div>
       {children}
@@ -335,12 +335,12 @@ function LinkRow({
 }) {
   return (
     <div className="flex items-center py-4 cursor-pointer">
-      <span className="material-symbols-outlined text-on-surface-variant mr-3" style={{ fontSize: 20 }}>{icon}</span>
+      <span className="material-symbols-outlined text-on-surface-variant mr-3 text-xl">{icon}</span>
       <div className="flex-1">
         <div className="text-sm font-semibold text-on-surface">{label}</div>
         <div className={`text-[13px] mt-0.5 ${descriptionClass}`}>{description}</div>
       </div>
-      <span className="material-symbols-outlined text-outline" style={{ fontSize: 18 }}>chevron_right</span>
+      <span className="material-symbols-outlined text-outline text-lg">chevron_right</span>
     </div>
   );
 }

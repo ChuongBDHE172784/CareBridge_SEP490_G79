@@ -10,6 +10,7 @@ import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/baby/screens/baby_profiles_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
 import '../../../features/community/screens/expert_question_queue_screen.dart';
+import '../../../features/fileManager/screens/file_manager_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key});
@@ -121,6 +122,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             }),
             _menuItem(Icons.group_outlined, 'Nhóm chăm sóc', () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CareGroupsScreen()));
+            }),
+            _menuItem(Icons.folder_outlined, 'Quản lý tệp', () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FileManagerScreen()));
             }),
           ]),
           const SizedBox(height: 16),

@@ -37,7 +37,7 @@ export default function SecurityIncidentInvestigationPage() {
       <div className="text-sm text-on-surface-variant mb-2">An toàn &gt; Quản lý sự cố &gt; CB-{eventId}</div>
 
       <div className="flex items-center gap-4 mb-6">
-        <span className="material-symbols-outlined bg-error-container text-error rounded-full p-2" style={{ fontSize: 32 }}>warning</span>
+        <span className="material-symbols-outlined bg-error-container text-error rounded-full p-2 text-[32px]">warning</span>
         <div>
           <h1 className="text-[22px] font-bold text-on-surface m-0">Sự cố CB-{eventId}</h1>
           <p className="text-sm text-on-surface-variant mt-1 mb-0">Điều tra sự cố bảo mật</p>

@@ -97,7 +97,7 @@ export default function ContentListPage() {
       {/* Action bar */}
       <div className="flex items-center gap-3 mb-5">
         <div className="flex-1 relative">
-          <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2" style={{ fontSize: 20 }}>search</span>
+          <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
           <input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
@@ -123,7 +123,7 @@ export default function ContentListPage() {
           onClick={() => navigate('/content/create')}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+          <span className="material-symbols-outlined text-lg">add</span>
           Tạo nội dung mới
         </button>
       </div>
@@ -156,7 +156,7 @@ export default function ContentListPage() {
                       </td>
                       <td className="py-3.5 px-2">
                         <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
-                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{typeIcon(item.type)}</span>
+                          <span className="material-symbols-outlined text-sm">{typeIcon(item.type)}</span>
                           {TYPE_LABELS[item.type]}
                         </span>
                       </td>
@@ -174,14 +174,14 @@ export default function ContentListPage() {
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Xem chi tiết"
                           >
-                            <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>visibility</span>
+                            <span className="material-symbols-outlined text-primary text-base">visibility</span>
                           </button>
                           <button
                             onClick={() => navigate(`/content/${item.id}/edit`)}
                             className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                             title="Chỉnh sửa"
                           >
-                            <span className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>edit</span>
+                            <span className="material-symbols-outlined text-primary text-base">edit</span>
                           </button>
                         </div>
                       </td>
@@ -205,7 +205,7 @@ export default function ContentListPage() {
                   disabled={page === 0}
                   className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                 >
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_left</span>
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
                 </button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const startPage = Math.max(0, Math.min(page - 2, totalPages - 5));
@@ -226,7 +226,7 @@ export default function ContentListPage() {
                   disabled={page >= totalPages - 1}
                   className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                 >
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>chevron_right</span>
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
                 </button>
               </div>
             </div>

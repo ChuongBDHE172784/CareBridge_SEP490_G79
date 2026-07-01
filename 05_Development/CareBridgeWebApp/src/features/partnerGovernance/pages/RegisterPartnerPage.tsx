@@ -188,7 +188,7 @@ export default function RegisterPartnerPage() {
         <div className="bg-white rounded-3xl py-10 px-12 max-w-[600px] w-full shadow-[0_4px_20px_rgba(90,70,63,0.06)]">
           {/* Header icon */}
           <div className="w-14 h-14 rounded-full bg-primary-container flex items-center justify-center mx-auto mb-5">
-            <span className="material-symbols-outlined text-white" style={{ fontSize: 28 }}>
+            <span className="material-symbols-outlined text-white text-[28px]">
               handshake
             </span>
           </div>
@@ -203,7 +203,7 @@ export default function RegisterPartnerPage() {
           {/* Server error banner */}
           {serverError && (
             <div className="bg-[#FDECEA] border border-error rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-error" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined text-error text-xl">
                 error
               </span>
               <span className="text-[13px] text-error">{serverError}</span>
@@ -216,7 +216,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.name)}>HỌ VÀ TÊN</label>
                 <div className={inputWrapperCls(!!errors.name)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     person
                   </span>
                   <input
@@ -232,7 +232,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.phone)}>SỐ ĐIỆN THOẠI</label>
                 <div className={inputWrapperCls(!!errors.phone)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     phone
                   </span>
                   <input
@@ -251,7 +251,7 @@ export default function RegisterPartnerPage() {
             <div className="mb-4">
               <label className={labelCls(!!errors.email)}>EMAIL CÔNG VIỆC</label>
               <div className={inputWrapperCls(!!errors.email)}>
-                <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                <span className="material-symbols-outlined text-outline text-xl">
                   mail
                 </span>
                 <input
@@ -270,7 +270,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.orgName)}>TÊN TỔ CHỨC</label>
                 <div className={inputWrapperCls(!!errors.orgName)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     business
                   </span>
                   <input
@@ -286,7 +286,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.orgType)}>LOẠI TỔ CHỨC</label>
                 <div className={inputWrapperCls(!!errors.orgType)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     add_business
                   </span>
                   <select
@@ -316,7 +316,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.password)}>MẬT KHẨU</label>
                 <div className={inputWrapperCls(!!errors.password)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     lock
                   </span>
                   <input
@@ -327,8 +327,7 @@ export default function RegisterPartnerPage() {
                     className={inputCls}
                   />
                   <span
-                    className="material-symbols-outlined text-outline cursor-pointer"
-                    style={{ fontSize: 20 }}
+                    className="material-symbols-outlined text-outline cursor-pointer text-xl"
                     onClick={() => setShowPassword((v) => !v)}
                   >
                     {showPassword ? 'visibility' : 'visibility_off'}
@@ -339,7 +338,7 @@ export default function RegisterPartnerPage() {
               <div>
                 <label className={labelCls(!!errors.confirmPassword)}>XÁC NHẬN MẬT KHẨU</label>
                 <div className={inputWrapperCls(!!errors.confirmPassword)}>
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined text-outline text-xl">
                     lock
                   </span>
                   <input
@@ -350,8 +349,7 @@ export default function RegisterPartnerPage() {
                     className={inputCls}
                   />
                   <span
-                    className="material-symbols-outlined text-outline cursor-pointer"
-                    style={{ fontSize: 20 }}
+                    className="material-symbols-outlined text-outline cursor-pointer text-xl"
                     onClick={() => setShowConfirmPassword((v) => !v)}
                   >
                     {showConfirmPassword ? 'visibility' : 'visibility_off'}
@@ -395,7 +393,7 @@ export default function RegisterPartnerPage() {
             >
               {isSubmitting ? 'Đang xử lý...' : 'Tiếp tục'}
               {!isSubmitting && (
-                <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>
+                <span className="material-symbols-outlined text-white text-xl">
                   arrow_forward
                 </span>
               )}

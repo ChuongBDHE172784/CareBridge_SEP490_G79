@@ -175,11 +175,14 @@ Future<dynamic> apiPatch(String path, Map<String, dynamic> body,
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiDelete(String path, {String? token}) async {
+Future<dynamic> apiDelete(String path,
+    {String? token, Map<String, dynamic>? body}) async {
   final uri = Uri.parse('$_baseUrl$path');
-  var response = await http.delete(uri, headers: _headers(token: token));
-  response = await _handleUnauthorized(
-    response, token, () => http.delete(uri, headers: _headers()));
+  final encoded = body != null ? jsonEncode(body) : null;
+  var response =
+      await http.delete(uri, headers: _headers(token: token), body: encoded);
+  response = await _handleUnauthorized(response, token,
+      () => http.delete(uri, headers: _headers(), body: encoded));
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
