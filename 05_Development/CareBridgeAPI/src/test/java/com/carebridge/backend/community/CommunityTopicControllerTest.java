@@ -15,7 +15,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.community.controller.CommunityTopicController;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
+import com.carebridge.backend.community.dto.response.TopicFollowResponse;
+import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
+import com.carebridge.backend.community.exception.TopicHiddenException;
 import com.carebridge.backend.community.service.CommunityTopicService;
+import com.carebridge.backend.community.service.TopicFollowService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -46,6 +50,9 @@ class CommunityTopicControllerTest {
 
     @MockitoBean
     private CommunityTopicService topicService;
+
+    @MockitoBean
+    private TopicFollowService followService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -181,5 +188,53 @@ class CommunityTopicControllerTest {
                 .content("{\"isHidden\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.isHidden").value(true));
+    }
+
+    // ===================== UC-171: Follow Topic =====================
+
+    // TC-171-1/2: toggle follow — happy path
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void toggleFollow_validRequest_returns200() throws Exception {
+        UUID topicId = UUID.randomUUID();
+        when(followService.toggleFollow(eq(topicId), any()))
+                .thenReturn(TopicFollowResponse.builder().topicId(topicId).followed(true).build());
+
+        mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.followed").value(true));
+    }
+
+    // TC-171-5: unauthenticated -> 401
+    @Test
+    void toggleFollow_unauthenticated_returns401() throws Exception {
+        UUID topicId = UUID.randomUUID();
+        mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // TC-171-3: topic not found -> 404
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void toggleFollow_topicNotFound_returns404() throws Exception {
+        UUID topicId = UUID.randomUUID();
+        when(followService.toggleFollow(eq(topicId), any()))
+                .thenThrow(new CommunityTopicNotFoundException(topicId.toString()));
+
+        mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    // TC-171-4: hidden topic -> 409
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void toggleFollow_hiddenTopic_returns409() throws Exception {
+        UUID topicId = UUID.randomUUID();
+        when(followService.toggleFollow(eq(topicId), any()))
+                .thenThrow(new TopicHiddenException(topicId.toString()));
+
+        mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("COM-014"));
     }
 }

@@ -69,4 +69,28 @@ class CommunityService {
     if (urgency != null) request['urgency'] = urgency;
     await apiPatch('/api/v1/community/questions/$questionId', request);
   }
+
+  // UC-170: Soft-delete own question
+  Future<void> deleteQuestion(String questionId) async {
+    await apiDelete('/api/v1/community/questions/$questionId');
+  }
+
+  // UC-200: Edit own answer — status resets to PENDING for re-moderation
+  Future<void> editAnswer(String questionId, String answerId, {required String body, required bool isPersonalExperience}) async {
+    await apiPatch('/api/v1/community/questions/$questionId/answers/$answerId', {
+      'body': body,
+      'isPersonalExperience': isPersonalExperience,
+    });
+  }
+
+  // UC-201: Soft-delete own answer
+  Future<void> deleteAnswer(String questionId, String answerId) async {
+    await apiDelete('/api/v1/community/questions/$questionId/answers/$answerId');
+  }
+
+  // UC-171: Toggle follow/unfollow on a community topic
+  Future<bool> toggleFollowTopic(String topicId) async {
+    final json = await apiPost('/api/v1/community/topics/$topicId/follow', {});
+    return json['data']?['followed'] as bool? ?? false;
+  }
 }

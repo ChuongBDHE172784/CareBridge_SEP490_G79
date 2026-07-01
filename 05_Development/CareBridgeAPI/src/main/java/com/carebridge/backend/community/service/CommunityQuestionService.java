@@ -27,4 +27,12 @@ public interface CommunityQuestionService {
      * @throws org.springframework.security.access.AccessDeniedException when caller is not the author
      */
     CommunityQuestionResponse editQuestion(UUID authorId, UUID questionId, UpdateCommunityQuestionRequest request);
+
+    /**
+     * Soft-deletes a community question by setting status = DELETED.
+     * @throws com.carebridge.backend.community.exception.QuestionNotFoundException (COM-006) when question does not exist
+     * @throws com.carebridge.backend.community.exception.QuestionLockedException (COM-012) when question status is LOCKED
+     * @throws org.springframework.security.access.AccessDeniedException when caller is not the author and not a MODERATOR
+     */
+    void deleteQuestion(UUID questionId, UUID callerId, boolean isModeratorCaller);
 }

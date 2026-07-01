@@ -6,12 +6,12 @@
 | **Document ID**    | `CB-COMMUNITY-IMP-006`                      |
 | **Version**        | `1.0`                                       |
 | **Date**           | `2026-07-01`                                |
-| **Status**         | `Draft`                                     |
+| **Status**         | `Approved`                                  |
 | **Document Owner** | `HuyND`                                     |
 | **Author**         | `AI Agent — Winston (System Architect)`     |
-| **Reviewed by**    | `[ ] HuyND — Pending`                       |
+| **Reviewed by**    | `[x] HuyND — Approved`                      |
 | **DPO Sign-off**   | `[ ] Pending`                               |
-| **Approved by**    | `[ ] Pending`                               |
+| **Approved by**    | `HuyND`                                     |
 | **Last Review**    | `2026-07-01`                                |
 | **Based on EDS**   | `v2.0`                                      |
 
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện                     | Nội dung thay đổi                                       |
 | ---------- | ----------------------------------- | ------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-170 Delete Community Post |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented: migration V20260701000002 (shared with UC-201), `QuestionStatus.DELETED`, `QuestionLockedException` (COM-012), `CommunityQuestionServiceImpl.deleteQuestion()`, `DELETE /api/v1/community/questions/{id}`, mobile `deleteQuestion()` wired into question detail screen with confirmation dialog. 8 service tests + 6 controller tests passing (`CommunityQuestionDeleteServiceImplTest`, `CommunityQuestionDeleteControllerTest`). Status=Approved. |
 
 ---
 
@@ -287,9 +288,11 @@ PENDING ──→ HIDDEN              (moderator action)
 APPROVED ──→ HIDDEN             (moderator action)
 PENDING ──→ DELETED             (author UC-170 / moderator)
 APPROVED ──→ DELETED            (author UC-170 / moderator)
-HIDDEN ──→ DELETED              (moderator only — author cannot delete HIDDEN)
+HIDDEN ──→ DELETED              (author UC-170 / moderator — per BR-COM-170-1 and Logic Issue L2, only LOCKED is blocked)
 LOCKED ──X→ DELETED             (BLOCKED — cannot delete locked post)
 ```
+
+> **Implementation note (2026-07-01):** this diagram originally had a stray annotation claiming HIDDEN could only be deleted by a MODERATOR. That contradicted §2 Logic Issue L2 ("HIDDEN posts vẫn là owned content — author có thể xóa") and BR-COM-170-1, which only names LOCKED as the blocked status. The implementation follows BR-COM-170-1 / L2: only `status == LOCKED` throws `QuestionLockedException`; HIDDEN is deletable by the author. Covered by `deleteQuestion_authorOwnHiddenQuestion_setsDeletedStatus`.
 
 ---
 

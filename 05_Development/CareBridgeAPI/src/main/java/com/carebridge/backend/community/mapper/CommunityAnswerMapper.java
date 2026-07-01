@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.mapper;
 
+import com.carebridge.backend.community.dto.request.EditAnswerRequest;
 import com.carebridge.backend.community.dto.request.PostCommunityAnswerRequest;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
@@ -32,6 +33,14 @@ public class CommunityAnswerMapper {
                 .expertLabeled(entity.isExpertLabeled())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    // UC-200: apply partial edit — body and isPersonalExperience only.
+    // questionId, authorId and expertLabeled are never touched here (ADR-COM-200-1, BR-COM-200-4).
+    public void applyEdit(CommunityAnswer entity, EditAnswerRequest request) {
+        entity.setBody(request.getBody());
+        entity.setPersonalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()));
     }
 }

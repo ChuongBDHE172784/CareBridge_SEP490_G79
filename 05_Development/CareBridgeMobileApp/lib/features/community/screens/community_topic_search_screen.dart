@@ -6,7 +6,7 @@ import 'community_feed_screen.dart';
 
 /// CB-148 — Search Community Topics (UC-163)
 /// Lets users search topics by keyword and browse them in a list.
-/// "Theo dõi" (follow) is local-state only — topic subscription API not yet implemented.
+/// "Theo dõi" (follow) is wired to the UC-171 follow/unfollow API (CommunityService.toggleFollowTopic).
 /// Tapping a topic navigates to CommunityFeedScreen filtered by that topic.
 class CommunityTopicSearchScreen extends StatefulWidget {
   const CommunityTopicSearchScreen({super.key});
@@ -35,7 +35,8 @@ class _CommunityTopicSearchScreenState extends State<CommunityTopicSearchScreen>
   int _selectedSpecialty = 0;
   List<CommunityTopic> _topics = [];
   bool _loading = false;
-  final Set<String> _followedTopics = {}; // local follow state
+  // UC-171: follow state mirrors backend; updated optimistically then reconciled with API response
+  final Set<String> _followedTopics = {};
 
   @override
   void initState() {
@@ -73,15 +74,39 @@ class _CommunityTopicSearchScreenState extends State<CommunityTopicSearchScreen>
     return _topics.where((t) => t.name.toLowerCase().contains(kw) || t.description.toLowerCase().contains(kw)).toList();
   }
 
-  void _toggleFollow(String topicId) {
+  Future<void> _toggleFollow(String topicId) async {
+    final wasFollowed = _followedTopics.contains(topicId);
+    // Optimistic update
     setState(() {
-      if (_followedTopics.contains(topicId)) {
+      if (wasFollowed) {
         _followedTopics.remove(topicId);
       } else {
         _followedTopics.add(topicId);
       }
     });
-    // TODO: wire to topic subscription API when backend implements it
+    try {
+      final followed = await CommunityService.instance.toggleFollowTopic(topicId);
+      if (mounted) {
+        setState(() {
+          if (followed) {
+            _followedTopics.add(topicId);
+          } else {
+            _followedTopics.remove(topicId);
+          }
+        });
+      }
+    } catch (_) {
+      // Rollback on error
+      if (mounted) {
+        setState(() {
+          if (wasFollowed) {
+            _followedTopics.add(topicId);
+          } else {
+            _followedTopics.remove(topicId);
+          }
+        });
+      }
+    }
   }
 
   IconData _topicIcon(String iconName) {

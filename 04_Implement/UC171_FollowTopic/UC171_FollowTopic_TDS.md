@@ -6,12 +6,12 @@
 | **Document ID**    | `CB-COMMUNITY-IMP-007`                      |
 | **Version**        | `1.0`                                       |
 | **Date**           | `2026-07-01`                                |
-| **Status**         | `Draft`                                     |
+| **Status**         | `Approved`                                  |
 | **Document Owner** | `HuyND`                                     |
 | **Author**         | `AI Agent — Winston (System Architect)`     |
-| **Reviewed by**    | `[ ] HuyND — Pending`                       |
+| **Reviewed by**    | `[x] HuyND — Approved`                      |
 | **DPO Sign-off**   | `[ ] Pending`                               |
-| **Approved by**    | `[ ] Pending`                               |
+| **Approved by**    | `HuyND`                                     |
 | **Last Review**    | `2026-07-01`                                |
 | **Based on EDS**   | `v2.0`                                      |
 
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                             |
 | ---------- | ------------------------------------- | --------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-171 Follow Topic |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented: migration `V20260701000001__create_topic_follows.sql`, `UserTopicFollow` entity, `UserTopicFollowRepository`, `TopicFollowResponse`, `TopicHiddenException` (COM-014), `TopicFollowServiceImpl`, `POST /api/v1/community/topics/{id}/follow`, mobile `toggleFollowTopic()` wired into `topic_directory_screen.dart` and `community_topic_search_screen.dart` (replacing local-only fake state) with optimistic update + rollback. Reused existing `CommunityTopicNotFoundException` (COM-003) for not-found rather than creating a new one. Tests passing (`TopicFollowServiceImplTest`, `CommunityTopicControllerTest`). Status=Approved. |
 
 ---
 

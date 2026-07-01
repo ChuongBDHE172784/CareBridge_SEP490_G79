@@ -37,7 +37,7 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   List<CommunityTopic> _topics = [];
   bool _loading = true;
   int _selectedStage = 0;
-  // Local follow state (TODO: wire to subscription API when backend implements it)
+  // UC-171: follow state mirrors backend; updated optimistically then reconciled with API response
   final Set<String> _followedTopics = {};
 
 
@@ -80,15 +80,39 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     return map[iconName] ?? Icons.topic;
   }
 
-  void _toggleFollow(String topicId) {
+  Future<void> _toggleFollow(String topicId) async {
+    final wasFollowed = _followedTopics.contains(topicId);
+    // Optimistic update
     setState(() {
-      if (_followedTopics.contains(topicId)) {
+      if (wasFollowed) {
         _followedTopics.remove(topicId);
       } else {
         _followedTopics.add(topicId);
       }
     });
-    // TODO: wire to topic subscription API when backend implements it
+    try {
+      final followed = await _service.toggleFollowTopic(topicId);
+      if (mounted) {
+        setState(() {
+          if (followed) {
+            _followedTopics.add(topicId);
+          } else {
+            _followedTopics.remove(topicId);
+          }
+        });
+      }
+    } catch (_) {
+      // Rollback on error
+      if (mounted) {
+        setState(() {
+          if (wasFollowed) {
+            _followedTopics.add(topicId);
+          } else {
+            _followedTopics.remove(topicId);
+          }
+        });
+      }
+    }
   }
 
   @override

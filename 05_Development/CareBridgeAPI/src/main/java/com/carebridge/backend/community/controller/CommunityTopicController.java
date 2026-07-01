@@ -5,7 +5,9 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.dto.request.CreateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.request.UpdateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
+import com.carebridge.backend.community.dto.response.TopicFollowResponse;
 import com.carebridge.backend.community.service.CommunityTopicService;
+import com.carebridge.backend.community.service.TopicFollowService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommunityTopicController {
 
     private final CommunityTopicService topicService;
+    private final TopicFollowService followService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CommunityTopicResponse>>> getTopics(
@@ -57,5 +60,16 @@ public class CommunityTopicController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCommunityTopicRequest request) {
         return ResponseEntity.ok(ApiResponse.success(topicService.updateTopic(id, request), "Topic updated"));
+    }
+
+    // UC-171: toggle follow/unfollow on a community topic
+    @PostMapping("/{id}/follow")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TopicFollowResponse>> toggleFollow(
+            @PathVariable UUID id,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        TopicFollowResponse response = followService.toggleFollow(id, userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

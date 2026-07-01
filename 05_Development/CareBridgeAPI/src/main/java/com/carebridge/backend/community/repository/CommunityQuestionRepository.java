@@ -6,6 +6,7 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -48,4 +49,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
             @Param("stage") PregnancyStage stage,
             @Param("hasExpertAnswer") Boolean hasExpertAnswer,
             Pageable pageable);
+
+    // UC-201: decrement answer_count when an APPROVED answer is soft-deleted; never goes below 0
+    @Modifying
+    @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount - 1 WHERE q.id = :questionId AND q.answerCount > 0")
+    void decrementAnswerCount(@Param("questionId") UUID questionId);
 }

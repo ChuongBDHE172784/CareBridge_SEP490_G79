@@ -8,10 +8,9 @@ const NAV_LINKS = [
   { to: '/content/list', label: 'Thư viện', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/faq', label: 'FAQ', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/checklists', label: 'Checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/topics', label: 'Danh mục', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN', 'MODERATOR'] },
+  { to: '/content/topics', label: 'Danh mục', roles: ['MODERATOR'] },
   { to: '/expert/dashboard', label: 'Expert', roles: ['EXPERT'] },
   { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER', 'SYSTEM_ADMIN'] },
-  { to: '/admin/topics', label: 'Topics', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
 ] as const;
 
 export default function AdminLayout() {

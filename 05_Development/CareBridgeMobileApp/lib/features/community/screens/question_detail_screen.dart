@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/auth/auth_state.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'post_answer_screen.dart';
@@ -73,6 +74,115 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       final result = await _service.toggleBookmark(widget.questionId);
       if (mounted) setState(() => _bookmarked = result.bookmarked);
     } catch (_) {}
+  }
+
+  // UC-170: soft-delete own question
+  Future<void> _deleteQuestion() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa câu hỏi'),
+        content: const Text('Bạn có chắc muốn xóa câu hỏi này? Hành động này không thể hoàn tác.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _service.deleteQuestion(widget.questionId);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xóa câu hỏi: $e')),
+        );
+      }
+    }
+  }
+
+  bool _isOwnAnswer(CommunityAnswer answer) =>
+      answer.authorId != null && answer.authorId == AuthState.instance.userId;
+
+  // UC-200: edit own answer via a simple dialog
+  Future<void> _editAnswer(CommunityAnswer answer) async {
+    final controller = TextEditingController(text: answer.body);
+    bool isPersonalExperience = answer.personalExperience;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Chỉnh sửa câu trả lời'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                maxLines: 5,
+                minLines: 3,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+              CheckboxListTile(
+                value: isPersonalExperience,
+                onChanged: (v) => setDialogState(() => isPersonalExperience = v ?? false),
+                title: const Text('Đây là kinh nghiệm cá nhân'),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Lưu')),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      await _service.editAnswer(widget.questionId, answer.id,
+          body: controller.text, isPersonalExperience: isPersonalExperience);
+      _loadDetail();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể cập nhật câu trả lời: $e')),
+        );
+      }
+    }
+  }
+
+  // UC-201: soft-delete own answer
+  Future<void> _deleteAnswer(CommunityAnswer answer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa câu trả lời'),
+        content: const Text('Bạn có chắc muốn xóa câu trả lời này?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _service.deleteAnswer(widget.questionId, answer.id);
+      _loadDetail();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xóa câu trả lời: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _toggleLike(String answerId) async {
@@ -172,6 +282,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 if (updated == true) _loadDetail();
               },
               tooltip: 'Chỉnh sửa',
+            ),
+          if (widget.isMyQuestion)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _deleteQuestion,
+              tooltip: 'Xóa câu hỏi',
             ),
         ],
       ),
@@ -371,6 +487,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   likeCount: _answerLikeCounts[q.answers[i].id] ?? 0,
                   onLike: () => _toggleLike(q.answers[i].id),
                   formatTimeAgo: _formatTimeAgo,
+                  isOwnAnswer: _isOwnAnswer(q.answers[i]),
+                  onEdit: () => _editAnswer(q.answers[i]),
+                  onDelete: () => _deleteAnswer(q.answers[i]),
                 ),
               ),
               childCount: q.answers.length,
@@ -388,6 +507,9 @@ class _AnswerCard extends StatelessWidget {
   final int likeCount;
   final VoidCallback onLike;
   final String Function(String) formatTimeAgo;
+  final bool isOwnAnswer;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _AnswerCard({
     required this.answer,
@@ -395,6 +517,9 @@ class _AnswerCard extends StatelessWidget {
     required this.likeCount,
     required this.onLike,
     required this.formatTimeAgo,
+    this.isOwnAnswer = false,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   static const _primary = Color(0xFF845143);
@@ -470,6 +595,18 @@ class _AnswerCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text('Kinh nghiệm', style: TextStyle(fontSize: 10, color: _primary)),
+                ),
+              if (isOwnAnswer)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 18, color: _onSurfaceVariant),
+                  onSelected: (value) {
+                    if (value == 'edit') onEdit();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (ctx) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
+                    PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                  ],
                 ),
             ],
           ),

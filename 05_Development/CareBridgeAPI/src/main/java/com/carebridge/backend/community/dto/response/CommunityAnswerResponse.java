@@ -22,4 +22,5 @@ public class CommunityAnswerResponse {
     private boolean expertLabeled;
     private String status;
     private Instant createdAt;
+    private Instant updatedAt;
 }

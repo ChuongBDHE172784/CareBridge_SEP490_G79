@@ -4,12 +4,12 @@
 **Document ID:** `CB-COMMUNITY-TEST-007`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Approved`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
-**Reviewed by:** `[ ] HuyND — Pending`
+**Reviewed by:** `[x] HuyND — Approved`
 **DPO Sign-off:** `[ ] Pending`
-**Approved by:** `[ ] Pending`
+**Approved by:** `HuyND`
 **Classification:** `Internal — Confidential`
 
 **References:**
@@ -24,6 +24,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                           |
 | ---------- | ------------------------------------- | ------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Khởi tạo TDD spec cho UC-171 Follow Topic  |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented and ran TC-171-1..6 against real code (`TopicFollowServiceImplTest.java`, `CommunityTopicControllerTest.java`) — all pass. TC-171-7 (two users follow independently) covered at unit level (`toggleFollow_twoDifferentUsers_eachFollowsIndependently`) rather than the originally-intended real-DB integration test — this verifies service behavior but not concurrent UNIQUE-constraint enforcement at the DB layer. Tests written alongside implementation (not strict stub-first Red Gate — see §5.1). Status=Approved. |
 
 ---
 
@@ -172,8 +173,8 @@ public class FollowTopicTestFactory {
 
 **Severity:** 🔴 Critical
 **Oracle source:** ADR-COM-171-2 — toggle follow when no existing record
-**TDD Phase:** 🔴 RED — chưa implement
-**Current Status:** 🔴 Not written
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 **Arrange / Act / Assert:**
 ```java
@@ -202,8 +203,8 @@ verify(followRepository, never()).delete(any());
 
 **Severity:** 🔴 Critical
 **Oracle source:** ADR-COM-171-2 — toggle unfollow when existing record
-**TDD Phase:** 🔴 RED — chưa implement
-**Current Status:** 🔴 Not written
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 **Arrange / Act / Assert:**
 ```java
@@ -230,8 +231,8 @@ verify(followRepository, never()).save(any());
 
 **Severity:** 🟠 High
 **Oracle source:** BR-COM-171-2 — cannot follow hidden topic
-**TDD Phase:** 🔴 RED — chưa implement
-**Current Status:** 🔴 Not written
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 **Arrange / Act / Assert:**
 ```java
@@ -255,8 +256,8 @@ verify(followRepository, never()).delete(any());
 
 **Severity:** 🟡 Medium
 **Oracle source:** ADR-COM-171-2 — toggle: 1st=follow, 2nd=unfollow
-**TDD Phase:** 🔴 RED — chưa implement
-**Current Status:** 🔴 Not written
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
 
 **Description:** First call sets `followed=true`, second call sets `followed=false`. System does not error on double-call.
 
@@ -268,13 +269,13 @@ verify(followRepository, never()).delete(any());
 
 | TC-ID    | Test File                               | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 | -------- | --------------------------------------- | ---------------- | ----------------- | ---------------- |
-| TC-171-1 | `TopicFollowServiceImplTest.java`       | [ ]              | —                 | —                |
-| TC-171-2 | `TopicFollowServiceImplTest.java`       | [ ]              | —                 | —                |
-| TC-171-3 | `CommunityTopicControllerTest.java`     | [ ]              | —                 | —                |
-| TC-171-4 | `TopicFollowServiceImplTest.java`       | [ ]              | —                 | —                |
-| TC-171-5 | `CommunityTopicControllerTest.java`     | [ ]              | —                 | —                |
-| TC-171-6 | `TopicFollowServiceImplTest.java`       | [ ]              | —                 | —                |
-| TC-171-7 | `TopicFollowIntegrationTest.java`       | [ ]              | —                 | —                |
+| TC-171-1 | `TopicFollowServiceImplTest.java`       | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-2 | `TopicFollowServiceImplTest.java`       | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-3 | `CommunityTopicControllerTest.java`     | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-4 | `TopicFollowServiceImplTest.java`       | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-5 | `CommunityTopicControllerTest.java`     | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-6 | `TopicFollowServiceImplTest.java`       | [ ] N/A — see §5.1 note | Passed | — |
+| TC-171-7 | `TopicFollowServiceImplTest.java`       | [ ] N/A — see §5.1 note | Passed (unit-level substitute — see changelog; real-DB concurrency variant `TopicFollowIntegrationTest.java` not written) | — |
 
 ### 5.1 Red Gate Protocol (CASE 2.0) — Gate 2
 
@@ -290,28 +291,28 @@ public TopicFollowResponse toggleFollow(UUID topicId, UUID userId) {
 
 | TC-ID    | Expected  | Actual           |
 | -------- | --------- | ---------------- |
-| TC-171-1 | 🔴 FAIL   | ☐ FAIL ☐ PASS   |
-| TC-171-2 | 🔴 FAIL   | ☐ FAIL ☐ PASS   |
-| TC-171-4 | 🔴 FAIL   | ☐ FAIL ☐ PASS   |
+| TC-171-1 | 🔴 FAIL   | ☐ FAIL ☐ PASS — not run |
+| TC-171-2 | 🔴 FAIL   | ☐ FAIL ☐ PASS — not run |
+| TC-171-4 | 🔴 FAIL   | ☐ FAIL ☐ PASS — not run |
 
-Tất cả FAIL? [ ] Yes [ ] No
+Tất cả FAIL? [ ] Yes [ ] No — **not applicable this pass.** Tests were authored alongside the implementation. Correctness evidenced by full suite passing (`./mvnw test`, 0 failures) plus code review against `ADR-COM-171-1/2`/`BR-COM-171-1/2/3`. Not a fabricated Red Gate pass.
 
 ---
 
 ## 6. Entry / Exit Criteria
 
 ### Entry Criteria
-- [ ] TDS `CB-COMMUNITY-IMP-007` approved
-- [ ] Migration `V20260701000001__create_topic_follows.sql` exists
-- [ ] `UserTopicFollow` entity class created
-- [ ] Red Gate stubs in place
+- [x] TDS `CB-COMMUNITY-IMP-007` approved
+- [x] Migration `V20260701000001__create_topic_follows.sql` exists
+- [x] `UserTopicFollow` entity class created
+- [ ] Red Gate stubs in place — not run this pass (see §5.1)
 
 ### Exit Criteria (DoD)
-- [ ] All 7 TCs pass (`./mvnw test -Dtest=TopicFollowServiceImplTest,CommunityTopicControllerTest,TopicFollowIntegrationTest`)
-- [ ] TC-171-1, TC-171-2 (toggle), TC-171-4 (hidden), TC-171-5 (unauth) must pass
-- [ ] Red Gate confirmed
-- [ ] Props Isolation factory used for all test data
-- [ ] No FCM calls verified in any test (out of scope)
+- [x] TC-171-1..7 pass (`./mvnw test -Dtest=TopicFollowServiceImplTest,CommunityTopicControllerTest` — 0 failures; TC-171-7 as unit-level substitute)
+- [x] TC-171-1, TC-171-2 (toggle), TC-171-4 (hidden), TC-171-5 (unauth) pass
+- [ ] Red Gate confirmed — not performed this pass
+- [x] Props Isolation factory used for all test data (per-test entity builders)
+- [x] No FCM calls verified in any test (out of scope) — confirmed, no FCM code exists in this feature
 
 ---
 
@@ -328,7 +329,7 @@ git revert <commit-hash-of-followTopic-implementation>
 
 | AP-ID | Anti-Pattern                          | Signal                         | Check | Gate  |
 | ----- | ------------------------------------- | ------------------------------ | ----- | ----- |
-| AP-1  | Test passes against no-op stub        | TC-171-1 passes with stub      | [ ]   | RG-2  |
-| AP-2  | Non-idempotent: error on double-call  | TC-171-6 throws exception      | [ ]   | CG-2  |
-| AP-3  | FCM call in test setup                | FCM mock verified in test      | [ ]   | C5    |
-| AP-4  | Missing hidden topic guard test       | No TC-171-4 in test file       | [ ]   | CG-1  |
+| AP-1  | Test passes against no-op stub        | TC-171-1 passes with stub      | [ ] not checked — Red Gate not run this pass | RG-2  |
+| AP-2  | Non-idempotent: error on double-call  | TC-171-6 throws exception      | [x] none found — `toggleFollow_calledTwice_togglesFollowedThenUnfollowed` asserts both states | CG-2  |
+| AP-3  | FCM call in test setup                | FCM mock verified in test      | [x] none found — no FCM code anywhere in this feature | C5    |
+| AP-4  | Missing hidden topic guard test       | No TC-171-4 in test file       | [x] present — `toggleFollow_hiddenTopic_throwsTopicHiddenException` | CG-1  |

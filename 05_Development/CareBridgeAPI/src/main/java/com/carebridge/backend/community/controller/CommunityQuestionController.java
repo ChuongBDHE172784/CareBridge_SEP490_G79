@@ -90,4 +90,16 @@ public class CommunityQuestionController {
         CommunityQuestionResponse response = questionService.editQuestion(authorId, id, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Question updated"));
     }
+
+    // UC-170: author deletes own question (soft-delete); MODERATOR may delete any question
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteQuestion(
+            @PathVariable UUID id,
+            Principal principal) {
+        UUID callerId = SecurityUtils.requireCurrentUserId(principal);
+        boolean isModeratorCaller = SecurityUtils.hasRole("MODERATOR");
+        questionService.deleteQuestion(id, callerId, isModeratorCaller);
+        return ResponseEntity.noContent().build();
+    }
 }

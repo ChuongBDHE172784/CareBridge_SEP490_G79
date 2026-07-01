@@ -11,6 +11,7 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotEditableException;
+import com.carebridge.backend.community.exception.QuestionLockedException;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
@@ -98,5 +99,26 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
                 "CommunityQuestion", question.getId().toString(), "edited");
 
         return questionMapper.toResponse(question);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuestion(UUID questionId, UUID callerId, boolean isModeratorCaller) {
+        CommunityQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
+
+        if (question.getStatus() == QuestionStatus.LOCKED) {
+            throw new QuestionLockedException(questionId.toString());
+        }
+
+        if (!question.getAuthorId().equals(callerId) && !isModeratorCaller) {
+            throw new AccessDeniedException("You do not own this question");
+        }
+
+        question.setStatus(QuestionStatus.DELETED);
+        questionRepository.save(question);
+
+        auditService.log(AuditAction.COMMUNITY_QUESTION_DELETED, callerId,
+                "CommunityQuestion", questionId.toString(), "deleted");
     }
 }

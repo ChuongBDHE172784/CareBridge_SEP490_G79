@@ -6,15 +6,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
+import com.carebridge.backend.community.dto.request.EditAnswerRequest;
 import com.carebridge.backend.community.dto.request.PostCommunityAnswerRequest;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
+import com.carebridge.backend.community.exception.AnswerNotEditableException;
+import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.service.CommunityAnswerService;
+import org.springframework.security.access.AccessDeniedException;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -190,5 +196,145 @@ class CommunityAnswerControllerTest {
                 .andExpect(status().isCreated())
                 // ADR-COM-005: response always shows expertLabeled=false
                 .andExpect(jsonPath("$.data.expertLabeled").value(false));
+    }
+
+    // ===================== UC-200: Edit Own Answer =====================
+
+    private static final UUID ANSWER_ID = UUID.fromString("00000000-0000-0000-0002-000000000001");
+    private static final String ANSWER_URL = BASE_URL + "/{id}";
+
+    private EditAnswerRequest makeEditRequest() {
+        EditAnswerRequest req = new EditAnswerRequest();
+        req.setBody("Updated answer body with enough characters");
+        req.setIsPersonalExperience(true);
+        return req;
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_validRequest_returns200() throws Exception {
+        CommunityAnswerResponse response = mockResponse();
+        when(answerService.editAnswer(eq(ANSWER_ID), any(), any())).thenReturn(response);
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeEditRequest())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void editAnswer_noJwt_returns401() throws Exception {
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeEditRequest())))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_nonOwner_returns403() throws Exception {
+        when(answerService.editAnswer(eq(ANSWER_ID), any(), any()))
+                .thenThrow(new AccessDeniedException("Only the author can edit this answer"));
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeEditRequest())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_notEditable_returns409() throws Exception {
+        when(answerService.editAnswer(eq(ANSWER_ID), any(), any()))
+                .thenThrow(new AnswerNotEditableException(ANSWER_ID.toString()));
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeEditRequest())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("COM-013"));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_answerNotFound_returns404() throws Exception {
+        when(answerService.editAnswer(eq(ANSWER_ID), any(), any()))
+                .thenThrow(new AnswerNotFoundException(ANSWER_ID.toString()));
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeEditRequest())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_bodyBlank_returns400() throws Exception {
+        EditAnswerRequest req = makeEditRequest();
+        req.setBody("");
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void editAnswer_bodyTooLong_returns400() throws Exception {
+        EditAnswerRequest req = makeEditRequest();
+        req.setBody("A".repeat(2001));
+
+        mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ===================== UC-201: Delete Own Answer =====================
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void deleteAnswer_validRequest_returns204() throws Exception {
+        mockMvc.perform(delete(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(answerService).deleteAnswer(eq(ANSWER_ID), any(), eq(false));
+    }
+
+    @Test
+    void deleteAnswer_noJwt_returns401() throws Exception {
+        mockMvc.perform(delete(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MODERATOR")
+    void deleteAnswer_moderator_passesModeratorFlagTrue() throws Exception {
+        mockMvc.perform(delete(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(answerService).deleteAnswer(eq(ANSWER_ID), any(), eq(true));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void deleteAnswer_nonOwner_returns403() throws Exception {
+        org.mockito.Mockito.doThrow(new AccessDeniedException("You do not own this answer"))
+                .when(answerService).deleteAnswer(eq(ANSWER_ID), any(), eq(false));
+
+        mockMvc.perform(delete(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void deleteAnswer_answerNotFound_returns404() throws Exception {
+        org.mockito.Mockito.doThrow(new AnswerNotFoundException(ANSWER_ID.toString()))
+                .when(answerService).deleteAnswer(eq(ANSWER_ID), any(), eq(false));
+
+        mockMvc.perform(delete(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf()))
+                .andExpect(status().isNotFound());
     }
 }

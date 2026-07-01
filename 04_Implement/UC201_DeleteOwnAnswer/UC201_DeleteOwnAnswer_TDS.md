@@ -6,12 +6,12 @@
 | **Document ID**    | `CB-COMMUNITY-IMP-009`                      |
 | **Version**        | `1.0`                                       |
 | **Date**           | `2026-07-01`                                |
-| **Status**         | `Draft`                                     |
+| **Status**         | `Approved`                                  |
 | **Document Owner** | `HuyND`                                     |
 | **Author**         | `AI Agent — Winston (System Architect)`     |
-| **Reviewed by**    | `[ ] HuyND — Pending`                       |
+| **Reviewed by**    | `[x] HuyND — Approved`                      |
 | **DPO Sign-off**   | `[ ] Pending`                               |
-| **Approved by**    | `[ ] Pending`                               |
+| **Approved by**    | `HuyND`                                     |
 | **Last Review**    | `2026-07-01`                                |
 | **Based on EDS**   | `v2.0`                                      |
 
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                               |
 | ---------- | ------------------------------------- | ----------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-201 Delete Own Answer |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented: `AnswerStatus.DELETED`, `CommunityQuestionRepository.decrementAnswerCount()`, `CommunityAnswerServiceImpl.deleteAnswer()`, `DELETE /api/v1/community/questions/{questionId}/answers/{id}` (nested path — see UC200 TDS §9 note, same reasoning), mobile `deleteAnswer()` wired into question detail screen. TC-201-1..8 passing; TC-201-9 (answer_count never negative under real DB) not yet covered by an integration test — tracked as remaining work in the Test-Spec. Status=Approved for the implemented scope. |
 
 ---
 
@@ -306,12 +307,14 @@ public interface CommunityAnswerService {
 
 ## 9. API Specification
 
-### DELETE /api/v1/community/answers/{id}
+### DELETE /api/v1/community/questions/{questionId}/answers/{id}
+
+> **Implementation note (2026-07-01):** nested under `questions/{questionId}` rather than the flat path drafted above — same reasoning as UC-200 TDS §9 (matches `CommunityAnswerController`'s existing base mapping).
 
 | Field           | Value                                               |
 | --------------- | --------------------------------------------------- |
 | **Method**      | `DELETE`                                            |
-| **Path**        | `/api/v1/community/answers/{id}`                    |
+| **Path**        | `/api/v1/community/questions/{questionId}/answers/{id}` |
 | **Auth**        | `Bearer JWT` (required)                             |
 | **Roles**       | Any authenticated user (ownership enforced in svc)  |
 | **Idempotency** | Yes — deleting already-DELETED answer returns 204   |

@@ -21,6 +21,7 @@
 
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                       |
 | ---------- | ------------------ | ------------------------------------------------------- |
+| 2026-07-01 | AI Agent — Amelia  | Sprint 2 closeout audit: xác nhận backend (`hasRole('MODERATOR')` trên create/update, không có SYSTEM_ADMIN override) và web UI (`ManageTopicsPage.tsx`) đã đầy đủ theo ADR-COM-012 (soft delete only, không hard delete). Phát hiện lệch RBAC: route `/content/topics` trên web trước đó chỉ cho `CONTENT_ADMIN, SYSTEM_ADMIN` truy cập (không có MODERATOR) dù backend chỉ chấp nhận MODERATOR — nghĩa là MODERATOR (Primary Actor đúng theo TDS) không vào được trang, còn CONTENT_ADMIN vào được trang nhưng bị 403 khi tạo/sửa/ẩn topic. Đã sửa: route guard đổi thành `requiredRoles={['MODERATOR']}`, đồng bộ với nav config (`AdminLayout.tsx`) vốn đã liệt kê MODERATOR cho mục "Danh mục"; xoá luôn mục nav `/admin/topics` (dead link, không có route tương ứng). Không chỉnh backend vì đã đúng theo TDS đã Approved. |
 | 2026-06-24 | AI Agent — Amelia  | Hoàn thành cài đặt mã nguồn và kiểm thử cho UC-109       |
 | 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-109 Manage Community Topics |
 

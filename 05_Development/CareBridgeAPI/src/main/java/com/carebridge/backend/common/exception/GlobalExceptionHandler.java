@@ -165,6 +165,24 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "COM-010", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(com.carebridge.backend.community.exception.QuestionLockedException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionLocked(
+            com.carebridge.backend.community.exception.QuestionLockedException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-012", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.carebridge.backend.community.exception.AnswerNotEditableException.class)
+    public ResponseEntity<ErrorResponse> handleAnswerNotEditable(
+            com.carebridge.backend.community.exception.AnswerNotEditableException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-013", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.carebridge.backend.community.exception.TopicHiddenException.class)
+    public ResponseEntity<ErrorResponse> handleTopicHidden(
+            com.carebridge.backend.community.exception.TopicHiddenException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-014", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ContentException.class)
     public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);

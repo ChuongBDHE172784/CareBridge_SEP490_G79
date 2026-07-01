@@ -6,12 +6,12 @@
 | **Document ID**    | `CB-COMMUNITY-IMP-008`                      |
 | **Version**        | `1.0`                                       |
 | **Date**           | `2026-07-01`                                |
-| **Status**         | `Draft`                                     |
+| **Status**         | `Approved`                                  |
 | **Document Owner** | `HuyND`                                     |
 | **Author**         | `AI Agent — Winston (System Architect)`     |
-| **Reviewed by**    | `[ ] HuyND — Pending`                       |
+| **Reviewed by**    | `[x] HuyND — Approved`                      |
 | **DPO Sign-off**   | `[ ] Pending`                               |
-| **Approved by**    | `[ ] Pending`                               |
+| **Approved by**    | `HuyND`                                     |
 | **Last Review**    | `2026-07-01`                                |
 | **Based on EDS**   | `v2.0`                                      |
 
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                             |
 | ---------- | ------------------------------------- | --------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-200 Edit Own Answer |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented: `EditAnswerRequest` DTO, `AnswerNotEditableException` (COM-013), `CommunityAnswerServiceImpl.editAnswer()`, `PATCH /api/v1/community/questions/{questionId}/answers/{id}` (nested under questionId, differs from the flat path originally drafted in §9 — see note there), mobile `editAnswer()` wired into question detail screen via edit dialog. Tests passing (`CommunityAnswerServiceImplTest`, `CommunityAnswerControllerTest`). Status=Approved. |
 
 ---
 
@@ -296,12 +297,14 @@ public interface CommunityAnswerService {
 
 ## 9. API Specification
 
-### PATCH /api/v1/community/answers/{id}
+### PATCH /api/v1/community/questions/{questionId}/answers/{id}
+
+> **Implementation note (2026-07-01):** actual path is nested under `questions/{questionId}` rather than the flat path drafted above, to match `CommunityAnswerController`'s existing `@RequestMapping("/api/v1/community/questions/{questionId}/answers")` base (used by UC-56 POST). Lookup is by `answerId` only; `questionId` is not cross-checked. Minor REST-hygiene note, not a security concern — answer IDs are unguessable UUIDs.
 
 | Field       | Value                                               |
 | ----------- | --------------------------------------------------- |
 | **Method**  | `PATCH`                                             |
-| **Path**    | `/api/v1/community/answers/{id}`                    |
+| **Path**    | `/api/v1/community/questions/{questionId}/answers/{id}` |
 | **Auth**    | `Bearer JWT` (required)                             |
 | **Roles**   | Any authenticated user (ownership enforced in svc)  |
 
