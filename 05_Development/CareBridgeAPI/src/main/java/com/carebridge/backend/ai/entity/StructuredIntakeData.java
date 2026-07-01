@@ -2,6 +2,8 @@ package com.carebridge.backend.ai.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,6 +19,7 @@ public class StructuredIntakeData {
     @Column(name = "session_id", nullable = false, unique = true)
     private UUID sessionId;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "symptom_list", nullable = false, columnDefinition = "jsonb")
     private String symptomList;  // stored as JSON string e.g. '["headache","fever"]'
 

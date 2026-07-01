@@ -17,37 +17,40 @@ class CareGroupService {
     return CareGroup.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // TODO: GET /api/v1/care-groups when list endpoint available (UC-71/83)
+  // UC-71/83: List care groups the caller belongs to (owner or accepted member)
   Future<List<CareGroup>> listMyGroups() async {
-    return [
-      CareGroup(
-        id: 'cg-1',
-        groupName: 'Gia đình bé Mỡ',
-        isActive: true,
-        memberCount: 3,
-        myRole: 'ADMIN',
-        myPermission: 'Toàn quyền theo dõi',
-        members: [
-          CareGroupMember(memberId: 'm-1', displayName: 'Mẹ Linh', memberRole: 'ADMIN', inviteStatus: 'ACCEPTED'),
-          CareGroupMember(memberId: 'm-2', displayName: 'Bố Tuấn', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED'),
-          CareGroupMember(memberId: 'm-3', displayName: 'Bà Ngoại', memberRole: 'MEMBER', inviteStatus: 'ACCEPTED'),
-        ],
-      ),
-      CareGroup(
-        id: 'cg-2',
-        groupName: 'Nhà bé Đậu',
-        isActive: false,
-        memberCount: 4,
-        myRole: 'MEMBER',
-        myPermission: 'Chỉ xem lịch',
-        members: [],
-      ),
-    ];
+    final data = await apiGet('/api/v1/care-groups');
+    return (data['data'] as List<dynamic>)
+        .map((e) => CareGroup.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  // TODO: POST /api/v1/care-groups/{id}/invite when endpoint available (UC-71)
-  Future<void> inviteMember(String groupId, String phoneOrEmail) async {
-    // placeholder
+  // UC-83: Owner invites a member by email. memberRole omitted -> backend defaults to MEMBER.
+  Future<CareGroupMember> inviteMember(String groupId, String email, {String? memberRole}) async {
+    final data = await apiPost('/api/v1/care-groups/$groupId/invitations', {
+      'email': email,
+      if (memberRole != null) 'memberRole': memberRole,
+    });
+    return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-83: The caller's own pending invitations across all groups.
+  Future<List<PendingInvitation>> listMyInvitations() async {
+    final data = await apiGet('/api/v1/care-groups/invitations/me');
+    return (data['data'] as List<dynamic>)
+        .map((e) => PendingInvitation.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // UC-83: Accept a pending invitation.
+  Future<CareGroupMember> acceptInvite(String groupId) async {
+    final data = await apiPost('/api/v1/care-groups/$groupId/invitations/accept', const {});
+    return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-83: Decline a pending invitation.
+  Future<void> declineInvite(String groupId) async {
+    await apiPost('/api/v1/care-groups/$groupId/invitations/decline', const {});
   }
 
   // TODO: DELETE /api/v1/care-groups/{id}/members/me when endpoint available (UC-72)

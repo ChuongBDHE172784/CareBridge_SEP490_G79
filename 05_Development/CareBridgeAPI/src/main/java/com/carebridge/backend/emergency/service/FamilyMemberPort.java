@@ -5,4 +5,6 @@ import java.util.UUID;
 
 public interface FamilyMemberPort {
     List<String> getFamilyFcmTokens(UUID userId);
+
+    boolean isFamilyMember(UUID ownerUserId, UUID candidateUserId);
 }

@@ -3,11 +3,18 @@ package com.carebridge.backend.emergency.service.impl;
 import com.carebridge.backend.emergency.EmergencyStatus;
 import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.dto.response.EmergencySessionResponse;
+import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.entity.EmergencySession;
+import com.carebridge.backend.emergency.entity.FamilyAlertLog;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
+import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.IEmergencyService;
+import com.carebridge.backend.emergency.service.LocationConsentPort;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -22,6 +29,10 @@ import java.util.UUID;
 public class EmergencyService implements IEmergencyService {
 
     private final IEmergencySessionRepository emergencySessionRepository;
+    private final IFamilyAlertLogRepository familyAlertLogRepository;
+    private final FamilyMemberPort familyMemberPort;
+    private final LocationConsentPort locationConsentPort;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -68,6 +79,39 @@ public class EmergencyService implements IEmergencyService {
         session.setStatus(EmergencyStatus.RESOLVED);
         session.setResolvedAt(Instant.now());
         return toResponse(emergencySessionRepository.save(session));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FamilyAlertDetailResponse getAlertDetail(UUID sessionId, UUID callerId) {
+        EmergencySession session = emergencySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new EmergencyException(HttpStatus.NOT_FOUND, "EMERG-003",
+                        "Emergency session not found: " + sessionId));
+
+        boolean isOwner = session.getUserId().equals(callerId);
+        if (!isOwner && !familyMemberPort.isFamilyMember(session.getUserId(), callerId)) {
+            throw new EmergencyException(HttpStatus.FORBIDDEN, "EMERG-004",
+                    "You are not authorized to view this alert");
+        }
+
+        boolean hasConsent = locationConsentPort.hasLocationConsent(session.getUserId());
+        String motherName = userRepository.findById(session.getUserId())
+                .map(User::getName)
+                .orElse("Người thân");
+        FamilyAlertLog alertLog = familyAlertLogRepository.findBySessionId(sessionId).orElse(null);
+
+        return FamilyAlertDetailResponse.builder()
+                .sessionId(session.getId())
+                .motherName(motherName)
+                .status(session.getStatus().name())
+                .triggerSource(session.getTriggerSource())
+                .latitude(hasConsent ? session.getUserLatitude() : null)
+                .longitude(hasConsent ? session.getUserLongitude() : null)
+                .locationIncluded(hasConsent && session.getUserLatitude() != null)
+                .recipientCount(alertLog != null ? alertLog.getRecipientCount() : 0)
+                .createdAt(session.getCreatedAt())
+                .resolvedAt(session.getResolvedAt())
+                .build();
     }
 
     private EmergencySessionResponse toResponse(EmergencySession session) {

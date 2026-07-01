@@ -24,7 +24,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSecondaryContainer = Color(0xFF735E56);
-  static const _surface = Color(0xFFFFF8F6);
 
   bool _showUnreadOnly = false;
   List<NotificationRecord> _all = [];
@@ -91,7 +90,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(),
             Expanded(
               child: _isLoading
                   ? const Center(
@@ -127,63 +125,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      color: _surface,
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFFADCD3),
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              'N',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
-                color: _primary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'CareBridge',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: _primary,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: Material(
-              color: _surfaceContainerLow,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () {},
-                child: const Icon(Icons.notifications_outlined,
-                    color: _primary, size: 22),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

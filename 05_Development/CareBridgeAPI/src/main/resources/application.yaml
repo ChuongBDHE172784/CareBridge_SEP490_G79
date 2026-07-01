@@ -68,3 +68,7 @@ carebridge:
   mail:
     from-address: ${MAIL_USERNAME:noreply@carebridge.app}
     from-name: "CareBridge"
+
+  fcm:
+    enabled: ${CAREBRIDGE_FCM_ENABLED:false}
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:}

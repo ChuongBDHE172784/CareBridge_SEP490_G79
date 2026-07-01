@@ -3,9 +3,10 @@ import 'mother_home_screen.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
+import 'screens_explorer_screen.dart';
 
-/// Main app shell housing the BottomNavigationBar (5 tabs).
-/// Tabs: Home (CB-008) | Journey (CB-009) | Community | Tasks | Profile
+/// Main app shell housing the BottomNavigationBar (6 tabs).
+/// Tabs: Home (CB-008) | Journey (CB-009) | Community | Tasks | Screens | Profile
 class HomeShell extends StatefulWidget {
   /// optionally jump to a specific tab on launch (e.g. from a notification)
   final int initialIndex;
@@ -37,7 +38,8 @@ class _HomeShellState extends State<HomeShell> {
     MotherJourneyScreen(),    // 1: Hành trình (CB-009)
     CommunityFeedScreen(),    // 2: Cộng đồng  (CB-014)
     _PlaceholderTab('Việc cần làm'), // 3: TODO: tasks tab (CB-013 is modal-style)
-    AccountProfileScreen(),         // 4: Hồ sơ tài khoản
+    ScreensExplorerScreen(),        // 4: Screen directory/explorer
+    AccountProfileScreen(),         // 5: Hồ sơ tài khoản
   ];
 
   @override
@@ -76,6 +78,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.fact_check_outlined),
             selectedIcon: Icon(Icons.fact_check, color: _primary),
             label: 'Việc cần làm',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore, color: _primary),
+            label: 'Screen',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outlined),

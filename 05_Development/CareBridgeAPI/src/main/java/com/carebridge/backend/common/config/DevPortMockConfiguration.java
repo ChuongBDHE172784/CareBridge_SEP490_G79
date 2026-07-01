@@ -7,8 +7,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Collections;
-
 
 /**
  * Fallback / mock configuration for port interfaces that do not have
@@ -33,27 +31,8 @@ public class DevPortMockConfiguration {
         );
     }
 
-    @Bean
-    @ConditionalOnMissingBean(com.carebridge.backend.safety.service.LocationConsentPort.class)
-    public com.carebridge.backend.safety.service.LocationConsentPort safetyLocationConsentPort() {
-        return userId -> true;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(com.carebridge.backend.emergency.service.LocationConsentPort.class)
-    public com.carebridge.backend.emergency.service.LocationConsentPort emergencyLocationConsentPort() {
-        return userId -> true;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(com.carebridge.backend.emergency.service.FamilyMemberPort.class)
-    public com.carebridge.backend.emergency.service.FamilyMemberPort familyMemberPort() {
-        return userId -> Collections.emptyList();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(com.carebridge.backend.emergency.service.FcmNotificationPort.class)
-    public com.carebridge.backend.emergency.service.FcmNotificationPort fcmNotificationPort() {
-        return (tokens, payload) -> {};
-    }
+    // LocationConsentPort (safety + emergency), FamilyMemberPort, and
+    // FcmNotificationPort now have real @Component adapters
+    // (consent/family/notification modules) — their mock fallbacks here were
+    // removed to avoid duplicate-bean conflicts with those adapters.
 }

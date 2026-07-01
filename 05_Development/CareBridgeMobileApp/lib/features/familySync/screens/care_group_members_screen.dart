@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
+import '../widgets/invite_member_sheet.dart';
 
 /// CB-168 — Care Group Members (UC-216, UC-71)
 /// Full member list with avatar, role badge, permission chips, invite FAB.
@@ -50,8 +51,12 @@ class CareGroupMembersScreen extends StatelessWidget {
         backgroundColor: _primaryContainer,
         foregroundColor: Colors.white,
         shape: const StadiumBorder(),
-        onPressed: () {
-          // TODO: open InviteMemberSheet (UC-71)
+        onPressed: () async {
+          final sent = await showInviteMemberSheet(context, groupId: groupId);
+          if (sent == true && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã gửi lời mời.')));
+          }
         },
         icon: const Icon(Icons.person_add),
         label: const Text('Mời thành viên', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),

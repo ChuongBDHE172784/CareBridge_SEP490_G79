@@ -36,12 +36,13 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
         Pageable pageable = PageRequest.of(page, size);
 
         Page<CommunityQuestion> questions;
+        java.util.List<QuestionStatus> statuses = java.util.List.of(QuestionStatus.APPROVED, QuestionStatus.PENDING);
         if (topicId != null) {
-            questions = questionRepository.findAllByStatusAndTopicIdOrderByCreatedAtDesc(
-                    QuestionStatus.APPROVED, topicId, pageable);
+            questions = questionRepository.findAllByStatusInAndTopicIdOrderByCreatedAtDesc(
+                    statuses, topicId, pageable);
         } else {
-            questions = questionRepository.findAllByStatusOrderByCreatedAtDesc(
-                    QuestionStatus.APPROVED, pageable);
+            questions = questionRepository.findAllByStatusInOrderByCreatedAtDesc(
+                    statuses, pageable);
         }
 
         // Batch fetch topic names to avoid N+1

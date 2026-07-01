@@ -23,9 +23,15 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // UC-198: feed — all topics, APPROVED only, newest first
     Page<CommunityQuestion> findAllByStatusOrderByCreatedAtDesc(QuestionStatus status, Pageable pageable);
 
+    Page<CommunityQuestion> findAllByStatusInOrderByCreatedAtDesc(
+            java.util.Collection<QuestionStatus> statuses, Pageable pageable);
+
     // UC-198: feed — filtered by topic, APPROVED only, newest first
     Page<CommunityQuestion> findAllByStatusAndTopicIdOrderByCreatedAtDesc(
             QuestionStatus status, UUID topicId, Pageable pageable);
+
+    Page<CommunityQuestion> findAllByStatusInAndTopicIdOrderByCreatedAtDesc(
+            java.util.Collection<QuestionStatus> statuses, UUID topicId, Pageable pageable);
 
     // UC-162: search — APPROVED only, multi-filter, parameterized (ADR-COM-007, OWASP A03)
     @Query("""

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/emergency_alert_model.dart';
+import '../services/emergency_service.dart';
 
+/// CB-133 — Emergency Alert Detail (UC-65, UC-141)
+/// Reached by tapping the "EMERGENCY_ALERT" FCM push; sessionId comes from
+/// the notification payload. Data: GET /api/v1/emergency/sessions/{id}/alert.
 class EmergencyAlertDetailScreen extends StatefulWidget {
-  final EmergencyAlert? alert;
-  final String? notificationId;
+  final String sessionId;
 
-  const EmergencyAlertDetailScreen({
-    super.key,
-    this.alert,
-    this.notificationId,
-  });
+  const EmergencyAlertDetailScreen({super.key, required this.sessionId});
 
   @override
   State<EmergencyAlertDetailScreen> createState() =>
@@ -33,15 +32,36 @@ class _EmergencyAlertDetailScreenState
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSecondaryContainer = Color(0xFF735E56);
 
-  late EmergencyAlert _alert;
+  final _emergencyService = EmergencyService();
+  EmergencyAlert? _alert;
   bool _acknowledged = false;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    // MOCK — replace when backend endpoint is available
-    _alert = widget.alert ?? EmergencyAlert.mock();
-    _acknowledged = _alert.acknowledged;
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final alert = await _emergencyService.getAlertDetail(widget.sessionId);
+      if (mounted) {
+        setState(() {
+          _alert = alert;
+          _acknowledged = alert.acknowledged;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Không thể tải chi tiết cảnh báo: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   String _formatTime(DateTime dateTime) {
@@ -53,7 +73,7 @@ class _EmergencyAlertDetailScreenState
   }
 
   String get _alertTypeLabel {
-    switch (_alert.alertType) {
+    switch (_alert!.alertType) {
       case 'FALL_DETECTED':
         return 'Phát hiện ngã!';
       case 'HEART_RATE':
@@ -66,16 +86,16 @@ class _EmergencyAlertDetailScreenState
   }
 
   Future<void> _makeCall() async {
-    final phone = _alert.phoneNumber;
+    final phone = _alert?.phoneNumber;
     if (phone == null) return;
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   Future<void> _openDirections() async {
-    if (_alert.latitude == null || _alert.longitude == null) return;
+    if (_alert?.latitude == null || _alert?.longitude == null) return;
     final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=${_alert.latitude},${_alert.longitude}');
+        'https://www.google.com/maps/dir/?api=1&destination=${_alert!.latitude},${_alert!.longitude}');
     if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -87,25 +107,45 @@ class _EmergencyAlertDetailScreenState
         child: Column(
           children: [
             _buildAppBar(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                children: [
-                  _buildAlertBanner(),
-                  const SizedBox(height: 24),
-                  _buildMapPlaceholder(),
-                  const SizedBox(height: 16),
-                  _buildLocationCard(),
-                  const SizedBox(height: 16),
-                  _buildStatsRow(),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-            _buildActionBar(),
+            Expanded(child: _buildBody()),
+            if (!_loading && _error == null && _alert != null) _buildActionBar(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(color: _primaryColor));
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _errorColor)),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _load, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      children: [
+        _buildAlertBanner(),
+        const SizedBox(height: 24),
+        _buildMapPlaceholder(),
+        const SizedBox(height: 16),
+        _buildLocationCard(),
+        const SizedBox(height: 16),
+        _buildStatsRow(),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -182,7 +222,7 @@ class _EmergencyAlertDetailScreenState
                       ),
                     ),
                     Text(
-                      _formatTime(_alert.createdAt),
+                      _formatTime(_alert!.createdAt),
                       style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
@@ -214,7 +254,7 @@ class _EmergencyAlertDetailScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _alert.personName,
+                        _alert!.personName,
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 14,
@@ -350,7 +390,7 @@ class _EmergencyAlertDetailScreenState
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _alert.address ?? 'Không xác định',
+                  _alert!.address ?? 'Không xác định',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
@@ -370,10 +410,10 @@ class _EmergencyAlertDetailScreenState
     return Row(
       children: [
         Expanded(child: _buildStatCard(Icons.favorite_outline, 'Nhịp tim',
-            '${_alert.heartRate ?? '--'}', 'bpm', _primaryColor)),
+            '${_alert!.heartRate ?? '--'}', 'bpm', _primaryColor)),
         const SizedBox(width: 16),
         Expanded(child: _buildStatCard(Icons.battery_charging_full_outlined,
-            'Thiết bị', '${_alert.deviceBattery ?? '--'}%', null, _onSurface)),
+            'Thiết bị', '${_alert!.deviceBattery ?? '--'}%', null, _onSurface)),
       ],
     );
   }
