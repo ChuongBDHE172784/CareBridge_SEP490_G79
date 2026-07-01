@@ -8,6 +8,7 @@ import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.repository.RefreshTokenRepository;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.jwt.JwtAuthenticationToken;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,14 @@ class SessionServiceImplTest {
     @BeforeEach
     void setUp() {
         sessionService = new SessionServiceImpl(sessionRepository, tokenProvider, auditService, tokenBlacklistRepository, refreshTokenRepository);
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Prevents a mocked Authentication set via SecurityContextHolder.setContext() in this class
+        // from leaking into unrelated tests later in the same JVM/thread (Surefire runs sequentially
+        // on one thread by default, and SecurityContextHolder's default strategy is ThreadLocal).
         SecurityContextHolder.clearContext();
     }
 

@@ -48,4 +48,34 @@ public class ContentException extends RuntimeException {
                 "Validation failed: " + field + " - " + message,
                 HttpStatus.BAD_REQUEST);
     }
+
+    // UC-107 (CB-CONTENT-IMP-006 §11.3)
+    public static ContentException alreadyArchived() {
+        return new ContentException(
+                "CNT-006",
+                "Content item is already archived",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ContentException hideReasonRequired() {
+        return new ContentException(
+                "CNT-007",
+                "Reason is required to hide content",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    // UC-108 (CB-CONTENT-IMP-005 §10)
+    public static ContentException notPendingReview() {
+        return new ContentException(
+                "CNT-008",
+                "Content item is not pending review",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ContentException decisionReasonRequired() {
+        return new ContentException(
+                "CNT-009",
+                "Reason required for REJECT",
+                HttpStatus.BAD_REQUEST);
+    }
 }

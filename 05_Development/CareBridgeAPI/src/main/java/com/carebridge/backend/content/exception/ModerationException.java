@@ -1,5 +1,8 @@
 package com.carebridge.backend.content.exception;
 
+import com.carebridge.backend.content.entity.ModerationActionType;
+import com.carebridge.backend.content.entity.ReportTargetType;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 
 public class ModerationException extends RuntimeException {
@@ -33,5 +36,107 @@ public class ModerationException extends RuntimeException {
                 "MOD-005",
                 "Internal moderation service error",
                 HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // UC-100 (CB-MOD-IMP-002 §11.3 Chặng 2)
+    public static ModerationException targetNotFound(UUID targetId, ReportTargetType targetType) {
+        return new ModerationException(
+                "MOD-007",
+                "Target " + targetType + " with id " + targetId + " not found",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ModerationException actionNotSupportedForTargetType(
+            ModerationActionType actionType, ReportTargetType targetType) {
+        return new ModerationException(
+                "MOD-008",
+                "Action " + actionType + " is not supported for target type " + targetType,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException unsupportedActionType(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-009",
+                "Action type " + actionType + " is not supported by this endpoint",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException reasonRequired(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-010",
+                "reason is required for action type " + actionType,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    // UC-101 (CB-MOD-IMP-003 §11.3 Chặng 2)
+    public static ModerationException reportNotFound(UUID reportId) {
+        return new ModerationException(
+                "MOD-003",
+                "Report not found",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ModerationException reportAlreadyResolved(UUID reportId) {
+        return new ModerationException(
+                "MOD-011",
+                "Report " + reportId + " has already been resolved/dismissed",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ModerationException contentActionNotSupportedForReport() {
+        return new ModerationException(
+                "MOD-012",
+                "Only DISMISS is supported for targetType=CONTENT via this endpoint",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException accountActionNotAvailable(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-013",
+                "Account action " + actionType + " is not yet available — pending UC-102",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    // UC-102 (CB-MOD-IMP-004 §11.3 Chặng 3)
+    public static ModerationException targetUserNotFound(UUID targetUserId) {
+        return new ModerationException(
+                "MOD-015",
+                "Target user with id " + targetUserId + " not found",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ModerationException accountActionTypeNotSupported(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-016",
+                "Action type " + actionType + " is not supported by this endpoint",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException accountReasonRequired(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-017",
+                "reason is required for action type " + actionType,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException suspendExpiresAtInvalid() {
+        return new ModerationException(
+                "MOD-018",
+                "expiresAt is required and must be in the future for action type SUSPEND",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException warnExpiresAtNotAllowed() {
+        return new ModerationException(
+                "MOD-019",
+                "expiresAt must not be provided for action type WARN",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException selfActionForbidden() {
+        return new ModerationException(
+                "MOD-020",
+                "Moderators cannot warn or suspend their own account",
+                HttpStatus.BAD_REQUEST);
     }
 }

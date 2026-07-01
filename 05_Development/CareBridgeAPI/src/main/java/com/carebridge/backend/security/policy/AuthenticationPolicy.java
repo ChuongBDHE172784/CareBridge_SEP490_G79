@@ -2,6 +2,7 @@ package com.carebridge.backend.security.policy;
 
 import com.carebridge.backend.common.exception.AccountDisabledException;
 import com.carebridge.backend.common.exception.AccountLockedException;
+import com.carebridge.backend.common.exception.AccountSuspendedException;
 
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.entity.OtpVerification;
@@ -32,6 +33,10 @@ public class AuthenticationPolicy {
                 }
             }
             throw new AccountLockedException("Account is locked");
+        }
+        // UC-102 ADR-003 touchpoint #2: block login for a moderation-driven, time-bound suspension
+        if (user.getSuspendedUntil() != null && Instant.now().isBefore(user.getSuspendedUntil())) {
+            throw new AccountSuspendedException("Account is suspended until " + user.getSuspendedUntil());
         }
     }
 

@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-006`                    |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Date**           | `2026-07-02`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                     |
 | ---------- | -------------------- | ---------------------------------------------------------------------------------------- |
 | 2026-07-02 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-107 Hide or Delete Content (Status=Draft). Lấp khoảng trống số hiệu UC đã được UC-106/UC-108/UC-227 phát hiện nhưng không UC nào nhận (CNT-006/007 chưa dùng). |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation. `HideContentRequest`/`Response` DTOs, `ContentException.alreadyArchived()`/`hideReasonRequired()` (CNT-006/007), `AdminContentService.hideContent()`, `AdminContentServiceImpl.hideContent()`, `AdminContentController` `POST /{id}/archive`, `SecurityConfig` rule, `AuditAction.CONTENT_HIDDEN` added. **Spec/reality mismatch found:** `ContentStatus` has no `PENDING_REVIEW` value in this codebase (enum is `DRAFT`/`APPROVED`/`ARCHIVED` only) — §5.1/§6.1's class/sequence diagrams and the transition guard's Test-Spec coverage (UCT-TC-1201b) assumed a status that does not exist. Implemented the transition guard as ADR-002's actual stated intent ("any non-ARCHIVED status → ARCHIVED") rather than an enumerated allow-list, so it is forward-compatible if `PENDING_REVIEW` is introduced later (e.g. by UC-108). **Also fixed a latent bug found during this work:** UC-106's `CONTENT_UPDATED` audit action was added to the `AuditAction` Java enum but never added to the `audit_logs_action_check` DB CHECK constraint — a new migration (`V20260702000001__widen_audit_logs_action_check_v2.sql`) adds both `CONTENT_UPDATED` and `CONTENT_HIDDEN` to the constraint in the same change. 12/13 TCs PASS (`UCT-TC-1201b` not implemented — status doesn't exist). Full regression: 0 new failures. Status → Implemented. **Not yet committed** — work is on the shared `dev` branch. |
 
 ---
 
@@ -556,5 +557,8 @@ CNT-006/007 factories — thỏa mãn C1-C5. Tests cover §13 (Test-Spec CB-CONT
 ---
 
 *EDS v2.1 — Fills the UC-107 gap flagged by UC-106/UC-108/UC-227 (CNT-006/007 previously unclaimed). NO schema
-delta for `content_items` (reuses ARCHIVED). ADR-003 (this endpoint subsumes UC-227's narrower Sprint-4 scope)
-is the decision most likely to need Tech Lead sign-off before Sprint 4 planning. Status: Draft.*
+delta for `content_items` (reuses ARCHIVED); one schema delta WAS needed for `audit_logs_action_check`
+(CONTENT_HIDDEN + a retroactive fix for UC-106's CONTENT_UPDATED). ADR-003 (this endpoint subsumes UC-227's
+narrower Sprint-4 scope) is the decision most likely to need Tech Lead sign-off before Sprint 4 planning.
+Status: Implemented (2026-07-02). PENDING_REVIEW does not exist in this codebase's ContentStatus — see
+Changelog and Test-Spec `CB-CONTENT-TEST-006` §2 for the corrected finding.*

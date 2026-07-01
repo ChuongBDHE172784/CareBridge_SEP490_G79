@@ -11,6 +11,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +78,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         if (user.isLocked()) {
             writeError(request, response, 403, "ACCOUNT_LOCKED", "This account has been locked");
+            return;
+        }
+        // UC-102 ADR-003 touchpoint #1: lazy, read-only expiry check — no write-back of
+        // suspendedUntil=null in this hot path (C8), even after the suspension has lapsed.
+        if (user.getSuspendedUntil() != null && Instant.now().isBefore(user.getSuspendedUntil())) {
+            writeError(request, response, 403, "ACCOUNT_SUSPENDED",
+                    "This account is suspended until " + user.getSuspendedUntil());
             return;
         }
 

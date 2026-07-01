@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-005`                    |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Date**           | `2026-07-01`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -22,6 +22,8 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-108 Approve Content Version (Status=Draft)    |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Implemented per Option A (ADR-001/ADR-002). `ContentStatus.PENDING_REVIEW` added, Java-enum-only (verified — no CHECK constraint on `content_items.status`), confirming ADR-002's own verification. New `ContentApprovalController`/`ContentApprovalService`/`ContentApprovalServiceImpl` (separate from `AdminContentController`, per §11.3 step 5 — SYSTEM_ADMIN vs CONTENT_ADMIN separation of duties). `AuditAction.CONTENT_DECIDED` added — this time the `audit_logs_action_check` CHECK-constraint migration (`V20260702001000__widen_audit_logs_action_check_v3.sql`) was added proactively in the SAME step as the enum change, learning from the UC-106/UC-107 drift where this was missed and fixed after the fact. All 11 planned test cases (CAV-TC-1001..1010, CAV-TC-INT-001 — 14 test executions incl. parameterized) implemented and GREEN. Full regression: 778 tests, 33 pre-existing errors (unchanged baseline, same 6 known DB-dependent classes), 0 new failures. |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | **Post-implementation advisor review** found the initial GREEN implementation had dropped two details from this TDS's own design: §6.1's `item.setPublishedAt(now()) [if not already set]` step on APPROVE (omitted entirely — would have caused approved content to sink to the bottom of `searchByFilters()`'s `publishedAt DESC NULLS LAST` ordering), and BR-AUDIT-001's requirement that the audit record include `reason` (the REJECT reason was only in the transient HTTP response, not the audit trail). Both fixed in `ContentApprovalServiceImpl.decide()`; 3 new regression tests added (CAV-TC-1011/1012/1013, see Test-Spec). Full regression re-verified: 781 tests, 33 pre-existing errors (unchanged baseline), 0 new failures. |
 
 ---
 
@@ -323,13 +325,17 @@ public record ContentDecisionResponse(
 ## 11. Quy trình Triển khai
 
 ### 11.1. Prerequisites
-- [ ] UC-105/106 deployed (ContentItem with versionNo, ContentException, AdminContentController pattern)
-- [ ] **ADR-001 (Option A limitation) confirmed by Product/Tech Lead** — no version-history; approving only the current edit
+- [x] UC-105/106 deployed (ContentItem with versionNo, ContentException, AdminContentController pattern)
+- [x] **ADR-001 (Option A limitation) confirmed by Product/Tech Lead** — no version-history; approving only the current edit (confirmed via user's blanket batch approval directive)
 - [x] `@EnableMethodSecurity`
-- [ ] No migration — confirmed (ADR-002, verified no CHECK constraint)
+- [x] No migration for `content_items.status` — confirmed (ADR-002, verified no CHECK constraint). Note: a
+      SEPARATE migration was required for the new `AuditAction.CONTENT_DECIDED` enum value against
+      `audit_logs_action_check` (see §11.2) — this is unrelated to ADR-002's claim, which only concerns the
+      status column.
 
 ### 11.2. Pre-Migration Checklist
-- [ ] **Không cần migration** — `PENDING_REVIEW` là Java-enum-only addition (verified no CHECK constraint on `content_items.status`). CG-9: no schema delta.
+- [x] **Không cần migration cho `content_items.status`** — `PENDING_REVIEW` là Java-enum-only addition (verified no CHECK constraint on `content_items.status`). CG-9: no schema delta for this column.
+- [x] **Migration added for audit**: `V20260702001000__widen_audit_logs_action_check_v3.sql` — adds `CONTENT_DECIDED` to `audit_logs_action_check`, done proactively in the same implementation step (learned from the UC-106/UC-107 drift where this class of fix was applied reactively, after the gap was discovered).
 
 ### 11.3. Implementation Steps
 ```
@@ -343,10 +349,14 @@ public record ContentDecisionResponse(
 ```
 
 ### 11.4. Deployment Checklist
-- [ ] APPROVE PENDING_REVIEW→APPROVED; REJECT PENDING_REVIEW→DRAFT (reason required)
-- [ ] Non-PENDING_REVIEW item → CNT-008
-- [ ] CONTENT_ADMIN cannot call this endpoint (403 — separation of duties)
-- [ ] Public read paths still correctly filter `status='APPROVED'` (PENDING_REVIEW never leaks to public)
+- [x] APPROVE PENDING_REVIEW→APPROVED; REJECT PENDING_REVIEW→DRAFT (reason required) — verified (CAV-TC-1001/1002/1005)
+- [x] Non-PENDING_REVIEW item → CNT-008 — verified (CAV-TC-1003)
+- [x] CONTENT_ADMIN cannot call this endpoint (403 — separation of duties) — verified (CAV-TC-1010)
+- [x] Public read paths still correctly filter `status='APPROVED'` (PENDING_REVIEW never leaks to public) —
+      verified by construction: `ContentRepository`'s existing `status='APPROVED'` filters are unchanged by
+      this UC and `PENDING_REVIEW` is a new enum value those filters never match; NOT independently
+      re-exercised end-to-end (no Testcontainers/real-DB harness exists in this codebase — same finding as
+      UC-100/101/102/106/107), see CAV-TC-INT-001 note in Test-Spec.
 
 ---
 
@@ -487,7 +497,9 @@ ContentDecision enum, DTOs, CNT-008/009 — thỏa mãn C1-C6. Tests cover §13 
 
 ---
 
-*EDS v2.1 — Admin decision over UC-105/106 aggregate; NO schema delta (verified, corrects dossier's
-speculative migration assumption). Status: Draft. ADR-001 explicitly surfaces the version-history gap
-(Option A vs B) per RG-5 — Product/Tech Lead must confirm Option A (approve-current-edit-only) is acceptable
-before implementation. Separation-of-duties (CONTENT_ADMIN cannot self-approve) is the CRITICAL security gate.*
+*EDS v2.1 — Admin decision over UC-105/106 aggregate; NO schema delta for `content_items.status` (verified,
+corrects dossier's speculative migration assumption) — a separate migration WAS required for the
+`AuditAction.CONTENT_DECIDED` CHECK constraint (§11.1/§11.2). Status: Implemented (2026-07-02). ADR-001's
+Option A (approve-current-edit-only, no version-history) was confirmed via the user's blanket batch-approval
+directive covering this feature set. Separation-of-duties (CONTENT_ADMIN cannot self-approve) — the CRITICAL
+security gate — is verified by CAV-TC-1010.*

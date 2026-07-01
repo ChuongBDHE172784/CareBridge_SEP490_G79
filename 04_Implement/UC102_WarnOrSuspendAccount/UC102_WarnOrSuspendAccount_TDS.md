@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-004`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-102 Warn or Suspend Account (Status=Draft)         |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation. Migration `V20260701210000__add_user_suspended_until.sql` applied; `User.suspendedUntil` field, `ReportTargetType.ACCOUNT`, `WarnOrSuspendAccountRequest`/`Response` DTOs, 6 new `ModerationException` factories (MOD-015..020), new `AccountSuspendedException` + `GlobalExceptionHandler` wiring, `ModerationServiceImpl.moderateAccount()`, `ModerationController.moderateAccount()` (`POST /account-actions`), `SecurityConfig` rule, and the ADR-003 enforcement checks in `AuthenticationPolicy.ensureCanAuthenticate()` + `JwtAuthenticationFilter.doFilterInternal()`. 24/25 WSA-TC test cases implemented and PASSING (WSA-TC-INT-003 atomicity-rollback explicitly NOT implemented — no Testcontainers/real-DB harness in this codebase, same documented gap pattern as UC-101's RES-TC-INT-004). Full regression: 0 new failures (baseline 33 pre-existing DB-dependent errors unchanged). Status → Implemented. **Not yet committed** — work is on the shared `dev` branch per repo convention it should move to `HuyND` before commit (see `.claude/rules/git-dual-remote.md`); no commit hash exists yet. |
 
 ---
 
@@ -1384,8 +1385,9 @@ Tests phải cover §13 Test Scenarios (chi tiết trong Test-Spec CB-MOD-TEST-0
 ---
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
-*Document Status: Draft — chờ Tech Lead / Security-domain-owner sign-off, đặc biệt ADR-001 (schema:
-suspended_until vs reuse locked/enabled — needs DBA/Tech Lead approval) và ADR-003 (cross-bounded-context
-enforcement wiring into `security` — needs security-domain-owner review). ADR-005 (reason policy), ADR-007
-(self-action guard), và ADR-008 (indefinite suspension deferred) are Accepted — resolved via project analysis
-as the safest/simplest defaults, not yet human-Approved.*
+*Document Status: Implemented (2026-07-01). Approved by explicit user instruction prior to implementation
+("approved tất cả rồi implement-feature đi"); ADR-001 (schema), ADR-003 (cross-bounded-context
+enforcement), ADR-005 (reason policy), ADR-007 (self-action guard), and ADR-008 (indefinite suspension
+deferred) remain flagged in their individual sections as design decisions resolved via project analysis,
+not independently re-reviewed by a human Tech Lead/DBA/Security-domain-owner outside this approval. See
+Test-Spec `CB-MOD-TEST-004` §5/§6 for the actual (not assumed) test results.*

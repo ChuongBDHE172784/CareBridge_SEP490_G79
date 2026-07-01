@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-004`                    |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Date**           | `2026-07-01`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-106 Update Content/FAQ/Checklist (Status=Draft)    |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation. `UpdateContentRequest`/`Response` DTOs, `AdminContentService.updateContent()`, `AdminContentServiceImpl.updateContent()`, `AdminContentController` `PUT /{id}`, `SecurityConfig` PUT rule, `AuditAction.CONTENT_UPDATED` added. Discovered `ContentException.contentNotFound()` (CNT-003, 404) already existed in the codebase — reused it directly instead of creating a duplicate factory as the TDS's §11.3 assumed. 13/13 TCs PASS. Full regression: 0 new failures. Status → Implemented. **Not yet committed** — work is on the shared `dev` branch per repo convention; should move to `HuyND` before any commit. |
 
 ---
 
@@ -476,6 +477,8 @@ CNT-003 factory (first real impl) — thỏa mãn C1-C5. Tests cover §13 (Test-
 
 ---
 
-*EDS v2.1 — Brownfield extension of UC-105; no schema delta. Status: Draft. "Tags"=topicId mapping (ADR-001)
-and version-increment mechanism (ADR-002, the sole versioning primitive, feeds UC-108) are the key decisions.
-CNT-003 gets its first real implementation here.*
+*EDS v2.1 — Brownfield extension of UC-105; no schema delta. Status: Implemented (2026-07-02). "Tags"=topicId
+mapping (ADR-001) and version-increment mechanism (ADR-002, the sole versioning primitive, feeds UC-108) are
+the key decisions. CNT-003 turned out to already have a real implementation (`ContentException.contentNotFound()`)
+predating this UC — reused rather than duplicated. See Test-Spec `CB-CONTENT-TEST-004` §5/§6 for actual
+(not assumed) test results, including the corrected finding on UCT-TC-910's response body shape.*

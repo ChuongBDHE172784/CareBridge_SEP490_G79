@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-003`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-101 Resolve Report (Status=Draft)                  |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 28/28 tests PASS (RES-TC-INT-004 race condition not implemented — no Testcontainers harness). Refactored UC-100's moderateContent() into shared applyContentAction() primitive per ADR-001; fixed a pre-existing SecurityContextHolder leak in SessionServiceImplTest. |
 
 ---
 

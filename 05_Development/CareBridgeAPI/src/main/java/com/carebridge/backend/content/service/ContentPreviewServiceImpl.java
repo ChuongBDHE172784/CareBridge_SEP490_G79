@@ -38,6 +38,8 @@ public class ContentPreviewServiceImpl implements ContentPreviewService {
             case CONTENT -> contentRepository.findById(targetId)
                     .map(c -> c.getTitle() != null ? c.getTitle() : "")
                     .orElse("");
+            // ACCOUNT targets (UC-102) are User rows, not content — no preview text applies.
+            case ACCOUNT -> "";
         };
         return truncate(raw);
     }

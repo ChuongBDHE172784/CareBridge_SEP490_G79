@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-002`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-100 Moderate Community Content (Status=Draft)      |
+| 2026-07-01 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 21/21 tests PASS. `moderateContent()` implemented in `ModerationServiceImpl`/`ModerationController`, extending existing UC-99 classes (no new controller/service files). |
 
 ---
 

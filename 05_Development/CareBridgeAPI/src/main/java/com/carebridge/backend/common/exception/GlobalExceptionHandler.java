@@ -293,6 +293,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(AccountSuspendedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountSuspended(AccountSuspendedException ex, HttpServletRequest request) {
+        logger.error("Account suspended: {}", ex.getMessage(), ex);
+        return error(HttpStatus.FORBIDDEN, "ACCOUNT_SUSPENDED", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(AuthorizationException.class)
     public ResponseEntity<ErrorResponse> handleAuthorization(AuthorizationException ex, HttpServletRequest request) {
         logger.error("Authorization denied: {}", ex.getMessage(), ex);
