@@ -383,6 +383,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   Widget _buildContentSection() {
     if (_dashboard == null) return const SizedBox.shrink();
     final week = _dashboard!.pregnancyWeek;
+    if (week == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Text('Dành riêng cho tuần $week',

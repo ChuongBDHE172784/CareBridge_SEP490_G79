@@ -3,16 +3,16 @@
 ## Commands
 
 * Backend (`05_Development/CareBridgeAPI`):
-  * Run: `cd 05_Development/CareBridgeWebApp && set -a && source .env && set +a && ./mvnw spring-boot:run`
+  * Run: `set -a && source .env && set +a && ./mvnw spring-boot:run`
   * Build/Package: `./mvnw clean package`
   * Test: `./mvnw test`
   * Requires `.env` file with `SUPABASE_DB_URL`, `JWT_SECRET`, etc. (see `.env.example`).
   * Values containing `&` or spaces must be quoted in `.env` for bash `source` compatibility.
 * Web (`05_Development/CareBridgeWebApp`):
-  * Run: `cd 05_Development/CareBridgeWebApp && npm run dev`
+  * Run: `npm run dev`
   * Build: `npm run build`
 * Mobile (`05_Development/CareBridgeMobileApp`):
-  * Run on Chrome: `cd 05_Development/CareBridgeMobileApp && flutter run -d chrome`
+  * Run on Chrome: `flutter run -d chrome`
   * Run on emulator: `cd 05_Development/CareBridgeMobileApp && flutter run` (defaults to `10.0.2.2:8080`)
   * Run on physical device: `flutter run -d <device-id> --dart-define=API_BASE_URL=http://<LAN_IP>:8080`
   * Build: `flutter build apk`
