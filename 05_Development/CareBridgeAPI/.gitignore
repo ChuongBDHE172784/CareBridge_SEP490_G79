@@ -33,3 +33,7 @@ build/
 .vscode/
 .env
 
+# Firebase service account credentials — never commit
+firebase-service-account*.json
+*firebase-adminsdk*.json
+

@@ -334,18 +334,22 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
       (Icons.monitor_weight, 'Cân nặng', '/health-metrics/weight'),
       (Icons.favorite_border, 'Huyết áp', '/health-metrics/blood_pressure'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
+      (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
+      (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
-    return Row(
-      children: metrics.asMap().entries.map((e) {
-        final i = e.key;
-        final m = e.value;
-        return Expanded(
-          child: Padding(
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: metrics.asMap().entries.map((e) {
+          final i = e.key;
+          final m = e.value;
+          return Padding(
             padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
             child: GestureDetector(
               onTap: () => context.push(m.$3),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                width: 100,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                 decoration: BoxDecoration(
                   color: _surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
@@ -361,14 +365,16 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                     const SizedBox(height: 8),
                     Text(m.$2,
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.w500, color: _onSurfaceVariant)),
                   ],
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 

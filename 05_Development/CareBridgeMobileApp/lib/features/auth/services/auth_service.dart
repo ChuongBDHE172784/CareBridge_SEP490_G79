@@ -1,5 +1,7 @@
+import 'dart:async';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/auth/auth_state.dart';
+import '../../../../core/notifications/fcm_service.dart';
 import '../models/auth_model.dart';
 
 class AuthService {
@@ -50,6 +52,7 @@ class AuthService {
       userId: auth.user.id,
       role: auth.user.role,
     );
+    unawaited(FcmService.instance.registerToken());
     return auth;
   }
 
@@ -70,6 +73,7 @@ class AuthService {
       userId: auth.user.id,
       role: auth.user.role,
     );
+    unawaited(FcmService.instance.registerToken());
     return auth;
   }
 

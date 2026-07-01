@@ -46,19 +46,21 @@ class EmergencyAlert {
     );
   }
 
-  // MOCK — replace when backend endpoint is available
-  static EmergencyAlert mock() {
+  // UC-65/UC-141: real alert detail from GET /api/v1/emergency/sessions/{id}/alert.
+  // No wearable/device data source exists yet, so heartRate/deviceBattery/
+  // phoneNumber/address stay null — the screen already renders those as "--"
+  // / "Không xác định" when absent.
+  factory EmergencyAlert.fromDetailJson(Map<String, dynamic> json) {
+    final triggerSource = json['triggerSource'] as String?;
     return EmergencyAlert(
-      id: 'mock-001',
-      alertType: 'FALL_DETECTED',
-      personName: 'Mẹ (Nguyễn Thị Mai)',
-      address: '123 Đường ABC, Phường Bến Nghé, Quận 1, TP. HCM',
-      latitude: 10.7769,
-      longitude: 106.7009,
-      heartRate: 92,
-      deviceBattery: 84,
-      phoneNumber: '0901234567',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
+      id: json['sessionId'] as String,
+      alertType: triggerSource == 'FALL_DETECTION' ? 'FALL_DETECTED' : 'SOS',
+      personName: json['motherName'] as String? ?? 'Người thân',
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
     );
   }
 }

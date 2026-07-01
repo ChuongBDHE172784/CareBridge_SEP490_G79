@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.dto.response.EmergencySessionResponse;
+import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.service.IEmergencyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,5 +46,16 @@ public class EmergencyController {
             Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(emergencyService.resolveSession(id, userId)));
+    }
+
+    // UC65/UC141: family member (or the mother herself) views alert detail after
+    // receiving the FCM push — not restricted to MOTHER since family receives this too.
+    @GetMapping("/{id}/alert")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
+    public ResponseEntity<ApiResponse<FamilyAlertDetailResponse>> getAlertDetail(
+            @PathVariable UUID id,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(emergencyService.getAlertDetail(id, userId)));
     }
 }

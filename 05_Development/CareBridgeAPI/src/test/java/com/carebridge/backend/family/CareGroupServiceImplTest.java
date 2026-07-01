@@ -3,9 +3,12 @@ package com.carebridge.backend.family;
 
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.dto.CareGroupMemberDto;
 import com.carebridge.backend.family.dto.CareGroupMembersResponse;
 import com.carebridge.backend.family.dto.CreateCareGroupRequest;
 import com.carebridge.backend.family.dto.CreateCareGroupResponse;
+import com.carebridge.backend.family.dto.InviteCareGroupMemberRequest;
+import com.carebridge.backend.family.dto.PendingInvitationDto;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.CareGroupStatus;
@@ -14,6 +17,8 @@ import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.service.impl.CareGroupServiceImpl;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,11 +39,13 @@ class CareGroupServiceImplTest {
 
     @Mock private CareGroupRepository groupRepository;
     @Mock private CareGroupMemberRepository memberRepository;
+    @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
     @InjectMocks private CareGroupServiceImpl careGroupService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID GROUP_ID  = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID INVITEE_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     private CreateCareGroupRequest makeRequest() {
         CreateCareGroupRequest req = new CreateCareGroupRequest();
@@ -157,5 +164,134 @@ class CareGroupServiceImplTest {
 
         assertThat(resp.getMembers().get(0).toString()).doesNotContainIgnoringCase("email");
         assertThat(resp.getMembers().get(0).toString()).doesNotContainIgnoringCase("phone");
+    }
+
+    // ---- UC-83: invite / accept / decline ----
+
+    private User invitee() {
+        return User.builder().id(INVITEE_ID).email("family@carebridge.dev").build();
+    }
+
+    @Test
+    void inviteMember_ownerInvitesNewUser_createsPendingMember() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(ownerMember(GROUP_ID)));
+        when(userRepository.findByEmailIgnoreCase("family@carebridge.dev")).thenReturn(Optional.of(invitee()));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.empty());
+        when(memberRepository.save(any())).thenAnswer(inv -> {
+            CareGroupMember m = inv.getArgument(0);
+            m.setId(UUID.randomUUID());
+            return m;
+        });
+
+        InviteCareGroupMemberRequest request = new InviteCareGroupMemberRequest();
+        request.setEmail("family@carebridge.dev");
+
+        CareGroupMemberDto result = careGroupService.inviteMember(GROUP_ID, request, CALLER_ID);
+
+        assertThat(result.getInviteStatus()).isEqualTo("PENDING");
+        verify(memberRepository).save(argThat(m ->
+                m.getUserId().equals(INVITEE_ID) && m.getInviteStatus() == InviteStatus.PENDING));
+    }
+
+    @Test
+    void inviteMember_callerNotOwner_throwsForbidden() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        CareGroupMember nonOwner = CareGroupMember.builder()
+                .careGroupId(GROUP_ID).userId(CALLER_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.ACCEPTED).build();
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID)).thenReturn(Optional.of(nonOwner));
+
+        InviteCareGroupMemberRequest request = new InviteCareGroupMemberRequest();
+        request.setEmail("family@carebridge.dev");
+
+        assertThatThrownBy(() -> careGroupService.inviteMember(GROUP_ID, request, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("FAM-008"));
+    }
+
+    @Test
+    void inviteMember_emailNotRegistered_throwsNotFound() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(ownerMember(GROUP_ID)));
+        when(userRepository.findByEmailIgnoreCase("nobody@nowhere.dev")).thenReturn(Optional.empty());
+
+        InviteCareGroupMemberRequest request = new InviteCareGroupMemberRequest();
+        request.setEmail("nobody@nowhere.dev");
+
+        assertThatThrownBy(() -> careGroupService.inviteMember(GROUP_ID, request, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("FAM-006"));
+    }
+
+    @Test
+    void inviteMember_alreadyAcceptedMember_throwsConflict() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(ownerMember(GROUP_ID)));
+        when(userRepository.findByEmailIgnoreCase("family@carebridge.dev")).thenReturn(Optional.of(invitee()));
+        CareGroupMember existing = CareGroupMember.builder()
+                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.ACCEPTED).build();
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(existing));
+
+        InviteCareGroupMemberRequest request = new InviteCareGroupMemberRequest();
+        request.setEmail("family@carebridge.dev");
+
+        assertThatThrownBy(() -> careGroupService.inviteMember(GROUP_ID, request, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("FAM-007"));
+    }
+
+    @Test
+    void acceptInvite_pendingInvite_setsAcceptedAndJoinedAt() {
+        CareGroupMember pending = CareGroupMember.builder()
+                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
+        when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CareGroupMemberDto result = careGroupService.acceptInvite(GROUP_ID, INVITEE_ID);
+
+        assertThat(result.getInviteStatus()).isEqualTo("ACCEPTED");
+        verify(memberRepository).save(argThat(m -> m.getJoinedAt() != null));
+    }
+
+    @Test
+    void acceptInvite_noPendingInvite_throwsNotFound() {
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> careGroupService.acceptInvite(GROUP_ID, INVITEE_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("FAM-009"));
+    }
+
+    @Test
+    void declineInvite_pendingInvite_setsRevoked() {
+        CareGroupMember pending = CareGroupMember.builder()
+                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
+
+        careGroupService.declineInvite(GROUP_ID, INVITEE_ID);
+
+        verify(memberRepository).save(argThat(m -> m.getInviteStatus() == InviteStatus.REVOKED));
+    }
+
+    @Test
+    void listMyInvitations_returnsPendingOnly() {
+        CareGroupMember pending = CareGroupMember.builder()
+                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(memberRepository.findByUserIdAndInviteStatus(INVITEE_ID, InviteStatus.PENDING))
+                .thenReturn(List.of(pending));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+
+        List<PendingInvitationDto> result = careGroupService.listMyInvitations(INVITEE_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getGroupId()).isEqualTo(GROUP_ID);
     }
 }

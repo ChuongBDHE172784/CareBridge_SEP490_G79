@@ -14,12 +14,19 @@ import '../../features/healthRecords/screens/health_record_timeline_screen.dart'
 import '../../features/reminder/screens/reminder_detail_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
+import '../../features/familySync/screens/pending_invitations_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
+import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
+import '../../features/emergency/screens/emergency_map_screen.dart';
+import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
+import '../../features/safety/screens/safety_monitoring_screen.dart';
+import '../../features/safety/screens/enable_fall_detection_screen.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -148,6 +155,10 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/care-groups/invitations',
+      builder: (context, state) => const PendingInvitationsScreen(),
+    ),
+    GoRoute(
       path: '/babies',
       builder: (context, state) => const BabyProfilesScreen(),
     ),
@@ -172,6 +183,36 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/content',
       builder: (context, state) => const ViewContentScreen(),
+    ),
+    GoRoute(
+      path: '/triage/intake',
+      builder: (context, state) => const SymptomIntakeScreen(),
+    ),
+    GoRoute(
+      path: '/triage/result/:sessionId',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['sessionId'] ?? '';
+        return RiskTriageResultScreen(sessionId: sessionId);
+      },
+    ),
+    GoRoute(
+      path: '/emergency/map',
+      builder: (context, state) => const EmergencyMapScreen(),
+    ),
+    GoRoute(
+      path: '/emergency/alert/:sessionId',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['sessionId'] ?? '';
+        return EmergencyAlertDetailScreen(sessionId: sessionId);
+      },
+    ),
+    GoRoute(
+      path: '/safety',
+      builder: (context, state) => const SafetyMonitoringScreen(),
+    ),
+    GoRoute(
+      path: '/safety/fall-detection/enable',
+      builder: (context, state) => const EnableFallDetectionScreen(),
     ),
   ],
 );

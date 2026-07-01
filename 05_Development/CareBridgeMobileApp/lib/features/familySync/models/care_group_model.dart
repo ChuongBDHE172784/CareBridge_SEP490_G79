@@ -28,13 +28,21 @@ class CareGroupMember {
   bool get isAdmin => memberRole == 'ADMIN' || memberRole == 'OWNER';
   bool get isPending => inviteStatus == 'PENDING';
 
-  String get roleLabel {
-    switch (memberRole) {
-      case 'ADMIN': return 'Quản trị';
-      case 'OWNER': return 'Quản trị';
-      case 'MEMBER': return 'Thành viên';
-      default: return memberRole;
-    }
+  String get roleLabel => careGroupRoleLabel(memberRole);
+}
+
+/// Shared role label mapping for OWNER/ADMIN/MEMBER/VIEWER (backend GroupMemberRole enum).
+String careGroupRoleLabel(String role) {
+  switch (role) {
+    case 'ADMIN':
+    case 'OWNER':
+      return 'Quản trị';
+    case 'MEMBER':
+      return 'Thành viên';
+    case 'VIEWER':
+      return 'Người xem';
+    default:
+      return role;
   }
 }
 
@@ -65,10 +73,40 @@ class CareGroup {
       groupName: json['groupName'] as String,
       isActive: json['isActive'] as bool? ?? true,
       memberCount: json['totalMembers'] as int? ?? 0,
+      myRole: json['myRole'] as String?,
       members: (json['members'] as List<dynamic>?)
               ?.map((m) => CareGroupMember.fromJson(m as Map<String, dynamic>))
               .toList() ??
           [],
     );
   }
+}
+
+/// UC-83 — a pending care-group invitation the current user has not yet
+/// accepted/declined (maps to backend PendingInvitationDto).
+class PendingInvitation {
+  final String groupId;
+  final String groupName;
+  final String memberRole;
+  final DateTime? invitedAt;
+
+  const PendingInvitation({
+    required this.groupId,
+    required this.groupName,
+    required this.memberRole,
+    this.invitedAt,
+  });
+
+  factory PendingInvitation.fromJson(Map<String, dynamic> json) {
+    return PendingInvitation(
+      groupId: json['groupId'] as String,
+      groupName: json['groupName'] as String? ?? '',
+      memberRole: json['memberRole'] as String? ?? 'MEMBER',
+      invitedAt: json['invitedAt'] != null
+          ? DateTime.parse(json['invitedAt'] as String)
+          : null,
+    );
+  }
+
+  String get roleLabel => careGroupRoleLabel(memberRole);
 }

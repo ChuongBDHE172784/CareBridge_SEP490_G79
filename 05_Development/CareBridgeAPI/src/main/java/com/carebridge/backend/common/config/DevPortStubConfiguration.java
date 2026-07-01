@@ -1,8 +1,6 @@
 package com.carebridge.backend.common.config;
 
 import com.carebridge.backend.ai.service.GeminiExtractionClient;
-import com.carebridge.backend.emergency.service.FamilyMemberPort;
-import com.carebridge.backend.emergency.service.FcmNotificationPort;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.service.GeminiTriageClient;
 import org.slf4j.Logger;
@@ -10,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-
-import java.util.Collections;
 
 
 /**
@@ -40,33 +36,8 @@ public class DevPortStubConfiguration {
         };
     }
 
-    @Bean
-    public com.carebridge.backend.safety.service.LocationConsentPort safetyLocationConsentPort() {
-        return userId -> {
-            log.warn("[DEV-STUB] safety.LocationConsentPort.hasLocationConsent({}) — returning false", userId);
-            return false;
-        };
-    }
-
-    @Bean
-    public com.carebridge.backend.emergency.service.LocationConsentPort emergencyLocationConsentPort() {
-        return userId -> {
-            log.warn("[DEV-STUB] emergency.LocationConsentPort.hasLocationConsent({}) — returning false", userId);
-            return false;
-        };
-    }
-
-    @Bean
-    public FamilyMemberPort familyMemberPort() {
-        return userId -> {
-            log.warn("[DEV-STUB] FamilyMemberPort.getFamilyFcmTokens({}) — returning empty list", userId);
-            return Collections.emptyList();
-        };
-    }
-
-    @Bean
-    public FcmNotificationPort fcmNotificationPort() {
-        return (fcmTokens, payload) ->
-            log.warn("[DEV-STUB] FcmNotificationPort.sendBatch({} tokens) — no-op", fcmTokens.size());
-    }
+    // LocationConsentPort (safety + emergency), FamilyMemberPort, and
+    // FcmNotificationPort now have real @Component adapters
+    // (consent/family/notification modules) — their dev stubs here were
+    // removed to avoid duplicate-bean conflicts with those adapters.
 }

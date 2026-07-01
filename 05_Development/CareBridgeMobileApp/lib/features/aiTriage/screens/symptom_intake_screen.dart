@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import 'risk_triage_result_screen.dart';
 
 class SymptomIntakeScreen extends StatefulWidget {
   const SymptomIntakeScreen({super.key});
@@ -81,8 +82,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     setState(() => _submitting = true);
     try {
       final result = await apiPost('/api/v1/triage/intake', {'symptoms': symptoms});
+      final sessionId = (result['data'] as Map<String, dynamic>)['sessionId'] as String;
       if (mounted) {
-        Navigator.of(context).pop(result['data']);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => RiskTriageResultScreen(sessionId: sessionId)),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -407,11 +411,12 @@ class _OptionCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        constraints: const BoxConstraints(minHeight: 56),
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFFFF1EC) : const Color(0xFFFFF8F6),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(28),
           border: Border.all(color: selected ? const Color(0xFFC98C7B) : const Color(0xFFD6C2BD), width: selected ? 2 : 1),
           boxShadow: selected ? [const BoxShadow(color: Color(0x0A5A3F36), blurRadius: 8, offset: Offset(0, 4))] : null,
         ),

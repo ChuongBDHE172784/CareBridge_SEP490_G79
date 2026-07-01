@@ -411,7 +411,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 200,
+          height: 216,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 24),
