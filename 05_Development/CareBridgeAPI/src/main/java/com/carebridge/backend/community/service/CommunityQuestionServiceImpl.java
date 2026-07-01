@@ -42,7 +42,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     @Transactional(readOnly = true)
     public CommunityQuestionDetailResponse getQuestionDetail(UUID questionId) {
         CommunityQuestion question = questionRepository.findById(questionId)
-                .filter(q -> q.getStatus() == QuestionStatus.APPROVED)
+                .filter(q -> q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.PENDING)
                 .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
         String topicName = topicRepository.findById(question.getTopicId())
