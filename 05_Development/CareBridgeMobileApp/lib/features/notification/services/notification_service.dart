@@ -8,7 +8,7 @@ class NotificationService {
   Future<List<NotificationRecord>> getNotifications({
     String? type,
     int page = 0,
-    int size = 20,
+    int size = 50,
   }) async {
     var path = '/api/v1/notifications/me?page=$page&size=$size';
     if (type != null && type.isNotEmpty) path += '&type=$type';
@@ -20,13 +20,33 @@ class NotificationService {
         .toList();
   }
 
-  // TODO: wire to backend when mark-as-read endpoint is implemented
   Future<void> markAsRead(String notificationId) async {
-    // await apiPost('/api/v1/notifications/$notificationId/read', {});
+    await apiPut('/api/v1/notifications/$notificationId/read', {});
   }
 
-  // TODO: wire to backend when mark-all-as-read endpoint is implemented
-  Future<void> markAllAsRead() async {
-    // await apiPost('/api/v1/notifications/read-all', {});
+  Future<int> markAllAsRead() async {
+    final res = await apiPut('/api/v1/notifications/read-all', {});
+    final data = res['data'] as Map<String, dynamic>?;
+    return (data?['markedCount'] as int?) ?? 0;
+  }
+
+  Future<List<NotificationPreference>> getPreferences() async {
+    final res = await apiGet('/api/v1/users/me/notification-preferences');
+    final data = res['data'] as Map<String, dynamic>;
+    final list = data['preferences'] as List<dynamic>;
+    return list
+        .map((e) => NotificationPreference.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<NotificationPreference>> updatePreferences(
+      List<NotificationPreference> prefs) async {
+    final res = await apiPut('/api/v1/users/me/notification-preferences',
+        {'preferences': prefs.map((p) => p.toJson()).toList()});
+    final data = res['data'] as Map<String, dynamic>;
+    final list = data['preferences'] as List<dynamic>;
+    return list
+        .map((e) => NotificationPreference.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

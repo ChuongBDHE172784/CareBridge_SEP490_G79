@@ -43,11 +43,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   bool _loading = true;
   bool _hasUnread = false;
 
-  static const _mockArticles = [
-    _Article('Dinh dưỡng', 'Bổ sung sắt và canxi đúng cách tuần 24', 0xFF4CAF50),
-    _Article('Vận động', 'Bài tập Yoga giảm đau lưng hiệu quả', 0xFF9C27B0),
-    _Article('Tinh thần', 'Kỹ thuật thở sâu để giảm căng thẳng', 0xFF2196F3),
-  ];
 
   @override
   void initState() {
@@ -91,27 +86,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
         });
       }
     } on ApiException {
-      // Fallback mock for development
       if (mounted) {
-        setState(() {
-          _dashboard = JourneyDashboard(
-            journeyId: 'mock-journey-1',
-            journeyType: 'PREGNANCY',
-            status: 'ACTIVE_PREGNANCY',
-            pregnancyWeek: 24,
-            trimester: 2,
-            daysUntilDue: 112,
-            estimatedDueDate: DateTime(2024, 10, 15),
-          );
-          _loading = false;
-        });
+        setState(() => _loading = false);
       }
-      try {
-        final tasks = await _reminderService.listTodayReminders();
-        if (mounted) {
-          setState(() => _tasks = tasks.take(3).toList());
-        }
-      } catch (_) {}
     } catch (_) {
       if (mounted) {
         setState(() => _loading = false);
@@ -309,6 +286,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   }
 
   Widget _buildAlertCard() {
+    final next = _tasks.where((t) => t.status == ReminderStatus.pending).firstOrNull;
+    if (next == null) return const SizedBox.shrink();
+    final timeStr = '${next.scheduledAt.hour.toString().padLeft(2, '0')}:${next.scheduledAt.minute.toString().padLeft(2, '0')}';
+    final detail = [timeStr, if (next.location != null) next.location!].join(' · ');
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -321,18 +302,18 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(color: _surface, shape: BoxShape.circle),
-            child: const Icon(Icons.vaccines, color: _primary, size: 22),
+            child: const Icon(Icons.event, color: _primary, size: 22),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Lịch hẹn sắp tới',
+                const Text('Lịch hẹn sắp tới',
                     style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
-                SizedBox(height: 4),
-                Text('Lịch tiêm phòng Uốn ván mũi 2 vào lúc 09:00 ngày mai tại Bệnh viện Phụ Sản.',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.4)),
+                const SizedBox(height: 4),
+                Text('${next.title} — $detail',
+                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.4)),
               ],
             ),
           ),
@@ -400,27 +381,13 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   }
 
   Widget _buildContentSection() {
-    final week = _dashboard?.pregnancyWeek ?? 24;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text('Dành riêng cho tuần $week',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 216,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: _mockArticles.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (_, i) => _ContentCard(article: _mockArticles[i]),
-          ),
-        ),
-      ],
+    if (_dashboard == null) return const SizedBox.shrink();
+    final week = _dashboard!.pregnancyWeek;
+    if (week == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text('Dành riêng cho tuần $week',
+          style: const TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
     );
   }
 }
@@ -517,56 +484,3 @@ class _TaskRow extends StatelessWidget {
   }
 }
 
-// ─── Content card ─────────────────────────────────────────────────────────────
-class _Article {
-  final String category;
-  final String title;
-  final int imageColor;
-
-  const _Article(this.category, this.title, this.imageColor);
-}
-
-class _ContentCard extends StatelessWidget {
-  final _Article article;
-
-  const _ContentCard({required this.article});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 240,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8F6),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(15), blurRadius: 20, offset: const Offset(0, 4))],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 120, width: double.infinity,
-              color: const Color(0xFFFADCD3),
-              child: Icon(Icons.image, size: 40, color: const Color(0xFFC98C7B).withAlpha(128)),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(article.category,
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF845143), letterSpacing: 0.5)),
-                  const SizedBox(height: 4),
-                  Text(article.title,
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: Color(0xFF271812)),
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

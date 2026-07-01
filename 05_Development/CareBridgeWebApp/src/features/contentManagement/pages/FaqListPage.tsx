@@ -4,7 +4,7 @@ import { fetchContentList } from '../services/contentApi';
 import type { ContentListItem } from '../models/content';
 
 /* ------------------------------------------------------------------ */
-/*  Mock FAQ data                                                      */
+/*  Types                                                              */
 /* ------------------------------------------------------------------ */
 interface FaqDisplay {
   id: string;
@@ -17,22 +17,11 @@ interface FaqDisplay {
   publishedAt: string | null;
 }
 
-const MOCK_FAQS: FaqDisplay[] = [
-  { id: '1', question: 'Khi nao can gap bac si san khoa khan cap?', answer: 'Khi co cac trieu chung nhu ra mau nhieu, dau bung du doi, mat thi luc, phu mat va tay...', topic: 'Thai kỳ', topicColor: '#C98C7B', source: 'WHO Guidelines', isVerified: true, publishedAt: '2026-06-25T10:00:00Z' },
-  { id: '2', question: 'Bo sung sat nhu the nao trong thai ky?', answer: 'Me bau nen bo sung 27mg sat moi ngay. Uong sat cung voi vitamin C de tang hap thu...', topic: 'Dinh dưỡng', topicColor: '#137333', source: 'Bộ Y Tế VN', isVerified: true, publishedAt: '2026-06-22T09:15:00Z' },
-  { id: '3', question: 'Tre so sinh can nang bao nhieu la binh thuong?', answer: 'Tre so sinh du thang thuong nang tu 2.5kg den 4kg. Can nang duoi 2.5kg duoc coi la nhe can...', topic: 'Chăm bé', topicColor: '#845143', source: 'UNICEF', isVerified: true, publishedAt: '2026-06-20T14:00:00Z' },
-  { id: '4', question: 'Me bau co nen tap the duc khong?', answer: 'Co, tap the duc nhe nhang rat tot cho suc khoe me bau. Cac bai tap duoc khuyen khich: di bo, yoga...', topic: 'Thai kỳ', topicColor: '#C98C7B', source: 'ACOG', isVerified: true, publishedAt: null },
-  { id: '5', question: 'Lam sao de tang luong sua me?', answer: 'De tang luong sua me, me nen cho con bu thuong xuyen, uong nhieu nuoc, an du chat dinh duong...', topic: 'Sau sinh', topicColor: '#E65100', source: 'WHO', isVerified: false, publishedAt: null },
-  { id: '6', question: 'Khi nao nen cat sua me cho be?', answer: 'WHO khuyen cao nuoi con hoan toan bang sua me trong 6 thang dau va tiep tuc cho bu den 2 tuoi...', topic: 'Chăm bé', topicColor: '#845143', source: 'WHO Guidelines', isVerified: true, publishedAt: '2026-06-18T11:00:00Z' },
-  { id: '7', question: 'Thuc pham nao me bau nen tranh?', answer: 'Me bau nen tranh do song, ca co ham luong thuy ngan cao, ruou bia, caffeine qua nhieu...', topic: 'Dinh dưỡng', topicColor: '#137333', source: 'FDA', isVerified: true, publishedAt: '2026-06-15T08:30:00Z' },
-  { id: '8', question: 'Tiem vac xin gi truoc khi mang thai?', answer: 'Truoc khi mang thai, phu nu nen tiem day du: Rubella, Viem gan B, Thuy dau, Cum mua...', topic: 'Chuẩn bị', topicColor: '#6e5a52', source: 'CDC', isVerified: true, publishedAt: '2026-06-10T10:00:00Z' },
-];
-
 const TABS = [
-  { key: 'all', label: 'Tất cả', count: 124 },
-  { key: 'approved', label: 'Đã duyệt', count: 87 },
-  { key: 'pending', label: 'Chờ duyệt', count: 25 },
-  { key: 'draft', label: 'Bản nháp', count: 12 },
+  { key: 'all', label: 'Tất cả' },
+  { key: 'approved', label: 'Đã duyệt' },
+  { key: 'pending', label: 'Chờ duyệt' },
+  { key: 'draft', label: 'Bản nháp' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -52,7 +41,7 @@ export default function FaqListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(124);
+  const [total, setTotal] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const pageSize = 10;
 
@@ -74,13 +63,8 @@ export default function FaqListPage() {
       setFaqs(mapped);
       setTotal(data.totalElements);
     } catch {
-      // Fallback to mock data
-      let filtered = MOCK_FAQS;
-      if (activeTab === 'approved') filtered = filtered.filter(f => f.publishedAt);
-      else if (activeTab === 'pending') filtered = filtered.filter(f => !f.publishedAt && f.isVerified);
-      else if (activeTab === 'draft') filtered = filtered.filter(f => !f.publishedAt && !f.isVerified);
-      setFaqs(filtered.slice(page * pageSize, (page + 1) * pageSize));
-      setTotal(filtered.length);
+      setFaqs([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
@@ -143,13 +127,6 @@ export default function FaqListPage() {
               }`}
             >
               {tab.label}
-              <span className={`py-0.5 px-2 rounded-full text-[11px] ${
-                activeTab === tab.key
-                  ? 'bg-primary text-on-primary'
-                  : 'bg-[#F5F5F5] text-[#616161]'
-              }`}>
-                {tab.count}
-              </span>
             </button>
           ))}
         </div>

@@ -42,7 +42,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     try {
       final data = await apiGet('/api/v1/community/topics');
       setState(() {
-        _topics = (data['content'] ?? data) as List;
+        _topics = (data['data'] as List? ?? []);
         _loading = false;
       });
     } catch (_) {
@@ -153,23 +153,40 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       maxLength: 2000,
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedTopicId,
-                      decoration: _inputDeco('Chủ đề (tuỳ chọn)'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('-- Chọn chủ đề --'),
+                    if (_topics.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.orange.shade200),
                         ),
-                        ..._topics.map(
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Chưa có chủ đề nào. Quản trị viên cần tạo chủ đề trước khi bạn có thể đặt câu hỏi.',
+                                style: TextStyle(fontSize: 13, color: Colors.orange.shade800),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        value: _selectedTopicId,
+                        decoration: _inputDeco('Chủ đề *'),
+                        items: _topics.map(
                           (t) => DropdownMenuItem(
                             value: t['id'].toString(),
                             child: Text(t['name'] ?? t['id'].toString()),
                           ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _selectedTopicId = v),
-                    ),
+                        ).toList(),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Vui lòng chọn chủ đề' : null,
+                        onChanged: (v) => setState(() => _selectedTopicId = v),
+                      ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       initialValue: _stage,
@@ -227,7 +244,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: const StadiumBorder(),
                       ),
-                      onPressed: _submitting ? null : _submit,
+                      onPressed: (_submitting || _topics.isEmpty) ? null : _submit,
                       child: _submitting
                           ? const SizedBox(
                               height: 20,

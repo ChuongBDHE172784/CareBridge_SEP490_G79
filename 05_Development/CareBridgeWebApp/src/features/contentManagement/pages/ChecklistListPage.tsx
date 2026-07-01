@@ -4,17 +4,6 @@ import { fetchChecklists } from '../services/contentApi';
 import type { ChecklistTemplate, ContentStage } from '../models/content';
 import { STAGE_LABELS } from '../models/content';
 
-/* ------------------------------------------------------------------ */
-/*  Mock data fallback                                                 */
-/* ------------------------------------------------------------------ */
-const MOCK_CHECKLISTS: ChecklistTemplate[] = [
-  { id: 'c1', name: 'Chuẩn bị trước khi mang thai', stage: 'PRE_PREGNANCY', description: 'Danh sách các xét nghiệm và tiêm chủng cần làm trước khi mang thai', items: [{ id: 'i1', itemText: 'Kham suc khoe tong quat', order: 1, isRequired: true }, { id: 'i2', itemText: 'Tiem vac xin Rubella', order: 2, isRequired: true }, { id: 'i3', itemText: 'Xet nghiem mau', order: 3, isRequired: true }] },
-  { id: 'c2', name: 'Theo dõi thai kỳ tháng 1-3', stage: 'PREGNANCY', description: 'Các mốc khám thai và xét nghiệm quan trọng trong tam cá nguyệt đầu', items: [{ id: 'i4', itemText: 'Kham thai lan 1', order: 1, isRequired: true }, { id: 'i5', itemText: 'Sieu am 12 tuan', order: 2, isRequired: true }, { id: 'i6', itemText: 'Xet nghiem Double test', order: 3, isRequired: true }, { id: 'i7', itemText: 'Bo sung axit folic', order: 4, isRequired: false }] },
-  { id: 'c3', name: 'Chuẩn bị đồ sơ sinh', stage: 'POSTPARTUM', description: 'Danh sách đồ dùng cần thiết chuẩn bị cho bé sơ sinh', items: [{ id: 'i8', itemText: 'Quan ao so sinh (10 bo)', order: 1, isRequired: true }, { id: 'i9', itemText: 'Ta dan va ta vai', order: 2, isRequired: true }, { id: 'i10', itemText: 'Binh sua va phu kien', order: 3, isRequired: false }, { id: 'i11', itemText: 'Non, bao tay bao chan', order: 4, isRequired: false }, { id: 'i12', itemText: 'Nem va chan be', order: 5, isRequired: true }] },
-  { id: 'c4', name: 'Chăm sóc bé 0-6 tháng', stage: 'BABY_CARE', description: 'Hướng dẫn chăm sóc bé sơ sinh trong 6 tháng đầu đời', items: [{ id: 'i13', itemText: 'Cho con bu me', order: 1, isRequired: true }, { id: 'i14', itemText: 'Tiem chung theo lich', order: 2, isRequired: true }, { id: 'i15', itemText: 'Kham suc khoe dinh ky', order: 3, isRequired: true }] },
-  { id: 'c5', name: 'Phục hồi sau sinh', stage: 'POSTPARTUM', description: 'Danh sách theo dõi quá trình phục hồi sức khỏe mẹ sau sinh', items: [{ id: 'i16', itemText: 'Kham lai sau 6 tuan', order: 1, isRequired: true }, { id: 'i17', itemText: 'Tap the duc nhe', order: 2, isRequired: false }] },
-  { id: 'c6', name: 'Theo dõi thai kỳ tháng 4-6', stage: 'PREGNANCY', description: 'Các mốc khám thai và xét nghiệm quan trọng trong tam cá nguyệt 2', items: [{ id: 'i18', itemText: 'Sieu am hinh thai', order: 1, isRequired: true }, { id: 'i19', itemText: 'Xet nghiem duong huyet', order: 2, isRequired: true }, { id: 'i20', itemText: 'Tiem uon van', order: 3, isRequired: true }] },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -46,10 +35,7 @@ export default function ChecklistListPage() {
       const data = await fetchChecklists(stageFilter || undefined);
       setChecklists(data);
     } catch {
-      // Fallback to mock data
-      let filtered = MOCK_CHECKLISTS;
-      if (stageFilter) filtered = filtered.filter(c => c.stage === stageFilter);
-      setChecklists(filtered);
+      setChecklists([]);
     } finally {
       setIsLoading(false);
     }

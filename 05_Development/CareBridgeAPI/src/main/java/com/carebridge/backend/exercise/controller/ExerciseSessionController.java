@@ -35,7 +35,7 @@ public class ExerciseSessionController {
 
     // UC181 — Pause session
     @PatchMapping("/{sessionId}/pause")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SessionStateResponse>> pauseSession(
             @PathVariable UUID sessionId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -45,7 +45,7 @@ public class ExerciseSessionController {
 
     // UC181 — Resume session
     @PatchMapping("/{sessionId}/resume")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SessionStateResponse>> resumeSession(
             @PathVariable UUID sessionId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -55,7 +55,7 @@ public class ExerciseSessionController {
 
     // UC182 — Complete session
     @PatchMapping("/{sessionId}/complete")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SessionResultResponse>> completeSession(
             @PathVariable UUID sessionId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -65,7 +65,7 @@ public class ExerciseSessionController {
 
     // UC183 — View session result
     @GetMapping("/{sessionId}/result")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<ApiResponse<SessionResultResponse>> getSessionResult(
             @PathVariable UUID sessionId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -74,7 +74,7 @@ public class ExerciseSessionController {
 
     // UC184 — View pregnancy exercise history
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('MOTHER', 'ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
     public ResponseEntity<PaginatedResponse<ExerciseSessionHistorySummary>> getSessionHistory(
             @RequestParam(required = false) TrimesterScope trimesterScope,
             @RequestParam(required = false)

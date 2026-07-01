@@ -4,10 +4,13 @@ import '../services/auth_service.dart';
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
 import 'logout_confirmation_screen.dart';
+import 'deactivate_account_screen.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/baby/screens/baby_profiles_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
+import '../../../features/community/screens/expert_question_queue_screen.dart';
 import '../../../features/fileManager/screens/file_manager_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
@@ -133,7 +136,23 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             _menuItem(Icons.shield_outlined, 'Quyền riêng tư', () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()));
             }),
+            _menuItem(Icons.person_off_outlined, 'Vô hiệu hoá tài khoản', () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DeactivateAccountScreen()));
+            }),
           ]),
+          if (AuthState.instance.role == 'EXPERT') ...[
+            const SizedBox(height: 16),
+            _buildMenuCard([
+              _menuItem(Icons.question_answer_outlined, 'Hàng đợi câu hỏi (Expert)', () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ExpertQuestionQueueScreen(
+                    expertName: _profile?.name,
+                    expertAvatarUrl: _profile?.avatarUrl,
+                  ),
+                ));
+              }),
+            ]),
+          ],
           const SizedBox(height: 16),
           _buildLogoutCard(),
         ],

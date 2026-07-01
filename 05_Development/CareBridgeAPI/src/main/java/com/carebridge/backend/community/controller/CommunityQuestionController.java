@@ -5,6 +5,8 @@ import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.dto.request.CreateCommunityQuestionRequest;
 import com.carebridge.backend.community.dto.request.CommunityQuestionSearchRequest;
+import com.carebridge.backend.community.dto.request.UpdateCommunityQuestionRequest;
+import com.carebridge.backend.community.dto.response.CommunityQuestionDetailResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryResponse;
 import com.carebridge.backend.community.entity.PregnancyStage;
@@ -67,5 +69,25 @@ public class CommunityQuestionController {
         request.setSize(size);
 
         return ResponseEntity.ok(searchService.searchQuestions(request));
+    }
+
+    // UC-199: any authenticated user may view APPROVED question detail
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<CommunityQuestionDetailResponse>> getQuestionDetail(
+            @PathVariable UUID id) {
+        CommunityQuestionDetailResponse response = questionService.getQuestionDetail(id);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<CommunityQuestionResponse>> editQuestion(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateCommunityQuestionRequest request,
+            Principal principal) {
+        UUID authorId = SecurityUtils.requireCurrentUserId(principal);
+        CommunityQuestionResponse response = questionService.editQuestion(authorId, id, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Question updated"));
     }
 }

@@ -4,21 +4,6 @@ import { fetchContentList, searchContent } from '../services/contentApi';
 import type { ContentListItem, ContentSearchItem, ContentType } from '../models/content';
 import { TYPE_LABELS } from '../models/content';
 
-/* ------------------------------------------------------------------ */
-/*  Mock data fallback                                                 */
-/* ------------------------------------------------------------------ */
-const MOCK_ITEMS: ContentListItem[] = [
-  { id: '1', type: 'ARTICLE', title: 'Dinh duong trong 3 thang dau thai ky', stage: 'PREGNANCY', topicId: 't1', publishedAt: '2026-06-25T10:00:00Z' },
-  { id: '2', type: 'FAQ', title: 'Khi nao can gap bac si san khoa?', stage: 'PREGNANCY', topicId: 't2', publishedAt: null },
-  { id: '3', type: 'CHECKLIST', title: 'Checklist chuan bi do so sinh', stage: 'POSTPARTUM', topicId: 't3', publishedAt: '2026-06-20T08:30:00Z' },
-  { id: '4', type: 'ARTICLE', title: 'Cac bai tap an toan cho ba bau', stage: 'PREGNANCY', topicId: 't1', publishedAt: '2026-06-18T14:00:00Z' },
-  { id: '5', type: 'ARTICLE', title: 'Tam ly sau sinh va cach vuot qua', stage: 'POSTPARTUM', topicId: 't4', publishedAt: null },
-  { id: '6', type: 'FAQ', title: 'Bo sung sat nhu the nao trong thai ky?', stage: 'PREGNANCY', topicId: 't2', publishedAt: '2026-06-22T09:15:00Z' },
-  { id: '7', type: 'CHECKLIST', title: 'Danh sach xet nghiem can lam', stage: 'PRE_PREGNANCY', topicId: 't5', publishedAt: '2026-06-15T07:00:00Z' },
-  { id: '8', type: 'ARTICLE', title: 'Huong dan tam be so sinh dung cach', stage: 'BABY_CARE', topicId: 't6', publishedAt: '2026-06-24T11:30:00Z' },
-  { id: '9', type: 'FAQ', title: 'Tre so sinh can nang bao nhieu la binh thuong?', stage: 'BABY_CARE', topicId: 't6', publishedAt: null },
-  { id: '10', type: 'ARTICLE', title: 'Cham soc vet mo sau sinh', stage: 'POSTPARTUM', topicId: 't4', publishedAt: '2026-06-21T16:45:00Z' },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -81,12 +66,8 @@ export default function ContentListPage() {
         setTotal(data.totalElements);
       }
     } catch {
-      // Fallback to mock data
-      let filtered = MOCK_ITEMS;
-      if (typeFilter) filtered = filtered.filter(i => i.type === typeFilter);
-      if (keyword) filtered = filtered.filter(i => i.title.toLowerCase().includes(keyword.toLowerCase()));
-      setItems(filtered.slice(page * pageSize, (page + 1) * pageSize));
-      setTotal(filtered.length);
+      setItems([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }

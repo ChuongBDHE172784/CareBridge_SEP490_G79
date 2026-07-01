@@ -27,6 +27,8 @@ import '../../features/emergency/screens/emergency_map_screen.dart';
 import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
+import '../../features/aiTriage/screens/rag_chat_screen.dart';
+import '../../features/community/screens/expert_question_queue_screen.dart';
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -213,6 +215,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety/fall-detection/enable',
       builder: (context, state) => const EnableFallDetectionScreen(),
+    ),
+    GoRoute(
+      path: '/rag-chat',
+      builder: (context, state) => const RagChatScreen(),
+    ),
+    GoRoute(
+      path: '/expert-queue',
+      builder: (context, state) => const ExpertQuestionQueueScreen(),
     ),
   ],
 );

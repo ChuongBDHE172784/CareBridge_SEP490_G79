@@ -1,12 +1,15 @@
 package com.carebridge.backend.community.mapper;
 
 import com.carebridge.backend.community.dto.request.CreateCommunityQuestionRequest;
+import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
+import com.carebridge.backend.community.dto.response.CommunityQuestionDetailResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryResponse;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -42,6 +45,31 @@ public class CommunityQuestionMapper {
                 .authorId(exposedAuthorId)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .createdAt(entity.getCreatedAt())
+                .build();
+    }
+
+    // UC-199: map to full detail response including answers and topic name
+    public CommunityQuestionDetailResponse toDetailResponse(
+            CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers) {
+        UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
+        return CommunityQuestionDetailResponse.builder()
+                .id(entity.getId())
+                .topicId(entity.getTopicId())
+                .topicName(topicName)
+                .title(entity.getTitle())
+                .body(entity.getBody())
+                .stage(entity.getStage() != null ? entity.getStage().name() : null)
+                .pregnancyWeek(entity.getPregnancyWeek())
+                .babyAgeMonths(entity.getBabyAgeMonths())
+                .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
+                .anonymous(entity.isAnonymous())
+                .authorId(exposedAuthorId)
+                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .answerCount(entity.getAnswerCount())
+                .likeCount(entity.getLikeCount())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .answers(answers)
                 .build();
     }
 

@@ -26,7 +26,7 @@ public class BabyController {
 
     // UC31: Create baby profile
     @PostMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CreateBabyProfileResponse>> createBabyProfile(
             @Valid @RequestBody CreateBabyProfileRequest request,
             Principal principal) {

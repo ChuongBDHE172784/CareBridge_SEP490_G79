@@ -71,7 +71,7 @@ class CommunityTopicControllerTest {
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void getTopics_asMotherUser_shouldReturn200WithNonHiddenTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
-        when(topicService.getTopics(false)).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
+        when(topicService.searchTopics(null, false)).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
@@ -86,7 +86,7 @@ class CommunityTopicControllerTest {
     void getTopics_asModeratorWithIncludeHidden_shouldReturn200WithAllTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
         UUID t2 = UUID.randomUUID();
-        when(topicService.getTopics(true)).thenReturn(List.of(
+        when(topicService.searchTopics(null, true)).thenReturn(List.of(
                 makeTopic(t1, "Thai kỳ", false),
                 makeTopic(t2, "Ẩn", true)));
 

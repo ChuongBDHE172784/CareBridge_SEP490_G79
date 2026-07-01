@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
@@ -60,35 +59,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     'topic': Icons.topic,
   };
 
-  // ── Mock data ──
-  static final _mockTopics = [
-    CommunityTopic(id: 't1', name: 'Dinh dưỡng', description: '', icon: 'restaurant', isHidden: false, sortOrder: 1),
-    CommunityTopic(id: 't2', name: 'Giấc ngủ', description: '', icon: 'bedtime', isHidden: false, sortOrder: 2),
-    CommunityTopic(id: 't3', name: 'Tiêm chủng', description: '', icon: 'vaccines', isHidden: false, sortOrder: 3),
-    CommunityTopic(id: 't4', name: 'Tâm lý', description: '', icon: 'psychology', isHidden: false, sortOrder: 4),
-    CommunityTopic(id: 't5', name: 'An toàn', description: '', icon: 'health_and_safety', isHidden: false, sortOrder: 5),
-  ];
-
-  static final _mockArticles = [
-    ContentListItem(id: 'a1', type: 'ARTICLE', title: 'Dinh dưỡng 3 tháng giữa thai kỳ', stage: 'PREGNANCY', topicId: 't1', publishedAt: '2023-10-12'),
-    ContentListItem(id: 'a2', type: 'ARTICLE', title: 'Bài tập yoga cho mẹ bầu', stage: 'PREGNANCY', topicId: 't5', publishedAt: '2023-10-10'),
-  ];
-
-  static final _mockFaqs = [
-    ContentListItem(id: 'f1', type: 'FAQ', title: 'Làm sao để giảm ốm nghén?', stage: 'PREGNANCY', topicId: 't1'),
-    ContentListItem(id: 'f2', type: 'FAQ', title: 'Dấu hiệu cần đi khám ngay?', stage: 'PREGNANCY', topicId: 't5'),
-    ContentListItem(id: 'f3', type: 'FAQ', title: 'Lịch tiêm phòng cho mẹ bầu?', stage: 'PREGNANCY', topicId: 't3'),
-  ];
-
-  static final _mockChecklists = [
-    ChecklistTemplate(
-      id: 'c1',
-      name: 'Chuẩn bị giỏ đồ đi sinh',
-      stage: 'PREGNANCY',
-      description: 'Nguồn: Bệnh viện Phụ sản Trung ương',
-      items: List.generate(12, (i) => ChecklistItem(id: 'ci$i', itemText: 'Mục ${i + 1}', order: i, isRequired: i < 5)),
-    ),
-  ];
 
   @override
   void initState() {
@@ -121,22 +91,16 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _loading = false;
         });
       }
-    } on ApiException {
-      _applyMockData();
     } catch (_) {
-      _applyMockData();
-    }
-  }
-
-  void _applyMockData() {
-    if (mounted) {
-      setState(() {
-        _topics = _mockTopics;
-        _articles = _mockArticles;
-        _faqs = _mockFaqs;
-        _checklists = _mockChecklists;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _topics = [];
+          _articles = [];
+          _faqs = [];
+          _checklists = [];
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -409,7 +373,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── Featured article section ("Gợi ý hôm nay") ──
   Widget _buildFeaturedArticle() {
-    final article = _articles.isNotEmpty ? _articles.first : null;
+    if (_articles.isEmpty) return const SizedBox.shrink();
+    final article = _articles.first;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -499,23 +464,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            article?.publishedAt ?? '12/10/2023',
-                            style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
-                          ),
+                          if (article.publishedAt != null)
+                            Text(
+                              article.publishedAt!,
+                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        article?.title ?? 'Dinh dưỡng 3 tháng giữa thai kỳ',
+                        article.title,
                         style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface, height: 1.3),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Cung cấp đủ canxi và sắt giúp bé phát triển xương và não bộ một cách toàn diện nhất...',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.4),
                       ),
                       const SizedBox(height: 16),
                       // CTA button

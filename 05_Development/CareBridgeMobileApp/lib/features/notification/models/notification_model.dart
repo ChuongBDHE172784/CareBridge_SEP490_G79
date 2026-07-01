@@ -1,3 +1,46 @@
+class NotificationPreference {
+  final String type;
+  final bool? pushEnabled;
+  final bool? emailEnabled;
+  final bool? inAppEnabled;
+
+  const NotificationPreference({
+    required this.type,
+    this.pushEnabled,
+    this.emailEnabled,
+    this.inAppEnabled,
+  });
+
+  factory NotificationPreference.fromJson(Map<String, dynamic> json) {
+    return NotificationPreference(
+      type: json['notificationType'] as String? ?? '',
+      pushEnabled: json['pushEnabled'] as bool?,
+      emailEnabled: json['emailEnabled'] as bool?,
+      inAppEnabled: json['inAppEnabled'] as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'notificationType': type,
+        'pushEnabled': pushEnabled,
+        'emailEnabled': emailEnabled,
+        'inAppEnabled': inAppEnabled,
+      };
+
+  NotificationPreference copyWith({
+    bool? pushEnabled,
+    bool? emailEnabled,
+    bool? inAppEnabled,
+  }) {
+    return NotificationPreference(
+      type: type,
+      pushEnabled: pushEnabled ?? this.pushEnabled,
+      emailEnabled: emailEnabled ?? this.emailEnabled,
+      inAppEnabled: inAppEnabled ?? this.inAppEnabled,
+    );
+  }
+}
+
 class NotificationRecord {
   final String id;
   final String userId;

@@ -33,11 +33,12 @@ public class CommunityTopicController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CommunityTopicResponse>>> getTopics(
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean includeHidden,
             Authentication authentication) {
         boolean isModerator = SecurityUtils.hasRole("MODERATOR");
         boolean effectiveInclude = includeHidden && isModerator;
-        return ResponseEntity.ok(ApiResponse.success(topicService.getTopics(effectiveInclude)));
+        return ResponseEntity.ok(ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude)));
     }
 
     @PostMapping

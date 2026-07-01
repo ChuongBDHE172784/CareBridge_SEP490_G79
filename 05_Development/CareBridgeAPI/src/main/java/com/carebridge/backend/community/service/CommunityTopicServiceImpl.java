@@ -34,6 +34,19 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden) {
+        if (keyword == null || keyword.isBlank()) {
+            return getTopics(includeHidden);
+        }
+        String trimmedKeyword = keyword.trim();
+        List<CommunityTopic> topics = includeHidden
+                ? topicRepository.searchByKeywordIncludingHidden(trimmedKeyword)
+                : topicRepository.searchByKeyword(trimmedKeyword);
+        return topics.stream().map(topicMapper::toResponse).toList();
+    }
+
+    @Override
     @Transactional
     public CommunityTopicResponse createTopic(UUID createdBy, CreateCommunityTopicRequest request) {
         if (topicRepository.existsByNameIgnoreCase(request.getName())) {

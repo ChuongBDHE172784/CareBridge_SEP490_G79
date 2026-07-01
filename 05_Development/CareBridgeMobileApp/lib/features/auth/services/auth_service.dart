@@ -100,4 +100,16 @@ class AuthService {
     }
     await apiPost('/api/v1/auth/logout', body);
   }
+
+  // UC-15: Deactivate account — all sessions revoked, data preserved.
+  Future<void> deactivateAccount(String confirmPassword) async {
+    await apiDelete('/api/v1/auth/deactivate',
+        body: {'confirmPassword': confirmPassword});
+  }
+
+  // UC-156: Request account deletion — 30-day grace period before permanent deletion.
+  Future<void> requestAccountDeletion(String confirmPassword) async {
+    await apiPost('/api/v1/account/deletion-request',
+        {'confirmPassword': confirmPassword});
+  }
 }

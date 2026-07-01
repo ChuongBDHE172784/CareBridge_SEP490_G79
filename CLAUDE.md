@@ -13,7 +13,7 @@
   * Build: `npm run build`
 * Mobile (`05_Development/CareBridgeMobileApp`):
   * Run on Chrome: `flutter run -d chrome`
-  * Run on emulator: `flutter run` (defaults to `10.0.2.2:8080`)
+  * Run on emulator: `cd 05_Development/CareBridgeMobileApp && flutter run` (defaults to `10.0.2.2:8080`)
   * Run on physical device: `flutter run -d <device-id> --dart-define=API_BASE_URL=http://<LAN_IP>:8080`
   * Build: `flutter build apk`
   * Test: `flutter test`

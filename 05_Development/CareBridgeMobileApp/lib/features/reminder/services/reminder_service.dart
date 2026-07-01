@@ -48,37 +48,14 @@ class ReminderService extends ChangeNotifier {
 
   // TODO: Replace with GET /api/v1/reminders?date=today when endpoint available (UC-45/46/47)
   Future<List<Reminder>> listTodayReminders() async {
-    final now = DateTime.now();
-    return [
-      Reminder(
-        id: 'r-1',
-        reminderType: ReminderType.appointment,
-        title: 'Khám thai định kỳ',
-        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
-        status: ReminderStatus.pending,
-        isImportant: true,
-        location: 'Bệnh viện Phụ Sản',
-        assignee: ReminderAssignee.mother,
-      ),
-      Reminder(
-        id: 'r-2',
-        reminderType: ReminderType.medication,
-        title: 'Uống Vitamin tổng hợp',
-        scheduledAt: DateTime(now.year, now.month, now.day, 7, 30),
-        status: ReminderStatus.done,
-        location: 'Sau bữa sáng',
-        assignee: ReminderAssignee.mother,
-      ),
-      Reminder(
-        id: 'r-3',
-        reminderType: ReminderType.vaccination,
-        title: 'Tiêm phòng phế cầu',
-        scheduledAt: DateTime(now.year, now.month, now.day, 14, 0),
-        status: ReminderStatus.pending,
-        location: 'Trạm y tế phường',
-        assignee: ReminderAssignee.baby,
-      ),
-    ];
+    try {
+      final today = DateTime.now().toIso8601String().split('T').first;
+      final data = await apiGet('/api/v1/reminders?date=$today');
+      final list = data['data'] as List? ?? [];
+      return list.map((e) => Reminder.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   // TODO: PATCH /api/v1/reminders/{id}/status when endpoint available (UC-213/214/215)

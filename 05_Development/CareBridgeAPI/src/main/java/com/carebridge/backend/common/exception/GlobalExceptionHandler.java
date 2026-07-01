@@ -13,6 +13,7 @@ import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
+import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.integration.gemini.exception.RagException;
@@ -140,10 +141,28 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNPROCESSABLE_ENTITY, "COM-007", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(QuestionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionNotFound(
+            QuestionNotFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "COM-006", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.carebridge.backend.community.exception.AnswerNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAnswerNotFound(
+            com.carebridge.backend.community.exception.AnswerNotFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "COM-011", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(CommunityFeedValidationException.class)
     public ResponseEntity<ErrorResponse> handleCommunityFeedValidation(
             CommunityFeedValidationException ex, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "COM-001", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.carebridge.backend.community.exception.QuestionNotEditableException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionNotEditable(
+            com.carebridge.backend.community.exception.QuestionNotEditableException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-010", ex.getMessage(), request);
     }
 
     @ExceptionHandler(ContentException.class)
