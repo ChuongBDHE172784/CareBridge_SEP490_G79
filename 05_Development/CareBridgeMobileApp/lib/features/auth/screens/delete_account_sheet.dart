@@ -41,7 +41,7 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
     try {
       await AuthService.instance.requestAccountDeletion(password);
       if (!mounted) return;
-      await AuthState.instance.clearTokens();
+      await AuthState.instance.clear();
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;

@@ -30,7 +30,7 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
     try {
       await AuthService.instance.deactivateAccount(password);
       if (!mounted) return;
-      await AuthState.instance.clearTokens();
+      await AuthState.instance.clear();
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     } on ApiException catch (e) {
       if (!mounted) return;
