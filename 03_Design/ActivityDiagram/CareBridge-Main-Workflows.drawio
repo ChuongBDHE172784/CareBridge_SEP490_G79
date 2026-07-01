@@ -1264,7 +1264,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="wf-08-smart-safety" name="08 Smart Activity Monitoring &amp; Safety Support Workflow">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1800" pageHeight="1250" math="0" shadow="0">
+    <mxGraphModel dx="732" dy="652" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1250" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -1410,8 +1410,8 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="p08_e14" edge="1" parent="1" source="p08_response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontFamily=Arial;fontSize=10.5;strokeColor=#4B5563;" target="p08_alert" value="Need help / no response">
-          <mxGeometry relative="1" x="-0.6194" as="geometry">
-            <mxPoint x="1" as="offset" />
+          <mxGeometry relative="1" x="0.5088" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="620" y="1259" />
               <mxPoint x="620" y="1259" />
@@ -1521,7 +1521,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="wf-09-expert-nearby" name="09 Expert App, TrackAsia Nearby Support &amp; Realtime Contact">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1800" pageHeight="1250" math="0" shadow="0">
+    <mxGraphModel dx="1046" dy="931" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1250" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />

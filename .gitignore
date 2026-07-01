@@ -15,6 +15,7 @@ Desktop.ini
 !.env.example
 *.local
 *.secret
+carebridge-*.json
 
 # Logs and temporary files
 *.log
