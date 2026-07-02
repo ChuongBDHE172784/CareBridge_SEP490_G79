@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -60,4 +62,21 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Modifying
     @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount - 1 WHERE q.id = :questionId AND q.answerCount > 0")
     void decrementAnswerCount(@Param("questionId") UUID questionId);
+
+    // UC-111: dashboard aggregation — question count grouped by status
+    @Query("SELECT q.status, COUNT(q) FROM CommunityQuestion q GROUP BY q.status")
+    List<Object[]> countGroupByStatus();
+
+    // UC-111: dashboard aggregation — new questions within the reporting window
+    long countByCreatedAtBetween(Instant from, Instant to);
+
+    // UC-111: dashboard aggregation — trending topics, excludes hidden topics (TDS §5.2/ADR-004 C6)
+    @Query("""
+            SELECT q.topicId, t.name, COUNT(q)
+            FROM CommunityQuestion q JOIN CommunityTopic t ON t.id = q.topicId
+            WHERE t.isHidden = false AND q.createdAt BETWEEN :from AND :to
+            GROUP BY q.topicId, t.name
+            ORDER BY COUNT(q) DESC
+            """)
+    List<Object[]> findTrendingTopics(@Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
 }

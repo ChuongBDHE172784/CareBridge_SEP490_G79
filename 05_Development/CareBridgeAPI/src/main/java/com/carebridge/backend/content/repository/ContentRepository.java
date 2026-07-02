@@ -33,6 +33,9 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     Optional<ContentItem> findByIdAndStatus(UUID id, ContentStatus status);
 
+    // UC-113: impact report — published content reach (count only, no view/impression column exists)
+    long countByPublishedAtIsNotNull();
+
     @Query("SELECT c FROM ContentItem c WHERE " +
            "c.status = :status AND " +
            "(:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +

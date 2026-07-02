@@ -1,5 +1,6 @@
 package com.carebridge.backend.partner.repository;
 
+import com.carebridge.backend.partner.entity.OrganizationStatus;
 import com.carebridge.backend.partner.entity.PartnerOrganization;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,4 +13,7 @@ public interface PartnerOrganizationRepository extends JpaRepository<PartnerOrga
     boolean existsByRepresentativeUserId(java.util.UUID userId);
 
     boolean existsByEmail(String email);
+
+    // UC-113: dashboard aggregation — active partner organizations
+    long countByStatus(OrganizationStatus status);
 }

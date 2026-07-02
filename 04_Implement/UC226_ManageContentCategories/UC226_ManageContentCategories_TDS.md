@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-226 Manage Content Categories (Status=Draft)  |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | Audit: xác nhận ADR-001 (tái dùng `community_topics`/`CommunityTopicService`, không tạo bảng `content_categories` mới) khớp hoàn toàn với code hiện tại (`CommunityTopicService`/`CommunityTopicController` verified — method signatures, routes, RBAC MODERATOR đều đúng). Sửa 1 lỗi nhỏ: §16 header role `PARTNER_REP` → `PARTNER` (giá trị `Role` enum thật, verified `security.rbac.Role`). Status giữ nguyên `Draft` — không tự approve. |
 
 ---
 
@@ -370,7 +371,7 @@ curl -X POST "https://api.carebridge.vn/api/v1/admin/content/categories" \
 
 ## 16. Authorization Matrix
 
-| Endpoint                                       | `MOTHER` | `FAMILY` | `EXPERT` | `MODERATOR` | `CONTENT_ADMIN` | `PARTNER_REP` | `SYSTEM_ADMIN` |
+| Endpoint                                       | `MOTHER` | `FAMILY` | `EXPERT` | `MODERATOR` | `CONTENT_ADMIN` | `PARTNER` | `SYSTEM_ADMIN` |
 | --------------------------------------------------| ---------- | ---------- | ---------- | -------------- | ------------------ | --------------- | ----------------- |
 | `POST/PATCH /api/v1/admin/content/categories(/{id})` | ❌     | ❌        | ❌        | ❌ *(note)*     | ✅                | ❌              | ❌ *(note)*        |
 

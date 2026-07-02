@@ -22,6 +22,7 @@
 | ---------- | ---------------------------- | ---------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Amelia            | Khởi tạo TDD spec cho UC-132 Generate RAG Answer                       |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent) | Implement UC-132 — 18/18 tests PASS: MockRagServiceImpl, ContentItemContextRetriever, RagController, RagService interfaces, GeminiRagServiceImpl, TriageRedFlagPolicy, GeminiPromptBuilder, RagException. RED Gate verified (12 FAILs). GREEN Phase: 216/217 tổng tests PASS (1 lỗi pre-existing BackendApplicationTests DB). |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | Corrected discrepancies vs. actual source: (1) `ContentContextBuilder`/`buildContext()` renamed throughout to actual class `ContentItemContextRetriever`/`retrieveContext()`; (2) non-existent `contentRepository.findByStatus(APPROVED)` corrected to actual `ContentRepository.searchByFilters(..., ContentStatus.APPROVED, ...)`; (3) Props Isolation boilerplate corrected — `MockRagServiceImpl` has a no-arg constructor (was shown as `new MockRagServiceImpl(contentRepository)`), and `Stage.PREGNANCY` corrected to `UserStage.PREGNANCY`; (4) added `RAG-TC-B2D` entry documenting `RagNoGeminiStartupTest.java` (5 test methods covering `FallbackRagServiceImpl` wiring, unauth 401, PARTNER 403, disabled/locked account 403) which existed in the repo but was not referenced anywhere in this Test-Spec. Spot-checked RAG-TC-001 through RAG-TC-010, RAG-TC-SEC-001, RAG-TC-INT-001 against `RagServiceTest.java`/`RagControllerTest.java`/`ContentItemContextRetrieverTest.java` — all claimed 🟢 GREEN test methods exist and match description. |
 
 ---
 
@@ -86,7 +87,7 @@ UC-132 RagService bao gồm các layer:
 ├── Interface (RagService — contract)
 ├── MockRagServiceImpl (test environment — no real API call)
 ├── GeminiRagServiceImpl (production — calls Gemini API)
-├── ContentContextBuilder (lấy approved ContentItems làm context)
+├── ContentItemContextRetriever (lấy approved ContentItems làm context)
 ├── Controller (RagController — authenticated endpoint)
 └── Integration (ContentRepository — filter approved only)
 ```
@@ -110,8 +111,8 @@ UC-132 RagService bao gồm các layer:
 | TC-COND-002  | Disclaimer luôn có trong response                                | Response structure                         | `RAG-TC-002` |
 | TC-COND-003  | isFallback=false khi Gemini available                            | `MockRagServiceImpl`                       | `RAG-TC-003` |
 | TC-COND-004  | Gemini unavailable → fallback response (isFallback=true)         | Fallback logic                             | `RAG-TC-004` |
-| TC-COND-005  | Chỉ APPROVED content được dùng làm context                       | `ContentContextBuilder`                    | `RAG-TC-005` |
-| TC-COND-006  | DRAFT content bị loại khỏi context                               | `ContentRepository.findByStatus(APPROVED)` | `RAG-TC-006` |
+| TC-COND-005  | Chỉ APPROVED content được dùng làm context                       | `ContentItemContextRetriever`                    | `RAG-TC-005` |
+| TC-COND-006  | DRAFT content bị loại khỏi context                               | `ContentRepository.searchByFilters(..., ContentStatus.APPROVED, ...)` | `RAG-TC-006` |
 | TC-COND-007  | query rỗng bị từ chối 400                                        | Input validation                           | `RAG-TC-007` |
 | TC-COND-008  | Unauthenticated bị từ chối 401                                   | JWT filter                                 | `RAG-TC-008` |
 | TC-COND-009  | response.sources chứa contentId và title của context             | Source citation                            | `RAG-TC-009` |
@@ -146,23 +147,20 @@ UC-132 RagService bao gồm các layer:
 
 ```java
 // Base request — mỗi test override via factory
-private static final RagAnswerRequest BASE_REQUEST = RagAnswerRequest.builder()
-    .query("Tôi có thể ăn gì khi mang thai tuần 12?")
-    .userStage(Stage.PREGNANCY)
-    .topicId("topic-001")
-    .maxContextChunks(3)
-    .build();
-
-private RagAnswerRequest makeRequest(Consumer<RagAnswerRequest.Builder> override) {
-    var builder = BASE_REQUEST.toBuilder();
-    override.accept(builder);
-    return builder.build();
+// (Thực tế RagServiceTest.java dùng factory dạng makeRequest(String query) đơn giản hơn — xem RAG-TC-* bên dưới)
+private static RagAnswerRequest makeRequest(String query) {
+    return RagAnswerRequest.builder()
+        .query(query)
+        .userStage(UserStage.PREGNANCY)
+        .maxContextChunks(3)
+        .build();
 }
 
 // Dùng MockRagServiceImpl trong mọi unit test — không gọi real Gemini
+// MockRagServiceImpl không có dependency (constructor no-arg) — không nhận contentRepository
 @BeforeEach
 void setUp() {
-    ragService = new MockRagServiceImpl(contentRepository);
+    ragService = new MockRagServiceImpl();
 }
 ```
 
@@ -267,7 +265,7 @@ Feature: Generate RAG Answer
 ### RAG-TC-005 — Chỉ APPROVED content được dùng làm context
 
 **Severity:** `HIGH`
-**Feature Under Test:** `ContentContextBuilder.buildContext()` — status filter
+**Feature Under Test:** `ContentItemContextRetriever.retrieveContext()` — status filter
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/ContentItemContextRetrieverTest.java`
 **TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
@@ -277,8 +275,8 @@ Feature: Generate RAG Answer
   Scenario: Only APPROVED ContentItems are included in RAG context
     Given ContentItem "c1" status=APPROVED (FX-RAG-002)
     And ContentItem "c2" status=DRAFT (FX-RAG-003)
-    And contentRepository.findByStatus(APPROVED) = ["c1"]
-    When ContentContextBuilder.buildContext(query, topicId, maxChunks) is called
+    And contentRepository.searchByFilters(..., ContentStatus.APPROVED, ...) = ["c1"]
+    When ContentItemContextRetriever.retrieveContext(query, topicId, maxChunks) is called
     Then context chunks contain only content from "c1"
     And content from "c2" (DRAFT) is NOT in the context
 ```
@@ -290,7 +288,7 @@ Feature: Generate RAG Answer
 ### RAG-TC-006 — DRAFT content bị loại khỏi context
 
 **Severity:** `HIGH`
-**Feature Under Test:** `ContentContextBuilder` — repository call with APPROVED filter
+**Feature Under Test:** `ContentItemContextRetriever` — repository call with APPROVED filter
 **Test File:** `ContentItemContextRetrieverTest.java`
 **TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
@@ -298,7 +296,7 @@ Feature: Generate RAG Answer
 ```gherkin
   Scenario: DRAFT content is excluded from RAG context
     Given only DRAFT ContentItems exist in the database
-    When ContentContextBuilder.buildContext() is called
+    When ContentItemContextRetriever.retrieveContext() is called
     Then context is empty (no chunks)
     And ragService still returns a fallback or safe response (not an error)
 ```
@@ -421,7 +419,7 @@ Feature: Generate RAG Answer
 ### RAG-TC-INT-001 — Full RAG flow với MockRagServiceImpl
 
 **Severity:** `HIGH`
-**Feature Under Test:** `Full: RagController → RagService (Mock) → ContentContextBuilder → ContentRepository`
+**Feature Under Test:** `Full: RagController → RagService (Mock) → ContentItemContextRetriever → ContentRepository`
 **Test File:** `src/test/java/com/carebridge/backend/integration/gemini/RagControllerTest.java`
 **TDD Phase:** 🟢 GREEN
 
@@ -454,6 +452,26 @@ Feature: Generate RAG Answer
 ```
 
 **Current Status:** 🟢 Passing (implemented as @WebMvcTest with @MockitoBean RagService — no Testcontainer needed, same pattern as other integration tests)
+
+---
+
+### RAG-TC-B2D — FallbackRagServiceImpl / RBAC boot-to-deploy coverage (audit addendum)
+
+**Severity:** `HIGH`
+**Feature Under Test:** `RagController` wired with `FallbackRagServiceImpl` (no Gemini/Mock bean present) + role-based access control
+**Test File:** `src/test/java/com/carebridge/backend/integration/gemini/RagNoGeminiStartupTest.java`
+**TDD Phase:** 🟢 GREEN
+**Note:** Đây là test file có trong repo nhưng KHÔNG được liệt kê trong §4 gốc của tài liệu này — bổ sung ghi nhận qua audit pass 2026-07-02.
+
+| Case ID       | Method                                          | Assertion |
+| ------------- | ------------------------------------------------ | --------- |
+| `RAG-B2D-01`  | `contextLoads_withNoGeminiKey_returnsFallbackResponse` | Context loads with no Gemini/Mock bean; `FallbackRagServiceImpl` serves request → 200, `fallback=true`, disclaimer present |
+| `RAG-B2D-02`  | `noAuth_returns401`                               | Unauthenticated POST → 401 |
+| `RAG-B2D-03`  | `partnerRole_returns403`                          | `PARTNER` role → 403 (confirms RBAC exclusion — see §16 of TDS) |
+| `RAG-B2D-04`  | `disabledAccount_returns403AccountDisabled`       | Disabled account with valid JWT → 403 `ACCOUNT_DISABLED` |
+| `RAG-B2D-05`  | `lockedAccount_returns403AccountLocked`           | Locked account with valid JWT → 403 `ACCOUNT_LOCKED` |
+
+**Current Status:** 🟢 Passing (spot-checked against source — all 5 methods exist and match description above)
 
 ---
 
@@ -522,14 +540,14 @@ public class MockRagServiceImpl implements RagService {
 - [x] TDS `CB-RAG-IMP-001` đã được review và approve
 - [x] Interface `RagService` đã được khai báo
 - [x] `MockRagServiceImpl` và `GeminiRagServiceImpl` interface đã được define
-- [x] `ContentContextBuilder` design đã được approve
+- [x] `ContentItemContextRetriever` design đã được approve
 - [x] `content_items` table đã tồn tại (UC-82/UC-105 implement trước)
 
 ### Exit Criteria (DoD)
 
 - [x] Tất cả unit tests trong `RagServiceTest.java` PASS
 - [x] Tất cả integration tests PASS
-- [x] Test coverage ≥ 80% cho `RagService`, `ContentContextBuilder`, `RagController`
+- [x] Test coverage ≥ 80% cho `RagService`, `ContentItemContextRetriever`, `RagController`
 - [x] `POST /api/v1/rag/answer` — 200 với disclaimer trong response
 - [x] Fallback response khi mock Gemini unavailable — 200, `isFallback=true`
 - [x] DRAFT content không bao giờ xuất hiện trong `response.sources`

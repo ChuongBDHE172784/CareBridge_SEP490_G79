@@ -23,6 +23,7 @@
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-106 Update Content/FAQ/Checklist (Status=Draft)    |
 | 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation. `UpdateContentRequest`/`Response` DTOs, `AdminContentService.updateContent()`, `AdminContentServiceImpl.updateContent()`, `AdminContentController` `PUT /{id}`, `SecurityConfig` PUT rule, `AuditAction.CONTENT_UPDATED` added. Discovered `ContentException.contentNotFound()` (CNT-003, 404) already existed in the codebase — reused it directly instead of creating a duplicate factory as the TDS's §11.3 assumed. 13/13 TCs PASS. Full regression: 0 new failures. Status → Implemented. **Not yet committed** — work is on the shared `dev` branch per repo convention; should move to `HuyND` before any commit. |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | **Correction:** this doc's premise that `CNT-003` was "reserved, unused" before UC-106 is wrong — `git log -p ContentException.java` shows UC-105's own `topicNotFound()` (400) already used `CNT-003` when UC-106 assigned the same code to `contentNotFound()` (404). Fixed §10's `CNT-003` row and Numbering blockquote to reflect this; UC-105's TDS §10 was also updated in this same audit pass to list `CNT-003`/`topicNotFound()`, which it had previously omitted entirely. This is a real code-value collision in `ContentException.java` (out of scope to fix here) — flagged as an open gap. Status kept as `Implemented`. |
 
 ---
 
@@ -318,7 +319,7 @@ public record UpdateContentResponse(
 
 | Code       | HTTP Status | Message (EN)                          | Trigger Condition                          | Status in code |
 | ----------- | ------------- | ---------------------------------------- | ---------------------------------------------- | ----------------- |
-| `CNT-003`  | 404           | Content item not found                    | `findById(id)` empty                          | **First real use — reserved by UC-105, now implemented** |
+| `CNT-003`  | 404           | Content item not found                    | `findById(id)` empty                          | Added by UC-106's `contentNotFound()` — **audit correction (2026-07-02): `CNT-003` was NOT unused before this.** UC-105's own `topicNotFound()` (`ContentException.java`, present since UC-105's original implementation) already used code `CNT-003` for a different condition (invalid `topicId`, HTTP 400). UC-106 assigned the same code `CNT-003` to a second, unrelated condition (content not found, HTTP 404) — a real code-value collision in the current codebase (verified via `git log -p ContentException.java`), not the "first real use of a reserved code" this doc and its Test-Spec assumed. Left as-is (production code out of this audit's scope); flagged as an open code-quality gap for a maintainer to assign `contentNotFound()` a distinct code. |
 | `CNT-002`  | 409           | Content with same title, stage and type already exists | title/stage/type changed to a colliding combo (ADR-004) | Reused (UC-105) |
 | `CNT-001`  | 400           | Validation failed                         | field validation                              | Reused (UC-105) |
 | `CNT-004`  | 403           | Insufficient permissions                  | Non-CONTENT_ADMIN                             | Reused (UC-105) |
@@ -326,6 +327,9 @@ public record UpdateContentResponse(
 
 > **Numbering:** UC-105 defined `CNT-001,002,004,005` (`CNT-003` reserved, unused). UC-106 is the **first**
 > to implement `CNT-003` ("not found"), per dossier §6.2 permission. UC-108/226/227 continue from `CNT-006`.
+> **Audit correction (2026-07-02):** this "reserved, unused" premise is incorrect — see the `CNT-003` row
+> above. UC-105 already used `CNT-003` for `topicNotFound()` (400); UC-106's `contentNotFound()` (404) is a
+> second, colliding use of the same code, not the code's first use.
 
 ---
 

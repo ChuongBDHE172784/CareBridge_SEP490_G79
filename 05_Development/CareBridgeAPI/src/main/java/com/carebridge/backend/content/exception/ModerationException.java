@@ -139,4 +139,20 @@ public class ModerationException extends RuntimeException {
                 "Moderators cannot warn or suspend their own account",
                 HttpStatus.BAD_REQUEST);
     }
+
+    // UC-111 (CB-MOD-IMP-006 §10)
+    public static ModerationException invalidDateRange() {
+        return new ModerationException(
+                "MOD-021",
+                "Invalid date range: 'from' must not be after 'to'",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    // UC-113 (CB-MOD-IMP-007 §10)
+    public static ModerationException invalidImpactReportDateRange() {
+        return new ModerationException(
+                "MOD-022",
+                "Invalid date range: 'from' must not be after 'to'",
+                HttpStatus.BAD_REQUEST);
+    }
 }

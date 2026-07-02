@@ -24,6 +24,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                                          |
 | ---------- | ------------------------------------- | ---------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Khởi tạo TDD spec cho UC-225 View Verified Content Detail |
+| 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa lỗi biên dịch trong Props Isolation factory: `ContentStatus.PENDING` → `ContentStatus.PENDING_REVIEW` (giá trị thật của enum, verified `ContentStatus.java`); sửa TDS-03/TC-225-3 wording khớp tên enum đúng. Status giữ nguyên `Draft` — không tự approve. |
 
 ---
 
@@ -106,7 +107,7 @@ ViewVerifiedContentDetail bao gồm:
 | -------- | -------------------------------------------------- | ------------------ | ------------ |
 | TC-225-1 | Get APPROVED content with all fields present       | Happy path         | Mapper + CT  |
 | TC-225-2 | Content updated 13 months ago → isContentStale=true | BR-SAFETY test    | Mapper       |
-| TC-225-3 | Get PENDING content as regular user → 404          | Authorization test | CT           |
+| TC-225-3 | Get PENDING_REVIEW content as regular user → 404   | Authorization test | CT           |
 | TC-225-4 | Get non-existent content ID → 404                  | Error path         | CT           |
 | TC-225-5 | Unauthenticated request → 401                      | Security test      | Controller   |
 | TC-225-6 | Content with null sourceLabel → null in response   | Null-safety test   | Mapper       |
@@ -175,7 +176,10 @@ public class ViewContentDetailTestFactory {
     }
 
     public static ContentItem makePendingContent() {
-        return makeApprovedContent().toBuilder().status(ContentStatus.PENDING).build();
+        // corrected 2026-07-02: ContentStatus has no PENDING value — real enum is
+        // DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED (ContentStatus.java). ContentStatus.PENDING
+        // does not compile.
+        return makeApprovedContent().toBuilder().status(ContentStatus.PENDING_REVIEW).build();
     }
 }
 ```

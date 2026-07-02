@@ -54,6 +54,8 @@ public class SecurityConfig {
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/community/dashboard").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/impact-report").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/actions").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/reports/*/resolve").hasRole("MODERATOR")

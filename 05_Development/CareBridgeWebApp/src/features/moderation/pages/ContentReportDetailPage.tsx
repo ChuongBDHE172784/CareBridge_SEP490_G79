@@ -1,0 +1,191 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import ModPortalSidebar from '../components/ModPortalSidebar';
+import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
+import type { ModerationQueueItem } from '../models/moderation';
+import { TARGET_TYPE_LABELS, canHideTarget } from '../models/moderation';
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+export default function ContentReportDetailPage() {
+  const { reportId } = useParams<{ reportId: string }>();
+  const navigate = useNavigate();
+  const [item, setItem] = useState<ModerationQueueItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
+
+  const loadItem = useCallback(async () => {
+    if (!reportId) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const page = await fetchModerationQueue({ targetType: 'CONTENT', size: 50 });
+      let found = page.content.find((i) => i.id === reportId);
+      if (!found) {
+        const questionAnswerPage = await fetchModerationQueue({ size: 50 });
+        found = questionAnswerPage.content.find((i) => i.id === reportId);
+      }
+      if (!found) setError('Không tìm thấy báo cáo này trong hàng đợi hiện tại.');
+      setItem(found ?? null);
+    } catch {
+      setError('Không tải được dữ liệu báo cáo. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reportId]);
+
+  useEffect(() => { loadItem(); }, [loadItem]);
+
+  const handleAction = async (outcome: 'HIDE' | 'DISMISS') => {
+    if (!item) return;
+    setSubmitting(outcome);
+    setActionError('');
+    try {
+      await resolveReport(item.id, outcome, reason || undefined);
+      navigate('/moderator/reports');
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setActionError(message || 'Xử lý thất bại. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <ModPortalSidebar />
+      <div className="ml-64 min-h-screen p-8 font-sans">
+        <button
+          onClick={() => navigate('/moderator/reports')}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-on-surface cursor-pointer mb-4"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          Trở lại danh sách
+        </button>
+
+        {isLoading ? (
+          <div className="py-16 text-center text-outline">Đang tải...</div>
+        ) : error || !item ? (
+          <div className="bg-error-container rounded-2xl p-6 text-error text-sm">
+            {error || 'Không tìm thấy báo cáo.'}
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="py-1 px-3 rounded-full bg-error-container text-error text-xs font-semibold">
+                {item.reportReason}
+              </span>
+              <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
+            </div>
+            <h1 className="text-2xl font-bold text-on-surface mt-1 mb-6">Chi tiết báo cáo</h1>
+
+            <div className="grid grid-cols-[1fr_360px] gap-6">
+              <div>
+                <div className="bg-surface rounded-2xl p-6 shadow-md mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary text-xl">flag</span>
+                    <h2 className="text-base font-bold text-on-surface m-0">Lý do báo cáo</h2>
+                  </div>
+                  <p className="text-sm text-on-surface-variant mb-4">{item.reportReason}</p>
+                  <div className="bg-surface-container-low rounded-2xl p-4">
+                    <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">
+                      Chi tiết từ người dùng
+                    </p>
+                    <p className="text-sm text-on-surface italic">"{item.reportReason}"</p>
+                  </div>
+                  <div className="flex justify-between items-center mt-4 text-xs text-outline">
+                    <span>Người báo cáo: Ẩn danh</span>
+                    <span>Báo cáo lúc: {formatDateTime(item.reportedAt)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-surface rounded-2xl p-6 shadow-md">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary text-xl">article</span>
+                    <h2 className="text-base font-bold text-on-surface m-0">Nội dung bị báo cáo</h2>
+                  </div>
+                  <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant">
+                    <p className="text-sm text-outline mb-1">{TARGET_TYPE_LABELS[item.targetType]}</p>
+                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="bg-surface rounded-2xl p-5 shadow-md">
+                  <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
+                    Xử lý vi phạm
+                  </p>
+
+                  <button
+                    onClick={() => handleAction('HIDE')}
+                    disabled={!canHideTarget(item.targetType) || submitting !== null}
+                    title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ xoá cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Xoá khỏi hệ thống (thực thi qua outcome HIDE)'}
+                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-error text-on-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                    {submitting === 'HIDE' ? 'Đang xử lý...' : 'Xóa bài viết'}
+                  </button>
+
+                  <button
+                    onClick={() => handleAction('HIDE')}
+                    disabled={!canHideTarget(item.targetType) || submitting !== null}
+                    title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ ẩn cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Ẩn khỏi hệ thống (thực thi qua outcome HIDE — cùng hành động với Xóa bài viết)'}
+                    className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-lg">visibility_off</span>
+                    Ẩn nội dung
+                  </button>
+
+                  <button
+                    onClick={() => handleAction('DISMISS')}
+                    disabled={submitting !== null}
+                    className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-primary text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-lg">check</span>
+                    {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua'}
+                  </button>
+
+                  <button
+                    disabled
+                    title="Backend chưa có outcome chuyển tuyến (escalate)"
+                    className="w-full py-3 mb-4 rounded-2xl bg-transparent border border-outline-variant text-on-surface-variant text-sm font-semibold flex items-center justify-center gap-2 opacity-40 cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-lg">forward</span>
+                    Chuyển tuyến
+                  </button>
+
+                  <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Ghi chú xử lý (tuỳ chọn)..."
+                    rows={3}
+                    className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans"
+                  />
+                  {actionError && <p className="text-error text-xs mt-2">{actionError}</p>}
+                </div>
+
+                <div className="bg-surface rounded-2xl p-5 shadow-md">
+                  <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
+                    Lịch sử báo cáo
+                  </p>
+                  <p className="text-sm text-outline">
+                    Tổng số lượt báo cáo trên mục tiêu này: <strong>{item.reportCount}</strong>
+                  </p>
+                  <p className="text-xs text-outline mt-2">
+                    Chi tiết từng báo cáo tương tự chưa được backend cung cấp.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

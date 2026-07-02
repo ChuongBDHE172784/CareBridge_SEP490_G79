@@ -24,6 +24,7 @@
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-108 Approve Content Version (Status=Draft)    |
 | 2026-07-02 | AI Agent — Amelia (Dev Agent) | Implemented per Option A (ADR-001/ADR-002). `ContentStatus.PENDING_REVIEW` added, Java-enum-only (verified — no CHECK constraint on `content_items.status`), confirming ADR-002's own verification. New `ContentApprovalController`/`ContentApprovalService`/`ContentApprovalServiceImpl` (separate from `AdminContentController`, per §11.3 step 5 — SYSTEM_ADMIN vs CONTENT_ADMIN separation of duties). `AuditAction.CONTENT_DECIDED` added — this time the `audit_logs_action_check` CHECK-constraint migration (`V20260702001000__widen_audit_logs_action_check_v3.sql`) was added proactively in the SAME step as the enum change, learning from the UC-106/UC-107 drift where this was missed and fixed after the fact. All 11 planned test cases (CAV-TC-1001..1010, CAV-TC-INT-001 — 14 test executions incl. parameterized) implemented and GREEN. Full regression: 778 tests, 33 pre-existing errors (unchanged baseline, same 6 known DB-dependent classes), 0 new failures. |
 | 2026-07-02 | AI Agent — Amelia (Dev Agent) | **Post-implementation advisor review** found the initial GREEN implementation had dropped two details from this TDS's own design: §6.1's `item.setPublishedAt(now()) [if not already set]` step on APPROVE (omitted entirely — would have caused approved content to sink to the bottom of `searchByFilters()`'s `publishedAt DESC NULLS LAST` ordering), and BR-AUDIT-001's requirement that the audit record include `reason` (the REJECT reason was only in the transient HTTP response, not the audit trail). Both fixed in `ContentApprovalServiceImpl.decide()`; 3 new regression tests added (CAV-TC-1011/1012/1013, see Test-Spec). Full regression re-verified: 781 tests, 33 pre-existing errors (unchanged baseline), 0 new failures. |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | Reconciled §10's `CNT-006/007` numbering note (originally speculated they'd go to UC-226/227) against the now-implemented UC-107 TDS, which claims those two codes. No other discrepancies found — this doc's PENDING_REVIEW/versionNo/schema-delta claims all verified accurate against the current codebase. Status kept as `Implemented`. |
 
 ---
 
@@ -319,6 +320,11 @@ public record ContentDecisionResponse(
 > **Numbering:** UC-105 defined `CNT-001,002,004,005`; UC-106 implemented reserved `CNT-003`. UC-108 claims
 > **`CNT-008, CNT-009`** (headroom above UC-226/227, per orchestrator instruction — leaves `CNT-006/007` for
 > whichever of UC-226/227 is drafted with lower numbers; Consistency Gate to reconcile final assignment).
+>
+> **Reconciled (Audit Pass, 2026-07-02):** `CNT-006`/`CNT-007` were subsequently claimed by **UC-107** (Hide
+> or Delete Content) — `ContentException.alreadyArchived()` and `ContentException.hideReasonRequired()`
+> respectively — not by UC-226/227 as anticipated here. No collision with UC-108's `CNT-008/009`; see
+> UC-107 TDS `CB-CONTENT-IMP-006` §10 for the final reconciliation.
 
 ---
 

@@ -27,6 +27,7 @@
 | ---------- | -------------------- | ------------------------------------------------------------------------------------------ |
 | 2026-07-02 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-107 Hide or Delete Content (Status=Draft)          |
 | 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 12/13 TCs PASS (6 service unit + 3 controller + 2 security + 1 mocked-HTTP-flow integration). **`UCT-TC-1201b` (PENDING_REVIEW → ARCHIVED) NOT implemented** — `ContentStatus` has no `PENDING_REVIEW` value in this codebase (verified: enum is `DRAFT`/`APPROVED`/`ARCHIVED` only); the TDS's transition-guard spec assumed a status that doesn't exist. Implemented the guard as "any non-ARCHIVED → ARCHIVED" (matches ADR-002's stated intent), exercised via `UCT-TC-1201a`(DRAFT)/`1201c`(APPROVED). `UCT-TC-1206` (row never physically deleted) adapted from a Testcontainers row-count assertion to a service-unit-test verifying `contentRepository.delete()`/`deleteById()` are never invoked (no Testcontainers in this codebase). `UCT-TC-1208` corrected: `SecurityConfig` URL-matcher denial means the 403 body is empty, not `error.code == CNT-004` — same pattern as UC-106's `UCT-TC-910`. `UCT-TC-INT-1201` implemented as mocked-service full-HTTP-stack test (no Testcontainers); the "public read path excludes archived item" assertion is not independently re-verified (logical consequence of existing unchanged `status='APPROVED'` filters). Also fixed a latent bug: UC-106's `CONTENT_UPDATED` was missing from the `audit_logs_action_check` CHECK constraint — added in the same migration as `CONTENT_HIDDEN`. Full regression: 0 new failures. **Not yet committed** — work is on the shared `dev` branch. |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | **Correction:** `ContentStatus` now includes `PENDING_REVIEW` (`DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED`), added by commit `84d65a6d` (UC-108's approval workflow, post-dating the Amelia entry above). The "`ContentStatus` has no `PENDING_REVIEW` value" claims above and at `UCT-TC-1201b` were accurate when written but are now stale. Fixed the un-updated `UCT-TC-1208` "Expected Result" line (still said `error.code == "CNT-004"` despite this same changelog already noting the corrected empty-body finding). `UCT-TC-1201b` is still genuinely not implemented (open follow-up, not re-marked GREEN) — the enum blocker is gone but no test was written. |
 
 ---
 
@@ -208,6 +209,11 @@ was never implemented (likely anticipating UC-108's approval workflow, not yet b
 was implemented as ADR-002's actual stated rule ("any non-ARCHIVED status → ARCHIVED"), which will
 automatically cover `PENDING_REVIEW` if/when UC-108 introduces it — no code change needed then. This test
 case is deliberately left unimplemented (not faked) rather than referencing a non-existent enum constant.
+**Audit correction (2026-07-02):** `PENDING_REVIEW` has since been added to `ContentStatus` by commit
+`84d65a6d` (UC-108's approval workflow). The blocker described above no longer applies — the enum value now
+exists and the transition guard (implemented as "any non-ARCHIVED → ARCHIVED") already covers it without
+further code changes, exactly as predicted. `UCT-TC-1201b` is still `🔴 Not written` — this remains an open
+test-coverage gap for someone to pick up, not silently resolved.
 
 ---
 
@@ -345,7 +351,12 @@ case is deliberately left unimplemented (not faked) rather than referencing a no
 
 **Preconditions:** JWT role MODERATOR (`FX-1706`)
 
-**Expected Result (PASS):** 403, `error.code == "CNT-004"`.
+**Expected Result (PASS):** 403, `error.code == "CNT-004"`. **[Audit correction, 2026-07-02]:** the
+Changelog above already notes this test body ended up asserting status-only — `SecurityConfig` URL-matcher
+denial precedes `DispatcherServlet`, so the 403 response body is empty (verified in
+`HideContentControllerSecurityTest.hideContent_asModeratorRole_shouldReturn403()`, which only asserts
+`status().isForbidden()`). This "Expected Result" line was left un-updated when that correction was made
+elsewhere in the doc; it should read: 403, empty body (no `error.code` assertion).
 
 **Current Status:** 🟢 Passing
 

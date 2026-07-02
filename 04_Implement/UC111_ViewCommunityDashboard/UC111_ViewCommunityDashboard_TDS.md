@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-006`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-111 View Community Dashboard (Status=Draft)        |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 16/16 tests PASS. Resolved `Open` items to their own recommended defaults: trending top-N = 5, default window = last 30 days (no Product override received). Deviations verified/applied: (1) `avgHandlingTimeSeconds` computed in Java from `(createdAt, resolvedAt)` pairs rather than SQL `EXTRACT(EPOCH FROM ...)` — that syntax is Postgres-specific and this codebase's test datasource is H2 with no Testcontainers/real-Postgres harness anywhere (verified project-wide); (2) `MOD-021` implemented as a new factory on the existing `ModerationException` (per §10's own "either satisfies the contract" note) rather than a new `DashboardException` class; (3) repository aggregate methods added directly to the existing `UserRepository`/`CommunityQuestionRepository`/`CommunityAnswerRepository`/`ContentReportRepository` — no `CommunityTopicRepository` dependency needed since the trending JOIN lives in `CommunityQuestionRepository`; (4) UC-102 confirmed merged (`users.suspended_until` present) — full active-user predicate implemented, no degraded fallback needed; (5) `DASH-TC-INT-001/002` hosted as `@SpringBootTest`+H2 (real Spring-managed beans end-to-end), not Testcontainers. Status: Approved → Implemented. |
 
 ---
 

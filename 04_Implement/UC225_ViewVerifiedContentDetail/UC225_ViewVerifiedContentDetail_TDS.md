@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện                       | Nội dung thay đổi                                          |
 | ---------- | ------------------------------------- | ---------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-225 View Verified Content Detail |
+| 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: ContentStatus enum ghi sai (`PENDING`/`HIDDEN` không tồn tại — đúng là `DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED`, verified `ContentStatus.java`); §9/§10/§15 sửa mã lỗi bịa `AUTH_REQUIRED`/`CONTENT_NOT_FOUND` thành thực tế (401 = bare status không code; 404 = `CNT-003` từ `ContentException.contentNotFound()` có sẵn). Gap analysis (§1, §5.3, §8) đã verify khớp code hiện tại — không cần sửa. Status giữ nguyên `Draft` theo quy ước audit — không tự approve. |
 
 ---
 
@@ -100,7 +101,7 @@
 | **Date**   | `2026-07-01` |
 
 #### Bối cảnh (Context)
-Content có nhiều status: DRAFT, PENDING, APPROVED, ARCHIVED, HIDDEN (kiểm tra ContentStatus enum). Regular user chỉ nên thấy APPROVED content. Admin (CONTENT_ADMIN, MODERATOR) cần xem tất cả để quản lý.
+Content có nhiều status: `DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED` (verified — `ContentStatus.java`, không có `HIDDEN`, và giá trị đúng là `PENDING_REVIEW` chứ không phải `PENDING`; corrected 2026-07-02). Regular user chỉ nên thấy APPROVED content. Admin (CONTENT_ADMIN, MODERATOR) cần xem tất cả để quản lý.
 
 #### Quyết định (Decision)
 `ContentService.getContentById()` hiện tại đã filter `status = APPROVED` (cần verify). Admin access đã có qua `AdminContentController`. Spec này chỉ bổ sung fields còn thiếu trên public endpoint — không thay đổi status filter.
@@ -358,8 +359,8 @@ public ContentDetailResponse toDetailResponse(ContentItem item) {
 
 | HTTP Status | Error Code          | Condition                                       |
 | ----------- | ------------------- | ----------------------------------------------- |
-| `401`       | `AUTH_REQUIRED`     | No JWT token                                    |
-| `404`       | `CONTENT_NOT_FOUND` | Content ID does not exist or status != APPROVED |
+| `401`       | *(none — bare status)* | No JWT token (corrected 2026-07-02: `SecurityConfig`'s `HttpStatusEntryPoint` returns status only, no JSON body/code — there is no `AUTH_REQUIRED` code in the codebase) |
+| `404`       | `CNT-003`            | Content ID does not exist or status != APPROVED (corrected 2026-07-02: existing `ContentException.contentNotFound()` uses `CNT-003`, matching UC-224's `CNT-xxx` convention — not `CONTENT_NOT_FOUND`) |
 
 **BR-SAFETY — Mobile Display Rule:**
 When `isContentStale = true`, mobile app MUST display warning banner: `"Nội dung này có thể chưa được cập nhật gần đây. Hãy tham khảo ý kiến bác sĩ."` This is a mobile-side rendering rule, not backend.
@@ -370,7 +371,7 @@ When `isContentStale = true`, mobile app MUST display warning banner: `"Nội du
 
 | Error Code          | HTTP Status | Message (EN)                   | Condition                      |
 | ------------------- | ----------- | ------------------------------ | ------------------------------ |
-| `CONTENT_NOT_FOUND` | `404`       | Content item not found         | No APPROVED content with given ID |
+| `CNT-003` (was `CONTENT_NOT_FOUND` — corrected 2026-07-02) | `404`       | Content item not found         | No APPROVED content with given ID |
 
 ---
 
@@ -404,7 +405,7 @@ Git revert the DTO and mapper changes. No schema migration to rollback.
 | -------- | ----------------------------------------------------- | -------------------------------------------- |
 | TC-225-1 | Get APPROVED content with all fields present          | 200, sourceLabel + updatedAt + isContentStale=false |
 | TC-225-2 | Get content updated 13 months ago                     | 200, isContentStale=true                     |
-| TC-225-3 | Get PENDING/DRAFT content as regular user             | 404 Not Found                                |
+| TC-225-3 | Get PENDING_REVIEW/DRAFT content as regular user      | 404 Not Found                                |
 | TC-225-4 | Get non-existent content ID                           | 404 Not Found                                |
 | TC-225-5 | Unauthenticated request                               | 401 Unauthorized                             |
 | TC-225-6 | Content with null sourceLabel                         | 200, sourceLabel=null (nullable field)       |
@@ -432,10 +433,10 @@ curl http://localhost:8080/api/v1/content/{id} \
   -H "Authorization: Bearer $MOTHER_TOKEN"
 # Expected: 200 {"data":{"sourceLabel":"...","updatedAt":"...","isContentStale":false,...}}
 
-# Verify PENDING content returns 404
+# Verify PENDING_REVIEW content returns 404
 curl http://localhost:8080/api/v1/content/{pending_content_id} \
   -H "Authorization: Bearer $MOTHER_TOKEN"
-# Expected: 404 {"code":"CONTENT_NOT_FOUND"}
+# Expected: 404 {"error":"CNT-003", ...} (corrected 2026-07-02 — was CONTENT_NOT_FOUND)
 ```
 
 ---

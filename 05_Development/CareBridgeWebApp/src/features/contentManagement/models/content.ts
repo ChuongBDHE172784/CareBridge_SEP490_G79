@@ -1,6 +1,7 @@
 export type ContentType = 'ARTICLE' | 'FAQ' | 'CHECKLIST';
 export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM' | 'BABY_CARE';
-export type ContentStatus = 'DRAFT' | 'APPROVED' | 'ARCHIVED';
+export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED';
+export type ContentDecision = 'APPROVE' | 'REJECT';
 
 export interface ContentListItem {
   id: string;
@@ -82,6 +83,7 @@ export const TYPE_LABELS: Record<ContentType, string> = {
 
 export const STATUS_LABELS: Record<ContentStatus, string> = {
   DRAFT: 'Ban nhap',
+  PENDING_REVIEW: 'Cho phe duyet',
   APPROVED: 'Da xuat ban',
   ARCHIVED: 'Luu tru',
 };

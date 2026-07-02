@@ -9,6 +9,8 @@ import type {
   PaginatedResponse,
   ContentType,
   ContentStage,
+  ContentStatus,
+  ContentDecision,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -70,14 +72,53 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
   return res.data.data;
 }
 
+export interface CreateContentResult {
+  id: string;
+  type: ContentType;
+  title: string;
+  stage: ContentStage;
+  status: string;
+  version: number;
+  createdAt: string;
+}
+
 export async function createContent(data: {
   type: ContentType;
   title: string;
   body: string;
   stage: ContentStage;
-  topicId: string;
-}) {
-  const res = await apiClient.post('/api/v1/admin/content', data);
+  topicId?: string;
+}): Promise<CreateContentResult> {
+  const res = await apiClient.post<ApiResponse<CreateContentResult>>('/api/v1/admin/content', data);
+  return res.data.data;
+}
+
+export async function updateContent(
+  id: string,
+  data: {
+    title: string;
+    body: string;
+    stage: ContentStage;
+    topicId?: string;
+    status: ContentStatus;
+    sourceLabel?: string;
+  },
+): Promise<ContentDetail & { status: ContentStatus; versionNo: number }> {
+  const res = await apiClient.put<ApiResponse<ContentDetail & { status: ContentStatus; versionNo: number }>>(
+    `/api/v1/admin/content/${id}`,
+    data,
+  );
+  return res.data.data;
+}
+
+export async function decideContent(
+  id: string,
+  decision: ContentDecision,
+  reason?: string,
+): Promise<{ id: string; previousStatus: ContentStatus; newStatus: ContentStatus; decidedAt: string }> {
+  const res = await apiClient.post<
+    ApiResponse<{ id: string; previousStatus: ContentStatus; newStatus: ContentStatus; decidedAt: string }>
+  >(`/api/v1/admin/content/${id}/decision`, { decision, reason });
   return res.data.data;
 }
 

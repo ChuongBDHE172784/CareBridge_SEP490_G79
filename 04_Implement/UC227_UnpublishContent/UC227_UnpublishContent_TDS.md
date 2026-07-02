@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-227 Unpublish Content (Status=Draft)          |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | **Cross-doc note (no status change):** UC-107's TDS (`CB-CONTENT-IMP-006`, Implemented, dated 2026-07-02 — after this doc), §ADR-003, proposes that `POST /api/v1/admin/content/{id}/archive` (already built for UC-107) subsumes this UC's `POST /api/v1/admin/content/{id}/unpublish` for the `APPROVED→ARCHIVED` case, and recommends UC-227 be updated to "satisfied by UC-107" rather than implemented as a separate endpoint when its turn comes. UC-107's own ADR-003 is explicitly marked `Proposed — needs Tech Lead confirmation`, not a decided merge. This TDS is left as-is (still describing a standalone `/unpublish` endpoint) pending that human decision — implementers should check UC-107's ADR-003 status before starting UC-227 work. Also reconciled §10's `CNT-006/007` numbering note: those codes were claimed by UC-107, not left as an open gap. |
 
 ---
 
@@ -299,6 +300,12 @@ public record UnpublishResponse(
 > UC-227 claims **`CNT-010, CNT-011`**. This is the last Content UC in the batch — highest CNT code is `011`.
 > Consistency Gate must confirm UC-108/UC-227's `006/007` gap (dossier reserved `CNT-006` as the batch start
 > — re-verify no UC actually needed 006/007; if unused, note as an intentional gap, not a bug).
+>
+> **Reconciled (Audit Pass, 2026-07-02):** The `CNT-006/007` gap was filled by **UC-107** (Hide or Delete
+> Content, `CB-CONTENT-IMP-006`) — `alreadyArchived()`/`hideReasonRequired()` — not by UC-226. No collision
+> with UC-108's `008/009` or this UC's `010/011`. If UC-107's ADR-003 (this endpoint subsumes UC-227) is
+> later confirmed, `CNT-010/011` would become unused/superseded rather than implemented as new codes — a
+> decision for whoever picks up UC-227 next, not resolved by this audit.
 
 ---
 

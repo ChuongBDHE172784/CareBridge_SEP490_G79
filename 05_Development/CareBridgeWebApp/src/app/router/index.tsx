@@ -32,6 +32,12 @@ import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
+// Content Management screens (CB-076, CB-077, CB-079, CB-087)
+import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
+import EditContentPage from '../../features/contentManagement/pages/EditContentPage';
+import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
+import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
+
 // Partner Portal screens (CB-096, CB-097)
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
@@ -39,7 +45,13 @@ import RegisterPartnerPage from '../../features/partnerGovernance/pages/Register
 // Moderation screens (CB-072, CB-088)
 import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
 import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
-import ModeratorPlaceholderPage from '../../features/moderation/pages/ModeratorPlaceholderPage';
+
+// Moderation screens (CB-068, CB-069, CB-070, CB-071)
+import ModerationItemDetailPage from '../../features/moderation/pages/ModerationItemDetailPage';
+import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
+import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
+import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
+import ViolationHistoryPage from '../../features/moderation/pages/ViolationHistoryPage';
 
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
@@ -98,11 +110,22 @@ export const router = createBrowserRouter([
             children: [
               { path: '/content/dashboard', element: <ContentDashboardPage /> },
               { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
+              { path: '/content/create', element: <CreateContentPage /> },
               { path: '/content/list', element: <ContentListPage /> },
               { path: '/content/:id', element: <ContentDetailPage /> },
+              { path: '/content/:id/edit', element: <EditContentPage /> },
               { path: '/content/:id/preview', element: <ContentPreviewPage /> },
+              { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
               { path: '/content/faq', element: <FaqListPage /> },
               { path: '/content/checklists', element: <ChecklistListPage /> },
+            ],
+          },
+          {
+            // ContentApprovalController is @PreAuthorize hasRole('SYSTEM_ADMIN') at class level —
+            // guard matches the backend, not the broader CONTENT_ADMIN content group above.
+            element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
+            children: [
+              { path: '/content/approval-queue', element: <ContentApprovalQueuePage /> },
             ],
           },
           {
@@ -131,26 +154,11 @@ export const router = createBrowserRouter([
             children: [
               { path: '/moderator/dashboard', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
-              {
-                path: '/moderator/reports',
-                element: (
-                  <ModeratorPlaceholderPage
-                    icon="flag"
-                    title="Báo cáo"
-                    description="Theo dõi các báo cáo nội dung và hoạt động cần kiểm duyệt."
-                  />
-                ),
-              },
-              {
-                path: '/moderator/violations',
-                element: (
-                  <ModeratorPlaceholderPage
-                    icon="gavel"
-                    title="Vi phạm"
-                    description="Quản lý các vi phạm chính sách đã được ghi nhận trong hệ thống."
-                  />
-                ),
-              },
+              { path: '/moderator/queue/:reportId', element: <ModerationItemDetailPage /> },
+              { path: '/moderator/reports', element: <ReportsQueuePage /> },
+              { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
+              { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
+              { path: '/moderator/violations', element: <ViolationHistoryPage /> },
               { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
               { path: '/moderator', element: <Navigate to="/moderator/safety-cases" replace /> },

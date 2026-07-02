@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-007`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                                   |
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-113 View Impact Report (Status=Draft)              |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 15/15 tests PASS. Deviations verified/applied: (1) `ConsultationSession` entity + `ConsultationSessionRepository` did not exist anywhere in the codebase — added minimal, read-only (id, endedAt, createdAt; single `countByEndedAtIsNotNull()` method), exactly as pre-authorized by §8.2/§11.2 ("add minimal read-only repo... not a schema change"); (2) v1 metrics are system-wide totals and are NOT filtered by the `from`/`to` window — matches this TDS's own "(optionally...)" framing in §5.2 (period filtering was explicitly optional); `periodFrom`/`periodTo` are still echoed in the response; (3) `MOD-022` implemented as a second factory method on the existing `ModerationException` (alongside UC-111's `MOD-021` on the same class) rather than a new `ImpactReportException`; (4) `suppressSmallCohorts()` implemented as an explicit private no-op hook per ADR-004 C4 — ships inert since v1 has no dimensional breakdown, with a test (IMP-TC-109) asserting no breakdown field exists; (5) `IMP-TC-INT-001/002` hosted as `@SpringBootTest`+H2 (real beans end-to-end), not Testcontainers. **DPO sign-off on ADR-004 anonymization remains outstanding** and is required before these metrics are used externally — the implementation enforces the ADR-004 mechanism (no PII, suppression hook present) independent of that sign-off. Status: Approved → Implemented. |
 
 ---
 

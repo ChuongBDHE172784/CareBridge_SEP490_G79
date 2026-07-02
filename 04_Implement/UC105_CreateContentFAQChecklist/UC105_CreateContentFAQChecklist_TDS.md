@@ -23,6 +23,7 @@
 | ---------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-105 Create Content/FAQ/Checklist                                                                       |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent)         | Implementation hoàn thành. Tạo V3 migration (stage column), content module (entity/repo/dto/mapper/service/controller), 16 tests GREEN. Status → Approved. |
+| 2026-07-02 | AI Agent — Claude (Audit Pass)        | **Corrections (Status kept as `Approved`):** (1) §10 was missing `CNT-003` entirely — `AdminContentServiceImpl.createContent()` actually validates `topicId` via `CommunityTopicRepository.existsById()` and throws `ContentException.topicNotFound()` (`CNT-003`, 400) when invalid, covered by the existing `CNT-TC-008`/`createContent_topicIdNotFound_throwsContentExceptionCnt003` test — added the missing row. (2) §5.1/§5.2's `CreateContentResponse.createdAt: LocalDateTime` corrected to `Instant` (actual field type). (3) §7.3's `ContentCreatedEvent` record does not exist in the codebase — the real implementation calls `auditService.log(...)` directly; annotated as illustrative design intent, not an implemented contract. Cross-doc: this table's new `CNT-003` row also corrects UC-106's TDS, which incorrectly assumed `CNT-003` was unused before UC-106 (see UC-106 TDS §10, fixed in the same audit pass). |
 
 ---
 
@@ -210,7 +211,7 @@ class CreateContentResponse {
   + stage: ContentStage
   + status: String             // always "DRAFT"
   + version: Integer           // always 1
-  + createdAt: LocalDateTime
+  + createdAt: Instant
 }
 
 ' === ADMIN CONTROLLER ===
@@ -304,7 +305,7 @@ public class CreateContentResponse {
     private ContentStage stage;
     private String status;     // Always "DRAFT"
     private Integer version;   // Always 1
-    private LocalDateTime createdAt;
+    private Instant createdAt;  // audit correction (2026-07-02): actual code uses Instant, not LocalDateTime
 }
 ```
 
@@ -478,8 +479,15 @@ end note
 
 ### 7.3. Payload Schema
 
+> **Audit correction (2026-07-02):** `ContentCreatedEvent` below does **not** exist as a class in the
+> codebase — verified, no such file under `com.carebridge.backend.content`. The actual implementation calls
+> `auditService.log(AuditAction.CONTENT_CREATED, authorUserId, "ContentItem", entity.getId().toString(),
+> "created")` directly (`AdminContentServiceImpl.createContent()`) — a plain method call, not a published
+> domain-event object with this payload shape. The record below documents the *original design intent*, not
+> what was built; treat it as illustrative/aspirational, not a contract to implement against.
+
 ```java
-// ContentCreatedEvent.java — com.carebridge.backend.content.entity (domain event)
+// ContentCreatedEvent.java — com.carebridge.backend.content.entity (domain event) — NOT IMPLEMENTED, see note above
 public record ContentCreatedEvent(
     String eventId,            // UUID
     String eventType,          // "ContentCreated"
@@ -654,6 +662,7 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 | --------- | ----------- | ------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------- |
 | `CNT-001` | 400         | Validation failed                                      | Dữ liệu không hợp lệ | type/stage enum sai; title blank/quá dài; body quá dài; topicId không phải UUID |
 | `CNT-002` | 409         | Content with same title, stage and type already exists | Nội dung trùng lặp   | Tồn tại ContentItem với title+stage+type giống nhau                             |
+| `CNT-003` | 400         | Topic not found: {topicId}                              | Topic không tồn tại  | `topicId` được cung cấp nhưng `CommunityTopicRepository.existsById(topicId)` trả về false — **audit fix (2026-07-02): missing from this table originally**, verified present in `AdminContentServiceImpl.createContent()` and covered by `CNT-TC-008`/`createContent_topicIdNotFound_throwsContentExceptionCnt003` |
 | `CNT-004` | 403         | Insufficient permissions                               | Không đủ quyền       | User không có role CONTENT_ADMIN                                                |
 | `CNT-005` | 500         | Internal server error                                  | Lỗi hệ thống         | Database save error, audit log failure                                          |
 | `IAM-001` | 401         | Authentication required                                | Yêu cầu xác thực     | Không có JWT hoặc JWT không hợp lệ                                              |

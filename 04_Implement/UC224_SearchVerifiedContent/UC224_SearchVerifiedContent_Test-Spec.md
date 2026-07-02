@@ -29,6 +29,7 @@
 | ---------- | ------------------------------------- | --------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston (System Architect) | Khởi tạo tài liệu — TDD spec cho UC-224 Search Verified Content |
 | 2026-06-24 | AI Agent — Amelia (Dev)               | GREEN Phase hoàn thành — 22/22 tests PASS; cập nhật tracker & DoD |
+| 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: xoá claim `IAM-001` không tồn tại (401 là bare status, không body) khỏi TDS-02 và CNT224-TC-SEC-002 test snippet để khớp `ContentSearchSecurityTest.java` thực tế; sửa Entry Criteria — index `idx_content_items_title_search` đã có sẵn trong `V1__init_schema.sql` baseline, không phải "V8 migration" riêng. Status giữ nguyên `Approved` theo quy ước audit. |
 
 ---
 
@@ -116,7 +117,7 @@ UC-224 Search Verified Content bao gồm:
 | `ADR-004`                 | Keyword sanitization: trim + escape LIKE wildcards  |
 | `BR-RBAC`                 | Chỉ APPROVED content trong search results           |
 | `CB-CONTENT-IMP-002 §9.2` | Empty search → 200 không phải 404                   |
-| `CB-CONTENT-IMP-002 §10`  | Error codes CNT-001 (validation), IAM-001 (auth)    |
+| `CB-CONTENT-IMP-002 §10`  | Error codes CNT-001 (validation); 401 auth failure has no error code (bare status, corrected 2026-07-02) |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
@@ -593,28 +594,18 @@ void searchContent_withSQLInjectionPayload_shouldNotCauseError(String maliciousK
 **TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 
-**Test Steps:**
+**Test Steps (corrected 2026-07-02 to match actual test file — no `IAM-001` exists in the codebase; 401 is a bare status with no body, set by `HttpStatusEntryPoint` in `SecurityConfig`):**
 
 ```java
 @Test
 void searchContent_withoutJwt_shouldReturn401() throws Exception {
     mockMvc.perform(get("/api/v1/content/search")
             .param("keyword", "thai ky"))
-        .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error.code").value("IAM-001"));
-}
-
-@Test
-void searchContent_withExpiredJwt_shouldReturn401() throws Exception {
-    mockMvc.perform(get("/api/v1/content/search")
-            .param("keyword", "thai ky")
-            .header("Authorization", "Bearer " + expiredJwt))
-        .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error.code").value("IAM-001"));
+        .andExpect(status().isUnauthorized());
 }
 ```
 
-**Expected Result (PASS):** HTTP 401 với IAM-001
+**Expected Result (PASS):** HTTP 401 (bare status, no body/error code)
 **Expected Result (FAIL):** Search results returned without authentication
 **Current Status:** 🟢 Passing
 
@@ -816,7 +807,7 @@ private String sanitizeKeyword(String keyword) {
 - [x] UC-82 đã implement (ContentItem entity, ContentRepository tồn tại)
 - [x] TDS `CB-CONTENT-IMP-002` đã được review
 - [x] Logic Issues §2 đã được confirm
-- [x] V8 migration tạo index `idx_content_items_title_search` đã chuẩn bị
+- [x] Index `idx_content_items_title_search` sẵn có (đã tồn tại trong baseline `V1__init_schema.sql`, không phải qua migration riêng "V8" — corrected 2026-07-02)
 - [x] Fixtures FX-224-001 đến FX-224-008 đã chuẩn bị (trong test factories)
 - [x] Spring context setup sẵn sàng (kế thừa từ UC-82)
 

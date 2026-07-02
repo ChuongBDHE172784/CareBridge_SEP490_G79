@@ -20,6 +20,7 @@ import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.safety.exception.SafetyException;
+import com.carebridge.backend.triage.exception.RedFlagRuleException;
 import com.carebridge.backend.triage.exception.TriageException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -321,6 +322,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TriageException.class)
     public ResponseEntity<ErrorResponse> handleTriage(TriageException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RedFlagRuleException.class)
+    public ResponseEntity<ErrorResponse> handleRedFlagRule(RedFlagRuleException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

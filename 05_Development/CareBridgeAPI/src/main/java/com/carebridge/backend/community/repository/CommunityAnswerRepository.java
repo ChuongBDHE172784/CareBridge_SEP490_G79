@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -19,4 +20,11 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
 
     // UC-199: fetch approved answers for a question detail view
     List<CommunityAnswer> findAllByQuestionIdAndStatusOrderByCreatedAtDesc(UUID questionId, AnswerStatus status);
+
+    // UC-111: dashboard aggregation — answer count grouped by status
+    @Query("SELECT a.status, COUNT(a) FROM CommunityAnswer a GROUP BY a.status")
+    List<Object[]> countGroupByStatus();
+
+    // UC-111: dashboard aggregation — new answers within the reporting window
+    long countByCreatedAtBetween(Instant from, Instant to);
 }

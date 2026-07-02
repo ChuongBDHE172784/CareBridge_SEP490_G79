@@ -23,6 +23,7 @@
 | ---------- | ------------------------------------- | ------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-224 Search Verified Content |
 | 2026-06-24 | AI Agent — Amelia (Dev)               | Implementation hoàn thành — GREEN Phase 22/22 PASS; V8 migration tạo 3 indexes; topicName=null (MVP deferred) |
+| 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: §9.1/§16 role không đúng (endpoint không có `@PreAuthorize`, mọi role authenticated đều qua được, `USER` không phải Role hợp lệ); §10/§9.2/§13.3/§11.4 xoá mã lỗi `IAM-001`/`CNT-004` không tồn tại (401 là bare status, không body); §11.3 sửa claim migration `V002`/"V8 tạo index" — index đã có sẵn trong `V1__init_schema.sql`, không phải migration riêng; C5 cập nhật khớp với ghi chú topicName=null đã có trong changelog trước. Status giữ nguyên `Approved` theo quy ước audit. |
 
 ---
 
@@ -479,9 +480,9 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
 ### 9.1. Endpoints Table
 
-| Method | Path                     | Auth Level | Required Roles                       | Rate Limit | Idempotent? |
-| ------ | ------------------------ | ---------- | ------------------------------------ | ---------- | ----------- |
-| `GET`  | `/api/v1/content/search` | JWT Bearer | `USER`, `CONTENT_ADMIN`, `MODERATOR` | 100/min    | Yes         |
+| Method | Path                     | Auth Level | Required Roles                                                 | Rate Limit | Idempotent? |
+| ------ | ------------------------ | ---------- | ---------------------------------------------------------------- | ---------- | ----------- |
+| `GET`  | `/api/v1/content/search` | JWT Bearer | Any authenticated role (no `@PreAuthorize`; gated by generic `.requestMatchers("/api/v1/**").authenticated()` in `SecurityConfig`) — `USER` is not a valid `Role` value | 100/min    | Yes         |
 
 ### 9.2. Request / Response Schemas
 
@@ -552,13 +553,11 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 ```
 
 **Response — 401 Unauthorized:**
-```json
-{
-  "error": {
-    "code": "IAM-001",
-    "message": "Authentication required"
-  }
-}
+```
+HTTP/1.1 401
+(bare status, no JSON body — verified: SecurityConfig uses
+ `.exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))`,
+ which sets status only. There is no `IAM-001` error code anywhere in the codebase — corrected 2026-07-02.)
 ```
 
 ---
@@ -568,11 +567,10 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 | Code      | HTTP Status | Message (EN)             | Message (VI)            | Trigger Condition                                                              |
 | --------- | ----------- | ------------------------ | ----------------------- | ------------------------------------------------------------------------------ |
 | `CNT-001` | 400         | Validation failed        | Dữ liệu không hợp lệ    | keyword rỗng sau trim; keyword > 100 chars; size > 50; enum value không hợp lệ |
-| `CNT-004` | 403         | Insufficient permissions | Không đủ quyền truy cập | User không có role USER/CONTENT_ADMIN/MODERATOR                                |
 | `CNT-005` | 500         | Internal server error    | Lỗi hệ thống            | Database connection error, unexpected exception                                |
-| `IAM-001` | 401         | Authentication required  | Yêu cầu xác thực        | Không có JWT hoặc JWT hết hạn/không hợp lệ                                     |
 
 > **Lưu ý:** Search trả về empty list (200) khi không có kết quả — KHÔNG trả về 404.
+> **Corrected 2026-07-02:** `CNT-004` (403) và `IAM-001` (401) đã bị loại khỏi bảng này — endpoint không có `@PreAuthorize` nên không có case 403 riêng; 401 không có body/error code (xem §16). `CNT-005` giữ nguyên như một mã lỗi generic dự phòng, chưa verify có handler cụ thể ném ra nó cho search.
 
 ---
 
@@ -593,19 +591,26 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
 #### Chặng 1 — Database Index
 
+> **Corrected 2026-07-02 (post-implementation reality check):** không có migration `V002__add_search_indexes.sql`
+> nào tồn tại, và cũng không phải "V8" như Changelog dòng 2026-06-24 ghi. Các index cần thiết
+> (`idx_content_items_title_search` trên `LOWER(title)`, `idx_content_items_stage_type_approved`,
+> `idx_content_items_stage_status`, `idx_content_items_status`, `idx_content_items_type_status`,
+> `idx_content_items_published_at`, `idx_content_items_stage`, `idx_content_items_type`) đã có sẵn trong
+> baseline `V1__init_schema.sql` (dòng 1569–1583) — không cần migration riêng cho UC-224. SQL bên dưới giữ lại
+> cho mục đích tham khảo thiết kế ban đầu; không phản ánh migration thực tế đã chạy.
+
 ```sql
--- V002__add_search_indexes.sql (chạy sau V001 của UC-82)
--- Index cho keyword search trên title
+-- Index cho keyword search trên title (đã có sẵn trong V1__init_schema.sql, không phải migration riêng)
 CREATE INDEX CONCURRENTLY idx_content_items_title_search
 ON content_items USING btree (LOWER(title));
 
--- Index tổng hợp cho filter phổ biến
+-- Index tổng hợp cho filter phổ biến (đã có sẵn trong V1__init_schema.sql dưới tên idx_content_items_stage_type_approved)
 CREATE INDEX CONCURRENTLY idx_content_items_stage_type_status
 ON content_items(stage, type, status)
 WHERE status = 'APPROVED';
 ```
 
-> ⚠️ **Chú ý:** Dùng `CREATE INDEX CONCURRENTLY` để không lock bảng trên production.
+> ⚠️ **Chú ý:** Dùng `CREATE INDEX CONCURRENTLY` để không lock bảng trên production (áp dụng nếu index từng cần thêm qua migration riêng — thực tế không cần cho UC-224).
 
 #### Chặng 2 — Backend Implementation
 
@@ -631,7 +636,7 @@ curl -X GET "https://carebridge-api/api/v1/content/search?keyword=thai+ky" \
 - [ ] Index đã tạo thành công (`\d content_items` → thấy index mới)
 - [ ] Search API trả về 200 với keyword hợp lệ
 - [ ] Search với keyword > 100 chars → 400 với CNT-001
-- [ ] Search không có JWT → 401 với IAM-001
+- [ ] Search không có JWT → 401 (bare status, không error code — đã sửa 2026-07-02, xem §10)
 
 ---
 
@@ -778,7 +783,7 @@ Feature: Search Verified Content
     Given user không có Authorization header
     When GET /api/v1/content/search?keyword=test được gọi
     Then response status 401
-    And response chứa error code IAM-001
+    And response không có body/error code (bare status — đã sửa 2026-07-02, thực tế không có IAM-001)
 ```
 
 ---
@@ -890,13 +895,13 @@ curl -X GET "https://carebridge-api/api/v1/content/search?keyword=test"
 
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
-| Endpoint                     | `GUEST` | `USER` | `CONTENT_ADMIN` | `MODERATOR` | `SYSTEM_ADMIN` |
-| ---------------------------- | ------- | ------ | --------------- | ----------- | -------------- |
-| `GET /api/v1/content/search` | ❌       | ✅      | ✅               | ✅           | ✅              |
+| Endpoint                     | `GUEST` | `MOTHER` | `FAMILY` | `EXPERT` | `PARTNER` | `CONTENT_ADMIN` | `MODERATOR` | `SYSTEM_ADMIN` |
+| ---------------------------- | ------- | -------- | -------- | -------- | --------- | --------------- | ----------- | -------------- |
+| `GET /api/v1/content/search` | ❌       | ✅        | ✅        | ✅        | ✅         | ✅               | ✅           | ✅              |
 
 **Chú thích:**
-- ✅ = Được phép (chỉ nhận APPROVED content trong kết quả)
-- ❌ = Bị từ chối — 401 nếu không có JWT; 403 nếu role không hợp lệ
+- ✅ = Được phép (chỉ nhận APPROVED content trong kết quả) — verified: endpoint không có `@PreAuthorize`, chỉ gated bởi rule chung `.requestMatchers("/api/v1/**").authenticated()` trong `SecurityConfig`, nên MỌI role đã authenticate đều qua được (không giới hạn USER/CONTENT_ADMIN/MODERATOR như bản trước của tài liệu này ghi nhầm — `USER` cũng không phải giá trị `Role` hợp lệ, xem `security.rbac.Role`)
+- ❌ = Bị từ chối — 401 nếu không có JWT (không có case 403 riêng cho endpoint này)
 
 ---
 
@@ -910,8 +915,8 @@ curl -X GET "https://carebridge-api/api/v1/content/search?keyword=test"
 | C2  | Keyword PHẢI được sanitize qua `sanitizeKeyword()` trước khi truyền vào repository — trim whitespace, escape `%` và `_`                  | `ADR-004`                | `2026-06-23`  |
 | C3  | `ContentSearchRequest` PHẢI có validation: keyword required, keyword max length 100, size max 50 — vi phạm → `CNT-001`                   | `ADR-004`                | `2026-06-23`  |
 | C4  | Search trả về empty list (HTTP 200) khi không có kết quả — KHÔNG trả về 404                                                              | `§9.2`                   | `2026-06-23`  |
-| C5  | `topicName` trong `ContentSearchResponse` được resolve từ `topicId` — không để null nếu topicId hợp lệ                                   | `§8.1 Service Interface` | `2026-06-23`  |
-| C6  | Controller dùng `@PreAuthorize("hasAnyRole('USER','CONTENT_ADMIN','MODERATOR')")` — không viết auth logic thủ công                       | `ADR-001`                | `2026-06-23`  |
+| C5  | `topicName` trong `ContentSearchResponse` — **MVP deferred**: `ContentMapper.toSearchResponse()` luôn set `topicName=null` (không resolve từ topicId); xem Changelog 2026-06-24                | `§8.1 Service Interface` | `2026-06-24`  |
+| C6  | Endpoint KHÔNG dùng `@PreAuthorize` — chỉ gated bởi rule chung `.requestMatchers("/api/v1/**").authenticated()` trong `SecurityConfig`; mọi role đã authenticate đều được phép                | `SecurityConfig.java`    | `2026-07-02`  |
 
 ### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
 
@@ -923,15 +928,15 @@ Theo TDS CB-CONTENT-IMP-002 và các ADR liên quan:
 2. Keyword PHẢI được sanitize trước khi query: trim whitespace, escape ký tự % và _ (ADR-004).
 3. ContentSearchRequest validation: keyword required + max 100 chars; size max 50 → vi phạm throws CNT-001.
 4. Empty search results → HTTP 200 với content:[] — KHÔNG phải 404.
-5. topicName phải được resolve từ topicId — không để null cho topicId hợp lệ.
-6. Controller dùng @PreAuthorize annotation, không viết authorization logic trong method body.
+5. topicName — MVP deferred, luôn null (không resolve từ topicId trong bản implement hiện tại — xem C5).
+6. Endpoint KHÔNG dùng @PreAuthorize — chỉ gated bởi rule chung `authenticated()` trong SecurityConfig.
 
 [CONTEXT BLOCK]
 - Bounded Context: content
 - Data Classification: Internal
 - Compliance: BR-RBAC
 - Existing interfaces: §8 Service Interface + §8.2 Repository Interface
-- Error codes: §10 (CNT-001, CNT-004, CNT-005, IAM-001)
+- Error codes: §10 (CNT-001, CNT-005) — không có mã lỗi cho 401 (bare status, không body)
 - Auth matrix: §16
 
 [TASK BLOCK]

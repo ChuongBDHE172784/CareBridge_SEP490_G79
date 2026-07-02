@@ -23,6 +23,7 @@
 | ---------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston           | Tạo tài liệu lần đầu — TDS cho UC-132 Generate RAG Answer                                                                                                                                            |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent) | Implement UC-132: RagService interface, MockRagServiceImpl (@Profile test), GeminiRagServiceImpl (@Profile prod/dev), ContentItemContextRetriever, RagController, TriageRedFlagPolicy, GeminiPromptBuilder, RagException, GlobalExceptionHandler handler. 18/18 tests PASS. RED Gate: 12 FAIL verified. |
+| 2026-07-02 | AI Agent — Claude (Audit Pass) | Corrected discrepancies vs. actual source: (1) §16/§9.1/§2/§1 — RAG endpoint excludes `PARTNER` (403), roles renamed `FAMILY`/`PARTNER` not `FAMILY_MEMBER`/`PARTNER_REP`; (2) §3 ADR-002/§5.1/§6.4 class diagrams — documented 3rd `RagService` impl `FallbackRagServiceImpl` (was only 2 documented) and fixed stale `<<@Profile("prod","dev")>>` stereotype on `GeminiRagServiceImpl` (actual: `@Primary`, no profile); (3) §5.2 — DTOs are Lombok `@Getter/@Builder` classes with manual controller-side validation, not Java records with Bean Validation annotations; (4) `UserStage` enum value is `PREGNANCY`, not `PREGNANT` (fixed throughout doc); (5) JSON wire field is `"fallback"`, not `"isFallback"` (fixed in §5.2/§9.2/§15 concrete examples; Gherkin/prose getter references left as-is); (6) §2 BR-RAG-001 code component corrected to `ContentItemContextRetriever.retrieveContext()`; (7) §4.1 max context chunks corrected to 10 (default 5), matching §10 RAG-002. |
 
 ---
 
@@ -55,7 +56,7 @@
 | **UC ID**                 | `UC-132`                                                                                                              |
 | **Module Name**           | `Generate RAG Answer`                                                                                                 |
 | **Bounded Context**       | `integration.gemini` (RAG client) + `content` (context source) + `triage` (optional persistence)                      |
-| **Primary Actor**         | `Authenticated User (any role) / System internal call`                                                                |
+| **Primary Actor**         | `Authenticated User (MOTHER, FAMILY, EXPERT, MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN — PARTNER excluded, see §16) / System internal call` |
 | **Platform**              | `Backend / Internal Service — called by Mobile App and Web Portal`                                                    |
 | **Priority**              | `High`                                                                                                                |
 | **Data Classification**   | `Internal`                                                                                                            |
@@ -85,10 +86,10 @@ UC-132 cho phép người dùng đặt câu hỏi về sức khỏe thai kỳ, h
 | BR-SAFETY-001  | Business Rule | AI output phải kèm disclaimer: không phải chẩn đoán/kê đơn              | `RagAnswerResponse.disclaimer`                | Healthcare safety | ADR-003          |
 | BR-SAFETY-002  | Business Rule | Red-flag keywords kích hoạt emergency routing, không trả lời AI         | `RagSafetyFilter.check()`                     | Healthcare safety | ADR-004          |
 | BR-SAFETY-003  | Business Rule | Không suggest medication names hoặc dosage                              | `GeminiPromptBuilder.buildPrompt()`           | Healthcare safety | ADR-003          |
-| BR-RAG-001     | Business Rule | Chỉ dùng ContentItem có status=APPROVED làm context                     | `ContentItemRepository.findApprovedByTopic()` | —                 | ADR-001          |
+| BR-RAG-001     | Business Rule | Chỉ dùng ContentItem có status=APPROVED làm context                     | `ContentItemContextRetriever.retrieveContext()` (dùng `ContentRepository.searchByFilters()`) | —                 | ADR-001          |
 | BR-RAG-002     | Business Rule | Khi Gemini unavailable, trả về conservative fallback, không throw error | `GeminiRagServiceImpl.generateAnswer()`       | —                 | ADR-005          |
 | BR-RAG-003     | Business Rule | Kết quả phải có source citations với contentId và title                 | `RagAnswerResponse.sources`                   | —                 | ADR-001          |
-| BR-RBAC-003    | Business Rule | Endpoint yêu cầu authenticated user (bất kỳ role nào)                   | `@Authenticated` / JWT check                  | —                 | ADR-002          |
+| BR-RBAC-003    | Business Rule | Endpoint yêu cầu authenticated user thuộc `MOTHER, FAMILY, EXPERT, MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN` (PARTNER excluded) | `@PreAuthorize(hasAnyRole(...))` trong `RagController` | —                 | ADR-002          |
 | SRS-3.1.2.6    | Functional    | Generate RAG answer từ approved content sources                         | `POST /api/v1/rag/answer`                     | —                 | —                |
 
 ---
@@ -142,11 +143,12 @@ Chọn **Phương án B**: RAG pattern với ContentItem retrieval. Giới hạn
 Gemini API là external dependency. Tests không nên gọi Gemini thật (cost, latency, flakiness). Cần mock provider cho testing.
 
 #### Quyết định
-Define `RagService` interface. Có 2 implementations:
-- `GeminiRagServiceImpl` — production, gọi Gemini API thật
-- `MockRagServiceImpl` — test, trả về canned response
+Define `RagService` interface. Có 3 implementations:
+- `GeminiRagServiceImpl` — production, gọi Gemini API thật (`@Primary`)
+- `MockRagServiceImpl` — test, trả về canned response (`@Profile("test")`, `@Primary` trong profile test)
+- `FallbackRagServiceImpl` — always-on safety net, phục vụ khi không có bean theo profile nào khác được đăng ký (vd: chạy ở profile mặc định hoặc thiếu Gemini API key); luôn trả về conservative fallback response
 
-Spring `@Profile("test")` sẽ inject `MockRagServiceImpl`, `@Profile("prod","dev")` inject `GeminiRagServiceImpl`.
+`GeminiRagServiceImpl` là `@Primary` nên được ưu tiên khi cả hai cùng tồn tại. `MockRagServiceImpl` dùng `@Profile("test")`. `FallbackRagServiceImpl` không gắn `@Profile` — nó là bean fallback mặc định của Spring khi không có ứng viên nào khác.
 
 ---
 
@@ -222,7 +224,7 @@ Khi `GeminiClient.generate()` ném `GeminiUnavailableException` hoặc timeout:
 | Latency (Fallback)         | Fallback response         | `< 200ms`    | Unit test          | —                |
 | Availability               | Endpoint uptime           | `99.5%`      | Uptime monitor     | —                |
 | Gemini timeout             | Circuit breaker threshold | `5s timeout` | Config             | ADR-005          |
-| Context chunks             | Max per request           | `5 chunks`   | Config validation  | ADR-001          |
+| Context chunks             | Max per request            | `10 chunks (default 5 if omitted)` | Config validation  | ADR-001          |
 
 ### 4.2. Data Integrity
 
@@ -271,7 +273,7 @@ class RagAnswerResponse <<DTO>> {
   + answer: String
   + disclaimer: String
   + sources: List<RagSource>
-  + isFallback: boolean
+  + fallback: boolean
   + generatedAt: LocalDateTime
 }
 
@@ -308,6 +310,10 @@ class GeminiRagServiceImpl implements RagService {
 
 class MockRagServiceImpl implements RagService {
   - cannedResponses: Map<String, RagAnswerResponse>
+  + generateAnswer(request: RagAnswerRequest): RagAnswerResponse
+}
+
+class FallbackRagServiceImpl implements RagService {
   + generateAnswer(request: RagAnswerRequest): RagAnswerResponse
 }
 
@@ -363,8 +369,14 @@ note top of MockRagServiceImpl
 end note
 
 note top of GeminiRagServiceImpl
-  @Profile("prod", "dev")
+  @Primary
   Real Gemini API call
+end note
+
+note top of FallbackRagServiceImpl
+  No @Profile — default candidate
+  when no Gemini/Mock bean registered
+  (e.g. missing GEMINI_API_KEY)
 end note
 
 @enduml
@@ -374,47 +386,42 @@ end note
 
 ```java
 // DTOs — com.carebridge.backend.integration.gemini.dto
+// Implemented as Lombok @Getter/@Builder classes (NOT Java records).
+// NOTE: No Bean Validation annotations on the DTO — validation is done
+// imperatively in RagController.generateAnswer() (see §8.1 Javadoc / §9 API spec).
 
-public record RagAnswerRequest(
-    @NotBlank(message = "Query is required")
-    @Size(min = 3, max = 500, message = "Query must be between 3 and 500 characters")
-    String query,
-
-    @Nullable
-    UserStage userStage,   // PRE_PREGNANCY | PREGNANT | POSTPARTUM | BABY_CARE
-
-    @Nullable
-    UUID topicId,           // Optional topic filter for context retrieval
-
-    @Min(1) @Max(10)
-    int maxContextChunks    // Default 5
-) {
-    public RagAnswerRequest {
-        if (maxContextChunks == 0) maxContextChunks = 5;
-    }
+@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+public class RagAnswerRequest {
+    private String query;          // required, 3–500 chars — checked manually in controller
+    private UserStage userStage;   // nullable — PRE_PREGNANCY | PREGNANCY | POSTPARTUM | BABY_CARE
+    private UUID topicId;          // nullable — optional topic filter for context retrieval
+    private Integer maxContextChunks; // nullable — checked manually (> 10 rejected); service defaults to 5 if null/<=0
 }
 
-public record RagAnswerResponse(
-    String answer,
-    String disclaimer,       // Always: "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế."
-    List<RagSource> sources, // Empty if fallback
-    boolean isFallback,      // true if Gemini unavailable or red-flag detected
-    LocalDateTime generatedAt
-) {}
+@Getter @Builder @NoArgsConstructor @AllArgsConstructor
+public class RagAnswerResponse {
+    private String answer;
+    private String disclaimer;       // Always: "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế."
+    private List<RagSource> sources; // Empty if fallback
+    private boolean fallback;        // JSON key: "fallback" (Lombok getter isFallback()) — true if Gemini unavailable or red-flag detected
+    private LocalDateTime generatedAt;
+}
 
-public record RagSource(
-    UUID contentId,
-    String title
-) {}
+@Getter @Builder @NoArgsConstructor @AllArgsConstructor
+public class RagSource {
+    private UUID contentId;
+    private String title;
+}
 
 public enum UserStage {
-    PRE_PREGNANCY, PREGNANT, POSTPARTUM, BABY_CARE
+    PRE_PREGNANCY, PREGNANCY, POSTPARTUM, BABY_CARE
 }
 
-public record RagSafetyResult(
-    boolean isRedFlag,
-    String emergencyGuidance  // non-null if isRedFlag=true
-) {}
+@Getter @AllArgsConstructor @NoArgsConstructor
+public class RagSafetyResult {
+    private boolean redFlag;          // JSON/getter: isRedFlag()
+    private String emergencyGuidance; // non-null if redFlag=true
+}
 ```
 
 ---
@@ -439,7 +446,7 @@ participant "GeminiHttpClient" as Gemini
 database "PostgreSQL (ContentItem)" as DB
 participant "External: Gemini API" as GeminiAPI
 
-Client -> Controller : POST /api/v1/rag/answer\n{query: "Tôi bị phù chân khi mang thai có sao không?", userStage: "PREGNANT", topicId: "uuid-topic-123"}\nAuthorization: Bearer <JWT>
+Client -> Controller : POST /api/v1/rag/answer\n{query: "Tôi bị phù chân khi mang thai có sao không?", userStage: "PREGNANCY", topicId: "uuid-topic-123"}\nAuthorization: Bearer <JWT>
 activate Controller
 
 Controller -> Controller : @Authenticated — JWT valid ✓
@@ -460,7 +467,7 @@ Retriever -> DB : SELECT * FROM content_items\nWHERE topic_id = ? AND status = '
 DB --> Retriever : List<ContentItem> (3 items found)
 deactivate Retriever
 
-Service -> Builder : buildSafetyConstrainedPrompt(query, contentItems, PREGNANT)
+Service -> Builder : buildSafetyConstrainedPrompt(query, contentItems, PREGNANCY)
 activate Builder
 Builder -> Builder : Compose: systemInstruction + userStage context + contentChunks + query
 Builder --> Service : String (composed prompt)
@@ -565,13 +572,19 @@ skinparam ClassBorderColor #2E75B6
 
 interface RagService <<interface>>
 
-class GeminiRagServiceImpl <<@Profile("prod","dev")>> {
+class GeminiRagServiceImpl <<@Primary>> {
   Calls real Gemini API
 }
 
 class MockRagServiceImpl <<@Profile("test")>> {
   Returns canned responses\nNo HTTP calls
 }
+
+note as N1
+  A 3rd impl, FallbackRagServiceImpl (no @Profile),
+  also exists as the default candidate when no
+  Gemini/Mock bean is registered — see §5.1 class diagram
+end note
 
 RagService <|.. GeminiRagServiceImpl
 RagService <|.. MockRagServiceImpl
@@ -759,7 +772,7 @@ public class MockRagServiceImpl implements RagService {
 
 | Method | Path                 | Auth Level | Required Roles         | Rate Limit      | Idempotent? |
 | ------ | -------------------- | ---------- | ---------------------- | --------------- | ----------- |
-| `POST` | `/api/v1/rag/answer` | JWT Bearer | Any authenticated role | 30/min per user | No          |
+| `POST` | `/api/v1/rag/answer` | JWT Bearer | `MOTHER, FAMILY, EXPERT, MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN` (PARTNER excluded — §16) | 30/min per user | No          |
 
 ### 9.2. Request / Response Schemas
 
@@ -769,7 +782,7 @@ public class MockRagServiceImpl implements RagService {
 ```json
 {
   "query": "Tôi bị phù chân khi mang thai 28 tuần, có nên lo không?",
-  "userStage": "PREGNANT",
+  "userStage": "PREGNANCY",
   "topicId": "a1b2c3d4-0000-0000-0000-000000000001"
 }
 ```
@@ -789,7 +802,7 @@ public class MockRagServiceImpl implements RagService {
       "title": "Các triệu chứng thai kỳ bình thường"
     }
   ],
-  "isFallback": false,
+  "fallback": false,
   "generatedAt": "2026-06-23T11:00:00.000Z"
 }
 ```
@@ -800,7 +813,7 @@ public class MockRagServiceImpl implements RagService {
   "answer": "Tôi hiện không thể trả lời câu hỏi này. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế của bạn.",
   "disclaimer": "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế.",
   "sources": [],
-  "isFallback": true,
+  "fallback": true,
   "generatedAt": "2026-06-23T11:00:05.000Z"
 }
 ```
@@ -811,7 +824,7 @@ public class MockRagServiceImpl implements RagService {
   "answer": "Đây có thể là tình huống khẩn cấp y tế. Hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay lập tức. Đừng chờ đợi.",
   "disclaimer": "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế.",
   "sources": [],
-  "isFallback": true,
+  "fallback": true,
   "generatedAt": "2026-06-23T11:00:00.100Z"
 }
 ```
@@ -924,7 +937,7 @@ curl -X GET https://api.carebridge.vn/actuator/health
 curl -X POST https://api.carebridge.vn/api/v1/rag/answer \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Phù chân thai kỳ có sao không?", "userStage": "PREGNANT"}'
+  -d '{"query": "Phù chân thai kỳ có sao không?", "userStage": "PREGNANCY"}'
 # Expected: 200 với answer và disclaimer
 
 # Verify fallback bằng cách disable Gemini (temp config test)
@@ -993,7 +1006,7 @@ Feature: Generate RAG Answer
 
   Scenario: Happy path — câu hỏi thông thường về thai kỳ
     Given query = "Phù chân thai kỳ có nguy hiểm không?"
-    And userStage = PREGNANT
+    And userStage = PREGNANCY
     When RagService.generateAnswer(request) được gọi
     Then response.answer không null và không rỗng
     And response.disclaimer BẰNG "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế."
@@ -1056,7 +1069,7 @@ Feature: Generate RAG Answer
 ```gherkin
   Scenario: Prompt builder thêm safety system instruction
     Given query và contentItems bất kỳ
-    When GeminiPromptBuilder.buildSafetyConstrainedPrompt(query, items, PREGNANT) được gọi
+    When GeminiPromptBuilder.buildSafetyConstrainedPrompt(query, items, PREGNANCY) được gọi
     Then output prompt chứa "Không chẩn đoán bệnh"
     And output prompt chứa "Không kê đơn thuốc"
     And output prompt chứa "tham khảo bác sĩ"
@@ -1071,7 +1084,7 @@ Feature: Generate RAG Answer
     Given test data classification: SYNTHETIC
     And Profile "test" active — MockRagServiceImpl được dùng
     And user đã authenticated với JWT hợp lệ
-    When POST /api/v1/rag/answer {query: "Phù chân thai kỳ", userStage: "PREGNANT"}
+    When POST /api/v1/rag/answer {query: "Phù chân thai kỳ", userStage: "PREGNANCY"}
     Then response status là 200
     And response body có disclaimer != null
     And response body có isFallback field (boolean)
@@ -1185,7 +1198,7 @@ curl -X POST https://api.carebridge.vn/api/v1/rag/answer \
   -H "X-Correlation-Id: $(uuidgen)" \
   -d '{
     "query": "Tôi bị buồn nôn vào buổi sáng khi mang thai 8 tuần, đây có bình thường không?",
-    "userStage": "PREGNANT",
+    "userStage": "PREGNANCY",
     "topicId": "a1b2c3d4-0000-0000-0000-000000000001"
   }'
 ```
@@ -1198,7 +1211,7 @@ curl -X POST https://api.carebridge.vn/api/v1/rag/answer \
   "sources": [
     { "contentId": "c1d2e3f4-...", "title": "Buồn nôn thai kỳ — nguyên nhân và xử lý" }
   ],
-  "isFallback": false,
+  "fallback": false,
   "generatedAt": "2026-06-23T11:00:00.000Z"
 }
 ```
@@ -1219,7 +1232,7 @@ curl -X POST https://api.carebridge.vn/api/v1/rag/answer \
   "answer": "Tôi hiện không thể trả lời câu hỏi này. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế của bạn.",
   "disclaimer": "Đây là thông tin hỗ trợ AI — không phải chẩn đoán y tế. Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế.",
   "sources": [],
-  "isFallback": true,
+  "fallback": true,
   "generatedAt": "2026-06-23T11:00:05.000Z"
 }
 ```
@@ -1249,12 +1262,13 @@ curl -X POST https://api.carebridge.vn/api/v1/rag/answer \
 
 ## 16. Authorization Matrix
 
-| Endpoint                  | `MOTHER` | `FAMILY_MEMBER` | `EXPERT` | `MODERATOR` | `PARTNER_REP` | `CONTENT_ADMIN` | `SYSTEM_ADMIN` | `Unauthenticated` |
-| ------------------------- | -------- | --------------- | -------- | ----------- | ------------- | --------------- | -------------- | ----------------- |
-| `POST /api/v1/rag/answer` | ✅        | ✅               | ✅        | ✅           | ✅             | ✅               | ✅              | ❌ (401)           |
+| Endpoint                  | `MOTHER` | `FAMILY` | `EXPERT` | `MODERATOR` | `PARTNER` | `CONTENT_ADMIN` | `SYSTEM_ADMIN` | `Unauthenticated` |
+| ------------------------- | -------- | -------- | -------- | ----------- | --------- | --------------- | -------------- | ----------------- |
+| `POST /api/v1/rag/answer` | ✅        | ✅        | ✅        | ✅           | ❌ (403)   | ✅               | ✅              | ❌ (401)           |
 
 **Chú thích:**
-- Mọi authenticated user đều có thể dùng RAG answer feature
+- `PARTNER` bị loại trừ có chủ đích — RAG health guidance chỉ dành cho các role sử dụng cá nhân (personal-use roles), xem comment tại `RagController` và test `generateAnswer_partnerRole_shouldReturn403` / `RagNoGeminiStartupTest.partnerRole_returns403`
+- Các role còn lại (`MOTHER, FAMILY, EXPERT, MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN`) đều có thể dùng RAG answer feature
 - Phân biệt response KHÔNG theo role — phân biệt theo `userStage` và `topicId` trong request
 - Rate limit áp dụng per-user: 30 req/min
 
@@ -1346,7 +1360,7 @@ Tests phải dùng MockRagServiceImpl và cover §13 Test Scenarios.
 | Context Chunk         | Đoạn nội dung từ ContentItem được dùng để bổ sung context cho Gemini                    |
 | isFallback            | Boolean flag — true khi response không phải từ Gemini (fallback hoặc red-flag)          |
 | Mock Provider         | Implementation test của RagService không gọi Gemini thật                                |
-| UserStage             | Giai đoạn người dùng: PRE_PREGNANCY, PREGNANT, POSTPARTUM, BABY_CARE                    |
+| UserStage             | Giai đoạn người dùng: PRE_PREGNANCY, PREGNANCY, POSTPARTUM, BABY_CARE                    |
 
 ### B. AI Safety Notes
 
