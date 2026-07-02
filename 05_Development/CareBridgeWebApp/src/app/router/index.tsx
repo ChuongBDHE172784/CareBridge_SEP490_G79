@@ -53,6 +53,11 @@ import ContentReportDetailPage from '../../features/moderation/pages/ContentRepo
 import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
 import ViolationHistoryPage from '../../features/moderation/pages/ViolationHistoryPage';
 
+// SYSTEM_ADMIN-only ModPortal screens (CB-066, CB-090, CB-091)
+import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
+import ImpactReportDashboardPage from '../../features/dashboard/pages/ImpactReportDashboardPage';
+import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
+
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
     <h2 className="text-primary">Truy cập bị từ chối</h2>
@@ -152,7 +157,6 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
             children: [
-              { path: '/moderator/dashboard', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/queue/:reportId', element: <ModerationItemDetailPage /> },
               { path: '/moderator/reports', element: <ReportsQueuePage /> },
@@ -162,6 +166,17 @@ export const router = createBrowserRouter([
               { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
               { path: '/moderator', element: <Navigate to="/moderator/safety-cases" replace /> },
+            ],
+          },
+          {
+            // RedFlagRuleController / CommunityDashboardController / ImpactReportController are all
+            // @PreAuthorize hasRole('SYSTEM_ADMIN') at the backend (UC-110/UC-111/UC-113 TDS ADR) —
+            // guard matches the backend, narrower than the general /moderator group above.
+            element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
+            children: [
+              { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
+              { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
+              { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
             ],
           },
         ],

@@ -7,6 +7,8 @@ const NAV_ITEMS = [
   { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports' },
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations' },
   { label: 'Ca an toàn', icon: 'health_and_safety', path: '/moderator/safety-cases' },
+  { label: 'Quy tắc AI', icon: 'rule', path: '/moderator/safety-rules' },
+  { label: 'Tác động & vận hành', icon: 'insights', path: '/moderator/impact-report' },
 ] as const;
 
 export default function ModPortalSidebar() {

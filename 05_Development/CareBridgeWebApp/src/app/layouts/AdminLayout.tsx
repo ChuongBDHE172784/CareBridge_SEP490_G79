@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
 
 const NAV_LINKS = [
@@ -16,6 +16,7 @@ const NAV_LINKS = [
 export default function AdminLayout() {
   const { user, logout, hasAnyRole } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -25,6 +26,12 @@ export default function AdminLayout() {
   const visibleLinks = NAV_LINKS.filter((l) =>
     hasAnyRole(...(l.roles as unknown as Parameters<typeof hasAnyRole>))
   );
+
+  // ModPortal pages (/moderator/*) render their own full-page sidebar (ModPortalSidebar) —
+  // skip this layout's sidebar/margin here to avoid a double ml-64 offset (empty gap bug).
+  if (location.pathname.startsWith('/moderator')) {
+    return <Outlet />;
+  }
 
   return (
     <div className="flex min-h-screen font-sans">
