@@ -108,7 +108,8 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
                 .map(q -> {
                     String topicName = topicNames.getOrDefault(q.getTopicId(), "");
                     boolean hasExpert = expertAnsweredIds.contains(q.getId());
-                    return feedMapper.toFeedItem(q, topicName, null, hasExpert);
+                    // Every item here is, by construction, bookmarked by this user.
+                    return feedMapper.toFeedItem(q, topicName, null, hasExpert, true);
                 })
                 .collect(Collectors.toList());
 

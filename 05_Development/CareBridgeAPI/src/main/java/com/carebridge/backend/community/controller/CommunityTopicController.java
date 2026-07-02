@@ -41,7 +41,9 @@ public class CommunityTopicController {
             Authentication authentication) {
         boolean isModerator = SecurityUtils.hasRole("MODERATOR");
         boolean effectiveInclude = includeHidden && isModerator;
-        return ResponseEntity.ok(ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude)));
+        UUID currentUserId = SecurityUtils.requireCurrentUserId(authentication);
+        return ResponseEntity.ok(
+                ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude, currentUserId)));
     }
 
     @PostMapping

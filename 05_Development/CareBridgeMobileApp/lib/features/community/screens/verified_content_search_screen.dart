@@ -2,15 +2,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/content_service.dart';
 import '../models/content_model.dart';
+import 'verified_content_detail_screen.dart';
 
 class VerifiedContentSearchScreen extends StatefulWidget {
   const VerifiedContentSearchScreen({super.key});
 
   @override
-  State<VerifiedContentSearchScreen> createState() => _VerifiedContentSearchScreenState();
+  State<VerifiedContentSearchScreen> createState() =>
+      _VerifiedContentSearchScreenState();
 }
 
-class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScreen> {
+class _VerifiedContentSearchScreenState
+    extends State<VerifiedContentSearchScreen> {
   static const _primary = Color(0xFF845143);
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
@@ -21,7 +24,12 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
 
   static const _ageFilters = ['Sơ sinh', '1-2 tuổi', '3-5 tuổi', '6+ tuổi'];
   static const _ageStages = ['NEWBORN', 'INFANT', 'TODDLER', 'PRESCHOOL'];
-  static const _categoryFilters = ['Dinh dưỡng', 'An toàn', 'Phát triển', 'Giấc ngủ'];
+  static const _categoryFilters = [
+    'Dinh dưỡng',
+    'An toàn',
+    'Phát triển',
+    'Giấc ngủ',
+  ];
 
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -53,11 +61,13 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
     setState(() => _loading = true);
     try {
       final stage = _selectedAge != null ? _ageStages[_selectedAge!] : null;
-      final results = await ContentService.instance.searchContent(
-        _searchCtrl.text.trim(),
-        stage: stage,
-        page: 0,
-      );
+      final keyword = _searchCtrl.text.trim();
+      // The backend search endpoint requires a non-blank keyword — when the user
+      // hasn't typed anything yet (e.g. on first open), browse via the plain list
+      // endpoint instead so the screen never shows a false "no results" state.
+      final results = keyword.isEmpty
+          ? await ContentService.instance.getContent(stage: stage, size: 20)
+          : await ContentService.instance.searchContent(keyword, stage: stage);
       if (mounted) setState(() => _results = results);
     } catch (_) {
       if (mounted) setState(() => _results = []);
@@ -80,7 +90,11 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
         ),
         title: const Text(
           'CareBridge',
-          style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: _primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -98,14 +112,27 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Tìm kiếm nội dung', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+                const Text(
+                  'Tìm kiếm nội dung',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF271812),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 // Search bar
                 Container(
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -131,7 +158,9 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
                       label: _ageFilters[i],
                       selected: _selectedAge == i,
                       onTap: () {
-                        setState(() => _selectedAge = _selectedAge == i ? null : i);
+                        setState(
+                          () => _selectedAge = _selectedAge == i ? null : i,
+                        );
                         _search();
                       },
                     ),
@@ -149,7 +178,11 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
                       label: _categoryFilters[i],
                       selected: _selectedCategory == i,
                       onTap: () {
-                        setState(() => _selectedCategory = _selectedCategory == i ? null : i);
+                        setState(
+                          () => _selectedCategory = _selectedCategory == i
+                              ? null
+                              : i,
+                        );
                         _search();
                       },
                     ),
@@ -162,15 +195,17 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
           // Results
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: _primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: _primary),
+                  )
                 : _results.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                        itemCount: _results.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _ContentCard(item: _results[i]),
-                      ),
+                ? _buildEmptyState()
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: _results.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _ContentCard(item: _results[i]),
+                  ),
           ),
         ],
       ),
@@ -182,11 +217,21 @@ class _VerifiedContentSearchScreenState extends State<VerifiedContentSearchScree
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off, size: 56, color: _primaryContainer.withValues(alpha: 0.5)),
+          Icon(
+            Icons.search_off,
+            size: 56,
+            color: _primaryContainer.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 12),
-          const Text('Không tìm thấy nội dung', style: TextStyle(fontSize: 15, color: _onSurfaceVariant)),
+          const Text(
+            'Không tìm thấy nội dung',
+            style: TextStyle(fontSize: 15, color: _onSurfaceVariant),
+          ),
           const SizedBox(height: 4),
-          const Text('Thử từ khóa khác hoặc bỏ bộ lọc', style: TextStyle(fontSize: 13, color: _outline)),
+          const Text(
+            'Thử từ khóa khác hoặc bỏ bộ lọc',
+            style: TextStyle(fontSize: 13, color: _outline),
+          ),
         ],
       ),
     );
@@ -198,7 +243,11 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +258,13 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFC98C7B) : const Color(0xFFFFE2D9),
           borderRadius: BorderRadius.circular(99),
-          boxShadow: [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+          boxShadow: [
+            const BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Text(
           label,
@@ -231,69 +286,110 @@ class _ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VerifiedContentDetailScreen(contentId: item.id),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF845143).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF845143,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.verified,
+                                  size: 12,
+                                  color: Color(0xFF845143),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Nguồn tin cậy',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF845143),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.verified, size: 12, color: Color(0xFF845143)),
-                              SizedBox(width: 4),
-                              Text('Nguồn tin cậy', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF845143), letterSpacing: 0.5)),
-                            ],
-                          ),
+                          const SizedBox(width: 8),
+                          if (item.publishedAt != null)
+                            Text(
+                              _formatDate(item.publishedAt!),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF84736F),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF271812),
+                          height: 1.3,
                         ),
-                        const SizedBox(width: 8),
-                        if (item.publishedAt != null)
-                          Text(_formatDate(item.publishedAt!), style: const TextStyle(fontSize: 11, color: Color(0xFF84736F))),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.title,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF271812), height: 1.3),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.bookmark_border, color: Color(0xFF84736F)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              if (item.stage.isNotEmpty)
-                _TagChip(label: _stageLabel(item.stage)),
-              if (item.type.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                _TagChip(label: item.type),
+                const SizedBox(width: 8),
+                const Icon(Icons.bookmark_border, color: Color(0xFF84736F)),
               ],
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (item.stage.isNotEmpty)
+                  _TagChip(label: _stageLabel(item.stage)),
+                if (item.type.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  _TagChip(label: item.type),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -313,12 +409,18 @@ class _ContentCard extends StatelessWidget {
 
   String _stageLabel(String stage) {
     switch (stage) {
-      case 'NEWBORN': return 'Sơ sinh';
-      case 'INFANT': return '1-2 tuổi';
-      case 'TODDLER': return '3-5 tuổi';
-      case 'PRESCHOOL': return '6+ tuổi';
-      case 'PREGNANCY': return 'Thai kỳ';
-      default: return stage;
+      case 'NEWBORN':
+        return 'Sơ sinh';
+      case 'INFANT':
+        return '1-2 tuổi';
+      case 'TODDLER':
+        return '3-5 tuổi';
+      case 'PRESCHOOL':
+        return '6+ tuổi';
+      case 'PREGNANCY':
+        return 'Thai kỳ';
+      default:
+        return stage;
     }
   }
 }
@@ -335,7 +437,10 @@ class _TagChip extends StatelessWidget {
         color: const Color(0xFFFFE9E3),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF271812))),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, color: Color(0xFF271812)),
+      ),
     );
   }
 }

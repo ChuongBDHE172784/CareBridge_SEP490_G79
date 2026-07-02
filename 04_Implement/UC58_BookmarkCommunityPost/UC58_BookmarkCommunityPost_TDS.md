@@ -23,6 +23,7 @@
 | ---------- | --------------- | ---------------------------------------------------------- |
 | 2026-06-29 | AI Agent        | Tạo tài liệu lần đầu cho UC-58 Bookmark Community Post    |
 | 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implemented CommunityBookmark entity, Flyway migration V20260629000001, toggle/get bookmark endpoints, AuditAction.COMMUNITY_BOOKMARK_TOGGLED; 5 tests passing | Implemented |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | Fixed hydration gap: feed/detail responses never carried the viewer's bookmark state, so the bookmark icon always rendered "not bookmarked" on load regardless of real DB state. Added `bookmarked`/`isBookmarked` to `CommunityFeedItemResponse`/`CommunityQuestionDetailResponse` (batch-checked via new `CommunityBookmarkRepository.findBookmarkedQuestionIds()`), threaded through `CommunityFeedServiceImpl`/`CommunityQuestionServiceImpl`, and updated the Flutter `CommunityFeedItem`/`QuestionDetail` models + `community_feed_screen.dart`/`question_detail_screen.dart` to read the real value instead of a local-only `Set`. All existing + new tests GREEN. |
 
 ---
 

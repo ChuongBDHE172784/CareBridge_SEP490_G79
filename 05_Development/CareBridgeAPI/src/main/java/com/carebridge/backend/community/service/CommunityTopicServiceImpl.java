@@ -10,7 +10,9 @@ import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.mapper.CommunityTopicMapper;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.repository.UserTopicFollowRepository;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,27 +25,37 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
     private final CommunityTopicRepository topicRepository;
     private final CommunityTopicMapper topicMapper;
     private final AuditService auditService;
+    private final UserTopicFollowRepository topicFollowRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommunityTopicResponse> getTopics(boolean includeHidden) {
+    public List<CommunityTopicResponse> getTopics(boolean includeHidden, UUID currentUserId) {
         List<CommunityTopic> topics = includeHidden
                 ? topicRepository.findAllByOrderBySortOrderAsc()
                 : topicRepository.findAllByIsHiddenFalseOrderBySortOrderAsc();
-        return topics.stream().map(topicMapper::toResponse).toList();
+        return toResponsesWithFollowState(topics, currentUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden) {
+    public List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden, UUID currentUserId) {
         if (keyword == null || keyword.isBlank()) {
-            return getTopics(includeHidden);
+            return getTopics(includeHidden, currentUserId);
         }
         String trimmedKeyword = keyword.trim();
         List<CommunityTopic> topics = includeHidden
                 ? topicRepository.searchByKeywordIncludingHidden(trimmedKeyword)
                 : topicRepository.searchByKeyword(trimmedKeyword);
-        return topics.stream().map(topicMapper::toResponse).toList();
+        return toResponsesWithFollowState(topics, currentUserId);
+    }
+
+    // UC-171 hydration fix: batch-check follow state to avoid N+1
+    private List<CommunityTopicResponse> toResponsesWithFollowState(List<CommunityTopic> topics, UUID currentUserId) {
+        List<UUID> topicIds = topics.stream().map(CommunityTopic::getId).toList();
+        Set<UUID> followedIds = topicFollowRepository.findFollowedTopicIds(currentUserId, topicIds);
+        return topics.stream()
+                .map(t -> topicMapper.toResponse(t, followedIds.contains(t.getId())))
+                .toList();
     }
 
     @Override

@@ -39,7 +39,7 @@ export default function ModerationItemDetailPage() {
 
   useEffect(() => { loadItem(); }, [loadItem]);
 
-  const handleAction = async (outcome: 'HIDE' | 'DISMISS') => {
+  const handleAction = async (outcome: 'APPROVE' | 'HIDE' | 'DISMISS') => {
     if (!item) return;
     setSubmitting(outcome);
     setActionError('');
@@ -98,6 +98,20 @@ export default function ModerationItemDetailPage() {
                 <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">Hành động</p>
 
                 <button
+                  onClick={() => handleAction('APPROVE')}
+                  disabled={!canHideTarget(item.targetType) || submitting !== null}
+                  title={
+                    !canHideTarget(item.targetType)
+                      ? `Backend không hỗ trợ duyệt nội dung loại ${TARGET_TYPE_LABELS[item.targetType]}`
+                      : 'Duyệt nội dung — nội dung sẽ hiển thị công khai (status = APPROVED) và báo cáo được đóng'
+                  }
+                  className="w-full py-3.5 mb-2.5 rounded-2xl bg-emerald-600 text-white border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-lg">task_alt</span>
+                  {submitting === 'APPROVE' ? 'Đang xử lý...' : 'Duyệt nội dung'}
+                </button>
+
+                <button
                   onClick={() => handleAction('HIDE')}
                   disabled={!canHideTarget(item.targetType) || submitting !== null}
                   title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ ẩn nội dung loại ${TARGET_TYPE_LABELS[item.targetType]}` : undefined}
@@ -119,10 +133,11 @@ export default function ModerationItemDetailPage() {
                 <button
                   onClick={() => handleAction('DISMISS')}
                   disabled={submitting !== null}
+                  title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"
                   className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-primary text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-lg">check_circle</span>
-                  {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua (Giữ lại)'}
+                  <span className="material-symbols-outlined text-lg">block</span>
+                  {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua báo cáo (không đổi trạng thái)'}
                 </button>
 
                 <button

@@ -23,6 +23,7 @@
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-101 Resolve Report (Status=Draft)                  |
 | 2026-07-01 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 28/28 tests PASS (RES-TC-INT-004 race condition not implemented — no Testcontainers harness). Refactored UC-100's moderateContent() into shared applyContentAction() primitive per ADR-001; fixed a pre-existing SecurityContextHolder leak in SessionServiceImplTest. |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | `resolveReport()` has always accepted `outcome=APPROVE` (`ResolutionOutcome.APPROVE`), but no web page ever sent it — the two report-detail pages only offered Hide/Dismiss, so a reported PENDING item could never be moved to APPROVED through the UI. Added a "Duyệt nội dung" button (see UC-100 changelog for the same entry — this endpoint is UC-100/UC-101 shared). Also relabeled the existing "Bỏ qua" button to "Bỏ qua báo cáo (không đổi trạng thái)" with a tooltip, since it was easy to confuse with Approve (Dismiss closes the report only; it never changes `QuestionStatus`/`AnswerStatus`). No backend change. |
 
 ---
 

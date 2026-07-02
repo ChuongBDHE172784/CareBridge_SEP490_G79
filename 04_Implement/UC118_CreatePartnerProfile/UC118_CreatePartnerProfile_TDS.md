@@ -23,6 +23,7 @@
 | ---------- | ------------------ | ------------------------------------------------------------ |
 | 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu — TDS cho UC-118 Create Partner Profile |
 | 2026-06-24 | AI Agent — Amelia  | Implementation hoàn thành — 82 tests PASS; điều chỉnh: `representativeUserId` là `UUID` (khớp với `User.id`); Role dùng `PARTNER` (không phải `PARTNER_REP`); phone validation dùng `@VietnamesePhoneNumber` sẵn có; DB migration V4 drop-recreate `partner_organizations` |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | **Closed a real gap**: the backend (`PartnerProfileController`, `createPartnerProfile()`) and the web API client (`partnerApi.ts::createPartnerProfile()`) were fully implemented and tested, but no frontend page ever called it — `03_Design/UI_UX/screen_usecase_tracking.md` incorrectly listed CB-099 as "✅ Done" pointing at a `CreatePartnerProfilePage.tsx` that did not exist. Built the missing page (single flat form matching the real `CreatePartnerProfileRequest` contract — the CB-099 mockup's 5-step wizard has no backing endpoints for steps 2-5, so only step 1's fields were implemented, not fabricated), added route `/partner/profile-setup` (PARTNER-only), and updated `OtpPage.tsx` so a newly-registered PARTNER is routed there after OTP verification instead of straight to the dashboard placeholder. |
 
 ---
 

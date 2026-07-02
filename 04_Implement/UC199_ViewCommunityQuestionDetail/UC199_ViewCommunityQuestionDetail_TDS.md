@@ -23,6 +23,7 @@
 | ---------- | --------------- | -------------------------------------------------------------------------- |
 | 2026-06-29 | AI Agent        | Tạo tài liệu lần đầu cho UC-199 View Community Question Detail             |
 | 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implemented CommunityQuestionDetailResponse DTO, getQuestionDetail service, toDetailResponse mapper, GET /api/v1/community/questions/{id} endpoint; 7 tests passing | Implemented |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | Two fixes: (1) `getQuestionDetail()` gained a `currentUserId` param and now scopes PENDING-question visibility to the author only — previously ANY authenticated user could open ANY other user's PENDING question by ID directly, bypassing the feed's per-author visibility rule (see UC-198 changelog); APPROVED questions unaffected. (2) response now carries the viewer's `isBookmarked` and per-answer `liked`/`likeCount` (see UC-58/UC-59 changelogs) instead of always defaulting false/zero. |
 
 ---
 

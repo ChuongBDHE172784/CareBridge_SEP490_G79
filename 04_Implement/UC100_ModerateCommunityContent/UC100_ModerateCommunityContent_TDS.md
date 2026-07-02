@@ -23,6 +23,7 @@
 | ---------- | ------------------- | ------------------------------------------------------------------------------------ |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-100 Moderate Community Content (Status=Draft)      |
 | 2026-07-01 | AI Agent — Amelia (Dev Agent) | Phase 3: Implementation — 21/21 tests PASS. `moderateContent()` implemented in `ModerationServiceImpl`/`ModerationController`, extending existing UC-99 classes (no new controller/service files). |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | Backend `resolveReport(outcome=APPROVE)` correctly sets `QuestionStatus`/`AnswerStatus` to `APPROVED` via the shared `applyContentAction()` primitive — but no web page ever offered an Approve action; `ModerationItemDetailPage.tsx`/`ContentReportDetailPage.tsx` only wired Hide/Dismiss. A reported PENDING item could be dismissed (report closed, content silently stays PENDING forever) but never actually approved. Added a "Duyệt nội dung" button to both pages calling `resolveReport(id, 'APPROVE', reason)`, gated by the same `canHideTarget` (QUESTION/ANSWER-only) check as Hide. No backend change. |
 
 ---
 

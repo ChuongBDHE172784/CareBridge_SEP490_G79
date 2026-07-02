@@ -23,6 +23,7 @@
 | ---------- | --------------------------------- | --------------------------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston                | Tạo tài liệu lần đầu — TDS cho UC-99 View Moderation Queue                                         |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent)     | Implement hoàn chỉnh — 24 tests PASS, không cần migration mới (tables tồn tại trong V1__init_schema)|
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | Bổ sung UI nút "Duyệt nội dung" (outcome=APPROVE) vào `ModerationItemDetailPage.tsx`/`ContentReportDetailPage.tsx` — trước đó backend hỗ trợ APPROVE qua `resolveReport()` nhưng không có nơi nào trong frontend gọi tới, khiến nội dung PENDING bị report không bao giờ chuyển sang APPROVED. Không đổi hành vi backend. |
 
 ---
 

@@ -23,6 +23,7 @@
 | ---------- | --------------- | ---------------------------------------------------------- |
 | 2026-06-29 | AI Agent        | Tạo tài liệu lần đầu cho UC-55 Edit Community Post (Draft) |
 | 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implemented PATCH /api/v1/community/questions/{id}, editQuestion service, UpdateCommunityQuestionRequest DTO, QuestionNotFoundException (COM-006), QuestionNotEditableException (COM-010), AuditAction.COMMUNITY_QUESTION_EDITED; 11 tests passing | Implemented |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | **Fixed unreachable UI**: `QuestionDetailScreen.isMyQuestion` always defaulted `false` and no caller (feed, screens explorer) ever passed `true` — because feed/search responses only expose a masked `authorDisplay` string, never the real `authorId`, so ownership genuinely cannot be known before the detail loads. Removed the constructor param entirely; ownership is now computed post-load as `_isMyQuestion` by comparing `QuestionDetail.authorId` (already present in the detail response) against `AuthState.instance.userId`, mirroring the existing `_isOwnAnswer` pattern. Edit icon now correctly appears for the real author only. |
 
 ---
 

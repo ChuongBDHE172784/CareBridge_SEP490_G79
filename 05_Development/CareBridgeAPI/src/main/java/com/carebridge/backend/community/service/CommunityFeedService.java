@@ -7,5 +7,5 @@ import java.util.UUID;
 
 public interface CommunityFeedService {
 
-    PaginatedResponse<CommunityFeedItemResponse> getFeed(UUID topicId, int page, int size);
+    PaginatedResponse<CommunityFeedItemResponse> getFeed(UUID topicId, UUID currentUserId, int page, int size);
 }

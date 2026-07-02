@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public interface CommunityTopicService {
 
-    List<CommunityTopicResponse> getTopics(boolean includeHidden);
+    List<CommunityTopicResponse> getTopics(boolean includeHidden, UUID currentUserId);
 
-    List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden);
+    List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden, UUID currentUserId);
 
     CommunityTopicResponse createTopic(java.util.UUID createdBy, CreateCommunityTopicRequest request);
 

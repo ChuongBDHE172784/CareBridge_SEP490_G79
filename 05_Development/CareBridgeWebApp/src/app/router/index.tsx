@@ -38,9 +38,10 @@ import EditContentPage from '../../features/contentManagement/pages/EditContentP
 import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
 import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
 
-// Partner Portal screens (CB-096, CB-097)
+// Partner Portal screens (CB-096, CB-097, CB-099)
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
+import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 
 // Moderation screens (CB-072, CB-088)
 import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
@@ -152,6 +153,7 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute requiredRoles={['PARTNER']} />,
             children: [
               { path: '/partner/dashboard', element: <AdminDashboardPage /> },
+              { path: '/partner/profile-setup', element: <CreatePartnerProfilePage /> },
             ],
           },
           {

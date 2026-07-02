@@ -22,6 +22,9 @@ public class CommunityTopicResponse {
     @JsonProperty("isHidden")
     private boolean isHidden;
 
+    @JsonProperty("isFollowed")
+    private boolean isFollowed;
+
     private int sortOrder;
     private Instant createdAt;
     private Instant updatedAt;

@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,6 +30,10 @@ public class CommunityQuestionDetailResponse {
     private String status;
     private int answerCount;
     private int likeCount;
+
+    @JsonProperty("isBookmarked")
+    private boolean isBookmarked;
+
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommunityAnswerResponse> answers;

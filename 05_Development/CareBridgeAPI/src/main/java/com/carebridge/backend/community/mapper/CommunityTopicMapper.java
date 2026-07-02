@@ -21,12 +21,19 @@ public class CommunityTopicMapper {
     }
 
     public CommunityTopicResponse toResponse(CommunityTopic entity) {
+        return toResponse(entity, false);
+    }
+
+    // UC-171 hydration fix: "isFollowed" reflects the CURRENT viewer's follow state, computed by
+    // the caller (batch per-user lookup) — never derivable from the entity alone.
+    public CommunityTopicResponse toResponse(CommunityTopic entity, boolean isFollowed) {
         return CommunityTopicResponse.builder()
                 .id(entity.getId())
                 .name(entity.getName())
                 .description(entity.getDescription())
                 .icon(entity.getIcon())
                 .isHidden(entity.isHidden())
+                .isFollowed(isFollowed)
                 .sortOrder(entity.getSortOrder())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

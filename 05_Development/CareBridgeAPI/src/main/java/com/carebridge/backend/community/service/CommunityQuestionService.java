@@ -15,10 +15,11 @@ public interface CommunityQuestionService {
     CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request);
 
     /**
-     * Returns full detail of an APPROVED community question including all APPROVED answers.
+     * Returns full detail of an APPROVED community question including all APPROVED answers,
+     * hydrated with the current viewer's bookmark state and per-answer like state.
      * @throws com.carebridge.backend.community.exception.QuestionNotFoundException (COM-006) when question not found or not APPROVED
      */
-    CommunityQuestionDetailResponse getQuestionDetail(UUID questionId);
+    CommunityQuestionDetailResponse getQuestionDetail(UUID questionId, UUID currentUserId);
 
     /**
      * Edits an existing community question.

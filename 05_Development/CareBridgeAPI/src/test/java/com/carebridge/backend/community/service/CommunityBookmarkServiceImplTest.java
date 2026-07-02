@@ -106,9 +106,9 @@ class CommunityBookmarkServiceImplTest {
         when(questionRepository.findAllById(anyCollection())).thenReturn(List.of(question));
         when(topicRepository.findAllById(any())).thenReturn(List.of());
         when(answerRepository.findQuestionIdsWithExpertAnswer(anyCollection())).thenReturn(Set.of());
-        when(feedMapper.toFeedItem(any(), any(), any(), anyBoolean()))
+        when(feedMapper.toFeedItem(any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(new CommunityFeedItemResponse(QUESTION_ID, "title", "topic", "author",
-                        null, null, 0, 0, false, null));
+                        null, null, 0, 0, false, true, null));
 
         PaginatedResponse<CommunityFeedItemResponse> result = bookmarkService.getBookmarkedQuestions(USER_ID, 0, 20);
 

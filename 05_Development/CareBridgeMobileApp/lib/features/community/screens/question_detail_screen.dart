@@ -13,12 +13,10 @@ import 'edit_question_screen.dart';
 /// Navigates to EditQuestionScreen (UC-55) for post author.
 class QuestionDetailScreen extends StatefulWidget {
   final String questionId;
-  final bool isMyQuestion; // true if current user is the author
 
   const QuestionDetailScreen({
     super.key,
     required this.questionId,
-    this.isMyQuestion = false,
   });
 
   @override
@@ -54,6 +52,15 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     _loadDetail();
   }
 
+  // True when the currently authenticated user authored this question.
+  // Computed from the loaded detail (which carries the real authorId), never from
+  // navigation-time guesses — the feed/search list responses never expose raw
+  // authorId (only a masked display name), so it cannot be known before loading.
+  bool get _isMyQuestion =>
+      _question != null &&
+      _question!.authorId != null &&
+      _question!.authorId == AuthState.instance.userId;
+
   Future<void> _loadDetail() async {
     setState(() => _loading = true);
     try {
@@ -61,6 +68,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       if (mounted) {
         setState(() {
           _question = q;
+          _bookmarked = q.isBookmarked;
+          for (final a in q.answers) {
+            _likedAnswers[a.id] = a.liked;
+            _answerLikeCounts[a.id] = a.likeCount;
+          }
           _loading = false;
         });
       }
@@ -265,7 +277,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             onPressed: _toggleBookmark,
             tooltip: 'Lưu câu hỏi',
           ),
-          if (widget.isMyQuestion)
+          if (_isMyQuestion)
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
               onPressed: () async {
@@ -283,7 +295,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               },
               tooltip: 'Chỉnh sửa',
             ),
-          if (widget.isMyQuestion)
+          if (_isMyQuestion)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: _deleteQuestion,

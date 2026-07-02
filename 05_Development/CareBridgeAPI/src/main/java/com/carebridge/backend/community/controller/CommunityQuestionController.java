@@ -75,8 +75,9 @@ public class CommunityQuestionController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CommunityQuestionDetailResponse>> getQuestionDetail(
-            @PathVariable UUID id) {
-        CommunityQuestionDetailResponse response = questionService.getQuestionDetail(id);
+            @PathVariable UUID id, Principal principal) {
+        UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
+        CommunityQuestionDetailResponse response = questionService.getQuestionDetail(id, currentUserId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

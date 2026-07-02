@@ -21,6 +21,8 @@ public class CommunityAnswerResponse {
     private boolean personalExperience;
     private boolean expertLabeled;
     private String status;
+    private int likeCount;
+    private boolean liked;
     private Instant createdAt;
     private Instant updatedAt;
 }

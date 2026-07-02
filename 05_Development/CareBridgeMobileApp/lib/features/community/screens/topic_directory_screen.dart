@@ -37,9 +37,6 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   List<CommunityTopic> _topics = [];
   bool _loading = true;
   int _selectedStage = 0;
-  // UC-171: follow state mirrors backend; updated optimistically then reconciled with API response
-  final Set<String> _followedTopics = {};
-
 
   @override
   void initState() {
@@ -80,37 +77,22 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     return map[iconName] ?? Icons.topic;
   }
 
+  // UC-171: follow state is hydrated from the server's `isFollowed` field on load
+  // (see CommunityTopic), not tracked purely client-side anymore.
   Future<void> _toggleFollow(String topicId) async {
-    final wasFollowed = _followedTopics.contains(topicId);
-    // Optimistic update
-    setState(() {
-      if (wasFollowed) {
-        _followedTopics.remove(topicId);
-      } else {
-        _followedTopics.add(topicId);
-      }
-    });
+    final index = _topics.indexWhere((t) => t.id == topicId);
+    if (index == -1) return;
+    final wasFollowed = _topics[index].isFollowed;
+    setState(() => _topics[index] = _topics[index].copyWith(isFollowed: !wasFollowed));
     try {
       final followed = await _service.toggleFollowTopic(topicId);
       if (mounted) {
-        setState(() {
-          if (followed) {
-            _followedTopics.add(topicId);
-          } else {
-            _followedTopics.remove(topicId);
-          }
-        });
+        setState(() => _topics[index] = _topics[index].copyWith(isFollowed: followed));
       }
     } catch (_) {
       // Rollback on error
       if (mounted) {
-        setState(() {
-          if (wasFollowed) {
-            _followedTopics.add(topicId);
-          } else {
-            _followedTopics.remove(topicId);
-          }
-        });
+        setState(() => _topics[index] = _topics[index].copyWith(isFollowed: wasFollowed));
       }
     }
   }
@@ -247,11 +229,10 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (context, i) {
                           final topic = _filteredTopics[i];
-                          final followed = _followedTopics.contains(topic.id);
                           return _TopicGridCard(
                             topic: topic,
                             icon: _topicIcon(topic.icon),
-                            followed: followed,
+                            followed: topic.isFollowed,
                             onToggleFollow: () => _toggleFollow(topic.id),
                             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                               builder: (_) => CommunityFeedScreen(initialTopicId: topic.id),

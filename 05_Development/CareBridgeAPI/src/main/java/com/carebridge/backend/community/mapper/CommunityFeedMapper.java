@@ -11,7 +11,8 @@ public class CommunityFeedMapper {
     private static final String UNKNOWN_AUTHOR = "Người dùng";
 
     public CommunityFeedItemResponse toFeedItem(CommunityQuestion q, String topicName,
-                                                 String displayName, boolean hasExpertAnswer) {
+                                                 String displayName, boolean hasExpertAnswer,
+                                                 boolean isBookmarked) {
         return new CommunityFeedItemResponse(
                 q.getId(),
                 q.getTitle(),
@@ -22,6 +23,7 @@ public class CommunityFeedMapper {
                 q.getAnswerCount(),
                 q.getLikeCount(),
                 hasExpertAnswer,
+                isBookmarked,
                 q.getCreatedAt()
         );
     }

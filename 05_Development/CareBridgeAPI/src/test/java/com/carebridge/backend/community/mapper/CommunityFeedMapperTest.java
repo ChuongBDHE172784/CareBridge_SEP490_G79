@@ -43,7 +43,7 @@ class CommunityFeedMapperTest {
     void toFeedItem_anonymousQuestion_authorDisplayIsMasked() {
         CommunityQuestion entity = makeQuestion(true);
 
-        CommunityFeedItemResponse response = mapper.toFeedItem(entity, "Thai kỳ", "Nguyễn Thị A", false);
+        CommunityFeedItemResponse response = mapper.toFeedItem(entity, "Thai kỳ", "Nguyễn Thị A", false, false);
 
         assertThat(response.authorDisplay()).isEqualTo(CommunityFeedMapper.ANONYMOUS_AUTHOR);
         assertThat(response.authorDisplay()).doesNotContain("Nguyễn Thị A");
@@ -55,7 +55,7 @@ class CommunityFeedMapperTest {
     void toFeedItem_nonAnonymousQuestion_authorDisplayIsRealName() {
         CommunityQuestion entity = makeQuestion(false);
 
-        CommunityFeedItemResponse response = mapper.toFeedItem(entity, "Thai kỳ", "Trần Thị B", false);
+        CommunityFeedItemResponse response = mapper.toFeedItem(entity, "Thai kỳ", "Trần Thị B", false, false);
 
         assertThat(response.authorDisplay()).isEqualTo("Trần Thị B");
     }
@@ -77,7 +77,7 @@ class CommunityFeedMapperTest {
         String topicName = "Chăm sóc bé";
         String displayName = "Lê Thị C";
 
-        CommunityFeedItemResponse response = mapper.toFeedItem(entity, topicName, displayName, true);
+        CommunityFeedItemResponse response = mapper.toFeedItem(entity, topicName, displayName, true, true);
 
         assertThat(response.id()).isEqualTo(entity.getId());
         assertThat(response.title()).isEqualTo(entity.getTitle());
@@ -86,5 +86,6 @@ class CommunityFeedMapperTest {
         assertThat(response.stage()).isEqualTo("PREGNANCY");
         assertThat(response.urgency()).isEqualTo("NORMAL");
         assertThat(response.hasExpertAnswer()).isTrue();
+        assertThat(response.bookmarked()).isTrue();
     }
 }

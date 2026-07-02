@@ -14,13 +14,17 @@ import com.carebridge.backend.community.exception.QuestionNotEditableException;
 import com.carebridge.backend.community.exception.QuestionLockedException;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
+import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
+import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
+import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -35,28 +39,43 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityTopicRepository topicRepository;
     private final CommunityAnswerRepository answerRepository;
+    private final CommunityBookmarkRepository bookmarkRepository;
+    private final CommunityAnswerLikeRepository answerLikeRepository;
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
 
     @Override
     @Transactional(readOnly = true)
-    public CommunityQuestionDetailResponse getQuestionDetail(UUID questionId) {
+    public CommunityQuestionDetailResponse getQuestionDetail(UUID questionId, UUID currentUserId) {
+        // UC-198/199 consistency fix: a PENDING question is visible in detail under the same rule
+        // as the feed (see CommunityQuestionRepository.findFeedVisible) — visible to its own author
+        // only, not to any authenticated user. Previously ANY user could open ANY PENDING question's
+        // detail directly by ID, bypassing the feed's per-author visibility rule.
         CommunityQuestion question = questionRepository.findById(questionId)
-                .filter(q -> q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.PENDING)
+                .filter(q -> q.getStatus() == QuestionStatus.APPROVED
+                        || (q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(currentUserId)))
                 .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
         String topicName = topicRepository.findById(question.getTopicId())
                 .map(t -> t.getName())
                 .orElse("");
 
-        List<CommunityAnswerResponse> answers = answerRepository
-                .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED)
-                .stream()
-                .map(answerMapper::toResponse)
+        List<CommunityAnswer> answerEntities = answerRepository
+                .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+
+        // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
+        List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();
+        Set<UUID> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(currentUserId, answerIds);
+
+        List<CommunityAnswerResponse> answers = answerEntities.stream()
+                .map(a -> answerMapper.toResponse(a, likedAnswerIds.contains(a.getId())))
                 .toList();
 
-        return questionMapper.toDetailResponse(question, topicName, answers);
+        // UC-58 hydration fix: current viewer's bookmark state for this question
+        boolean isBookmarked = bookmarkRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
+
+        return questionMapper.toDetailResponse(question, topicName, answers, isBookmarked);
     }
 
     @Override

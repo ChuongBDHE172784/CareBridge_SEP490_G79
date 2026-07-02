@@ -24,6 +24,12 @@ public class CommunityAnswerMapper {
     }
 
     public CommunityAnswerResponse toResponse(CommunityAnswer entity) {
+        return toResponse(entity, false);
+    }
+
+    // UC-59 hydration fix: "liked" reflects the CURRENT viewer's like state, computed by the
+    // caller (batch per-user lookup) — never derivable from the entity alone.
+    public CommunityAnswerResponse toResponse(CommunityAnswer entity, boolean liked) {
         return CommunityAnswerResponse.builder()
                 .id(entity.getId())
                 .questionId(entity.getQuestionId())
@@ -32,6 +38,8 @@ public class CommunityAnswerMapper {
                 .personalExperience(entity.isPersonalExperience())
                 .expertLabeled(entity.isExpertLabeled())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .likeCount(entity.getLikeCount())
+                .liked(liked)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

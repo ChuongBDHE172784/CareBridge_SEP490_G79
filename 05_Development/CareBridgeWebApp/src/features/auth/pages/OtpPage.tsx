@@ -71,7 +71,13 @@ export default function OtpPage() {
       const result = await verifyOtp(
         isEmail ? { email: state!.identifier, otp } : { phone: state!.identifier, otp }
       );
-      const route = getDefaultRouteForRole(result.user.role as Parameters<typeof getDefaultRouteForRole>[0]);
+      // UC-118: a newly registered PARTNER has no organization profile yet — send them to
+      // profile setup (CB-099) instead of the dashboard. Regular logins never hit this page
+      // (OTP verification only happens once, at registration), so this only fires the first time.
+      const route =
+        result.user.role === 'PARTNER'
+          ? '/partner/profile-setup'
+          : getDefaultRouteForRole(result.user.role as Parameters<typeof getDefaultRouteForRole>[0]);
       navigate(route, { replace: true });
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { message?: string } } };

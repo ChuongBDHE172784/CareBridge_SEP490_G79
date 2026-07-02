@@ -13,5 +13,6 @@ public record CommunityFeedItemResponse(
         int answerCount,
         int likeCount,
         boolean hasExpertAnswer,
+        boolean bookmarked,
         Instant createdAt
 ) {}

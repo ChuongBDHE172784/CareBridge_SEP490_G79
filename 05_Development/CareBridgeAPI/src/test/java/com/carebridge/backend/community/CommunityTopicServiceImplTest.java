@@ -21,9 +21,11 @@ import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.mapper.CommunityTopicMapper;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.repository.UserTopicFollowRepository;
 import com.carebridge.backend.community.service.CommunityTopicServiceImpl;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,10 +46,14 @@ class CommunityTopicServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private UserTopicFollowRepository topicFollowRepository;
+
     @InjectMocks
     private CommunityTopicServiceImpl topicService;
 
     private static final UUID MODERATOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID CURRENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
     private CreateCommunityTopicRequest makeCreateRequest(String name) {
         return CreateCommunityTopicRequest.builder()
@@ -187,8 +193,9 @@ class CommunityTopicServiceImplTest {
     void getTopics_includeHiddenFalse_shouldCallFilteredRepository() {
         CommunityTopic visible = makeExistingTopic(UUID.randomUUID(), "Thai kỳ", false);
         when(topicRepository.findAllByIsHiddenFalseOrderBySortOrderAsc()).thenReturn(List.of(visible));
+        when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
 
-        List<CommunityTopicResponse> topics = topicService.getTopics(false);
+        List<CommunityTopicResponse> topics = topicService.getTopics(false, CURRENT_USER_ID);
 
         assertEquals(1, topics.size());
         verify(topicRepository).findAllByIsHiddenFalseOrderBySortOrderAsc();
@@ -201,8 +208,9 @@ class CommunityTopicServiceImplTest {
         CommunityTopic visible = makeExistingTopic(UUID.randomUUID(), "Thai kỳ", false);
         CommunityTopic hidden = makeExistingTopic(UUID.randomUUID(), "Ẩn", true);
         when(topicRepository.findAllByOrderBySortOrderAsc()).thenReturn(List.of(visible, hidden));
+        when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
 
-        List<CommunityTopicResponse> topics = topicService.getTopics(true);
+        List<CommunityTopicResponse> topics = topicService.getTopics(true, CURRENT_USER_ID);
 
         assertEquals(2, topics.size());
         verify(topicRepository).findAllByOrderBySortOrderAsc();

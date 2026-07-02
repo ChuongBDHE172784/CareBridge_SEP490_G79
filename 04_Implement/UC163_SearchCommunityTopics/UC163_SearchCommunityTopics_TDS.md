@@ -23,6 +23,7 @@
 | ---------- | --------------- | ------------------------------------------------------------------------- |
 | 2026-06-29 | AI Agent        | Tạo tài liệu lần đầu cho UC-163 Search Community Topics — minimal change |
 | 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implemented searchByKeyword/searchByKeywordIncludingHidden JPQL queries, searchTopics in service, updated getTopics controller to accept keyword param; 6 tests passing | Implemented |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | `searchTopics()`/`getTopics()` signatures gained a `currentUserId` param as part of the UC-171 follow-state hydration fix (see UC-171 TDS changelog for detail) — search behavior itself unchanged, only the response now carries real `isFollowed` per result. |
 
 ---
 

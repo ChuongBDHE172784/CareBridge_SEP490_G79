@@ -23,6 +23,7 @@
 | ---------- | --------------- | ------------------------------------------------ |
 | 2026-06-29 | AI Agent        | Tạo tài liệu lần đầu cho UC-59 Like Answer      |
 | 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implemented CommunityAnswerLike entity, Flyway migration V20260629000002, toggle like endpoint, AnswerNotFoundException (COM-011), Math.max(0, count-1) floor, AuditAction.COMMUNITY_ANSWER_LIKED/UNLIKED; 5 tests passing | Implemented |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | Fixed hydration gap: `CommunityAnswerResponse` never exposed `likeCount`/`liked` (even though the entity already had `likeCount`), so every answer showed "0, not liked" on load regardless of real state. Added both fields, batch-hydrated via new `CommunityAnswerLikeRepository.findLikedAnswerIds()` inside `CommunityQuestionServiceImpl.getQuestionDetail()`, and updated the Flutter `CommunityAnswer` model + `question_detail_screen.dart` to seed `_likedAnswers`/`_answerLikeCounts` from the loaded detail instead of only tracking in-session toggles. All existing + new tests GREEN. |
 
 ---
 

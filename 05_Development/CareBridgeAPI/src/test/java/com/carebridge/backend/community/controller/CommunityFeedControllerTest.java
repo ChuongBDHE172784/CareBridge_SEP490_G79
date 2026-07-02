@@ -55,6 +55,9 @@ class CommunityFeedControllerTest {
     private UserRepository userRepository;
 
     private static final String FEED_URL = "/api/v1/community/feed";
+    // WithMockUser username is parsed as UUID by SecurityUtils.requireCurrentUserId — must be a valid UUID string.
+    private static final String MOTHER_UUID = "00000000-0000-0000-0000-000000000001";
+    private static final String EXPERT_UUID = "00000000-0000-0000-0000-000000000002";
 
     private PaginatedResponse<CommunityFeedItemResponse> emptyPagedResponse() {
         return PaginatedResponse.of(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0));
@@ -69,7 +72,7 @@ class CommunityFeedControllerTest {
 
     // COM198-TC-005a: size > 50 → 400 COM-001
     @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = MOTHER_UUID, roles = "MOTHER")
     void getFeed_sizeOver50_returns400WithCom001() throws Exception {
         mockMvc.perform(get(FEED_URL).param("size", "51"))
                 .andExpect(status().isBadRequest())
@@ -78,9 +81,9 @@ class CommunityFeedControllerTest {
 
     // COM198-TC-005b: size = 50 → 200 (boundary — allowed)
     @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = MOTHER_UUID, roles = "MOTHER")
     void getFeed_sizeExactly50_returns200() throws Exception {
-        when(feedService.getFeed(any(), eq(0), eq(50))).thenReturn(emptyPagedResponse());
+        when(feedService.getFeed(any(), any(), eq(0), eq(50))).thenReturn(emptyPagedResponse());
 
         mockMvc.perform(get(FEED_URL).param("size", "50"))
                 .andExpect(status().isOk());
@@ -88,9 +91,9 @@ class CommunityFeedControllerTest {
 
     // Happy path: authenticated → 200
     @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = MOTHER_UUID, roles = "MOTHER")
     void getFeed_authenticated_returns200() throws Exception {
-        when(feedService.getFeed(any(), eq(0), eq(20))).thenReturn(emptyPagedResponse());
+        when(feedService.getFeed(any(), any(), eq(0), eq(20))).thenReturn(emptyPagedResponse());
 
         mockMvc.perform(get(FEED_URL))
                 .andExpect(status().isOk())
@@ -99,9 +102,9 @@ class CommunityFeedControllerTest {
 
     // EXPERT role → 200 (all authenticated roles allowed)
     @Test
-    @WithMockUser(username = "2", roles = "EXPERT")
+    @WithMockUser(username = EXPERT_UUID, roles = "EXPERT")
     void getFeed_expertRole_returns200() throws Exception {
-        when(feedService.getFeed(any(), anyInt(), anyInt())).thenReturn(emptyPagedResponse());
+        when(feedService.getFeed(any(), any(), anyInt(), anyInt())).thenReturn(emptyPagedResponse());
 
         mockMvc.perform(get(FEED_URL))
                 .andExpect(status().isOk());
@@ -109,7 +112,7 @@ class CommunityFeedControllerTest {
 
     // size = 0 → 400 COM-001
     @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
+    @WithMockUser(username = MOTHER_UUID, roles = "MOTHER")
     void getFeed_sizeZero_returns400WithCom001() throws Exception {
         mockMvc.perform(get(FEED_URL).param("size", "0"))
                 .andExpect(status().isBadRequest())

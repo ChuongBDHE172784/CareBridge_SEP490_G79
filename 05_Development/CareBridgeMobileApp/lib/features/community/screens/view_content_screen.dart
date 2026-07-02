@@ -3,6 +3,7 @@ import '../models/community_model.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
 import '../services/content_service.dart';
+import 'verified_content_detail_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
 /// Displays curated articles, FAQs, and checklists filtered by pregnancy
@@ -70,6 +71,12 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _openContentDetail(String contentId) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => VerifiedContentDetailScreen(contentId: contentId),
+    ));
   }
 
   Future<void> _load() async {
@@ -482,9 +489,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: navigate to content detail
-                          },
+                          onPressed: () => _openContentDetail(article.id),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
                             foregroundColor: Colors.white,
@@ -546,9 +551,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           : isLast
                               ? const BorderRadius.vertical(bottom: Radius.circular(16))
                               : BorderRadius.zero,
-                      onTap: () {
-                        // TODO: navigate to FAQ detail
-                      },
+                      onTap: () => _openContentDetail(faq.id),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         child: Row(

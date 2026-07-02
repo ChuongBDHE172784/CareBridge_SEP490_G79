@@ -23,6 +23,7 @@
 | ---------- | ----------------------------------- | ------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-170 Delete Community Post |
 | 2026-07-01 | AI Agent — Amelia (Dev Agent) | Implemented: migration V20260701000002 (shared with UC-201), `QuestionStatus.DELETED`, `QuestionLockedException` (COM-012), `CommunityQuestionServiceImpl.deleteQuestion()`, `DELETE /api/v1/community/questions/{id}`, mobile `deleteQuestion()` wired into question detail screen with confirmation dialog. 8 service tests + 6 controller tests passing (`CommunityQuestionDeleteServiceImplTest`, `CommunityQuestionDeleteControllerTest`). Status=Approved. |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | **Correction to the 2026-07-01 entry**: "wired into question detail screen" was true for the delete *logic*, but the delete icon itself was gated by `widget.isMyQuestion`, which no caller ever set to `true` — so the button never actually appeared for anyone. Same root cause and same fix as UC-55: `isMyQuestion` replaced with a post-load `_isMyQuestion` getter comparing the loaded question's real `authorId` to `AuthState.instance.userId`. Delete icon now correctly appears for the real author only. |
 
 ---
 

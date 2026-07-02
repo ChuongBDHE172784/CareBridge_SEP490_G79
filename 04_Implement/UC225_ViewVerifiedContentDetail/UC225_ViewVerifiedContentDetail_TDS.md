@@ -23,6 +23,7 @@
 | ---------- | ------------------------------------- | ---------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-225 View Verified Content Detail |
 | 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: ContentStatus enum ghi sai (`PENDING`/`HIDDEN` không tồn tại — đúng là `DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED`, verified `ContentStatus.java`); §9/§10/§15 sửa mã lỗi bịa `AUTH_REQUIRED`/`CONTENT_NOT_FOUND` thành thực tế (401 = bare status không code; 404 = `CNT-003` từ `ContentException.contentNotFound()` có sẵn). Gap analysis (§1, §5.3, §8) đã verify khớp code hiện tại — không cần sửa. Status giữ nguyên `Draft` theo quy ước audit — không tự approve. |
+| 2026-07-03 | AI Agent — Claude (Audit Pass 2) | **Follow-up finds this UC was never actually wired to any screen**: `ContentService.getContentDetail()` and the `ContentDetail` model existed end-to-end, but zero widget/route anywhere called them — confirmed dead code, not a design gap. Built `VerifiedContentDetailScreen` (mobile, plain `Navigator.push`, no new go_router path — consistent with how sibling community screens navigate) and wired it from `VerifiedContentSearchScreen` (UC-224) result cards and `ViewContentScreen` (UC-82) article/FAQ tap handlers, which were previously `// TODO` stubs. `flutter analyze`/`dart analyze` clean, no compile errors. |
 
 ---
 

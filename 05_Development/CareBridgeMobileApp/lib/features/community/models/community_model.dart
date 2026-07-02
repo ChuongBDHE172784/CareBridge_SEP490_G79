@@ -5,6 +5,7 @@ class CommunityTopic {
   final String icon;
   final bool isHidden;
   final int sortOrder;
+  final bool isFollowed;
 
   CommunityTopic({
     required this.id,
@@ -13,6 +14,7 @@ class CommunityTopic {
     required this.icon,
     required this.isHidden,
     required this.sortOrder,
+    this.isFollowed = false,
   });
 
   factory CommunityTopic.fromJson(Map<String, dynamic> json) => CommunityTopic(
@@ -22,6 +24,17 @@ class CommunityTopic {
     icon: json['icon'] as String? ?? 'topic',
     isHidden: json['isHidden'] as bool? ?? false,
     sortOrder: json['sortOrder'] as int? ?? 0,
+    isFollowed: json['isFollowed'] as bool? ?? false,
+  );
+
+  CommunityTopic copyWith({bool? isFollowed}) => CommunityTopic(
+    id: id,
+    name: name,
+    description: description,
+    icon: icon,
+    isHidden: isHidden,
+    sortOrder: sortOrder,
+    isFollowed: isFollowed ?? this.isFollowed,
   );
 }
 
@@ -35,6 +48,7 @@ class CommunityFeedItem {
   final int answerCount;
   final int likeCount;
   final bool hasExpertAnswer;
+  final bool bookmarked;
   final String createdAt;
 
   CommunityFeedItem({
@@ -47,6 +61,7 @@ class CommunityFeedItem {
     required this.answerCount,
     required this.likeCount,
     required this.hasExpertAnswer,
+    required this.bookmarked,
     required this.createdAt,
   });
 
@@ -60,7 +75,22 @@ class CommunityFeedItem {
     answerCount: json['answerCount'] as int? ?? 0,
     likeCount: json['likeCount'] as int? ?? 0,
     hasExpertAnswer: json['hasExpertAnswer'] as bool? ?? false,
+    bookmarked: json['bookmarked'] as bool? ?? false,
     createdAt: json['createdAt'] as String? ?? '',
+  );
+
+  CommunityFeedItem copyWith({bool? bookmarked}) => CommunityFeedItem(
+    id: id,
+    title: title,
+    topicName: topicName,
+    authorDisplay: authorDisplay,
+    stage: stage,
+    urgency: urgency,
+    answerCount: answerCount,
+    likeCount: likeCount,
+    hasExpertAnswer: hasExpertAnswer,
+    bookmarked: bookmarked ?? this.bookmarked,
+    createdAt: createdAt,
   );
 }
 
@@ -73,6 +103,8 @@ class CommunityAnswer {
   final bool personalExperience;
   final bool expertLabeled;
   final String status;
+  final int likeCount;
+  final bool liked;
   final String createdAt;
 
   CommunityAnswer({
@@ -83,6 +115,8 @@ class CommunityAnswer {
     required this.personalExperience,
     required this.expertLabeled,
     required this.status,
+    required this.likeCount,
+    required this.liked,
     required this.createdAt,
   });
 
@@ -94,7 +128,22 @@ class CommunityAnswer {
     personalExperience: json['personalExperience'] as bool? ?? false,
     expertLabeled: json['expertLabeled'] as bool? ?? false,
     status: json['status'] as String? ?? 'PENDING',
+    likeCount: json['likeCount'] as int? ?? 0,
+    liked: json['liked'] as bool? ?? false,
     createdAt: json['createdAt'] as String? ?? '',
+  );
+
+  CommunityAnswer copyWith({bool? liked, int? likeCount}) => CommunityAnswer(
+    id: id,
+    questionId: questionId,
+    authorId: authorId,
+    body: body,
+    personalExperience: personalExperience,
+    expertLabeled: expertLabeled,
+    status: status,
+    likeCount: likeCount ?? this.likeCount,
+    liked: liked ?? this.liked,
+    createdAt: createdAt,
   );
 }
 
@@ -113,6 +162,7 @@ class QuestionDetail {
   final String status;
   final int answerCount;
   final int likeCount;
+  final bool isBookmarked;
   final String createdAt;
   final String updatedAt;
   final List<CommunityAnswer> answers;
@@ -132,6 +182,7 @@ class QuestionDetail {
     required this.status,
     required this.answerCount,
     required this.likeCount,
+    required this.isBookmarked,
     required this.createdAt,
     required this.updatedAt,
     required this.answers,
@@ -152,6 +203,7 @@ class QuestionDetail {
     status: json['status'] as String? ?? 'APPROVED',
     answerCount: json['answerCount'] as int? ?? 0,
     likeCount: json['likeCount'] as int? ?? 0,
+    isBookmarked: json['isBookmarked'] as bool? ?? false,
     createdAt: json['createdAt'] as String? ?? '',
     updatedAt: json['updatedAt'] as String? ?? '',
     answers: ((json['answers'] as List?) ?? [])

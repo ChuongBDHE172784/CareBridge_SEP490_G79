@@ -25,6 +25,7 @@
 | ---------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-82 View Content and Checklist                                 |
 | 2026-06-24 | AI Agent — Amelia (Dev)               | Implement hoàn chỉnh UC-82: entities, repos, service, controller, mapper, migration V6, tests |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | List loading was real, but every drill-down was a `// TODO` stub (featured article "Xem chi tiết" CTA, FAQ row tap) — content could be browsed but never read in full. Wired both to the new `VerifiedContentDetailScreen` (UC-225). Left the unrelated `// TODO`s (notification bell, topic-icon filter, "Xem tất cả" full list, search-bar `onSubmitted`) untouched — out of scope for this pass. |
 
 ---
 

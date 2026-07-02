@@ -23,6 +23,7 @@
 | ---------- | ------------------ | ---------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Winston | Tạo tài liệu lần đầu cho UC-198 View Community Feed                               |
 | 2026-06-24 | AI Agent — Amelia  | Implement: CommunityFeedService, CommunityFeedMapper, CommunityFeedController; 14 tests GREEN |
+| 2026-07-03 | AI Agent — Claude (Audit Pass) | **Fixed a moderation-exposure bug**: `getFeed()` queried `status IN (APPROVED, PENDING)` with no author filter, so ANY user's freshly-posted (unmoderated) question was visible to the entire community immediately — while Search (`searchApproved`) correctly stayed APPROVED-only, creating an inconsistency where a post visible in the feed vanished from search. Added `CommunityQuestionRepository.findFeedVisible(topicId, currentUserId, pageable)`: APPROVED visible to everyone, PENDING visible only to its own author. Threaded `currentUserId` through `CommunityFeedService`/`Controller`. Also tightened `CommunityQuestionServiceImpl.getQuestionDetail()` with the same author-scoping rule (previously any user could open any PENDING question's detail directly by ID). Old `CommunityFeedServiceImplTest` (3 tests) were already failing pre-existing/unmaintained against a since-changed method signature — rewritten and now GREEN, 168/168 community tests pass. |
 
 ---
 

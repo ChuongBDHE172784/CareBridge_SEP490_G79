@@ -22,18 +22,21 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 
-    // UC-198: feed — all topics, APPROVED only, newest first
-    Page<CommunityQuestion> findAllByStatusOrderByCreatedAtDesc(QuestionStatus status, Pageable pageable);
-
-    Page<CommunityQuestion> findAllByStatusInOrderByCreatedAtDesc(
-            java.util.Collection<QuestionStatus> statuses, Pageable pageable);
-
-    // UC-198: feed — filtered by topic, APPROVED only, newest first
-    Page<CommunityQuestion> findAllByStatusAndTopicIdOrderByCreatedAtDesc(
-            QuestionStatus status, UUID topicId, Pageable pageable);
-
-    Page<CommunityQuestion> findAllByStatusInAndTopicIdOrderByCreatedAtDesc(
-            java.util.Collection<QuestionStatus> statuses, UUID topicId, Pageable pageable);
+    // UC-198 (fixed): feed shows APPROVED questions to everyone, plus the current user's own
+    // PENDING questions — previously PENDING questions from ANY author leaked to the whole feed
+    // before moderation, which is a moderation-exposure gap, not an intentional design decision.
+    @Query("""
+            SELECT q FROM CommunityQuestion q
+            WHERE (q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+                   OR (q.status = com.carebridge.backend.community.entity.QuestionStatus.PENDING
+                       AND q.authorId = :currentUserId))
+              AND (:topicId IS NULL OR q.topicId = :topicId)
+            ORDER BY q.createdAt DESC
+            """)
+    Page<CommunityQuestion> findFeedVisible(
+            @Param("topicId") UUID topicId,
+            @Param("currentUserId") UUID currentUserId,
+            Pageable pageable);
 
     // UC-162: search — APPROVED only, multi-filter, parameterized (ADR-COM-007, OWASP A03)
     @Query("""

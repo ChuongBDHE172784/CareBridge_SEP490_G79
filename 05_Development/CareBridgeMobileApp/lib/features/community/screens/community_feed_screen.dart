@@ -45,10 +45,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   bool _loading = true;
   String? _selectedTopicId; // null = "Tất cả"
 
-  // UC-58: track bookmarked questions locally (optimistic)
-  final Set<String> _bookmarkedIds = {};
-
-
   @override
   void initState() {
     super.initState();
@@ -264,28 +260,27 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     ));
   }
 
-  // UC-58: toggle bookmark with optimistic UI
+  // UC-58: toggle bookmark with optimistic UI — hydrated from the server's `bookmarked`
+  // field on load (see CommunityFeedItem), not tracked purely client-side anymore.
   Future<void> _toggleBookmark(String questionId) async {
-    final was = _bookmarkedIds.contains(questionId);
-    setState(() {
-      if (was) _bookmarkedIds.remove(questionId); else _bookmarkedIds.add(questionId);
-    });
+    final index = _items.indexWhere((i) => i.id == questionId);
+    if (index == -1) return;
+    final was = _items[index].bookmarked;
+    setState(() => _items[index] = _items[index].copyWith(bookmarked: !was));
     try {
       final result = await _service.toggleBookmark(questionId);
       if (mounted) {
-        setState(() {
-          if (result.bookmarked) _bookmarkedIds.add(questionId); else _bookmarkedIds.remove(questionId);
-        });
+        setState(() => _items[index] = _items[index].copyWith(bookmarked: result.bookmarked));
       }
     } catch (_) {
       // Rollback on error
-      if (mounted) setState(() { if (was) _bookmarkedIds.add(questionId); else _bookmarkedIds.remove(questionId); });
+      if (mounted) setState(() => _items[index] = _items[index].copyWith(bookmarked: was));
     }
   }
 
   // ── Post card ──
   Widget _buildPostCard(CommunityFeedItem item) {
-    final bookmarked = _bookmarkedIds.contains(item.id);
+    final bookmarked = item.bookmarked;
     return GestureDetector(
       onTap: () => _navigateToQuestionDetail(item),
       child: Container(

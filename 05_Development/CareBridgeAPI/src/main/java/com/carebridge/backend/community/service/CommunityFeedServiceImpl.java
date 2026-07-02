@@ -3,9 +3,9 @@ package com.carebridge.backend.community.service;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.community.dto.response.CommunityFeedItemResponse;
 import com.carebridge.backend.community.entity.CommunityQuestion;
-import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
+import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,22 +28,17 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityAnswerRepository answerRepository;
     private final CommunityTopicRepository topicRepository;
+    private final CommunityBookmarkRepository bookmarkRepository;
     private final CommunityFeedMapper feedMapper;
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<CommunityFeedItemResponse> getFeed(UUID topicId, int page, int size) {
+    public PaginatedResponse<CommunityFeedItemResponse> getFeed(UUID topicId, UUID currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<CommunityQuestion> questions;
-        java.util.List<QuestionStatus> statuses = java.util.List.of(QuestionStatus.APPROVED, QuestionStatus.PENDING);
-        if (topicId != null) {
-            questions = questionRepository.findAllByStatusInAndTopicIdOrderByCreatedAtDesc(
-                    statuses, topicId, pageable);
-        } else {
-            questions = questionRepository.findAllByStatusInOrderByCreatedAtDesc(
-                    statuses, pageable);
-        }
+        // UC-198 (fixed): APPROVED visible to everyone, PENDING visible only to its own author —
+        // previously every user's PENDING question leaked to the whole feed (see repository note).
+        Page<CommunityQuestion> questions = questionRepository.findFeedVisible(topicId, currentUserId, pageable);
 
         // Batch fetch topic names to avoid N+1
         Set<UUID> topicIds = questions.stream()
@@ -60,10 +55,14 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
                 .collect(Collectors.toList());
         Set<UUID> expertAnsweredIds = answerRepository.findQuestionIdsWithExpertAnswer(questionIds);
 
+        // Batch check bookmark state to avoid N+1 (UC-58 hydration fix)
+        Set<UUID> bookmarkedIds = bookmarkRepository.findBookmarkedQuestionIds(currentUserId, questionIds);
+
         Page<CommunityFeedItemResponse> feedPage = questions.map(q -> {
             String tName = topicNames.getOrDefault(q.getTopicId(), "");
             boolean hasExpert = expertAnsweredIds.contains(q.getId());
-            return feedMapper.toFeedItem(q, tName, null, hasExpert);
+            boolean isBookmarked = bookmarkedIds.contains(q.getId());
+            return feedMapper.toFeedItem(q, tName, null, hasExpert, isBookmarked);
         });
 
         return PaginatedResponse.of(feedPage);
