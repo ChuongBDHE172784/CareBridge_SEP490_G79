@@ -49,6 +49,7 @@ class CommunityFeedItem {
   final int likeCount;
   final bool hasExpertAnswer;
   final bool bookmarked;
+  final bool liked;
   final String createdAt;
 
   CommunityFeedItem({
@@ -62,6 +63,7 @@ class CommunityFeedItem {
     required this.likeCount,
     required this.hasExpertAnswer,
     required this.bookmarked,
+    required this.liked,
     required this.createdAt,
   });
 
@@ -76,10 +78,11 @@ class CommunityFeedItem {
     likeCount: json['likeCount'] as int? ?? 0,
     hasExpertAnswer: json['hasExpertAnswer'] as bool? ?? false,
     bookmarked: json['bookmarked'] as bool? ?? false,
+    liked: json['liked'] as bool? ?? false,
     createdAt: json['createdAt'] as String? ?? '',
   );
 
-  CommunityFeedItem copyWith({bool? bookmarked}) => CommunityFeedItem(
+  CommunityFeedItem copyWith({bool? bookmarked, bool? liked, int? likeCount}) => CommunityFeedItem(
     id: id,
     title: title,
     topicName: topicName,
@@ -87,9 +90,10 @@ class CommunityFeedItem {
     stage: stage,
     urgency: urgency,
     answerCount: answerCount,
-    likeCount: likeCount,
+    likeCount: likeCount ?? this.likeCount,
     hasExpertAnswer: hasExpertAnswer,
     bookmarked: bookmarked ?? this.bookmarked,
+    liked: liked ?? this.liked,
     createdAt: createdAt,
   );
 }
@@ -163,6 +167,7 @@ class QuestionDetail {
   final int answerCount;
   final int likeCount;
   final bool isBookmarked;
+  final bool isLiked;
   final String createdAt;
   final String updatedAt;
   final List<CommunityAnswer> answers;
@@ -183,6 +188,7 @@ class QuestionDetail {
     required this.answerCount,
     required this.likeCount,
     required this.isBookmarked,
+    required this.isLiked,
     required this.createdAt,
     required this.updatedAt,
     required this.answers,
@@ -204,6 +210,7 @@ class QuestionDetail {
     answerCount: json['answerCount'] as int? ?? 0,
     likeCount: json['likeCount'] as int? ?? 0,
     isBookmarked: json['isBookmarked'] as bool? ?? false,
+    isLiked: json['isLiked'] as bool? ?? false,
     createdAt: json['createdAt'] as String? ?? '',
     updatedAt: json['updatedAt'] as String? ?? '',
     answers: ((json['answers'] as List?) ?? [])
@@ -230,6 +237,19 @@ class LikeToggleResult {
   LikeToggleResult({required this.liked, required this.likeCount});
 
   factory LikeToggleResult.fromJson(Map<String, dynamic> json) => LikeToggleResult(
+    liked: json['liked'] as bool? ?? false,
+    likeCount: json['likeCount'] as int? ?? 0,
+  );
+}
+
+// Question like toggle response
+class QuestionLikeToggleResult {
+  final bool liked;
+  final int likeCount;
+
+  QuestionLikeToggleResult({required this.liked, required this.likeCount});
+
+  factory QuestionLikeToggleResult.fromJson(Map<String, dynamic> json) => QuestionLikeToggleResult(
     liked: json['liked'] as bool? ?? false,
     likeCount: json['likeCount'] as int? ?? 0,
   );

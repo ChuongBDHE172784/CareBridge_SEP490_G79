@@ -11,6 +11,7 @@ import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,7 @@ class CommunityBookmarkServiceImplTest {
     @Mock CommunityQuestionRepository questionRepository;
     @Mock CommunityTopicRepository topicRepository;
     @Mock CommunityAnswerRepository answerRepository;
+    @Mock CommunityQuestionLikeRepository likeRepository;
     @Mock CommunityFeedMapper feedMapper;
     @Mock AuditService auditService;
     @InjectMocks CommunityBookmarkServiceImpl bookmarkService;
@@ -106,13 +108,50 @@ class CommunityBookmarkServiceImplTest {
         when(questionRepository.findAllById(anyCollection())).thenReturn(List.of(question));
         when(topicRepository.findAllById(any())).thenReturn(List.of());
         when(answerRepository.findQuestionIdsWithExpertAnswer(anyCollection())).thenReturn(Set.of());
-        when(feedMapper.toFeedItem(any(), any(), any(), anyBoolean(), anyBoolean()))
+        when(likeRepository.findLikedQuestionIds(eq(USER_ID), anyCollection())).thenReturn(Set.of());
+        when(feedMapper.toFeedItem(any(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
                 .thenReturn(new CommunityFeedItemResponse(QUESTION_ID, "title", "topic", "author",
-                        null, null, 0, 0, false, true, null));
+                        null, null, 0, 0, false, true, false, null));
 
         PaginatedResponse<CommunityFeedItemResponse> result = bookmarkService.getBookmarkedQuestions(USER_ID, 0, 20);
 
         assertThat(result).isNotNull();
+    }
+
+    // COMQL-TC-012: bookmark list hydrates liked correctly per question (2nd caller of toFeedItem)
+    @Test
+    void getBookmarkedQuestions_someLikedSomeNot_hydratesLikedPerQuestion() {
+        UUID question2Id = UUID.randomUUID();
+        CommunityQuestion question1 = makeApprovedQuestion();
+        CommunityQuestion question2 = CommunityQuestion.builder()
+                .id(question2Id).topicId(UUID.randomUUID()).authorId(UUID.randomUUID())
+                .title("Q2").body("Q2 body").status(QuestionStatus.APPROVED).anonymous(false).build();
+        CommunityBookmark bookmark1 = CommunityBookmark.builder()
+                .id(UUID.randomUUID()).userId(USER_ID).questionId(QUESTION_ID).build();
+        CommunityBookmark bookmark2 = CommunityBookmark.builder()
+                .id(UUID.randomUUID()).userId(USER_ID).questionId(question2Id).build();
+        Page<CommunityBookmark> bookmarkPage = new PageImpl<>(List.of(bookmark1, bookmark2));
+
+        when(bookmarkRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                .thenReturn(bookmarkPage);
+        when(questionRepository.findAllById(anyCollection())).thenReturn(List.of(question1, question2));
+        when(topicRepository.findAllById(any())).thenReturn(List.of());
+        when(answerRepository.findQuestionIdsWithExpertAnswer(anyCollection())).thenReturn(Set.of());
+        when(likeRepository.findLikedQuestionIds(eq(USER_ID), anyCollection())).thenReturn(Set.of(QUESTION_ID));
+        when(feedMapper.toFeedItem(eq(question1), any(), any(), anyBoolean(), eq(true), eq(true)))
+                .thenReturn(new CommunityFeedItemResponse(QUESTION_ID, "title", "topic", "author",
+                        null, null, 0, 0, false, true, true, null));
+        when(feedMapper.toFeedItem(eq(question2), any(), any(), anyBoolean(), eq(true), eq(false)))
+                .thenReturn(new CommunityFeedItemResponse(question2Id, "title2", "topic", "author",
+                        null, null, 0, 0, false, true, false, null));
+
+        PaginatedResponse<CommunityFeedItemResponse> result = bookmarkService.getBookmarkedQuestions(USER_ID, 0, 20);
+
+        assertThat(result.getData()).hasSize(2);
+        verify(feedMapper).toFeedItem(eq(question1), any(), any(), anyBoolean(), eq(true), eq(true));
+        verify(feedMapper).toFeedItem(eq(question2), any(), any(), anyBoolean(), eq(true), eq(false));
+        // batch call, not N+1
+        verify(likeRepository, org.mockito.Mockito.times(1)).findLikedQuestionIds(eq(USER_ID), anyCollection());
     }
 
     @Test

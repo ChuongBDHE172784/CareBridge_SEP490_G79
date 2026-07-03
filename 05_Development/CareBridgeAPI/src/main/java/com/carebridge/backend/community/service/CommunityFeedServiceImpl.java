@@ -6,6 +6,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     private final CommunityAnswerRepository answerRepository;
     private final CommunityTopicRepository topicRepository;
     private final CommunityBookmarkRepository bookmarkRepository;
+    private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityFeedMapper feedMapper;
 
     @Override
@@ -58,11 +60,15 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
         // Batch check bookmark state to avoid N+1 (UC-58 hydration fix)
         Set<UUID> bookmarkedIds = bookmarkRepository.findBookmarkedQuestionIds(currentUserId, questionIds);
 
+        // Batch check like state to avoid N+1
+        Set<UUID> likedIds = likeRepository.findLikedQuestionIds(currentUserId, questionIds);
+
         Page<CommunityFeedItemResponse> feedPage = questions.map(q -> {
             String tName = topicNames.getOrDefault(q.getTopicId(), "");
             boolean hasExpert = expertAnsweredIds.contains(q.getId());
             boolean isBookmarked = bookmarkedIds.contains(q.getId());
-            return feedMapper.toFeedItem(q, tName, null, hasExpert, isBookmarked);
+            boolean isLiked = likedIds.contains(q.getId());
+            return feedMapper.toFeedItem(q, tName, null, hasExpert, isBookmarked, isLiked);
         });
 
         return PaginatedResponse.of(feedPage);

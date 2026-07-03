@@ -14,6 +14,7 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 
@@ -52,6 +53,9 @@ class CommunityFeedServiceImplTest {
     @Mock
     private CommunityBookmarkRepository bookmarkRepository;
 
+    @Mock
+    private CommunityQuestionLikeRepository likeRepository;
+
     @InjectMocks
     private CommunityFeedServiceImpl service;
 
@@ -74,7 +78,7 @@ class CommunityFeedServiceImplTest {
 
     private CommunityFeedItemResponse makeFeedItem(UUID id, Instant createdAt) {
         return new CommunityFeedItemResponse(id, "title", "Thai kỳ", "Author",
-                "PREGNANCY", "NORMAL", 0, 0, false, false, createdAt);
+                "PREGNANCY", "NORMAL", 0, 0, false, false, false, createdAt);
     }
 
     // COM198-TC-001: Feed returns visible questions (APPROVED + own PENDING), newest first
@@ -94,13 +98,14 @@ class CommunityFeedServiceImplTest {
                 .thenReturn(pageResult);
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
+        when(likeRepository.findLikedQuestionIds(any(), any())).thenReturn(Set.of());
         when(topicRepository.findAllById(any())).thenReturn(List.of(
                 com.carebridge.backend.community.entity.CommunityTopic.builder()
                         .id(TOPIC_A).name("Thai kỳ").build()));
 
-        when(feedMapper.toFeedItem(eq(q3), any(), any(), eq(false), eq(false))).thenReturn(makeFeedItem(q3.getId(), t3));
-        when(feedMapper.toFeedItem(eq(q2), any(), any(), eq(false), eq(false))).thenReturn(makeFeedItem(q2.getId(), t2));
-        when(feedMapper.toFeedItem(eq(q1), any(), any(), eq(false), eq(false))).thenReturn(makeFeedItem(q1.getId(), t1));
+        when(feedMapper.toFeedItem(eq(q3), any(), any(), eq(false), eq(false), eq(false))).thenReturn(makeFeedItem(q3.getId(), t3));
+        when(feedMapper.toFeedItem(eq(q2), any(), any(), eq(false), eq(false), eq(false))).thenReturn(makeFeedItem(q2.getId(), t2));
+        when(feedMapper.toFeedItem(eq(q1), any(), any(), eq(false), eq(false), eq(false))).thenReturn(makeFeedItem(q1.getId(), t1));
 
         PaginatedResponse<CommunityFeedItemResponse> result = service.getFeed(null, CURRENT_USER, 0, 20);
 
@@ -163,5 +168,50 @@ class CommunityFeedServiceImplTest {
 
         org.mockito.Mockito.verify(questionRepository).findFeedVisible(any(), eq(CURRENT_USER), any());
         org.mockito.Mockito.verify(bookmarkRepository).findBookmarkedQuestionIds(eq(CURRENT_USER), any());
+    }
+
+    // COMQL-TC-009: Feed item hydrates liked=true for a question the viewer already liked
+    @Test
+    void getFeed_questionLikedByCurrentUser_hydratesLikedTrue() {
+        Instant t1 = Instant.now();
+        CommunityQuestion q1 = makeApprovedQuestion(t1, false);
+        Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
+
+        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+                .thenReturn(pageResult);
+        when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
+        when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
+        when(likeRepository.findLikedQuestionIds(eq(CURRENT_USER), any())).thenReturn(Set.of(q1.getId()));
+        when(topicRepository.findAllById(any())).thenReturn(List.of());
+        when(feedMapper.toFeedItem(eq(q1), any(), any(), eq(false), eq(false), eq(true)))
+                .thenReturn(new CommunityFeedItemResponse(q1.getId(), "title", "Thai kỳ", "Author",
+                        "PREGNANCY", "NORMAL", 0, 0, false, false, true, t1));
+
+        PaginatedResponse<CommunityFeedItemResponse> result = service.getFeed(null, CURRENT_USER, 0, 20);
+
+        assertThat(result.getData()).hasSize(1);
+        assertThat(result.getData().get(0).liked()).isTrue();
+    }
+
+    // COMQL-TC-010: Feed item hydrates liked=false for a question the viewer has not liked
+    @Test
+    void getFeed_questionNotLikedByCurrentUser_hydratesLikedFalse() {
+        Instant t1 = Instant.now();
+        CommunityQuestion q1 = makeApprovedQuestion(t1, false);
+        Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
+
+        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+                .thenReturn(pageResult);
+        when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
+        when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
+        when(likeRepository.findLikedQuestionIds(eq(CURRENT_USER), any())).thenReturn(Set.of());
+        when(topicRepository.findAllById(any())).thenReturn(List.of());
+        when(feedMapper.toFeedItem(eq(q1), any(), any(), eq(false), eq(false), eq(false)))
+                .thenReturn(makeFeedItem(q1.getId(), t1));
+
+        PaginatedResponse<CommunityFeedItemResponse> result = service.getFeed(null, CURRENT_USER, 0, 20);
+
+        assertThat(result.getData()).hasSize(1);
+        assertThat(result.getData().get(0).liked()).isFalse();
     }
 }

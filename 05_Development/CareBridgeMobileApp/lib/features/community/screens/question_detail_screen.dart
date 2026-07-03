@@ -41,6 +41,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   QuestionDetail? _question;
   bool _loading = true;
   bool _bookmarked = false;
+  bool _questionLiked = false;
+  int _questionLikeCount = 0;
 
   // Track per-answer like state locally
   final Map<String, bool> _likedAnswers = {};
@@ -69,6 +71,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         setState(() {
           _question = q;
           _bookmarked = q.isBookmarked;
+          _questionLiked = q.isLiked;
+          _questionLikeCount = q.likeCount;
           for (final a in q.answers) {
             _likedAnswers[a.id] = a.liked;
             _answerLikeCounts[a.id] = a.likeCount;
@@ -86,6 +90,31 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       final result = await _service.toggleBookmark(widget.questionId);
       if (mounted) setState(() => _bookmarked = result.bookmarked);
     } catch (_) {}
+  }
+
+  Future<void> _toggleQuestionLike() async {
+    final wasLiked = _questionLiked;
+    final prevCount = _questionLikeCount;
+    setState(() {
+      _questionLiked = !wasLiked;
+      _questionLikeCount = wasLiked ? prevCount - 1 : prevCount + 1;
+    });
+    try {
+      final result = await _service.toggleQuestionLike(widget.questionId);
+      if (mounted) {
+        setState(() {
+          _questionLiked = result.liked;
+          _questionLikeCount = result.likeCount;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _questionLiked = wasLiked;
+          _questionLikeCount = prevCount;
+        });
+      }
+    }
   }
 
   // UC-170: soft-delete own question
@@ -397,7 +426,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          q.anonymous ? 'Ẩn danh' : (q.authorId ?? 'Ẩn danh'),
+                          q.anonymous ? 'Ẩn danh' : 'Người dùng',
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface),
                         ),
                         Text(
@@ -433,9 +462,18 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     const SizedBox(width: 4),
                     Text('${q.answerCount} câu trả lời', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
                     const SizedBox(width: 16),
-                    const Icon(Icons.favorite_border, size: 16, color: _onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text('${q.likeCount}', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                    GestureDetector(
+                      onTap: _toggleQuestionLike,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_questionLiked ? Icons.favorite : Icons.favorite_border,
+                              size: 16, color: _questionLiked ? _primary : _onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text('$_questionLikeCount', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],

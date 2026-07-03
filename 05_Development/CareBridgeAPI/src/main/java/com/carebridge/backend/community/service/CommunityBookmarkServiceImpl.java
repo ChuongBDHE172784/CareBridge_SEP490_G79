@@ -13,6 +13,7 @@ import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityTopicRepository topicRepository;
     private final CommunityAnswerRepository answerRepository;
+    private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityFeedMapper feedMapper;
     private final AuditService auditService;
 
@@ -101,6 +103,9 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
         // Batch check expert answers
         Set<UUID> expertAnsweredIds = answerRepository.findQuestionIdsWithExpertAnswer(questionIds);
 
+        // Batch check like state to avoid N+1
+        Set<UUID> likedIds = likeRepository.findLikedQuestionIds(userId, questionIds);
+
         // Map bookmarks to feed items (skip if question not found or not APPROVED)
         List<CommunityFeedItemResponse> items = bookmarkPage.stream()
                 .map(b -> questionMap.get(b.getQuestionId()))
@@ -108,8 +113,9 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
                 .map(q -> {
                     String topicName = topicNames.getOrDefault(q.getTopicId(), "");
                     boolean hasExpert = expertAnsweredIds.contains(q.getId());
+                    boolean isLiked = likedIds.contains(q.getId());
                     // Every item here is, by construction, bookmarked by this user.
-                    return feedMapper.toFeedItem(q, topicName, null, hasExpert, true);
+                    return feedMapper.toFeedItem(q, topicName, null, hasExpert, true, isLiked);
                 })
                 .collect(Collectors.toList());
 

@@ -16,6 +16,7 @@ import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ class CommunityQuestionDetailServiceImplTest {
     @Mock CommunityAnswerRepository answerRepository;
     @Mock CommunityBookmarkRepository bookmarkRepository;
     @Mock CommunityAnswerLikeRepository answerLikeRepository;
+    @Mock CommunityQuestionLikeRepository questionLikeRepository;
     @Mock CommunityQuestionMapper questionMapper;
     @Mock CommunityAnswerMapper answerMapper;
     @Mock AuditService auditService;
@@ -111,7 +113,7 @@ class CommunityQuestionDetailServiceImplTest {
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
         when(answerMapper.toResponse(answer, false)).thenReturn(answerResponse);
-        when(questionMapper.toDetailResponse(eq(question), eq("Dinh dưỡng"), any(), eq(false)))
+        when(questionMapper.toDetailResponse(eq(question), eq("Dinh dưỡng"), any(), eq(false), eq(false)))
                 .thenReturn(expectedDetail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
@@ -166,7 +168,7 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean())).thenReturn(maskedDetail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(maskedDetail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
@@ -187,7 +189,7 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean())).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
@@ -206,12 +208,12 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), eq(""), any(), anyBoolean())).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), eq(""), any(), anyBoolean(), anyBoolean())).thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
         assertThat(result).isNotNull();
-        verify(questionMapper).toDetailResponse(any(), eq(""), any(), anyBoolean());
+        verify(questionMapper).toDetailResponse(any(), eq(""), any(), anyBoolean(), anyBoolean());
     }
 
     // New: bookmarked question hydrates isBookmarked=true (UC-58 hydration fix regression guard)
@@ -228,11 +230,34 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(true);
-        when(questionMapper.toDetailResponse(any(), any(), any(), eq(true))).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), eq(true), anyBoolean())).thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
         assertThat(result.isBookmarked()).isTrue();
-        verify(questionMapper).toDetailResponse(any(), any(), any(), eq(true));
+        verify(questionMapper).toDetailResponse(any(), any(), any(), eq(true), anyBoolean());
+    }
+
+    // COMQL-TC-011: liked question hydrates isLiked=true for the current viewer
+    @Test
+    void getQuestionDetail_likedByCurrentUser_hydratesIsLikedTrue() {
+        CommunityQuestion question = makeApprovedQuestion();
+        CommunityTopic topic = makeTopic();
+        CommunityQuestionDetailResponse detail = CommunityQuestionDetailResponse.builder()
+                .id(QUESTION_ID).isLiked(true).answers(List.of()).build();
+
+        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
+        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+                .thenReturn(List.of());
+        when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
+        when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
+        when(questionLikeRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(true);
+        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), eq(true))).thenReturn(detail);
+
+        CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
+
+        assertThat(result.isLiked()).isTrue();
+        verify(questionMapper).toDetailResponse(any(), any(), any(), anyBoolean(), eq(true));
     }
 }
