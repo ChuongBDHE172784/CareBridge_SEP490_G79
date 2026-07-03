@@ -28,6 +28,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Test Designer | Khởi tạo tài liệu — Test-Spec cho UC68 (Draft) |
+| 2026-07-02 | AI Agent — Test Designer (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115). State transition `CONNECTED → DISCONNECTED` corrected to `ACTIVE → REVOKED`. **Major simplification:** since UC68's ADR-DEVICE-007 no longer calls `ConsentService.revoke()` (UC66's corrected ADR-DEVICE-002 removed the `ConsentGrant` dual-write), all test cases and fixtures referencing consent-revoke transactional behavior (`DISCONNECT-TC-001`, `DISCONNECT-TC-007`, `DISCONNECT-TC-008`) are rewritten as simple single-table UPDATE assertions — the `@Transactional` dual-write rollback scenario (`DISCONNECT-TC-007`) no longer applies and is removed/repurposed. |
 
 ---
 
@@ -56,7 +57,7 @@
 | **Milestone** | `M3 Alpha` |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `PDPA / Luật 91/2025` |
-| **Upstream Dependencies** | `UC66 device_connections`, `consent.ConsentService.revoke()` |
+| **Upstream Dependencies** | `UC66 health_device_connections` |
 | **Downstream Consumers** | `UC69 ViewDeviceDataTrend` |
 
 ### 1.1 AI Generation Context (CASE 2.0)
@@ -75,9 +76,9 @@
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|
-| L1 | SRS UC-68 flows không đặc tả rõ có cần revoke consent hay không | ADR-DEVICE-007 quyết định: bắt buộc revoke trong cùng transaction | Test verify `ConsentGrant.revokedAt` set sau disconnect |
+| L1 (CORRECTED 2026-07-02) | ~~SRS UC-68 flows không đặc tả rõ có cần revoke consent hay không~~ — Bản gốc ADR-DEVICE-007 giả định dual-write vào `ConsentGrant`, dựa trên tiền đề sai (`device_connections.consent_grant_id` FK không tồn tại trên schema thực) | ADR-DEVICE-007 (corrected): disconnect là single-table UPDATE trên `health_device_connections.status='REVOKED'` — KHÔNG gọi `ConsentService` | Test verify `HealthDeviceConnection.status == REVOKED` sau disconnect; KHÔNG còn assertion nào về `ConsentGrant`/`ConsentService` |
 | L2 | Không rõ có xóa lịch sử metric khi disconnect hay không | TDS §1 Out-of-scope: KHÔNG xóa | Test verify metric count unchanged trước/sau disconnect |
-| L3 | Disconnect trên record đã DISCONNECTED — SRS không đặc tả hành vi | ADR-DEVICE-001 (UC66): DISCONNECTED là terminal state | Test verify second disconnect call → 409 DEVICE-203, không throw exception khác |
+| L3 | Disconnect trên record đã REVOKED — SRS không đặc tả hành vi | ADR-DEVICE-001 (UC66, corrected): REVOKED là terminal state | Test verify second disconnect call → 409 DEVICE-203, không throw exception khác |
 
 ---
 
@@ -87,9 +88,9 @@
 
 ```
 Disconnect Health Device (health.device) bao gồm các layer:
-├── Service (DeviceConnectionService.disconnect() — mock IDeviceConnectionRepository + ConsentService + EventPublisher)
+├── Service (DeviceConnectionService.disconnect() — mock IHealthDeviceConnectionRepository + EventPublisher)
 ├── Controller (@WebMvcTest, mock Service)
-└── Integration (Testcontainers PostgreSQL — verify @Transactional atomicity)
+└── Integration (Testcontainers PostgreSQL — verify single-table UPDATE persisted)
 ```
 
 ### TDS-02 — Test Basis
@@ -97,43 +98,40 @@ Disconnect Health Device (health.device) bao gồm các layer:
 | Source | Items Derived |
 |--------|--------------|
 | `SRS UC-68 §3.3.1.45` | Mother disconnects device, stops sync |
-| `ADR-DEVICE-007` | Transactional disconnect + consent revoke |
-| `ADR-DEVICE-001 (UC66)` | Terminal state DISCONNECTED, append-only |
+| `ADR-DEVICE-007 (corrected)` | Single-table status UPDATE — no ConsentService dependency |
+| `ADR-DEVICE-001 (UC66, corrected)` | Terminal state REVOKED, append-only |
 | `BR-RBAC` | Ownership required |
-| `BR-PRIVACY` | Consent revocation timeliness |
+| `BR-PRIVACY` | Access revocation timeliness (status=REVOKED read immediately by other flows) |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
 | Condition ID | Test Condition | Coverage Item | Test Cases |
 |-------------|---------------|---------------|-----------|
-| TC-COND-001 | Happy path disconnect: CONNECTED → DISCONNECTED + consent revoked | `disconnect()` | `DISCONNECT-TC-001` |
-| TC-COND-002 | Disconnect on already-DISCONNECTED record → 409 DEVICE-203 | `disconnect()` | `DISCONNECT-TC-002` |
+| TC-COND-001 | Happy path disconnect: ACTIVE → REVOKED | `disconnect()` | `DISCONNECT-TC-001` |
+| TC-COND-002 | Disconnect on already-REVOKED record → 409 DEVICE-203 | `disconnect()` | `DISCONNECT-TC-002` |
 | TC-COND-003 | Disconnect on non-existent id → 409 DEVICE-203 | `disconnect()` | `DISCONNECT-TC-003` |
 | TC-COND-004 | Disconnect by non-owner → 403 DEVICE-204 | `disconnect()` ownership | `DISCONNECT-TC-004` |
 | TC-COND-005 | Metric history preserved (not deleted) after disconnect | Data integrity | `DISCONNECT-TC-005` |
 | TC-COND-006 | `DeviceDisconnected` event published exactly once | Event | `DISCONNECT-TC-006` |
-| TC-COND-007 | Transactional rollback: if consent revoke fails, status NOT updated | Atomicity (ADR-DEVICE-007) | `DISCONNECT-TC-007` |
-| TC-COND-008 | Disconnect with null `consentGrantId` (legacy record) → status updated, warning logged, no exception | Edge case | `DISCONNECT-TC-008` |
-| TC-COND-009 (Integration) | Full disconnect flow via Testcontainers — DB status + consent atomic | End-to-end | `DISCONNECT-TC-INT-001` |
+| TC-COND-007 (REPURPOSED 2026-07-02) | ~~Transactional rollback: if consent revoke fails~~ → No longer applicable (no second table involved). Repurposed: repository save failure (e.g. `DataAccessException`) propagates cleanly without leaving a partial/inconsistent in-memory state | Error handling | `DISCONNECT-TC-007` |
+| TC-COND-008 (REMOVED 2026-07-02) | ~~Disconnect with null `consentGrantId` (legacy record)~~ — `consentGrantId` field no longer exists on `HealthDeviceConnection` (see UC66 ADR-DEVICE-002 corrected) | — | Removed — no longer a valid scenario |
+| TC-COND-009 (Integration) | Full disconnect flow via Testcontainers — DB status persisted | End-to-end | `DISCONNECT-TC-INT-001` |
 
 ### TDS-04 — Test Techniques
 
 | Technique | Applied To | Rationale |
 |-----------|------------|-----------|
-| State Transition Testing | CONNECTED→DISCONNECTED, DISCONNECTED→(reject) | Core state machine invariant (shared with UC66) |
-| Error Guessing | Consent revoke failure mid-transaction | Atomicity verification |
+| State Transition Testing | ACTIVE→REVOKED, REVOKED→(reject) | Core state machine invariant (shared with UC66) |
+| Error Guessing | Repository save failure mid-update | Error handling verification |
 | Equivalence Partitioning | Owner vs non-owner caller | RBAC coverage |
-| Boundary/Edge Case | `consentGrantId = null` (legacy record) | Defensive coding for pre-consent-linkage records |
 
 ### TDS-05 — Test Data Requirements
 
 | Fixture ID | Type | Value / Logic | Mục đích |
 |-----------|------|---------------|---------|
-| `FX-DEVICE-CONN-CONNECTED` | DB seed | Reuses `DeviceConnectionTestFactory.makeConnectedDevice()` (UC66 shared factory) | Happy path |
-| `FX-DEVICE-CONN-DISCONNECTED` | DB seed | Reuses `DeviceConnectionTestFactory.makeDisconnectedDevice()` (UC66 shared factory) | Already-disconnected negative test |
-| `FX-DEVICE-CONN-NO-CONSENT` | DB seed | `makeConnectedDevice(c -> c.setConsentGrantId(null))` | Legacy record edge case |
+| `FX-DEVICE-CONN-CONNECTED` | DB seed | Reuses `DeviceConnectionTestFactory.makeConnectedDevice()` (UC66 shared factory, `status=ACTIVE`) | Happy path |
+| `FX-DEVICE-CONN-DISCONNECTED` | DB seed | Reuses `DeviceConnectionTestFactory.makeDisconnectedDevice()` (UC66 shared factory, `status=REVOKED`) | Already-disconnected negative test |
 | `FX-DEVICE-CONN-OTHER-USER` | DB seed | `makeConnectedDevice(c -> c.setUserId(OTHER_MOTHER_USER_ID))` | Ownership negative test |
-| `FX-CONSENT-001` | DB seed | Reuses `DeviceConnectionTestFactory.makeConsentGrant()` (UC66 shared factory) | Consent revoke verification |
 
 ### Applicability Matrix
 
@@ -149,24 +147,22 @@ Disconnect Health Device (health.device) bao gồm các layer:
 ### Props Isolation Boilerplate (CASE 2.0 — BẮT BUỘC)
 
 > Tái sử dụng `DeviceConnectionTestFactory` từ UC66 (`src/test/java/com/carebridge/backend/health/device/DeviceConnectionTestFactory.java`). Không tạo factory trùng lặp.
+>
+> **CORRECTED (2026-07-02):** `makeConnectedDeviceWithoutConsent()` REMOVED — `HealthDeviceConnection` (real entity) has no `consentGrantId` field to null out. `makeConnectedDeviceOwnedByOther()` retained, now builds `HealthDeviceConnection`.
 
 ```java
 // ═══════════════════════════════════════════════════════════
 // Bổ sung method vào DeviceConnectionTestFactory.java (đã tạo ở UC66)
 // để hỗ trợ UC68 test scenarios — KHÔNG tạo factory mới.
+// Targets REAL schema entity HealthDeviceConnection.
 // ═══════════════════════════════════════════════════════════
 
 class DeviceConnectionTestFactory {
     // ... (existing methods from UC66: makeConnectedDevice(), makeDisconnectedDevice(),
-    //      makeValidRequest(), makeConsentGrant(), MOTHER_USER_ID, PARTNER_USER_ID,
-    //      OTHER_MOTHER_USER_ID) ...
+    //      makeValidRequest(), MOTHER_USER_ID, PARTNER_USER_ID, OTHER_MOTHER_USER_ID) ...
 
     // NEW for UC68:
-    static DeviceConnection makeConnectedDeviceWithoutConsent() {
-        return makeConnectedDevice(c -> c.setConsentGrantId(null));
-    }
-
-    static DeviceConnection makeConnectedDeviceOwnedByOther() {
+    static HealthDeviceConnection makeConnectedDeviceOwnedByOther() {
         return makeConnectedDevice(c -> c.setUserId(OTHER_MOTHER_USER_ID));
     }
 }
@@ -181,40 +177,40 @@ class DeviceConnectionTestFactory {
 **Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-001`
-**Oracle Source:** `SRS UC-68 Normal Flow` / `ADR-DEVICE-007`
+**Oracle Source:** `SRS UC-68 Normal Flow` / `ADR-DEVICE-007 (corrected)`
 
-**Preconditions:** `DeviceConnectionTestFactory.makeConnectedDevice()` (has `consentGrantId=1`) returned by `findById()`
+**Preconditions:** `DeviceConnectionTestFactory.makeConnectedDevice()` (`status=ACTIVE`) returned by `findById()`
 
 **Test Steps:**
-1. Arrange: mock repo returns connected device; mock `consentService.revoke(1L, MOTHER_USER_ID)` succeeds
+1. Arrange: mock repo returns ACTIVE connection
 2. Act: `service.disconnect(connectionId, MOTHER_USER_ID)`
-3. Assert: saved entity `status=DISCONNECTED`, `disconnectedAt` non-null; `consentService.revoke()` called with `consentGrantId=1`
+3. Assert: saved entity `status=REVOKED`, `updatedAt` advanced to ≥ test start; no interaction with any `ConsentService`/`ConsentGrant` type
 
-**Expected Result (PASS):** Both status update and consent revoke occur.
-**Expected Result (FAIL):** Status unchanged, or consent not revoked.
+**Expected Result (PASS):** Status update occurs; no consent-service interaction attempted.
+**Expected Result (FAIL):** Status unchanged, or code attempts to call a `ConsentService` that no longer applies to this flow (Hallucinated Contract — AP-AI-005).
 
 **Current Status:** 🔴 Not written
 
 ---
 
-### DISCONNECT-TC-002 — Disconnect on already-DISCONNECTED record rejected
+### DISCONNECT-TC-002 — Disconnect on already-REVOKED record rejected
 
 **Severity:** `HIGH`
 **Feature Under Test:** `DeviceConnectionService.disconnect()`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-002`
-**Oracle Source:** `ADR-DEVICE-001 (UC66) — DISCONNECTED is terminal`
+**Oracle Source:** `ADR-DEVICE-001 (UC66, corrected) — REVOKED is terminal`
 
-**Preconditions:** `makeDisconnectedDevice()` returned by `findById()`
+**Preconditions:** `makeDisconnectedDevice()` (`status=REVOKED`) returned by `findById()`
 
 **Test Steps:**
-1. Arrange: mock repo returns already-DISCONNECTED device
+1. Arrange: mock repo returns already-REVOKED device
 2. Act: `service.disconnect(connectionId, MOTHER_USER_ID)`
-3. Assert: throws exception `DEVICE-203`; `consentService.revoke()` never called; `repository.save()` never called
+3. Assert: throws exception `DEVICE-203`; `repository.save()` never called
 
 **Expected Result (PASS):** Rejected with 409, no side effects.
-**Expected Result (FAIL):** Status re-saved, or consent revoked twice.
+**Expected Result (FAIL):** Status re-saved despite already being terminal.
 
 **Current Status:** 🔴 Not written
 
@@ -256,7 +252,7 @@ class DeviceConnectionTestFactory {
 **Test Steps:**
 1. Arrange: connection owned by `OTHER_MOTHER_USER_ID`
 2. Act: `service.disconnect(connectionId, MOTHER_USER_ID)`
-3. Assert: throws exception `DEVICE-204` (403); no status change, no consent revoke
+3. Assert: throws exception `DEVICE-204` (403); no status change
 
 **Expected Result (PASS = safe):** 403 DEVICE-204.
 **Expected Result (FAIL = vulnerability):** Disconnect succeeds on another user's device — cross-user RBAC bypass.
@@ -308,47 +304,26 @@ class DeviceConnectionTestFactory {
 
 ---
 
-### DISCONNECT-TC-007 — Transactional rollback when consent revoke fails
+### DISCONNECT-TC-007 (REPURPOSED 2026-07-02) — Repository save failure propagates cleanly, no partial state
 
-**Severity:** `CRITICAL`
-**Feature Under Test:** `DeviceConnectionService.disconnect()` `@Transactional` behavior
-**Test File:** `src/test/java/com/carebridge/backend/health/device/DeviceConnectionTransactionIntegrationTest.java`
+**Severity:** `HIGH`
+**Feature Under Test:** `DeviceConnectionService.disconnect()` error handling
+**Test File:** `src/test/java/com/carebridge/backend/health/device/DeviceConnectionIntegrationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-007`
-**Oracle Source:** `ADR-DEVICE-007 §Decision`
+**Oracle Source:** `ADR-DEVICE-007 §Decision (corrected)`
 
-**Preconditions:** Testcontainers PostgreSQL; mock `ConsentService.revoke()` to throw `RuntimeException`
+> **Note:** This test case previously verified `@Transactional` rollback between two tables (`health_device_connections` + `consent_grants`) when `ConsentService.revoke()` failed. Since ADR-DEVICE-007 (corrected) removed the `ConsentService` dependency entirely — disconnect is now a single-table UPDATE — the original two-table atomicity scenario no longer exists. This test case is repurposed to verify a single, simpler invariant: if the repository save itself fails (e.g., DB connectivity error), the exception propagates without corrupting in-memory or downstream state.
+
+**Preconditions:** Testcontainers PostgreSQL; mock `healthDeviceConnectionRepository.save(...)` to throw `DataAccessException`
 
 **Test Steps:**
-1. Arrange: seed CONNECTED device with valid `consentGrantId`; force `consentService.revoke()` to throw
+1. Arrange: seed ACTIVE connection; force `repository.save()` to throw
 2. Act: call `service.disconnect(connectionId, MOTHER_USER_ID)`, expect exception propagated
-3. Assert: query DB directly — `device_connections.status` is STILL `CONNECTED` (rollback occurred, not partially applied)
+3. Assert: query DB directly — `health_device_connections.status` is STILL `ACTIVE` (no partial write occurred, since the single UPDATE statement itself failed atomically)
 
-**Expected Result (PASS):** Full rollback — no partial state change.
-**Expected Result (FAIL):** Status shows DISCONNECTED despite consent revoke failure — violates ADR-DEVICE-007 atomicity.
-
-**Current Status:** 🔴 Not written
-
----
-
-### DISCONNECT-TC-008 — Disconnect with null consentGrantId (legacy record) succeeds with warning
-
-**Severity:** `MEDIUM`
-**Feature Under Test:** `DeviceConnectionService.disconnect()` defensive handling
-**Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
-**TDD Phase:** 🔴 RED
-**Condition Ref:** `TC-COND-008`
-**Oracle Source:** `UC68 TDS §3 ADR-DEVICE-007 §Bối cảnh (edge case note)`
-
-**Preconditions:** `DeviceConnectionTestFactory.makeConnectedDeviceWithoutConsent()` (consentGrantId=null)
-
-**Test Steps:**
-1. Arrange: connection with `consentGrantId=null`
-2. Act: `service.disconnect(connectionId, MOTHER_USER_ID)`
-3. Assert: status updated to DISCONNECTED successfully; `consentService.revoke()` NEVER called (guarded by null check); no exception thrown
-
-**Expected Result (PASS):** Graceful handling, no NPE.
-**Expected Result (FAIL):** NullPointerException when calling `consentService.revoke(null, ...)`.
+**Expected Result (PASS):** Exception propagates, DB state unchanged.
+**Expected Result (FAIL):** Status shows REVOKED despite save failure, or exception is silently swallowed.
 
 **Current Status:** 🔴 Not written
 
@@ -358,36 +333,33 @@ class DeviceConnectionTestFactory {
 
 ---
 
-### DISCONNECT-TC-INT-001 — Full disconnect flow atomic via Testcontainers
+### DISCONNECT-TC-INT-001 — Full disconnect flow via Testcontainers
 
 **Severity:** `HIGH`
-**Feature Under Test:** `Full flow: PATCH /disconnect → DB status + consent_grants.revoked_at`
+**Feature Under Test:** `Full flow: PATCH /disconnect → health_device_connections.status`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/DeviceConnectionIntegrationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-009`
 
 **Preconditions:**
-- PostgreSQL Testcontainer; migration `V20260701140000` applied
-- Seed: CONNECTED device + linked `consent_grants` row + 2 `maternal_health_metrics` rows referencing it
+- PostgreSQL Testcontainer; baseline `V1__init_schema.sql` applied (health_device_connections pre-exists, no UC68 migration required — §5.2)
+- Seed: ACTIVE `health_device_connections` row + 2 `maternal_health_metrics` rows referencing it
 
 **Test Steps:**
-1. Seed connected device with consent + metrics
+1. Seed connected device with metrics
 2. Call `PATCH /api/v1/health/devices/connections/{id}/disconnect`
 3. Assert DB state directly
 
 **Expected Result (PASS):**
-- `device_connections.status = 'DISCONNECTED'`, `disconnected_at` set
-- `consent_grants.revoked_at` set (matching `consent_grant_id`)
+- `health_device_connections.status = 'REVOKED'`, `updated_at` advanced
 - `maternal_health_metrics` count for that device UNCHANGED (still 2 rows)
 
 **Expected Result (FAIL):** Any of the above not satisfied.
 
 **DB Assertion:**
 ```java
-DeviceConnection record = deviceConnectionRepository.findById(connectionId).orElseThrow();
-assertThat(record.getStatus()).isEqualTo(DeviceConnectionStatus.DISCONNECTED);
-ConsentGrant consent = consentGrantRepository.findById(record.getConsentGrantId()).orElseThrow();
-assertThat(consent.getRevokedAt()).isNotNull();
+HealthDeviceConnection record = healthDeviceConnectionRepository.findById(connectionId).orElseThrow();
+assertThat(record.getStatus()).isEqualTo(DeviceConnectionStatus.REVOKED);
 long metricCount = metricRepository.countBySourceReferenceId(connectionId);
 assertThat(metricCount).isEqualTo(2L);
 ```
@@ -406,8 +378,7 @@ assertThat(metricCount).isEqualTo(2L);
 | `DISCONNECT-TC-004` | `DeviceConnectionServiceTest.java:TBD` | `[ ]` | `[ ]` | |
 | `DISCONNECT-TC-005` | `DeviceConnectionServiceTest.java:TBD` | `[ ]` | `[ ]` | |
 | `DISCONNECT-TC-006` | `DeviceConnectionServiceTest.java:TBD` | `[ ]` | `[ ]` | |
-| `DISCONNECT-TC-007` | `DeviceConnectionTransactionIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
-| `DISCONNECT-TC-008` | `DeviceConnectionServiceTest.java:TBD` | `[ ]` | `[ ]` | |
+| `DISCONNECT-TC-007` | `DeviceConnectionIntegrationTest.java:TBD` | `[ ]` | `[ ]` | repurposed 2026-07-02 — see TC body |
 | `DISCONNECT-TC-INT-001` | `DeviceConnectionIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
@@ -431,7 +402,6 @@ public DeviceConnectionResponse disconnect(UUID connectionId, UUID userId) {
 | `DISCONNECT-TC-005` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `DISCONNECT-TC-006` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `DISCONNECT-TC-007` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `DISCONNECT-TC-008` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `DISCONNECT-TC-INT-001` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
@@ -446,13 +416,13 @@ public DeviceConnectionResponse disconnect(UUID connectionId, UUID userId) {
 ### Entry Criteria
 
 - [ ] TDS `CB-DEVICE-IMP-003` đã review và approve
-- [ ] UC66 đã implement và deploy (dependency: `device_connections` table + `DeviceConnectionService.connect()`)
-- [ ] `ConsentService.revoke()` xác nhận hoạt động đúng
+- [ ] UC66 đã implement và deploy (dependency: `health_device_connections` table — đã tồn tại sẵn từ `V1__init_schema.sql` + `DeviceConnectionService.connect()`)
+- [x] ~~`ConsentService.revoke()` xác nhận hoạt động đúng~~ — **Không còn cần thiết** (ADR-DEVICE-007 corrected loại bỏ dependency này)
 
 ### Exit Criteria (DoD)
 
 - [ ] `./mvnw test` xanh
-- [ ] `./mvnw verify` (Testcontainers) xanh, đặc biệt `DISCONNECT-TC-007` (transactional rollback)
+- [ ] `./mvnw verify` (Testcontainers) xanh, đặc biệt `DISCONNECT-TC-007` (error handling, repurposed)
 - [ ] Coverage ≥ 80% cho `DeviceConnectionService.disconnect()`
 - [ ] Metric history preservation verified (DISCONNECT-TC-005, DISCONNECT-TC-INT-001)
 - [ ] Không business logic trong Controller
@@ -466,15 +436,14 @@ public DeviceConnectionResponse disconnect(UUID connectionId, UUID userId) {
 
 ### Suspension Criteria
 
-- UC66 chưa deploy (`device_connections` table không tồn tại)
-- `ConsentService.revoke()` chưa verify hoạt động đúng trên staging
+- `health_device_connections` không truy cập được trên môi trường test (bảng phải tồn tại từ `V1__init_schema.sql`)
 
 ---
 
 ## 7. Rollback Plan
 
 ```bash
-# Không có migration để revert (UC68 không tạo migration mới).
+# Không có migration để revert (UC68 không tạo migration mới — health_device_connections đã tồn tại từ V1__init_schema.sql).
 git checkout -- src/main/java/com/carebridge/backend/health/device/service/DeviceConnectionService.java
 git checkout -- src/main/java/com/carebridge/backend/health/device/controller/DeviceConnectionController.java
 git checkout -- src/test/java/com/carebridge/backend/health/device/
@@ -490,8 +459,9 @@ kubectl rollout undo deployment/carebridge-api
 | AP-AI-001 | Unconstrained Generation | TC không reference ADR-DEVICE-007 | ☐ | G-0 |
 | AP-AI-002 | Green-from-Birth | Test PASS với stub | ☐ | G-2 ★ |
 | AP-AI-003 | Implicit Decision | Test assume metric deletion behavior không có trong TDS §1 | ☐ | G-1 |
-| AP-AI-004 | Layer Violation | Test verify controller có business logic (transaction, revoke) | ☐ | G-4 |
-| AP-AI-005 | Hallucinated Contract | Test import type không tồn tại trong codebase | ☐ | G-3 |
+| AP-AI-004 | Layer Violation | Test verify controller có business logic (status update logic) | ☐ | G-4 |
+| AP-AI-005 | Hallucinated Contract | Test import type không tồn tại trong codebase, hoặc mock/verify a `ConsentService` interaction that no longer exists in this flow (see ADR-DEVICE-007 corrected) | ☐ | G-3 |
+| AP-DEVICE-007 | Schema Drift | Test hoặc implementation target bảng `device_connections` (không tồn tại) thay vì `health_device_connections` thực | ☐ | G-1 |
 
 **Kết quả review:**
 

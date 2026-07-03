@@ -188,8 +188,8 @@ public class BabyProfileDetailResponse {
 
 // IBabyService.java (addition to existing)
 /**
- * @throws NotFoundException (BABY-004) when profile not found
- * @throws ForbiddenException (BABY-002) when caller lacks access
+ * @throws NotFoundException (BABY-001) when profile not found
+ * @throws ForbiddenException (BABY-003) when caller lacks access
  */
 BabyProfileDetailResponse getBabyProfile(UUID profileId, UUID accountId);
 ```
@@ -221,10 +221,12 @@ BabyProfileDetailResponse getBabyProfile(UUID profileId, UUID accountId);
 
 ## 9-10. Bảng mã lỗi
 
+> **(Corrected 2026-07-03):** Bảng này ban đầu ghi `BABY-002`(403)/`BABY-004`(404) — không khớp code thật đã ship (`BabyServiceImpl.java` dùng `BABY-001` cho 404 và `BABY-003` cho 403). Đã sửa lại khớp thực tế; phát hiện trong batch UC194 (Logic Issue L1/OI-3).
+
 | Code | HTTP | Message (EN) | Trigger Condition |
 |------|------|--------------|-------------------|
-| `BABY-002` | 403 | Insufficient permissions | Caller lacks access rights |
-| `BABY-004` | 404 | Baby profile not found | ID not found |
+| `BABY-003` | 403 | Insufficient permissions | Caller lacks access rights |
+| `BABY-001` | 404 | Baby profile not found | ID not found |
 | `BABY-005` | 500 | Internal error | DB error |
 
 ---
@@ -286,7 +288,7 @@ Authorization: Bearer <JWT_TOKEN>
 ```json
 {
   "error": {
-    "code": "BABY-002",
+    "code": "BABY-003",
     "message": "Insufficient permissions to view this baby profile"
   }
 }
@@ -296,7 +298,7 @@ Authorization: Bearer <JWT_TOKEN>
 ```json
 {
   "error": {
-    "code": "BABY-004",
+    "code": "BABY-001",
     "message": "Baby profile not found"
   }
 }
@@ -308,8 +310,8 @@ Authorization: Bearer <JWT_TOKEN>
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `BABY-002` | 403 | Insufficient permissions | Không đủ quyền truy cập | Caller is not owner and not care group member |
-| `BABY-004` | 404 | Baby profile not found | Hồ sơ em bé không tồn tại | profileId not found in DB |
+| `BABY-003` | 403 | Insufficient permissions | Không đủ quyền truy cập | Caller is not owner and not care group member |
+| `BABY-001` | 404 | Baby profile not found | Hồ sơ em bé không tồn tại | profileId not found in DB |
 | `BABY-005` | 500 | Internal error | Lỗi hệ thống | Unexpected DB error |
 
 ---
@@ -331,11 +333,11 @@ Feature: View Baby Profile
   Scenario: Non-owner → 403
     Given MOTHER-002 KHÔNG phải owner
     When getBabyProfile(BABY-001, MOTHER-002)
-    Then throws ForbiddenException BABY-002
+    Then throws ForbiddenException BABY-003
 
   Scenario: Not found → 404
     When getBabyProfile(NONEXISTENT, MOTHER-001)
-    Then throws NotFoundException BABY-004
+    Then throws NotFoundException BABY-001
 
   Scenario: Response không chứa diagnosis
     When getBabyProfile(BABY-001, MOTHER-001)

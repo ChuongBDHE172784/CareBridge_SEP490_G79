@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC69 View Device Data Trend (Draft) |
+| 2026-07-02 | AI Agent — Technical Architect (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research. `sourceLabel` resolution now reads `health_device_connections.provider_name`/`device_name` instead of the invented `device_type`. Read-only repository dependency renamed `IDeviceConnectionRepository` → `IHealthDeviceConnectionRepository`. |
 
 ---
 
@@ -49,15 +50,15 @@
 
 ## 1. Tổng quan Module
 
-> UC69 hiển thị xu hướng (trend) dữ liệu thiết bị sức khỏe (heart rate, sleep, steps, SpO2, blood pressure) đã được nhập qua UC67, kèm **source label** (MANUAL vs DEVICE, và tên thiết bị nếu có qua join với `device_connections` từ UC66) và **accuracy warning** khi phù hợp. Đây là module đọc-thuần (read-only), KHÔNG ghi dữ liệu mới — chỉ truy vấn `maternal_health_metrics` + `device_connections` đã tồn tại từ UC66/67/68.
+> UC69 hiển thị xu hướng (trend) dữ liệu thiết bị sức khỏe (heart rate, sleep, steps, SpO2, blood pressure) đã được nhập qua UC67, kèm **source label** (MANUAL vs DEVICE, và tên thiết bị nếu có qua join với `health_device_connections` từ UC66) và **accuracy warning** khi phù hợp. Đây là module đọc-thuần (read-only), KHÔNG ghi dữ liệu mới — chỉ truy vấn `maternal_health_metrics` + `health_device_connections` đã tồn tại từ UC66/67/68.
 
 | Field | Value |
 |-------|-------|
 | **Module Name** | `View Device Data Trend` |
-| **Bounded Context** | `health.device` (đọc từ `MaternalHealthMetric` + `DeviceConnection`) |
+| **Bounded Context** | `health.device` (đọc từ `MaternalHealthMetric` + `HealthDeviceConnection`) |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `PDPA / Luật 91/2025` |
-| **Upstream Dependencies** | `UC66 device_connections`, `UC67 maternal_health_metrics` (dữ liệu đã import), `IAM (JWT)` |
+| **Upstream Dependencies** | `UC66 health_device_connections`, `UC67 maternal_health_metrics` (dữ liệu đã import), `IAM (JWT)` |
 | **Downstream Consumers** | Mobile Health module UI (biểu đồ trend) |
 
 **Nguồn gốc & phạm vi:**
@@ -152,7 +153,7 @@ UC69 cần hiển thị trend theo ngày/tuần. Với volume dữ liệu thấp
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
 | Consistency | Trend view chỉ hiển thị dữ liệu thuộc journey của caller | 100% | Query filter assertion | BR-RBAC |
-| Read-only | UC69 không được có bất kỳ write nào tới `maternal_health_metrics`/`device_connections` | 100% | Code review + test (no `save()` call) | — |
+| Read-only | UC69 không được có bất kỳ write nào tới `maternal_health_metrics`/`health_device_connections` | 100% | Code review + test (no `save()` call) | — |
 
 ### 4.3. Security
 
@@ -180,7 +181,7 @@ skinparam ArrowColor #555555
 skinparam ClassBorderColor #2E75B6
 skinparam ClassHeaderBackgroundColor #D5E8F0
 
-' === READ MODEL (no new entity — projects from existing MaternalHealthMetric + DeviceConnection) ===
+' === READ MODEL (no new entity — projects from existing MaternalHealthMetric + HealthDeviceConnection) ===
 class DeviceTrendPointResponse <<DTO>> {
   + measuredAt: Instant
   + valueNumeric: BigDecimal
@@ -203,7 +204,7 @@ interface IDeviceTrendService <<interface>> {
 
 class DeviceTrendService implements IDeviceTrendService {
   - metricRepository: MaternalHealthMetricRepository
-  - deviceConnectionRepository: IDeviceConnectionRepository
+  - healthDeviceConnectionRepository: IHealthDeviceConnectionRepository
   - journeyOwnershipPolicy: JourneyOwnershipPolicy
   + getTrend(journeyId: UUID, metricType: MetricType, from: Instant, to: Instant, userId: UUID): DeviceTrendResponse
   - computeAccuracyWarning(metric: MaternalHealthMetric): Boolean
@@ -211,14 +212,14 @@ class DeviceTrendService implements IDeviceTrendService {
 }
 
 DeviceTrendService --> MaternalHealthMetricRepository : reads (existing repo)
-DeviceTrendService --> IDeviceConnectionRepository : reads (UC66 repo, for device name label)
+DeviceTrendService --> IHealthDeviceConnectionRepository : reads (UC66 repo, real table, for device name label)
 
 @enduml
 ```
 
 ### 5.2. Data Structure (Flyway SQL Migration)
 
-> **Không cần migration mới cho UC69.** Đây là module đọc-thuần, dùng lại toàn bộ schema từ UC66 (`device_connections`) và UC67 (`maternal_health_metrics` mở rộng). Không có bảng/cột mới.
+> **Không cần migration mới cho UC69.** Đây là module đọc-thuần, dùng lại toàn bộ schema từ UC66 (`health_device_connections`, đã tồn tại sẵn từ `V1__init_schema.sql`) và UC67 (`maternal_health_metrics` mở rộng). Không có bảng/cột mới.
 
 **V1__init_schema.sql sync action:** Không áp dụng.
 
@@ -238,7 +239,7 @@ actor       "Mother (Mobile App)" as Client
 participant "DeviceTrendController" as Controller
 participant "DeviceTrendService"    as Service
 participant "MaternalHealthMetricRepository" as MetricRepo
-participant "IDeviceConnectionRepository"    as DeviceRepo
+participant "IHealthDeviceConnectionRepository"    as DeviceRepo
 database    "PostgreSQL"            as DB
 
 Client -> Controller : GET /api/v1/health/metrics/trend?journeyId=..&metricType=SPO2&from=..&to=..
@@ -255,7 +256,7 @@ deactivate MetricRepo
 
 loop for each metric with sourceType=DEVICE
   Service -> DeviceRepo : findById(sourceReferenceId)
-  DeviceRepo --> Service : DeviceConnection{deviceName}
+  DeviceRepo --> Service : HealthDeviceConnection{deviceName, providerName}
 end
 
 Service -> Service : resolveSourceLabel() + computeAccuracyWarning() per point
@@ -393,7 +394,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
         UUID journeyId, MetricType metricType, Instant from, Instant to, MetricStatus status);
 }
 
-// IDeviceConnectionRepository.java — reused read-only from UC66 (findById())
+// IHealthDeviceConnectionRepository.java — reused read-only from UC66 (findById()), maps real table health_device_connections
 ```
 
 ---
@@ -631,7 +632,7 @@ curl -X GET "https://$HOST/api/v1/health/metrics/trend?journeyId=<other-users-jo
 | C2 | Accuracy warning logic KHÔNG được implement với ngưỡng cụ thể cho đến khi ADR-DEVICE-008 Accepted — dùng stub `false` + TODO nếu bắt buộc deliver sớm | `ADR-DEVICE-008 (Proposed, Open)` | `2026-07-01` |
 | C3 | Ownership của `journeyId` PHẢI verify trước khi trả bất kỳ dữ liệu nào | `BR-RBAC` | `2026-07-01` |
 | C4 | Empty result trả `200 {points:[], hasAnyData:false}` — KHÔNG trả 404 | `SRS UC-69 AF2` | `2026-07-01` |
-| C5 | `sourceLabel` resolve qua join `device_connections` khi `sourceType=DEVICE`, fallback "Manual entry" khi MANUAL | `TDS §5.1/§9.2` | `2026-07-01` |
+| C5 | `sourceLabel` resolve qua join `health_device_connections` khi `sourceType=DEVICE`, fallback "Manual entry" khi MANUAL | `TDS §5.1/§9.2` | `2026-07-02` |
 
 ### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
 
@@ -643,7 +644,7 @@ Theo TDS CB-DEVICE-IMP-004 và các ADR liên quan:
 2. KHÔNG implement accuracy warning với ngưỡng cụ thể — ADR-DEVICE-008 còn Proposed; dùng stub false + TODO nếu cần deliver sớm
 3. Verify ownership journeyId trước khi trả dữ liệu (BR-RBAC)
 4. Empty result -> 200 {points:[], hasAnyData:false}, KHÔNG 404 (SRS AF2)
-5. sourceLabel: "Manual entry" nếu MANUAL, tên device nếu DEVICE (join device_connections)
+5. sourceLabel: "Manual entry" nếu MANUAL, tên device nếu DEVICE (join health_device_connections)
 
 [CONTEXT BLOCK]
 - Bounded Context: health.device

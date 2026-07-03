@@ -28,6 +28,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Test Designer | Khởi tạo tài liệu — Test-Spec cho UC67 (Draft) |
+| 2026-07-02 | AI Agent — Test Designer (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research. Device fixture reuse updated: `DeviceConnectionTestFactory.makeConnectedDevice()`/`makeDisconnectedDevice()` (from UC66, corrected) now return `HealthDeviceConnection` with `status ACTIVE/REVOKED`. Error condition DEVICE-102 now triggers on non-ACTIVE status. |
 
 ---
 
@@ -56,7 +57,7 @@
 | **Milestone** | `M3 Alpha` |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `PDPA / Luật 91/2025` |
-| **Upstream Dependencies** | `UC66 device_connections` |
+| **Upstream Dependencies** | `UC66 health_device_connections` |
 | **Downstream Consumers** | `UC69 ViewDeviceDataTrend` |
 
 ### 1.1 AI Generation Context (CASE 2.0)
@@ -78,7 +79,7 @@
 | L1 | `MetricType` entity hiện tại thiếu `SLEEP_DURATION`, `STEPS_COUNT`, `SPO2` | UC-67 SRS yêu cầu heart rate, sleep, steps, SpO2, blood pressure | Test verify các metricType mới được chấp nhận và lưu đúng |
 | L2 | `MaternalHealthMetric.java` không map cột `source_reference_id` (đã tồn tại trong schema V1 dòng 582) | Cần map để lưu provenance | Test verify entity mapping + persisted value sau khi mở rộng |
 | L3 | SRS không định nghĩa sanity range cụ thể cho từng metricType | ADR-DEVICE-006 đề xuất range tạm thời (Open Item O1 trong TDS) | Test dùng range đề xuất trong TDS §8.1 làm oracle tạm thời — ghi rõ "Proposed" trong Oracle Source, KHÔNG coi là final |
-| L4 | Không rõ liệu `sourceType=DEVICE` có bắt buộc kiểm tra `device_connections.status=CONNECTED` hay không (SRS không đặc tả chi tiết) | ADR-DEVICE-005 quyết định: bắt buộc kiểm tra | Test verify import với device DISCONNECTED bị reject (DEVICE-102) |
+| L4 | Không rõ liệu `sourceType=DEVICE` có bắt buộc kiểm tra `health_device_connections.status=ACTIVE` hay không (SRS không đặc tả chi tiết) | ADR-DEVICE-005 quyết định: bắt buộc kiểm tra | Test verify import với device REVOKED bị reject (DEVICE-102) |
 
 ---
 
@@ -91,7 +92,7 @@ Import Device Data Manually (health.device) bao gồm các layer:
 ├── Domain (MaternalHealthMetric extended — pure logic)
 ├── Service (DeviceDataImportService — mock MaternalHealthMetricRepository + IDeviceConnectionRepository + EventPublisher)
 ├── Controller (@WebMvcTest, mock Service)
-└── Integration (Testcontainers PostgreSQL — verify FK linkage to device_connections)
+└── Integration (Testcontainers PostgreSQL — verify FK linkage to health_device_connections)
 ```
 
 ### TDS-02 — Test Basis
@@ -100,7 +101,7 @@ Import Device Data Manually (health.device) bao gồm các layer:
 |--------|--------------|
 | `SRS UC-67 §3.3.1.44` | Manual/mock import of heart rate, sleep, steps, SpO2, blood pressure |
 | `ADR-DEVICE-004` | Reuse MaternalHealthMetric — extend MetricType |
-| `ADR-DEVICE-005` | sourceReferenceId → device_connections FK, must be CONNECTED + owned by caller |
+| `ADR-DEVICE-005` | sourceReferenceId → health_device_connections FK, must be ACTIVE + owned by caller |
 | `ADR-DEVICE-006` | Heuristic sanity validation, non-diagnostic |
 | `BR-RBAC` | Journey ownership required |
 | `V1__init_schema.sql` + `V20260701140100` (new) | FK constraint, index additions |
@@ -119,7 +120,7 @@ Import Device Data Manually (health.device) bao gồm các layer:
 | TC-COND-008 | All new MetricType values (SLEEP_DURATION, STEPS_COUNT, SPO2) accepted | Enum coverage | `IMPORT-TC-008` |
 | TC-COND-009 | `DeviceDataImported` event published with correct payload | Event | `IMPORT-TC-009` |
 | TC-COND-010 (Boundary) | Exact boundary values (min/max inclusive) accepted; min-1/max+1 rejected | Boundary Value Analysis | `IMPORT-TC-010` |
-| TC-COND-011 (Integration) | Persisted row with correct FK to device_connections | End-to-end | `IMPORT-TC-INT-001` |
+| TC-COND-011 (Integration) | Persisted row with correct FK to health_device_connections | End-to-end | `IMPORT-TC-INT-001` |
 
 ### TDS-04 — Test Techniques
 
@@ -127,7 +128,7 @@ Import Device Data Manually (health.device) bao gồm các layer:
 |-----------|------------|-----------|
 | Equivalence Partitioning | `sourceType` (MANUAL/DEVICE/invalid) | Cover both valid provenance paths |
 | Boundary Value Analysis | `valueNumeric` per metricType range (§8.1 TDS) | Sanity check correctness at edges |
-| State-based Testing | Device connection status (CONNECTED vs DISCONNECTED) referenced by import | Cross-feature consistency with UC66/UC68 |
+| State-based Testing | Device connection status (ACTIVE vs REVOKED) referenced by import | Cross-feature consistency with UC66/UC68 |
 | Error Guessing | Cross-user device reference, non-owned journey | Ownership bypass attempts |
 
 ### TDS-05 — Test Data Requirements
@@ -435,7 +436,7 @@ class ImportDeviceMetricTestFactory {
 
 ---
 
-### IMPORT-TC-INT-001 — Persisted metric with correct FK to device_connections
+### IMPORT-TC-INT-001 — Persisted metric with correct FK to health_device_connections
 
 **Severity:** `HIGH`
 **Feature Under Test:** `Full flow: POST /device-import → DB row + FK`
@@ -444,8 +445,8 @@ class ImportDeviceMetricTestFactory {
 **Condition Ref:** `TC-COND-011`
 
 **Preconditions:**
-- PostgreSQL Testcontainer running; migrations `V20260701140000` + `V20260701140100` applied in order
-- Seed: active `device_connections` row for `MOTHER_USER_ID`
+- PostgreSQL Testcontainer running; baseline `V1__init_schema.sql` applied (health_device_connections pre-exists) + migration `V20260701140100` applied
+- Seed: active (`status=ACTIVE`) `health_device_connections` row for `MOTHER_USER_ID`
 
 **Test Steps:**
 1. Seed connected device + journey
@@ -453,7 +454,7 @@ class ImportDeviceMetricTestFactory {
 3. Assert DB state
 
 **Expected Result (PASS):**
-- `maternal_health_metrics` row exists with `source_reference_id` = seeded `device_connections.id`
+- `maternal_health_metrics` row exists with `source_reference_id` = seeded `health_device_connections.connection_id`
 - FK constraint satisfied (no orphan reference)
 
 **Expected Result (FAIL):** Row missing or FK violation error.
@@ -526,9 +527,9 @@ public class DeviceDataImportService implements IDeviceDataImportService {
 ### Entry Criteria
 
 - [ ] TDS `CB-DEVICE-IMP-002` đã review và approve
-- [ ] UC66 TDS đã approve (dependency: `device_connections` table)
+- [ ] UC66 TDS đã approve (dependency: `health_device_connections` table — đã tồn tại sẵn từ `V1__init_schema.sql`, không cần migration)
 - [ ] Sanity range table (Open Item O1) đã được xác nhận hoặc explicitly accepted as Proposed
-- [ ] Migration `V20260701140100` approved, phụ thuộc `V20260701140000` đã chạy
+- [ ] Migration `V20260701140100` approved và chạy thành công
 
 ### Exit Criteria (DoD)
 

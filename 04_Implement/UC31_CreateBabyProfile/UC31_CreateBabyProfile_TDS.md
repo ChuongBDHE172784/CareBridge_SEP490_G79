@@ -21,6 +21,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-03 | AI Agent (open-items reconciliation) | **Sửa lỗi tài liệu trên diện rộng** — phát hiện khi verify OI (UC192) rằng TDS này mô tả một schema/API design KHÁC với code thật đã ship: bảng `baby_profiles` (cột `id`/`account_id`/`avatar_file_id`/`is_active` → thật ra là `baby_id`/`owner_user_id`/không có `avatar_file_id`/`is_active`), endpoint `/api/v1/baby-profiles` (thật ra `/api/v1/babies`), role `ROLE_MOTHER` only (thật ra `MOTHER, FAMILY`), bảng mã lỗi `BABY-001..005` cho create path (thật ra dùng generic `VALIDATION_ERROR`/`ACCESS_DENIED`, không có custom code). Đã sửa lại toàn bộ §2, §3, §5.2, §6, §8, §9, §10, §11, §13, §16, §17 khớp code thật tại `com.carebridge.backend.baby.*`. Theo `CLAUDE.md`: "Current code and migrations override historical design notes". |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | Implementation completed — service, controller, tests 🟢 GREEN (45/45) |
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-31 Create Baby Profile |
 
@@ -71,13 +72,13 @@
 
 | Requirement ID | Loại | Mô tả yêu cầu | Thành phần Code | Compliance Target | ADR liên quan |
 |----------------|------|---------------|-----------------|-------------------|---------------|
-| UC-31 | Use Case | Mother tạo hồ sơ em bé | `BabyController.createBabyProfile()` | BR-RBAC | ADR-BABY-001 |
-| BR-BABY-001 | Business Rule | Nickname ≤ 50 ký tự, không trống | `@NotBlank @Size(max=50)` trên DTO | Data Integrity | — |
-| BR-BABY-002 | Business Rule | birthDate phải là quá khứ hoặc hiện tại | `@PastOrPresent` trên DTO | Data Integrity | — |
-| BR-BABY-003 | Business Rule | gender thuộc enum: MALE, FEMALE, UNKNOWN | `@ValidGender` trên DTO | Data Integrity | ADR-BABY-001 |
-| BR-BABY-004 | Business Rule | birthWeight: 0.5kg – 8.0kg nếu được cung cấp | `BabyService.validateBirthMeasurements()` | BR-SAFETY | ADR-BABY-002 |
-| BR-BABY-005 | Business Rule | Ghi audit event sau tạo thành công | `AuditService.emit(BabyProfileCreated)` | PDPA | — |
-| BR-PRIVACY-001 | Business Rule | Baby data thuộc về Mother | `@PreAuthorize owner check` | PDPA | — |
+| UC-31 | Use Case | Mother/Family tạo hồ sơ em bé | `BabyController.createBabyProfile()` (package `com.carebridge.backend.baby`) | BR-RBAC | ADR-BABY-001 |
+| BR-BABY-001 | Business Rule | Nickname ≤ 100 ký tự, không trống | `@NotBlank @Size(max=100)` trên `CreateBabyProfileRequest` | Data Integrity | — |
+| BR-BABY-002 | Business Rule | birthDate bắt buộc (không có ràng buộc quá khứ/hiện tại ở code thật) | `@NotNull` trên `CreateBabyProfileRequest` | Data Integrity | — |
+| BR-BABY-003 | Business Rule | gender (tuỳ chọn) thuộc enum: MALE, FEMALE, UNKNOWN | `Gender` Java enum (Jackson tự động reject giá trị lạ khi deserialize JSON — không có `@ValidGender` custom annotation) | Data Integrity | ADR-BABY-001 |
+| BR-BABY-004 | Business Rule | birthWeightKg: 0.5–8.0kg, birthLengthCm: 25.0–65.0cm nếu được cung cấp | `@DecimalMin/@DecimalMax` trên `CreateBabyProfileRequest` (Bean Validation, KHÔNG có method `validateBirthMeasurements()` riêng trong Service) | BR-SAFETY | ADR-BABY-002 |
+| BR-BABY-005 | Business Rule | Ghi audit log sau tạo thành công | `AuditService.log(AuditAction.BABY_PROFILE_CREATED, ...)` (audit log call, KHÔNG phải Spring domain event) | PDPA | — |
+| BR-PRIVACY-001 | Business Rule | Baby data gắn với `owner_user_id` = caller | `callerId` từ `SecurityUtils.requireCurrentUserId(principal)`, gán trực tiếp vào `ownerUserId` khi build entity | PDPA | — |
 
 ---
 
@@ -101,7 +102,7 @@ Một Mother account được phép có **nhiều** baby profiles (không giới
 | **Date** | `2026-06-26` |
 
 #### Quyết định
-birthWeight phải trong khoảng 0.5–8.0 kg; birthLength phải trong khoảng 20–60 cm nếu được cung cấp. Values ngoài range này bị reject với BABY-003. AI không được suggest diagnosis dựa trên measurements.
+birthWeightKg phải trong khoảng 0.5–8.0 kg; birthLengthCm phải trong khoảng 25.0–65.0 cm nếu được cung cấp (khớp `@DecimalMin/@DecimalMax` trên `CreateBabyProfileRequest.java` — **(Sửa 2026-07-03):** con số 25.0–65.0 cm là số thật từ code, KHÁC với 20–60 cm ghi ban đầu). Values ngoài range bị reject qua Bean Validation chuẩn (400, `error: "VALIDATION_ERROR"` — KHÔNG có custom code `BABY-003` cho path này; xem §10). AI không được suggest diagnosis dựa trên measurements.
 
 ---
 
@@ -181,31 +182,28 @@ BabyService --> IBabyRepository : uses
 
 ### 5.2. Data Structure
 
+> **(Sửa 2026-07-03):** Bảng dưới đây ban đầu mô tả một schema/migration hoàn toàn khác (`V21__create_baby_profiles.sql`, PK `id`, cột `account_id`/`avatar_file_id`/`is_active`, native Postgres enum types) — KHÔNG khớp với bảng thật đã ship trong baseline `V1__init_schema.sql`. Đã sửa lại khớp thực tế; không có migration riêng cho `baby_profiles` vì bảng này thuộc baseline schema.
+
 ```sql
--- V21__create_baby_profiles.sql
-CREATE TYPE gender_enum AS ENUM ('MALE', 'FEMALE', 'UNKNOWN');
-CREATE TYPE baby_profile_status AS ENUM ('ACTIVE', 'ARCHIVED');
-
-CREATE TABLE baby_profiles (
-  id                UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id        UUID              NOT NULL,
-  nickname          VARCHAR(50)       NOT NULL,
-  birth_date        DATE              NOT NULL,
-  gender            gender_enum       NOT NULL DEFAULT 'UNKNOWN',
-  birth_weight_kg   NUMERIC(4,2),                                -- optional, 0.50-8.00
-  birth_length_cm   NUMERIC(4,1),                                -- optional, 20.0-60.0
-  avatar_file_id    UUID,                                        -- FK to files
-  is_active         BOOLEAN           NOT NULL DEFAULT TRUE,
-  status            baby_profile_status NOT NULL DEFAULT 'ACTIVE',
-  created_at        TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
-  created_by        UUID              NOT NULL,
-
-  CONSTRAINT fk_baby_account FOREIGN KEY (account_id) REFERENCES accounts(id)
+-- Baseline: src/main/resources/db/migration/V1__init_schema.sql (dòng 607-619)
+CREATE TABLE public.baby_profiles (
+    baby_id            uuid         NOT NULL DEFAULT gen_random_uuid(),
+    owner_user_id      uuid         NOT NULL,
+    related_journey_id uuid,
+    nickname           varchar(100) NOT NULL,
+    birth_date         date,
+    sex                varchar(10),   -- mapped to Java enum `Gender` (MALE/FEMALE/UNKNOWN) via @Enumerated(STRING)
+    birth_weight_kg    numeric,
+    birth_length_cm    numeric,
+    status             varchar(20)  NOT NULL DEFAULT 'ACTIVE',  -- plain varchar, not a native enum type; values ACTIVE/ARCHIVED (BabyProfileStatus.java)
+    created_at         timestamptz  NOT NULL DEFAULT now(),
+    updated_at         timestamptz  NOT NULL DEFAULT now()
 );
+-- PK: baby_profiles_pkey (baby_id)
+-- FK: owner_user_id -> users(user_id), related_journey_id -> mother_journeys(journey_id)
+-- Index: idx_baby_profiles_owner_user_id, idx_baby_profiles_related_journey_id
 
-CREATE INDEX idx_baby_account_id ON baby_profiles(account_id);
-CREATE INDEX idx_baby_status ON baby_profiles(status);
+-- Không có cột avatar_file_id hoặc is_active trong schema thật.
 ```
 
 ---
@@ -223,14 +221,13 @@ participant "BabyRepository" as Repo
 database "PostgreSQL" as DB
 participant "AuditService" as Audit
 
-Client -> Controller : POST /api/v1/baby-profiles\n{nickname, birthDate, gender, birthWeightKg}
-Controller -> Controller : Validate DTO
-Controller -> Service : createBabyProfile(request, accountId)
-Service -> Service : validateBirthMeasurements(0.5–8.0 kg)
-Service -> Repo : save(newBabyProfile)
+Client -> Controller : POST /api/v1/babies\n{nickname, birthDate, gender, birthWeightKg, birthLengthCm, relatedJourneyId}
+Controller -> Controller : @Valid Bean Validation on CreateBabyProfileRequest\n(nickname/birthDate/birthWeightKg/birthLengthCm bounds)
+Controller -> Service : createBabyProfile(request, callerId)
+Service -> Repo : save(newBabyProfile)\n[ownerUserId=callerId]
 Repo -> DB : INSERT INTO baby_profiles
 DB --> Repo : saved profile
-Service -> Audit : emit(BabyProfileCreated)
+Service -> Audit : AuditService.log(BABY_PROFILE_CREATED, callerId, ...)
 Service --> Controller : CreateBabyProfileResponse
 Controller --> Client : 201 Created
 @enduml
@@ -238,17 +235,18 @@ Controller --> Client : 201 Created
 
 ### 6.2. Error Path — Invalid Birth Weight
 
+> **(Sửa 2026-07-03):** Sequence gốc mô tả `validateBirthMeasurements()` là method riêng trong Service ném `InvalidMeasurementException(BABY-003)`. Code thật KHÔNG có method này — validation xảy ra ở Bean Validation layer (`@Valid` trên Controller), ném `MethodArgumentNotValidException`, xử lý bởi `GlobalExceptionHandler` trả về `error: "VALIDATION_ERROR"` (400), KHÔNG phải `BABY-003`.
+
 ```plantuml
 @startuml CreateBabyProfile_ErrorPath
 actor "Mother" as Client
 participant "BabyController" as Controller
-participant "BabyService" as Service
+participant "GlobalExceptionHandler" as Handler
 
-Client -> Controller : POST /api/v1/baby-profiles\n{birthWeightKg: 12.0}
-Controller -> Service : createBabyProfile(request)
-Service -> Service : validateBirthMeasurements() → FAIL
-Service --> Controller : throw InvalidMeasurementException(BABY-003)
-Controller --> Client : 400 {code: "BABY-003"}
+Client -> Controller : POST /api/v1/babies\n{birthWeightKg: 12.0}
+Controller -> Controller : @Valid CreateBabyProfileRequest\n(@DecimalMax("8.0")) → FAIL
+Controller --> Handler : throws MethodArgumentNotValidException
+Handler --> Client : 400 {error: "VALIDATION_ERROR", details: [...]}
 @enduml
 ```
 
@@ -258,47 +256,40 @@ Controller --> Client : 400 {code: "BABY-003"}
 
 ### 7.1. Events Published
 
+> **(Sửa 2026-07-03):** Code thật KHÔNG publish một Spring `ApplicationEvent`/domain-event record riêng. `BabyServiceImpl.createBabyProfile()` gọi trực tiếp `AuditService.log(AuditAction.BABY_PROFILE_CREATED, callerId, "BabyProfile", saved.getId().toString(), "created")` — một audit log call đồng bộ, không phải event bus.
+
 | Event Name | Trigger | Publisher | Subscriber(s) | Async? |
 |------------|---------|-----------|---------------|--------|
-| `BabyProfileCreated` | Profile saved | `BabyService` | `AuditService, VaccinationService` | No |
+| `AuditAction.BABY_PROFILE_CREATED` (audit log entry, không phải domain event) | Profile saved | `BabyServiceImpl.createBabyProfile()` | `audit_logs` table (qua `AuditService.log()`) | No |
 
 ### 7.3. Payload Schema
 
-```java
-public record BabyProfileCreated(
-    UUID    eventId,
-    String  eventType,   // "BabyProfileCreated"
-    Instant occurredAt,
-    String  version,     // "1.0"
-    Payload payload,
-    Metadata metadata
-) {
-    public record Payload(UUID profileId, UUID accountId, String nickname, String gender) {}
-    public record Metadata(UUID correlationId, String causedBy) {}
-}
-```
+Không có payload record riêng — `AuditService.log(action, actorId, entityType, entityId, description)` ghi trực tiếp vào bảng `audit_logs` với các tham số: `action=BABY_PROFILE_CREATED`, `actorId=callerId`, `entityType="BabyProfile"`, `entityId=saved.getId()`, `description="created"`.
 
 ---
 
 ## 8. Interface Specification
 
+> **(Sửa 2026-07-03):** DTO dưới đây đã sửa khớp `CreateBabyProfileRequest.java`/`CreateBabyProfileResponse.java`/`IBabyService.java` thật: `nickname` max=100 (không phải 50), KHÔNG có `@PastOrPresent` trên `birthDate`, `gender` là optional (không `@NotNull`), bounds cân nặng/chiều dài đúng là 0.5–8.0kg / 25.0–65.0cm, có thêm field `relatedJourneyId` (không có trong bản gốc), và service KHÔNG ném `InvalidMeasurementException` — Bean Validation xử lý toàn bộ.
+
 ```java
 // CreateBabyProfileRequest.java
 public class CreateBabyProfileRequest {
-    @NotBlank @Size(max = 50)
+    @NotBlank @Size(max = 100)
     private String nickname;
 
-    @NotNull @PastOrPresent
+    @NotNull
     private LocalDate birthDate;
 
-    @NotNull
-    private Gender gender;
+    private Gender gender; // optional
 
-    @DecimalMin("0.50") @DecimalMax("8.00")
+    @DecimalMin("0.5") @DecimalMax("8.0")
     private BigDecimal birthWeightKg; // optional
 
-    @DecimalMin("20.0") @DecimalMax("60.0")
+    @DecimalMin("25.0") @DecimalMax("65.0")
     private BigDecimal birthLengthCm; // optional
+
+    private UUID relatedJourneyId; // optional
 }
 
 // CreateBabyProfileResponse.java
@@ -315,10 +306,8 @@ public class CreateBabyProfileResponse {
 
 // IBabyService.java
 public interface IBabyService {
-    /**
-     * @throws InvalidMeasurementException (BABY-003) when birth measurements out of range
-     */
-    CreateBabyProfileResponse createBabyProfile(CreateBabyProfileRequest request, UUID accountId);
+    // Không throw custom exception — validation hoàn toàn ở Bean Validation layer (DTO annotations)
+    CreateBabyProfileResponse createBabyProfile(CreateBabyProfileRequest request, UUID callerId);
 }
 ```
 
@@ -328,9 +317,11 @@ public interface IBabyService {
 
 ### 9.1. Endpoints Table
 
+> **(Sửa 2026-07-03):** Path thật là `/api/v1/babies` (không phải `/api/v1/baby-profiles`); role thật cho phép cả `MOTHER` và `FAMILY` (`@PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")` trên `BabyController.createBabyProfile()`), không phải MOTHER-only.
+
 | Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
 |--------|------|------------|----------------|------------|-------------|
-| `POST` | `/api/v1/baby-profiles` | JWT Bearer | `ROLE_MOTHER` | 10/min | No |
+| `POST` | `/api/v1/babies` | JWT Bearer | `MOTHER`, `FAMILY` | Không có rate limit riêng trong code thật | No |
 
 ### 9.2. Schemas
 
@@ -341,21 +332,26 @@ public interface IBabyService {
   "birthDate": "2026-01-15",
   "gender": "MALE",
   "birthWeightKg": 3.2,
-  "birthLengthCm": 50.0
+  "birthLengthCm": 50.0,
+  "relatedJourneyId": "uuid-v4-optional"
 }
 ```
 
-**Response 201:**
+**Response 201** (bọc trong `ApiResponse<T>` — xem `ApiResponse.success(response, "Baby profile created successfully")`):
 ```json
 {
-  "id": "uuid-v4",
-  "nickname": "Bean",
-  "birthDate": "2026-01-15",
-  "gender": "MALE",
-  "birthWeightKg": 3.2,
-  "birthLengthCm": 50.0,
-  "status": "ACTIVE",
-  "createdAt": "2026-06-26T00:00:00.000Z"
+  "success": true,
+  "message": "Baby profile created successfully",
+  "data": {
+    "id": "uuid-v4",
+    "nickname": "Bean",
+    "birthDate": "2026-01-15",
+    "gender": "MALE",
+    "birthWeightKg": 3.2,
+    "birthLengthCm": 50.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-06-26T00:00:00.000Z"
+  }
 }
 ```
 
@@ -363,37 +359,38 @@ public interface IBabyService {
 
 ## 10. Bảng mã lỗi
 
+> **(Sửa 2026-07-03 — quan trọng):** Bảng gốc bên dưới là SAI hoàn toàn so với code thật — `createBabyProfile()` không ném bất kỳ `BusinessException` với custom code nào. Ngoài ra, các mã `BABY-001`/`BABY-003` được "cấp phát" ở đây (400) trực tiếp collide với namespace thật: `BABY-001` và `BABY-003` đã được dùng bởi `getBabyProfile()` (UC192, xem TDS UC192 §10) với ý nghĩa KHÁC hẳn (`BABY-001`=404 Not Found, `BABY-003`=403 Forbidden). Bảng dưới đây đã được sửa lại khớp thực tế — path tạo profile không có custom error code, dùng format lỗi chung của toàn hệ thống.
+
 | Code | HTTP Status | Message (EN) | Trigger Condition |
 |------|-------------|--------------|-------------------|
-| `BABY-001` | 400 | Validation failed | Missing/invalid required fields |
-| `BABY-002` | 403 | Insufficient permissions | Non-MOTHER role |
-| `BABY-003` | 400 | Birth measurement out of range | Weight/length outside WHO bounds |
-| `BABY-004` | 404 | Baby profile not found | Referenced profile does not exist |
-| `BABY-005` | 500 | Internal error | Unexpected DB error |
+| `VALIDATION_ERROR` (generic, `GlobalExceptionHandler.handleMethodArgumentNotValid`) | 400 | Invalid request | Bean Validation thất bại: nickname trống/quá dài, birthDate null, birthWeightKg/birthLengthCm ngoài range, gender không thuộc enum |
+| `ACCESS_DENIED` (generic, `GlobalExceptionHandler.handleSpringAccessDenied`) | 403 | Insufficient permissions | Caller không có role `MOTHER` hoặc `FAMILY` (Spring `@PreAuthorize` reject) |
+| `INTERNAL_ERROR` (generic, `GlobalExceptionHandler.handleGeneric`) | 500 | Unexpected error | Lỗi DB không lường trước |
+
+Không có `BABY-xxx` code riêng cho create path trong code thật. Nếu tương lai cần custom code (vd. để phân biệt lỗi field cụ thể), PHẢI cấp phát số thứ tự tiếp theo CHƯA dùng trong namespace `BABY-xxx` toàn module (hiện `BABY-001`, `BABY-003` đã dùng bởi UC192; `BABY-033` bởi UC34; `BABY-063` bởi UC37) — không được tái sử dụng `BABY-001`–`BABY-005` như bản gốc.
 
 ---
 
 ## 11. Quy trình Triển khai
 
-### 11.3. Implementation Steps
+### 11.3. Implementation Steps (đã ship — cập nhật khớp thực tế 2026-07-03)
 
-1. Flyway migration `V21__create_baby_profiles.sql`
-2. `BabyProfile` entity với enum mappings
-3. `IBabyRepository` extends JpaRepository
-4. `BabyService.createBabyProfile()` với validation
-5. `BabyController.POST /api/v1/baby-profiles`
+1. ~~Flyway migration `V21__create_baby_profiles.sql`~~ — bảng `baby_profiles` thuộc baseline `V1__init_schema.sql`, không có migration riêng
+2. `BabyProfile` entity (`com.carebridge.backend.baby.entity`) với `@Enumerated(STRING)` cho `gender`/`status`
+3. `BabyProfileRepository extends JpaRepository<BabyProfile, UUID>`
+4. `BabyServiceImpl.createBabyProfile()` — Bean Validation only, không có validation method riêng
+5. `BabyController.POST /api/v1/babies` (`@PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")`)
 
 ---
 
 ## 12. Rollback & Incident Runbook
 
+> **(Sửa 2026-07-03):** `baby_profiles` thuộc baseline schema (`V1__init_schema.sql`), được nhiều UC khác dùng chung (UC32, UC33, UC192-197...) — KHÔNG được `DROP TABLE`. Rollback chỉ revert code, không đụng schema.
+
 ```bash
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
-  -c "DROP TABLE IF EXISTS baby_profiles CASCADE;"
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
-  -c "DROP TYPE IF EXISTS gender_enum, baby_profile_status CASCADE;"
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
-  -c "DELETE FROM flyway_schema_history WHERE version = '21';"
+# Rollback code-only (baby_profiles là bảng dùng chung, không drop):
+git checkout -- src/main/java/com/carebridge/backend/baby/controller/BabyController.java
+git checkout -- src/main/java/com/carebridge/backend/baby/service/impl/BabyServiceImpl.java
 ```
 
 ---
@@ -404,17 +401,21 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
 Feature: Create Baby Profile
   Scenario: Happy path
     Given Mother authenticated with JWT
-    When POST /api/v1/baby-profiles with valid data
+    When POST /api/v1/babies with valid data
     Then 201 response with baby profile data
-    And database contains 1 row in baby_profiles
+    And database contains 1 row in baby_profiles with owner_user_id = caller
 
   Scenario: Invalid birth weight → 400
     When POST with birthWeightKg = 12.0
-    Then response 400, error BABY-003
+    Then response 400, error "VALIDATION_ERROR"
 
   Scenario: EXPERT role → 403
-    When EXPERT calls POST /api/v1/baby-profiles
-    Then response 403
+    When EXPERT calls POST /api/v1/babies
+    Then response 403, error "ACCESS_DENIED"
+
+  Scenario: FAMILY role → 201 (allowed, không phải chỉ MOTHER)
+    When FAMILY calls POST /api/v1/babies with valid data
+    Then 201 response
 ```
 
 ---
@@ -422,8 +423,8 @@ Feature: Create Baby Profile
 ## 14. Phương pháp Xác minh
 
 ```sql
-SELECT id, nickname, birth_date, gender, status FROM baby_profiles
-WHERE account_id = '[uuid]';
+SELECT baby_id, nickname, birth_date, sex, status FROM baby_profiles
+WHERE owner_user_id = '[uuid]';
 ```
 
 ---
@@ -431,7 +432,7 @@ WHERE account_id = '[uuid]';
 ## 15. Mẫu thử thực tế
 
 ```bash
-curl -X POST https://[host]/api/v1/baby-profiles \
+curl -X POST https://[host]/api/v1/babies \
   -H "Authorization: Bearer [JWT_MOTHER_TOKEN]" \
   -H "Content-Type: application/json" \
   -d '{"nickname":"Bean","birthDate":"2026-01-15","gender":"MALE","birthWeightKg":3.2}'
@@ -442,10 +443,14 @@ curl -X POST https://[host]/api/v1/baby-profiles \
 
 ## 16. Bảng tổng hợp phân quyền
 
-| Endpoint | `GUEST` | `MOTHER` | `EXPERT` | `ADMIN` |
-|----------|---------|----------|----------|---------|
-| `POST /api/v1/baby-profiles` | ❌ | ✅ Own | ❌ | ✅ All |
-| `GET /api/v1/baby-profiles` | ❌ | ✅ Own | ❌ | ✅ All |
+> **(Sửa 2026-07-03):** Bảng gốc ghi path `/api/v1/baby-profiles` và MOTHER-only, và tuỳ tiện thêm quyền ADMIN "All" (không có trong code). Path thật là `/api/v1/babies`; `@PreAuthorize` chỉ cho `MOTHER, FAMILY`; không có route ADMIN-override.
+
+| Endpoint | `GUEST` | `MOTHER` | `FAMILY` | `EXPERT` | `ADMIN` |
+|----------|---------|----------|----------|----------|---------|
+| `POST /api/v1/babies` | ❌ | ✅ Own | ✅ | ❌ (`@PreAuthorize` chặn) | ❌ (không có override route) |
+| `GET /api/v1/babies` (list) | ❌ | ✅ Own | ✅ Own | ✅ Own* | ✅ Own* |
+
+\* `GET /api/v1/babies` dùng `@PreAuthorize("isAuthenticated()")` — không giới hạn role cụ thể; kết quả tự động lọc theo `owner_user_id = callerId` nên EXPERT/ADMIN gọi vẫn chỉ thấy babies của chính họ (nếu có), không phải "xem hộ" người khác.
 
 ---
 
@@ -455,26 +460,27 @@ curl -X POST https://[host]/api/v1/baby-profiles \
 
 | # | Constraint | Source | Last Verified |
 |---|-----------|--------|---------------|
-| C1 | validateBirthMeasurements() phải reject weight ngoài 0.5–8.0 kg | ADR-BABY-002, BR-SAFETY | 2026-06-26 |
+| C1 | `@DecimalMin/@DecimalMax` trên DTO phải reject birthWeightKg ngoài 0.5–8.0 kg, birthLengthCm ngoài 25.0–65.0 cm — KHÔNG viết method `validateBirthMeasurements()` riêng trong Service | ADR-BABY-002, BR-SAFETY | 2026-07-03 |
 | C2 | Controller không chứa business logic | CLAUDE.md | 2026-06-26 |
-| C3 | Emit BabyProfileCreated audit event sau save | BR-PRIVACY | 2026-06-26 |
-| C4 | accountId từ JWT SecurityContext — không từ body | BR-RBAC | 2026-06-26 |
+| C3 | Gọi `AuditService.log(BABY_PROFILE_CREATED, ...)` sau save — KHÔNG phải publish domain event riêng | BR-PRIVACY | 2026-07-03 |
+| C4 | callerId từ `SecurityUtils.requireCurrentUserId(principal)` — không từ body | BR-RBAC | 2026-06-26 |
 | C5 | AI không được suggest diagnosis từ birth measurements | BR-SAFETY | 2026-06-26 |
 
 ### 17.2 Constraint Injection Block
 
 ```
 [CONSTRAINT BLOCK — Module: CreateBabyProfile (CB-BABY-IMP-001)]
-1. validateBirthMeasurements() PHẢI reject weight ngoài 0.5–8.0 kg và length ngoài 25–65 cm — ADR-BABY-002
+1. Bean Validation (@DecimalMin/@DecimalMax) trên CreateBabyProfileRequest PHẢI reject weight ngoài 0.5–8.0 kg và length ngoài 25.0–65.0 cm — KHÔNG viết validation method riêng trong Service — ADR-BABY-002
 2. Controller chỉ validate DTO và map — business logic thuộc về Service — CLAUDE.md
-3. Emit BabyProfileCreated audit event sau mỗi save thành công — BR-PRIVACY
-4. accountId từ JWT SecurityContext, KHÔNG từ request body — BR-RBAC
+3. Gọi AuditService.log(AuditAction.BABY_PROFILE_CREATED, ...) sau mỗi save thành công — KHÔNG publish Spring domain event — BR-PRIVACY
+4. callerId từ SecurityUtils.requireCurrentUserId(principal), KHÔNG từ request body — BR-RBAC
 5. AI KHÔNG được suggest diagnosis từ birth measurements — BR-SAFETY
 
 [CONTEXT BLOCK]
-- Bounded Context: baby
+- Bounded Context: baby (package com.carebridge.backend.baby)
 - Data Classification: Sensitive-PII
-- Error codes: §10 Error Codes Table
+- Endpoint: POST /api/v1/babies (roles: MOTHER, FAMILY)
+- Error codes: §10 — generic VALIDATION_ERROR/ACCESS_DENIED, KHÔNG có custom BABY-xxx cho path này
 - Auth matrix: §16 Authorization Matrix
 ```
 
