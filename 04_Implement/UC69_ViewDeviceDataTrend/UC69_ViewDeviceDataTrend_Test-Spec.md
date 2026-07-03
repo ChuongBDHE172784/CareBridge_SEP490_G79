@@ -15,7 +15,7 @@
 **References:**
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql`
 - `04_Implement/UC69_ViewDeviceDataTrend/UC69_ViewDeviceDataTrend_TDS.md` (CB-DEVICE-IMP-004)
-- `04_Implement/UC66_ConnectHealthDevice/UC66_ConnectHealthDevice_TDS.md` (shared `DeviceConnection` entity)
+- `04_Implement/UC66_ConnectHealthDevice/UC66_ConnectHealthDevice_TDS.md` (shared `HealthDeviceConnection` entity, real table `health_device_connections`)
 - `04_Implement/UC67_ImportDeviceDataManually/UC67_ImportDeviceDataManually_TDS.md` (shared `MaternalHealthMetric` provenance model)
 - `02_Requirements/SRS/3_Functional_Specification.md §3.3.1.46`
 
@@ -29,6 +29,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Test Designer | Khởi tạo tài liệu — Test-Spec cho UC69 (Draft) |
+| 2026-07-02 | AI Agent — Test Designer (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research. `sourceLabel` DEVICE-path assertions now reference `HealthDeviceConnection.deviceName`/`providerName` fixtures from the corrected UC66 `DeviceConnectionTestFactory`. |
 
 ---
 
@@ -57,7 +58,7 @@
 | **Milestone** | `M3 Alpha` |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `PDPA / Luật 91/2025` |
-| **Upstream Dependencies** | `UC66 device_connections`, `UC67 maternal_health_metrics` (imported data must exist) |
+| **Upstream Dependencies** | `UC66 health_device_connections`, `UC67 maternal_health_metrics` (imported data must exist) |
 | **Downstream Consumers** | Mobile Health module UI (trend charts) |
 
 ### 1.1 AI Generation Context (CASE 2.0)
@@ -88,7 +89,7 @@
 
 ```
 View Device Data Trend (health.device) bao gồm các layer:
-├── Service (DeviceTrendService.getTrend() — mock MaternalHealthMetricRepository + IDeviceConnectionRepository)
+├── Service (DeviceTrendService.getTrend() — mock MaternalHealthMetricRepository + IHealthDeviceConnectionRepository)
 ├── Controller (@WebMvcTest, mock Service)
 └── Integration (Testcontainers PostgreSQL — verify read-only, mixed-source aggregation)
 ```
@@ -113,7 +114,7 @@ View Device Data Trend (health.device) bao gồm các layer:
 | TC-COND-004 | `from > to` → 400 `DEVICE-301` | Validation | `TREND-TC-004` |
 | TC-COND-005 | Caller không sở hữu `journeyId` → 403 `DEVICE-304` | Ownership (RBAC) | `TREND-TC-005` |
 | TC-COND-006 | `journeyId` không tồn tại → 404 `DEVICE-302` | Not-found handling | `TREND-TC-006` |
-| TC-COND-007 | `sourceLabel` resolve đúng: DEVICE → tên thiết bị (join `device_connections`); MANUAL → `"Manual entry"` | Source label logic | `TREND-TC-007` |
+| TC-COND-007 | `sourceLabel` resolve đúng: DEVICE → tên thiết bị (join `health_device_connections`); MANUAL → `"Manual entry"` | Source label logic | `TREND-TC-007` |
 | TC-COND-008 | `accuracyWarning` LUÔN `false` trong bản build hiện tại (ADR-DEVICE-008 chưa Accepted — không được tự bịa ngưỡng) | Anti-hallucination guard | `TREND-TC-008` |
 | TC-COND-009 | Read-only: `getTrend()` không gọi bất kỳ `save()`/`delete()` nào trên metric hoặc device repo | Data integrity (TDS §4.2) | `TREND-TC-009` |
 | TC-COND-010 (Integration) | Full trend query qua Testcontainers với dữ liệu MANUAL/DEVICE hỗn hợp | End-to-end | `TREND-TC-INT-001` |
@@ -200,7 +201,7 @@ class ImportDeviceMetricTestFactory {
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS UC-69 Normal Flow` / `UC69 TDS §6.1`
 
-**Preconditions:** `ImportDeviceMetricTestFactory.makeMixedSourceTrendSeries(deviceConnectionId)` returned by `MaternalHealthMetricRepository`; `IDeviceConnectionRepository.findById()` returns `DeviceConnectionTestFactory.makeConnectedDevice()` with `deviceName="Mi Band 8"`
+**Preconditions:** `ImportDeviceMetricTestFactory.makeMixedSourceTrendSeries(deviceConnectionId)` returned by `MaternalHealthMetricRepository`; `IHealthDeviceConnectionRepository.findById()` returns `DeviceConnectionTestFactory.makeConnectedDevice()` with `deviceName="Mi Band 8"`
 
 **Test Steps:**
 1. Arrange: mock repo returns 2 metrics (1 MANUAL, 1 DEVICE) for `journeyId=JOURNEY_ID`, `metricType` matching
@@ -333,7 +334,7 @@ class ImportDeviceMetricTestFactory {
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `UC69 TDS §9.2 Response Schema` / `§17 C5`
 
-**Preconditions:** Mixed series from `ImportDeviceMetricTestFactory.makeMixedSourceTrendSeries(deviceConnectionId)`; `IDeviceConnectionRepository.findById(deviceConnectionId)` returns device with `deviceName="Mi Band 8"`
+**Preconditions:** Mixed series from `ImportDeviceMetricTestFactory.makeMixedSourceTrendSeries(deviceConnectionId)`; `IHealthDeviceConnectionRepository.findById(deviceConnectionId)` returns device with `deviceName="Mi Band 8"`
 
 **Test Steps:**
 1. Arrange: as above
@@ -380,7 +381,7 @@ class ImportDeviceMetricTestFactory {
 **Oracle Source:** `UC69 TDS §4.2 Data Integrity`
 
 **Test Steps:**
-1. Arrange: happy path setup with Mockito spies/mocks on `MaternalHealthMetricRepository` and `IDeviceConnectionRepository`
+1. Arrange: happy path setup with Mockito spies/mocks on `MaternalHealthMetricRepository` and `IHealthDeviceConnectionRepository`
 2. Act: `service.getTrend(query, MOTHER_USER_ID)`
 3. Assert: `verify(metricRepository, never()).save(any())`; `verify(metricRepository, never()).delete(any())`; same for device repository
 
@@ -398,14 +399,14 @@ class ImportDeviceMetricTestFactory {
 ### TREND-TC-INT-001 — Full trend query via Testcontainers with mixed sources
 
 **Severity:** `HIGH`
-**Feature Under Test:** `Full flow: GET /trend → DB read across maternal_health_metrics + device_connections`
+**Feature Under Test:** `Full flow: GET /trend → DB read across maternal_health_metrics + health_device_connections`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/DeviceTrendIntegrationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-010`
 
 **Preconditions:**
 - PostgreSQL Testcontainer; UC66/UC67 migrations applied (no new migration for UC69)
-- Seed: 1 `device_connections` row (CONNECTED, `deviceName="Mi Band 8"`) + 2 `maternal_health_metrics` rows (1 MANUAL, 1 DEVICE referencing the connection) for `JOURNEY_ID`, plus 1 unrelated metric under `OTHER_JOURNEY_ID`
+- Seed: 1 `health_device_connections` row (`status=ACTIVE`, `deviceName="Mi Band 8"`) + 2 `maternal_health_metrics` rows (1 MANUAL, 1 DEVICE referencing the connection) for `JOURNEY_ID`, plus 1 unrelated metric under `OTHER_JOURNEY_ID`
 
 **Test Steps:**
 1. Seed data as above
@@ -501,7 +502,7 @@ public DeviceTrendResponse getTrend(DeviceTrendQuery query, UUID userId) {
 ### Entry Criteria
 
 - [ ] TDS `CB-DEVICE-IMP-004` đã review và approve
-- [ ] UC66 và UC67 đã implement và deploy (dependencies: `device_connections`, `maternal_health_metrics`)
+- [ ] UC66 và UC67 đã implement và deploy (dependencies: `health_device_connections`, `maternal_health_metrics`)
 - [ ] **BLOCKER:** `ADR-DEVICE-008` vẫn `Proposed` — implementation PHẢI dùng stub `accuracyWarning=false` cho đến khi được Accepted chính thức (xem `TREND-TC-008`)
 
 ### Exit Criteria (DoD)
@@ -521,7 +522,7 @@ public DeviceTrendResponse getTrend(DeviceTrendQuery query, UUID userId) {
 
 ### Suspension Criteria
 
-- UC66 hoặc UC67 chưa deploy (`device_connections` hoặc `maternal_health_metrics` không sẵn sàng)
+- UC66 hoặc UC67 chưa deploy (`health_device_connections` hoặc `maternal_health_metrics` không sẵn sàng)
 - `ADR-DEVICE-008` bị thay đổi quyết định mà chưa cập nhật lại `TREND-TC-008`/`TREND-TC-INT-001`
 
 ---

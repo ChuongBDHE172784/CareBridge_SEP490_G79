@@ -40,7 +40,7 @@
 | Field | Value |
 |-------|-------|
 | **Feature / Gap ID** | `UC-32` |
-| **Module** | `UpdateBabyProfile — carejourney` |
+| **Module** | `UpdateBabyProfile — baby` *(sửa 2026-07-03: package thật là `com.carebridge.backend.baby`, không phải `carejourney`)* |
 | **Spec goc** | `CB-BABY-IMP-002` |
 | **Priority** | P1 |
 | **Data Classification** | `Sensitive-PII` |
@@ -124,29 +124,30 @@ class BabyProfileUpdateTestFactory {
     static final UUID OTHER_BABY_ID = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000099");
     static final UUID ARCHIVED_BABY_ID = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000088");
 
+    // (sửa 2026-07-03: khớp field thật của BabyProfile.java — id/status là BabyProfileStatus enum, gender không phải sex/String)
     static BabyProfile makeActiveBaby() {
         BabyProfile p = new BabyProfile();
-        p.setBabyId(BABY_ID);
+        p.setId(BABY_ID);
         p.setOwnerUserId(MOTHER_ID);
         p.setNickname("Bean");
         p.setBirthDate(LocalDate.of(2026, 1, 15));
-        p.setSex("MALE");
+        p.setGender(Gender.MALE);
         p.setBirthWeightKg(new BigDecimal("3.20"));
         p.setBirthLengthCm(new BigDecimal("50.0"));
-        p.setStatus("ACTIVE");
+        p.setStatus(BabyProfileStatus.ACTIVE);
         return p;
     }
 
     static BabyProfile makeArchivedBaby() {
         BabyProfile p = makeActiveBaby();
-        p.setBabyId(ARCHIVED_BABY_ID);
-        p.setStatus("ARCHIVED");
+        p.setId(ARCHIVED_BABY_ID);
+        p.setStatus(BabyProfileStatus.ARCHIVED);
         return p;
     }
 
     static BabyProfile makeOtherMotherBaby() {
         BabyProfile p = makeActiveBaby();
-        p.setBabyId(OTHER_BABY_ID);
+        p.setId(OTHER_BABY_ID);
         p.setOwnerUserId(OTHER_MOTHER_ID);
         return p;
     }
@@ -155,7 +156,7 @@ class BabyProfileUpdateTestFactory {
         UpdateBabyProfileRequest req = new UpdateBabyProfileRequest();
         req.setNickname("Updated Name");
         req.setBirthDate(LocalDate.of(2026, 2, 10));
-        req.setSex("FEMALE");
+        req.setGender(Gender.FEMALE);
         req.setBirthWeightKg(new BigDecimal("3.50"));
         req.setBirthLengthCm(new BigDecimal("51.0"));
         return req;
@@ -169,7 +170,7 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `BabyService.updateBabyProfile()`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `UC-32 Normal Flow, ADR-BABY-003`
@@ -202,7 +203,7 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `BabyService.updateBabyProfile()`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `BR-BABY-010`
@@ -228,7 +229,7 @@ class BabyProfileUpdateTestFactory {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021 — Broken Access Control`
 **Feature Under Test:** `BabyService.checkOwnership()`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `BR-BABY-011, BR-RBAC`
@@ -258,7 +259,7 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `BabyService.checkActiveStatus()`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-BABY-004, BR-BABY-012`
@@ -288,7 +289,7 @@ class BabyProfileUpdateTestFactory {
 **Severity:** `CRITICAL`
 **OWASP:** `A07:2021 — Identification and Authentication Failures`
 **Feature Under Test:** `Spring Security filter chain`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/controller/BabyControllerUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/controller/BabyControllerUpdateTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `BR-RBAC`
@@ -319,7 +320,7 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `Full flow: Controller -> Service -> Repository -> DB`
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/BabyProfileUpdateIntegrationTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/BabyProfileUpdateIntegrationTest.java`
 **TDD Phase:** RED
 **Condition Ref:** `TC-COND-006`
 
@@ -419,10 +420,10 @@ public class BabyService implements IBabyService {
 ## 7. Rollback Plan
 
 ```bash
-git checkout -- src/main/java/com/carebridge/backend/carejourney/dto/UpdateBabyProfileRequest.java
-git checkout -- src/main/java/com/carebridge/backend/carejourney/dto/UpdateBabyProfileResponse.java
-git checkout -- src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java
-git checkout -- src/test/java/com/carebridge/backend/carejourney/controller/BabyControllerUpdateTest.java
+git checkout -- src/main/java/com/carebridge/backend/baby/dto/UpdateBabyProfileRequest.java
+git checkout -- src/main/java/com/carebridge/backend/baby/dto/UpdateBabyProfileResponse.java
+git checkout -- src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java
+git checkout -- src/test/java/com/carebridge/backend/baby/controller/BabyControllerUpdateTest.java
 ```
 
 ---

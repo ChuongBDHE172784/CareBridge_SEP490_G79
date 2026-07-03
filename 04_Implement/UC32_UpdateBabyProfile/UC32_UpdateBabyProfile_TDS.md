@@ -21,6 +21,7 @@
 
 | Ngay | Nguoi thuc hien | Noi dung thay doi |
 |------|-----------------|-------------------|
+| 2026-07-03 | AI Agent (open-items reconciliation) | Xac nhan: `updateBabyProfile()` CHUA duoc implement trong code that (`BabyController.java` chi co `createBabyProfile`, `listBabyProfiles`, `getBabyProfile` — khong co PUT endpoint). Sua 2 loi trong tai lieu de tranh lech huong khi implement: (1) package sai — tai lieu ghi `com.carebridge.backend.carejourney.*`, package that cua module baby la `com.carebridge.backend.baby.*` (xem UC31/UC192 da ship); (2) `sex` validation dung `@Pattern(regexp = "MALE\|FEMALE\|OTHER")` nhung `Gender` enum that (`Gender.java`) la MALE/FEMALE/UNKNOWN — khong co gia tri OTHER. Ma loi BABY-010/011/012 khong dung hang voi cac ma da cap phat that (BABY-001/003 boi UC192, BABY-033 boi UC34, BABY-063 boi UC37) nen giu nguyen duoc. |
 | 2026-06-26 | AI Agent | Tao tai lieu lan dau cho UC-32 Update Baby Profile |
 
 ---
@@ -52,7 +53,7 @@
 | Field | Value |
 |-------|-------|
 | **Module Name** | `UpdateBabyProfile` |
-| **Bounded Context** | `carejourney` (baby care sub-domain) |
+| **Bounded Context** | `baby` — package `com.carebridge.backend.baby` *(sửa 2026-07-03; bản gốc ghi nhầm `carejourney`, không khớp package thật của UC31/UC192)* |
 | **UC ID** | `UC-32` |
 | **SRS Reference** | `3.3.1.9` |
 | **Primary Actor** | `Mother (authenticated)` |
@@ -318,8 +319,7 @@ public class UpdateBabyProfileRequest {
     @PastOrPresent
     private LocalDate birthDate;       // optional — update if provided
 
-    @Pattern(regexp = "MALE|FEMALE|OTHER")
-    private String sex;                // optional — update if provided
+    private Gender gender;              // optional — update if provided. (sửa 2026-07-03: dùng Gender enum thật MALE/FEMALE/UNKNOWN, không phải String + @Pattern("MALE|FEMALE|OTHER") — giá trị OTHER không tồn tại trong Gender.java)
 
     @DecimalMin("0.00")
     private BigDecimal birthWeightKg;  // optional — update if provided
@@ -336,7 +336,7 @@ public class UpdateBabyProfileResponse {
     private UUID babyId;
     private String nickname;
     private LocalDate birthDate;
-    private String sex;
+    private String gender;   // (sửa 2026-07-03: tên field khớp convention "gender" của UC31/UC192, không phải "sex")
     private BigDecimal birthWeightKg;
     private BigDecimal birthLengthCm;
     private String status;
@@ -372,9 +372,11 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
 
 ### 9.1. Endpoints Table
 
+> **Lưu ý (2026-07-03):** UC31 (Create, đã ship) cho phép cả `MOTHER` và `FAMILY` (`@PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")`). UC32 dưới đây ghi `ROLE_MOTHER` only — chưa rõ đây là chủ ý (chỉ Mother được sửa) hay nên nhất quán với UC31. Vì UC32 chưa implement, đây là quyết định còn mở — cần Tech Lead/Product xác nhận trước khi code, không tự ý đổi.
+
 | Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
 |--------|------|------------|----------------|------------|-------------|
-| `PUT` | `/api/v1/babies/{babyId}` | JWT Bearer | `ROLE_MOTHER` | 30/min | Yes |
+| `PUT` | `/api/v1/babies/{babyId}` | JWT Bearer | `MOTHER` (xem lưu ý ở trên) | 30/min | Yes |
 
 ### 9.2. Request / Response Schemas
 
@@ -390,7 +392,7 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
 {
   "nickname": "Updated Name",
   "birthDate": "2026-02-10",
-  "sex": "FEMALE",
+  "gender": "FEMALE",
   "birthWeightKg": 3.5,
   "birthLengthCm": 51.0
 }
@@ -404,7 +406,7 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
     "babyId": "bbbbbbbb-0000-0000-0000-000000000001",
     "nickname": "Updated Name",
     "birthDate": "2026-02-10",
-    "sex": "FEMALE",
+    "gender": "FEMALE",
     "birthWeightKg": 3.5,
     "birthLengthCm": 51.0,
     "status": "ACTIVE",
@@ -484,11 +486,11 @@ No Flyway migration needed — operates on existing `baby_profiles` table.
 ### 12.2. Rollback Procedure
 
 ```bash
-# No migration to revert. Revert code only:
-git checkout -- src/main/java/com/carebridge/backend/carejourney/controller/BabyController.java
-git checkout -- src/main/java/com/carebridge/backend/carejourney/service/BabyService.java
-git checkout -- src/main/java/com/carebridge/backend/carejourney/dto/UpdateBabyProfileRequest.java
-git checkout -- src/main/java/com/carebridge/backend/carejourney/dto/UpdateBabyProfileResponse.java
+# No migration to revert. Revert code only. (sửa 2026-07-03: package thật là com.carebridge.backend.baby, không phải carejourney)
+git checkout -- src/main/java/com/carebridge/backend/baby/controller/BabyController.java
+git checkout -- src/main/java/com/carebridge/backend/baby/service/impl/BabyServiceImpl.java
+git checkout -- src/main/java/com/carebridge/backend/baby/dto/UpdateBabyProfileRequest.java
+git checkout -- src/main/java/com/carebridge/backend/baby/dto/UpdateBabyProfileResponse.java
 ```
 
 ---
@@ -554,7 +556,7 @@ WHERE baby_id = '[uuid]';
 curl -X PUT https://[host]/api/v1/babies/bbbbbbbb-0000-0000-0000-000000000001 \
   -H "Authorization: Bearer [JWT_MOTHER_TOKEN]" \
   -H "Content-Type: application/json" \
-  -d '{"nickname":"Updated Bean","sex":"FEMALE"}'
+  -d '{"nickname":"Updated Bean","gender":"FEMALE"}'
 # Expected: 200
 ```
 
@@ -614,10 +616,10 @@ Theo TDS CB-BABY-IMP-002 va cac ADR lien quan:
 5. Controller chi validate DTO va delegate cho Service — KHONG co business logic — CLAUDE.md
 
 [CONTEXT BLOCK]
-- Bounded Context: carejourney (baby)
+- Bounded Context: baby
 - Data Classification: Sensitive-PII
-- Package: com.carebridge.backend.carejourney
-- Common: ApiResponse<T>, SecurityUtils.requireCurrentUserId(principal), AuditService.emit()
+- Package: com.carebridge.backend.baby (sửa 2026-07-03: không phải carejourney)
+- Common: ApiResponse<T>, SecurityUtils.requireCurrentUserId(principal), AuditService.log(...)
 - Error codes: S10 Error Codes Table
 - Auth matrix: S16 Authorization Matrix
 ```

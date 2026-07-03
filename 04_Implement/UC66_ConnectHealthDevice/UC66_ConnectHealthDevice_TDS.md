@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC66 Connect Health Device (Draft) |
+| 2026-07-02 | AI Agent — Technical Architect (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research (see `UC130_SyncHealthDeviceData_TDS.md` ADR-SYNC-001). Retracted proposed migration `V20260701140000__create_device_connections.sql` — no migration needed. Entity renamed `DeviceConnection` → `HealthDeviceConnection` with fields matching real columns (`connectionId`, `userId`, `providerName`, `deviceName`, `scopesJson`, `tokenReference`, `consentGrantedAt`, `lastSyncedAt`, `status`, `createdAt`, `updatedAt`). Removed invented `journeyId` FK (real table has no such column — see new Open Item O4) and invented `consentGrantId` FK to `consent_grants` (real table has no such FK — uses its own `consent_granted_at` column instead, simplest option per BR-PRIVACY, consistent with UC130 ADR-SYNC-004). `DeviceConnectionStatus` enum changed from `CONNECTED/DISCONNECTED` to `ACTIVE/INACTIVE/REVOKED` to match real column `status varchar(20) DEFAULT 'ACTIVE'` (no DB CHECK constraint) — aligned with UC130's class diagram. `DeviceType` enum (with CHECK constraint) dropped — real schema has free-text `provider_name varchar(80)` instead, no enum enforcement at DB level. |
 
 ---
 
@@ -51,7 +52,7 @@
 
 ## 1. Tổng quan Module
 
-> UC66 cho phép Mother kết nối một wearable/health platform (smartwatch, health app) với CareBridge sau khi cấp consent tường minh. Đây là bước khởi đầu của vòng đời "Device Sync" chung cho UC66 (Connect) → UC67 (Import/Sync data) → UC68 (Disconnect) → UC69 (View Trend). Bốn UC này chia sẻ một entity trạng thái kết nối duy nhất: `DeviceConnection`.
+> UC66 cho phép Mother kết nối một wearable/health platform (smartwatch, health app) với CareBridge sau khi cấp consent tường minh. Đây là bước khởi đầu của vòng đời "Device Sync" chung cho UC66 (Connect) → UC67 (Import/Sync data) → UC68 (Disconnect) → UC69 (View Trend). Bốn UC này chia sẻ một entity trạng thái kết nối duy nhất: `HealthDeviceConnection` (map trực tiếp vào bảng **thực đã tồn tại** `health_device_connections`, `V1__init_schema.sql` dòng 1115 — xem CHANGELOG 2026-07-02 và §5.2).
 
 | Field | Value |
 |-------|-------|
@@ -78,90 +79,92 @@
 |----------------|------------------|---------------|-----------------|-------------------|---------------|
 | UC-66 (SRS §3.3.1.43) | User Story | Mother kết nối wearable/health platform sau khi consent | `DeviceConnectionController.POST /api/v1/health/devices/connections` | — | ADR-DEVICE-001 |
 | PRE-3 / BR-RBAC | Business Rule | Chỉ actor đã xác thực với role phù hợp (MOTHER) mới connect | `DeviceConnectionService.connect()` + `@PreAuthorize` | — | — |
-| BR-PRIVACY | Business Rule | Kết nối thiết bị bắt buộc capture consent trước khi lưu trạng thái CONNECTED | `ConsentService.grant()` (reuse) + `DeviceConnectionService` | PDPA / Luật 91/2025 | ADR-DEVICE-002 |
-| BR-CONSULTATION | Business Rule | Vòng đời kết nối phải auditable (trạng thái + audit trail) | `DeviceConnection.status`, `created_at/updated_at`, `DeviceConnected` event | — | ADR-DEVICE-001 |
+| BR-PRIVACY | Business Rule | Kết nối thiết bị bắt buộc capture consent (`consent_granted_at`) trước khi lưu trạng thái ACTIVE | `DeviceConnectionService` (set `consent_granted_at` trực tiếp — không dual-write `ConsentGrant`, xem ADR-DEVICE-002) | PDPA / Luật 91/2025 | ADR-DEVICE-002 |
+| BR-CONSULTATION | Business Rule | Vòng đời kết nối phải auditable (trạng thái + audit trail) | `HealthDeviceConnection.status`, `created_at/updated_at`, `DeviceConnected` event | — | ADR-DEVICE-001 |
 | POST-3 | Postcondition | Sensitive actions (connect) phải được ghi nhận cho audit | `DeviceConnected` event + `created_by` | PDPA | ADR-DEVICE-003 |
 | E1 (Exceptions) | Exception Flow | Access denied khi actor không auth hoặc không đúng ownership | `DeviceConnectionController` (403) | — | — |
-| E2 (Exceptions) | Exception Flow | Dữ liệu thiếu/invalid (deviceType/deviceName) bị reject | `ConnectDeviceRequest` validation | — | — |
-| ADR-DEVICE-001 | Decision | State machine dùng chung cho UC66/UC68: `NOT_CONNECTED → CONNECTED → DISCONNECTED → CONNECTED...` | `DeviceConnection.status` enum `DeviceConnectionStatus` | — | — |
-| ADR-DEVICE-002 | Decision | Consent bắt buộc trước khi transition sang CONNECTED; consent record tái sử dụng `ConsentGrant` (`dataType=HEALTH_RECORD`, `purpose=SHARE`) | `DeviceConnectionService.connect()` | PDPA Art. (Luật 91/2025 Đ.13) | — |
-| ADR-DEVICE-003 | Decision | Không hard-delete kết nối — append-only lifecycle, dùng trạng thái + `disconnected_at` | `DeviceConnection` (không có phương thức `delete()`) | GDPR-equivalent Art. 5.1(e) | — |
+| E2 (Exceptions) | Exception Flow | Dữ liệu thiếu/invalid (providerName/deviceName) bị reject | `ConnectDeviceRequest` validation | — | — |
+| ADR-DEVICE-001 | Decision | State machine dùng chung cho UC66/UC68, trên bảng thực `health_device_connections`: `ACTIVE → REVOKED` (mapped từ `status varchar(20) DEFAULT 'ACTIVE'`, không CHECK constraint) | `HealthDeviceConnection.status` enum `DeviceConnectionStatus{ACTIVE,INACTIVE,REVOKED}` | — | — |
+| ADR-DEVICE-002 | Decision | Consent bắt buộc trước khi transition sang ACTIVE; dùng cột thực `consent_granted_at` trên `health_device_connections` (KHÔNG dual-write sang `consent_grants` — xem Decision đã sửa) | `DeviceConnectionService.connect()` | PDPA Art. (Luật 91/2025 Đ.13) | — |
+| ADR-DEVICE-003 | Decision | Không hard-delete kết nối — append-only lifecycle, dùng trạng thái + cột thực (không có `disconnected_at` riêng — dùng `updated_at`, xem Open Item O5) | `HealthDeviceConnection` (không có phương thức `delete()`) | GDPR-equivalent Art. 5.1(e) | — |
 
 ---
 
 ## 3. Architecture Decision Records (ADR)
 
-### ADR-DEVICE-001 — Device Connection Lifecycle State Machine (dùng chung UC66/UC68)
+### ADR-DEVICE-001 — Device Connection Lifecycle State Machine on Real Schema `health_device_connections` (dùng chung UC66/UC68)
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
+| **Status** | `Accepted` (re-affirmed after schema correction — see CHANGELOG 2026-07-02) |
 | **Deciders** | `AI Agent — Technical Architect` |
-| **Date** | `2026-07-01` |
-| **Supersedes** | `—` |
+| **Date** | `2026-07-01` (original) / `2026-07-02` (corrected) |
+| **Supersedes** | Original version of this ADR, which assumed an invented table `device_connections` — see CHANGELOG. |
 
 #### Bối cảnh (Context)
-UC66 (Connect) và UC68 (Disconnect) thao tác trên cùng một thực thể kết nối thiết bị. Cần một mô hình trạng thái nhất quán để tránh có 2 bảng riêng biệt hoặc state rời rạc giữa 2 UC.
+UC66 (Connect) và UC68 (Disconnect) thao tác trên cùng một thực thể kết nối thiết bị. **Xác minh trực tiếp `V1__init_schema.sql` dòng 1115-1127 xác nhận bảng `health_device_connections` đã tồn tại sẵn** (baseline schema), với cột `status varchar(20) NOT NULL DEFAULT 'ACTIVE'` — KHÔNG có CHECK constraint giới hạn giá trị. Bản gốc của TDS này (2026-07-01) tuyên bố sai rằng schema là "greenfield" và đề xuất tạo bảng mới `device_connections` — đây là lỗi nghiên cứu đã được UC130's TDS phát hiện độc lập (xem ADR-SYNC-001 trong `UC130_SyncHealthDeviceData_TDS.md`) và xác nhận lại ở đây.
 
 #### Các phương án đã xem xét (Options Considered)
 
 | Phương án | Mô tả | Ưu điểm | Nhược điểm |
 |-----------|-------|----------|------------|
-| A | Một bảng `device_connections` với enum `status` (`NOT_CONNECTED` không cần lưu — record chỉ tồn tại khi có ý định kết nối; `CONNECTED`, `DISCONNECTED`) | Đơn giản, 1 nguồn sự thật, dễ audit lịch sử | Cần đảm bảo chỉ 1 record `CONNECTED` active/thiết bị/user tại một thời điểm |
-| B | Xóa record khi disconnect, tạo mới khi connect lại | Đơn giản hơn ở query | Vi phạm nguyên tắc append-only/audit (POST-3), mất lịch sử kết nối |
+| A | Dùng bảng thực `health_device_connections`, ánh xạ trạng thái sang enum `ACTIVE / INACTIVE / REVOKED` (khớp `DEFAULT 'ACTIVE'`, không CHECK constraint) | Không tạo bảng dư thừa, tận dụng đúng cột đã có (`token_reference`, `scopes_json`, `last_synced_at` — vốn được thiết kế cho auto-sync/UC130), nhất quán với UC130 | Cần bỏ state name `CONNECTED/DISCONNECTED` cũ, đổi sang `ACTIVE/REVOKED` |
+| B (đã loại bỏ) | Tạo bảng mới `device_connections` riêng cho UC66-69 | — | Vi phạm CLAUDE.md ("current code/migrations là nguồn sự thật"); tạo bảng trùng chức năng với `health_device_connections` đã có sẵn — nợ kỹ thuật nghiêm trọng nếu implement |
 
 #### Quyết định (Decision)
-Chọn **Phương án A**. Bảng `device_connections` là append-only theo nghĩa không xóa record — disconnect chỉ set `status = DISCONNECTED` + `disconnected_at`. Kết nối lại tạo **record mới** (không tái sử dụng record cũ) để giữ lịch sử đầy đủ mỗi lần connect/disconnect.
+Chọn **Phương án A**. Bảng `health_device_connections` (đã tồn tại, KHÔNG tạo mới) là append-only theo nghĩa không xóa record — disconnect chỉ set `status = 'REVOKED'` (UC68 dùng `REVOKED` thay vì `DISCONNECTED` cũ — xem UC68 TDS CHANGELOG). Kết nối lại tạo **record mới** (không tái sử dụng record cũ) để giữ lịch sử đầy đủ mỗi lần connect/disconnect. `INACTIVE` được giữ trong enum (dự phòng cho trạng thái tạm ngưng không do user chủ động — hiện KHÔNG có luồng nào trong UC66-69/130 gán giá trị này, đánh dấu Open — xem Open Item O4).
 
 #### Hệ quả (Consequences)
 
 **Tích cực:**
+- Không tạo bảng dư thừa — nhất quán tuyệt đối với UC130 (đã dùng `health_device_connections`/`device_measurements`).
 - Lịch sử kết nối/ngắt kết nối được giữ nguyên vẹn cho audit (POST-3, BR-CONSULTATION).
-- UC66 và UC68 dùng chung 1 entity, 1 repository, tránh trùng lặp logic.
+- UC66 và UC68 dùng chung 1 entity (`HealthDeviceConnection`), 1 repository, tránh trùng lặp logic.
 
 **Tiêu cực / Trade-offs:**
-- Có thể có nhiều record `DISCONNECTED` lịch sử cho cùng 1 (user, deviceType) — cần index + query "current active connection" (`status = 'CONNECTED'`) để tránh nhầm lẫn.
+- Có thể có nhiều record `REVOKED` lịch sử cho cùng 1 `user_id` — cần index + query "current active connection" (`status = 'ACTIVE'`) để tránh nhầm lẫn. Vì bảng thực chỉ có `user_id` (không có `device_type`/`journey_id` — xem Open Item O4), việc phân biệt "nhiều connection cùng loại thiết bị" của cùng 1 user phải dựa vào `provider_name`/`device_name` (free-text, không enum) thay vì unique constraint chặt.
 
 **Compliance Impact:**
-- Hỗ trợ yêu cầu audit trail của BR-CONSULTATION và PDPA (chứng minh được thời điểm consent/kết nối).
+- Hỗ trợ yêu cầu audit trail của BR-CONSULTATION và PDPA (chứng minh được thời điểm consent/kết nối) — dùng cột thực `consent_granted_at`.
 
 ---
 
-### ADR-DEVICE-002 — Consent Capture Required Before CONNECTED Transition
+### ADR-DEVICE-002 — Consent Capture Required Before ACTIVE Transition (Uses Real `consent_granted_at` Column, No Dual-Write)
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
+| **Status** | `Accepted` (re-affirmed after schema correction — see CHANGELOG 2026-07-02) |
 | **Deciders** | `AI Agent — Technical Architect` |
-| **Date** | `2026-07-01` |
-| **Supersedes** | `—` |
+| **Date** | `2026-07-01` (original) / `2026-07-02` (corrected) |
+| **Supersedes** | Original version of this ADR (dual-write to `consent_grants` + `consent_grant_id` FK — dropped, see below). |
 
 #### Bối cảnh (Context)
-BR-PRIVACY yêu cầu dữ liệu sức khỏe/gia đình phải theo "consent, purpose, and minimum-necessary access rules". SRS UC-66 Description ghi rõ: "Connects a wearable or health platform **after user consent**". Codebase đã có `consent` module hoàn chỉnh (`ConsentGrant`, `ConsentService`, `ConsentDataType`, `ConsentPurpose`) — không cần tạo consent model mới.
+BR-PRIVACY yêu cầu dữ liệu sức khỏe/gia đình phải theo "consent, purpose, and minimum-necessary access rules". SRS UC-66 Description ghi rõ: "Connects a wearable or health platform **after user consent**". Bản gốc của ADR này (2026-07-01) đề xuất dual-write: gọi `ConsentService.grant()` tạo `ConsentGrant` record, VÀ lưu thêm `consent_grant_id` (FK) trên bảng tự-đề-xuất `device_connections`. Xác minh lại trên bảng thực `health_device_connections`: cột duy nhất liên quan đến consent là `consent_granted_at timestamptz` — KHÔNG có cột `consent_grant_id`, KHÔNG có FK tới `consent_grants`.
 
 #### Các phương án đã xem xét (Options Considered)
 
 | Phương án | Mô tả | Ưu điểm | Nhược điểm |
 |-----------|-------|----------|------------|
-| A | Tái sử dụng `ConsentGrant` hiện có: gọi `ConsentService.grant()` với `dataType=HEALTH_RECORD`, `purpose=SHARE` trước khi tạo `DeviceConnection` | Nhất quán với hạ tầng consent hiện có, không nhân bản logic | `ConsentDataType` hiện không có giá trị riêng cho "DEVICE_DATA" — dùng `HEALTH_RECORD` là xấp xỉ gần nhất |
-| B | Tạo consent field riêng ngay trong `device_connections` (`consent_given_at`) không qua `ConsentGrant` | Đơn giản, ít phụ thuộc | Trùng lặp mô hình consent, không nhất quán với ADR/consent module hiện có, khó audit tập trung |
+| A | Dual-write: vẫn gọi `ConsentService.grant()` để tạo `ConsentGrant` audit record CHÍNH THỨC, đồng thời set `consent_granted_at` trên `health_device_connections` (không có cột FK để lưu `consent_grant_id` — chỉ lưu timestamp) | Audit tập trung qua `consent_grants` (nhất quán module khác) + timestamp nhanh không cần join | Yêu cầu thêm 1 write phụ mỗi lần connect; không thể trace ngược từ `health_device_connections` về `consent_grants.id` cụ thể (không có FK column) — giảm giá trị của dual-write |
+| B (chọn — đơn giản nhất, khớp UC130) | CHỈ dùng cột thực `consent_granted_at` trên `health_device_connections` — KHÔNG gọi `ConsentService.grant()`/không tạo `ConsentGrant` record riêng cho device data | Đơn giản nhất, khớp chính xác schema thực, nhất quán với UC130 ADR-SYNC-004 (chỉ kiểm tra `consent_granted_at IS NOT NULL`), không cần ALTER TABLE thêm cột | Mất tính năng audit tập trung qua `consent_grants` cho riêng device consent — nhưng `health_device_connections` tự nó đã là audit trail đầy đủ (có `created_at`/`updated_at`/`consent_granted_at`) |
 
 #### Quyết định (Decision)
-Chọn **kết hợp cả hai**: (1) gọi `ConsentService.grant()` để tạo `ConsentGrant` record chính thức (audit tập trung, nhất quán hệ thống), VÀ (2) lưu thêm `consent_grant_id` (FK) + `consented_at` ngay trên `device_connections` để truy vấn nhanh mà không cần join, tránh N+1 khi hiển thị danh sách kết nối.
+Chọn **Phương án B** — phương án đơn giản nhất thỏa mãn BR-PRIVACY mà không cần invent schema mới, nhất quán với quyết định của UC130 (ADR-SYNC-004: chỉ re-check `consent_granted_at IS NOT NULL` mỗi lần, không phụ thuộc bảng `consent_grants`). `DeviceConnectionService.connect()` set `consent_granted_at = now()` trực tiếp trên `health_device_connections` khi `consentAccepted=true`; KHÔNG gọi `ConsentService.grant()`, KHÔNG tạo `ConsentGrant` record cho luồng này.
 
 #### Hệ quả (Consequences)
 
 **Tích cực:**
-- Consent cho device data được audit tập trung qua `consent_grants`, nhất quán với các module khác.
-- Query trạng thái kết nối nhanh không cần join bảng consent.
+- Khớp chính xác với schema thực — không cần migration ALTER thêm cột `consent_grant_id`.
+- Nhất quán với UC130 (cùng đọc/ghi `consent_granted_at`).
+- Đơn giản hóa: không phải đồng bộ 2 nơi (`ConsentGrant.revokedAt` và `health_device_connections.status`) khi disconnect — chỉ 1 nơi duy nhất (xem UC68 TDS ADR-DEVICE-007, cũng được sửa tương ứng).
 
 **Tiêu cực / Trade-offs:**
-- Cần đồng bộ 2 nơi (`ConsentGrant.revokedAt` và `device_connections.status=DISCONNECTED`) khi disconnect (xem UC68 TDS ADR-DEVICE-004) — rủi ro lệch state nếu không transaction hoá đúng.
+- Device consent KHÔNG xuất hiện trong `consent_grants` audit table dùng chung cho các module khác — nếu về sau cần báo cáo tổng hợp "tất cả consent của user" xuyên suốt hệ thống, cần query riêng `health_device_connections.consent_granted_at` thay vì join `consent_grants`. Đánh dấu Open (xem Open Item O5) nếu Tech Lead muốn audit tập trung sau này.
 
 **Compliance Impact:**
-- Đáp ứng PDPA/Luật 91/2025 yêu cầu ghi nhận thời điểm, phạm vi, và mục đích cấp quyền truy cập dữ liệu sức khỏe.
+- Đáp ứng PDPA/Luật 91/2025 yêu cầu ghi nhận thời điểm cấp quyền truy cập dữ liệu sức khỏe qua `consent_granted_at`.
 
-> **Open Item (RG-4):** `ConsentDataType` chưa có giá trị chuyên biệt `DEVICE_DATA`. TDS này **đề xuất** thêm giá trị mới `DEVICE_DATA` vào enum `ConsentDataType` (thay vì tái sử dụng `HEALTH_RECORD`) để tránh nhầm lẫn phạm vi consent. Đây là thay đổi ảnh hưởng đến module `consent` dùng chung — **cần Tech Lead/DPO xác nhận** trước khi implement. Nếu không được chấp thuận, giữ tạm `HEALTH_RECORD` làm giá trị fallback.
+> **Open Item đã đóng (trước đây RG-4):** `ConsentDataType.DEVICE_DATA` không còn cần thiết — Phương án B không dùng `ConsentGrant`/`ConsentDataType` cho luồng connect device nữa.
 
 ---
 
@@ -181,7 +184,7 @@ SRS UC-66 chỉ mô tả "Connects a wearable or health platform after user cons
 
 | Phương án | Mô tả | Ưu điểm | Nhược điểm |
 |-----------|-------|----------|------------|
-| A | Mock-first: `DeviceConnection` lưu `deviceType` (enum do người dùng chọn thủ công từ danh sách hỗ trợ), không tích hợp SDK thật ở giai đoạn này | Không block delivery bởi quyết định vendor, phù hợp "manual import plus stable mock" | Không có dữ liệu tự động thật — chỉ đáp ứng UC66 (connect) + UC67 (manual import), KHÔNG đáp ứng `3.1.2.4 Sync Health Device Data` (auto-sync) |
+| A | Mock-first: `HealthDeviceConnection` lưu `providerName` (free-text do người dùng chọn/nhập thủ công từ danh sách hỗ trợ ở tầng UI, không CHECK constraint ở DB), không tích hợp SDK thật ở giai đoạn này | Không block delivery bởi quyết định vendor, phù hợp "manual import plus stable mock" | Không có dữ liệu tự động thật — chỉ đáp ứng UC66 (connect) + UC67 (manual import), KHÔNG đáp ứng `3.1.2.4 Sync Health Device Data` (auto-sync) |
 | B | Tích hợp ngay 1 SDK cụ thể (vd Google Health Connect) | Trải nghiệm thật hơn | Không có cơ sở nguồn (SRS không chỉ định), rủi ro invent architecture decision không có approval |
 
 #### Quyết định (Decision)
@@ -211,8 +214,8 @@ Chọn **Phương án A** cho phạm vi 4 UC này (UC66/67/68/69). Việc tích 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
 | Durability | Không mất record kết nối | RPO = 0 | Transaction log | PDPA |
-| Retention | `device_connections` + liên kết `consent_grants` | Theo vòng đời tài khoản user | DB policy | PDPA / Luật 91/2025 |
-| Consistency | Consent ↔ DeviceConnection status đồng bộ | 100% | Transactional service method | PDPA |
+| Retention | `health_device_connections` (bao gồm `consent_granted_at`, không dùng bảng `consent_grants` riêng — xem ADR-DEVICE-002) | Theo vòng đời tài khoản user | DB policy | PDPA / Luật 91/2025 |
+| Consistency | `consent_granted_at` ↔ `HealthDeviceConnection.status` đồng bộ | 100% | Transactional service method | PDPA |
 
 ### 4.3. Security
 
@@ -241,34 +244,25 @@ skinparam ArrowColor #555555
 skinparam ClassBorderColor #2E75B6
 skinparam ClassHeaderBackgroundColor #D5E8F0
 
-' === ENTITIES (shared across UC66/67/68/69) ===
-class DeviceConnection {
-  + id: UUID
+' === ENTITIES (shared across UC66/67/68/69/130 — REAL schema, V1__init_schema.sql L1115) ===
+class HealthDeviceConnection {
+  + connectionId: UUID
   + userId: UUID
-  + journeyId: UUID
-  + deviceType: DeviceType
+  + providerName: String
   + deviceName: String
+  + scopesJson: String
+  + tokenReference: String
+  + consentGrantedAt: Instant
+  + lastSyncedAt: Instant
   + status: DeviceConnectionStatus
-  + consentGrantId: Long
-  + consentedAt: Instant
-  + connectedAt: Instant
-  + disconnectedAt: Instant
   + createdAt: Instant
   + updatedAt: Instant
 }
 
-enum DeviceType <<enum>> {
-  SMARTWATCH
-  FITNESS_BAND
-  BLOOD_PRESSURE_MONITOR
-  PULSE_OXIMETER
-  HEALTH_PLATFORM_APP
-  OTHER
-}
-
 enum DeviceConnectionStatus <<enum>> {
-  CONNECTED
-  DISCONNECTED
+  ACTIVE
+  INACTIVE
+  REVOKED
 }
 
 ' === SERVICES ===
@@ -279,67 +273,56 @@ interface IDeviceConnectionService <<interface>> {
 }
 
 class DeviceConnectionService implements IDeviceConnectionService {
-  - deviceConnectionRepository: IDeviceConnectionRepository
-  - consentService: ConsentService
+  - healthDeviceConnectionRepository: IHealthDeviceConnectionRepository
   - eventPublisher: ApplicationEventPublisher
   + connect(request: ConnectDeviceRequest, userId: UUID): DeviceConnectionResponse
   + getActiveConnection(userId: UUID): Optional<DeviceConnectionResponse>
   + listConnections(userId: UUID): List<DeviceConnectionResponse>
 }
 
-' === REPOSITORIES ===
-interface IDeviceConnectionRepository <<interface>> {
-  + findByUserIdAndStatus(userId: UUID, status: DeviceConnectionStatus): List<DeviceConnection>
-  + findFirstByUserIdAndDeviceTypeAndStatusOrderByConnectedAtDesc(userId, deviceType, status): Optional<DeviceConnection>
-  + save(entity: DeviceConnection): DeviceConnection
+' === REPOSITORIES (shared with UC130 naming — IHealthDeviceConnectionRepository) ===
+interface IHealthDeviceConnectionRepository <<interface>> {
+  + findByUserIdAndStatus(userId: UUID, status: DeviceConnectionStatus): List<HealthDeviceConnection>
+  + findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc(userId, providerName, status): Optional<HealthDeviceConnection>
+  + save(entity: HealthDeviceConnection): HealthDeviceConnection
 }
 
-DeviceConnectionService --> IDeviceConnectionRepository : uses
-DeviceConnectionService --> ConsentService : reuses (grant consent)
-DeviceConnection *-- DeviceType
-DeviceConnection *-- DeviceConnectionStatus
+DeviceConnectionService --> IHealthDeviceConnectionRepository : uses
+HealthDeviceConnection *-- DeviceConnectionStatus
 
 @enduml
 ```
 
 ### 5.2. Data Structure (Flyway SQL Migration)
 
-> **CareBridge rule:** V1__init_schema.sql + approved Flyway migrations là nguồn sự thật chính. Không có bảng `device_connections`, `wearable`, hoặc `device` nào tồn tại trong schema hiện tại (đã xác minh — greenfield). Highest migration hiện tại: `V20260629000002__create_community_answer_likes.sql`.
-
-Tạo file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260701140000__create_device_connections.sql`
+> **CORRECTED (2026-07-02 — xem CHANGELOG):** Tuyên bố gốc của mục này ("Không có bảng `device_connections`, `wearable`, hoặc `device` nào tồn tại trong schema hiện tại — đã xác minh — greenfield") là **SAI**. Xác minh trực tiếp `V1__init_schema.sql` xác nhận bảng `health_device_connections` **ĐÃ TỒN TẠI SẴN** (dòng 1115-1127), với PK `connection_id` (dòng 1467-1468), FK `user_id → users.user_id` (dòng 1927-1928), và index `idx_health_device_connections_user_id` (dòng 1660). Phát hiện này được UC130's TDS xác nhận độc lập (`UC130_SyncHealthDeviceData_TDS.md` ADR-SYNC-001).
+>
+> **No migration needed — `health_device_connections` already exists in `V1__init_schema.sql`, verified [line 1115].** Migration `V20260701140000__create_device_connections.sql` được đề xuất trước đây bị **rút lại hoàn toàn** — KHÔNG tạo bảng dư thừa.
 
 ```sql
--- === HEALTH DEVICE: DEVICE CONNECTIONS SCHEMA (shared by UC66/UC67/UC68/UC69) ===
-
-CREATE TABLE device_connections (
-  id                 UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id            UUID          NOT NULL,                 -- Mother's user_id (owner)
-  journey_id         UUID,                                    -- optional link to mother_journeys.journey_id
-  device_type        VARCHAR(40)   NOT NULL,                  -- SMARTWATCH / FITNESS_BAND / BLOOD_PRESSURE_MONITOR / PULSE_OXIMETER / HEALTH_PLATFORM_APP / OTHER
-  device_name        VARCHAR(120),                            -- user-provided label, e.g. "Mi Band 8"
-  status             VARCHAR(20)   NOT NULL DEFAULT 'CONNECTED', -- CONNECTED / DISCONNECTED
-  consent_grant_id   BIGINT,                                  -- FK to consent_grants.id (ADR-DEVICE-002)
-  consented_at       TIMESTAMPTZ,
-  connected_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-  disconnected_at    TIMESTAMPTZ,
-  created_at         TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-  updated_at         TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-
-  CONSTRAINT fk_device_conn_user FOREIGN KEY (user_id) REFERENCES users(user_id),
-  CONSTRAINT fk_device_conn_journey FOREIGN KEY (journey_id) REFERENCES mother_journeys(journey_id),
-  CONSTRAINT fk_device_conn_consent FOREIGN KEY (consent_grant_id) REFERENCES consent_grants(id),
-  CONSTRAINT chk_device_conn_status CHECK (status IN ('CONNECTED','DISCONNECTED')),
-  CONSTRAINT chk_device_conn_type CHECK (device_type IN ('SMARTWATCH','FITNESS_BAND','BLOOD_PRESSURE_MONITOR','PULSE_OXIMETER','HEALTH_PLATFORM_APP','OTHER'))
-);
-
-CREATE INDEX idx_device_conn_user_id ON device_connections(user_id);
-CREATE INDEX idx_device_conn_user_status ON device_connections(user_id, status);
-CREATE INDEX idx_device_conn_journey_id ON device_connections(journey_id);
+-- Bảng thực đã tồn tại (V1__init_schema.sql, dòng 1115-1127) — chỉ liệt kê để tham chiếu, KHÔNG cần chạy lại:
+-- CREATE TABLE public.health_device_connections (
+--     connection_id      uuid         NOT NULL DEFAULT gen_random_uuid(),
+--     user_id            uuid         NOT NULL,
+--     provider_name      varchar(80)  NOT NULL,
+--     device_name        varchar(150),
+--     scopes_json        jsonb,
+--     token_reference    text,
+--     consent_granted_at timestamptz,
+--     last_synced_at     timestamptz,
+--     status             varchar(20)  NOT NULL DEFAULT 'ACTIVE',
+--     created_at         timestamptz  NOT NULL DEFAULT now(),
+--     updated_at         timestamptz  NOT NULL DEFAULT now()
+-- );
 ```
 
-**Quy tắc đặt tên:** snake_case cho toàn bộ column. Version migration: `V20260701140000` (timestamp-based, theo pattern hiện tại của dự án `V20260628130000__...`). Không trùng với version hiện có cao nhất (`V20260629000002`).
+**Gap review — schema thực so với entity Java cần thiết:**
+- Không có cột `journey_id` — UC66 gốc giả định 1 FK tới `mother_journeys` không tồn tại trên bảng thực. Xem Open Item O4.
+- Không có cột `consent_grant_id`/`disconnected_at`/`connected_at` riêng — dùng `consent_granted_at` (consent), `created_at` (thời điểm connect), `updated_at` (thời điểm thay đổi trạng thái gần nhất, bao gồm disconnect). Xem Open Item O5.
+- `provider_name varchar(80) NOT NULL` thay thế cho `device_type` enum tự-đề-xuất trước đây — free-text, KHÔNG có CHECK constraint ở DB. Validation danh sách provider hợp lệ (nếu cần) thực hiện ở tầng Java/DTO, không phải DB CHECK.
+- `status varchar(20) NOT NULL DEFAULT 'ACTIVE'` — KHÔNG có CHECK constraint. Enum Java `ACTIVE/INACTIVE/REVOKED` là quy ước tầng ứng dụng (nhất quán với UC130's class diagram).
 
-**V1__init_schema.sql sync action:** Do dự án đang dùng chiến lược "V1 = baseline import + các V-timestamp sau đó là incremental migrations" (không phải rebuild V1 mỗi lần), **KHÔNG chỉnh sửa `V1__init_schema.sql`**. Migration mới `V20260701140000` là migration độc lập, tuân thủ đúng pattern các migration gần nhất (`V20260629000001/2`, `V20260628130000`, v.v.). Ghi chú này áp dụng thống nhất cho cả 4 TDS (UC66/67/68/69) — không tạo xung đột version giữa chúng (xem bảng tổng hợp version ở cuối §11.3 mỗi TDS).
+**V1__init_schema.sql sync action:** KHÔNG chỉnh sửa `V1__init_schema.sql`. Không có migration mới nào được tạo cho UC66 — bảng đã sẵn sàng để dùng ngay.
 
 ---
 
@@ -368,14 +351,9 @@ Controller -> Controller : Validate ConnectDeviceRequest (@Valid)
 Controller -> Service : connect(request, userId)
 activate Service
 
-Service -> Consent : grant(userId, dataType=HEALTH_RECORD|DEVICE_DATA, purpose=SHARE)
-activate Consent
-Consent --> Service : ConsentGrant (id, consentGivenAt)
-deactivate Consent
-
-Service -> Repository : save(DeviceConnection{status=CONNECTED, consentGrantId, ...})
+Service -> Repository : save(HealthDeviceConnection{status=ACTIVE, consentGrantedAt=now(), ...})
 activate Repository
-Repository -> DB : INSERT INTO device_connections
+Repository -> DB : INSERT INTO health_device_connections
 DB --> Repository : saved row
 deactivate Repository
 
@@ -383,7 +361,7 @@ Service -> Publisher : publish(DeviceConnected)
 Service --> Controller : DeviceConnectionResponse
 deactivate Service
 
-Controller --> Client : HTTP 201\n{id, deviceType, status:"CONNECTED", connectedAt}
+Controller --> Client : HTTP 201\n{id, providerName, status:"ACTIVE", consentGrantedAt}
 deactivate Controller
 
 @enduml
@@ -397,17 +375,17 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as Client
 participant "DeviceConnectionController" as Controller
 participant "DeviceConnectionService" as Service
-participant "DeviceConnectionRepository" as Repository
+participant "IHealthDeviceConnectionRepository" as Repository
 
-Client -> Controller : POST /api/v1/health/devices/connections\n{deviceType: SMARTWATCH}
+Client -> Controller : POST /api/v1/health/devices/connections\n{providerName: "SMARTWATCH_GENERIC"}
 activate Controller
 Controller -> Service : connect(request, userId)
 activate Service
-Service -> Repository : findFirstByUserIdAndDeviceTypeAndStatus(userId, SMARTWATCH, CONNECTED)
+Service -> Repository : findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc(userId, providerName, ACTIVE)
 Repository --> Service : existing active connection found
 Service --> Controller : DeviceConnectionResponse (existing, idempotent return)
 deactivate Service
-Controller --> Client : HTTP 200\n{id, status:"CONNECTED"} (no duplicate row created)
+Controller --> Client : HTTP 200\n{id, status:"ACTIVE"} (no duplicate row created)
 deactivate Controller
 @enduml
 ```
@@ -420,7 +398,7 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as Client
 participant "DeviceConnectionController" as Controller
 
-Client -> Controller : POST /api/v1/health/devices/connections\n{deviceType: "INVALID_TYPE"}
+Client -> Controller : POST /api/v1/health/devices/connections\n{providerName: ""}
 activate Controller
 Controller --> Client : HTTP 400\n{error:{code:"DEVICE-001"}}
 deactivate Controller
@@ -440,33 +418,36 @@ skinparam backgroundColor #FAFAFA
 skinparam StateBackgroundColor #D5E8F0
 skinparam StateBorderColor #2E75B6
 
-[*] --> CONNECTED : UC66 Connect Health Device\n[consent granted]\nINSERT device_connections(status=CONNECTED)
+[*] --> ACTIVE : UC66 Connect Health Device\n[consent granted]\nINSERT health_device_connections(status=ACTIVE, consent_granted_at=now())
 
-CONNECTED --> DISCONNECTED : UC68 Disconnect Health Device\n[user confirms]\nUPDATE status=DISCONNECTED, disconnected_at=now()
+ACTIVE --> REVOKED : UC68 Disconnect Health Device\n[user confirms]\nUPDATE status=REVOKED, updated_at=now()
 
-DISCONNECTED --> [*] : (terminal for this record)
-CONNECTED --> [*] : (record persists; only status changes, never deleted)
+REVOKED --> [*] : (terminal for this record)
+ACTIVE --> [*] : (record persists; only status changes, never deleted)
 
-note right of CONNECTED
-  Invariant: Tối đa 1 record CONNECTED
-  active per (user_id, device_type) tại một thời điểm.
-  Reconnect trong khi đang CONNECTED = idempotent
+note right of ACTIVE
+  Invariant: Tối đa 1 record ACTIVE
+  per user_id tại một thời điểm cho cùng provider_name
+  (bảng thực KHÔNG có device_type/journey_id — xem Open Item O4).
+  Reconnect trong khi đang ACTIVE = idempotent
   return (không tạo record mới) — xem §6.2.
 end note
 
-note right of DISCONNECTED
-  Invariant: DISCONNECTED là trạng thái cuối của record đó.
+note right of REVOKED
+  Invariant: REVOKED là trạng thái cuối của record đó.
   Reconnect sau khi disconnect TẠO record MỚI
   (ADR-DEVICE-001) — không revive record cũ.
+  INACTIVE (enum value dự phòng) hiện KHÔNG được gán bởi
+  luồng nào trong UC66-69/130 — xem Open Item O4.
 end note
 
 @enduml
 ```
 
 > **⚠️ Invariant bất biến:**
-> 1. Không bao giờ xóa record `device_connections` (append-only theo trạng thái).
-> 2. Tối đa 1 record `CONNECTED` cho mỗi `(user_id, device_type)` tại một thời điểm — enforced ở service layer (kiểm tra trước khi INSERT) vì không có UNIQUE constraint composite do lịch sử cần giữ nhiều record DISCONNECTED.
-> 3. Consent phải tồn tại (`consent_grant_id` NOT NULL khi status=CONNECTED) trước khi transition sang CONNECTED.
+> 1. Không bao giờ xóa record `health_device_connections` (append-only theo trạng thái).
+> 2. Tối đa 1 record `ACTIVE` cho mỗi `(user_id, provider_name)` tại một thời điểm — enforced ở service layer (kiểm tra trước khi INSERT) vì không có UNIQUE constraint composite trên bảng thực (và không có device_type/journey_id để scope thêm — xem Open Item O4).
+> 3. Consent phải tồn tại (`consent_granted_at` NOT NULL khi status=ACTIVE) trước khi transition sang ACTIVE.
 
 ---
 
@@ -476,7 +457,7 @@ end note
 
 | Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
 |------------|---------|-----------|---------------|----------------|--------|
-| `DeviceConnected` | Kết nối thiết bị thành công (consent granted + record CONNECTED) | `DeviceConnectionService` | `UC69 ViewDeviceDataTrend` (hiển thị badge "connected"), Audit log sink | `DeviceConnected.java` | Yes |
+| `DeviceConnected` | Kết nối thiết bị thành công (consent granted + record ACTIVE) | `DeviceConnectionService` | `UC69 ViewDeviceDataTrend` (hiển thị badge "connected"), Audit log sink | `DeviceConnected.java` | Yes |
 
 ### 7.2. Events Consumed (Tiêu thụ)
 
@@ -498,11 +479,10 @@ public record DeviceConnected(
 ) implements ApplicationEvent {
 
     public record Payload(
-        UUID   deviceConnectionId,
+        UUID   deviceConnectionId,  // health_device_connections.connection_id
         UUID   userId,
-        String deviceType,     // DeviceType enum name
-        String deviceName,
-        Long   consentGrantId
+        String providerName,        // health_device_connections.provider_name (free-text)
+        String deviceName
     ) {}
 
     public record Metadata(
@@ -524,28 +504,30 @@ public record DeviceConnected(
 package com.carebridge.backend.health.device.dto;
 
 public class ConnectDeviceRequest {
-    @NotNull
-    private DeviceType deviceType;      // required — must be a valid DeviceType enum value
+    @NotBlank
+    @Size(max = 80)
+    private String providerName;        // required — free-text, maps to health_device_connections.provider_name varchar(80)
 
-    @Size(max = 120)
-    private String deviceName;          // optional — user-friendly label
+    @Size(max = 150)
+    private String deviceName;          // optional — user-friendly label, maps to varchar(150)
 
     @NotNull
     @AssertTrue(message = "Consent must be explicitly accepted before connecting a device")
     private Boolean consentAccepted;    // required — must be true (BR-PRIVACY / ADR-DEVICE-002)
 
-    private UUID journeyId;             // optional — link to active mother journey
+    // NOTE: journeyId field REMOVED — health_device_connections has no journey_id column.
+    // See Open Item O4 (no source-of-truth link between a connection and a specific care journey).
     // getters / setters
 }
 
 // DeviceConnectionResponse.java — Output DTO
 public class DeviceConnectionResponse {
-    private UUID   id;
-    private String deviceType;
+    private UUID   id;                  // connection_id
+    private String providerName;
     private String deviceName;
-    private String status;              // "CONNECTED" | "DISCONNECTED"
-    private Instant connectedAt;
-    private Instant consentedAt;
+    private String status;              // "ACTIVE" | "INACTIVE" | "REVOKED"
+    private Instant consentGrantedAt;
+    private Instant createdAt;
     // getters / setters
 }
 
@@ -556,16 +538,16 @@ package com.carebridge.backend.health.device.service;
 public interface IDeviceConnectionService {
     /**
      * Connects a wearable/health platform for the authenticated Mother after consent capture.
-     * Idempotent: if an active CONNECTED record already exists for the same (userId, deviceType),
+     * Idempotent: if an active ACTIVE record already exists for the same (userId, providerName),
      * returns the existing record instead of creating a duplicate.
-     * @throws DeviceConnectionException (DEVICE-001) if deviceType invalid
+     * @throws DeviceConnectionException (DEVICE-001) if providerName missing/blank
      * @throws DeviceConnectionException (DEVICE-006) if consentAccepted is false
      * @throws AccessDeniedException (DEVICE-004) if caller is not ROLE_MOTHER
      */
     DeviceConnectionResponse connect(ConnectDeviceRequest request, UUID userId);
 
     /**
-     * Returns the active (status=CONNECTED) connections for the given user.
+     * Returns the active (status=ACTIVE) connections for the given user.
      */
     List<DeviceConnectionResponse> listActiveConnections(UUID userId);
 }
@@ -574,16 +556,16 @@ public interface IDeviceConnectionService {
 ### 8.2. Repository Interface
 
 ```java
-// IDeviceConnectionRepository.java
+// IHealthDeviceConnectionRepository.java (maps to existing table health_device_connections — shared naming with UC130)
 // @version 1.0
 package com.carebridge.backend.health.device.repository;
 
-public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnection, UUID> {
+public interface IHealthDeviceConnectionRepository extends JpaRepository<HealthDeviceConnection, UUID> {
 
-    List<DeviceConnection> findByUserIdAndStatus(UUID userId, DeviceConnectionStatus status);
+    List<HealthDeviceConnection> findByUserIdAndStatus(UUID userId, DeviceConnectionStatus status);
 
-    Optional<DeviceConnection> findFirstByUserIdAndDeviceTypeAndStatusOrderByConnectedAtDesc(
-        UUID userId, DeviceType deviceType, DeviceConnectionStatus status);
+    Optional<HealthDeviceConnection> findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc(
+        UUID userId, String providerName, DeviceConnectionStatus status);
 
     // Append-only: no delete() method exposed for this entity (ADR-DEVICE-001/003)
 }
@@ -607,10 +589,9 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
 **Request Body:**
 ```json
 {
-  "deviceType": "SMARTWATCH",
+  "providerName": "SMARTWATCH_GENERIC",
   "deviceName": "Mi Band 8",
-  "consentAccepted": true,
-  "journeyId": "uuid-v4-optional"
+  "consentAccepted": true
 }
 ```
 
@@ -618,11 +599,11 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "deviceType": "SMARTWATCH",
+  "providerName": "SMARTWATCH_GENERIC",
   "deviceName": "Mi Band 8",
-  "status": "CONNECTED",
-  "connectedAt": "2026-07-01T08:00:00.000Z",
-  "consentedAt": "2026-07-01T08:00:00.000Z"
+  "status": "ACTIVE",
+  "consentGrantedAt": "2026-07-01T08:00:00.000Z",
+  "createdAt": "2026-07-01T08:00:00.000Z"
 }
 ```
 
@@ -633,7 +614,7 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
     "code": "DEVICE-001",
     "message": "Validation failed",
     "details": [
-      { "field": "deviceType", "message": "deviceType is required" }
+      { "field": "providerName", "message": "providerName is required" }
     ]
   }
 }
@@ -656,10 +637,10 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
 [
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
-    "deviceType": "SMARTWATCH",
+    "providerName": "SMARTWATCH_GENERIC",
     "deviceName": "Mi Band 8",
-    "status": "CONNECTED",
-    "connectedAt": "2026-07-01T08:00:00.000Z"
+    "status": "ACTIVE",
+    "consentGrantedAt": "2026-07-01T08:00:00.000Z"
   }
 ]
 ```
@@ -670,11 +651,11 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `DEVICE-001` | 400 | Validation failed | Dữ liệu không hợp lệ | `deviceType` missing/invalid enum value |
+| `DEVICE-001` | 400 | Validation failed | Dữ liệu không hợp lệ | `providerName` missing/blank |
 | `DEVICE-002` | 409 | Device connection conflict | Xung đột trạng thái kết nối | (reserved — not expected in normal connect flow since idempotent; used if concurrent race detected) |
-| `DEVICE-003` | 404 | Device connection not found | Không tìm thấy kết nối | Referenced `journeyId` does not belong to caller |
+| `DEVICE-003` | 404 | Device connection not found | Không tìm thấy kết nối | Referenced connection id does not belong to caller |
 | `DEVICE-004` | 403 | Insufficient permissions | Không đủ quyền | Caller is not `ROLE_MOTHER`, or accessing another user's connection |
-| `DEVICE-005` | 500 | Internal error | Lỗi hệ thống | Unexpected failure (DB, consent service unavailable) |
+| `DEVICE-005` | 500 | Internal error | Lỗi hệ thống | Unexpected failure (DB unavailable) |
 | `DEVICE-006` | 400 | Consent required | Yêu cầu phải có sự đồng ý | `consentAccepted` is false or missing |
 
 ---
@@ -683,51 +664,36 @@ public interface IDeviceConnectionRepository extends JpaRepository<DeviceConnect
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-DEVICE-001, ADR-DEVICE-002 đã Accepted
+- [ ] ADR-DEVICE-001, ADR-DEVICE-002 đã Accepted (re-affirmed sau khi sửa schema — xem CHANGELOG 2026-07-02)
 - [ ] ADR-DEVICE-003 (SDK vendor) — chưa cần Accepted cho phạm vi UC66 (mock-first), nhưng phải Accepted trước khi triển khai `3.1.2.4 Sync Health Device Data`
 - [ ] DPO sign-off (module xử lý health/wearable consent data)
-- [ ] Quyết định về `ConsentDataType.DEVICE_DATA` (Open Item ADR-DEVICE-002) đã được Tech Lead xác nhận
+- [ ] ~~Quyết định về `ConsentDataType.DEVICE_DATA`~~ — Open Item đã đóng, không còn áp dụng (Phương án B của ADR-DEVICE-002 không dùng `ConsentGrant`/`ConsentDataType`)
 
 ### 11.2. Pre-Migration Checklist
 
-- [ ] Backup DB production: `pg_dump -h $HOST -U $USER carebridge > backup_20260701.sql`
-- [ ] Migration `V20260701140000__create_device_connections.sql` chạy thành công trên staging ≥ 24 giờ
-- [ ] Rollback script đã test trên staging (xem §12)
-- [ ] DPO sign-off migration này (tạo bảng lưu liên kết consent + thiết bị sức khỏe)
+- [x] **Không áp dụng — không có migration mới.** Bảng `health_device_connections` đã tồn tại sẵn từ `V1__init_schema.sql`.
 
 ### 11.3. Implementation Steps
 
-#### Chặng 1 — Tạo Flyway migration
+#### Chặng 1 — Không có migration mới
 
-Tạo file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260701140000__create_device_connections.sql`
+> **Bỏ qua** — bảng `health_device_connections` đã tồn tại từ `V1__init_schema.sql` (dòng 1115). Migration `V20260701140000__create_device_connections.sql` đề xuất trước đây đã bị rút lại hoàn toàn (xem §5.2, CHANGELOG).
 
-```sql
--- Nội dung migration SQL đầy đủ — xem §5.2
-```
-
-Chạy migration:
-```bash
-./mvnw flyway:migrate
-```
-
-> ⚠️ **Chú ý:** Đây là bảng mới hoàn toàn (không lock existing table) — rủi ro thấp.
-
-**Bảng tổng hợp version migration (áp dụng chung 4 UC66/67/68/69 — không trùng lặp):**
+**Bảng tổng hợp version migration (áp dụng chung 4 UC66/67/68/69 — không trùng lặp, corrected 2026-07-02):**
 
 | UC | Migration file | Mục đích |
 |----|----------------|----------|
-| UC66 | `V20260701140000__create_device_connections.sql` | Tạo bảng `device_connections` |
-| UC67 | `V20260701140100__extend_metric_type_and_source.sql` | Mở rộng `MetricType` (SLEEP/STEPS/SPO2), thêm `device_connection_id` FK vào `maternal_health_metrics` |
-| UC68 | *(không cần migration riêng — tái sử dụng bảng `device_connections` từ UC66, chỉ UPDATE status)* | — |
-| UC69 | *(không cần migration riêng — chỉ đọc dữ liệu từ `maternal_health_metrics` + `device_connections`)* | — |
+| UC66 | ~~`V20260701140000__create_device_connections.sql`~~ **RETRACTED** | Không cần migration — `health_device_connections` đã tồn tại (`V1__init_schema.sql` L1115) |
+| UC67 | `V20260701140100__extend_metric_type_and_source.sql` | Mở rộng `MetricType` (SLEEP/STEPS/SPO2), thêm FK `source_reference_id → health_device_connections(connection_id)` vào `maternal_health_metrics` |
+| UC68 | *(không cần migration riêng — tái sử dụng bảng `health_device_connections` từ UC66, chỉ UPDATE status)* | — |
+| UC69 | *(không cần migration riêng — chỉ đọc dữ liệu từ `maternal_health_metrics` + `health_device_connections`)* | — |
 
 #### Chặng 2 — Implement entity + repository
 
 ```java
-// package com.carebridge.backend.health.device.entity.DeviceConnection
-// package com.carebridge.backend.health.device.entity.DeviceType
+// package com.carebridge.backend.health.device.entity.HealthDeviceConnection
 // package com.carebridge.backend.health.device.entity.DeviceConnectionStatus
-// package com.carebridge.backend.health.device.repository.IDeviceConnectionRepository
+// package com.carebridge.backend.health.device.repository.IHealthDeviceConnectionRepository
 ```
 
 #### Chặng 3 — Implement service + controller
@@ -739,10 +705,9 @@ Chạy migration:
 
 ### 11.4. Deployment Checklist
 
-- [ ] Migration `V20260701140000` chạy thành công
-- [ ] `POST /api/v1/health/devices/connections` trả 201 với record CONNECTED mới
+- [ ] `POST /api/v1/health/devices/connections` trả 201 với record `status=ACTIVE` mới trong `health_device_connections`
 - [ ] `DeviceConnected` event được publish và log đúng format
-- [ ] Reconnect (idempotent) không tạo duplicate record CONNECTED
+- [ ] Reconnect (idempotent) không tạo duplicate record ACTIVE
 
 ---
 
@@ -753,22 +718,17 @@ Chạy migration:
 | Điều kiện | Ngưỡng | Người quyết định |
 |-----------|--------|------------------|
 | Error rate tăng đột biến | > 5% trong 5 phút | On-call Engineer |
-| Consent không được ghi nhận trước khi CONNECTED | Bất kỳ case nào | Tech Lead + DPO |
-| Duplicate CONNECTED record cho cùng (user, deviceType) | Bất kỳ case nào | Tech Lead |
+| Consent không được ghi nhận trước khi ACTIVE | Bất kỳ case nào | Tech Lead + DPO |
+| Duplicate ACTIVE record cho cùng (user, providerName) | Bất kỳ case nào | Tech Lead |
 
 ### 12.2. Rollback Procedure
 
 ```bash
-# Bước 1: Revert migration
-psql -h $DB_HOST -U $DB_USER -d carebridge \
-  -c "DROP TABLE IF EXISTS device_connections CASCADE;"
-psql -h $DB_HOST -U $DB_USER -d carebridge \
-  -c "DELETE FROM flyway_schema_history WHERE version = '20260701000001';"
-
-# Bước 2: Re-deploy phiên bản cũ
+# Không có migration để revert — health_device_connections đã tồn tại từ V1__init_schema.sql,
+# UC66 không tạo/thay đổi schema nào. Rollback chỉ cần revert code deploy.
 kubectl rollout undo deployment/carebridge-api
 
-# Bước 3: Verify
+# Verify
 kubectl rollout status deployment/carebridge-api
 curl -X GET https://$HOST/api/v1/health
 ```
@@ -791,10 +751,10 @@ curl -X GET https://$HOST/api/v1/health
 > Chi tiết đầy đủ nằm trong `UC66_ConnectHealthDevice_Test-Spec.md`. Section này tóm tắt chiến lược xác minh — tham chiếu Test Condition IDs.
 
 ### 13.1. Unit Tests
-- `DEVICE-TC-001`..`005`: connect happy path, idempotent reconnect, invalid deviceType, consent not accepted, wrong role.
+- `DEVICE-TC-001`..`005`: connect happy path, idempotent reconnect, invalid providerName, consent not accepted, wrong role.
 
 ### 13.2. Integration Tests
-- `DEVICE-TC-INT-001`: full connect flow qua Testcontainers PostgreSQL — verify persisted row + consent_grant_id linkage.
+- `DEVICE-TC-INT-001`: full connect flow qua Testcontainers PostgreSQL — verify persisted row in `health_device_connections` + `consent_granted_at` set.
 
 ### 13.3. E2E / Security Tests
 - `DEVICE-TC-E2E-001`: ROLE_PARTNER attempts connect → 403.
@@ -807,15 +767,15 @@ curl -X GET https://$HOST/api/v1/health
 ### 14.1. Database Inspection
 
 ```sql
-SELECT id, user_id, device_type, status, consent_grant_id, connected_at
-FROM device_connections
+SELECT connection_id, user_id, provider_name, status, consent_granted_at, created_at
+FROM health_device_connections
 WHERE user_id = '[uuid]'
-ORDER BY connected_at DESC;
+ORDER BY created_at DESC;
 
 -- Verify no duplicate active connections
-SELECT user_id, device_type, count(*) FROM device_connections
-WHERE status = 'CONNECTED'
-GROUP BY user_id, device_type
+SELECT user_id, provider_name, count(*) FROM health_device_connections
+WHERE status = 'ACTIVE'
+GROUP BY user_id, provider_name
 HAVING count(*) > 1;
 -- Expected: 0 rows
 ```
@@ -836,7 +796,7 @@ kubectl logs -l app=carebridge-api | grep '"eventType":"DeviceConnected"' | head
 curl -X POST https://$HOST/api/v1/health/devices/connections \
   -H "Authorization: Bearer $MOTHER_JWT" \
   -H "Content-Type: application/json" \
-  -d '{"deviceType":"SMARTWATCH","deviceName":"Mi Band 8","consentAccepted":true}'
+  -d '{"providerName":"SMARTWATCH_GENERIC","deviceName":"Mi Band 8","consentAccepted":true}'
 ```
 
 ### 15.2. Error Paths
@@ -846,7 +806,7 @@ curl -X POST https://$HOST/api/v1/health/devices/connections \
 curl -X POST https://$HOST/api/v1/health/devices/connections \
   -H "Authorization: Bearer $MOTHER_JWT" \
   -H "Content-Type: application/json" \
-  -d '{"deviceType":"SMARTWATCH","consentAccepted":false}'
+  -d '{"providerName":"SMARTWATCH_GENERIC","consentAccepted":false}'
 ```
 **Expected Response (400):**
 ```json
@@ -862,7 +822,7 @@ curl -X POST https://$HOST/api/v1/health/devices/connections \
 | `POST /api/v1/health/devices/connections` | ❌ | ✅ Own | ❌ | ❌ | ❌ | ✅ All (admin support) |
 | `GET /api/v1/health/devices/connections` | ❌ | ✅ Own | ❌ | ❌ | ❌ | ✅ All |
 
-**Chú thích:** `Own` = chỉ thao tác trên `device_connections` mà `user_id` khớp với JWT `sub` (strict ownership per BR-RBAC).
+**Chú thích:** `Own` = chỉ thao tác trên `health_device_connections` mà `user_id` khớp với JWT `sub` (strict ownership per BR-RBAC).
 
 ---
 
@@ -872,10 +832,10 @@ curl -X POST https://$HOST/api/v1/health/devices/connections \
 
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-----------------|---------------|
-| C1 | Consent PHẢI được capture (qua `ConsentService.grant()`) trước khi tạo record `status=CONNECTED` | `ADR-DEVICE-002 / BR-PRIVACY` | `2026-07-01` |
-| C2 | Reconnect khi đã có active CONNECTED record cùng (userId, deviceType) → idempotent, KHÔNG tạo record mới | `ADR-DEVICE-001` | `2026-07-01` |
+| C1 | Consent PHẢI được capture (set `consent_granted_at`) trước khi tạo record `status=ACTIVE` — KHÔNG gọi `ConsentService.grant()` (Phương án B, không dual-write) | `ADR-DEVICE-002 / BR-PRIVACY` | `2026-07-02` |
+| C2 | Reconnect khi đã có active ACTIVE record cùng (userId, providerName) → idempotent, KHÔNG tạo record mới | `ADR-DEVICE-001` | `2026-07-02` |
 | C3 | userId lấy từ JWT SecurityContext — KHÔNG lấy từ request body | `BR-RBAC` | `2026-07-01` |
-| C4 | KHÔNG bao giờ xóa (`DELETE`) record `device_connections` — chỉ đổi status | `ADR-DEVICE-001/003` | `2026-07-01` |
+| C4 | KHÔNG bao giờ xóa (`DELETE`) record `health_device_connections` — chỉ đổi status | `ADR-DEVICE-001/003` | `2026-07-02` |
 | C5 | `DeviceConnected` event PHẢI publish sau mỗi connect thành công | `§7.1 Domain Event Catalog` | `2026-07-01` |
 
 ### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
@@ -884,10 +844,10 @@ curl -X POST https://$HOST/api/v1/health/devices/connections \
 [CONSTRAINT BLOCK — Module: Connect Health Device — CB-DEVICE-IMP-001]
 Theo TDS CB-DEVICE-IMP-001 và các ADR liên quan:
 
-1. Consent PHẢI capture qua ConsentService.grant() TRƯỚC khi set status=CONNECTED (ADR-DEVICE-002/BR-PRIVACY)
-2. Reconnect với active CONNECTED record cùng (userId, deviceType) => trả về record hiện có, KHÔNG tạo duplicate (ADR-DEVICE-001)
+1. Consent PHẢI capture (set health_device_connections.consent_granted_at) TRƯỚC khi set status=ACTIVE — KHÔNG dual-write ConsentGrant (ADR-DEVICE-002/BR-PRIVACY)
+2. Reconnect với active ACTIVE record cùng (userId, providerName) => trả về record hiện có, KHÔNG tạo duplicate (ADR-DEVICE-001)
 3. userId từ JWT SecurityContext (BR-RBAC)
-4. KHÔNG implement delete() cho DeviceConnection — append-only (ADR-DEVICE-001/003)
+4. KHÔNG implement delete() cho HealthDeviceConnection — append-only (ADR-DEVICE-001/003)
 5. Publish DeviceConnected event sau mỗi connect thành công (§7.1)
 
 [CONTEXT BLOCK]
@@ -897,6 +857,7 @@ Theo TDS CB-DEVICE-IMP-001 và các ADR liên quan:
 - Existing interfaces: §8 Service Interface + §8.2 Repository Interface
 - Error codes: §10 Error Codes Table
 - Auth matrix: §16 Authorization Matrix
+- Real schema table: health_device_connections (V1__init_schema.sql L1115) — NOT device_connections
 
 [TASK BLOCK]
 Implement DeviceConnectionService.connect() và listActiveConnections() thỏa mãn constraints trên.
@@ -918,6 +879,7 @@ Output phải tuân thủ §8 Interface Specification. Tests phải cover §13 T
 | AP-AI-001 | Unconstrained Gen | Code không match bất kỳ constraint C1-C5 nào | Reject — inject lại constraints |
 | AP-AI-003 | Implicit Decision | Code assume có SDK vendor cụ thể không có trong ADR-DEVICE-003 | Reject — ADR-DEVICE-003 còn Proposed, không được assume |
 | AP-AI-005 | Hallucinated Contract | Code import service/type không có trong §8 | Reject — verify contract existence |
+| AP-DEVICE-006 | Schema Drift | Code hoặc migration target bảng `device_connections` (không tồn tại) thay vì `health_device_connections` thực | Reject — enforce ADR-DEVICE-001 corrected version |
 
 ---
 
@@ -927,7 +889,7 @@ Output phải tuân thủ §8 Interface Specification. Tests phải cover §13 T
 
 | Thuật ngữ | Định nghĩa |
 |-----------|------------|
-| DeviceConnection | Entity đại diện cho 1 lần kết nối thiết bị sức khỏe của Mother |
+| HealthDeviceConnection | Entity đại diện cho 1 lần kết nối thiết bị sức khỏe của Mother, map bảng thực `health_device_connections` |
 | Append-only | Chiến lược lưu trữ không cho phép UPDATE trạng thái xóa/DELETE, chỉ thay đổi status |
 | Idempotent Connect | Gọi connect() nhiều lần với cùng input không tạo duplicate record |
 | DPO | Data Protection Officer |
@@ -939,9 +901,9 @@ Output phải tuân thủ §8 Interface Specification. Tests phải cover §13 T
 | SRS UC-66 | `02_Requirements/SRS/3_Functional_Specification.md §3.3.1.43` |
 | Task Allocation | `04_Implement/implement_artifacts/function-spec-task-allocation.md` (dòng 676-680) |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
-| Existing consent module | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consent/` |
+| Real schema table | `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` (dòng 1115-1127 `health_device_connections`) |
 | Existing health metric entity | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/entity/MaternalHealthMetric.java` |
-| Related sibling TDS | `04_Implement/UC67_ImportDeviceDataManually/`, `UC68_DisconnectHealthDevice/`, `UC69_ViewDeviceDataTrend/` |
+| Related sibling TDS | `04_Implement/UC67_ImportDeviceDataManually/`, `UC68_DisconnectHealthDevice/`, `UC69_ViewDeviceDataTrend/`, `UC130_SyncHealthDeviceData/` (schema research source of correction) |
 
 ---
 
@@ -949,9 +911,11 @@ Output phải tuân thủ §8 Interface Specification. Tests phải cover §13 T
 
 | # | Open Item | Impact nếu không resolve | Đề xuất tạm thời |
 |---|-----------|---------------------------|-------------------|
-| O1 | `ConsentDataType` chưa có giá trị `DEVICE_DATA` chuyên biệt | Consent scope cho device data lẫn với `HEALTH_RECORD` chung | Dùng `HEALTH_RECORD` làm fallback cho đến khi Tech Lead duyệt thêm enum value |
+| O1 | ~~`ConsentDataType` chưa có giá trị `DEVICE_DATA` chuyên biệt~~ | Đã đóng — ADR-DEVICE-002 (corrected) không còn dùng `ConsentGrant`/`ConsentDataType` cho luồng connect device | Không áp dụng |
 | O2 | Wearable SDK vendor (Apple HealthKit / Google Health Connect / Fitbit / khác) | Không thể triển khai `3.1.2.4 Sync Health Device Data` thật | Mock-first (ADR-DEVICE-003) — connect chỉ là "đăng ký ý định", không pair phần cứng thật |
-| O3 | SRS flows (Normal/Alt/Exception) là template chung, không có business logic cụ thể theo field cho UC66 | Một số hành vi field-level (vd giới hạn số lượng thiết bị/user) không có nguồn rõ ràng | Giả định không giới hạn số lượng `deviceType` khác nhau/user; chỉ giới hạn 1 active CONNECTED per (user, deviceType) theo ADR-DEVICE-001 |
+| O3 | SRS flows (Normal/Alt/Exception) là template chung, không có business logic cụ thể theo field cho UC66 | Một số hành vi field-level (vd giới hạn số lượng thiết bị/user) không có nguồn rõ ràng | Giả định không giới hạn số lượng `providerName` khác nhau/user; chỉ giới hạn 1 active ACTIVE per (user, providerName) theo ADR-DEVICE-001 |
+| O4 (MỚI — 2026-07-02) | **Bảng thực `health_device_connections` KHÔNG có cột `journey_id`** — UC66 gốc giả định 1 FK tới `mother_journeys` không tồn tại trên schema thực. Không có cách nào để scope 1 connection vào 1 care journey cụ thể ở cấp DB. | Không thể liên kết trực tiếp 1 device connection với 1 journey cụ thể của Mother (Mother có thể có nhiều journey theo thời gian) — chỉ scope theo `user_id` | Đánh dấu **Open — cần Tech Lead quyết định**: (a) chấp nhận connection chỉ scope theo `user_id` (không theo journey), hoặc (b) đề xuất migration ALTER thêm `journey_id` (ngoài phạm vi 4 TDS này, cần approval riêng). TDS này KHÔNG tự ý thêm cột mới — giữ nguyên schema thực, chọn phương án (a) tạm thời. |
+| O5 (MỚI — 2026-07-02) | Bảng thực không có cột `disconnected_at`/`connected_at` riêng biệt — chỉ có `created_at`/`updated_at`/`consent_granted_at`/`last_synced_at`. Không có audit trail tập trung qua `consent_grants` (theo quyết định Phương án B của ADR-DEVICE-002). | Nếu cần báo cáo "tất cả consent của user xuyên suốt hệ thống" sau này, sẽ cần query riêng `health_device_connections` thay vì join `consent_grants` — không phải blocker hiện tại | Dùng `created_at` = thời điểm connect, `updated_at` = thời điểm thay đổi trạng thái gần nhất (bao gồm disconnect). Nếu Tech Lead sau này muốn audit tập trung, cân nhắc lại Phương án A của ADR-DEVICE-002 (dual-write) qua migration bổ sung — ngoài phạm vi hiện tại. |
 
 ---
 
