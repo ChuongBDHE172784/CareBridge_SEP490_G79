@@ -897,7 +897,7 @@ first removal is the only state change; the operation is naturally at-most-once 
 
 **Response — 409 Conflict (Target is the owner):**
 ```json
-{ "error": { "code": "FAM-061", "message": "The group owner cannot be removed. Use Leave Care Group or transfer ownership (not yet supported)." } }
+{ "error": { "code": "FAM-061", "message": "The group owner cannot be removed. Ownership transfer is not yet supported (UC-220 Leave Care Group also rejects owner self-exit for the same orphaning reason)." } }
 ```
 
 **Response — 404 Not Found (Care group not found):**
@@ -1370,7 +1370,8 @@ curl -X DELETE https://[host]/api/v1/care-groups/CG-001/members/MEMBER-003
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
 > Nguyên tắc **Least Privilege**: Chỉ OWNER (đã ACCEPTED) mới được xóa thành viên. OWNER không
-> thể bị xóa (kể cả tự xóa) — dùng UC-220 Leave Care Group.
+> thể bị xóa (kể cả tự xóa) — UC-220 Leave Care Group cũng từ chối OWNER tự rời nhóm vì cùng lý do
+> tránh mồ côi nhóm (orphaning); chuyển nhượng quyền chủ nhóm hiện chưa được hỗ trợ (Open).
 
 | Endpoint | `GUEST` | `MOTHER (OWNER, ACCEPTED)` | `MOTHER (MEMBER/VIEWER, ACCEPTED)` | `MOTHER (PENDING)` | `EXPERT` | `ADMIN` |
 |----------|---------|----------------------------|-------------------------------------|---------------------|----------|---------|
