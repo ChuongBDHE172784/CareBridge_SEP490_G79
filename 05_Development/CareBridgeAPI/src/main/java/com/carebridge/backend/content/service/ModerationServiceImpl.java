@@ -11,12 +11,15 @@ import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
+import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
+import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ContentReport;
@@ -33,6 +36,7 @@ import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +95,58 @@ public class ModerationServiceImpl implements ModerationService {
                 "filter=" + filter.targetType() + "/" + filter.status() + " count=" + page.getTotalElements());
 
         return moderationMapper.toQueueResponse(page, items);
+    }
+
+    @Override
+    public PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal) {
+        // ADR-006: targetType is mandatory, only QUESTION/ANSWER are backed by a real query
+        if (filter.targetType() != ReportTargetType.QUESTION && filter.targetType() != ReportTargetType.ANSWER) {
+            throw ModerationException.pendingContentTargetTypeUnsupported(filter.targetType());
+        }
+
+        // C5: Always sort by createdAt DESC (BR-MOD-003, reused for consistency with getModerationQueue)
+        PageRequest pageable = PageRequest.of(
+                filter.page(),
+                filter.size(),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        List<PendingContentItemResponse> items;
+        long totalElements;
+        int pageNumber;
+        int pageSize;
+
+        if (filter.targetType() == ReportTargetType.QUESTION) {
+            Page<CommunityQuestion> page = communityQuestionRepository.findByStatus(QuestionStatus.PENDING, pageable);
+            List<UUID> targetIds = page.getContent().stream().map(CommunityQuestion::getId).toList();
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.QUESTION);
+            items = page.getContent().stream()
+                    .map(q -> moderationMapper.toPendingContentItemResponse(
+                            q.getId(), ReportTargetType.QUESTION, previews.get(q.getId()), q.getCreatedAt()))
+                    .toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        } else {
+            Page<CommunityAnswer> page = communityAnswerRepository.findByStatus(AnswerStatus.PENDING, pageable);
+            List<UUID> targetIds = page.getContent().stream().map(CommunityAnswer::getId).toList();
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.ANSWER);
+            items = page.getContent().stream()
+                    .map(a -> moderationMapper.toPendingContentItemResponse(
+                            a.getId(), ReportTargetType.ANSWER, previews.get(a.getId()), a.getCreatedAt()))
+                    .toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        }
+
+        // C2: AuditService.log() after every successful queue view — reuses MODERATION_QUEUE_VIEWED
+        // (ADR-003 of UC-99; no new AuditAction needed, avoids an audit_logs_action_check migration)
+        String userId = principal != null ? principal.getName() : null;
+        auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
+                "pending-content targetType=" + filter.targetType() + " count=" + totalElements);
+
+        return new PendingContentQueueResponse(items, totalElements, pageNumber, pageSize);
     }
 
     // WARN/SUSPEND belong to UC-102 (account moderation), not this content-status endpoint (ADR-004)

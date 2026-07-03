@@ -2,8 +2,12 @@ package com.carebridge.backend.content.mapper;
 
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.entity.ContentReport;
+import com.carebridge.backend.content.entity.ReportTargetType;
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +38,14 @@ public class ModerationMapper {
                 page.getNumber(),
                 page.getSize()
         );
+    }
+
+    // CB-MOD-IMP-004 (Pending Content Queue): preview is already truncated by
+    // ContentPreviewService (§9); truncate() is applied again defensively, matching
+    // the existing double-truncation convention in toQueueItemResponse() above.
+    public PendingContentItemResponse toPendingContentItemResponse(
+            UUID targetId, ReportTargetType targetType, String rawPreview, Instant createdAt) {
+        return new PendingContentItemResponse(targetId, targetType, truncate(rawPreview), createdAt);
     }
 
     private String truncate(String text) {

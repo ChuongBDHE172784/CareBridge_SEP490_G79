@@ -82,4 +82,14 @@ class ModerationControllerSecurityTest {
         mockMvc.perform(get(QUEUE_URL + "?targetType=QUESTION'; DROP TABLE content_reports;--"))
                 .andExpect(status().isBadRequest());
     }
+
+    private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
+
+    // PCQ-TC-007: ROLE_MOTHER cannot access pending-content queue → 403 (same RBAC as /queue)
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void getPendingContentQueue_asMotherRole_shouldReturn403() throws Exception {
+        mockMvc.perform(get(PENDING_CONTENT_URL + "?targetType=QUESTION"))
+                .andExpect(status().isForbidden());
+    }
 }

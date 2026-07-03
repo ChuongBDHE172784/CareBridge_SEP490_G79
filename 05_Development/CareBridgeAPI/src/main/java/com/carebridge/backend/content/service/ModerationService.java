@@ -2,10 +2,12 @@ package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
+import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import java.security.Principal;
@@ -14,6 +16,16 @@ import java.util.UUID;
 public interface ModerationService {
 
     ModerationQueueResponse getModerationQueue(ModerationQueueFilter filter, Principal principal);
+
+    /**
+     * Lists CommunityQuestion or CommunityAnswer rows with status = PENDING, queried directly
+     * (not via ContentReport — see CB-MOD-IMP-004 ADR-005). Complements getModerationQueue()
+     * (UC-99, report-driven) by surfacing content that has never been reported.
+     *
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-023) if
+     *         filter.targetType() is not QUESTION or ANSWER
+     */
+    PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal);
 
     /**
      * Applies an APPROVE/HIDE/LOCK action directly to a community question or answer,

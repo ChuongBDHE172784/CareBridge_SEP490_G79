@@ -4,6 +4,7 @@ import { useAuth } from '../../../shared/auth/useAuth';
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/moderator/dashboard' },
   { label: 'Hàng đợi', icon: 'queue', path: '/moderator/queue' },
+  { label: 'Nội dung mới', icon: 'fact_check', path: '/moderator/pending-content' },
   { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports' },
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations' },
   { label: 'Ca an toàn', icon: 'health_and_safety', path: '/moderator/safety-cases' },

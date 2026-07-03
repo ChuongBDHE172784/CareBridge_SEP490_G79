@@ -11,6 +11,8 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.content.controller.ModerationController;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
+import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.service.ModerationService;
@@ -108,5 +110,33 @@ class ModerationControllerTest {
 
         mockMvc.perform(get(QUEUE_URL + "?size=50").with(csrf()))
                 .andExpect(status().isOk());
+    }
+
+    private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
+
+    // PCQ-TC-005: size > 50 returns 400 with MOD-002 (same guard as /queue)
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getPendingContentQueue_pageSizeExceedsMax_shouldReturn400() throws Exception {
+        mockMvc.perform(get(PENDING_CONTENT_URL + "?targetType=QUESTION&size=51").with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("MOD-002"));
+    }
+
+    // PCQ-TC-008: happy path — MODERATOR with valid params → 200, correct JSON shape
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getPendingContentQueue_validRequestAsModerator_shouldReturn200() throws Exception {
+        PendingContentItemResponse item = new PendingContentItemResponse(
+                UUID.randomUUID(), ReportTargetType.QUESTION, "Preview text", Instant.now());
+        PendingContentQueueResponse response = new PendingContentQueueResponse(List.of(item), 1, 0, 20);
+        when(moderationService.getPendingContentQueue(any(), any())).thenReturn(response);
+
+        mockMvc.perform(get(PENDING_CONTENT_URL + "?targetType=QUESTION&page=0&size=20").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.content[0].targetType").value("QUESTION"));
     }
 }

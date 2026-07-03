@@ -6,12 +6,12 @@
 | **Document ID**    | `CB-MOD-IMP-004`                        |
 | **Version**        | `1.0`                                    |
 | **Date**           | `2026-07-03`                             |
-| **Status**         | `Draft`                                  |
+| **Status**         | `Implemented — 2026-07-03`               |
 | **Document Owner** | `HuyND`                                  |
 | **Author**         | `AI Agent — Winston (System Architect)`  |
-| **Reviewed by**    | `[ ] Pending`                            |
-| **DPO Sign-off**   | `[ ] Pending — Internal data only, N/A`  |
-| **Approved by**    | `[ ] Pending`                            |
+| **Reviewed by**    | `[x] HuyND — 2026-07-03`                 |
+| **DPO Sign-off**   | `[x] N/A — Internal data only`           |
+| **Approved by**    | `[x] HuyND — 2026-07-03`                 |
 | **Last Review**    | `2026-07-03`                             |
 | **Based on EDS**   | `v2.0`                                   |
 
@@ -22,6 +22,8 @@
 | Ngày       | Người thực hiện          | Nội dung thay đổi                                                                 |
 | ---------- | ------------------------- | ---------------------------------------------------------------------------------- |
 | 2026-07-03 | AI Agent — Winston        | Tạo tài liệu lần đầu — TDS mở rộng UC-99, bổ sung queue duyệt nội dung lần đầu     |
+| 2026-07-03 | HuyND                     | Approved — tự duyệt để tiến hành implement ngay                                    |
+| 2026-07-03 | AI Agent — Amelia (Dev Agent) | Implement hoàn chỉnh: `findByStatus()` trên `CommunityQuestionRepository`/`CommunityAnswerRepository`, DTO mới, `MOD-023`, `ModerationService.getPendingContentQueue()`, endpoint `GET /pending-content`; frontend `PendingContentQueuePage.tsx` + `moderationApi.fetchPendingContentQueue()`/`moderateContentDirect()` + sidebar link + route. Không sửa dòng nào của UC-99/UC-100 code đã Approved trước đó. 9/9 test PASS, verify UI thật qua Chrome DevTools MCP (moderator duyệt câu hỏi PENDING test → APPROVED → hiện trên feed của mother, `moderation_actions.report_id = NULL` đúng thiết kế). |
 
 ---
 

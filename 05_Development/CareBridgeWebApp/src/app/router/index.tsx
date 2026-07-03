@@ -53,6 +53,8 @@ import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
 import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
 import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
 import ViolationHistoryPage from '../../features/moderation/pages/ViolationHistoryPage';
+// CB-MOD-IMP-004: pending-content queue (first-time moderation, no ContentReport required)
+import PendingContentQueuePage from '../../features/moderation/pages/PendingContentQueuePage';
 
 // SYSTEM_ADMIN-only ModPortal screens (CB-066, CB-090, CB-091)
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
@@ -161,6 +163,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/queue/:reportId', element: <ModerationItemDetailPage /> },
+              { path: '/moderator/pending-content', element: <PendingContentQueuePage /> },
               { path: '/moderator/reports', element: <ReportsQueuePage /> },
               { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
