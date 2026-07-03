@@ -84,12 +84,21 @@ class ModerationControllerSecurityTest {
     }
 
     private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
+    private static final String HISTORY_URL = "/api/v1/admin/moderation/history";
 
     // PCQ-TC-007: ROLE_MOTHER cannot access pending-content queue → 403 (same RBAC as /queue)
     @Test
     @WithMockUser(username = "1", roles = "MOTHER")
     void getPendingContentQueue_asMotherRole_shouldReturn403() throws Exception {
         mockMvc.perform(get(PENDING_CONTENT_URL + "?targetType=QUESTION"))
+                .andExpect(status().isForbidden());
+    }
+
+    // PCQH-TC-006: ROLE_MOTHER cannot access moderation history → 403 (same RBAC as /queue)
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void getModerationHistory_asMotherRole_shouldReturn403() throws Exception {
+        mockMvc.perform(get(HISTORY_URL))
                 .andExpect(status().isForbidden());
     }
 }

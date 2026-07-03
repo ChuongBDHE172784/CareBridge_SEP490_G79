@@ -1,11 +1,13 @@
 package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
+import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
@@ -26,6 +28,12 @@ public interface ModerationService {
      *         filter.targetType() is not QUESTION or ANSWER
      */
     PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal);
+
+    /**
+     * Lists past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER targets from moderation_actions
+     * (CB-MOD-IMP-004 §16 ADR-007), read directly — no ACCOUNT actions (separate history view).
+     */
+    ModerationHistoryResponse getModerationHistory(ModerationHistoryFilter filter, Principal principal);
 
     /**
      * Applies an APPROVE/HIDE/LOCK action directly to a community question or answer,

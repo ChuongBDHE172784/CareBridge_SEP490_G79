@@ -10,12 +10,15 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
+import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
@@ -147,6 +150,65 @@ public class ModerationServiceImpl implements ModerationService {
                 "pending-content targetType=" + filter.targetType() + " count=" + totalElements);
 
         return new PendingContentQueueResponse(items, totalElements, pageNumber, pageSize);
+    }
+
+    // Excludes ACCOUNT actions — belongs to a separate account-violation history view (TDS §16 ADR-007)
+    private static final List<ReportTargetType> HISTORY_TARGET_TYPES =
+            List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER);
+
+    @Override
+    public ModerationHistoryResponse getModerationHistory(ModerationHistoryFilter filter, Principal principal) {
+        PageRequest pageable = PageRequest.of(filter.page(), filter.size(),
+                Sort.by(Sort.Direction.DESC, "actionAt"));
+
+        List<ReportTargetType> targetTypes = filter.targetType() != null
+                ? List.of(filter.targetType())
+                : HISTORY_TARGET_TYPES;
+
+        Page<ModerationAction> page =
+                moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(targetTypes, pageable);
+
+        // Batch-resolve moderator display names (avoid N+1)
+        List<UUID> moderatorIds = page.getContent().stream()
+                .map(ModerationAction::getModeratorUserId)
+                .distinct()
+                .toList();
+        Map<UUID, String> moderatorNames = userRepository.findAllById(moderatorIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+
+        // Batch-resolve content previews per targetType (ContentPreviewService takes one type at a time)
+        Map<UUID, String> questionPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.QUESTION);
+        Map<UUID, String> answerPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.ANSWER);
+
+        List<ModerationHistoryItemResponse> items = page.getContent().stream()
+                .map(action -> {
+                    String preview = action.getTargetType() == ReportTargetType.QUESTION
+                            ? questionPreviews.get(action.getTargetId())
+                            : answerPreviews.get(action.getTargetId());
+                    return new ModerationHistoryItemResponse(
+                            action.getId(),
+                            action.getTargetId(),
+                            action.getTargetType(),
+                            action.getActionType(),
+                            preview,
+                            moderatorNames.get(action.getModeratorUserId()),
+                            action.getReason(),
+                            action.getActionAt());
+                })
+                .toList();
+
+        return new ModerationHistoryResponse(items, page.getTotalElements(), page.getNumber(), page.getSize());
+    }
+
+    private Map<UUID, String> batchPreviewsFor(List<ModerationAction> actions, ReportTargetType targetType) {
+        List<UUID> targetIds = actions.stream()
+                .filter(a -> a.getTargetType() == targetType)
+                .map(ModerationAction::getTargetId)
+                .toList();
+        if (targetIds.isEmpty()) {
+            return Map.of();
+        }
+        return contentPreviewService.batchFetchPreviews(targetIds, targetType);
     }
 
     // WARN/SUSPEND belong to UC-102 (account moderation), not this content-status endpoint (ADR-004)

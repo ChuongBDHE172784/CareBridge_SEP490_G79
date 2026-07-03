@@ -24,6 +24,8 @@
 | 2026-07-03 | AI Agent — Winston        | Tạo tài liệu lần đầu — TDS mở rộng UC-99, bổ sung queue duyệt nội dung lần đầu     |
 | 2026-07-03 | HuyND                     | Approved — tự duyệt để tiến hành implement ngay                                    |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Implement hoàn chỉnh: `findByStatus()` trên `CommunityQuestionRepository`/`CommunityAnswerRepository`, DTO mới, `MOD-023`, `ModerationService.getPendingContentQueue()`, endpoint `GET /pending-content`; frontend `PendingContentQueuePage.tsx` + `moderationApi.fetchPendingContentQueue()`/`moderateContentDirect()` + sidebar link + route. Không sửa dòng nào của UC-99/UC-100 code đã Approved trước đó. 9/9 test PASS, verify UI thật qua Chrome DevTools MCP (moderator duyệt câu hỏi PENDING test → APPROVED → hiện trên feed của mother, `moderation_actions.report_id = NULL` đúng thiết kế). |
+| 2026-07-03 | AI Agent — Amelia (Dev Agent) | Bổ sung nút "Ẩn" (HIDE) bên cạnh "Duyệt" trên `PendingContentQueuePage.tsx` theo yêu cầu user — tái dùng nguyên `moderateContentDirect()`/`POST /actions` (UC-100, actionType=HIDE), không đổi backend. Thu thập lý do bắt buộc (C6/ADR-006 UC-100) qua `window.prompt()` — theo đúng convention `window.confirm()` đã có sẵn ở `SafetyRuleManagementPage.tsx`, dự án chưa có shared modal component. Verify UI thật: tạo câu hỏi PENDING test, bấm Ẩn, xác nhận `status → HIDDEN` và `reason` được ghi đúng vào `moderation_actions`. Cũng đã sửa bug có sẵn (không liên quan tài liệu này) tại `shared/auth/roleRoutes.ts` — MODERATOR đăng nhập bị đá sang `/forbidden` do default route trỏ nhầm `/moderator/dashboard` (SYSTEM_ADMIN-only); đổi thành `/moderator/queue`. |
+| 2026-07-03 | HuyND | Approved §16 (EXTENSION — Moderation History) — tự duyệt để tiến hành implement ngay |
 
 ---
 
@@ -393,3 +395,62 @@ Không có migration → rollback chỉ cần revert code deploy (redeploy versi
 - C4: `targetType` phải validate nghiêm ngặt (chỉ QUESTION/ANSWER) — reject CONTENT/ACCOUNT với MOD-023.
 - C5: Sort mặc định `createdAt DESC` (nhất quán với UC-99's BR-MOD-003).
 - C6: `size` tối đa 50 (tái dùng MOD-002).
+
+---
+
+## 16. EXTENSION (2026-07-03) — Moderation History Endpoint
+
+### 16.1. Bối cảnh
+User hỏi "lý do ẩn có hiện ở đâu để xem lại không" — phát hiện gap có thật: `moderation_actions` (ghi mọi lần Duyệt/Ẩn kèm lý do) đã được ghi từ trước (UC-100/UC-101), nhưng **không có endpoint nào đọc lại bảng này**, và **không frontend nào hiển thị nó** (kể cả `ViolationHistoryPage.tsx` — comment trong code xác nhận đó là MOCK data vì lý do y hệt). User chọn: "Thêm tab lịch sử vào trang Nội dung mới".
+
+### 16.2. ADR-007 — 1 endpoint đọc trực tiếp `moderation_actions`, không tách bảng như ADR-005/006
+
+| Field        | Value         |
+| ------------ | ------------- |
+| **Status**   | `Accepted`    |
+| **Deciders** | `HuyND`       |
+| **Date**     | `2026-07-03`  |
+
+**Bối cảnh:** Khác với Pending Content Queue (phải query 2 bảng `CommunityQuestion`/`CommunityAnswer` riêng vì đó là nguồn PENDING), lịch sử xử lý đã có sẵn **1 bảng duy nhất** `moderation_actions` chứa cả action trên QUESTION lẫn ANSWER (cột `target_type`). Không cần ADR-006-style tách theo targetType bắt buộc.
+
+**Quyết định:** 1 endpoint `GET /api/v1/admin/moderation/history`, filter `targetType` **tuỳ chọn** (không truyền = cả 2 loại), loại trừ `target_type = ACCOUNT` (thuộc phạm vi trang Vi phạm tài khoản, không phải trang Nội dung mới) bằng `findByTargetTypeInOrderByActionAtDesc(List.of(QUESTION, ANSWER), pageable)`.
+
+**Hệ quả:** Không cần migration, không đổi bảng `moderation_actions` hiện có. `contentPreview` tái dùng `ContentPreviewService.batchFetchPreviews()` — nhóm theo `targetType` trước khi batch (vì hàm này nhận 1 targetType/lần). `moderatorName` batch-resolve qua `UserRepository.findAllById()` (tránh N+1, đúng convention).
+
+### 16.3. DTO mới
+
+```java
+// content/dto/response/ModerationHistoryItemResponse.java
+public record ModerationHistoryItemResponse(
+        UUID actionId, UUID targetId, ReportTargetType targetType, ModerationActionType actionType,
+        String contentPreview, String moderatorName, String reason, Instant actionAt
+) {}
+
+// content/dto/response/ModerationHistoryResponse.java
+public record ModerationHistoryResponse(
+        List<ModerationHistoryItemResponse> content, long totalElements, int page, int size
+) {}
+```
+
+### 16.4. API
+
+`GET /api/v1/admin/moderation/history?targetType=&page=0&size=20` — role MODERATOR, C6 size≤50 (tái dùng MOD-002).
+
+### 16.5. Repository mới
+
+```java
+// ModerationActionRepository — thêm 1 method
+Page<ModerationAction> findByTargetTypeInOrderByActionAtDesc(Collection<ReportTargetType> targetTypes, Pageable pageable);
+```
+
+### 16.6. SecurityConfig — bổ sung matcher còn thiếu
+
+Phát hiện lúc làm phần này: `GET /pending-content` (§ADR-005) **chưa từng được thêm** vào danh sách `.requestMatchers(...)` tường minh trong `SecurityConfig.java` — vẫn hoạt động đúng nhờ `@PreAuthorize` + fallback `.requestMatchers("/api/v1/**").authenticated()`, không phải lỗ hổng, nhưng phá vỡ convention defense-in-depth mà mọi endpoint admin khác trong file đều tuân theo. Bổ sung cả 2 dòng (`/pending-content` và `/history`) trong lần sửa này.
+
+### 16.7. Frontend
+- `moderationApi.ts`: + `fetchModerationHistory(targetType?, page?, size?)`.
+- `models/moderation.ts`: + `ModerationHistoryItem`, `ModerationHistoryPage` types.
+- `PendingContentQueuePage.tsx`: + tab "Đã xử lý" (3rd tab, cạnh "Câu hỏi mới"/"Câu trả lời mới"), hiển thị bảng gồm loại, preview, hành động (Duyệt/Ẩn — màu khác nhau), lý do, người xử lý, thời gian.
+
+### 16.8. Test
+Không tạo TDS/Test-Spec riêng — amend tài liệu này (cùng ngày, cùng trang, cùng logic mở rộng). Test case mới: xem §Test-Spec cùng thư mục, mục "EXTENSION History".

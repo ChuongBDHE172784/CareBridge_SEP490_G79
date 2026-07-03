@@ -3,6 +3,7 @@ import type {
   ModerationQueuePage,
   ModerateContentResult,
   ModerationActionType,
+  ModerationHistoryPage,
   PendingContentQueuePage,
   ReportTargetType,
   ReportStatus,
@@ -57,6 +58,22 @@ export async function moderateContentDirect(
     targetType,
     actionType,
     reason,
+  });
+  return res.data;
+}
+
+// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER, read from moderation_actions
+export async function fetchModerationHistory(params: {
+  targetType?: ReportTargetType;
+  page?: number;
+  size?: number;
+} = {}): Promise<ModerationHistoryPage> {
+  const res = await apiClient.get<ModerationHistoryPage>('/api/v1/admin/moderation/history', {
+    params: {
+      targetType: params.targetType,
+      page: params.page ?? 0,
+      size: params.size ?? 50,
+    },
   });
   return res.data;
 }

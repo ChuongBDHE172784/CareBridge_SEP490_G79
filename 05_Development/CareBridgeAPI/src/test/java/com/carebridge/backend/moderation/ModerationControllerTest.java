@@ -113,6 +113,16 @@ class ModerationControllerTest {
     }
 
     private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
+    private static final String HISTORY_URL = "/api/v1/admin/moderation/history";
+
+    // PCQH-TC-005: size > 50 returns 400 with MOD-002 (same guard as /queue, /pending-content)
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getModerationHistory_pageSizeExceedsMax_shouldReturn400() throws Exception {
+        mockMvc.perform(get(HISTORY_URL + "?size=51").with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("MOD-002"));
+    }
 
     // PCQ-TC-005: size > 50 returns 400 with MOD-002 (same guard as /queue)
     @Test

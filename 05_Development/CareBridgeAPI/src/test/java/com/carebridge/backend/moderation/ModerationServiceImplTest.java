@@ -19,18 +19,25 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
+import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
+import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.entity.ContentReport;
+import com.carebridge.backend.content.entity.ModerationAction;
+import com.carebridge.backend.content.entity.ModerationActionType;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.content.mapper.ModerationMapper;
 import com.carebridge.backend.content.repository.ContentReportRepository;
+import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.content.service.ContentPreviewService;
 import com.carebridge.backend.content.service.ModerationServiceImpl;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
@@ -67,6 +74,12 @@ class ModerationServiceImplTest {
 
     @Mock
     private CommunityAnswerRepository communityAnswerRepository;
+
+    @Mock
+    private ModerationActionRepository moderationActionRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Spy
     private ModerationMapper moderationMapper = new ModerationMapper();
@@ -287,5 +300,95 @@ class ModerationServiceImplTest {
 
         assertThat(response.content()).isEmpty();
         assertThat(response.totalElements()).isEqualTo(0);
+    }
+
+    private ModerationAction makeAction(UUID actionId, UUID targetId, ReportTargetType targetType,
+            ModerationActionType actionType, UUID moderatorUserId, String reason) {
+        return ModerationAction.builder()
+                .id(actionId)
+                .targetId(targetId)
+                .targetType(targetType)
+                .actionType(actionType)
+                .moderatorUserId(moderatorUserId)
+                .reason(reason)
+                .actionAt(Instant.now())
+                .build();
+    }
+
+    // PCQH-TC-001: targetType=null returns both QUESTION and ANSWER actions
+    @Test
+    void getModerationHistory_withNullTargetType_returnsBothTypes() {
+        UUID modId = UUID.randomUUID();
+        ModerationAction q = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, modId, null);
+        ModerationAction a = makeAction(UUID.randomUUID(), TARGET_ID_2, ReportTargetType.ANSWER,
+                ModerationActionType.HIDE, modId, "spam");
+        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(
+                eq(List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER)), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(q, a)));
+        when(userRepository.findAllById(any())).thenReturn(
+                List.of(User.builder().id(modId).name("Moderator Test").build()));
+        when(contentPreviewService.batchFetchPreviews(any(), any())).thenReturn(Map.of());
+
+        ModerationHistoryFilter filter = new ModerationHistoryFilter(null, 0, 20);
+        ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
+
+        assertThat(response.content()).hasSize(2);
+    }
+
+    // PCQH-TC-002: targetType=QUESTION filters correctly
+    @Test
+    void getModerationHistory_withQuestionTargetType_returnsOnlyQuestion() {
+        UUID modId = UUID.randomUUID();
+        ModerationAction q = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, modId, null);
+        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(
+                eq(List.of(ReportTargetType.QUESTION)), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(q)));
+        when(userRepository.findAllById(any())).thenReturn(
+                List.of(User.builder().id(modId).name("Moderator Test").build()));
+        when(contentPreviewService.batchFetchPreviews(any(), any())).thenReturn(Map.of());
+
+        ModerationHistoryFilter filter = new ModerationHistoryFilter(ReportTargetType.QUESTION, 0, 20);
+        ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).targetType()).isEqualTo(ReportTargetType.QUESTION);
+    }
+
+    // PCQH-TC-003: moderatorName resolved via batch UserRepository.findAllById()
+    @Test
+    void getModerationHistory_resolvesModeratorNameViaBatch() {
+        UUID modId = UUID.randomUUID();
+        ModerationAction q = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, modId, null);
+        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(q)));
+        when(userRepository.findAllById(any())).thenReturn(
+                List.of(User.builder().id(modId).name("Moderator Test").build()));
+        when(contentPreviewService.batchFetchPreviews(any(), any())).thenReturn(Map.of());
+
+        ModerationHistoryFilter filter = new ModerationHistoryFilter(null, 0, 20);
+        ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
+
+        assertThat(response.content().get(0).moderatorName()).isEqualTo("Moderator Test");
+    }
+
+    // PCQH-TC-004: reason is returned verbatim, not truncated
+    @Test
+    void getModerationHistory_returnsReasonVerbatim() {
+        UUID modId = UUID.randomUUID();
+        ModerationAction a = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.HIDE, modId, "Nội dung không phù hợp");
+        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(a)));
+        when(userRepository.findAllById(any())).thenReturn(
+                List.of(User.builder().id(modId).name("Moderator Test").build()));
+        when(contentPreviewService.batchFetchPreviews(any(), any())).thenReturn(Map.of());
+
+        ModerationHistoryFilter filter = new ModerationHistoryFilter(null, 0, 20);
+        ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
+
+        assertThat(response.content().get(0).reason()).isEqualTo("Nội dung không phù hợp");
     }
 }

@@ -19,6 +19,8 @@
 | 2026-07-03 | AI Agent — Winston | Tạo tài liệu lần đầu — Test-Spec cho Pending Content Queue |
 | 2026-07-03 | HuyND              | Approved — tự duyệt để tiến hành implement ngay              |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Implement hoàn chỉnh theo Red-Green-Refactor — 9/9 test PASS (`./mvnw test`), verify qua UI thật bằng Chrome DevTools MCP (đăng nhập moderator, duyệt câu hỏi test, xác nhận hiện trên feed của mother). Không có regression (11 lỗi pre-existing ở module exercise không liên quan). |
+| 2026-07-03 | AI Agent — Amelia (Dev Agent) | Bổ sung nút "Ẩn" (HIDE) — chỉ ở frontend, tái dùng backend UC-100 không đổi nên không có unit test mới; verify bằng UI E2E thủ công (tạo câu hỏi PENDING test, bấm Ẩn, xác nhận DB `status → HIDDEN`, `reason` được ghi đúng, `report_id = NULL`). Không nằm trong 9 test case ban đầu của tài liệu này — ghi nhận trung thực, không thêm test case giả. |
+| 2026-07-03 | AI Agent — Amelia (Dev Agent) | EXTENSION History (TDS §16): 6 TC mới (PCQH-TC-001…006), Red→Green xác nhận, 34/34 test PASS tổng cộng. Tab "Đã xử lý" verify UI thật với dữ liệu thật trong DB dev (không phải data test tự tạo) — hiển thị đúng preview, hành động, lý do, người xử lý, thời gian. |
 
 ---
 
@@ -249,6 +251,84 @@ Giống PCQ-TC-003, với `targetType = ACCOUNT`.
 
 ---
 
+## 4.1 EXTENSION (2026-07-03) — Moderation History Test Cases (TDS §16)
+
+### PCQH-TC-001 — targetType=null trả về cả QUESTION và ANSWER, sort actionAt DESC
+
+**Test file:** `content/service/ModerationServiceImplTest.java`
+
+**Arrange:** Mock `ModerationActionRepository.findByTargetTypeInOrderByActionAtDesc(List.of(QUESTION, ANSWER), pageable)` trả về Page gồm 1 action QUESTION + 1 action ANSWER.
+**Act:** Gọi `getModerationHistory(filter(null, 0, 20), principal)`.
+**Expected:** `content.size() == 2`, đúng cả 2 targetType.
+
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
+
+---
+
+### PCQH-TC-002 — targetType=QUESTION filter đúng
+
+**Test file:** `content/service/ModerationServiceImplTest.java`
+
+**Arrange:** Mock repo trả Page chỉ gồm action QUESTION.
+**Act:** Gọi `getModerationHistory(filter(QUESTION, 0, 20), principal)`.
+**Expected:** `content.size() == 1`, `targetType == QUESTION`.
+
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
+
+---
+
+### PCQH-TC-003 — moderatorName được resolve đúng qua batch UserRepository.findAllById()
+
+**Test file:** `content/service/ModerationServiceImplTest.java`
+
+**Arrange:** Mock action có `moderatorUserId = X`; mock `userRepository.findAllById(...)` trả về `User(id=X, name="Moderator Test")`.
+**Act:** Gọi `getModerationHistory(...)`.
+**Expected:** `content.get(0).moderatorName() == "Moderator Test"`.
+
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
+
+---
+
+### PCQH-TC-004 — reason được trả đúng nguyên văn (không truncate)
+
+**Test file:** `content/service/ModerationServiceImplTest.java`
+
+**Arrange:** Mock action có `reason = "Nội dung không phù hợp"`.
+**Act:** Gọi `getModerationHistory(...)`.
+**Expected:** `content.get(0).reason() == "Nội dung không phù hợp"` — khác `contentPreview` (bị truncate 200 ký tự), `reason` không qua truncate vì đã ngắn theo thiết kế nhập liệu.
+
+**TDD Phase:** 🟢 GREEN
+**Current Status:** 🟢 Passing
+
+---
+
+### PCQH-TC-005 — size > 50 → MOD-002 (Controller)
+
+**Test file:** `content/controller/ModerationControllerTest.java`
+
+**Arrange:** MockMvc `GET /history?size=51`, MODERATOR token.
+**Expected:** 400, `$.error == "MOD-002"`.
+
+**TDD Phase:** 🟢 GREEN (N/A Red Gate — controller test mocks service layer, cùng convention PCQ-TC-005/008)
+**Current Status:** 🟢 Passing
+
+---
+
+### PCQH-TC-006 — Non-MODERATOR → 403
+
+**Test file:** `content/controller/ModerationControllerSecurityTest.java`
+
+**Arrange:** MockMvc `GET /history`, role MOTHER.
+**Expected:** 403.
+
+**TDD Phase:** 🟢 GREEN (N/A Red Gate — RBAC test mocks service layer, cùng convention PCQ-TC-007)
+**Current Status:** 🟢 Passing
+
+---
+
 ## 5. Red-Green-Refactor Tracker
 
 | TC ID       | 🔴 RED confirmed | 🟢 GREEN (commit) | Ghi chú |
@@ -262,6 +342,12 @@ Giống PCQ-TC-003, với `targetType = ACCOUNT`.
 | PCQ-TC-007  |        N/A        |     Passed          | RBAC test, mocked service — không phụ thuộc stub |
 | PCQ-TC-008  |        N/A        |     Passed          | Controller test, mocked service — không phụ thuộc stub |
 | PCQ-TC-009  |        [x]        |     Passed          |          |
+| PCQH-TC-001 |        [x]        |     Passed          | EXTENSION History |
+| PCQH-TC-002 |        [x]        |     Passed          | EXTENSION History |
+| PCQH-TC-003 |        [x]        |     Passed          | EXTENSION History |
+| PCQH-TC-004 |        [x]        |     Passed          | EXTENSION History |
+| PCQH-TC-005 |        N/A        |     Passed          | Controller test, mocked service — không phụ thuộc stub |
+| PCQH-TC-006 |        N/A        |     Passed          | RBAC test, mocked service — không phụ thuộc stub |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -280,6 +366,8 @@ Giống PCQ-TC-003, với `targetType = ACCOUNT`.
 Tất cả FAIL (trong số các TC thực sự exercise stub)? `[x] Yes` `[ ] No`
 
 Stub: `ModerationServiceImpl.getPendingContentQueue()` throw `UnsupportedOperationException`. Chạy thật: `./mvnw test -Dtest=ModerationServiceImplTest,...` trước khi implement — 6/6 TC ở service layer FAIL với `UnsupportedOperationException` (xác nhận Red Gate PASS), 3 TC ở controller/security layer PASS ngay vì chúng mock `ModerationService` hoàn toàn (đúng theo convention có sẵn của `getQueue()`/`getModerationQueue()`), không phải Green-from-Birth (AP-AI-002) vì các TC đó không test logic mới, chỉ test routing/RBAC đã khai báo bằng annotation.
+
+**EXTENSION History (2026-07-03):** stub `getModerationHistory()` throw `UnsupportedOperationException`. Chạy `./mvnw test -Dtest=ModerationServiceImplTest,ModerationControllerTest,ModerationControllerSecurityTest` trước khi implement — 4/4 TC (PCQH-TC-001…004) FAIL đúng với `UnsupportedOperationException`, 2 TC controller/security (PCQH-TC-005/006) PASS ngay vì mock service (cùng lý do như trên, không phải AP-AI-002). Sau implement: `./mvnw test` cùng bộ 3 file → 28 test PASS (0 fail). Full suite kèm cả extension: 34/34 PASS.
 
 ---
 

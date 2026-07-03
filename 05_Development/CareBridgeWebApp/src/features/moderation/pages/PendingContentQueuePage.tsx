@@ -1,21 +1,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import ModPortalSidebar from '../components/ModPortalSidebar';
-import { fetchPendingContentQueue, moderateContentDirect } from '../services/moderationApi';
-import type { PendingContentItem, ReportTargetType } from '../models/moderation';
-import { TARGET_TYPE_LABELS } from '../models/moderation';
+import { fetchPendingContentQueue, fetchModerationHistory, moderateContentDirect } from '../services/moderationApi';
+import type { PendingContentItem, ModerationHistoryItem, ReportTargetType } from '../models/moderation';
+import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-const TABS: { label: string; value: ReportTargetType }[] = [
+type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
+
+const TABS: { label: string; value: Tab }[] = [
   { label: 'Câu hỏi mới', value: 'QUESTION' },
   { label: 'Câu trả lời mới', value: 'ANSWER' },
+  { label: 'Đã xử lý', value: 'HISTORY' },
 ];
 
 export default function PendingContentQueuePage() {
-  const [tab, setTab] = useState<ReportTargetType>('QUESTION');
+  const [tab, setTab] = useState<Tab>('QUESTION');
   const [items, setItems] = useState<PendingContentItem[]>([]);
+  const [historyItems, setHistoryItems] = useState<ModerationHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -24,11 +28,21 @@ export default function PendingContentQueuePage() {
     setIsLoading(true);
     setError('');
     try {
-      const page = await fetchPendingContentQueue({ targetType: tab, size: 50 });
-      setItems(page.content);
+      if (tab === 'HISTORY') {
+        const page = await fetchModerationHistory({ size: 50 });
+        setHistoryItems(page.content);
+      } else {
+        const page = await fetchPendingContentQueue({ targetType: tab as ReportTargetType, size: 50 });
+        setItems(page.content);
+      }
     } catch {
-      setError('Không tải được danh sách nội dung chờ duyệt.');
+      setError(
+        tab === 'HISTORY'
+          ? 'Không tải được lịch sử xử lý.'
+          : 'Không tải được danh sách nội dung chờ duyệt.',
+      );
       setItems([]);
+      setHistoryItems([]);
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +57,27 @@ export default function PendingContentQueuePage() {
       setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
     } catch {
       setError('Duyệt nội dung thất bại, vui lòng thử lại.');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  // Backend (C6, ADR-006 của UC-100) bắt buộc lý do khi HIDE — dùng window.prompt() theo đúng
+  // convention đã có sẵn trong project (window.confirm() ở SafetyRuleManagementPage), không có
+  // shared modal component nào để tái dùng.
+  const handleHide = async (item: PendingContentItem) => {
+    const reason = window.prompt('Nhập lý do ẩn nội dung này (bắt buộc):');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setError('Cần nhập lý do để ẩn nội dung.');
+      return;
+    }
+    setActioningId(item.targetId);
+    try {
+      await moderateContentDirect(item.targetId, item.targetType, 'HIDE', reason.trim());
+      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
+    } catch {
+      setError('Ẩn nội dung thất bại, vui lòng thử lại.');
     } finally {
       setActioningId(null);
     }
@@ -79,6 +114,43 @@ export default function PendingContentQueuePage() {
           <div className="py-16 text-center text-outline">Đang tải...</div>
         ) : error ? (
           <div className="bg-error-container rounded-2xl p-6 text-error text-sm">{error}</div>
+        ) : tab === 'HISTORY' ? (
+          <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
+                  {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN'].map((h) => (
+                    <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {historyItems.map((item) => (
+                  <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-container-low">
+                    <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                    <td className="py-3.5 px-4 text-sm text-on-surface max-w-[320px] truncate">{item.contentPreview ?? '—'}</td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`py-1 px-3 rounded-full text-xs font-semibold ${
+                          item.actionType === 'APPROVE'
+                            ? 'bg-primary-container text-on-primary-container'
+                            : 'bg-error-container text-error'
+                        }`}
+                      >
+                        {ACTION_TYPE_LABELS[item.actionType]}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-sm text-on-surface-variant max-w-[240px] truncate">{item.reason ?? '—'}</td>
+                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
+                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
+                  </tr>
+                ))}
+                {historyItems.length === 0 && (
+                  <tr><td colSpan={6} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
             <table className="w-full border-collapse">
@@ -96,14 +168,24 @@ export default function PendingContentQueuePage() {
                     <td className="py-3.5 px-4 text-sm text-on-surface max-w-[420px] truncate">{item.contentPreview}</td>
                     <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
                     <td className="py-3.5 px-4">
-                      <button
-                        type="button"
-                        disabled={actioningId === item.targetId}
-                        onClick={() => handleApprove(item)}
-                        className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold disabled:opacity-50"
-                      >
-                        {actioningId === item.targetId ? 'Đang duyệt...' : 'Duyệt'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={actioningId === item.targetId}
+                          onClick={() => handleApprove(item)}
+                          className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold disabled:opacity-50"
+                        >
+                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actioningId === item.targetId}
+                          onClick={() => handleHide(item)}
+                          className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50"
+                        >
+                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

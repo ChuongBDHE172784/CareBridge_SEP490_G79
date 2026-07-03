@@ -13,7 +13,9 @@ import type { UserRole } from './authStore';
  */
 export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   SYSTEM_ADMIN: '/admin/dashboard',
-  MODERATOR: '/moderator/dashboard',
+  // '/moderator/dashboard' is SYSTEM_ADMIN-only (CommunityDashboardController backend RBAC) —
+  // MODERATOR must land on a route their own role actually has access to.
+  MODERATOR: '/moderator/queue',
   CONTENT_ADMIN: '/content/dashboard',
   PARTNER: '/partner/dashboard',
   EXPERT: '/expert/dashboard',

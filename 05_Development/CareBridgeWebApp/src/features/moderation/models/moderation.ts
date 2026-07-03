@@ -37,6 +37,33 @@ export interface PendingContentQueuePage {
   size: number;
 }
 
+// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER, read from moderation_actions
+export interface ModerationHistoryItem {
+  actionId: string;
+  targetId: string;
+  targetType: ReportTargetType;
+  actionType: ModerationActionType;
+  contentPreview: string | null;
+  moderatorName: string | null;
+  reason: string | null;
+  actionAt: string;
+}
+
+export interface ModerationHistoryPage {
+  content: ModerationHistoryItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
+export const ACTION_TYPE_LABELS: Record<ModerationActionType, string> = {
+  APPROVE: 'Duyệt',
+  HIDE: 'Ẩn',
+  LOCK: 'Khoá',
+  WARN: 'Cảnh cáo',
+  SUSPEND: 'Đình chỉ',
+};
+
 export interface ResolveReportResult {
   reportId: string;
   reportStatus: ReportStatus;
