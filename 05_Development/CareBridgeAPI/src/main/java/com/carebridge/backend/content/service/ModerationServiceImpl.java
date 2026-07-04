@@ -143,9 +143,9 @@ public class ModerationServiceImpl implements ModerationService {
             case QUESTION -> moderateQuestion(targetId, actionType);
             case ANSWER -> moderateAnswer(targetId, actionType);
             case CONTENT -> throw ModerationException.unsupportedActionType(actionType);
-            // ACCOUNT targets (UC-102) never reach this content-only primitive — moderateAccount()
-            // has its own dedicated write path.
-            case ACCOUNT -> throw ModerationException.unsupportedActionType(actionType);
+            // ACCOUNT/EXPERT/USER targets (UC-102/UC-14) never reach this content-only primitive —
+            // moderateAccount() has its own dedicated write path.
+            case ACCOUNT, EXPERT, USER -> throw ModerationException.unsupportedActionType(actionType);
         };
 
         // C2/C3: append-only ModerationAction, reportId propagated by caller (BR-MOD-004/BR-MOD-011)

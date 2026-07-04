@@ -198,4 +198,66 @@ class AuthServiceGetProfileTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> authService.updateProfile(USER_ID_999, request));
     }
+
+    // PROF-TC-008-SEC-001 — No internal/sensitive fields exposed in the profile contract
+    @Test
+    @DisplayName("PROF-TC-008-SEC-001: Profile response never exposes internal fields")
+    void getProfile_responseHasNoInternalFields() throws Exception {
+        User user = createTestUser(USER_ID_1, Role.MOTHER);
+        when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+        UserProfileResponse response = authService.getProfile(USER_ID_1);
+
+        // 1) The DTO class must not even declare these fields.
+        java.util.Set<String> declared = new java.util.HashSet<>();
+        for (java.lang.reflect.Field f : response.getClass().getDeclaredFields()) {
+            declared.add(f.getName());
+        }
+        assertFalse(declared.contains("passwordHash"), "must not declare passwordHash");
+        assertFalse(declared.contains("password"), "must not declare password");
+        assertFalse(declared.contains("lockedAt"), "must not declare lockedAt");
+        assertFalse(declared.contains("enabled"), "must not declare enabled");
+
+        // 2) Serialized JSON must not contain these keys either.
+        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        String json = mapper.writeValueAsString(response);
+        assertFalse(json.contains("passwordHash"), "JSON must not contain passwordHash");
+        assertFalse(json.contains("\"password\""), "JSON must not contain password");
+        assertFalse(json.contains("lockedAt"), "JSON must not contain lockedAt");
+        assertFalse(json.contains("\"enabled\""), "JSON must not contain enabled");
+    }
+
+    // PRF-TC-009 — Audit log written after a successful update (ADR-002)
+    @Test
+    @DisplayName("PRF-TC-009: Successful update writes a PROFILE_UPDATED audit record")
+    void updateProfile_success_writesAuditLog() {
+        User user = createTestUser(USER_ID_1, Role.MOTHER);
+        when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        authService.updateProfile(USER_ID_1, createUpdateRequest("New Name", null));
+
+        verify(auditService, times(1)).log(
+                eq(com.carebridge.backend.audit.entity.AuditAction.PROFILE_UPDATED),
+                eq(USER_ID_1),
+                eq("User"),
+                eq(USER_ID_1.toString()),
+                any());
+    }
+
+    // PRF-TC-009b — Audit NOT written when the persistence step fails (transactional integrity)
+    @Test
+    @DisplayName("PRF-TC-009b: Failed update does not write an audit record")
+    void updateProfile_saveFails_noAuditLog() {
+        User user = createTestUser(USER_ID_1, Role.MOTHER);
+        when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenThrow(new RuntimeException("DB error"));
+
+        assertThrows(RuntimeException.class,
+                () -> authService.updateProfile(USER_ID_1, createUpdateRequest("New Name", null)));
+
+        verify(auditService, never()).log(any(), any(), any(), any(), any());
+    }
 }

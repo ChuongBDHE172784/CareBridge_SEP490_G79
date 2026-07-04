@@ -28,4 +28,9 @@ public class InvalidSessionStateException extends RuntimeException {
         return new InvalidSessionStateException(
                 "EXSESS-008", "Session is not active, cannot complete");
     }
+
+    public static InvalidSessionStateException notInProgress() {
+        return new InvalidSessionStateException(
+                "EXSESS-009", "Session is not IN_PROGRESS, cannot submit posture event");
+    }
 }

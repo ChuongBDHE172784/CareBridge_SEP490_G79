@@ -79,6 +79,26 @@ public class GmailEmailService implements EmailService {
         send(to, subject, html);
     }
 
+    @Override
+    public void sendStaffAccountCredentialsEmail(String to, String name, String tempPassword) {
+        String subject = "Tài khoản nhân sự CareBridge của bạn";
+        String displayName = (name != null && !name.isBlank()) ? name : "bạn";
+        String html = """
+                <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#FFF8F6;border-radius:16px;">
+                  <h2 style="color:#5A463F;">Tài khoản nhân sự CareBridge</h2>
+                  <p style="color:#524440;font-size:15px;">Xin chào <strong>%s</strong>,</p>
+                  <p style="color:#524440;font-size:15px;">Tài khoản nhân sự của bạn đã được tạo. Mật khẩu tạm thời của bạn là:</p>
+                  <div style="background:#845143;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+                    <span style="font-size:22px;font-weight:700;letter-spacing:2px;color:#fff;">%s</span>
+                  </div>
+                  <p style="color:#524440;font-size:13px;">Bạn sẽ được yêu cầu đổi mật khẩu ngay khi đăng nhập lần đầu.</p>
+                  <hr style="border:none;border-top:1px solid #F2EAE4;margin:24px 0;">
+                  <p style="color:#9C857C;font-size:12px;">Đội ngũ CareBridge</p>
+                </div>
+                """.formatted(displayName, tempPassword);
+        send(to, subject, html);
+    }
+
     private void send(String to, String subject, String htmlBody) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
