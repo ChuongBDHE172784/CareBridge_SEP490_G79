@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUTH-TEST-003`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Partially Implemented — 2026-06-27 (7/10 PASS)`
+**Status:** `Implemented — 2026-07-04 (10/10 PASS; LOGIN-TC-INT-001 now GREEN via Testcontainers PostgreSQL — LoginIntegrationTest). LOGIN-TC-007 in JwtTokenProviderSecretValidationTest; LOGIN-TC-008 in AuthServiceLoginTest (verified-identifier branch persists SHA-256 hash).`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -354,7 +354,7 @@ long exp = claims.getExpiration().getTime() / 1000;
 assertThat(exp - iat).isEqualTo(900L);
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing — 2026-07-04 (implemented as `JwtTokenProviderSecretValidationTest.generateAccessToken_hasExactly900SecondTtl`; real class is `JwtTokenProvider`, not `JwtService`)
 
 ---
 
@@ -384,7 +384,7 @@ assertThat(exp - iat).isEqualTo(900L);
 **Expected Result (FAIL):**
 - Nếu plain JWT được lưu → ADR-AUTH-008 vi phạm, security risk
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing — 2026-07-04 (implemented as `AuthServiceLoginTest.login_verifiedIdentifier_sessionStoresSha256Hash`; captured `UserSession.refreshTokenHash` is 64-char SHA-256 hex == `hashSha256(rawRefreshToken)`, never plaintext. Note: real login is OTP-gated; the verified-identifier branch exercises the session-persistence path.)
 
 ---
 
@@ -448,7 +448,7 @@ assertThat(claims.getSubject()).isEqualTo(userId.toString());
 assertThat(claims.get("role", String.class)).isEqualTo("MOTHER");
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing — 2026-07-04 (`LoginIntegrationTest`, Testcontainers PostgreSQL + MockMvc. Seeds an ACTIVE user, calls the token-issuing `/login-direct` endpoint, and asserts the persisted `refresh_tokens` row (revoked=false, 64-char SHA-256 hash), the `user_sessions` row (revoked=false, 64-char hash), and JWT claims (`sub` = userId, authority `ROLE_MOTHER`). Real-behavior note: `/login` issues an OTP challenge, so `/login-direct` is the token path; role authority is `ROLE_MOTHER`, not the idealized bare `MOTHER`.)
 
 ---
 
@@ -462,10 +462,10 @@ assertThat(claims.get("role", String.class)).isEqualTo("MOTHER");
 | `LOGIN-TC-004` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGIN-TC-005` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
 | `LOGIN-TC-006` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
-| `LOGIN-TC-007` | `JwtServiceTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-008` | `AuthServiceLoginTest.java` | `[ ]` | `—` | — |
-| `LOGIN-TC-009` | `LoginSecurityTest.java` | `[ ]` | `2026-06-27` | — |
-| `LOGIN-TC-INT-001` | `LoginIntegrationTest.java` | `[ ]` | `—` | — |
+| `LOGIN-TC-007` | `JwtTokenProviderSecretValidationTest.java` (real class `JwtTokenProvider`) | `[x]` | `2026-07-04` | — |
+| `LOGIN-TC-008` | `AuthServiceLoginTest.java` | `[x]` | `2026-07-04` | verified-identifier branch |
+| `LOGIN-TC-009` | `AuthServiceLoginTest.java` | `[ ]` | `2026-06-27` | — |
+| `LOGIN-TC-INT-001` | `LoginIntegrationTest.java` | `[x]` | `2026-07-04` | Testcontainers PostgreSQL |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 

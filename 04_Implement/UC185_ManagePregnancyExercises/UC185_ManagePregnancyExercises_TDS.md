@@ -6,7 +6,7 @@
 | **Document ID** | `CB-EXERCISE-IMP-ADMIN-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT (TV1)` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[ ] Pending` |
@@ -24,6 +24,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-03 | AI Agent | Tạo tài liệu lần đầu — TDS cho UC185 Manage Pregnancy Exercises (Content Admin CRUD/activate/disable) |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented: `CreateExerciseRequest`/`UpdateExerciseRequest`/`AdminExerciseResponse` DTOs, `InvalidExerciseStateException`, `ExerciseRepository.findAllByFilters` extension, `ExerciseMapper.toAdminResponse/toEntity/applyUpdate` extension, `IAdminExerciseService`/`AdminExerciseServiceImpl` (create/update/activate/disable/getById/list, idempotent activate/disable, ADR-EXERCISE-ADMIN-004 blank-safetyWarning guard), `AdminExerciseController` (`CONTENT_ADMIN`-only). No new migration — reused existing `pregnancy_exercises` schema/enum per ADR-EXERCISE-ADMIN-002. `AuditAction` (EXERCISE_CREATED/UPDATED/ACTIVATED/DISABLED) + `AuditEligibilityPolicy` + migration V20260704103100 (widen v5, shared with UC186) already covered these actions. 28 backend tests GREEN (`./mvnw test`): `AdminExerciseServiceTest` x11, `AdminExerciseControllerSecurityTest` x13, `AdminExerciseControllerTest` x4. Web Admin Portal UI not built — out of scope for this backend-focused session. |
 
 ---
 

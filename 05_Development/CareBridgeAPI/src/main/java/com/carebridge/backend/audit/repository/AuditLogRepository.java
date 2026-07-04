@@ -3,6 +3,7 @@ package com.carebridge.backend.audit.repository;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.entity.AuditLog;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, java.util.UUID> {
+
+    // Admin Governance cluster (UC114/UC115/UC116) integration-test verification helper.
+    // Both entityId and action are non-null columns, so a derived query is safe here
+    // (no null-bind-parameter type-inference issue).
+    List<AuditLog> findByEntityIdAndAction(java.util.UUID entityId, AuditAction action);
 
     @Query("""
             select a

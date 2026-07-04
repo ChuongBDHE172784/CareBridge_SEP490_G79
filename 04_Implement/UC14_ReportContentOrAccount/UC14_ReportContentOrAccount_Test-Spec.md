@@ -4,7 +4,7 @@
 **Document ID:** `CB-MOD-IMP-014-TEST`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Approved`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -32,6 +32,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | `2026-06-26` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC14 ReportContentOrAccount |
+| `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
 
 ---
 

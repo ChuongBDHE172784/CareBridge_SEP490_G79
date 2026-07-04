@@ -6,7 +6,7 @@
 | **Document ID** | `CB-EXERCISE-IMP-ADMIN-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT (TV1)` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[ ] Pending` |
@@ -22,6 +22,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-03 | AI Agent | Tạo tài liệu lần đầu — TDS cho UC186 Manage Posture Analysis Configuration (System Admin config CRUD + versioning/activation), extending existing `PostureConfigServiceImpl.getActiveConfig()` |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented: enums (AnalysisMode/PostureFeedbackLevel/PostureConfigStatus), DTOs, exceptions, repository extension, service extension (createConfig/createNewVersion/activateVersion/listVersions), AdminPostureConfigController, migrations V20260704103000 (confidence_threshold CHECK) and V20260704103100 (audit_logs_action_check widen v5), AuditAction + AuditEligibilityPolicy extended. 30 backend tests GREEN (`./mvnw test`). Testcontainers integration test (`PostureConfigLifecycleIntegrationTest`) written but not executed this session — Docker daemon unavailable. Web Admin Portal UI (Chặng 4) not built — out of scope for this backend-focused session. |
 
 ---
 

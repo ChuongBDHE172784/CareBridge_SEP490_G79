@@ -36,4 +36,12 @@ public class MockEmailService implements EmailService {
         logger.info("[MOCK EMAIL] Password reset to: {}, token: {}, expires: {} min", to, token, expiryMinutes);
         System.out.println("[MOCK EMAIL] Password reset to: " + to + ", token: " + token);
     }
+
+    @Override
+    public void sendStaffAccountCredentialsEmail(String to, String name, String tempPassword) {
+        // Deliberately never logs tempPassword (UC115-TC-013 / CWE-532) — a real
+        // credential-delivery email would include it in the message body only.
+        logger.info("[MOCK EMAIL] Staff account credentials issued to: {} for: {}", to, name);
+        System.out.println("[MOCK EMAIL] Staff account credentials issued to: " + to + " for user: " + name);
+    }
 }

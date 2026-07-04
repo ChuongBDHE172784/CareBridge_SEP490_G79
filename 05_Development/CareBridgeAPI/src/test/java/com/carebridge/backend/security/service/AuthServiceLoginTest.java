@@ -647,4 +647,61 @@ class AuthServiceLoginTest {
         assertThat(notFoundEx.getMessage()).isEqualTo(wrongPwdEx.getMessage());
         assertThat(notFoundEx.getMessage()).isEqualTo("Invalid credentials");
     }
+
+    @Test
+    @DisplayName("LOGIN-TC-008b: Session persists SHA-256 hash of refresh token, never the plaintext")
+    void login_verifiedIdentifier_sessionStoresSha256Hash() {
+        // A verified identifier skips the OTP step and issues tokens directly, exercising the
+        // real session-persistence path where the refresh token is stored as a SHA-256 hash.
+        String email = "verified@example.com";
+        String password = "MyP@ssw0rd123";
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .phone(null)
+                .email(email)
+                .emailVerified(true)
+                .passwordHash("$2a$12$hashedpassword")
+                .enabled(true)
+                .locked(false)
+                .role(Role.MOTHER)
+                .build();
+
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
+        when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
+        when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> {
+            RefreshToken token = invocation.getArgument(0);
+            if (token.getId() == null) {
+                token.setId(1L);
+            }
+            return token;
+        });
+        when(sessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
+        when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
+
+        LoginRequest request = new LoginRequest();
+        request.setPhone(null);
+        request.setEmail(email);
+        request.setPassword(password);
+
+        OtpSendResponse response = authService.login(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getAuth()).isNotNull();
+        String rawRefreshToken = response.getAuth().getRefreshToken();
+        assertThat(rawRefreshToken).isNotBlank();
+
+        ArgumentCaptor<com.carebridge.backend.identity.entity.UserSession> sessionCaptor =
+                ArgumentCaptor.forClass(com.carebridge.backend.identity.entity.UserSession.class);
+        verify(sessionRepository).save(sessionCaptor.capture());
+        String storedHash = sessionCaptor.getValue().getRefreshTokenHash();
+
+        assertThat(storedHash).isNotEqualTo(rawRefreshToken); // never plaintext
+        assertThat(storedHash).hasSize(64);                   // SHA-256 hex
+        assertThat(storedHash).isEqualTo(
+                com.carebridge.backend.security.util.TokenUtils.hashSha256(rawRefreshToken));
+    }
 }

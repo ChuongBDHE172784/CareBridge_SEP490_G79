@@ -27,4 +27,19 @@ public interface ExerciseRepository extends JpaRepository<PregnancyExercise, UUI
             @Param("trimester") TrimesterScope trimester,
             @Param("difficulty") DifficultyLevel difficulty,
             Pageable pageable);
+
+    // --- NEW (UC185 admin list — status filter is OPTIONAL, unlike the Mother-facing query) ---
+    @Query("SELECT e FROM PregnancyExercise e WHERE "
+         + "(:status IS NULL OR e.status = :status) "
+         + "AND (:trimester IS NULL OR e.trimesterScope = :trimester) "
+         + "AND (:difficulty IS NULL OR e.difficultyLevel = :difficulty) "
+         + "ORDER BY e.createdAt DESC")
+    Page<PregnancyExercise> findAllByFilters(
+            @Param("status") ExerciseStatus status,
+            @Param("trimester") TrimesterScope trimester,
+            @Param("difficulty") DifficultyLevel difficulty,
+            Pageable pageable);
+
+    // findById(UUID) inherited from JpaRepository — used directly by AdminExerciseServiceImpl
+    // Note: no delete() method added — hard delete out of scope (ADR-EXERCISE-ADMIN-002)
 }

@@ -26,4 +26,15 @@ public interface EmailService {
     void sendRegistrationSuccessEmail(String to, String name);
 
     void sendPasswordResetEmail(String to, String token, int expiryMinutes);
+
+    /**
+     * UC115 Create Staff Account — one-time delivery of a system-generated temporary
+     * password to a newly admin-provisioned staff account. The admin never sees this
+     * value (ADR-IAM-005).
+     *
+     * @param to           staff member's email
+     * @param name         staff member's display name
+     * @param tempPassword plaintext temporary password (one-time display in this email only)
+     */
+    void sendStaffAccountCredentialsEmail(String to, String name, String tempPassword);
 }
