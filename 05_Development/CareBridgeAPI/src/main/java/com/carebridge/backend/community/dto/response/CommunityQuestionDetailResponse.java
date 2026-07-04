@@ -34,6 +34,9 @@ public class CommunityQuestionDetailResponse {
     @JsonProperty("isBookmarked")
     private boolean isBookmarked;
 
+    @JsonProperty("isLiked")
+    private boolean isLiked;
+
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommunityAnswerResponse> answers;

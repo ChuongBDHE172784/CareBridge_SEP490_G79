@@ -4,12 +4,16 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.exercise.dto.ExerciseSessionHistorySummary;
+import com.carebridge.backend.exercise.dto.PostureEventRequest;
+import com.carebridge.backend.exercise.dto.PostureFeedbackResponse;
 import com.carebridge.backend.exercise.dto.SessionResultResponse;
 import com.carebridge.backend.exercise.dto.SessionStateResponse;
 import com.carebridge.backend.exercise.entity.TrimesterScope;
 import com.carebridge.backend.exercise.service.IExerciseSessionHistoryService;
 import com.carebridge.backend.exercise.service.IExerciseSessionResultService;
 import com.carebridge.backend.exercise.service.IExerciseSessionService;
+import com.carebridge.backend.exercise.service.IPostureAnalysisService;
+import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -20,6 +24,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +38,7 @@ public class ExerciseSessionController {
     private final IExerciseSessionService sessionService;
     private final IExerciseSessionResultService sessionResultService;
     private final IExerciseSessionHistoryService sessionHistoryService;
+    private final IPostureAnalysisService postureAnalysisService;
 
     // UC181 — Pause session
     @PatchMapping("/{sessionId}/pause")
@@ -51,6 +58,17 @@ public class ExerciseSessionController {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(
                 ApiResponse.success(sessionService.resumeSession(sessionId, userId)));
+    }
+
+    // UC30 — Analyze Exercise Posture (submit body landmark data, receive real-time feedback)
+    @PostMapping("/{sessionId}/posture-events")
+    @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN', 'SYSTEM')")
+    public ResponseEntity<ApiResponse<PostureFeedbackResponse>> analyzePosture(
+            @PathVariable UUID sessionId,
+            @RequestBody @Valid PostureEventRequest request,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(postureAnalysisService.analyzePosture(sessionId, userId, request));
     }
 
     // UC182 — Complete session

@@ -10,13 +10,19 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
+import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
+import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
+import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ContentReport;
@@ -33,6 +39,7 @@ import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -93,6 +100,117 @@ public class ModerationServiceImpl implements ModerationService {
         return moderationMapper.toQueueResponse(page, items);
     }
 
+    @Override
+    public PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal) {
+        // ADR-006: targetType is mandatory, only QUESTION/ANSWER are backed by a real query
+        if (filter.targetType() != ReportTargetType.QUESTION && filter.targetType() != ReportTargetType.ANSWER) {
+            throw ModerationException.pendingContentTargetTypeUnsupported(filter.targetType());
+        }
+
+        // C5: Always sort by createdAt DESC (BR-MOD-003, reused for consistency with getModerationQueue)
+        PageRequest pageable = PageRequest.of(
+                filter.page(),
+                filter.size(),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        List<PendingContentItemResponse> items;
+        long totalElements;
+        int pageNumber;
+        int pageSize;
+
+        if (filter.targetType() == ReportTargetType.QUESTION) {
+            Page<CommunityQuestion> page = communityQuestionRepository.findByStatus(QuestionStatus.PENDING, pageable);
+            List<UUID> targetIds = page.getContent().stream().map(CommunityQuestion::getId).toList();
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.QUESTION);
+            items = page.getContent().stream()
+                    .map(q -> moderationMapper.toPendingContentItemResponse(
+                            q.getId(), ReportTargetType.QUESTION, previews.get(q.getId()), q.getCreatedAt()))
+                    .toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        } else {
+            Page<CommunityAnswer> page = communityAnswerRepository.findByStatus(AnswerStatus.PENDING, pageable);
+            List<UUID> targetIds = page.getContent().stream().map(CommunityAnswer::getId).toList();
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.ANSWER);
+            items = page.getContent().stream()
+                    .map(a -> moderationMapper.toPendingContentItemResponse(
+                            a.getId(), ReportTargetType.ANSWER, previews.get(a.getId()), a.getCreatedAt()))
+                    .toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        }
+
+        // C2: AuditService.log() after every successful queue view — reuses MODERATION_QUEUE_VIEWED
+        // (ADR-003 of UC-99; no new AuditAction needed, avoids an audit_logs_action_check migration)
+        String userId = principal != null ? principal.getName() : null;
+        auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
+                "pending-content targetType=" + filter.targetType() + " count=" + totalElements);
+
+        return new PendingContentQueueResponse(items, totalElements, pageNumber, pageSize);
+    }
+
+    // Excludes ACCOUNT actions — belongs to a separate account-violation history view (TDS §16 ADR-007)
+    private static final List<ReportTargetType> HISTORY_TARGET_TYPES =
+            List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER);
+
+    @Override
+    public ModerationHistoryResponse getModerationHistory(ModerationHistoryFilter filter, Principal principal) {
+        PageRequest pageable = PageRequest.of(filter.page(), filter.size(),
+                Sort.by(Sort.Direction.DESC, "actionAt"));
+
+        List<ReportTargetType> targetTypes = filter.targetType() != null
+                ? List.of(filter.targetType())
+                : HISTORY_TARGET_TYPES;
+
+        Page<ModerationAction> page =
+                moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(targetTypes, pageable);
+
+        // Batch-resolve moderator display names (avoid N+1)
+        List<UUID> moderatorIds = page.getContent().stream()
+                .map(ModerationAction::getModeratorUserId)
+                .distinct()
+                .toList();
+        Map<UUID, String> moderatorNames = userRepository.findAllById(moderatorIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+
+        // Batch-resolve content previews per targetType (ContentPreviewService takes one type at a time)
+        Map<UUID, String> questionPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.QUESTION);
+        Map<UUID, String> answerPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.ANSWER);
+
+        List<ModerationHistoryItemResponse> items = page.getContent().stream()
+                .map(action -> {
+                    String preview = action.getTargetType() == ReportTargetType.QUESTION
+                            ? questionPreviews.get(action.getTargetId())
+                            : answerPreviews.get(action.getTargetId());
+                    return new ModerationHistoryItemResponse(
+                            action.getId(),
+                            action.getTargetId(),
+                            action.getTargetType(),
+                            action.getActionType(),
+                            preview,
+                            moderatorNames.get(action.getModeratorUserId()),
+                            action.getReason(),
+                            action.getActionAt());
+                })
+                .toList();
+
+        return new ModerationHistoryResponse(items, page.getTotalElements(), page.getNumber(), page.getSize());
+    }
+
+    private Map<UUID, String> batchPreviewsFor(List<ModerationAction> actions, ReportTargetType targetType) {
+        List<UUID> targetIds = actions.stream()
+                .filter(a -> a.getTargetType() == targetType)
+                .map(ModerationAction::getTargetId)
+                .toList();
+        if (targetIds.isEmpty()) {
+            return Map.of();
+        }
+        return contentPreviewService.batchFetchPreviews(targetIds, targetType);
+    }
+
     // WARN/SUSPEND belong to UC-102 (account moderation), not this content-status endpoint (ADR-004)
     private static final Set<ModerationActionType> OUT_OF_SCOPE_ACTION_TYPES =
             Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND);
@@ -143,9 +261,9 @@ public class ModerationServiceImpl implements ModerationService {
             case QUESTION -> moderateQuestion(targetId, actionType);
             case ANSWER -> moderateAnswer(targetId, actionType);
             case CONTENT -> throw ModerationException.unsupportedActionType(actionType);
-            // ACCOUNT targets (UC-102) never reach this content-only primitive — moderateAccount()
-            // has its own dedicated write path.
-            case ACCOUNT -> throw ModerationException.unsupportedActionType(actionType);
+            // ACCOUNT/EXPERT/USER targets (UC-102/UC-14) never reach this content-only primitive —
+            // moderateAccount() has its own dedicated write path.
+            case ACCOUNT, EXPERT, USER -> throw ModerationException.unsupportedActionType(actionType);
         };
 
         // C2/C3: append-only ModerationAction, reportId propagated by caller (BR-MOD-004/BR-MOD-011)

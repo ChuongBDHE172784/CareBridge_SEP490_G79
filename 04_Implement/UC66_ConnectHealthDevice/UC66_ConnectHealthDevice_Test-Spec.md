@@ -29,6 +29,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Test Designer | Khởi tạo tài liệu — Test-Spec cho UC66 Connect Health Device (Draft) |
+| 2026-07-02 | AI Agent — Test Designer (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research. `DeviceConnectionTestFactory` rewritten to build `HealthDeviceConnection` entities with real fields (`connectionId`, `userId`, `providerName`, `deviceName`, `scopesJson`, `tokenReference`, `consentGrantedAt`, `lastSyncedAt`, `status ∈ {ACTIVE,INACTIVE,REVOKED}`, `createdAt`, `updatedAt`) — removed invented `journeyId`, `consentGrantId`, `deviceType` (enum), `connectedAt`, `disconnectedAt` fields. DB assertion SQL updated to query `health_device_connections`. Status is Draft — remains unchanged. |
 
 ---
 
@@ -76,9 +77,9 @@
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|
-| L1 | SRS UC-66 flows là generic template — không quy định hành vi khi reconnect trong khi đã CONNECTED | ADR-DEVICE-001: idempotent — trả về record hiện có | Test verify 2 lần connect() liên tiếp cùng deviceType = 1 record CONNECTED, response thứ 2 vẫn 2xx |
-| L2 | `ConsentDataType` không có giá trị `DEVICE_DATA` chuyên biệt (Open Item O1 trong TDS) | Enum hiện tại: `HEALTH_RECORD, LOCATION, FAMILY_DATA, COMMUNITY_POST, SENSITIVE_DATA, RAG_CONTEXT, EXPERT_SHARED_DATA` | Test dùng `HEALTH_RECORD` làm giá trị tạm thời cho `ConsentGrant.dataType`; nếu Tech Lead approve thêm `DEVICE_DATA`, cập nhật test fixture tương ứng (ghi chú rõ trong `FX-CONSENT-001`) |
-| L3 | Spec không nêu rõ cấu trúc bảng — không có bảng `device`/`wearable` nào trong `V1__init_schema.sql` | Xác nhận greenfield — cần migration mới `V20260701140000__create_device_connections.sql` | Test integration verify migration tạo đúng bảng + FK constraints |
+| L1 | SRS UC-66 flows là generic template — không quy định hành vi khi reconnect trong khi đã ACTIVE | ADR-DEVICE-001: idempotent — trả về record hiện có | Test verify 2 lần connect() liên tiếp cùng providerName = 1 record ACTIVE, response thứ 2 vẫn 2xx |
+| L2 | ~~`ConsentDataType` không có giá trị `DEVICE_DATA` chuyên biệt~~ — **Đã đóng (2026-07-02):** ADR-DEVICE-002 (corrected) không còn dùng `ConsentGrant`/`ConsentDataType` cho luồng connect device — dùng trực tiếp cột thực `health_device_connections.consent_granted_at` | — | Test không còn cần fixture `ConsentGrant`/`ConsentDataType` cho UC66 — chỉ verify `consentGrantedAt` được set trên `HealthDeviceConnection` |
+| L3 (CORRECTED 2026-07-02) | Tuyên bố gốc "không có bảng `device`/`wearable` nào trong `V1__init_schema.sql`" là **SAI** — bảng `health_device_connections` đã tồn tại sẵn (dòng 1115), đã xác nhận qua UC130's TDS nghiên cứu độc lập | Không cần migration mới — bảng `health_device_connections` đã sẵn sàng | Test integration verify bảng thực `health_device_connections` (không phải `device_connections` tự-đề-xuất) đã có sẵn từ `V1__init_schema.sql`, không cần chạy migration nào trước khi test |
 
 ---
 
@@ -88,10 +89,10 @@
 
 ```
 Connect Health Device (health.device) bao gồm các layer:
-├── Domain (DeviceConnection entity — pure logic, no deps)
-├── Service (DeviceConnectionService — mock IDeviceConnectionRepository + ConsentService + ApplicationEventPublisher với Mockito)
+├── Domain (HealthDeviceConnection entity — pure logic, no deps)
+├── Service (DeviceConnectionService — mock IHealthDeviceConnectionRepository + ApplicationEventPublisher với Mockito)
 ├── Controller (DeviceConnectionController — @WebMvcTest, mock Service)
-└── Integration (Testcontainers PostgreSQL @SpringBootTest — verify persisted row + consent linkage)
+└── Integration (Testcontainers PostgreSQL @SpringBootTest — verify persisted row in health_device_connections)
 ```
 
 ### TDS-02 — Test Basis / Cơ sở Kiểm thử
@@ -99,35 +100,35 @@ Connect Health Device (health.device) bao gồm các layer:
 | Source | Items Derived |
 |--------|--------------|
 | `SRS UC-66 §3.3.1.43` | Mother connects wearable/health platform after consent |
-| `ADR-DEVICE-001` | Idempotent connect; append-only lifecycle |
-| `ADR-DEVICE-002` | Consent capture required before CONNECTED |
+| `ADR-DEVICE-001` | Idempotent connect; append-only lifecycle (on real `health_device_connections`) |
+| `ADR-DEVICE-002` | Consent capture (`consent_granted_at`) required before ACTIVE — no dual-write |
 | `BR-RBAC` | Only authenticated ROLE_MOTHER may connect own device |
 | `BR-PRIVACY` | Consent/purpose/minimum-necessary access rules |
-| `V1__init_schema.sql` + `V20260701140000` (new) | `device_connections` table structure, FK to `users`/`mother_journeys`/`consent_grants` |
+| `V1__init_schema.sql` (no new migration) | `health_device_connections` table structure (already exists, L1115), FK to `users` only |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
 | Condition ID | Test Condition | Coverage Item | Test Cases |
 |-------------|---------------|---------------|-----------|
-| TC-COND-001 | Happy path: valid request + consent accepted → 201 CONNECTED | `DeviceConnectionService.connect()` | `DEVICE-TC-001` |
-| TC-COND-002 | Reconnect while already CONNECTED (same deviceType) → idempotent, no duplicate | `connect()` | `DEVICE-TC-002` |
-| TC-COND-003 | `deviceType` missing/invalid → 400 DEVICE-001 | `ConnectDeviceRequest` validation | `DEVICE-TC-003` |
+| TC-COND-001 | Happy path: valid request + consent accepted → 201 ACTIVE | `DeviceConnectionService.connect()` | `DEVICE-TC-001` |
+| TC-COND-002 | Reconnect while already ACTIVE (same providerName) → idempotent, no duplicate | `connect()` | `DEVICE-TC-002` |
+| TC-COND-003 | `providerName` missing/blank → 400 DEVICE-001 | `ConnectDeviceRequest` validation | `DEVICE-TC-003` |
 | TC-COND-004 | `consentAccepted=false` → 400 DEVICE-006 | `connect()` | `DEVICE-TC-004` |
 | TC-COND-005 | Non-MOTHER role attempts connect → 403 DEVICE-004 | `DeviceConnectionController` | `DEVICE-TC-005` |
-| TC-COND-006 | Consent grant created and linked (`consent_grant_id`) before status=CONNECTED | `ConsentService.grant()` integration | `DEVICE-TC-006` |
+| TC-COND-006 | `consent_granted_at` set before status=ACTIVE (no `ConsentGrant`/`consent_grants` dual-write per ADR-DEVICE-002 corrected) | `DeviceConnectionService.connect()` | `DEVICE-TC-006` |
 | TC-COND-007 | `DeviceConnected` event published exactly once per successful connect | `EventPublisher` | `DEVICE-TC-007` |
-| TC-COND-008 | Two different deviceTypes for same user → both CONNECTED simultaneously (no cross-device conflict) | `connect()` | `DEVICE-TC-008` |
+| TC-COND-008 | Two different providerNames for same user → both ACTIVE simultaneously (no cross-device conflict) | `connect()` | `DEVICE-TC-008` |
 | TC-COND-009 | Ownership: user A cannot list/see user B's connections | `listActiveConnections()` | `DEVICE-TC-009` |
-| TC-COND-010 (Integration) | Full connect flow via Testcontainers — DB row + FK to consent_grants persisted | End-to-end | `DEVICE-TC-INT-001` |
+| TC-COND-010 (Integration) | Full connect flow via Testcontainers — DB row persisted in `health_device_connections` with `consent_granted_at` set | End-to-end | `DEVICE-TC-INT-001` |
 | TC-COND-011 (Security) | SQL/script injection attempt in `deviceName` field handled safely | Input sanitization | `DEVICE-TC-SEC-001` |
 
 ### TDS-04 — Test Techniques / Kỹ thuật Kiểm thử
 
 | Technique (ISO 29119-4) | Applied To | Rationale |
 |------------------------|------------|-----------|
-| Equivalence Partitioning | `deviceType` (valid enum values vs invalid string) | Cover valid/invalid input classes |
-| Boundary Value Analysis | `deviceName` length (0, 1, 120, 121 chars) | Column is VARCHAR(120) |
-| State Transition Testing | CONNECTED reconnect idempotency | Core state machine invariant (ADR-DEVICE-001) |
+| Equivalence Partitioning | `providerName` (valid non-blank string vs blank/missing) | Cover valid/invalid input classes |
+| Boundary Value Analysis | `deviceName` length (0, 1, 150, 151 chars) | Column is VARCHAR(150) (real schema, corrected from VARCHAR(120)) |
+| State Transition Testing | ACTIVE reconnect idempotency | Core state machine invariant (ADR-DEVICE-001) |
 | Error Guessing | Concurrent double-submit of connect() | Race condition on idempotent check |
 | Security Testing (Error Guessing) | Injection in `deviceName` | OWASP A03:2021 Injection |
 
@@ -137,11 +138,10 @@ Connect Health Device (health.device) bao gồm các layer:
 |-----------|------|---------------|---------|
 | `FX-USER-MOTHER-001` | JWT / DB seed | `{ userId: '00000000-0000-0000-0000-000000000001', role: 'MOTHER' }` | Happy path actor |
 | `FX-USER-PARTNER-001` | JWT / DB seed | `{ userId: '00000000-0000-0000-0000-000000000002', role: 'PARTNER' }` | RBAC negative test |
-| `FX-DEVICE-CONN-001` | DB seed | `{ deviceType: 'SMARTWATCH', deviceName: 'Mi Band 8', status: 'CONNECTED' }` | Reconnect/idempotency test |
-| `FX-CONSENT-001` | DB seed | `{ dataType: 'HEALTH_RECORD', purpose: 'SHARE', consentGivenAt: now(), expiryAt: now()+365d }` | Consent linkage verification (see L2) |
-| `FX-REQ-VALID-001` | Request body | `{ deviceType: 'SMARTWATCH', deviceName: 'Mi Band 8', consentAccepted: true }` | Happy path request |
-| `FX-REQ-INVALID-001` | Request body | `{ deviceType: 'INVALID_TYPE', consentAccepted: true }` | Validation failure |
-| `FX-REQ-NOCONSENT-001` | Request body | `{ deviceType: 'SMARTWATCH', consentAccepted: false }` | Consent rejection |
+| `FX-DEVICE-CONN-001` | DB seed | `{ providerName: 'SMARTWATCH_GENERIC', deviceName: 'Mi Band 8', status: 'ACTIVE' }` | Reconnect/idempotency test |
+| `FX-REQ-VALID-001` | Request body | `{ providerName: 'SMARTWATCH_GENERIC', deviceName: 'Mi Band 8', consentAccepted: true }` | Happy path request |
+| `FX-REQ-INVALID-001` | Request body | `{ providerName: '', consentAccepted: true }` | Validation failure |
+| `FX-REQ-NOCONSENT-001` | Request body | `{ providerName: 'SMARTWATCH_GENERIC', consentAccepted: false }` | Consent rejection |
 
 ### Applicability Matrix
 
@@ -161,12 +161,15 @@ Connect Health Device (health.device) bao gồm các layer:
 ### Props Isolation Boilerplate (CASE 2.0 — BẮT BUỘC)
 
 > ⭐ **CASE 2.0 Rule:** Mỗi test PHẢI tạo fresh instance qua factory. Không shared mutable state giữa các test cases. Factory này (`DeviceConnectionTestFactory`) được tái sử dụng thống nhất trong Test-Spec của cả UC66/UC67/UC68/UC69.
+>
+> **CORRECTED (2026-07-02):** Factory xây dựng entity `HealthDeviceConnection` khớp bảng thực `health_device_connections` (KHÔNG phải `DeviceConnection`/bảng `device_connections` tự-đề-xuất trước đây). Đã bỏ `journeyId`, `consentGrantId`, `deviceType` (enum), `consentedAt`, `connectedAt`, `disconnectedAt` — các field không tồn tại trên schema thực. `status` dùng enum `ACTIVE/INACTIVE/REVOKED` thay vì `CONNECTED/DISCONNECTED`. Không còn cần `ConsentGrant`/`ConsentDataType`/`ConsentPurpose` fixture cho UC66 (xem Logic Issue L2 — Open Item đã đóng).
 
 ```java
 // ═══════════════════════════════════════════════════════════
 // CASE 2.0 — Props Isolation Pattern
 // DeviceConnectionTestFactory.java — shared across UC66/67/68/69 test suites
 // Đặt tại: src/test/java/com/carebridge/backend/health/device/DeviceConnectionTestFactory.java
+// Targets REAL schema entity HealthDeviceConnection (health_device_connections table).
 // ═══════════════════════════════════════════════════════════
 
 class DeviceConnectionTestFactory {
@@ -176,29 +179,29 @@ class DeviceConnectionTestFactory {
     static final UUID OTHER_MOTHER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     // Giá trị baseline hợp lệ — đồng bộ với FX-DEVICE-CONN-001 (§3 TDS-05)
-    static DeviceConnection makeConnectedDevice() {
+    static HealthDeviceConnection makeConnectedDevice() {
         return makeConnectedDevice(c -> {});
     }
 
-    static DeviceConnection makeConnectedDevice(Consumer<DeviceConnection> overrides) {
-        DeviceConnection conn = DeviceConnection.builder()
-            .id(UUID.randomUUID())
+    static HealthDeviceConnection makeConnectedDevice(Consumer<HealthDeviceConnection> overrides) {
+        HealthDeviceConnection conn = HealthDeviceConnection.builder()
+            .connectionId(UUID.randomUUID())
             .userId(MOTHER_USER_ID)
-            .deviceType(DeviceType.SMARTWATCH)
+            .providerName("SMARTWATCH_GENERIC")
             .deviceName("Mi Band 8")
-            .status(DeviceConnectionStatus.CONNECTED)
-            .consentGrantId(1L)
-            .consentedAt(Instant.parse("2026-07-01T08:00:00Z"))
-            .connectedAt(Instant.parse("2026-07-01T08:00:00Z"))
+            .status(DeviceConnectionStatus.ACTIVE)
+            .consentGrantedAt(Instant.parse("2026-07-01T08:00:00Z"))
+            .createdAt(Instant.parse("2026-07-01T08:00:00Z"))
+            .updatedAt(Instant.parse("2026-07-01T08:00:00Z"))
             .build();
         overrides.accept(conn);
         return conn;
     }
 
-    static DeviceConnection makeDisconnectedDevice() {
+    static HealthDeviceConnection makeDisconnectedDevice() {
         return makeConnectedDevice(c -> {
-            c.setStatus(DeviceConnectionStatus.DISCONNECTED);
-            c.setDisconnectedAt(Instant.parse("2026-07-01T09:00:00Z"));
+            c.setStatus(DeviceConnectionStatus.REVOKED);
+            c.setUpdatedAt(Instant.parse("2026-07-01T09:00:00Z"));
         });
     }
 
@@ -208,59 +211,50 @@ class DeviceConnectionTestFactory {
 
     static ConnectDeviceRequest makeValidRequest(Consumer<ConnectDeviceRequest> overrides) {
         ConnectDeviceRequest request = new ConnectDeviceRequest();
-        request.setDeviceType(DeviceType.SMARTWATCH);
+        request.setProviderName("SMARTWATCH_GENERIC");
         request.setDeviceName("Mi Band 8");
         request.setConsentAccepted(true);
         overrides.accept(request);
         return request;
     }
 
-    static ConsentGrant makeConsentGrant() {
-        return ConsentGrant.builder()
-            .id(1L)
-            .userId(MOTHER_USER_ID)
-            .dataType(ConsentDataType.HEALTH_RECORD) // see Logic Issue L2
-            .purpose(ConsentPurpose.SHARE)
-            .consentGivenAt(Instant.parse("2026-07-01T08:00:00Z"))
-            .expiryAt(Instant.parse("2027-07-01T08:00:00Z"))
-            .version(1)
-            .build();
-    }
+    // NOTE (2026-07-02): makeConsentGrant() REMOVED — ADR-DEVICE-002 (corrected) no longer
+    // dual-writes to ConsentGrant/consent_grants for the device-connect flow; consent is
+    // captured directly via HealthDeviceConnection.consentGrantedAt. See Logic Issue L2.
 }
 ```
 
 ---
 
-### DEVICE-TC-001 — Connect device happy path creates CONNECTED record with consent
+### DEVICE-TC-001 — Connect device happy path creates ACTIVE record with consent
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `DeviceConnectionService.connect()`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
 **TDD Phase:** 🔴 RED — chưa implement
 **Condition Ref:** `TC-COND-001`
-**Oracle Source:** `SRS UC-66 Normal Flow Step 4-5` / `ADR-DEVICE-002`
+**Oracle Source:** `SRS UC-66 Normal Flow Step 4-5` / `ADR-DEVICE-002 (corrected)`
 
 **Preconditions:**
-- No existing `device_connections` record for `MOTHER_USER_ID` + `SMARTWATCH`
-- `ConsentService.grant()` mocked to return `makeConsentGrant()`
+- No existing `health_device_connections` record for `MOTHER_USER_ID` + `providerName=SMARTWATCH_GENERIC`
 
 **Test Steps:**
-1. Arrange: `ConnectDeviceRequest request = DeviceConnectionTestFactory.makeValidRequest();` mock repository `findFirstByUserIdAndDeviceTypeAndStatus...` returns `Optional.empty()`
+1. Arrange: `ConnectDeviceRequest request = DeviceConnectionTestFactory.makeValidRequest();` mock repository `findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc...` returns `Optional.empty()`
 2. Act: `service.connect(request, MOTHER_USER_ID)`
-3. Assert: repository.save() called once with entity having `status=CONNECTED`, `consentGrantId=1`, response DTO has `status="CONNECTED"`
+3. Assert: repository.save() called once with entity having `status=ACTIVE`, `consentGrantedAt` non-null, response DTO has `status="ACTIVE"`
 
 **Expected Result (PASS — hành vi đúng):**
-- Response `DeviceConnectionResponse.status == "CONNECTED"`, `consentedAt` non-null.
+- Response `DeviceConnectionResponse.status == "ACTIVE"`, `consentGrantedAt` non-null.
 
 **Expected Result (FAIL — dấu hiệu lỗi):**
-- Exception thrown, or status not CONNECTED, or consent not called before save.
+- Exception thrown, or status not ACTIVE, or `consentGrantedAt` not set before save.
 
 **Current Status:** 🔴 Not written
-**Implementation Note:** Ensure `ConsentService.grant()` is called and awaited BEFORE `repository.save()` per ADR-DEVICE-002 ordering.
+**Implementation Note:** Set `consentGrantedAt = now()` directly on the entity BEFORE `repository.save()` per ADR-DEVICE-002 (corrected) — no `ConsentService.grant()` call, no dual-write to `consent_grants`.
 
 ---
 
-### DEVICE-TC-002 — Reconnect while already CONNECTED is idempotent (no duplicate)
+### DEVICE-TC-002 — Reconnect while already ACTIVE is idempotent (no duplicate)
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `DeviceConnectionService.connect()`
@@ -270,21 +264,21 @@ class DeviceConnectionTestFactory {
 **Oracle Source:** `ADR-DEVICE-001 §Decision`
 
 **Preconditions:**
-- Mock repository `findFirstByUserIdAndDeviceTypeAndStatusOrderByConnectedAtDesc(MOTHER_USER_ID, SMARTWATCH, CONNECTED)` returns `Optional.of(makeConnectedDevice())`
+- Mock repository `findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc(MOTHER_USER_ID, "SMARTWATCH_GENERIC", ACTIVE)` returns `Optional.of(makeConnectedDevice())`
 
 **Test Steps:**
 1. Arrange: existing connection fixture
 2. Act: `service.connect(makeValidRequest(), MOTHER_USER_ID)`
 3. Assert: `repository.save()` is NEVER called; returned response matches the existing connection's id
 
-**Expected Result (PASS):** No new row created; response reflects existing CONNECTED record.
+**Expected Result (PASS):** No new row created; response reflects existing ACTIVE record.
 **Expected Result (FAIL):** `repository.save()` invoked (duplicate created) or exception thrown.
 
 **Current Status:** 🔴 Not written
 
 ---
 
-### DEVICE-TC-003 — Invalid deviceType rejected with DEVICE-001
+### DEVICE-TC-003 — Blank providerName rejected with DEVICE-001
 
 **Severity:** `HIGH`
 **Feature Under Test:** `ConnectDeviceRequest` validation / `DeviceConnectionController`
@@ -296,7 +290,7 @@ class DeviceConnectionTestFactory {
 **Preconditions:** MockMvc configured with `@WebMvcTest(DeviceConnectionController.class)`
 
 **Test Steps:**
-1. Arrange: JSON body with `deviceType: "INVALID_TYPE"`
+1. Arrange: JSON body with `providerName: ""`
 2. Act: `POST /api/v1/health/devices/connections`
 3. Assert: HTTP 400, body `error.code == "DEVICE-001"`
 
@@ -322,7 +316,7 @@ class DeviceConnectionTestFactory {
 **Test Steps:**
 1. Arrange: `makeValidRequest(r -> r.setConsentAccepted(false))`
 2. Act: `service.connect(request, MOTHER_USER_ID)`
-3. Assert: throws `DeviceConnectionException` with code `DEVICE-006`; `ConsentService.grant()` and `repository.save()` never called
+3. Assert: throws `DeviceConnectionException` with code `DEVICE-006`; `repository.save()` never called
 
 **Expected Result (PASS):** Exception `DEVICE-006`, no side effects.
 **Expected Result (FAIL):** Record created despite missing consent (BR-PRIVACY violation).
@@ -355,22 +349,22 @@ class DeviceConnectionTestFactory {
 
 ---
 
-### DEVICE-TC-006 — Consent grant linked via consent_grant_id before CONNECTED
+### DEVICE-TC-006 — consent_granted_at set before status=ACTIVE (no ConsentGrant dual-write)
 
 **Severity:** `HIGH`
-**Feature Under Test:** `DeviceConnectionService.connect()` orchestration order
+**Feature Under Test:** `DeviceConnectionService.connect()` field-set order
 **Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-006`
-**Oracle Source:** `ADR-DEVICE-002`
+**Oracle Source:** `ADR-DEVICE-002 (corrected)`
 
 **Test Steps:**
-1. Arrange: mock `ConsentService.grant()` returns `makeConsentGrant()` (id=1)
+1. Arrange: happy path setup (`makeValidRequest()`, `consentAccepted=true`)
 2. Act: `service.connect(makeValidRequest(), MOTHER_USER_ID)`
-3. Assert: saved `DeviceConnection.consentGrantId == 1L`; `InOrder` verify `consentService.grant()` called before `repository.save()`
+3. Assert: saved `HealthDeviceConnection.consentGrantedAt` is non-null and set to approximately `now()`; `HealthDeviceConnection.status == ACTIVE`; no interaction with any `ConsentService`/`ConsentGrant` type occurs (verify no such mock exists in the test's dependency graph)
 
-**Expected Result (PASS):** Ordering and linkage correct.
-**Expected Result (FAIL):** `consentGrantId` null, or save() called before grant().
+**Expected Result (PASS):** `consentGrantedAt` correctly set directly on the entity, no dual-write.
+**Expected Result (FAIL):** `consentGrantedAt` null, or code attempts to call a `ConsentService.grant()` that no longer exists in this flow (Hallucinated Contract — AP-AI-005).
 
 **Current Status:** 🔴 Not written
 
@@ -397,21 +391,21 @@ class DeviceConnectionTestFactory {
 
 ---
 
-### DEVICE-TC-008 — Two different deviceTypes can both be CONNECTED simultaneously
+### DEVICE-TC-008 — Two different providerNames can both be ACTIVE simultaneously
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `DeviceConnectionService.connect()`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/service/DeviceConnectionServiceTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-008`
-**Oracle Source:** `ADR-DEVICE-001 §Invariant` (per user, per deviceType uniqueness — not global)
+**Oracle Source:** `ADR-DEVICE-001 §Invariant` (per user, per providerName uniqueness — not global)
 
 **Test Steps:**
-1. Arrange: existing CONNECTED `SMARTWATCH` for `MOTHER_USER_ID`; request `deviceType=BLOOD_PRESSURE_MONITOR`
+1. Arrange: existing ACTIVE `providerName=SMARTWATCH_GENERIC` for `MOTHER_USER_ID`; request `providerName=BLOOD_PRESSURE_MONITOR_GENERIC`
 2. Act: `service.connect(request, MOTHER_USER_ID)`
 3. Assert: new record created (save() called); both connections coexist
 
-**Expected Result (PASS):** New CONNECTED record for `BLOOD_PRESSURE_MONITOR` created.
+**Expected Result (PASS):** New ACTIVE record for `BLOOD_PRESSURE_MONITOR_GENERIC` created.
 **Expected Result (FAIL):** Second connect rejected or overwrites first.
 
 **Current Status:** 🔴 Not written
@@ -457,9 +451,9 @@ class DeviceConnectionTestFactory {
 **Preconditions:** MockMvc + Testcontainers PostgreSQL (integration variant recommended)
 
 **Test Steps (Attack Simulation):**
-1. Arrange: `deviceName = "Mi Band'; DROP TABLE device_connections;--"`
+1. Arrange: `deviceName = "Mi Band'; DROP TABLE health_device_connections;--"`
 2. Act: `POST /api/v1/health/devices/connections` with malicious `deviceName`
-3. Assert: request either succeeds with `deviceName` stored verbatim as literal string (JPA parameterized) or is rejected by length/charset validation; `device_connections` table still exists afterward
+3. Assert: request either succeeds with `deviceName` stored verbatim as literal string (JPA parameterized) or is rejected by length/charset validation; `health_device_connections` table still exists afterward
 
 **Expected Result (PASS = hệ thống an toàn):** Table intact; value stored as literal text, no SQL executed.
 **Expected Result (FAIL = lỗ hổng tồn tại):** Table dropped or query error indicating raw SQL concatenation.
@@ -472,17 +466,17 @@ class DeviceConnectionTestFactory {
 
 ---
 
-### DEVICE-TC-INT-001 — Full connect flow persists row with FK linkage
+### DEVICE-TC-INT-001 — Full connect flow persists row in health_device_connections
 
 **Severity:** `HIGH`
-**Feature Under Test:** `Full flow: POST /connections → DB row + consent_grants FK`
+**Feature Under Test:** `Full flow: POST /connections → DB row in health_device_connections`
 **Test File:** `src/test/java/com/carebridge/backend/health/device/DeviceConnectionIntegrationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-010`
 
 **Preconditions:**
 - PostgreSQL Testcontainer running (`@Testcontainers` auto-start)
-- Flyway migrations applied automatically (including `V20260701140000__create_device_connections.sql`)
+- Baseline `V1__init_schema.sql` applied — `health_device_connections` table pre-exists, no UC66 migration required (§5.2)
 - Seed: `users` row for `MOTHER_USER_ID`
 
 **Test Steps:**
@@ -491,17 +485,17 @@ class DeviceConnectionTestFactory {
 3. Assert DB state directly via repository
 
 **Expected Result (PASS):**
-- `device_connections` row exists with `status='CONNECTED'`, `consent_grant_id` referencing a valid `consent_grants.id`
+- `health_device_connections` row exists with `status='ACTIVE'`, `consent_granted_at` non-null
 - API response 201 with matching `id`
 
 **Expected Result (FAIL):**
-- Row missing, FK null, or constraint violation error
+- Row missing, or constraint violation error
 
 **DB Assertion:**
 ```java
-DeviceConnection record = deviceConnectionRepository.findById(savedId).orElseThrow();
-assertThat(record.getStatus()).isEqualTo(DeviceConnectionStatus.CONNECTED);
-assertThat(record.getConsentGrantId()).isNotNull();
+HealthDeviceConnection record = healthDeviceConnectionRepository.findById(savedId).orElseThrow();
+assertThat(record.getStatus()).isEqualTo(DeviceConnectionStatus.ACTIVE);
+assertThat(record.getConsentGrantedAt()).isNotNull();
 ```
 
 **Current Status:** 🔴 Not written
@@ -572,8 +566,8 @@ public class DeviceConnectionService implements IDeviceConnectionService {
 ### Entry Criteria
 
 - [ ] TDS `CB-DEVICE-IMP-001` đã được review và approve
-- [ ] Logic Issues (Section 2) đã được confirm với Tech Lead (đặc biệt L2 — ConsentDataType)
-- [ ] Flyway migration `V20260701140000__create_device_connections.sql` đã approved và chạy thành công trên staging
+- [ ] Logic Issues (Section 2) đã được confirm với Tech Lead
+- [x] ~~Flyway migration `V20260701140000__create_device_connections.sql` đã approved~~ — **Không áp dụng, retracted.** Bảng `health_device_connections` đã tồn tại sẵn từ `V1__init_schema.sql`, không cần migration nào.
 - [ ] Test fixtures (Section 3 TDS-05) đã chuẩn bị
 
 ### Exit Criteria (DoD)
@@ -595,21 +589,17 @@ public class DeviceConnectionService implements IDeviceConnectionService {
 
 ### Suspension Criteria
 
-- Migration `V20260701140000` chưa approved
-- ConsentDataType enum decision (L2/O1) chưa resolve và block test fixture chính xác
+- `health_device_connections` không truy cập được trên môi trường test (bảng phải tồn tại từ `V1__init_schema.sql` — nếu thiếu, baseline schema bị lệch)
 
 ---
 
 ## 7. Rollback Plan
 
 ```bash
-psql -h $DB_HOST -U $DB_USER -d carebridge \
-  -c "DROP TABLE IF EXISTS device_connections CASCADE;"
-psql -h $DB_HOST -U $DB_USER -d carebridge \
-  -c "DELETE FROM flyway_schema_history WHERE version = '20260701000001';"
+# Không có migration để revert — health_device_connections đã tồn tại từ V1__init_schema.sql,
+# UC66 không tạo/thay đổi schema nào.
 
 git checkout -- src/main/java/com/carebridge/backend/health/device/
-git checkout -- src/main/resources/db/migration/V20260701140000__create_device_connections.sql
 git checkout -- src/test/java/com/carebridge/backend/health/device/
 ```
 

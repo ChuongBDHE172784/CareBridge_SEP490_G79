@@ -278,6 +278,30 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     }
   }
 
+  // Toggle like on a question with optimistic UI — hydrated from the server's `liked`
+  // field on load (see CommunityFeedItem).
+  Future<void> _toggleQuestionLike(String questionId) async {
+    final index = _items.indexWhere((i) => i.id == questionId);
+    if (index == -1) return;
+    final wasLiked = _items[index].liked;
+    final prevCount = _items[index].likeCount;
+    setState(() => _items[index] = _items[index].copyWith(
+        liked: !wasLiked, likeCount: wasLiked ? prevCount - 1 : prevCount + 1));
+    try {
+      final result = await _service.toggleQuestionLike(questionId);
+      if (mounted) {
+        setState(() => _items[index] =
+            _items[index].copyWith(liked: result.liked, likeCount: result.likeCount));
+      }
+    } catch (_) {
+      // Rollback on error
+      if (mounted) {
+        setState(() =>
+            _items[index] = _items[index].copyWith(liked: wasLiked, likeCount: prevCount));
+      }
+    }
+  }
+
   // ── Post card ──
   Widget _buildPostCard(CommunityFeedItem item) {
     final bookmarked = item.bookmarked;
@@ -387,10 +411,19 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           // Footer: likes, comments, topic tag
           Row(
             children: [
-              const Icon(Icons.favorite_border, size: 20, color: _onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text('${item.likeCount}',
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+              GestureDetector(
+                onTap: () => _toggleQuestionLike(item.id),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(item.liked ? Icons.favorite : Icons.favorite_border,
+                        size: 20, color: item.liked ? _primary : _onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text('${item.likeCount}',
+                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+                  ],
+                ),
+              ),
               const SizedBox(width: 16),
               const Icon(Icons.chat_bubble_outline, size: 20, color: _onSurfaceVariant),
               const SizedBox(width: 4),

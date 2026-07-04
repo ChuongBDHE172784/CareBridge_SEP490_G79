@@ -57,6 +57,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/community/dashboard").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/impact-report").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
+                        // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
+                        // below already enforced MODERATOR-only, so this was a convention gap, not a hole.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/pending-content").hasRole("MODERATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/history").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/actions").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/reports/*/resolve").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/account-actions").hasRole("MODERATOR")

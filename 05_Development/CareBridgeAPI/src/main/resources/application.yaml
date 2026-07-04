@@ -71,4 +71,4 @@ carebridge:
 
   fcm:
     enabled: ${CAREBRIDGE_FCM_ENABLED:false}
-    credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+    credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}

@@ -12,7 +12,7 @@ public class CommunityFeedMapper {
 
     public CommunityFeedItemResponse toFeedItem(CommunityQuestion q, String topicName,
                                                  String displayName, boolean hasExpertAnswer,
-                                                 boolean isBookmarked) {
+                                                 boolean isBookmarked, boolean isLiked) {
         return new CommunityFeedItemResponse(
                 q.getId(),
                 q.getTitle(),
@@ -24,6 +24,7 @@ public class CommunityFeedMapper {
                 q.getLikeCount(),
                 hasExpertAnswer,
                 isBookmarked,
+                isLiked,
                 q.getCreatedAt()
         );
     }

@@ -19,7 +19,7 @@ class CommunityService {
     if (topicId != null) params['topicId'] = topicId;
     final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
     final json = await apiGet('/api/v1/community/feed?$query');
-    final content = json['data']?['content'] as List? ?? [];
+    final content = json['data'] as List? ?? [];
     return content.map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -38,7 +38,7 @@ class CommunityService {
     if (hasExpertAnswer != null) params['hasExpertAnswer'] = '$hasExpertAnswer';
     final query = params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&');
     final json = await apiGet('/api/v1/community/questions?$query');
-    final content = json['data']?['content'] as List? ?? [];
+    final content = json['data'] as List? ?? [];
     return content.map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -52,6 +52,12 @@ class CommunityService {
   Future<BookmarkToggleResult> toggleBookmark(String questionId) async {
     final json = await apiPost('/api/v1/community/questions/$questionId/bookmark', {});
     return BookmarkToggleResult.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // Toggle like on a question
+  Future<QuestionLikeToggleResult> toggleQuestionLike(String questionId) async {
+    final json = await apiPost('/api/v1/community/questions/$questionId/like', {});
+    return QuestionLikeToggleResult.fromJson(json['data'] as Map<String, dynamic>);
   }
 
   // UC-59: Toggle like on an answer

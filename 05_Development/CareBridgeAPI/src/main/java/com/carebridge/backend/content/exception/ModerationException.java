@@ -155,4 +155,12 @@ public class ModerationException extends RuntimeException {
                 "Invalid date range: 'from' must not be after 'to'",
                 HttpStatus.BAD_REQUEST);
     }
+
+    // Pending Content Queue (CB-MOD-IMP-004 §9, ADR-006)
+    public static ModerationException pendingContentTargetTypeUnsupported(ReportTargetType targetType) {
+        return new ModerationException(
+                "MOD-023",
+                "targetType must be QUESTION or ANSWER for pending-content queue, got " + targetType,
+                HttpStatus.BAD_REQUEST);
+    }
 }

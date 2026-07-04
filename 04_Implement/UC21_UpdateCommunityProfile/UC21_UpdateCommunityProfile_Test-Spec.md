@@ -6,11 +6,20 @@
 | **Document ID** | CB-COMMUNITY-IMP-021-TEST |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Draft |
+| **Status** | Approved |
 | **Author** | AI Agent |
 | **Related TDS** | CB-COMMUNITY-IMP-021 |
 | **SRS Reference** | SRS 3.1.1.21 |
 | **Depends on** | UC20 (profile must exist before update) |
+
+---
+
+## CHANGELOG
+
+| Ngày | Người thực hiện | Nội dung thay đổi |
+|---|---|---|
+| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC21 Update Community Profile |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 
 ---
 

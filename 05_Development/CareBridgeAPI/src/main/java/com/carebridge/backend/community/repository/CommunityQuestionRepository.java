@@ -22,6 +22,10 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 
+    // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING questions directly,
+    // independent of ContentReport — for first-time moderation discovery
+    Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);
+
     // UC-198 (fixed): feed shows APPROVED questions to everyone, plus the current user's own
     // PENDING questions — previously PENDING questions from ANY author leaked to the whole feed
     // before moderation, which is a moderation-exposure gap, not an intentional design decision.

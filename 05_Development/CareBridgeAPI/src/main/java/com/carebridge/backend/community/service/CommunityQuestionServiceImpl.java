@@ -20,6 +20,7 @@ import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 
@@ -41,6 +42,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityAnswerRepository answerRepository;
     private final CommunityBookmarkRepository bookmarkRepository;
     private final CommunityAnswerLikeRepository answerLikeRepository;
+    private final CommunityQuestionLikeRepository questionLikeRepository;
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
@@ -75,7 +77,10 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
         // UC-58 hydration fix: current viewer's bookmark state for this question
         boolean isBookmarked = bookmarkRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
 
-        return questionMapper.toDetailResponse(question, topicName, answers, isBookmarked);
+        // Current viewer's like state for this question
+        boolean isLiked = questionLikeRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
+
+        return questionMapper.toDetailResponse(question, topicName, answers, isBookmarked, isLiked);
     }
 
     @Override

@@ -51,14 +51,14 @@ public class CommunityQuestionMapper {
     // UC-199: map to full detail response including answers and topic name
     public CommunityQuestionDetailResponse toDetailResponse(
             CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers) {
-        return toDetailResponse(entity, topicName, answers, false);
+        return toDetailResponse(entity, topicName, answers, false, false);
     }
 
     // UC-58 hydration fix: "isBookmarked" reflects the CURRENT viewer's bookmark state, computed
     // by the caller — never derivable from the entity alone.
     public CommunityQuestionDetailResponse toDetailResponse(
             CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers,
-            boolean isBookmarked) {
+            boolean isBookmarked, boolean isLiked) {
         UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
         return CommunityQuestionDetailResponse.builder()
                 .id(entity.getId())
@@ -76,6 +76,7 @@ public class CommunityQuestionMapper {
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())
                 .isBookmarked(isBookmarked)
+                .isLiked(isLiked)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .answers(answers)

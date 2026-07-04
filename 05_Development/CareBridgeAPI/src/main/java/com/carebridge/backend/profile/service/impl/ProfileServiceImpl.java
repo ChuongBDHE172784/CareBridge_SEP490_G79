@@ -2,8 +2,8 @@ package com.carebridge.backend.profile.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
-import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.profile.dto.ProfileResponse;
 import com.carebridge.backend.profile.dto.UpdateProfileRequest;
 import com.carebridge.backend.profile.entity.UserProfile;
@@ -76,10 +76,14 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private void validateDateOfBirth(LocalDate dob) {
+        // C4 / PRF-002: dateOfBirth must be >= 1900-01-01 AND < today.
         LocalDate minDate = LocalDate.of(1900, 1, 1);
         LocalDate today = LocalDate.now();
         if (dob.isBefore(minDate) || !dob.isBefore(today)) {
-            throw new ValidationException("Date of birth must be between 1900-01-01 and today");
+            throw new BusinessException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "PRF-002",
+                    "Date of birth must be between 1900-01-01 and today");
         }
     }
 

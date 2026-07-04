@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC67 Import Device Data Manually (Draft) |
+| 2026-07-02 | AI Agent — Technical Architect (reconciliation) | **Corrected schema reference:** `device_connections` (invented, did not exist) → `health_device_connections` (real, `V1__init_schema.sql` L1115) — reconciled with UC130's independently-verified schema research. UC67 already correctly used `maternal_health_metrics` (unaffected) — only the read-only dependency on UC66's connection table needed correction: `deviceConnectionId` request field and `sourceReferenceId` FK now point to `health_device_connections.connection_id`; the `IDeviceConnectionRepository`/`DeviceConnection` read-only reference is renamed `IHealthDeviceConnectionRepository`/`HealthDeviceConnection`; the migration that added the FK (`V20260701140100`) is corrected to target `health_device_connections` (no dependency on the now-retracted `V20260701140000`); device status check now uses `status='ACTIVE'` instead of `status='CONNECTED'`. |
 
 ---
 
@@ -57,14 +58,14 @@
 | **Bounded Context** | `health` (mở rộng package hiện có `health.entity.MaternalHealthMetric`) |
 | **Data Classification** | `Sensitive-PII` *(sinh hiệu — heart rate, SpO2, blood pressure là dữ liệu sức khỏe nhạy cảm)* |
 | **Compliance Scope** | `PDPA / Luật 91/2025` |
-| **Upstream Dependencies** | `UC66 ConnectHealthDevice` (device_connections, optional), `carejourney` (`mother_journeys`), `IAM (JWT)` |
+| **Upstream Dependencies** | `UC66 ConnectHealthDevice` (`health_device_connections`, optional), `carejourney` (`mother_journeys`), `IAM (JWT)` |
 | **Downstream Consumers** | `UC69 ViewDeviceDataTrend`, `health.HealthMetricController` (existing detail view), possibly future safety-monitoring (see Open Item) |
 
 **Nguồn gốc & phạm vi:**
 - Function spec: `02_Requirements/SRS/3_Functional_Specification.md §3.3.1.44` (dòng 2683-2700), UC-67.
 - Task allocation: dòng 678.
 - Description gốc: "Imports or mocks heart rate, sleep, steps, SpO2, or blood pressure data."
-- **In-scope:** API/UI cho phép Mother nhập giá trị các metric trên thủ công, gắn `sourceType` (MANUAL hoặc DEVICE nếu liên kết với 1 `device_connection` đang CONNECTED), validate biên giá trị hợp lý, lưu vào `maternal_health_metrics` (mở rộng).
+- **In-scope:** API/UI cho phép Mother nhập giá trị các metric trên thủ công, gắn `sourceType` (MANUAL hoặc DEVICE nếu liên kết với 1 `health_device_connections` record đang ACTIVE), validate biên giá trị hợp lý, lưu vào `maternal_health_metrics` (mở rộng).
 - **Out-of-scope:** Auto-sync thật từ SDK thiết bị (thuộc `3.1.2.4 Sync Health Device Data`); xem xu hướng (UC69); xóa/sửa metric đã có (thuộc `3.3.11.2 Delete Maternal Health Metric` — task khác của cùng owner TV2-Bách nhưng KHÔNG thuộc 4 UC này).
 
 ---
@@ -79,7 +80,7 @@
 | BR-CONSULTATION | Business Rule | Metric có nguồn gốc (provenance) rõ ràng, auditable | `MaternalHealthMetric.sourceType` + `sourceReferenceId` | — | ADR-DEVICE-005 |
 | E2 (Exceptions) | Exception Flow | Giá trị invalid/thiếu/xung đột bị reject theo field | `ImportDeviceMetricRequest` validation | — | ADR-DEVICE-006 |
 | ADR-DEVICE-004 | Decision | Tái sử dụng `MaternalHealthMetric` + mở rộng `MetricType` (SLEEP/STEPS/SPO2) thay vì bảng mới | `MaternalHealthMetric`, `MetricType` enum | — | — |
-| ADR-DEVICE-005 | Decision | `source_reference_id` (đã có trong schema, chưa map ở entity) map tới `device_connections.id` khi `sourceType=DEVICE` | `MaternalHealthMetric.sourceReferenceId` | — | — |
+| ADR-DEVICE-005 | Decision | `source_reference_id` (đã có trong schema, chưa map ở entity) map tới `health_device_connections.connection_id` khi `sourceType=DEVICE` | `MaternalHealthMetric.sourceReferenceId` | — | — |
 | ADR-DEVICE-006 | Decision | Boundary validation theo metric type (heuristic ranges) — KHÔNG phải chẩn đoán y khoa | `ImportDeviceMetricRequest` validators | BR-SAFETY (per CLAUDE.md: AI/system không chẩn đoán) | — |
 
 ---
@@ -118,26 +119,26 @@ Chọn **Phương án A**. Mở rộng `MetricType` thêm `SLEEP_DURATION`, `STE
 
 ---
 
-### ADR-DEVICE-005 — Provenance Field: source_reference_id maps to device_connections
+### ADR-DEVICE-005 — Provenance Field: source_reference_id maps to health_device_connections
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
+| **Status** | `Accepted` (re-affirmed after schema correction — see CHANGELOG 2026-07-02) |
 | **Deciders** | `AI Agent — Technical Architect` |
-| **Date** | `2026-07-01` |
-| **Supersedes** | `—` |
+| **Date** | `2026-07-01` (original) / `2026-07-02` (corrected) |
+| **Supersedes** | Original version of this ADR, which assumed the FK target was UC66's invented `device_connections` table — see CHANGELOG. |
 
 #### Bối cảnh (Context)
-Schema `V1__init_schema.sql` dòng 582 đã có cột `source_reference_id uuid` trong `maternal_health_metrics`, nhưng **entity Java `MaternalHealthMetric.java` hiện KHÔNG map cột này** (gap phát hiện trong quá trình research — xác nhận qua đọc trực tiếp file entity). UC69 cần biết metric nào đến từ thiết bị nào để hiển thị "source label" (yêu cầu SRS UC-69: "Displays device data trends with source labels").
+Schema `V1__init_schema.sql` dòng 582 đã có cột `source_reference_id uuid` trong `maternal_health_metrics`, nhưng **entity Java `MaternalHealthMetric.java` hiện KHÔNG map cột này** (gap phát hiện trong quá trình research — xác nhận qua đọc trực tiếp file entity). UC69 cần biết metric nào đến từ thiết bị nào để hiển thị "source label" (yêu cầu SRS UC-69: "Displays device data trends with source labels"). Bản gốc của ADR này (2026-07-01) giả định FK target là bảng tự-đề-xuất `device_connections` của UC66 — đã được UC66 TDS sửa lại thành bảng thực `health_device_connections` (xem `UC66_ConnectHealthDevice_TDS.md` CHANGELOG 2026-07-02, xác nhận độc lập bởi UC130).
 
 #### Quyết định (Decision)
-Map `source_reference_id` vào entity `MaternalHealthMetric.sourceReferenceId: UUID`, dùng để lưu `device_connections.id` khi `sourceType=DEVICE`. Khi `sourceType=MANUAL`, để `NULL`. Đây là thay đổi trên entity Java hiện có (KHÔNG phải bảng mới), cần migration ALTER thêm FK constraint (schema hiện tại có cột nhưng **chưa có FK constraint** tới bảng nào — cần thêm FK tới `device_connections` mới tạo ở UC66).
+Map `source_reference_id` vào entity `MaternalHealthMetric.sourceReferenceId: UUID`, dùng để lưu `health_device_connections.connection_id` khi `sourceType=DEVICE`. Khi `sourceType=MANUAL`, để `NULL`. Đây là thay đổi trên entity Java hiện có (KHÔNG phải bảng mới), cần migration ALTER thêm FK constraint (schema hiện tại có cột nhưng **chưa có FK constraint** tới bảng nào — cần thêm FK tới `health_device_connections`, bảng ĐÃ TỒN TẠI từ `V1__init_schema.sql`, KHÔNG phải bảng UC66 tạo mới).
 
 #### Hệ quả (Consequences)
 
-**Tích cực:** Provenance rõ ràng, UC69 join được `device_connections.device_type` để hiển thị "Nguồn: Mi Band 8" thay vì chỉ "DEVICE".
+**Tích cực:** Provenance rõ ràng, UC69 join được `health_device_connections.provider_name`/`device_name` để hiển thị "Nguồn: Mi Band 8" thay vì chỉ "DEVICE".
 
-**Tiêu cực / Trade-offs:** Cần migration ALTER TABLE thêm FK sau khi bảng `device_connections` được tạo ở UC66 — phụ thuộc thứ tự migration (UC66's migration PHẢI chạy trước UC67's).
+**Tiêu cực / Trade-offs:** Cần migration ALTER TABLE thêm FK tới bảng `health_device_connections` đã tồn tại sẵn (không phụ thuộc thứ tự với migration UC66 nữa, vì UC66 không còn tạo migration nào — xem CHANGELOG).
 
 **Compliance Impact:** Không ảnh hưởng thêm.
 
@@ -256,7 +257,7 @@ interface IDeviceDataImportService <<interface>> {
 
 class DeviceDataImportService implements IDeviceDataImportService {
   - metricRepository: MaternalHealthMetricRepository
-  - deviceConnectionRepository: IDeviceConnectionRepository
+  - healthDeviceConnectionRepository: IHealthDeviceConnectionRepository
   - journeyAccessPolicy: JourneyOwnershipPolicy
   - eventPublisher: ApplicationEventPublisher
   + importMetric(request: ImportDeviceMetricRequest, userId: UUID): MetricDetailResponse
@@ -264,7 +265,7 @@ class DeviceDataImportService implements IDeviceDataImportService {
 }
 
 DeviceDataImportService --> MaternalHealthMetricRepository : uses (existing repo, extended)
-DeviceDataImportService ..> DeviceConnection : reads (UC66 entity, read-only)
+DeviceDataImportService ..> HealthDeviceConnection : reads (UC66 entity, real table, read-only)
 MaternalHealthMetric *-- MetricType
 MaternalHealthMetric *-- DataSource
 
@@ -274,20 +275,23 @@ MaternalHealthMetric *-- DataSource
 ### 5.2. Data Structure (Flyway SQL Migration)
 
 > `MetricType` là Java enum lưu dưới dạng `VARCHAR(50)` (`@Enumerated(EnumType.STRING)`) — KHÔNG có DB-level CHECK constraint trong `V1__init_schema.sql` cho `metric_type`, nên thêm giá trị enum mới KHÔNG yêu cầu ALTER CHECK. Chỉ cần: (1) thêm FK cho `source_reference_id` (chưa có), (2) update Java enum.
+>
+> **CORRECTED (2026-07-02):** FK target sửa từ bảng tự-đề-xuất `device_connections` (UC66, không tồn tại) sang bảng thực `health_device_connections` (`V1__init_schema.sql` dòng 1115, PK `connection_id`). Migration này KHÔNG còn phụ thuộc migration nào của UC66 (UC66 không tạo migration — bảng đã sẵn có).
 
 Tạo file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260701140100__extend_metric_type_and_source.sql`
 
 ```sql
 -- === HEALTH: EXTEND MATERNAL_HEALTH_METRICS FOR DEVICE DATA PROVENANCE (UC67) ===
--- Depends on: V20260701140000__create_device_connections.sql (UC66) must run first.
+-- health_device_connections already exists in V1__init_schema.sql (L1115) — no dependency
+-- on any UC66 migration (UC66 retracted its previously-proposed migration, see UC66 TDS CHANGELOG).
 
--- 1. Add FK constraint for source_reference_id -> device_connections(id)
+-- 1. Add FK constraint for source_reference_id -> health_device_connections(connection_id)
 --    Column already exists in V1__init_schema.sql (source_reference_id uuid) but has no FK.
 --    Only add FK when source_reference_id points to a device connection (nullable, no FK enforcement
 --    issue since NULL values are exempt from FK checks in PostgreSQL).
 ALTER TABLE maternal_health_metrics
   ADD CONSTRAINT fk_mhm_source_device_connection
-  FOREIGN KEY (source_reference_id) REFERENCES device_connections(id);
+  FOREIGN KEY (source_reference_id) REFERENCES health_device_connections(connection_id);
 
 -- 2. No ALTER needed for metric_type — it's VARCHAR(50) with no CHECK constraint;
 --    new enum values (SLEEP_DURATION, STEPS_COUNT, SPO2) are enforced at Java application layer only.
@@ -296,9 +300,9 @@ CREATE INDEX IF NOT EXISTS idx_mhm_source_reference_id ON maternal_health_metric
 CREATE INDEX IF NOT EXISTS idx_mhm_metric_type ON maternal_health_metrics(metric_type);
 ```
 
-**Quy tắc đặt tên:** snake_case. Version: `V20260701140100` — kế tiếp ngay sau `V20260701140000` (UC66), không trùng với bất kỳ version hiện có.
+**Quy tắc đặt tên:** snake_case. Version: `V20260701140100` — không trùng với bất kỳ version hiện có.
 
-**V1__init_schema.sql sync action:** KHÔNG chỉnh sửa `V1__init_schema.sql` trực tiếp (theo pattern dự án hiện tại — xem UC66 TDS §5.2). Migration `V20260701140100` là incremental, phụ thuộc `V20260701140000` phải chạy trước (được ghi rõ trong header SQL comment).
+**V1__init_schema.sql sync action:** KHÔNG chỉnh sửa `V1__init_schema.sql` trực tiếp (theo pattern dự án hiện tại — xem UC66 TDS §5.2). Migration `V20260701140100` là incremental, độc lập (không còn phụ thuộc migration UC66 — xem correction note trên).
 
 ---
 
@@ -349,14 +353,14 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as Client
 participant "HealthMetricController" as Controller
 participant "DeviceDataImportService" as Service
-participant "DeviceConnectionRepository" as DeviceRepo
+participant "IHealthDeviceConnectionRepository" as DeviceRepo
 
 Client -> Controller : POST .../device-import\n{metricType:"HEART_RATE", valueNumeric:72, sourceType:"DEVICE", deviceConnectionId:"uuid"}
 activate Controller
 Controller -> Service : importMetric(request, userId)
 activate Service
 Service -> DeviceRepo : findById(deviceConnectionId)
-DeviceRepo --> Service : DeviceConnection{status=CONNECTED, userId matches}
+DeviceRepo --> Service : HealthDeviceConnection{status=ACTIVE, userId matches}
 Service -> Service : save metric with sourceReferenceId=deviceConnectionId
 Service --> Controller : MetricDetailResponse
 deactivate Service
@@ -423,7 +427,7 @@ public record DeviceDataImported(
         UUID    journeyId,
         String  metricType,       // MetricType enum name
         String  sourceType,       // DataSource enum name: MANUAL | DEVICE | IMPORTED
-        UUID    sourceReferenceId // nullable — device_connections.id if sourceType=DEVICE
+        UUID    sourceReferenceId // nullable — health_device_connections.connection_id if sourceType=DEVICE
     ) {}
 
     public record Metadata(UUID correlationId, String causedBy) {}
@@ -464,7 +468,7 @@ public class ImportDeviceMetricRequest {
     @NotNull
     private DataSource sourceType;         // MANUAL | DEVICE (IMPORTED reserved for future bulk import)
 
-    private UUID deviceConnectionId;       // required if sourceType=DEVICE; must reference an active CONNECTED device owned by caller
+    private UUID deviceConnectionId;       // required if sourceType=DEVICE; must reference an active ACTIVE (health_device_connections.status) device owned by caller
 
     @Size(max = 500)
     private String note;
@@ -490,7 +494,7 @@ public interface IDeviceDataImportService {
      * Imports (manually enters or tags device-sourced) a single health metric reading.
      * @throws DeviceDataImportException (DEVICE-101) if value out of sanity range
      * @throws DeviceDataImportException (DEVICE-102) if sourceType=DEVICE but deviceConnectionId
-     *         does not reference an active CONNECTED device owned by the caller
+     *         does not reference an active ACTIVE device (health_device_connections.status) owned by the caller
      * @throws AccessDeniedException (DEVICE-004) if caller does not own journeyId
      */
     MetricDetailResponse importMetric(ImportDeviceMetricRequest request, UUID userId);
@@ -501,7 +505,8 @@ public interface IDeviceDataImportService {
 
 ```java
 // Reuses existing MaternalHealthMetricRepository (health.repository package) — no new repository interface,
-// only extend usage. IDeviceConnectionRepository (from UC66) is read-only dependency here.
+// only extend usage. IHealthDeviceConnectionRepository (from UC66, maps real table health_device_connections)
+// is a read-only dependency here.
 
 // MaternalHealthMetricRepository.java (EXISTING — no interface change required for UC67;
 // save() via JpaRepository default is sufficient)
@@ -594,7 +599,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 |------|-------------|--------------|--------------|-------------------|
 | `DEVICE-100` | 400 | Validation failed | Dữ liệu không hợp lệ | Missing required field (metricType, valueNumeric, measuredAt) |
 | `DEVICE-101` | 400 | Value out of allowed range | Giá trị nằm ngoài khoảng cho phép | `valueNumeric` outside sanity range for metricType (§8.1) |
-| `DEVICE-102` | 409 | Device connection not active | Kết nối thiết bị không còn hoạt động | `sourceType=DEVICE` but `deviceConnectionId` refers to DISCONNECTED or non-existent connection |
+| `DEVICE-102` | 409 | Device connection not active | Kết nối thiết bị không còn hoạt động | `sourceType=DEVICE` but `deviceConnectionId` refers to a non-ACTIVE (`health_device_connections.status != 'ACTIVE'`) or non-existent connection |
 | `DEVICE-103` | 403 | Insufficient permissions | Không đủ quyền | Caller does not own `journeyId`, or not ROLE_MOTHER |
 | `DEVICE-104` | 404 | Journey not found | Không tìm thấy hành trình | `journeyId` does not exist |
 | `DEVICE-105` | 500 | Internal error | Lỗi hệ thống | Unexpected failure |
@@ -607,13 +612,13 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 
 - [ ] ADR-DEVICE-004, ADR-DEVICE-005, ADR-DEVICE-006 đã Accepted
 - [ ] Sanity range table (§8.1) đã được xác nhận bởi Tech Lead/chuyên gia y tế (Open Item)
-- [ ] UC66 migration `V20260701140000` đã chạy thành công (dependency)
+- [x] ~~UC66 migration `V20260701140000` đã chạy thành công~~ — **Không áp dụng.** `health_device_connections` đã tồn tại sẵn từ `V1__init_schema.sql`; UC66 không tạo migration nào (xem UC66 TDS CHANGELOG 2026-07-02).
 - [ ] DPO sign-off
 
 ### 11.2. Pre-Migration Checklist
 
 - [ ] Backup DB
-- [ ] Migration `V20260701140100` chạy thành công trên staging ≥ 24 giờ, sau khi `V20260701140000` đã áp dụng
+- [ ] Migration `V20260701140100` chạy thành công trên staging ≥ 24 giờ
 - [ ] Rollback script đã test
 
 ### 11.3. Implementation Steps
@@ -622,7 +627,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 ```bash
 ./mvnw flyway:migrate
 ```
-> ⚠️ **Chú ý:** Migration này phụ thuộc bảng `device_connections` (UC66) đã tồn tại — PHẢI chạy sau `V20260701140000`. Flyway tự đảm bảo thứ tự theo version number.
+> ⚠️ **Chú ý:** Migration này thêm FK tới bảng `health_device_connections`, bảng đã tồn tại sẵn từ `V1__init_schema.sql` (không phụ thuộc migration nào của UC66 — UC66 không tạo migration mới).
 
 #### Chặng 2 — Mở rộng MetricType enum + map sourceReferenceId
 
@@ -707,8 +712,8 @@ ORDER BY measured_at DESC;
 
 -- Verify FK integrity for device-sourced metrics
 SELECT m.metric_id FROM maternal_health_metrics m
-LEFT JOIN device_connections d ON m.source_reference_id = d.id
-WHERE m.source_type = 'DEVICE' AND d.id IS NULL;
+LEFT JOIN health_device_connections d ON m.source_reference_id = d.connection_id
+WHERE m.source_type = 'DEVICE' AND d.connection_id IS NULL;
 -- Expected: 0 rows
 ```
 
@@ -763,7 +768,7 @@ curl -X POST https://$HOST/api/v1/health/metrics/device-import \
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-----------------|---------------|
 | C1 | Tái sử dụng `MaternalHealthMetric`/`MetricType`/`DataSource` hiện có — KHÔNG tạo bảng mới | `ADR-DEVICE-004` | `2026-07-01` |
-| C2 | `sourceReferenceId` chỉ set khi `sourceType=DEVICE` và phải trỏ tới `device_connections` đang CONNECTED, thuộc sở hữu của caller | `ADR-DEVICE-005 / DEVICE-102` | `2026-07-01` |
+| C2 | `sourceReferenceId` chỉ set khi `sourceType=DEVICE` và phải trỏ tới `health_device_connections` đang ACTIVE, thuộc sở hữu của caller | `ADR-DEVICE-005 / DEVICE-102` | `2026-07-02` |
 | C3 | Validation biên giá trị là heuristic sanity check — KHÔNG diễn giải y khoa, KHÔNG dùng ngôn ngữ "bất thường/nguy hiểm" | `ADR-DEVICE-006 / CLAUDE.md BR-SAFETY` | `2026-07-01` |
 | C4 | userId từ JWT; ownership của `journeyId` PHẢI verify trước khi lưu | `BR-RBAC` | `2026-07-01` |
 | C5 | `DeviceDataImported` event PHẢI publish sau mỗi import thành công | `§7.1 Domain Event Catalog` | `2026-07-01` |
@@ -775,7 +780,7 @@ curl -X POST https://$HOST/api/v1/health/metrics/device-import \
 Theo TDS CB-DEVICE-IMP-002 và các ADR liên quan:
 
 1. Dùng lại MaternalHealthMetric/MetricType/DataSource hiện có — KHÔNG tạo bảng mới (ADR-DEVICE-004)
-2. sourceReferenceId chỉ set khi sourceType=DEVICE, PHẢI verify device_connections.status=CONNECTED và userId khớp (ADR-DEVICE-005, DEVICE-102)
+2. sourceReferenceId chỉ set khi sourceType=DEVICE, PHẢI verify health_device_connections.status=ACTIVE và userId khớp (ADR-DEVICE-005, DEVICE-102)
 3. Validation range là sanity-check kỹ thuật, KHÔNG phải chẩn đoán — dùng message trung tính (ADR-DEVICE-006)
 4. Verify ownership journeyId trước khi lưu (BR-RBAC)
 5. Publish DeviceDataImported event sau mỗi import thành công (§7.1)

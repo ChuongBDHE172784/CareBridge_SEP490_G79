@@ -5,7 +5,10 @@ import com.carebridge.backend.common.response.ErrorResponse;
 import com.carebridge.backend.community.exception.CommunityFeedValidationException;
 import com.carebridge.backend.exercise.exception.DuplicateSessionException;
 import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
+import com.carebridge.backend.exercise.exception.InvalidExerciseStateException;
+import com.carebridge.backend.exercise.exception.InvalidPostureConfigException;
 import com.carebridge.backend.exercise.exception.InvalidSessionStateException;
+import com.carebridge.backend.exercise.exception.PostureConfigNotFoundException;
 import com.carebridge.backend.exercise.exception.SafetyCheckNotClearedException;
 import com.carebridge.backend.exercise.exception.SafetyCheckNotFoundException;
 import com.carebridge.backend.exercise.exception.SessionNotCompletedException;
@@ -213,6 +216,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleExerciseNotFound(
             ExerciseNotFoundException ex, HttpServletRequest request) {
         logger.error("Exercise not found: {}", ex.getMessage());
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidExerciseStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidExerciseState(
+            InvalidExerciseStateException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PostureConfigNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePostureConfigNotFound(
+            PostureConfigNotFoundException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidPostureConfigException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPostureConfig(
+            InvalidPostureConfigException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

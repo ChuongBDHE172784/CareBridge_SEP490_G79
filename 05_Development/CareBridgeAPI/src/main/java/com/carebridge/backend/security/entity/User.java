@@ -78,6 +78,10 @@ public class User {
     @Column(name = "suspended_until")
     private Instant suspendedUntil;
 
+    @Builder.Default
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

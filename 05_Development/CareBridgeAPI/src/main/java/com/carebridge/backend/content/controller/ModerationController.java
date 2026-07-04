@@ -1,11 +1,15 @@
 package com.carebridge.backend.content.controller;
 
 import com.carebridge.backend.content.dto.request.ModerateContentRequest;
+import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
+import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ReportStatus;
@@ -54,6 +58,44 @@ public class ModerationController {
 
         ModerationQueueFilter filter = new ModerationQueueFilter(targetType, status, page, size);
         ModerationQueueResponse response = moderationService.getModerationQueue(filter, principal);
+        return ResponseEntity.ok(response);
+    }
+
+    // C1: RBAC enforcement — MODERATOR only (ADR-002); CB-MOD-IMP-004 ADR-005/ADR-006
+    @GetMapping("/pending-content")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<PendingContentQueueResponse> getPendingContentQueue(
+            @RequestParam ReportTargetType targetType,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            Principal principal) {
+
+        // C6: Reject size > 50 with MOD-002 (same guard as /queue)
+        if (size > 50) {
+            throw ModerationException.pageSizeExceeded();
+        }
+
+        PendingContentQueueFilter filter = new PendingContentQueueFilter(targetType, page, size);
+        PendingContentQueueResponse response = moderationService.getPendingContentQueue(filter, principal);
+        return ResponseEntity.ok(response);
+    }
+
+    // C1: RBAC enforcement — MODERATOR only (ADR-002); CB-MOD-IMP-004 §16 ADR-007
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<ModerationHistoryResponse> getModerationHistory(
+            @RequestParam(required = false) ReportTargetType targetType,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            Principal principal) {
+
+        // C6: Reject size > 50 with MOD-002 (same guard as /queue, /pending-content)
+        if (size > 50) {
+            throw ModerationException.pageSizeExceeded();
+        }
+
+        ModerationHistoryFilter filter = new ModerationHistoryFilter(targetType, page, size);
+        ModerationHistoryResponse response = moderationService.getModerationHistory(filter, principal);
         return ResponseEntity.ok(response);
     }
 
