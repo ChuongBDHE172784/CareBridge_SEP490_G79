@@ -4,7 +4,7 @@
 **Document ID:** `CB-EXERCISE-IMP-ADMIN-002-TDD`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] Pending`
@@ -14,7 +14,7 @@
 
 **References:**
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` — primary schema source (`posture_analysis_configs`, lines 1245-1259)
-- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260707130000__add_posture_config_confidence_threshold_check.sql` — new migration (BR-SAFETY `CHECK` constraint)
+- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260704103000__add_posture_config_confidence_threshold_check.sql` — actual migration applied (BR-SAFETY `CHECK` constraint; real timestamp used per CLAUDE.md instead of the TDS's placeholder date)
 - `02_Requirements/SRS/3_Functional_Specification.md` §3.2.6.2 (UC-186, lines 1688-1707)
 - `04_Implement/UC186_ManagePostureAnalysisConfiguration/UC186_ManagePostureAnalysisConfiguration_TDS.md` — Technical Design Specification (this feature)
 - `04_Implement/UC185_ManagePregnancyExercises/UC185_ManagePregnancyExercises_TDS.md` — sibling admin-CRUD convention reference
@@ -31,6 +31,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | `2026-07-03` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC186 Manage Posture Analysis Configuration |
+| `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
+| `2026-07-04` | `AI Agent` | Implemented and verified: 30/30 backend tests GREEN via `./mvnw test` (PostureConfigServiceTest x11, AdminPostureConfigControllerSecurityTest x11, AdminPostureConfigControllerTest x3, CreatePostureConfigRequestValidationTest x5). `PostureConfigLifecycleIntegrationTest` (PAC-TC-INT-001/002, PAC-TC-THRESH-007) written and compiles but NOT executed — Docker daemon unavailable this session. Web component tests (PAC-TC-WEB-001..003) not started — Admin Portal UI out of scope this session. See §5 RGR tracker for per-TC detail. |
 
 ---
 
@@ -839,20 +841,21 @@ assertThat(active.get(0).getPostureConfigId()).isEqualTo(expectedActiveId);
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `PAC-TC-CREATE-001` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-CREATE-002` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-CREATE-003` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-CREATE-004` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-THRESH-001..005` | `CreatePostureConfigRequestValidationTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-THRESH-006` | `AdminPostureConfigControllerTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-THRESH-007` | `PostureConfigConstraintIntegrationTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-VER-001` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-VER-002` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-ACT-001..003` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-LIST-001` | `PostureConfigServiceTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-SEC-001..004` | `AdminPostureConfigControllerSecurityTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-INT-001..002` | `PostureConfigLifecycleIntegrationTest.java` | `[ ]` | `[ ]` | |
-| `PAC-TC-WEB-001..003` | `postureConfiguration/**/*.test.tsx` | `[ ]` | `[ ]` | |
+| `PAC-TC-CREATE-001` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing — `./mvnw test` 2026-07-04 |
+| `PAC-TC-CREATE-002` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-CREATE-003` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-CREATE-004` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-THRESH-001..005` | `CreatePostureConfigRequestValidationTest.java` | `[x]` | `[x]` | Passing — 5/5 |
+| `PAC-TC-THRESH-006` | `AdminPostureConfigControllerTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-THRESH-007` | `PostureConfigLifecycleIntegrationTest.java` (combined with INT group, not a separate file per §note) | `[ ]` | `[ ]` | **Written, NOT executed** — Docker daemon unavailable in this session (Testcontainers cannot start). Code compiles; run manually once Docker is available. |
+| `PAC-TC-VER-001` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-VER-002` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-ACT-001..003` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing — 3/3 |
+| `PAC-TC-LIST-001` | `PostureConfigServiceTest.java` | `[x]` | `[x]` | Passing |
+| `PAC-TC-SEC-001..004` | `AdminPostureConfigControllerSecurityTest.java` | `[x]` | `[x]` | Passing — 11/11 (all 4 endpoints x CONTENT_ADMIN/MOTHER/no-JWT/SYSTEM_ADMIN) |
+| `PAC-TC-INT-001..002` | `PostureConfigLifecycleIntegrationTest.java` | `[ ]` | `[ ]` | **Written, NOT executed** — Docker daemon unavailable in this session. |
+| `PAC-TC-WEB-001..003` | `postureConfiguration/**/*.test.tsx` | `[ ]` | `[ ]` | **Not started** — Web Admin Portal UI out of scope for this backend-focused session |
+| `PAC-TC-REGRESSION-001` | `PostureConfigServiceTest.java` | n/a | `[x]` | Passing — confirms `getActiveConfig()` untouched (C1 honored) |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 

@@ -6,7 +6,7 @@
 | **Document ID** | `CB-EXERCISE-IMP-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent — Developer` |
 | **Reviewed by** | `[ ] Pending` |
@@ -24,6 +24,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent — Developer | Tạo tài liệu lần đầu |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented — **RG-3 gap analysis performed before coding: safety-check (`ISafetyCheckService`/`SafetyCheckStatus.CLEARED`), session start/pause/resume/complete (`IExerciseSessionService`), and session-result querying were already fully implemented earlier (UC178-184, with slightly different naming than this TDS's `SafetyCheckStatus.PASSED`/`SessionAlreadyCompletedException` — current code is the source of truth per CLAUDE.md and was NOT re-implemented or renamed.** The only genuinely missing piece was the real-time posture-analysis endpoint. Built: `IPostureAnalysisService`/`PostureAnalysisServiceImpl` (RULE_BASED heuristic keyed on a `backAngle` keypoint field, config-driven `feedbackLevel` gating, falls back to RULE_BASED default with a log warning when no active `posture_analysis_configs` row exists per Logic Issue L2 — never throws EX-014 for a missing config), `PostureEventRequest`/`PostureFeedbackResponse` DTOs, `POST /api/v1/exercises/sessions/{sessionId}/posture-events` on the existing `ExerciseSessionController`, `InvalidSessionStateException.notInProgress()` (EXSESS-009). No new migration — reuses `posture_feedback_events`/`posture_analysis_configs` schema and (extended) `PostureAnalysisConfigRepository` from UC186. 10 new tests GREEN; full pre-existing `exercise` package regression suite (34 tests incl. `ExerciseSessionServiceTest`, `ExerciseCompleteSessionServiceTest`) still green. |
 
 ---
 

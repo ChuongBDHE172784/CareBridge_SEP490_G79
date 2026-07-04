@@ -6,13 +6,22 @@
 | **Document ID** | CB-COMMUNITY-IMP-021 |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Draft |
+| **Status** | Approved |
 | **Document Owner** | PhuongNT |
 | **Author** | AI Agent |
 | **Based on EDS** | v2.0 |
 | **SRS Reference** | SRS 3.1.1.21 |
 | **Related UC** | UC21 — Update Community Profile |
 | **Depends on** | UC20 — Create Community Profile (profile must exist first) |
+
+---
+
+## CHANGELOG
+
+| Ngày | Người thực hiện | Nội dung thay đổi |
+|---|---|---|
+| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC21 Update Community Profile |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 
 ---
 

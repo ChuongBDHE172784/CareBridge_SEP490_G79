@@ -6,10 +6,19 @@
 | **Document ID** | CB-COMMUNITY-IMP-020-TEST |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Draft |
+| **Status** | Approved |
 | **Author** | AI Agent |
 | **Related TDS** | CB-COMMUNITY-IMP-020 |
 | **SRS Reference** | SRS 3.1.1.20 |
+
+---
+
+## CHANGELOG
+
+| Ngày | Người thực hiện | Nội dung thay đổi |
+|---|---|---|
+| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC20 Create Community Profile |
+| 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 
 ---
 

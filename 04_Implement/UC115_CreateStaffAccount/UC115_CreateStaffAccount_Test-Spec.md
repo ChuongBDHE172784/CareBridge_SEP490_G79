@@ -4,7 +4,7 @@
 **Document ID:** `CB-IDENTITY-TDD-115`
 **Version:** `1.0`
 **Date:** `2026-07-02`
-**Status:** `Draft`
+**Status:** `Approved`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -33,6 +33,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | `2026-07-02` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC115 |
+| `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
 
 ---
 
