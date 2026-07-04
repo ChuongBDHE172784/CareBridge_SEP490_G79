@@ -6,7 +6,7 @@
 | **Document ID** | `CB-IDENTITY-IMP-114` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Approved` |
+| **Status** | `Implemented` |
 | **Document Owner** | `TV1-Phương` |
 | **Author** | `AI Agent (Technical Architect)` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -23,6 +23,7 @@
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC114 |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented — AdminUserController/ServiceImpl tests all green (verified independently) |
 
 ---
 

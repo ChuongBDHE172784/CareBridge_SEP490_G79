@@ -6,7 +6,7 @@
 | **Document ID** | CB-COMMUNITY-IMP-021 |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Approved |
+| **Status** | Implemented |
 | **Document Owner** | PhuongNT |
 | **Author** | AI Agent |
 | **Based on EDS** | v2.0 |
@@ -22,6 +22,7 @@
 |---|---|---|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC21 Update Community Profile |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented — CommunityProfileController update-path tests all green (verified independently) |
 
 ---
 

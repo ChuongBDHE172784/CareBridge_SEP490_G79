@@ -6,7 +6,7 @@
 | **Document ID** | `CB-SEC-IMP-002-TEST` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Approved` |
+| **Status** | `Implemented — 2026-07-04 (SecurityIncidentServiceImplTest coverage all PASS, verified independently)` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
