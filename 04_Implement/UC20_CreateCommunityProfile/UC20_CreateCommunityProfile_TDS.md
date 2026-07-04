@@ -6,7 +6,7 @@
 | **Document ID** | CB-COMMUNITY-IMP-020 |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Approved |
+| **Status** | Implemented |
 | **Document Owner** | PhuongNT |
 | **Author** | AI Agent |
 | **Based on EDS** | v2.0 |
@@ -21,6 +21,7 @@
 |---|---|---|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC20 Create Community Profile |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
+| 2026-07-04 | AI Agent | Implemented — CommunityProfileController/ServiceImpl tests all green (verified independently) |
 
 ---
 

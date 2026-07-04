@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUDIT-TDD-117`
 **Version:** `1.0`
 **Date:** `2026-07-02`
-**Status:** `Draft`
+**Status:** `Implemented — 2026-07-04 (approved by user; AuditControllerTest/AuditLogMapperTest/AuditEligibilityPolicyTest all PASS, verified independently)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`

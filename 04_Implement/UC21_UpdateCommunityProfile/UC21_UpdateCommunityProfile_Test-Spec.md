@@ -6,7 +6,7 @@
 | **Document ID** | CB-COMMUNITY-IMP-021-TEST |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Approved |
+| **Status** | Implemented — 2026-07-04 (CommunityProfile update-path tests all PASS, verified independently) |
 | **Author** | AI Agent |
 | **Related TDS** | CB-COMMUNITY-IMP-021 |
 | **SRS Reference** | SRS 3.1.1.21 |

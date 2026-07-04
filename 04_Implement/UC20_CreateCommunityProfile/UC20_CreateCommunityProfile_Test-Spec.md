@@ -6,7 +6,7 @@
 | **Document ID** | CB-COMMUNITY-IMP-020-TEST |
 | **Version** | 1.0 |
 | **Date** | 2026-06-26 |
-| **Status** | Approved |
+| **Status** | Implemented — 2026-07-04 (CommunityProfileControllerTest/ServiceImplTest all PASS, verified independently) |
 | **Author** | AI Agent |
 | **Related TDS** | CB-COMMUNITY-IMP-020 |
 | **SRS Reference** | SRS 3.1.1.20 |
