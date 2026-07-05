@@ -1,5 +1,6 @@
 package com.carebridge.backend.health;
 
+import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.health.dto.MetricDetailResponse;
 import com.carebridge.backend.health.entity.MaternalHealthMetric;
@@ -32,6 +33,7 @@ class HealthMetricServiceImplTest {
 
     @Mock private MaternalHealthMetricRepository metricRepository;
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private AuditService auditService;
     @InjectMocks private HealthMetricServiceImpl metricService;
 
     private static final UUID CALLER_ID  = UUID.fromString("00000000-0000-0000-0000-000000000001");

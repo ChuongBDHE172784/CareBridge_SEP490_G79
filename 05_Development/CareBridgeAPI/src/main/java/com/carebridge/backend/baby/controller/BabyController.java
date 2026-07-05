@@ -1,8 +1,11 @@
 package com.carebridge.backend.baby.controller;
 
+import com.carebridge.backend.baby.dto.ArchiveBabyProfileResponse;
 import com.carebridge.backend.baby.dto.BabyProfileDetailResponse;
 import com.carebridge.backend.baby.dto.CreateBabyProfileRequest;
 import com.carebridge.backend.baby.dto.CreateBabyProfileResponse;
+import com.carebridge.backend.baby.dto.UpdateBabyProfileRequest;
+import com.carebridge.backend.baby.dto.UpdateBabyProfileResponse;
 import com.carebridge.backend.baby.service.IBabyService;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
@@ -54,6 +57,29 @@ public class BabyController {
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = babyService.getBabyProfile(babyId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // UC32: Update baby profile
+    @PutMapping("/{babyId}")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")
+    public ResponseEntity<ApiResponse<UpdateBabyProfileResponse>> updateBabyProfile(
+            @PathVariable UUID babyId,
+            @Valid @RequestBody UpdateBabyProfileRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = babyService.updateBabyProfile(babyId, request, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // UC33: Archive baby profile
+    @PostMapping("/{babyId}/archive")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")
+    public ResponseEntity<ApiResponse<ArchiveBabyProfileResponse>> archiveBabyProfile(
+            @PathVariable UUID babyId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = babyService.archiveBabyProfile(babyId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

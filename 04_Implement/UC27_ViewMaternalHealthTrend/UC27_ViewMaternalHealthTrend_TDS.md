@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-JOURNEY-IMP-006`    |
 | **Version**        | `1.0`                   |
 | **Date**           | `2026-06-26`            |
-| **Status**         | `Draft`                 |
+| **Status**         | `Approved`              |
 | **Document Owner** | `PhuongNT`              |
 | **Author**         | `AI Agent`              |
 | **Reviewed by**    | `[Tech Lead]`           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện | Nội dung thay đổi                                    |
 | ---------- | --------------- | ---------------------------------------------------- |
 | 2026-06-26 | AI Agent        | Tạo tài liệu lần đầu cho UC-27 View Maternal Health Trend |
+| 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implementation complete — HealthMetricServiceImpl.getMetricTrend() with ownership (METRIC-021), journey-not-found (METRIC-020), empty-range-200, ASC sort, BP dual values. 5/7 service unit tests PASSED (TC-001, TC-002, TC-004, TC-005, + journey-not-found). |
 
 ---
 

@@ -6,7 +6,7 @@
 | **Document ID** | `CB-HEALTH-IMP-004` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2 - Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-42 View Health Record Timeline |
+| 2026-07-04 | AI Agent — Amelia (Dev Agent) | Implemented getTimeline() in HealthRecordServiceImpl, findActiveByOwnerFiltered() JPQL query, TimelineFilter/Response/Item DTOs, GET /timeline endpoint — 8/8 service unit tests GREEN |
 
 ---
 
@@ -559,9 +560,9 @@ Authorization: Bearer [JWT_MOTHER_TOKEN]
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-HEALTH-007 và ADR-HEALTH-008 đã được Accepted
-- [ ] `HealthRecord` entity từ UC-39 đã tồn tại
-- [ ] Không cần Flyway migration mới
+- [x] ADR-HEALTH-007 và ADR-HEALTH-008 đã được Accepted
+- [x] `HealthRecord` entity từ UC-39 đã tồn tại
+- [x] Không cần Flyway migration mới
 
 ### 11.2. Pre-Migration Checklist
 

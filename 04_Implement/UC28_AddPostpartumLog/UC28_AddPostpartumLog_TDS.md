@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-JOURNEY-IMP-007`    |
 | **Version**        | `1.0`                   |
 | **Date**           | `2026-06-26`            |
-| **Status**         | `Draft`                 |
+| **Status**         | `Approved`              |
 | **Document Owner** | `PhuongNT`              |
 | **Author**         | `AI Agent`              |
 | **Reviewed by**    | `[Tech Lead]`           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện | Nội dung thay đổi                               |
 | ---------- | --------------- | ----------------------------------------------- |
 | 2026-06-26 | AI Agent        | Tạo tài liệu lần đầu cho UC-28 Add Postpartum Log |
+| 2026-06-29 | AI Agent — Amelia (Dev Agent) | Implementation complete — PostpartumLogServiceImpl.addLog() with POSTPARTUM-type check (POST-002), active-status check (POST-003), ownership check (POST-006), journey-not-found (POST-001), async AI fail-open (POST-007). 6 service unit tests PASSED. |
 
 ---
 

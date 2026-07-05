@@ -6,7 +6,7 @@
 | **Document ID** | `CB-HEALTH-IMP-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2 - Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-40 Update Health Record |
+| 2026-07-04 | AI Agent — Amelia (Dev Agent) | Implemented updateHealthRecord() in HealthRecordServiceImpl, UpdateHealthRecordRequest/Response DTOs, PATCH endpoint — 5/5 service unit tests GREEN |
 
 ---
 
@@ -554,9 +555,9 @@ public interface IHealthRecordRepository extends JpaRepository<HealthRecord, UUI
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-HEALTH-003 và ADR-HEALTH-004 đã được Accepted
-- [ ] UC-39 `HealthRecord` entity và repository đã tồn tại
-- [ ] Không cần Flyway migration mới
+- [x] ADR-HEALTH-003 và ADR-HEALTH-004 đã được Accepted
+- [x] UC-39 `HealthRecord` entity và repository đã tồn tại
+- [x] Không cần Flyway migration mới
 
 ### 11.2. Pre-Migration Checklist
 
