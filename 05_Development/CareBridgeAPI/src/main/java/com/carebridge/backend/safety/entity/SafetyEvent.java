@@ -1,6 +1,7 @@
 package com.carebridge.backend.safety.entity;
 
 import com.carebridge.backend.safety.SafetyEventType;
+import com.carebridge.backend.safety.SafetyEventStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -41,6 +42,14 @@ public class SafetyEvent {
 
     @Column(name = "detected_at", nullable = false)
     private Instant detectedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    @Builder.Default
+    private SafetyEventStatus status = SafetyEventStatus.OPEN;
+
+    @Column(name = "resolved_at")
+    private Instant resolvedAt;
 
     @Column(name = "notes")
     private String notes;

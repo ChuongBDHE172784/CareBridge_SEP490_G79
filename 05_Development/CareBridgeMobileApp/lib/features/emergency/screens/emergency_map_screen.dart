@@ -70,7 +70,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể gửi báo động: $e'), backgroundColor: _error),
+          SnackBar(
+            content: Text('Không thể gửi báo động: $e'),
+            backgroundColor: _error,
+          ),
         );
       }
     } finally {
@@ -85,7 +88,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
   Future<void> _openDirections() async {
     final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=$_facilityLat,$_facilityLng');
+      'https://www.google.com/maps/dir/?api=1&destination=$_facilityLat,$_facilityLng',
+    );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -136,9 +140,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
               ),
             ),
             const Expanded(
-              child: Text('Bản đồ khẩn cấp',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _primary)),
+              child: Text(
+                'Bản đồ khẩn cấp',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _primary,
+                ),
+              ),
             ),
             const SizedBox(width: 48, height: 48),
           ],
@@ -165,11 +175,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                 label: 'BV Nhi Đồng',
               ),
             ),
-            const Positioned(
-              top: 220,
-              right: 60,
-              child: _SecondaryMarker(),
-            ),
+            const Positioned(top: 220, right: 60, child: _SecondaryMarker()),
             const Align(
               alignment: Alignment.center,
               child: _UserLocationMarker(),
@@ -180,7 +186,11 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     );
   }
 
-  Widget _buildMarker({required IconData icon, required Color color, required String label}) {
+  Widget _buildMarker({
+    required IconData icon,
+    required Color color,
+    required String label,
+  }) {
     return Column(
       children: [
         Container(
@@ -188,15 +198,27 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: const [BoxShadow(color: Color(0x1F5A463F), blurRadius: 24, offset: Offset(0, 8))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F5A463F),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Icon(icon, color: Colors.white, size: 20),
         ),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(8)),
-          child: Text(label, style: const TextStyle(fontSize: 12, color: _onSurface)),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: _onSurface),
+          ),
         ),
       ],
     );
@@ -215,9 +237,19 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           elevation: 4,
         ),
         icon: _sendingAlert
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
             : const Icon(Icons.campaign, size: 20),
-        label: const Text('Báo động gia đình', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        label: const Text(
+          'Báo động gia đình',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -228,14 +260,27 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       decoration: const BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Color(0x145A463F), blurRadius: 30, offset: Offset(0, -8))],
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x145A463F),
+            blurRadius: 30,
+            offset: Offset(0, -8),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 48, height: 4, margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: _surfaceContainerHigh, borderRadius: BorderRadius.circular(99))),
+          Container(
+            width: 48,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: _surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -243,25 +288,63 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(_facilityName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+                    const Text(
+                      _facilityName,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: const [
-                        Icon(Icons.location_on, size: 16, color: _onSurfaceVariant),
+                        Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: _onSurfaceVariant,
+                        ),
                         SizedBox(width: 4),
-                        Text(_facilityAddress, style: TextStyle(fontSize: 14, color: _onSurfaceVariant)),
+                        Text(
+                          _facilityAddress,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: _errorContainer, borderRadius: BorderRadius.circular(99)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _errorContainer,
+                  borderRadius: BorderRadius.circular(99),
+                ),
                 child: Column(
                   children: const [
-                    Text('$_facilityEtaMin', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onErrorContainer, height: 1)),
-                    Text('phút', style: TextStyle(fontSize: 12, color: _onErrorContainer, height: 1.2)),
+                    Text(
+                      '$_facilityEtaMin',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _onErrorContainer,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      'phút',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _onErrorContainer,
+                        height: 1.2,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -272,22 +355,47 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: _surfaceContainer, borderRadius: BorderRadius.circular(6)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                  Icon(Icons.directions_car, size: 14, color: _onSurface),
-                  SizedBox(width: 4),
-                  Text('$_facilityDistanceKm km', style: TextStyle(fontSize: 12, color: _onSurface)),
-                ]),
+                decoration: BoxDecoration(
+                  color: _surfaceContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.directions_car, size: 14, color: _onSurface),
+                    SizedBox(width: 4),
+                    Text(
+                      '$_facilityDistanceKm km',
+                      style: TextStyle(fontSize: 12, color: _onSurface),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: _secondaryContainer, borderRadius: BorderRadius.circular(6)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                  Icon(Icons.check_circle, size: 14, color: _onSecondaryContainer),
-                  SizedBox(width: 4),
-                  Text('Mở cửa 24/7', style: TextStyle(fontSize: 12, color: _onSecondaryContainer)),
-                ]),
+                decoration: BoxDecoration(
+                  color: _secondaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: _onSecondaryContainer,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Mở cửa 24/7',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _onSecondaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -306,7 +414,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                       elevation: 0,
                     ),
                     icon: const Icon(Icons.call),
-                    label: const Text('Gọi điện', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Gọi điện',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
@@ -323,7 +434,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                       elevation: 2,
                     ),
                     icon: const Icon(Icons.directions),
-                    label: const Text('Chỉ đường', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Chỉ đường',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
@@ -347,7 +461,11 @@ class _SecondaryMarker extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFD6C2BD)),
       ),
-      child: const Icon(Icons.medical_services_outlined, color: Color(0xFF845143), size: 18),
+      child: const Icon(
+        Icons.medical_services_outlined,
+        color: Color(0xFF845143),
+        size: 18,
+      ),
     );
   }
 }
@@ -359,9 +477,12 @@ class _UserLocationMarker extends StatefulWidget {
   State<_UserLocationMarker> createState() => _UserLocationMarkerState();
 }
 
-class _UserLocationMarkerState extends State<_UserLocationMarker> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+class _UserLocationMarkerState extends State<_UserLocationMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  )..repeat();
 
   @override
   void dispose() {
@@ -379,7 +500,7 @@ class _UserLocationMarkerState extends State<_UserLocationMarker> with SingleTic
         children: [
           AnimatedBuilder(
             animation: _controller,
-            builder: (_, __) {
+            builder: (context, child) {
               final scale = 0.6 + (_controller.value * 0.6);
               return Opacity(
                 opacity: (1 - _controller.value).clamp(0.0, 1.0),
@@ -388,7 +509,10 @@ class _UserLocationMarkerState extends State<_UserLocationMarker> with SingleTic
                   child: Container(
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(color: const Color(0xFF845143).withValues(alpha: 0.2), shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF845143).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
               );

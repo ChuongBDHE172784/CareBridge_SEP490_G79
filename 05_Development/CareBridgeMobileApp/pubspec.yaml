@@ -41,7 +41,11 @@ dependencies:
   url_launcher: ^6.2.0
   firebase_core: ^3.8.0
   firebase_messaging: ^15.1.6
-  sensors_plus: ^6.1.2
+  sensors_plus:
+    git:
+      url: https://github.com/fluttercommunity/plus_plugins.git
+      path: packages/sensors_plus/sensors_plus
+      ref: 3e150ba7d6c3219e022572b565000eedd4bedfd5
 
 dev_dependencies:
   flutter_test:

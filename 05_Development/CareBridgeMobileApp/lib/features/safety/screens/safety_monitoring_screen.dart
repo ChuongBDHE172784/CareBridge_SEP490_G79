@@ -38,8 +38,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
   final _fallSensorService = FallDetectionSensorService.instance;
   SafetyConfig? _config;
   bool _loading = true;
-  // Local-only device permission toggle (no backend field / no sensor
-  // package wired yet) — represents whether motion-sensor access is granted.
+  // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
+  // streams; backend fall detection remains controlled by SafetyConfig.
   bool _imuSensorActive = false;
 
   @override
@@ -64,9 +64,19 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _config = const SafetyConfig(fallDetectionEnabled: false, sensitivityLevel: 'MEDIUM', emergencyAutoAlert: true));
+      if (mounted) {
+        setState(
+          () => _config = const SafetyConfig(
+            fallDetectionEnabled: false,
+            sensitivityLevel: 'MEDIUM',
+            emergencyAutoAlert: true,
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -97,7 +107,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
     } else {
       await _fallSensorService.stop();
     }
-    if (mounted) setState(() => _imuSensorActive = _fallSensorService.isRunning);
+    if (mounted) {
+      setState(() => _imuSensorActive = _fallSensorService.isRunning);
+    }
   }
 
   @override
@@ -107,7 +119,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       backgroundColor: _surface,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : RefreshIndicator(
                 color: _primaryContainer,
                 onRefresh: _load,
@@ -118,11 +132,22 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                     children: [
                       _buildTopBar(),
                       const SizedBox(height: 16),
-                      const Text('Giám sát an toàn',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface)),
+                      const Text(
+                        'Giám sát an toàn',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      const Text('Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
-                          style: TextStyle(fontSize: 14, color: _onSurfaceVariant)),
+                      const Text(
+                        'Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
                       const SizedBox(height: 24),
@@ -157,15 +182,32 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(color: _surfaceContainerHighest, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: _surfaceContainerHighest,
+              shape: BoxShape.circle,
+            ),
             child: const Center(
-              child: Text('N', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _primary)),
+              child: Text(
+                'N',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _primary,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text('CareBridge',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: _primary, letterSpacing: -0.5)),
+            child: Text(
+              'CareBridge',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+                letterSpacing: -0.5,
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: _primary),
@@ -181,9 +223,15 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(32),
         border: Border.all(color: _surfaceContainer),
-        boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -193,7 +241,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: _primaryContainer.withValues(alpha: 0.2), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: _primaryContainer.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.sensors, color: _primary),
               ),
               const SizedBox(width: 12),
@@ -201,13 +252,33 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Cảm biến IMU', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+                    const Text(
+                      'Cảm biến IMU',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
                     Row(
                       children: [
-                        Container(width: 8, height: 8, decoration: const BoxDecoration(color: _primary, shape: BoxShape.circle)),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: _primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                         const SizedBox(width: 4),
-                        Text(_imuSensorActive ? 'Đang hoạt động' : 'Đã tắt',
-                            style: const TextStyle(fontSize: 14, color: _primary, fontWeight: FontWeight.w500)),
+                        Text(
+                          _imuSensorActive ? 'Đang hoạt động' : 'Đã tắt',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: _primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -225,11 +296,16 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(children: [
-                const Icon(Icons.personal_injury_outlined, color: _tertiary),
-                const SizedBox(width: 8),
-                const Text('Phát hiện ngã (Fall Detection)', style: TextStyle(fontSize: 14, color: _onSurface)),
-              ]),
+              Row(
+                children: [
+                  const Icon(Icons.personal_injury_outlined, color: _tertiary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Phát hiện ngã (Fall Detection)',
+                    style: TextStyle(fontSize: 14, color: _onSurface),
+                  ),
+                ],
+              ),
               Switch(
                 value: fallDetectionEnabled,
                 activeThumbColor: Colors.white,
@@ -282,7 +358,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
         icon: Icons.warning,
         color: Color(0xFFE8A87C),
         title: 'Phát hiện chuyển động bất thường',
-        description: 'Hệ thống ghi nhận gia tốc tăng đột ngột. Vui lòng kiểm tra tình trạng bé.',
+        description:
+            'Hệ thống ghi nhận gia tốc tăng đột ngột. Vui lòng kiểm tra tình trạng bé.',
         time: '10:45 AM',
       ),
       _SafetyEventDisplay(
@@ -299,48 +376,90 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Lịch sử sự kiện', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+            const Text(
+              'Lịch sử sự kiện',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
+            ),
             TextButton(
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Tính năng đang được phát triển')),
               ),
-              child: const Text('Xem tất cả', style: TextStyle(color: _primary, fontWeight: FontWeight.w500)),
+              child: const Text(
+                'Xem tất cả',
+                style: TextStyle(color: _primary, fontWeight: FontWeight.w500),
+              ),
             ),
           ],
         ),
-        ...events.map((e) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(16),
-                border: Border(left: BorderSide(color: e.color, width: 4)),
-                boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(padding: const EdgeInsets.only(top: 2), child: Icon(e.icon, color: e.color, size: 20)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text(e.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface))),
-                            Text(e.time, style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
-                          ],
+        ...events.map(
+          (e) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(28),
+              border: Border(left: BorderSide(color: e.color, width: 4)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F5A463F),
+                  blurRadius: 20,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(e.icon, color: e.color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              e.title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: _onSurface,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            e.time,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        e.description,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: _onSurfaceVariant,
                         ),
-                        const SizedBox(height: 4),
-                        Text(e.description, style: const TextStyle(fontSize: 14, color: _onSurfaceVariant)),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -350,8 +469,14 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -361,8 +486,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Quyền truy cập thiết bị', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                Text('Bluetooth, Vị trí đã cấp quyền', style: TextStyle(fontSize: 12, color: _tertiary)),
+                Text(
+                  'Quyền truy cập thiết bị',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                Text(
+                  'Bluetooth, Vị trí đã cấp quyền',
+                  style: TextStyle(fontSize: 12, color: _tertiary),
+                ),
               ],
             ),
           ),
@@ -408,20 +543,30 @@ class _BentoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(28),
       child: Container(
         height: 120,
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: foreground, size: 32),
             const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center, style: TextStyle(color: foreground, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),

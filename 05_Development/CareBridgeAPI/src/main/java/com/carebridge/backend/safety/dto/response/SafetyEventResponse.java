@@ -18,4 +18,7 @@ public class SafetyEventResponse {
     private BigDecimal userLatitude;
     private BigDecimal userLongitude;
     private Instant detectedAt;
+    private String status;
+    private Instant resolvedAt;
+    private String notes;
 }

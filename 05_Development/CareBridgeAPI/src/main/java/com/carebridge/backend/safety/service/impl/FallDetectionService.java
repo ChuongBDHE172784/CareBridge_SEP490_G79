@@ -1,6 +1,7 @@
 package com.carebridge.backend.safety.service.impl;
 
 import com.carebridge.backend.safety.ImuSessionStatus;
+import com.carebridge.backend.safety.SafetyEventStatus;
 import com.carebridge.backend.safety.dto.response.ImuMonitoringSessionResponse;
 import com.carebridge.backend.safety.dto.response.SafetyEventResponse;
 import com.carebridge.backend.safety.entity.ImuMonitoringSession;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -109,6 +111,56 @@ public class FallDetectionService implements IFallDetectionService {
         return toEventResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<SafetyEventResponse> listSafetyEvents(UUID userId, org.springframework.data.domain.Pageable pageable) {
+        return safetyEventRepository.findByUserIdOrderByDetectedAtDesc(userId, pageable)
+                .stream()
+                .map(this::toEventResponse)
+                .toList();
+    }
+
+    @Override
+    public SafetyEventResponse confirmSafetyCheck(UUID userId, UUID eventId, String note) {
+        SafetyEvent event = findOwnedEvent(userId, eventId);
+        event.setStatus(SafetyEventStatus.CONFIRMED_SAFE);
+        event.setResolvedAt(Instant.now());
+        event.setNotes(note);
+        return toEventResponse(safetyEventRepository.save(event));
+    }
+
+    @Override
+    public SafetyEventResponse reportFalsePositive(UUID userId, UUID eventId, String note) {
+        SafetyEvent event = findOwnedEvent(userId, eventId);
+        event.setStatus(SafetyEventStatus.FALSE_POSITIVE);
+        event.setResolvedAt(Instant.now());
+        event.setNotes(note);
+        return toEventResponse(safetyEventRepository.save(event));
+    }
+
+    @Override
+    public void sendEmergencyAlert(UUID userId, UUID eventId) {
+        SafetyEvent event = findOwnedEvent(userId, eventId);
+        event.setStatus(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        event.setResolvedAt(Instant.now());
+        SafetyEvent saved = safetyEventRepository.save(event);
+        eventPublisher.publishEvent(new SuspectedFallDetected(
+                UUID.randomUUID(),
+                userId,
+                saved.getId(),
+                saved.getEventType().name(),
+                saved.getMagnitude().doubleValue(),
+                saved.getUserLatitude(),
+                saved.getUserLongitude(),
+                saved.getDetectedAt()));
+    }
+
+    private SafetyEvent findOwnedEvent(UUID userId, UUID eventId) {
+        return safetyEventRepository.findByIdAndUserId(eventId, userId)
+                .orElseThrow(() -> new SafetyException(HttpStatus.NOT_FOUND, "SAFETY-007",
+                        "Safety event not found"));
+    }
+
     private ImuMonitoringSessionResponse toSessionResponse(ImuMonitoringSession session) {
         return ImuMonitoringSessionResponse.builder()
                 .sessionId(session.getId())
@@ -129,6 +181,9 @@ public class FallDetectionService implements IFallDetectionService {
                 .userLatitude(event.getUserLatitude())
                 .userLongitude(event.getUserLongitude())
                 .detectedAt(event.getDetectedAt())
+                .status(event.getStatus().name())
+                .resolvedAt(event.getResolvedAt())
+                .notes(event.getNotes())
                 .build();
     }
 }
