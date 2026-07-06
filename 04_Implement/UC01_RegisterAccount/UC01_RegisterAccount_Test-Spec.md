@@ -23,9 +23,9 @@
 
 ## CHANGELOG
 
-| Ngày      | Người thực hiện | Nội dung thay đổi                           |
-| ---------- | ------------------- | ---------------------------------------------- |
-| 2026-06-26 | AI Agent            | Khởi tạo TDD spec cho UC-01 Register Account |
+| Ngày       | Người thực hiện | Nội dung thay đổi                            |
+| ---------- | --------------- | -------------------------------------------- |
+| 2026-06-26 | AI Agent        | Khởi tạo TDD spec cho UC-01 Register Account |
 
 ---
 
@@ -44,14 +44,14 @@
 
 ## 1. Thông tin Module
 
-| Field                           | Value                             |
-| ------------------------------- | --------------------------------- |
+| Field                     | Value                           |
+| ------------------------- | ------------------------------- |
 | **Feature / Gap ID**      | `UC-01`                         |
-| **Module**                | `RegisterAccount — auth`       |
-| **Spec gốc**             | `CB-AUTH-IMP-001`               |
-| **Priority**              | 🔴 P0                             |
-| **Sprint**                | `S1 (2026-06-26 → 2026-07-10)` |
-| **Milestone**             | `M1 Alpha — Auth Module`       |
+| **Module**                | `RegisterAccount — auth`        |
+| **Spec gốc**              | `CB-AUTH-IMP-001`               |
+| **Priority**              | 🔴 P0                            |
+| **Sprint**                | `S1 (2026-06-26 → 2026-07-10)`  |
+| **Milestone**             | `M1 Alpha — Auth Module`        |
 | **Data Classification**   | `Sensitive-PII`                 |
 | **Compliance Scope**      | `BR-RBAC, BR-PRIVACY, PDPA`     |
 | **Upstream Dependencies** | `Firebase FCM, Gmail SMTP`      |
@@ -59,23 +59,23 @@
 
 ### 1.1 AI Generation Context (CASE 2.0)
 
-| Field                          | Value                                                        |
-| ------------------------------ | ------------------------------------------------------------ |
-| **AI Assisted?**         | `Yes`                                                      |
-| **Constraint Source**    | `CB-AUTH-IMP-001 §17`, `ADR-AUTH-001`, `ADR-AUTH-002` |
+| Field                    | Value                                                        |
+| ------------------------ | ------------------------------------------------------------ |
+| **AI Assisted?**         | `Yes`                                                        |
+| **Constraint Source**    | `CB-AUTH-IMP-001 §17`, `ADR-AUTH-001`, `ADR-AUTH-002`        |
 | **Constraints Injected** | BCrypt-only, no-password-log, role-whitelist, OTP-after-save |
-| **Model**                | `claude-sonnet-4-6`                                        |
-| **Trust Level**          | `T2 → T3 (pending Red Gate)`                              |
+| **Model**                | `claude-sonnet-4-6`                                          |
+| **Trust Level**          | `T2 → T3 (pending Red Gate)`                                 |
 
 ---
 
 ## 2. Logic Issues Resolved
 
-| #  | Spec gốc (sai / thiếu)                                         | Thực tế (schema / policy)                               | Fix áp dụng trong test                                          |
-| -- | ---------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
-| L1 | Spec không rõ thứ tự: lưu user trước hay gửi OTP trước | Policy: lưu user trong transaction, gửi OTP sau commit  | Test verify OTP chỉ gửi khi user đã được lưu thành công |
-| L2 | Spec chỉ nói "validate email unique"                           | Cần validate cả phone_number unique                     | Test case riêng cho duplicate phone                              |
-| L3 | Không rõ xử lý khi Firebase down                             | Policy: throw AUTH-004 503, không rollback user creation | Test mock Firebase failure → 503 response                        |
+| #   | Spec gốc (sai / thiếu)                                 | Thực tế (schema / policy)                                | Fix áp dụng trong test                                  |
+| --- | ------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------- |
+| L1  | Spec không rõ thứ tự: lưu user trước hay gửi OTP trước | Policy: lưu user trong transaction, gửi OTP sau commit   | Test verify OTP chỉ gửi khi user đã được lưu thành công |
+| L2  | Spec chỉ nói "validate email unique"                   | Cần validate cả phone_number unique                      | Test case riêng cho duplicate phone                     |
+| L3  | Không rõ xử lý khi Firebase down                       | Policy: throw AUTH-004 503, không rollback user creation | Test mock Firebase failure → 503 response               |
 
 ---
 
@@ -93,44 +93,44 @@ RegisterAccount bao gồm các layer:
 
 ### TDS-02 — Test Basis / Cơ sở Kiểm thử
 
-| Source             | Items Derived                                                    |
-| ------------------ | ---------------------------------------------------------------- |
+| Source           | Items Derived                                                    |
+| ---------------- | ---------------------------------------------------------------- |
 | `SRS UC-01`      | Email unique, phone VN format, password strength, role whitelist |
-| `ADR-AUTH-001`   | Role chỉ là MOTHER/EXPERT                                      |
+| `ADR-AUTH-001`   | Role chỉ là MOTHER/EXPERT                                        |
 | `ADR-AUTH-002`   | BCrypt password hashing                                          |
-| `ADR-AUTH-003`   | OTP gửi qua Firebase + Email                                    |
+| `ADR-AUTH-003`   | OTP gửi qua Firebase + Email                                     |
 | `BR-AUTH-001`    | Email uniqueness constraint                                      |
-| `BR-AUTH-003`    | Password ≥ 8 chars, uppercase + digit + special                 |
-| `BR-PRIVACY-001` | Không log password                                              |
+| `BR-AUTH-003`    | Password ≥ 8 chars, uppercase + digit + special                  |
+| `BR-PRIVACY-001` | Không log password                                               |
 
 ### TDS-03 — Test Conditions and Coverage Items
 
-| Condition ID | Test Condition                                      | Coverage Item                         | Test Cases          |
-| ------------ | --------------------------------------------------- | ------------------------------------- | ------------------- |
+| Condition ID | Test Condition                               | Coverage Item                       | Test Cases        |
+| ------------ | -------------------------------------------- | ----------------------------------- | ----------------- |
 | TC-COND-001  | Email hợp lệ, duy nhất → tạo user thành công | `AuthService.register()`            | `AUTH-TC-001`     |
-| TC-COND-002  | Email đã tồn tại → 409                         | `AuthService.validateEmailUnique()` | `AUTH-TC-002`     |
-| TC-COND-003  | Phone đã tồn tại → 409                         | `AuthService.validatePhoneUnique()` | `AUTH-TC-003`     |
-| TC-COND-004  | Password yếu → 400                                | `@Pattern` trên DTO                | `AUTH-TC-004`     |
-| TC-COND-005  | Role không hợp lệ (ADMIN) → 400                 | `@Pattern` trên DTO                | `AUTH-TC-005`     |
-| TC-COND-006  | Email sai format → 400                             | `@Email` trên DTO                  | `AUTH-TC-006`     |
-| TC-COND-007  | Phone sai định dạng VN → 400                    | `@VietnamesePhoneNumber`            | `AUTH-TC-007`     |
-| TC-COND-008  | OTP được tạo sau khi register                   | `OtpService.generateAndSend()`      | `AUTH-TC-008`     |
-| TC-COND-009  | SQL Injection qua email → 400                      | DTO validation layer                  | `AUTH-TC-009`     |
-| TC-COND-010  | Integration: user + OTP trong DB                    | Full flow                             | `AUTH-TC-INT-001` |
+| TC-COND-002  | Email đã tồn tại → 409                       | `AuthService.validateEmailUnique()` | `AUTH-TC-002`     |
+| TC-COND-003  | Phone đã tồn tại → 409                       | `AuthService.validatePhoneUnique()` | `AUTH-TC-003`     |
+| TC-COND-004  | Password yếu → 400                           | `@Pattern` trên DTO                 | `AUTH-TC-004`     |
+| TC-COND-005  | Role không hợp lệ (ADMIN) → 400              | `@Pattern` trên DTO                 | `AUTH-TC-005`     |
+| TC-COND-006  | Email sai format → 400                       | `@Email` trên DTO                   | `AUTH-TC-006`     |
+| TC-COND-007  | Phone sai định dạng VN → 400                 | `@VietnamesePhoneNumber`            | `AUTH-TC-007`     |
+| TC-COND-008  | OTP được tạo sau khi register                | `OtpService.generateAndSend()`      | `AUTH-TC-008`     |
+| TC-COND-009  | SQL Injection qua email → 400                | DTO validation layer                | `AUTH-TC-009`     |
+| TC-COND-010  | Integration: user + OTP trong DB             | Full flow                           | `AUTH-TC-INT-001` |
 
 ### TDS-04 — Test Techniques
 
-| Technique (ISO 29119-4)  | Applied To                                 | Rationale                                  |
-| ------------------------ | ------------------------------------------ | ------------------------------------------ |
+| Technique (ISO 29119-4)  | Applied To                                 | Rationale                           |
+| ------------------------ | ------------------------------------------ | ----------------------------------- |
 | Equivalence Partitioning | email format, password strength, role enum | Phân nhóm input hợp lệ/không hợp lệ |
-| Boundary Value Analysis  | password length (7, 8, 9 chars)            | Kiểm tra ranh giới min length            |
-| State Transition Testing | AccountStatus: UNVERIFIED → ACTIVE        | Xác minh trạng thái sau register        |
-| Error Guessing           | SQL injection, empty fields, null values   | Security attack vectors                    |
+| Boundary Value Analysis  | password length (7, 8, 9 chars)            | Kiểm tra ranh giới min length       |
+| State Transition Testing | AccountStatus: UNVERIFIED → ACTIVE         | Xác minh trạng thái sau register    |
+| Error Guessing           | SQL injection, empty fields, null values   | Security attack vectors             |
 
 ### TDS-05 — Test Data Requirements
 
-| Fixture ID     | Type    | Value / Logic                                                                       | Mục đích                          |
-| -------------- | ------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
+| Fixture ID   | Type    | Value / Logic                                                                     | Mục đích                             |
+| ------------ | ------- | --------------------------------------------------------------------------------- | ------------------------------------ |
 | `FX-REG-001` | DB seed | `{email: "existing@test.com", status: "ACTIVE"}`                                  | Test duplicate email                 |
 | `FX-REG-002` | DB seed | `{phoneNumber: "0912000001", status: "ACTIVE"}`                                   | Test duplicate phone                 |
 | `FX-REG-003` | Input   | `{email:"new@test.com", password:"Test@1234", phone:"0912345678", role:"MOTHER"}` | Happy path input                     |
@@ -469,18 +469,18 @@ assertThat(otps.get(0).getExpiresAt())
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID               | Test File                               | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
-| ------------------- | --------------------------------------- | ---------------- | ----------------- | ---------------- |
-| `AUTH-TC-001`     | `AuthServiceTest.java`                | `[ ]`          | `—`            | —               |
-| `AUTH-TC-002`     | `AuthServiceTest.java`                | `[ ]`          | `—`            | —               |
-| `AUTH-TC-003`     | `AuthServiceTest.java`                | `[ ]`          | `—`            | —               |
-| `AUTH-TC-004`     | `AuthControllerTest.java`             | `[ ]`          | `—`            | —               |
-| `AUTH-TC-005`     | `AuthControllerTest.java`             | `[ ]`          | `—`            | —               |
-| `AUTH-TC-006`     | `AuthControllerTest.java`             | `[ ]`          | `—`            | —               |
-| `AUTH-TC-007`     | `AuthControllerTest.java`             | `[ ]`          | `—`            | —               |
-| `AUTH-TC-008`     | `AuthServiceTest.java`                | `[ ]`          | `—`            | —               |
-| `AUTH-TC-009`     | `AuthControllerSecurityTest.java`     | `[ ]`          | `—`            | —               |
-| `AUTH-TC-INT-001` | `RegisterAccountIntegrationTest.java` | `[ ]`          | `—`            | —               |
+| TC ID             | Test File                             | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
+| ----------------- | ------------------------------------- | --------------- | ---------------- | --------------- |
+| `AUTH-TC-001`     | `AuthServiceTest.java`                | `[ ]`           | `—`              | —               |
+| `AUTH-TC-002`     | `AuthServiceTest.java`                | `[ ]`           | `—`              | —               |
+| `AUTH-TC-003`     | `AuthServiceTest.java`                | `[ ]`           | `—`              | —               |
+| `AUTH-TC-004`     | `AuthControllerTest.java`             | `[ ]`           | `—`              | —               |
+| `AUTH-TC-005`     | `AuthControllerTest.java`             | `[ ]`           | `—`              | —               |
+| `AUTH-TC-006`     | `AuthControllerTest.java`             | `[ ]`           | `—`              | —               |
+| `AUTH-TC-007`     | `AuthControllerTest.java`             | `[ ]`           | `—`              | —               |
+| `AUTH-TC-008`     | `AuthServiceTest.java`                | `[ ]`           | `—`              | —               |
+| `AUTH-TC-009`     | `AuthControllerSecurityTest.java`     | `[ ]`           | `—`              | —               |
+| `AUTH-TC-INT-001` | `RegisterAccountIntegrationTest.java` | `[ ]`           | `—`              | —               |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -499,11 +499,11 @@ public class AuthService implements IAuthService {
 
 **Red Gate Verification:**
 
-| TC ID               | Stub Result                         | Expected | Actual          | Root Cause (nếu PASS bất thường) |
-| ------------------- | ----------------------------------- | -------- | --------------- | ------------------------------------ |
-| `AUTH-TC-001`     | throw UnsupportedOperationException | 🔴 FAIL  | ☐ FAIL ☐ PASS | —                                   |
-| `AUTH-TC-004`     | N/A (DTO validation)                | 🔴 FAIL  | ☐ FAIL ☐ PASS | —                                   |
-| `AUTH-TC-INT-001` | throw                               | 🔴 FAIL  | ☐ FAIL ☐ PASS | —                                   |
+| TC ID             | Stub Result                         | Expected | Actual        | Root Cause (nếu PASS bất thường) |
+| ----------------- | ----------------------------------- | -------- | ------------- | -------------------------------- |
+| `AUTH-TC-001`     | throw UnsupportedOperationException | 🔴 FAIL   | ☐ FAIL ☐ PASS | —                                |
+| `AUTH-TC-004`     | N/A (DTO validation)                | 🔴 FAIL   | ☐ FAIL ☐ PASS | —                                |
+| `AUTH-TC-INT-001` | throw                               | 🔴 FAIL   | ☐ FAIL ☐ PASS | —                                |
 
 ---
 
@@ -554,13 +554,13 @@ git checkout -- src/main/resources/db/migration/V1__*.sql
 
 ## 8. CASE 2.0 Anti-Pattern Detection
 
-| AP-ID     | Anti-Pattern             | Dấu hiệu trong TDD spec                             | Check | Gate chặn |
-| --------- | ------------------------ | ----------------------------------------------------- | ----- | ---------- |
-| AP-AI-001 | Unconstrained Generation | TC không reference ADR-AUTH-001/002                  | ☐    | G-0        |
-| AP-AI-002 | Green-from-Birth         | Test PASS với stub throw                             | ☐    | G-2 ★     |
-| AP-AI-003 | Implicit Decision        | Test assume role ADMIN được phép đăng ký       | ☐    | G-1        |
-| AP-AI-004 | Layer Violation          | Test verify AuthController có password hashing logic | ☐    | G-4        |
-| AP-AI-005 | Hallucinated Contract    | Test import`AuthFacade` không có trong §8 TDS    | ☐    | G-3        |
+| AP-ID     | Anti-Pattern             | Dấu hiệu trong TDD spec                              | Check | Gate chặn |
+| --------- | ------------------------ | ---------------------------------------------------- | ----- | --------- |
+| AP-AI-001 | Unconstrained Generation | TC không reference ADR-AUTH-001/002                  | ☐     | G-0       |
+| AP-AI-002 | Green-from-Birth         | Test PASS với stub throw                             | ☐     | G-2 ★     |
+| AP-AI-003 | Implicit Decision        | Test assume role ADMIN được phép đăng ký             | ☐     | G-1       |
+| AP-AI-004 | Layer Violation          | Test verify AuthController có password hashing logic | ☐     | G-4       |
+| AP-AI-005 | Hallucinated Contract    | Test import`AuthFacade` không có trong §8 TDS        | ☐     | G-3       |
 
 **Kết quả review:**
 

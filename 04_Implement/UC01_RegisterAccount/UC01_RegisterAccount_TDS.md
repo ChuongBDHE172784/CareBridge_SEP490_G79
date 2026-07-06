@@ -1,27 +1,27 @@
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
 # Technical Design Specification — UC-01 Register Account
 
-| Field | Value |
-|-------|-------|
-| **Document ID** | `CB-AUTH-IMP-001` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
-| **Status** | `Approved` |
-| **Document Owner** | `PhuongNT` |
-| **Author** | `AI Agent` |
-| **Reviewed by** | `[Tech Lead]` |
-| **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
-| **Last Review** | `2026-06-26` |
-| **Based on EDS** | `v2.0` |
+| Field              | Value                   |
+| ------------------ | ----------------------- |
+| **Document ID**    | `CB-AUTH-IMP-001`       |
+| **Version**        | `1.0`                   |
+| **Date**           | `2026-06-26`            |
+| **Status**         | `Approved`              |
+| **Document Owner** | `PhuongNT`              |
+| **Author**         | `AI Agent`              |
+| **Reviewed by**    | `[Tech Lead]`           |
+| **DPO Sign-off**   | `[ ] Pending`           |
+| **Approved by**    | `[Principal Architect]` |
+| **Last Review**    | `2026-06-26`            |
+| **Based on EDS**   | `v2.0`                  |
 
 ---
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
-|------|-----------------|-------------------|
-| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-01 Register Account |
+| Ngày       | Người thực hiện | Nội dung thay đổi                               |
+| ---------- | --------------- | ----------------------------------------------- |
+| 2026-06-26 | AI Agent        | Tạo tài liệu lần đầu cho UC-01 Register Account |
 
 ---
 
@@ -49,18 +49,18 @@
 
 ## 1. Tổng quan Module
 
-| Field | Value |
-|-------|-------|
-| **Module Name** | `RegisterAccount` |
-| **Bounded Context** | `auth` |
-| **UC ID** | `UC-01` |
-| **SRS Reference** | `3.1.1.1` |
-| **Primary Actor** | `Guest (ROLE_GUEST — unauthenticated)` |
-| **Platform** | `Web App + Mobile App` |
-| **Data Classification** | `Sensitive-PII` |
-| **Compliance Scope** | `BR-RBAC, BR-PRIVACY, PDPA` |
+| Field                     | Value                                                       |
+| ------------------------- | ----------------------------------------------------------- |
+| **Module Name**           | `RegisterAccount`                                           |
+| **Bounded Context**       | `auth`                                                      |
+| **UC ID**                 | `UC-01`                                                     |
+| **SRS Reference**         | `3.1.1.1`                                                   |
+| **Primary Actor**         | `Guest (ROLE_GUEST — unauthenticated)`                      |
+| **Platform**              | `Web App + Mobile App`                                      |
+| **Data Classification**   | `Sensitive-PII`                                             |
+| **Compliance Scope**      | `BR-RBAC, BR-PRIVACY, PDPA`                                 |
 | **Upstream Dependencies** | `Firebase Cloud Messaging (OTP), Email SMTP (OTP delivery)` |
-| **Downstream Consumers** | `auth (VerifyOTP), audit (SecurityEventLog), notification` |
+| **Downstream Consumers**  | `auth (VerifyOTP), audit (SecurityEventLog), notification`  |
 
 **Mô tả:** Cho phép khách (GUEST) đăng ký tài khoản mới với email, mật khẩu, số điện thoại, và vai trò mong muốn (MOTHER hoặc EXPERT). Hệ thống tạo tài khoản ở trạng thái `UNVERIFIED` và gửi OTP qua Firebase/email để xác thực. Tài khoản chỉ được kích hoạt sau khi hoàn thành UC-02 Verify OTP.
 
@@ -68,16 +68,16 @@
 
 ## 2. Ma trận Truy vết (Traceability Matrix)
 
-| Requirement ID | Loại | Mô tả yêu cầu | Thành phần Code | Compliance Target | ADR liên quan |
-|----------------|------|---------------|-----------------|-------------------|---------------|
-| UC-01 | Use Case | Guest đăng ký tài khoản | `AuthController.register()` | BR-RBAC | ADR-AUTH-001 |
-| BR-AUTH-001 | Business Rule | Email phải duy nhất trong hệ thống | `AuthService.validateEmailUnique()` | Data Integrity | ADR-AUTH-001 |
-| BR-AUTH-002 | Business Rule | Số điện thoại phải đúng định dạng Việt Nam | `@VietnamesePhoneNumber` trên DTO | Data Integrity | — |
-| BR-AUTH-003 | Business Rule | Mật khẩu ≥ 8 ký tự, có chữ hoa + số + ký tự đặc biệt | `PasswordValidator.validate()` | Security | ADR-AUTH-002 |
-| BR-AUTH-004 | Business Rule | Vai trò chỉ được là MOTHER hoặc EXPERT | `@ValidRole` annotation trên DTO | BR-RBAC | ADR-AUTH-001 |
-| BR-AUTH-005 | Business Rule | Mật khẩu phải được hash trước khi lưu | `BCryptPasswordEncoder.encode()` | Security / PDPA | ADR-AUTH-002 |
-| BR-AUTH-006 | Business Rule | Gửi OTP ngay sau khi tạo tài khoản | `OtpService.generateAndSend()` | — | ADR-AUTH-003 |
-| BR-PRIVACY-001 | Business Rule | Không ghi password plain-text vào log | `@JsonIgnore` trên field password | PDPA | ADR-AUTH-002 |
+| Requirement ID | Loại          | Mô tả yêu cầu                                        | Thành phần Code                     | Compliance Target | ADR liên quan |
+| -------------- | ------------- | ---------------------------------------------------- | ----------------------------------- | ----------------- | ------------- |
+| UC-01          | Use Case      | Guest đăng ký tài khoản                              | `AuthController.register()`         | BR-RBAC           | ADR-AUTH-001  |
+| BR-AUTH-001    | Business Rule | Email phải duy nhất trong hệ thống                   | `AuthService.validateEmailUnique()` | Data Integrity    | ADR-AUTH-001  |
+| BR-AUTH-002    | Business Rule | Số điện thoại phải đúng định dạng Việt Nam           | `@VietnamesePhoneNumber` trên DTO   | Data Integrity    | —             |
+| BR-AUTH-003    | Business Rule | Mật khẩu ≥ 8 ký tự, có chữ hoa + số + ký tự đặc biệt | `PasswordValidator.validate()`      | Security          | ADR-AUTH-002  |
+| BR-AUTH-004    | Business Rule | Vai trò chỉ được là MOTHER hoặc EXPERT               | `@ValidRole` annotation trên DTO    | BR-RBAC           | ADR-AUTH-001  |
+| BR-AUTH-005    | Business Rule | Mật khẩu phải được hash trước khi lưu                | `BCryptPasswordEncoder.encode()`    | Security / PDPA   | ADR-AUTH-002  |
+| BR-AUTH-006    | Business Rule | Gửi OTP ngay sau khi tạo tài khoản                   | `OtpService.generateAndSend()`      | —                 | ADR-AUTH-003  |
+| BR-PRIVACY-001 | Business Rule | Không ghi password plain-text vào log                | `@JsonIgnore` trên field password   | PDPA              | ADR-AUTH-002  |
 
 ---
 
@@ -85,22 +85,22 @@
 
 ### ADR-AUTH-001 — Vai trò đăng ký được giới hạn ở MOTHER và EXPERT
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `PhuongNT — Backend Lead` |
-| **Date** | `2026-06-26` |
-| **Supersedes** | `—` |
+| Field          | Value                     |
+| -------------- | ------------------------- |
+| **Status**     | `Accepted`                |
+| **Deciders**   | `PhuongNT — Backend Lead` |
+| **Date**       | `2026-06-26`              |
+| **Supersedes** | `—`                       |
 
 #### Bối cảnh (Context)
 CareBridge là nền tảng y tế thai sản. Tài khoản ADMIN và SYSTEM không được phép tự đăng ký mà phải được cấp bởi quản trị viên nội bộ. Việc cho phép đăng ký tùy ý có thể tạo ra lỗ hổng leo thang quyền.
 
 #### Các phương án đã xem xét (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
-|-----------|-------|----------|------------|
-| A | Chỉ cho phép đăng ký MOTHER và EXPERT | + Kiểm soát bảo mật chặt chẽ | - Cần flow riêng cho ADMIN |
-| B | Cho phép đăng ký tất cả vai trò | + Đơn giản hóa | - Rủi ro leo thang quyền |
+| Phương án | Mô tả                                 | Ưu điểm                      | Nhược điểm                 |
+| --------- | ------------------------------------- | ---------------------------- | -------------------------- |
+| A         | Chỉ cho phép đăng ký MOTHER và EXPERT | + Kiểm soát bảo mật chặt chẽ | - Cần flow riêng cho ADMIN |
+| B         | Cho phép đăng ký tất cả vai trò       | + Đơn giản hóa               | - Rủi ro leo thang quyền   |
 
 #### Quyết định (Decision)
 Chọn **Phương án A**: Endpoint đăng ký chỉ chấp nhận `role ∈ {MOTHER, EXPERT}`. Validation thực hiện ở tầng DTO bằng `@Pattern` hoặc enum constraint.
@@ -121,22 +121,22 @@ Chọn **Phương án A**: Endpoint đăng ký chỉ chấp nhận `role ∈ {MO
 
 ### ADR-AUTH-002 — BCrypt cho password hashing, không dùng MD5/SHA1
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `PhuongNT — Backend Lead` |
-| **Date** | `2026-06-26` |
-| **Supersedes** | `—` |
+| Field          | Value                     |
+| -------------- | ------------------------- |
+| **Status**     | `Accepted`                |
+| **Deciders**   | `PhuongNT — Backend Lead` |
+| **Date**       | `2026-06-26`              |
+| **Supersedes** | `—`                       |
 
 #### Bối cảnh (Context)
 Mật khẩu người dùng là PII nhạy cảm. MD5 và SHA1 đã bị crack. BCrypt có cost factor điều chỉnh được, phù hợp tiêu chuẩn OWASP.
 
 #### Các phương án đã xem xét (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
-|-----------|-------|----------|------------|
-| A | BCrypt (cost=12) | + OWASP recommended, slow-by-design | - Tốn CPU hơn plain hash |
-| B | SHA-256 + salt | + Nhanh hơn | - Susceptible to GPU brute force |
+| Phương án | Mô tả            | Ưu điểm                             | Nhược điểm                       |
+| --------- | ---------------- | ----------------------------------- | -------------------------------- |
+| A         | BCrypt (cost=12) | + OWASP recommended, slow-by-design | - Tốn CPU hơn plain hash         |
+| B         | SHA-256 + salt   | + Nhanh hơn                         | - Susceptible to GPU brute force |
 
 #### Quyết định (Decision)
 Chọn **Phương án A** — `BCryptPasswordEncoder(12)` qua Spring Security.
@@ -157,22 +157,22 @@ Chọn **Phương án A** — `BCryptPasswordEncoder(12)` qua Spring Security.
 
 ### ADR-AUTH-003 — OTP gửi qua Firebase Cloud Messaging + Email SMTP
 
-| Field | Value |
-|-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `PhuongNT — Backend Lead` |
-| **Date** | `2026-06-26` |
-| **Supersedes** | `—` |
+| Field          | Value                     |
+| -------------- | ------------------------- |
+| **Status**     | `Accepted`                |
+| **Deciders**   | `PhuongNT — Backend Lead` |
+| **Date**       | `2026-06-26`              |
+| **Supersedes** | `—`                       |
 
 #### Bối cảnh (Context)
 Hệ thống cần xác minh tài khoản ngay sau khi đăng ký. OTP cần được gửi đến người dùng qua kênh đáng tin cậy.
 
 #### Các phương án đã xem xét (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
-|-----------|-------|----------|------------|
-| A | Firebase (SMS/Push) + Email SMTP | + Đa kênh, đã có trong stack | - Phụ thuộc Firebase availability |
-| B | SMS-only qua Twilio | + Đơn giản hơn | - Chi phí cao, không có sẵn |
+| Phương án | Mô tả                            | Ưu điểm                      | Nhược điểm                        |
+| --------- | -------------------------------- | ---------------------------- | --------------------------------- |
+| A         | Firebase (SMS/Push) + Email SMTP | + Đa kênh, đã có trong stack | - Phụ thuộc Firebase availability |
+| B         | SMS-only qua Twilio              | + Đơn giản hơn               | - Chi phí cao, không có sẵn       |
 
 #### Quyết định (Decision)
 Chọn **Phương án A**: OTP gửi qua Firebase FCM (mobile) và Gmail SMTP (email).
@@ -192,27 +192,27 @@ Chọn **Phương án A**: OTP gửi qua Firebase FCM (mobile) và Gmail SMTP (e
 
 ### 4.1. Performance & Availability
 
-| Category | Requirement | Target SLA | Measurement Method | Compliance Basis |
-|----------|-------------|------------|---------------------|------------------|
-| Latency | API response (p99) | `< 300ms` (không tính BCrypt) | k6 load test | — |
-| Availability | Uptime (monthly) | `99.9%` | Uptime monitor | — |
-| Throughput | Concurrent registrations | `100 req/s` | Load test | — |
+| Category     | Requirement              | Target SLA                    | Measurement Method | Compliance Basis |
+| ------------ | ------------------------ | ----------------------------- | ------------------ | ---------------- |
+| Latency      | API response (p99)       | `< 300ms` (không tính BCrypt) | k6 load test       | —                |
+| Availability | Uptime (monthly)         | `99.9%`                       | Uptime monitor     | —                |
+| Throughput   | Concurrent registrations | `100 req/s`                   | Load test          | —                |
 
 ### 4.2. Data Integrity & Retention
 
-| Category | Requirement | Target | Verification Method | Compliance Basis |
-|----------|-------------|--------|---------------------|------------------|
-| Uniqueness | Email unique | 100% | DB UNIQUE constraint | Data Integrity |
-| Retention | Audit log retention | 7 năm | DB backup policy | PDPA |
-| OTP Expiry | OTP hết hạn sau 10 phút | 100% | Unit test | BR-AUTH-006 |
+| Category   | Requirement             | Target | Verification Method  | Compliance Basis |
+| ---------- | ----------------------- | ------ | -------------------- | ---------------- |
+| Uniqueness | Email unique            | 100%   | DB UNIQUE constraint | Data Integrity   |
+| Retention  | Audit log retention     | 7 năm  | DB backup policy     | PDPA             |
+| OTP Expiry | OTP hết hạn sau 10 phút | 100%   | Unit test            | BR-AUTH-006      |
 
 ### 4.3. Security
 
-| Category | Requirement | Target | Verification Method | Compliance Basis |
-|----------|-------------|--------|---------------------|------------------|
-| Password | BCrypt cost ≥ 12 | 100% | Code review | OWASP ASVS |
-| Encryption in transit | TLS 1.3+ | 100% | SSL Labs scan | PDPA |
-| Password in log | Không xuất hiện | 0 instance | Log scan | PDPA |
+| Category              | Requirement      | Target     | Verification Method | Compliance Basis |
+| --------------------- | ---------------- | ---------- | ------------------- | ---------------- |
+| Password              | BCrypt cost ≥ 12 | 100%       | Code review         | OWASP ASVS       |
+| Encryption in transit | TLS 1.3+         | 100%       | SSL Labs scan       | PDPA             |
+| Password in log       | Không xuất hiện  | 0 instance | Log scan            | PDPA             |
 
 ### 4.4. Scalability & Capacity Planning
 
@@ -479,16 +479,16 @@ end note
 
 ### 7.1. Events Published (Phát ra)
 
-| Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
-|------------|---------|-----------|---------------|----------------|--------|
-| `AccountRegistered` | User save thành công | `AuthService` | `AuditService, NotificationService` | Xem §7.3 | Yes |
-| `OtpSent` | OTP gửi thành công | `OtpService` | `AuditService` | `{userId, channel, sentAt}` | Yes |
+| Event Name          | Trigger              | Publisher     | Subscriber(s)                       | Payload Schema              | Async? |
+| ------------------- | -------------------- | ------------- | ----------------------------------- | --------------------------- | ------ |
+| `AccountRegistered` | User save thành công | `AuthService` | `AuditService, NotificationService` | Xem §7.3                    | Yes    |
+| `OtpSent`           | OTP gửi thành công   | `OtpService`  | `AuditService`                      | `{userId, channel, sentAt}` | Yes    |
 
 ### 7.2. Events Consumed (Tiêu thụ)
 
-| Event Name | Source | Handler | Action thực hiện |
-|------------|--------|---------|------------------|
-| *(không có)* | — | — | — |
+| Event Name   | Source | Handler | Action thực hiện |
+| ------------ | ------ | ------- | ---------------- |
+| *(không có)* | —      | —       | —                |
 
 ### 7.3. Payload Schema
 
@@ -617,9 +617,9 @@ public record RegisterResponseDTO(
 
 ### 9.1. Endpoints Table
 
-| Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
-|--------|------|------------|----------------|------------|-------------|
-| `POST` | `/api/v1/auth/register` | None | `ROLE_GUEST` (public) | 10/min per IP | No |
+| Method | Path                    | Auth Level | Required Roles        | Rate Limit    | Idempotent? |
+| ------ | ----------------------- | ---------- | --------------------- | ------------- | ----------- |
+| `POST` | `/api/v1/auth/register` | None       | `ROLE_GUEST` (public) | 10/min per IP | No          |
 
 ### 9.2. Request / Response Schemas
 
@@ -677,13 +677,13 @@ public record RegisterResponseDTO(
 
 ## 10. Bảng mã lỗi (Error Codes)
 
-| Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
-|------|-------------|--------------|--------------|-------------------|
-| `AUTH-001` | 400 | Validation failed | Dữ liệu đầu vào không hợp lệ | Email sai format, password yếu, phone sai, role không hợp lệ |
-| `AUTH-002` | 409 | Email already registered | Email đã được đăng ký | Email tồn tại trong DB |
-| `AUTH-003` | 409 | Phone number already registered | Số điện thoại đã được đăng ký | Phone tồn tại trong DB |
-| `AUTH-004` | 503 | OTP service unavailable | Không thể gửi OTP | Firebase/SMTP lỗi |
-| `AUTH-005` | 500 | Internal server error | Lỗi hệ thống nội bộ | Lỗi không xác định |
+| Code       | HTTP Status | Message (EN)                    | Message (VI)                  | Trigger Condition                                            |
+| ---------- | ----------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| `AUTH-001` | 400         | Validation failed               | Dữ liệu đầu vào không hợp lệ  | Email sai format, password yếu, phone sai, role không hợp lệ |
+| `AUTH-002` | 409         | Email already registered        | Email đã được đăng ký         | Email tồn tại trong DB                                       |
+| `AUTH-003` | 409         | Phone number already registered | Số điện thoại đã được đăng ký | Phone tồn tại trong DB                                       |
+| `AUTH-004` | 503         | OTP service unavailable         | Không thể gửi OTP             | Firebase/SMTP lỗi                                            |
+| `AUTH-005` | 500         | Internal server error           | Lỗi hệ thống nội bộ           | Lỗi không xác định                                           |
 
 ---
 
@@ -838,11 +838,11 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ### 12.1. Điều kiện kích hoạt Rollback
 
-| Điều kiện | Ngưỡng | Người quyết định |
-|-----------|--------|------------------|
-| Error rate tăng đột biến | > 5% trong 5 phút | On-call Engineer |
-| OTP không gửi được | > 10% registrations | On-call Engineer |
-| Dữ liệu không nhất quán | Bất kỳ case nào | Tech Lead + DPO |
+| Điều kiện                | Ngưỡng              | Người quyết định |
+| ------------------------ | ------------------- | ---------------- |
+| Error rate tăng đột biến | > 5% trong 5 phút   | On-call Engineer |
+| OTP không gửi được       | > 10% registrations | On-call Engineer |
+| Dữ liệu không nhất quán  | Bất kỳ case nào     | Tech Lead + DPO  |
 
 ### 12.2. Rollback Procedure
 
@@ -861,10 +861,10 @@ curl http://localhost:8080/actuator/health
 
 ### 12.3. Notification Protocol
 
-| Thời điểm | Người nhận | Kênh | Template |
-|-----------|------------|------|----------|
+| Thời điểm          | Người nhận   | Kênh              | Template                                           |
+| ------------------ | ------------ | ----------------- | -------------------------------------------------- |
 | Ngay khi phát hiện | On-call team | Slack `#incident` | "CAREBRIDGE AUTH INCIDENT: Register endpoint down" |
-| Trong 30 phút | DPO | Email | Bắt buộc nếu PII bị lộ |
+| Trong 30 phút      | DPO          | Email             | Bắt buộc nếu PII bị lộ                             |
 
 ### 12.4. Post-Incident Review (PIR)
 
@@ -1037,9 +1037,9 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
-| Endpoint | `GUEST` | `MOTHER` | `EXPERT` | `ADMIN` | `SYSTEM` |
-|----------|---------|----------|----------|---------|----------|
-| `POST /api/v1/auth/register` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Endpoint                     | `GUEST` | `MOTHER` | `EXPERT` | `ADMIN` | `SYSTEM` |
+| ---------------------------- | ------- | -------- | -------- | ------- | -------- |
+| `POST /api/v1/auth/register` | ✅       | ❌        | ❌        | ❌       | ❌        |
 
 **Chú thích:**
 - ✅ = Được phép (public endpoint)
@@ -1051,13 +1051,13 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ### 17.1 Constraint Summary Table
 
-| # | Constraint | Source (ADR/BR) | Last Verified |
-|---|-----------|-----------------|---------------|
-| C1 | PHẢI dùng `BCryptPasswordEncoder(12)` — KHÔNG dùng MD5/SHA/plain text | `ADR-AUTH-002` | `2026-06-26` |
-| C2 | KHÔNG được expose password/passwordHash trong bất kỳ response hay log nào | `BR-PRIVACY-001` | `2026-06-26` |
-| C3 | Vai trò chỉ được là `MOTHER` hoặc `EXPERT` — validate bằng `@Pattern` trên DTO | `ADR-AUTH-001` | `2026-06-26` |
-| C4 | Sau khi save User, PHẢI gọi `OtpService.generateAndSend()` trong cùng transaction | `BR-AUTH-006` | `2026-06-26` |
-| C5 | Controller KHÔNG chứa business logic — chỉ validation và delegate sang Service | `CLAUDE.md Architecture` | `2026-06-26` |
+| #   | Constraint                                                                        | Source (ADR/BR)          | Last Verified |
+| --- | --------------------------------------------------------------------------------- | ------------------------ | ------------- |
+| C1  | PHẢI dùng `BCryptPasswordEncoder(12)` — KHÔNG dùng MD5/SHA/plain text             | `ADR-AUTH-002`           | `2026-06-26`  |
+| C2  | KHÔNG được expose password/passwordHash trong bất kỳ response hay log nào         | `BR-PRIVACY-001`         | `2026-06-26`  |
+| C3  | Vai trò chỉ được là `MOTHER` hoặc `EXPERT` — validate bằng `@Pattern` trên DTO    | `ADR-AUTH-001`           | `2026-06-26`  |
+| C4  | Sau khi save User, PHẢI gọi `OtpService.generateAndSend()` trong cùng transaction | `BR-AUTH-006`            | `2026-06-26`  |
+| C5  | Controller KHÔNG chứa business logic — chỉ validation và delegate sang Service    | `CLAUDE.md Architecture` | `2026-06-26`  |
 
 ### 17.2 Constraint Injection Block
 
@@ -1096,11 +1096,11 @@ Tests phải cover §13 Test Scenarios.
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
-|-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Code không dùng BCrypt | Reject — inject C1 |
-| AP-AI-003 | Implicit Decision | Tự thêm role ADMIN vào register | Reject — enforce ADR-AUTH-001 |
-| AP-AI-005 | Hallucinated Contract | Import service không có trong §8 | Reject — verify contract |
+| AP-ID     | Anti-Pattern          | Dấu hiệu                         | Hành động                     |
+| --------- | --------------------- | -------------------------------- | ----------------------------- |
+| AP-AI-001 | Unconstrained Gen     | Code không dùng BCrypt           | Reject — inject C1            |
+| AP-AI-003 | Implicit Decision     | Tự thêm role ADMIN vào register  | Reject — enforce ADR-AUTH-001 |
+| AP-AI-005 | Hallucinated Contract | Import service không có trong §8 | Reject — verify contract      |
 
 ---
 
@@ -1108,18 +1108,18 @@ Tests phải cover §13 Test Scenarios.
 
 ### A. Glossary
 
-| Thuật ngữ | Định nghĩa |
-|-----------|------------|
-| UNVERIFIED | Trạng thái tài khoản mới tạo, chưa xác minh OTP |
-| OTP | One-Time Password — mã 6 chữ số, hết hạn sau 10 phút |
-| BCrypt | Thuật toán hashing mật khẩu với cost factor, OWASP recommended |
-| PII | Personally Identifiable Information — email, phone, password hash |
+| Thuật ngữ  | Định nghĩa                                                        |
+| ---------- | ----------------------------------------------------------------- |
+| UNVERIFIED | Trạng thái tài khoản mới tạo, chưa xác minh OTP                   |
+| OTP        | One-Time Password — mã 6 chữ số, hết hạn sau 10 phút              |
+| BCrypt     | Thuật toán hashing mật khẩu với cost factor, OWASP recommended    |
+| PII        | Personally Identifiable Information — email, phone, password hash |
 
 ### B. Tài liệu tham chiếu
 
-| Document | Path |
-|----------|------|
-| SRS UC-01 | `02_Requirements/SRS/` |
-| PDPA Compliance | Legal team |
-| OWASP Password Guide | https://owasp.org/www-project-cheat-sheets/cheatsheets/Password_Storage_Cheat_Sheet |
-| Spring Security BCrypt | https://docs.spring.io/spring-security/reference/ |
+| Document               | Path                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| SRS UC-01              | `02_Requirements/SRS/`                                                              |
+| PDPA Compliance        | Legal team                                                                          |
+| OWASP Password Guide   | https://owasp.org/www-project-cheat-sheets/cheatsheets/Password_Storage_Cheat_Sheet |
+| Spring Security BCrypt | https://docs.spring.io/spring-security/reference/                                   |
