@@ -3,14 +3,18 @@ import { useAuth } from '../../shared/auth/useAuth';
 
 const NAV_LINKS = [
   { to: '/admin/dashboard', label: 'Dashboard', roles: ['SYSTEM_ADMIN'] },
-  { to: '/moderator/dashboard', label: 'Moderation Queue', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
+  // '/moderator' redirects to '/moderator/safety-cases', which both roles can access —
+  // '/moderator/dashboard' itself is SYSTEM_ADMIN-only (CommunityDashboardPage), so it
+  // must not be the link target for MODERATOR here.
+  { to: '/moderator', label: 'Moderation Queue', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
   { to: '/content/dashboard', label: 'Tổng quan CMS', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/list', label: 'Thư viện', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/faq', label: 'FAQ', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/checklists', label: 'Checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/topics', label: 'Danh mục', roles: ['MODERATOR'] },
   { to: '/expert/dashboard', label: 'Expert', roles: ['EXPERT'] },
-  { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER', 'SYSTEM_ADMIN'] },
+  // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
+  { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER'] },
 ] as const;
 
 export default function AdminLayout() {
