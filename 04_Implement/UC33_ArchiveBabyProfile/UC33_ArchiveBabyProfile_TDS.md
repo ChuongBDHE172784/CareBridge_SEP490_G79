@@ -6,7 +6,7 @@
 | **Document ID** | `CB-BABY-IMP-003` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngay | Nguoi thuc hien | Noi dung thay doi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tao tai lieu lan dau cho UC-33 Archive Baby Profile |
+| 2026-06-29 | AI Agent | Implementation DONE — BabyService.archiveBabyProfile() voi ownership check (BABY-021), not-found (BABY-020), already-archived-reject (BABY-022), soft-archive (chi set status=ARCHIVED, khong xoa data lien ket), va BABY_PROFILE_ARCHIVED audit event. Tat ca 4 service unit tests (BABY-TC-033-001 den 004) PASSED. |
 
 ---
 

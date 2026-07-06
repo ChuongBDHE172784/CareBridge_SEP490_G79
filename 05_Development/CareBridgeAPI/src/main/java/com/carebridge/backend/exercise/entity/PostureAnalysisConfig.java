@@ -58,4 +58,10 @@ public class PostureAnalysisConfig {
 
     @Column(name = "status", length = 20)
     private String status;
+
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 }

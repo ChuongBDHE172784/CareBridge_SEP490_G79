@@ -795,7 +795,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -803,6 +803,9 @@ public class AuthServiceImpl implements AuthService {
             throw new com.carebridge.backend.common.exception.AccountLockedException("Account is locked");
         }
         UserProfileResponse response = userMapper.toProfileResponse(user);
+        // ADR-008-002: audit every successful profile view. Must NOT be readOnly — a
+        // read-only transaction sets Hibernate's flush mode to MANUAL, so this audit
+        // insert is enqueued but never flushed/committed (silently dropped, no error).
         auditService.log(AuditAction.PROFILE_VIEWED, userId, "User", userId.toString(), null);
         return response;
     }
@@ -813,7 +816,10 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setName(StringUtils.sanitizeBasicText(request.getName()));
         user.setAvatarUrl(StringUtils.trimToNull(request.getAvatarUrl()));
-        return userMapper.toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        // ADR-002: audit profile updates in the same transaction (only after a successful save).
+        auditService.log(AuditAction.PROFILE_UPDATED, userId, "User", userId.toString(), null);
+        return userMapper.toProfileResponse(saved);
     }
 
     @Override

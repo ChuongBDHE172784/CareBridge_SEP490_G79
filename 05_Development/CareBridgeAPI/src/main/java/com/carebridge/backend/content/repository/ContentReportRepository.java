@@ -31,4 +31,12 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
     // (src/test/resources/application.yaml has no Testcontainers/real-Postgres harness — verified project-wide)
     @Query("SELECT r.createdAt, r.resolvedAt FROM ContentReport r WHERE r.resolvedAt IS NOT NULL")
     List<Object[]> findResolvedTimestamps();
+
+    // UC-14: rate limit check — count this reporter's reports on this target within the
+    // rolling 24h window (idx_content_reports_rate_limit, added in V2__spec_sync_from_tds.sql).
+    int countByReporterUserIdAndTargetIdAndCreatedAtAfter(UUID reporterUserId, UUID targetId, Instant since);
+
+    // UC-14: duplicate check — reporter already has a PENDING report on this target
+    // (idx_content_reports_duplicate, added in V2__spec_sync_from_tds.sql).
+    boolean existsByReporterUserIdAndTargetIdAndStatus(UUID reporterUserId, UUID targetId, ReportStatus status);
 }

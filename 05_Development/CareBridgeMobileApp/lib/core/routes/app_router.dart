@@ -10,6 +10,10 @@ import '../../features/journey/screens/journey_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
+import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
+import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
+import '../../features/healthRecords/models/health_metric_model.dart';
+import '../../features/baby/screens/edit_baby_profile_screen.dart';
 
 import '../../features/reminder/screens/reminder_detail_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
@@ -173,6 +177,36 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return BabyProfileDetailScreen(babyId: id);
+      },
+    ),
+    // CB-233: Edit Baby Profile (UC-32)
+    GoRoute(
+      path: '/babies/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return EditBabyProfileScreen(babyId: id);
+      },
+    ),
+    // CB-230: Edit Maternal Health Metric (UC-26)
+    GoRoute(
+      path: '/health-metrics/:metricId/edit',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final journeyId = extra?['journeyId'] as String? ?? '';
+        final metric = extra?['metric'] as HealthMetricDetail?;
+        if (metric == null) {
+          return const Scaffold(body: Center(child: Text('Metric not found')));
+        }
+        return EditHealthMetricScreen(journeyId: journeyId, metric: metric);
+      },
+    ),
+    // CB-231: View Maternal Health Trend (UC-27)
+    GoRoute(
+      path: '/journeys/:journeyId/metrics/trend',
+      builder: (context, state) {
+        final journeyId = state.pathParameters['journeyId'] ?? '';
+        final metricType = state.uri.queryParameters['metricType'];
+        return HealthMetricTrendScreen(journeyId: journeyId, initialMetricType: metricType);
       },
     ),
     GoRoute(

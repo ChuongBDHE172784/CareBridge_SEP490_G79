@@ -1,3 +1,90 @@
+// UC-26 update request DTO (mirrors backend UpdateMetricRequest)
+class UpdateMetricRequest {
+  final double? valueNumeric;
+  final double? valueSecondary;
+  final String? unit;
+  final DateTime? measuredAt;
+  final String? note;
+
+  const UpdateMetricRequest({
+    this.valueNumeric,
+    this.valueSecondary,
+    this.unit,
+    this.measuredAt,
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() => {
+    if (valueNumeric != null) 'valueNumeric': valueNumeric,
+    if (valueSecondary != null) 'valueSecondary': valueSecondary,
+    if (unit != null) 'unit': unit,
+    if (measuredAt != null) 'measuredAt': measuredAt!.toUtc().toIso8601String(),
+    if (note != null) 'note': note,
+  };
+}
+
+// UC-27 trend data point (mirrors backend MetricDataPoint)
+class MetricDataPoint {
+  final DateTime measuredAt;
+  final double valueNumeric;
+  final double? valueSecondary;
+  final String? note;
+
+  const MetricDataPoint({
+    required this.measuredAt,
+    required this.valueNumeric,
+    this.valueSecondary,
+    this.note,
+  });
+
+  factory MetricDataPoint.fromJson(Map<String, dynamic> json) => MetricDataPoint(
+    measuredAt: DateTime.parse(json['measuredAt'] as String),
+    valueNumeric: (json['valueNumeric'] as num).toDouble(),
+    valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
+    note: json['note'] as String?,
+  );
+
+  String get valueDisplay {
+    if (valueSecondary != null) {
+      return '${valueNumeric.toStringAsFixed(0)}/${valueSecondary!.toStringAsFixed(0)}';
+    }
+    return valueNumeric % 1 == 0 ? valueNumeric.toStringAsFixed(0) : valueNumeric.toStringAsFixed(1);
+  }
+}
+
+// UC-27 trend response (mirrors backend MetricTrendResponse)
+class MetricTrend {
+  final String metricType;
+  final String? unit;
+  final List<MetricDataPoint> dataPoints;
+
+  const MetricTrend({
+    required this.metricType,
+    this.unit,
+    required this.dataPoints,
+  });
+
+  factory MetricTrend.fromJson(Map<String, dynamic> json) => MetricTrend(
+    metricType: json['metricType'] as String? ?? '',
+    unit: json['unit'] as String?,
+    dataPoints: (json['dataPoints'] as List<dynamic>? ?? [])
+        .map((e) => MetricDataPoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+
+  double get average {
+    if (dataPoints.isEmpty) return 0;
+    return dataPoints.map((p) => p.valueNumeric).reduce((a, b) => a + b) / dataPoints.length;
+  }
+
+  double? get trend {
+    if (dataPoints.length < 2) return null;
+    final first = dataPoints.first.valueNumeric;
+    final last = dataPoints.last.valueNumeric;
+    return first == 0 ? null : (last - first) / first * 100;
+  }
+}
+
 enum MetricType {
   weight,
   bloodPressure,

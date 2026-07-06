@@ -2,9 +2,12 @@ package com.carebridge.backend.baby.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.baby.dto.ArchiveBabyProfileResponse;
 import com.carebridge.backend.baby.dto.BabyProfileDetailResponse;
 import com.carebridge.backend.baby.dto.CreateBabyProfileRequest;
 import com.carebridge.backend.baby.dto.CreateBabyProfileResponse;
+import com.carebridge.backend.baby.dto.UpdateBabyProfileRequest;
+import com.carebridge.backend.baby.dto.UpdateBabyProfileResponse;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.policy.BabyAccessPolicy;
@@ -103,6 +106,84 @@ public class BabyServiceImpl implements IBabyService {
                 .status(profile.getStatus().name())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public UpdateBabyProfileResponse updateBabyProfile(UUID babyId, UpdateBabyProfileRequest request, UUID callerId) {
+        // C1: load profile
+        BabyProfile profile = babyRepository.findById(babyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-010",
+                        "Baby profile not found: " + babyId));
+
+        // C1: ownership check
+        if (!profile.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-011",
+                    "Access denied to baby profile");
+        }
+
+        // C2: ACTIVE only
+        if (profile.getStatus() != BabyProfileStatus.ACTIVE) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-012",
+                    "Cannot update archived baby profile");
+        }
+
+        // C3: apply non-null mutable fields
+        if (request.getNickname() != null) profile.setNickname(request.getNickname());
+        if (request.getBirthDate() != null) profile.setBirthDate(request.getBirthDate());
+        if (request.getGender() != null) profile.setGender(request.getGender());
+        if (request.getBirthWeightKg() != null) profile.setBirthWeightKg(request.getBirthWeightKg());
+        if (request.getBirthLengthCm() != null) profile.setBirthLengthCm(request.getBirthLengthCm());
+
+        BabyProfile saved = babyRepository.save(profile);
+
+        // C4: audit
+        auditService.log(AuditAction.BABY_PROFILE_UPDATED, callerId,
+                "BabyProfile", saved.getId().toString(), "updated");
+
+        return UpdateBabyProfileResponse.builder()
+                .babyId(saved.getId())
+                .nickname(saved.getNickname())
+                .birthDate(saved.getBirthDate())
+                .gender(saved.getGender() != null ? saved.getGender().name() : null)
+                .birthWeightKg(saved.getBirthWeightKg())
+                .birthLengthCm(saved.getBirthLengthCm())
+                .status(saved.getStatus().name())
+                .updatedAt(saved.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public ArchiveBabyProfileResponse archiveBabyProfile(UUID babyId, UUID callerId) {
+        // C1: load profile
+        BabyProfile profile = babyRepository.findById(babyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-020",
+                        "Baby profile not found: " + babyId));
+
+        // C1: ownership check
+        if (!profile.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-021",
+                    "Access denied to baby profile");
+        }
+
+        // C2: NOT idempotent — already archived → reject
+        if (profile.getStatus() == BabyProfileStatus.ARCHIVED) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-022",
+                    "Baby profile is already archived");
+        }
+
+        // C2: soft-archive only, linked data preserved
+        profile.setStatus(BabyProfileStatus.ARCHIVED);
+        BabyProfile saved = babyRepository.save(profile);
+
+        // C4: audit
+        auditService.log(AuditAction.BABY_PROFILE_ARCHIVED, callerId,
+                "BabyProfile", saved.getId().toString(), "archived");
+
+        return ArchiveBabyProfileResponse.builder()
+                .babyId(saved.getId())
+                .status(saved.getStatus().name())
+                .archivedAt(saved.getUpdatedAt())
                 .build();
     }
 }

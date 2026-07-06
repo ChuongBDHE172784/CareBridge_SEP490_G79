@@ -6,7 +6,7 @@
 | **Document ID** | `CB-BABY-IMP-008` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngay | Nguoi thuc hien | Noi dung thay doi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tao tai lieu lan dau cho UC-38 View Growth Chart |
+| 2026-07-04 | AI Agent — Amelia (Dev Agent) | Implemented GrowthServiceImpl, GrowthMeasurement entity/repository, GrowthChartController, DTOs — 5/5 service unit tests GREEN |
 
 ---
 
@@ -533,9 +534,9 @@ public interface GrowthMeasurementRepository extends JpaRepository<GrowthMeasure
 
 ### 11.1. Prerequisites
 
-- [ ] ADR-BABY-008-001, 002, 003 da duoc Accepted (xem S3)
-- [ ] Table `growth_measurements` da ton tai trong DB
-- [ ] Table `baby_profiles` da ton tai trong DB
+- [x] ADR-BABY-008-001, 002, 003 da duoc Accepted (xem S3)
+- [x] Table `growth_measurements` da ton tai trong DB
+- [x] Table `baby_profiles` da ton tai trong DB
 
 ### 11.2. Pre-Migration Checklist
 

@@ -39,11 +39,17 @@ public class HealthRecord {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
+    @Column(name = "file_url", columnDefinition = "text")
+    private String fileUrl;
+
     @Column(name = "record_date")
     private LocalDate recordDate;
 
+    @Column(name = "source_type", length = 30)
+    private String sourceType;
+
     @Column(name = "source_name", length = 200)
-    private String facilityName;
+    private String sourceName;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

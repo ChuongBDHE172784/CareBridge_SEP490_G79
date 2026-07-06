@@ -82,6 +82,31 @@ class BabyProfile {
   }
 }
 
+// UC-32: Update baby profile request (mirrors backend UpdateBabyProfileRequest)
+class UpdateBabyProfileRequest {
+  final String? nickname;
+  final DateTime? birthDate;
+  final BabyGender? gender;
+  final double? birthWeightKg;
+  final double? birthLengthCm;
+
+  const UpdateBabyProfileRequest({
+    this.nickname,
+    this.birthDate,
+    this.gender,
+    this.birthWeightKg,
+    this.birthLengthCm,
+  });
+
+  Map<String, dynamic> toJson() => {
+    if (nickname != null) 'nickname': nickname,
+    if (birthDate != null) 'birthDate': birthDate!.toIso8601String().split('T')[0],
+    if (gender != null) 'gender': gender!.toApiValue(),
+    if (birthWeightKg != null) 'birthWeightKg': birthWeightKg,
+    if (birthLengthCm != null) 'birthLengthCm': birthLengthCm,
+  };
+}
+
 class CreateBabyRequest {
   final String nickname;
   final String birthDate;

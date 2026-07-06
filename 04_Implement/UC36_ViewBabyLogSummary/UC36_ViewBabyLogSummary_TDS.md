@@ -6,7 +6,7 @@
 | **Document ID** | `CB-BABY-IMP-006` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[ ] Pending` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu — TDS cho UC36 View Baby Log Summary |
+| 2026-07-02 | AI Agent — Amelia (Dev Agent) | Implemented BabyLogSummaryServiceImpl.getSummary() with SQL aggregation + Gemini fail-open — 33/33 unit tests GREEN |
 
 ---
 

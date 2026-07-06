@@ -7,6 +7,7 @@ import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
 import com.carebridge.backend.file.service.IStorageService;
+import com.carebridge.backend.health.dto.*;
 import com.carebridge.backend.health.dto.AddHealthRecordRequest;
 import com.carebridge.backend.health.dto.AddHealthRecordResponse;
 import com.carebridge.backend.health.dto.FileAttachmentDto;
@@ -14,6 +15,7 @@ import com.carebridge.backend.health.dto.HealthRecordDetailResponse;
 import com.carebridge.backend.health.entity.HealthRecord;
 import com.carebridge.backend.health.entity.HealthRecordFile;
 import com.carebridge.backend.health.entity.HealthRecordStatus;
+import com.carebridge.backend.health.entity.RecordType;
 import com.carebridge.backend.health.repository.HealthRecordFileRepository;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
 import com.carebridge.backend.health.service.IHealthRecordService;
@@ -59,7 +61,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 .recordType(request.getRecordType())
                 .title(request.getTitle())
                 .recordDate(request.getRecordDate())
-                .facilityName(request.getFacilityName())
+                .sourceName(request.getFacilityName())
                 .build();
 
         HealthRecord saved = recordRepository.save(record);
@@ -83,7 +85,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 .recordType(saved.getRecordType().name())
                 .title(saved.getTitle())
                 .recordDate(saved.getRecordDate())
-                .facilityName(saved.getFacilityName())
+                .facilityName(saved.getSourceName())
                 .status(saved.getStatus().name())
                 .fileIds(fileIds)
                 .createdAt(saved.getCreatedAt())
@@ -126,11 +128,135 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 .recordType(record.getRecordType().name())
                 .title(record.getTitle())
                 .recordDate(record.getRecordDate())
-                .facilityName(record.getFacilityName())
+                .facilityName(record.getSourceName())
                 .status(record.getStatus().name())
                 .attachments(attachments)
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public UpdateHealthRecordResponse updateHealthRecord(UUID id, UpdateHealthRecordRequest request, UUID ownerUserId) {
+        // C1: find record, throw 404 if not found
+        HealthRecord record = recordRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "HEALTH-007",
+                        "Health record not found: " + id));
+
+        // C2: ownership check
+        if (!record.getOwnerUserId().equals(ownerUserId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "HEALTH-004",
+                    "Access denied to health record");
+        }
+
+        // C1: status check — only ACTIVE records can be updated
+        if (record.getStatus() == HealthRecordStatus.ARCHIVED) {
+            throw new BusinessException(HttpStatus.CONFLICT, "HEALTH-006",
+                    "Cannot update archived health record");
+        }
+
+        // C3: PATCH — apply only non-null fields
+        if (request.getTitle() != null) record.setTitle(request.getTitle());
+        if (request.getRecordType() != null) record.setRecordType(RecordType.valueOf(request.getRecordType()));
+        if (request.getRecordDate() != null) record.setRecordDate(request.getRecordDate());
+        if (request.getSourceType() != null) record.setSourceType(request.getSourceType());
+        if (request.getSourceName() != null) record.setSourceName(request.getSourceName());
+        if (request.getFileUrl() != null) record.setFileUrl(request.getFileUrl());
+        if (request.getBabyId() != null) record.setBabyId(request.getBabyId());
+        if (request.getJourneyId() != null) record.setJourneyId(request.getJourneyId());
+
+        HealthRecord saved = recordRepository.save(record);
+
+        // C5: emit audit event
+        auditService.log(AuditAction.HEALTH_RECORD_UPDATED, ownerUserId,
+                "HealthRecord", saved.getId().toString(), "updated");
+
+        return UpdateHealthRecordResponse.builder()
+                .healthRecordId(saved.getId())
+                .title(saved.getTitle())
+                .recordType(saved.getRecordType().name())
+                .recordDate(saved.getRecordDate())
+                .sourceType(saved.getSourceType())
+                .sourceName(saved.getSourceName())
+                .fileUrl(saved.getFileUrl())
+                .status(saved.getStatus().name())
+                .updatedAt(saved.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public ArchiveHealthRecordResponse archiveRecord(UUID id, UUID ownerUserId) {
+        // C1: find record, throw 404 if not found
+        HealthRecord record = recordRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "HEALTH-007",
+                        "Health record not found: " + id));
+
+        // C2: ownership check
+        if (!record.getOwnerUserId().equals(ownerUserId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "HEALTH-004",
+                    "Access denied to health record");
+        }
+
+        // C3: idempotent — already ARCHIVED, return early without save or audit
+        if (record.getStatus() == HealthRecordStatus.ARCHIVED) {
+            return ArchiveHealthRecordResponse.builder()
+                    .healthRecordId(record.getId())
+                    .status(record.getStatus().name())
+                    .updatedAt(record.getUpdatedAt())
+                    .build();
+        }
+
+        // C1: soft-delete — set status=ARCHIVED, never physical DELETE
+        record.setStatus(HealthRecordStatus.ARCHIVED);
+        HealthRecord saved = recordRepository.save(record);
+
+        // C5: emit audit event only on actual ACTIVE→ARCHIVED transition
+        auditService.log(AuditAction.HEALTH_RECORD_ARCHIVED, ownerUserId,
+                "HealthRecord", saved.getId().toString(), "archived");
+
+        return ArchiveHealthRecordResponse.builder()
+                .healthRecordId(saved.getId())
+                .status(saved.getStatus().name())
+                .updatedAt(saved.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TimelineResponse getTimeline(UUID ownerUserId, TimelineFilter filter) {
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(filter.getPage(), filter.getSize());
+
+        org.springframework.data.domain.Page<HealthRecord> page =
+                recordRepository.findActiveByOwnerFiltered(
+                        ownerUserId,
+                        filter.getRecordType(),
+                        filter.getJourneyId(),
+                        filter.getBabyId(),
+                        filter.getSourceType(),
+                        pageable);
+
+        java.util.List<HealthRecordTimelineItem> items = page.getContent().stream()
+                .map(r -> HealthRecordTimelineItem.builder()
+                        .healthRecordId(r.getId())
+                        .recordType(r.getRecordType().name())
+                        .title(r.getTitle())
+                        .recordDate(r.getRecordDate())
+                        .sourceType(r.getSourceType())
+                        .sourceName(r.getSourceName())
+                        .fileUrl(r.getFileUrl())
+                        .journeyId(r.getJourneyId())
+                        .babyId(r.getBabyId())
+                        .createdAt(r.getCreatedAt())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        return TimelineResponse.builder()
+                .items(items)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .page(page.getNumber())
+                .size(page.getSize())
                 .build();
     }
 }

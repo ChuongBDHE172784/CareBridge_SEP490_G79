@@ -6,7 +6,7 @@
 | **Document ID** | `CB-SEC-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Approved` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-174 Investigate Security Incident |
+| 2026-07-04 | AI Agent | Implemented — gap-check confirmed SecurityIncidentController/ServiceImpl already built; tests all green (verified independently) |
 
 ---
 

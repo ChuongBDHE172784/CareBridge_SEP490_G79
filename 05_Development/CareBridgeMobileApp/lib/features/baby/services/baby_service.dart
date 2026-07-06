@@ -23,4 +23,22 @@ class BabyService {
         .map((e) => BabyProfile.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // UC-32: Update baby profile (CB-233)
+  Future<BabyProfile> updateBabyProfile(
+    String babyId,
+    UpdateBabyProfileRequest request,
+  ) async {
+    final data = await apiPut('/api/v1/babies/$babyId', request.toJson());
+    final body = data['data'] as Map<String, dynamic>;
+    return BabyProfile.fromJson({
+      'id': body['id'] ?? body['babyId'] ?? babyId,
+      'nickname': body['nickname'],
+      'birthDate': body['birthDate'],
+      'gender': body['gender'],
+      'birthWeightKg': body['birthWeightKg'],
+      'birthLengthCm': body['birthLengthCm'],
+      'isActive': body['isActive'] ?? true,
+    });
+  }
 }

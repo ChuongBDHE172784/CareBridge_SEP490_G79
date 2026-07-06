@@ -4,7 +4,7 @@
 **Document ID:** `CB-EXERCISE-TDD-185`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -31,6 +31,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | `2026-07-03` | `AI Agent` | Khởi tạo tài liệu — Test-Spec cho UC185, khớp với TDS `CB-EXERCISE-IMP-ADMIN-001` v1.0 |
+| `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
+| `2026-07-04` | `AI Agent` | Implemented and verified: 28/28 backend tests GREEN via `./mvnw test` — `AdminExerciseServiceTest` (11: create-defaults-DRAFT, update happy path + versionNo bump, null-safetyWarning-unchanged, **blank-safetyWarning-rejected EX-ADMIN-002 CRITICAL**, not-found EX-001, activate DRAFT→PUBLISHED + idempotent no-op, disable PUBLISHED→ARCHIVED, getById, list-all-statuses), `AdminExerciseControllerSecurityTest` (13: MOTHER denied x4 endpoints, SYSTEM_ADMIN denied on create — confirms `CONTENT_ADMIN`-only per ADR-EXERCISE-ADMIN-001, no-JWT 401 x2, CONTENT_ADMIN succeeds x6 positive controls), `AdminExerciseControllerTest` (4: durationMinutes boundary >180/<1 → 400, missing safetyWarning on create → 400, blank safetyWarning on update → 400 EX-ADMIN-002 at HTTP layer). Web component tests (form/list) not started — Admin Portal UI out of scope this session. Full pre-existing `exercise` package regression suite reran green (see UC186/UC30 docs for shared regression run). |
 
 ---
 
