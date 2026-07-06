@@ -6,7 +6,7 @@
 | **Document ID** | `CB-REMINDER-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-46 Create Medication Reminder |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Implemented: createMedicationReminder() in ReminderServiceImpl; new DTOs CreateMedicationReminderRequest; POST /api/v1/reminders/medication endpoint; 7/7 unit tests GREEN |
 
 ---
 

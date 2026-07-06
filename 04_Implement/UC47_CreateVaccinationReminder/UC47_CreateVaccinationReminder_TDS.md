@@ -6,7 +6,7 @@
 | **Document ID** | `CB-REMINDER-IMP-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-47 Create Vaccination Reminder |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Implemented: createVaccinationReminder() + getVaccinationSuggestions() in ReminderServiceImpl; new DTOs CreateVaccinationReminderRequest, VaccinationSuggestionDto; POST /api/v1/reminders/vaccination + GET /api/v1/reminders/vaccination/suggestions; 7/8 unit tests GREEN (VAC-TC-002 handled at controller validation layer) |
 
 ---
 

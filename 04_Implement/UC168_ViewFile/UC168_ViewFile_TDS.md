@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FILE-IMP-168` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Pending — Tech Lead]` |
@@ -21,6 +21,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-06 | AI Agent — Amelia (Dev Agent) | Implemented — FileAccessPolicyImpl, ViewFileResponse, IFileService.viewFile(), FileController GET /{fileId}, FILE_VIEWED audit; 31 unit tests GREEN |
 | 2026-07-03 | AI Agent | Tạo tài liệu lần đầu — TDS cho UC168 View File |
 
 ---

@@ -4,7 +4,7 @@
 **Document ID:** `CB-REMINDER-IMP-003-TEST`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -27,6 +27,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD Spec cho UC-48 Update or Snooze Reminder |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | GREEN: 11/11 unit tests pass (UpdateReminderServiceTest) — Red Gate confirmed FAIL, Green Gate PASS |
 
 ---
 

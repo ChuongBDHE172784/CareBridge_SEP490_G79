@@ -16,6 +16,7 @@ public class ReminderDetailResponse {
     private Instant scheduledAt;
     private String recurrenceType;
     private String status;
+    private Instant snoozedUntil;
     private Instant createdAt;
     private Instant updatedAt;
 }

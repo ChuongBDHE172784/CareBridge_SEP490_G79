@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FILE-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Approved` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -21,6 +21,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Phase 3 completion — added TC-002 (PDF upload) + TC-004 (invalid MIME) tests; all 7 unit tests GREEN |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | Implementation completed — service, controller, tests 🟢 GREEN (45/45) |
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-167 Upload File |
 

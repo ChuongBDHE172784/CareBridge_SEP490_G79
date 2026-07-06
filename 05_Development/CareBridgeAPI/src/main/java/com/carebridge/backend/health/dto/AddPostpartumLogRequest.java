@@ -14,12 +14,12 @@ public class AddPostpartumLogRequest {
     private LocalDate logDate;
 
     @Min(0) @Max(10)
-    private Integer painLevel;
+    private Short painLevel;
 
     private BleedingLevel bleedingLevel;
 
     @Min(0) @Max(10)
-    private Integer moodLevel;
+    private Short moodLevel;
 
     @DecimalMin("0.0") @DecimalMax("24.0")
     private BigDecimal sleepHours;

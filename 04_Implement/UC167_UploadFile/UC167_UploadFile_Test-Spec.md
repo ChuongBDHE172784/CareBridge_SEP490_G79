@@ -4,7 +4,7 @@
 **Document ID:** `CB-FILE-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Approved`
+**Status:** `Implemented — 2026-07-05`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Completion — TC-002 (PDF) + TC-004 (invalid MIME) added and GREEN; 7/7 unit tests PASS |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-167 |
 
@@ -141,11 +142,11 @@ class FileTestFactory {
 ### FILE-TC-002 — Valid PDF upload
 
 **Severity:** `HIGH`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Expected Result:** 201
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -171,7 +172,7 @@ class FileTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `FileService.validateFileType()`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Oracle Source:** `ADR-FILE-001`
 
 **Test Steps:**
@@ -179,7 +180,7 @@ class FileTestFactory {
 
 **Expected Result:** throws FILE-001
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -239,22 +240,23 @@ assertThat(saved.getSizeBytes()).isEqualTo(2 * 1024 * 1024L);
 
 | TC ID | 🔴 RED | 🟢 GREEN | 🔵 REFACTOR |
 |-------|--------|----------|------------|
-| `FILE-TC-001` | `[ ]` | `___` | — |
-| `FILE-TC-003` | `[ ]` | `___` | — |
-| `FILE-TC-004` | `[ ]` | `___` | — |
-| `FILE-TC-005` | `[ ]` | `___` | — |
-| `FILE-TC-006` | `[ ]` | `___` | — |
-| `FILE-TC-INT-001` | `[ ]` | `___` | — |
+| `FILE-TC-001` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-002` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-003` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-004` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-005` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-006` | `[x]` | `2026-07-05` | — |
+| `FILE-TC-INT-001` | `[ ]` | `—` | Requires Docker/Testcontainers |
 
 ---
 
 ## 6. Exit Criteria
 
-- [ ] MIME type validated from actual content (not just extension)
-- [ ] storageKey is UUID-based (security requirement)
-- [ ] Quota check before write to storage
-- [ ] Presigned URL TTL = 15 min (tested in UC-168)
-- [ ] Red Gate confirmed
+- [x] MIME type validated from actual content (not just extension)
+- [x] storageKey is UUID-based (security requirement)
+- [x] Quota check before write to storage
+- [x] Presigned URL TTL = 15 min (verified in TTL test)
+- [x] Red Gate confirmed
 
 ---
 

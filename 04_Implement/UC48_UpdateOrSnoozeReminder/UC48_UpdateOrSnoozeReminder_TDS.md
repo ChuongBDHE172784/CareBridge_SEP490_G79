@@ -6,7 +6,7 @@
 | **Document ID** | `CB-REMINDER-IMP-003` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-48 Update or Snooze Reminder |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Implemented: updateReminder(), snoozeReminder(), completeReminder(), skipReminder() in ReminderServiceImpl; ADR-REM-STATE-001 terminal-state guard (REM-007/409); REM-005/REM-008 snooze validation; FCM job cancel on state transitions; PATCH endpoints /reminders/{id}, /snooze, /complete, /skip; 11/11 unit tests GREEN |
 
 ---
 

@@ -13,4 +13,9 @@ public class DummyNotificationService implements INotificationService {
     public String scheduleFcmPush(UUID userId, String title, String body, Instant scheduledAt) {
         return "dummy-job-id";
     }
+
+    @Override
+    public void cancelFcmJob(String fcmJobId) {
+        // no-op in dummy implementation
+    }
 }

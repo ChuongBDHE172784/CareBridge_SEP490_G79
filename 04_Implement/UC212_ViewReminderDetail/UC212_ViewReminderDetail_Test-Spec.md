@@ -4,7 +4,7 @@
 **Document ID:** `CB-REM-TDD-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Approved`
+**Status:** `Implemented — 2026-07-05`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Completion — REM-VIEW-TC-001 (PENDING) added and GREEN; 5/5 UC212 tests PASS |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-212 |
 
@@ -171,18 +172,20 @@ assertThat(json).doesNotContain("prescription");
 
 | TC ID | 🔴 RED | 🟢 GREEN | 🔵 REFACTOR |
 |-------|--------|----------|------------|
-| `REM-VIEW-TC-001` | `[ ]` | `___` | — |
-| `REM-VIEW-TC-003` | `[ ]` | `___` | — |
-| `REM-VIEW-TC-005` | `[ ]` | `___` | — |
+| `REM-VIEW-TC-001` | `[x]` | `2026-07-05` | — |
+| `REM-VIEW-TC-002` | `[x]` | `2026-07-05` | — |
+| `REM-VIEW-TC-003` | `[x]` | `2026-07-05` | — |
+| `REM-VIEW-TC-004` | `[x]` | `2026-07-05` | — |
+| `REM-VIEW-TC-005` | `[x]` | `2026-07-05` | — |
 
 ---
 
 ## 6. Exit Criteria
 
-- [ ] Owner-only access enforced
-- [ ] All statuses (PENDING/COMPLETED/SKIPPED/CANCELLED) viewable
-- [ ] No medical advice in response
-- [ ] Red Gate confirmed
+- [x] Owner-only access enforced
+- [x] All statuses (PENDING/COMPLETED/SKIPPED/CANCELLED) viewable
+- [x] No medical advice in response
+- [x] Red Gate confirmed
 
 ---
 

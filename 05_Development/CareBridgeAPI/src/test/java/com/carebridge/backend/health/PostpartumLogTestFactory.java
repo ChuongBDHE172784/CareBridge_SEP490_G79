@@ -59,9 +59,9 @@ public final class PostpartumLogTestFactory {
     public static AddPostpartumLogRequest makeValidRequest() {
         AddPostpartumLogRequest req = new AddPostpartumLogRequest();
         req.setLogDate(LocalDate.now());
-        req.setPainLevel(3);
+        req.setPainLevel((short) 3);
         req.setBleedingLevel(BleedingLevel.LIGHT);
-        req.setMoodLevel(7);
+        req.setMoodLevel((short) 7);
         req.setSleepHours(new BigDecimal("6.5"));
         req.setBreastfeedingNote("Fed 4 times, baby latched well");
         req.setSymptomNote("Mild cramps, improving");

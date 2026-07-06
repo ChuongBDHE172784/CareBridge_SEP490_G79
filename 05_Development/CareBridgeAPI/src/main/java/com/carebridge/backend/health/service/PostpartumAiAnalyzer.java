@@ -10,6 +10,6 @@ public interface PostpartumAiAnalyzer {
 
     record InsightResult(String insight, boolean redFlag) {}
 
-    CompletableFuture<InsightResult> analyze(Integer painLevel, BleedingLevel bleedingLevel,
-                                              Integer moodLevel, BigDecimal sleepHours);
+    CompletableFuture<InsightResult> analyze(Short painLevel, BleedingLevel bleedingLevel,
+                                             Short moodLevel, BigDecimal sleepHours);
 }

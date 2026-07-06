@@ -6,7 +6,7 @@
 | **Document ID** | `CB-REMINDER-IMP-004` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-49 View Today Tasks |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Implemented: getTodayTasks() in TodayTaskServiceImpl; ADR-TODAY-001 (2 separate DB queries merged in service); ADR-TODAY-002 (X-User-Timezone header, fallback Asia/Ho_Chi_Minh); sort priority VACCINATION=1>MEDICATION=2>APPOINTMENT=3>CARE_TASK=4; CareTask entity + CareTaskRepository created; GET /api/v1/reminders/today; 8/8 service tests + 4/4 controller tests GREEN |
 
 ---
 

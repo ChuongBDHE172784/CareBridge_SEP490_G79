@@ -57,7 +57,7 @@ class PostpartumLogServiceTest {
         assertThat(response.getPostpartumLogId()).isNotNull();
         assertThat(response.getJourneyId()).isEqualTo(PostpartumLogTestFactory.JOURNEY_ID);
         assertThat(response.getLogDate()).isEqualTo(req.getLogDate());
-        assertThat(response.getPainLevel()).isEqualTo(3);
+        assertThat(response.getPainLevel()).isEqualTo((short) 3);
         verify(logRepository).save(any());
         verify(auditService).log(eq(AuditAction.POSTPARTUM_LOG_ADDED), eq(PostpartumLogTestFactory.MOTHER_ID),
                 eq("PostpartumLog"), any(), any());
