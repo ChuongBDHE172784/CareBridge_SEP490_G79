@@ -11,8 +11,8 @@ import java.util.concurrent.CompletableFuture;
 public class NoOpPostpartumAiAnalyzer implements PostpartumAiAnalyzer {
 
     @Override
-    public CompletableFuture<InsightResult> analyze(Integer painLevel, BleedingLevel bleedingLevel,
-                                                     Integer moodLevel, BigDecimal sleepHours) {
+    public CompletableFuture<InsightResult> analyze(Short painLevel, BleedingLevel bleedingLevel,
+                                                    Short moodLevel, BigDecimal sleepHours) {
         return CompletableFuture.completedFuture(null);
     }
 }

@@ -4,7 +4,7 @@
 **Document ID:** `CB-REMINDER-IMP-001-TEST`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Technical Spec`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-46 Create Medication Reminder |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | GREEN: 7/7 unit tests pass (MedicationReminderServiceTest) — Red Gate confirmed FAIL, Green Gate PASS |
 
 ---
 

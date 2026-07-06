@@ -4,7 +4,7 @@
 **Document ID:** `CB-HEALTH-TDD-003`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Approved`
+**Status:** `Implemented — 2026-07-05`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -18,6 +18,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | Completion — HR-TC-004 (presigned URL TTL) + HR-TC-005 (no diagnosis) added and GREEN; 5/5 UC211 tests PASS |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-211 |
 
@@ -186,20 +187,20 @@ assertThat(json).doesNotContain("medicalAdvice");
 
 | TC ID | 🔴 RED | 🟢 GREEN | 🔵 REFACTOR |
 |-------|--------|----------|------------|
-| `HR-TC-001` | `[ ]` | `___` | — |
-| `HR-TC-002` | `[ ]` | `___` | — |
-| `HR-TC-003` | `[ ]` | `___` | — |
-| `HR-TC-004` | `[ ]` | `___` | — |
-| `HR-TC-005` | `[ ]` | `___` | — |
+| `HR-TC-001` | `[x]` | `2026-07-05` | — |
+| `HR-TC-002` | `[x]` | `2026-07-05` | — |
+| `HR-TC-003` | `[x]` | `2026-07-05` | — |
+| `HR-TC-004` | `[x]` | `2026-07-05` | — |
+| `HR-TC-005` | `[x]` | `2026-07-05` | — |
 
 ---
 
 ## 6. Exit Criteria
 
-- [ ] Presigned URLs generated with TTL=15 min
-- [ ] Archived records return 404
-- [ ] Response verified to NOT contain diagnosis fields
-- [ ] Red Gate confirmed
+- [x] Presigned URLs generated with TTL=15 min
+- [x] Archived records return 404
+- [x] Response verified to NOT contain diagnosis fields
+- [x] Red Gate confirmed
 
 ---
 

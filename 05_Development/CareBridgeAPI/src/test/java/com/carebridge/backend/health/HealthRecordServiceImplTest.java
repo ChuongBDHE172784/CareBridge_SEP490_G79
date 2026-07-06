@@ -142,6 +142,57 @@ class HealthRecordServiceImplTest {
                         .isEqualTo(HttpStatus.NOT_FOUND));
     }
 
+    // HEALTH-TC-004: View — presigned URL TTL must be exactly 15 minutes (ADR-FILE-004)
+    @Test
+    void getHealthRecord_withAttachedFiles_presignedUrlTtlIs15Minutes() {
+        HealthRecord record = savedRecord(RECORD_ID);
+        UUID fileId = UUID.fromString("00000000-0000-0000-0000-000000000004");
+        com.carebridge.backend.health.entity.HealthRecordFile link =
+                com.carebridge.backend.health.entity.HealthRecordFile.builder()
+                        .healthRecordId(RECORD_ID)
+                        .fileId(fileId)
+                        .displayOrder(0)
+                        .build();
+        com.carebridge.backend.file.entity.UploadedFile uploadedFile =
+                com.carebridge.backend.file.entity.UploadedFile.builder()
+                        .id(fileId).ownerUserId(CALLER_ID)
+                        .storageKey("files/" + fileId + ".jpg")
+                        .originalName("scan.jpg").mimeType("image/jpeg")
+                        .fileSizeBytes(100_000L)
+                        .status(com.carebridge.backend.file.entity.FileStatus.ACTIVE)
+                        .build();
+        when(recordRepository.findByIdAndStatus(RECORD_ID, HealthRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(record));
+        when(recordFileRepository.findByHealthRecordIdOrderByDisplayOrderAsc(RECORD_ID))
+                .thenReturn(List.of(link));
+        when(uploadedFileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE))
+                .thenReturn(Optional.of(uploadedFile));
+        when(storageService.generatePresignedUrl(anyString(), eq(15))).thenReturn("https://presigned/url");
+
+        healthRecordService.getHealthRecord(RECORD_ID, CALLER_ID);
+
+        verify(storageService).generatePresignedUrl(anyString(), eq(15));
+    }
+
+    // HEALTH-TC-005: View — response must NOT contain medical diagnosis (BR-SAFETY-001)
+    @Test
+    void getHealthRecord_noDiagnosisOrMedicalAdviceInResponse() throws Exception {
+        HealthRecord record = savedRecord(RECORD_ID);
+        when(recordRepository.findByIdAndStatus(RECORD_ID, HealthRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(record));
+        when(recordFileRepository.findByHealthRecordIdOrderByDisplayOrderAsc(RECORD_ID))
+                .thenReturn(List.of());
+
+        com.carebridge.backend.health.dto.HealthRecordDetailResponse resp =
+                healthRecordService.getHealthRecord(RECORD_ID, CALLER_ID);
+
+        String json = new com.fasterxml.jackson.databind.ObjectMapper()
+                .findAndRegisterModules().writeValueAsString(resp);
+        assertThat(json).doesNotContainIgnoringCase("diagnosis");
+        assertThat(json).doesNotContainIgnoringCase("medicalAdvice");
+        assertThat(json).doesNotContainIgnoringCase("prescription");
+    }
+
     // HEALTH-TC-006: View — non-owner → 403
     @Test
     void getHealthRecord_notOwner_throwsBusinessException403() {

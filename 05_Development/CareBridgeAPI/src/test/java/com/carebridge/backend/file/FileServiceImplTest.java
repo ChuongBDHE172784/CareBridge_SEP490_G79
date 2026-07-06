@@ -112,6 +112,42 @@ class FileServiceImplTest {
         verify(storageService, never()).store(any(), any(), any());
     }
 
+    // FILE-TC-002: Valid PDF upload (magic bytes %PDF) — upload completes, no exception thrown
+    @Test
+    void uploadFile_validPdf_returnsPresignedUrl() {
+        byte[] pdfBytes = new byte[100];
+        pdfBytes[0] = 0x25; pdfBytes[1] = 0x50; pdfBytes[2] = 0x44; pdfBytes[3] = 0x46; // %PDF
+        MockMultipartFile pdfFile = new MockMultipartFile("file", "report.pdf", "application/pdf", pdfBytes);
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
+        when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
+        when(storageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
+
+        UploadFileResponse resp = fileService.uploadFile(pdfFile, CALLER_ID);
+
+        // PDF magic bytes detected — upload succeeds (no exception, fileId returned)
+        assertThat(resp.getFileId()).isEqualTo(FILE_ID);
+        assertThat(resp.getPresignedUrl()).isNotBlank();
+        verify(storageService).store(anyString(), any(), eq("application/pdf"));
+    }
+
+    // FILE-TC-004: C1 — invalid MIME type → FILE-001 / 415
+    @Test
+    void uploadFile_invalidMimeType_throwsBusinessException415() {
+        byte[] exeBytes = new byte[]{0x4D, 0x5A, 0x00, 0x00}; // MZ header (Windows PE)
+        MockMultipartFile exeFile = new MockMultipartFile("file", "virus.exe",
+                "application/x-msdownload", exeBytes);
+
+        assertThatThrownBy(() -> fileService.uploadFile(exeFile, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getCode()).isEqualTo("FILE-001");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+                });
+
+        verify(storageService, never()).store(any(), any(), any());
+    }
+
     // FILE-TC-005: C2 — storageKey must be UUID-based (not originalName)
     @Test
     void uploadFile_storageKeyIsUuidBased() {

@@ -15,4 +15,6 @@ public interface CareGroupRepository extends JpaRepository<CareGroup, UUID> {
     Optional<CareGroup> findByIdAndStatus(UUID id, CareGroupStatus status);
 
     List<CareGroup> findByOwnerUserIdAndStatus(UUID ownerUserId, CareGroupStatus status);
+
+    List<CareGroup> findByLinkedBabyProfileId(UUID linkedBabyProfileId);
 }

@@ -3,6 +3,7 @@ package com.carebridge.backend.file.controller;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.dto.ViewFileResponse;
 import com.carebridge.backend.file.service.IFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/files")
@@ -31,5 +33,27 @@ public class FileController {
         var response = fileService.uploadFile(file, callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "File uploaded successfully"));
+    }
+
+    // UC168: View file
+    @GetMapping("/{fileId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ViewFileResponse>> viewFile(
+            @PathVariable UUID fileId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = fileService.viewFile(fileId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "File retrieved successfully"));
+    }
+
+    // UC169: Delete file (soft-delete)
+    @DeleteMapping("/{fileId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<Void> deleteFile(
+            @PathVariable UUID fileId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        fileService.deleteFile(fileId, callerId);
+        return ResponseEntity.noContent().build();
     }
 }

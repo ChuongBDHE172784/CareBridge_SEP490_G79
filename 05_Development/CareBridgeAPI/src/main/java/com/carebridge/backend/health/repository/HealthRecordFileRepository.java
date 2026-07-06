@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface HealthRecordFileRepository extends JpaRepository<HealthRecordFile, UUID> {
 
     List<HealthRecordFile> findByHealthRecordIdOrderByDisplayOrderAsc(UUID healthRecordId);
+
+    List<HealthRecordFile> findByFileId(UUID fileId);
 }

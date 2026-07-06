@@ -5,6 +5,7 @@ import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> {
@@ -12,4 +13,6 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
     long countByOwnerUserId(UUID ownerUserId);
 
     List<BabyProfile> findByOwnerUserIdAndStatusOrderByCreatedAtAsc(UUID ownerUserId, BabyProfileStatus status);
+
+    Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
 }

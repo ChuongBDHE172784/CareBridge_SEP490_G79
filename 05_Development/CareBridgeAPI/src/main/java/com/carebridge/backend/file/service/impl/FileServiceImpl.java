@@ -2,15 +2,22 @@ package com.carebridge.backend.file.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.dto.ViewFileResponse;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
+import com.carebridge.backend.file.policy.FileAccessPolicy;
+import com.carebridge.backend.file.policy.FileDeletePolicy;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
 import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.file.service.IStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -32,6 +40,8 @@ public class FileServiceImpl implements IFileService {
     private final UploadedFileRepository fileRepository;
     private final IStorageService storageService;
     private final AuditService auditService;
+    private final FileAccessPolicy fileAccessPolicy;
+    private final FileDeletePolicy fileDeletePolicy;
 
     @Override
     public UploadFileResponse uploadFile(MultipartFile file, UUID callerId) {
@@ -112,6 +122,52 @@ public class FileServiceImpl implements IFileService {
         } catch (IOException e) {
             return "application/octet-stream";
         }
+    }
+
+    @Override
+    public ViewFileResponse viewFile(UUID fileId, UUID callerId) {
+        UploadedFile file = fileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        Set<String> authorities = java.util.Optional
+                .ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(auth -> auth.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toSet()))
+                .orElse(Set.of());
+
+        fileAccessPolicy.assertViewable(file, callerId, authorities);
+
+        // C3: presigned URL TTL = 15 minutes (ADR-FILE-006)
+        String presignedUrl = storageService.generatePresignedUrl(file.getStorageKey(), 15);
+
+        auditService.log(AuditAction.FILE_VIEWED, callerId,
+                "UploadedFile", file.getId().toString(), "viewed");
+
+        return ViewFileResponse.builder()
+                .fileId(file.getId())
+                .originalName(file.getOriginalName())
+                .mimeType(file.getMimeType())
+                .fileSizeBytes(file.getFileSizeBytes())
+                .presignedUrl(presignedUrl)
+                .status(file.getStatus().name())
+                .createdAt(file.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public void deleteFile(UUID fileId, UUID callerId) {
+        UploadedFile file = fileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        fileDeletePolicy.assertDeletable(file, callerId);
+
+        // Soft-delete only — DO NOT call storageService.delete() (ADR-FILE-008)
+        file.setStatus(FileStatus.DELETED);
+        fileRepository.save(file);
+
+        auditService.log(AuditAction.FILE_DELETED, callerId,
+                "UploadedFile", file.getId().toString(), "deleted");
     }
 
     private String getExtension(String filename) {

@@ -31,14 +31,14 @@ public class PostpartumLog {
     private LocalDate logDate;
 
     @Column(name = "pain_level")
-    private Integer painLevel;
+    private Short painLevel;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "bleeding_level", length = 20)
     private BleedingLevel bleedingLevel;
 
     @Column(name = "mood_level")
-    private Integer moodLevel;
+    private Short moodLevel;
 
     @Column(name = "sleep_hours", precision = 4, scale = 1)
     private BigDecimal sleepHours;

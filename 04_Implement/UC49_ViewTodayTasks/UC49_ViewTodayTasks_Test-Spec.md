@@ -4,7 +4,7 @@
 **Document ID:** `CB-REMINDER-IMP-004-TEST`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -27,6 +27,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD Spec cho UC-49 View Today Tasks |
+| 2026-07-05 | AI Agent — Amelia (Dev Agent) | GREEN: 8/8 service tests (TodayTaskServiceTest) + 4/4 controller tests (TodayTaskControllerTest) + 9/9 security tests (ReminderSecurityTest) — Red Gate confirmed FAIL, Green Gate PASS |
 
 ---
 

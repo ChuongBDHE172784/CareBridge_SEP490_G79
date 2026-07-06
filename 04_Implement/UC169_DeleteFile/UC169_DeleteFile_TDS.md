@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FILE-IMP-169` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Pending — Tech Lead]` |
@@ -21,6 +21,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-06 | AI Agent — Amelia (Dev Agent) | Implemented — FileDeletePolicyImpl, IFileService.deleteFile(), FileController DELETE /{fileId} (MOTHER-only), FILE_DELETED audit, soft-delete only (ADR-FILE-008); 31 unit tests GREEN |
 | 2026-07-03 | AI Agent | Tạo tài liệu lần đầu — TDS cho UC169 Delete File |
 
 ---

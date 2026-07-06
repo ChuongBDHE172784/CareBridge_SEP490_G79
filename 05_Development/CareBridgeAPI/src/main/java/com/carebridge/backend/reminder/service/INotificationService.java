@@ -10,4 +10,7 @@ public interface INotificationService {
      * @return FCM job ID for later cancellation
      */
     String scheduleFcmPush(UUID userId, String title, String body, Instant scheduledAt);
+
+    /** Cancel a previously scheduled FCM push job. No-op if job not found. */
+    void cancelFcmJob(String fcmJobId);
 }

@@ -99,6 +99,18 @@ class ReminderServiceImplTest {
         verify(notificationService).scheduleFcmPush(eq(CALLER_ID), any(), any(), any());
     }
 
+    // REM-VIEW-TC-001: Owner views PENDING reminder → 200 with correct status and type
+    @Test
+    void getReminderDetail_pendingReminder_returnsCorrectStatusAndType() {
+        when(reminderRepository.findById(REMINDER_ID)).thenReturn(Optional.of(savedReminder(REMINDER_ID)));
+
+        ReminderDetailResponse resp = reminderService.getReminderDetail(REMINDER_ID, CALLER_ID);
+
+        assertThat(resp.getStatus()).isEqualTo("PENDING");
+        assertThat(resp.getReminderType()).isEqualTo("APPOINTMENT");
+        assertThat(resp.getTitle()).isEqualTo("Doctor visit");
+    }
+
     // REM-TC-004: View — owner accesses reminder (including CANCELLED — ADR-REM-002)
     @Test
     void getReminderDetail_cancelledReminder_returns200() {
