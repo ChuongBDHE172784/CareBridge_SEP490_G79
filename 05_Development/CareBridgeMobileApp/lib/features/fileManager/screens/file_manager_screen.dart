@@ -43,11 +43,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyFiles(filter: _activeFilter);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _files = list;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

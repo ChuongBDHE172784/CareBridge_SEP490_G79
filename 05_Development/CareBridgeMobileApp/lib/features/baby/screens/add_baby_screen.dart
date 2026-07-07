@@ -396,8 +396,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
         final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 10)
+        if (n == null || n <= 0 || n > 10) {
           return 'Cân nặng không hợp lệ (0–10 kg).';
+        }
         return null;
       },
     );
@@ -424,8 +425,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
         final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 80)
+        if (n == null || n <= 0 || n > 80) {
           return 'Chiều dài không hợp lệ (0–80 cm).';
+        }
         return null;
       },
     );

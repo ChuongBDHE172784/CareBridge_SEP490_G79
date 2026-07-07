@@ -36,11 +36,12 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyInvitations();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _invites = list;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

@@ -48,11 +48,12 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     setState(() => _loading = true);
     try {
       final topics = await _service.getTopics();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _topics = topics;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

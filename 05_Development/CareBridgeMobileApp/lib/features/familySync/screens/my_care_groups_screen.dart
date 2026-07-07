@@ -41,12 +41,13 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
     try {
       final list = await _service.listMyGroups();
       final invites = await _service.listMyInvitations();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _groups = list;
           _pendingInviteCount = invites.length;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../services/exercise_service.dart';
-import '../models/exercise_model.dart';
 import 'exercise_session_result_screen.dart';
 
 class ExerciseSessionScreen extends StatefulWidget {

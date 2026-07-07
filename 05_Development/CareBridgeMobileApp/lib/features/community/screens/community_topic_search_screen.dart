@@ -64,11 +64,12 @@ class _CommunityTopicSearchScreenState
       final topics = await CommunityService.instance.getTopics(
         keyword: keyword,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _topics = topics;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

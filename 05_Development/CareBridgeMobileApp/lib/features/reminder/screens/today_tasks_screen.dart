@@ -58,11 +58,12 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listTodayReminders();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _allReminders = list;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

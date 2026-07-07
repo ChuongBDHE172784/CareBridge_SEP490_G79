@@ -63,18 +63,21 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   String _buildSymptomsText() {
     final parts = <String>[];
-    if (_subjectIndex != null)
+    if (_subjectIndex != null) {
       parts.add('Đối tượng: ${_subjectOptions[_subjectIndex!]}');
+    }
     if (_symptomIndex != null) {
       final s = _symptomIndex == 4
           ? _otherSymptomCtrl.text.trim()
           : _primarySymptoms[_symptomIndex!];
       parts.add('Triệu chứng chính: $s');
     }
-    if (_durationIndex != null)
+    if (_durationIndex != null) {
       parts.add('Thời gian: ${_durations[_durationIndex!]}');
-    if (_additionalCtrl.text.trim().isNotEmpty)
+    }
+    if (_additionalCtrl.text.trim().isNotEmpty) {
       parts.add('Chi tiết thêm: ${_additionalCtrl.text.trim()}');
+    }
     return parts.join('. ');
   }
 

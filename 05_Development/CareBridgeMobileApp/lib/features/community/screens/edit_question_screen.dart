@@ -162,8 +162,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
               decoration: _inputDecoration('Nhập tiêu đề câu hỏi...'),
               style: const TextStyle(fontSize: 15, color: _onSurface),
               validator: (v) {
-                if (v == null || v.trim().length < 5)
+                if (v == null || v.trim().length < 5) {
                   return 'Tiêu đề cần ít nhất 5 ký tự';
+                }
                 return null;
               },
             ),
@@ -179,8 +180,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
               decoration: _inputDecoration('Mô tả chi tiết vấn đề của bạn...'),
               style: const TextStyle(fontSize: 15, color: _onSurface),
               validator: (v) {
-                if (v == null || v.trim().length < 10)
+                if (v == null || v.trim().length < 10) {
                   return 'Nội dung cần ít nhất 10 ký tự';
+                }
                 return null;
               },
             ),

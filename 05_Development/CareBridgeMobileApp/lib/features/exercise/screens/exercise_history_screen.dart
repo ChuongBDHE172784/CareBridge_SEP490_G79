@@ -404,12 +404,15 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
 
   IconData _exerciseIcon(String title) {
     final t = title.toLowerCase();
-    if (t.contains('yoga') || t.contains('thiền'))
+    if (t.contains('yoga') || t.contains('thiền')) {
       return Icons.self_improvement;
-    if (t.contains('đi bộ') || t.contains('walking'))
+    }
+    if (t.contains('đi bộ') || t.contains('walking')) {
       return Icons.directions_walk;
-    if (t.contains('kegel') || t.contains('sàn chậu'))
+    }
+    if (t.contains('kegel') || t.contains('sàn chậu')) {
       return Icons.fitness_center;
+    }
     return Icons.sports_gymnastics;
   }
 
