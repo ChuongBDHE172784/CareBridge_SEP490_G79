@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
-import '../../emergency/screens/emergency_map_screen.dart';
+import '../../emergency/services/emergency_service.dart';
 
 /// CB-016 — Risk Triage Result (UC-61)
 /// Shows the AI risk classification (GREEN/YELLOW/RED) for a completed
@@ -29,8 +29,10 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   static const _secondary = Color(0xFF6E5A52);
 
   final _triageService = TriageService();
+  final _emergencyService = EmergencyService();
   TriageResult? _result;
   bool _loading = true;
+  bool _openingEmergency = false;
   String? _error;
 
   @override
@@ -56,6 +58,30 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
 
   _RiskPresentation get _presentation =>
       _RiskPresentation.forLevel(_result?.riskLevel);
+
+  Future<void> _openEmergencyFlow() async {
+    setState(() => _openingEmergency = true);
+    try {
+      await _emergencyService.openFlow(triggerSource: 'AI_TRIAGE');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã kích hoạt hỗ trợ khẩn cấp và gửi cảnh báo người thân',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể kích hoạt hỗ trợ khẩn cấp: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingEmergency = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -303,17 +329,35 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               shape: const StadiumBorder(),
               elevation: 0,
             ),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EmergencyMapScreen()),
-            ),
-            child: const Row(
+            onPressed: _openingEmergency
+                ? null
+                : _result?.riskLevel == 'RED'
+                ? _openEmergencyFlow
+                : () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Tính năng tìm phòng khám gần nhất thuộc TV4 Map/Location',
+                      ),
+                    ),
+                  ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_hospital_outlined, size: 20),
-                SizedBox(width: 8),
+                Icon(
+                  _result?.riskLevel == 'RED'
+                      ? Icons.emergency_outlined
+                      : Icons.local_hospital_outlined,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  'Tìm phòng khám gần nhất',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  _result?.riskLevel == 'RED'
+                      ? 'Kích hoạt hỗ trợ khẩn cấp'
+                      : 'Tìm phòng khám gần nhất',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

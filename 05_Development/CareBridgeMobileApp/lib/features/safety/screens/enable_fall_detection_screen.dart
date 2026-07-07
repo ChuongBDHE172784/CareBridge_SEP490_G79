@@ -28,9 +28,8 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
   // "Thời gian chờ" — countdown before auto-alert fires. The backend has no
   // field for this yet; kept as local-only UI state (TODO when added).
   int _countdownSeconds = 30;
-  // Mapped to SafetyConfigRequest.emergencyAutoAlert — closest existing
-  // backend field for "share location & auto-contact family on fall".
-  bool _shareLocation = true;
+  // Mapped to SafetyConfigRequest.emergencyAutoAlert.
+  bool _autoFamilyAlert = true;
   bool _consentChecked = false;
   bool _submitting = false;
 
@@ -48,7 +47,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
       await _safetyService.updateConfig(
         fallDetectionEnabled: true,
         sensitivityLevel: 'MEDIUM',
-        emergencyAutoAlert: _shareLocation,
+        emergencyAutoAlert: _autoFamilyAlert,
       );
       await _safetyService.enableFallDetection();
       if (mounted) Navigator.of(context).pop(true);
@@ -137,7 +136,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               color: _primaryContainer.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.share_location, color: _primary, size: 40),
+            child: const Icon(Icons.sensors, color: _primary, size: 40),
           ),
         ),
         const SizedBox(height: 16),
@@ -226,7 +225,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        // Countdown + location sharing
+        // Countdown + emergency alert
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -282,10 +281,13 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                 children: [
                   Row(
                     children: const [
-                      Icon(Icons.location_on_outlined, color: _primary),
+                      Icon(
+                        Icons.notification_important_outlined,
+                        color: _primary,
+                      ),
                       SizedBox(width: 8),
                       Text(
-                        'Chia sẻ vị trí',
+                        'Tự động báo người thân',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -295,10 +297,10 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                     ],
                   ),
                   Switch(
-                    value: _shareLocation,
+                    value: _autoFamilyAlert,
                     activeThumbColor: Colors.white,
                     activeTrackColor: _primary,
-                    onChanged: (v) => setState(() => _shareLocation = v),
+                    onChanged: (v) => setState(() => _autoFamilyAlert = v),
                   ),
                 ],
               ),

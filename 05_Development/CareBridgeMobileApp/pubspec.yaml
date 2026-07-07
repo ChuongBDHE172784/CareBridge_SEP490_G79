@@ -45,7 +45,7 @@ dependencies:
     git:
       url: https://github.com/fluttercommunity/plus_plugins.git
       path: packages/sensors_plus/sensors_plus
-      ref: 3e150ba7d6c3219e022572b565000eedd4bedfd5
+      ref: sensors_plus-v6.1.2
 
 dev_dependencies:
   flutter_test:

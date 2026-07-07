@@ -38,6 +38,15 @@ class ExerciseControllerDetailSecurityTest {
     private com.carebridge.backend.exercise.service.IExerciseQueryService exerciseQueryService;
 
     @MockitoBean
+    private com.carebridge.backend.exercise.service.IExerciseSafetyCheckService safetyCheckService;
+
+    @MockitoBean
+    private com.carebridge.backend.exercise.service.IExerciseSessionService sessionService;
+
+    @MockitoBean
+    private com.carebridge.backend.exercise.service.IPostureConfigService postureConfigService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean
