@@ -4,7 +4,6 @@ import 'dart:convert';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
-import '../models/file_model.dart';
 
 class FileService {
   String get _baseUrl {

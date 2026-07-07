@@ -45,13 +45,19 @@ class _MaternalHealthMetricScreenState
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final m = await _service.getMetricDetail(widget.metricId);
       if (mounted) {
-        setState(() { _metric = m; _loading = false; });
+        setState(() {
+          _metric = m;
+          _loading = false;
+        });
       }
-    } on ApiException catch (e) {
+    } on ApiException {
       // Fallback mock for development
       if (mounted) {
         setState(() {
@@ -65,7 +71,9 @@ class _MaternalHealthMetricScreenState
             unit: isBp ? 'mmHg' : 'kg',
             measuredAt: DateTime.now().subtract(const Duration(hours: 2)),
             sourceType: SourceType.manual,
-            note: isBp ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.' : 'Cân nặng tăng nhẹ, ổn định.',
+            note: isBp
+                ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.'
+                : 'Cân nặng tăng nhẹ, ổn định.',
             createdAt: DateTime.now(),
           );
           _loading = false;
@@ -73,7 +81,10 @@ class _MaternalHealthMetricScreenState
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+        setState(() {
+          _error = 'Lỗi kết nối.';
+          _loading = false;
+        });
       }
     }
   }
@@ -83,10 +94,14 @@ class _MaternalHealthMetricScreenState
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa chỉ số?',
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: const Text('Hành động này không thể khôi phục.',
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 14)),
+        title: const Text(
+          'Xóa chỉ số?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Hành động này không thể khôi phục.',
+          style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -94,7 +109,9 @@ class _MaternalHealthMetricScreenState
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
+            ),
             child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend')),
           ),
         ],
@@ -124,7 +141,11 @@ class _MaternalHealthMetricScreenState
     final h = dt.hour.toString().padLeft(2, '0');
     final mi = dt.minute.toString().padLeft(2, '0');
     final ampm = dt.hour < 12 ? 'AM' : 'PM';
-    final hour12 = dt.hour == 0 ? 12 : dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    final hour12 = dt.hour == 0
+        ? 12
+        : dt.hour > 12
+        ? dt.hour - 12
+        : dt.hour;
     return '${hour12.toString().padLeft(2, '0')}:$mi $ampm';
   }
 
@@ -134,10 +155,12 @@ class _MaternalHealthMetricScreenState
       backgroundColor: _canvas,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : _error != null
-                ? _buildErrorState()
-                : _buildContent(_metric!),
+            ? _buildErrorState()
+            : _buildContent(_metric!),
       ),
     );
   }
@@ -149,11 +172,21 @@ class _MaternalHealthMetricScreenState
         children: [
           const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          Text(
+            _error!,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: _load,
-            child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+            child: const Text(
+              'Thử lại',
+              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            ),
           ),
         ],
       ),
@@ -232,7 +265,11 @@ class _MaternalHealthMetricScreenState
                   color: _primaryContainer.withAlpha(51),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.monitor_weight, color: _primary, size: 20),
+                child: const Icon(
+                  Icons.monitor_weight,
+                  color: _primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -327,8 +364,7 @@ class _MaternalHealthMetricScreenState
             value: m.sourceType.displayLabel,
             showDivider: m.note != null && m.note!.isNotEmpty,
           ),
-          if (m.note != null && m.note!.isNotEmpty)
-            _NoteRow(note: m.note!),
+          if (m.note != null && m.note!.isNotEmpty) _NoteRow(note: m.note!),
         ],
       ),
     );
@@ -529,8 +565,7 @@ class _DetailRow extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider)
-          const Divider(height: 1, color: Color(0xFFFADCD3)),
+        if (showDivider) const Divider(height: 1, color: Color(0xFFFADCD3)),
       ],
     );
   }
@@ -626,10 +661,15 @@ class _BarChartPainter extends CustomPainter {
 
       // Label
       final tp = TextPainter(
-        text: TextSpan(text: labels[i], style: textStyle.copyWith(
-          fontWeight: i == barCount - 1 ? FontWeight.bold : FontWeight.normal,
-          color: i == barCount - 1 ? const Color(0xFF845143) : const Color(0xFF524440),
-        )),
+        text: TextSpan(
+          text: labels[i],
+          style: textStyle.copyWith(
+            fontWeight: i == barCount - 1 ? FontWeight.bold : FontWeight.normal,
+            color: i == barCount - 1
+                ? const Color(0xFF845143)
+                : const Color(0xFF524440),
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(x + (barWidth - tp.width) / 2, chartHeight + 6));
@@ -644,7 +684,11 @@ class _BarChartPainter extends CustomPainter {
         final ttp = TextPainter(
           text: TextSpan(
             text: tooltipText,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 10, color: Colors.white),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 10,
+              color: Colors.white,
+            ),
           ),
           textDirection: TextDirection.ltr,
         )..layout();
@@ -661,8 +705,16 @@ class _BarChartPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = const Color(0xFFFADCD3)
       ..strokeWidth = 1;
-    canvas.drawLine(Offset(0, chartHeight * 0.35), Offset(size.width, chartHeight * 0.35), gridPaint);
-    canvas.drawLine(Offset(0, chartHeight), Offset(size.width, chartHeight), gridPaint);
+    canvas.drawLine(
+      Offset(0, chartHeight * 0.35),
+      Offset(size.width, chartHeight * 0.35),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(0, chartHeight),
+      Offset(size.width, chartHeight),
+      gridPaint,
+    );
   }
 
   @override

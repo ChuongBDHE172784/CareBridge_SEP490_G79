@@ -8,10 +8,12 @@ class CreateVaccinationReminderScreen extends StatefulWidget {
   const CreateVaccinationReminderScreen({super.key});
 
   @override
-  State<CreateVaccinationReminderScreen> createState() => _CreateVaccinationReminderScreenState();
+  State<CreateVaccinationReminderScreen> createState() =>
+      _CreateVaccinationReminderScreenState();
 }
 
-class _CreateVaccinationReminderScreenState extends State<CreateVaccinationReminderScreen> {
+class _CreateVaccinationReminderScreenState
+    extends State<CreateVaccinationReminderScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -87,7 +89,11 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: _primary, onPrimary: Colors.white, surface: _canvas),
+          colorScheme: const ColorScheme.light(
+            primary: _primary,
+            onPrimary: Colors.white,
+            surface: _canvas,
+          ),
         ),
         child: child!,
       ),
@@ -98,13 +104,19 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
   Future<void> _save() async {
     if (_selectedBaby == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn bé.'), backgroundColor: _primary),
+        const SnackBar(
+          content: Text('Vui lòng chọn bé.'),
+          backgroundColor: _primary,
+        ),
       );
       return;
     }
     if (_vaccineNameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên vắc xin.'), backgroundColor: _primary),
+        const SnackBar(
+          content: Text('Vui lòng nhập tên vắc xin.'),
+          backgroundColor: _primary,
+        ),
       );
       return;
     }
@@ -122,7 +134,10 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu. Vui lòng thử lại.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể lưu. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -143,7 +158,12 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
         ),
         title: const Text(
           'Đặt nhắc lịch tiêm',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
         ),
       ),
       body: Stack(
@@ -181,14 +201,27 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
     if (_isLoadingBabies) {
       return const SizedBox(
         height: 80,
-        child: Center(child: CircularProgressIndicator(color: _primaryContainer)),
+        child: Center(
+          child: CircularProgressIndicator(color: _primaryContainer),
+        ),
       );
     }
     if (_babies.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(20)),
-        child: const Text('Chưa có hồ sơ bé. Vui lòng thêm bé trước.', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant), textAlign: TextAlign.center),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          'Chưa có hồ sơ bé. Vui lòng thêm bé trước.',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     return SizedBox(
@@ -196,7 +229,7 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _babies.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
           if (i == _babies.length) return _buildAddBabyChip();
           final b = _babies[i];
@@ -212,17 +245,31 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
               decoration: BoxDecoration(
                 color: selected ? _primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: selected ? _primary : _surface, width: 2),
-                boxShadow: selected ? [BoxShadow(color: _primary.withAlpha(40), blurRadius: 8)] : [],
+                border: Border.all(
+                  color: selected ? _primary : _surface,
+                  width: 2,
+                ),
+                boxShadow: selected
+                    ? [BoxShadow(color: _primary.withAlpha(40), blurRadius: 8)]
+                    : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.child_care_rounded, color: selected ? Colors.white : _primaryContainer, size: 28),
+                  Icon(
+                    Icons.child_care_rounded,
+                    color: selected ? Colors.white : _primaryContainer,
+                    size: 28,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     b.nickname,
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 10, fontWeight: FontWeight.w600, color: selected ? Colors.white : _onSurface),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : _onSurface,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -247,9 +294,21 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.add_circle_outline_rounded, color: _onSurfaceVariant, size: 26),
+          Icon(
+            Icons.add_circle_outline_rounded,
+            color: _onSurfaceVariant,
+            size: 26,
+          ),
           SizedBox(height: 4),
-          Text('Thêm bé', style: TextStyle(fontFamily: 'Lexend', fontSize: 10, color: _onSurfaceVariant), textAlign: TextAlign.center),
+          Text(
+            'Thêm bé',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 10,
+              color: _onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -261,7 +320,13 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -269,8 +334,15 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
             child: TextFormField(
               controller: _vaccineNameCtrl,
               maxLength: 255,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
-              decoration: _inputDeco('Tên vắc xin *', hint: 'Cúm mùa, Thủy đậu...'),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurface,
+              ),
+              decoration: _inputDeco(
+                'Tên vắc xin *',
+                hint: 'Cúm mùa, Thủy đậu...',
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -289,7 +361,11 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
                 color: _primaryContainer.withAlpha(30),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.auto_awesome_rounded, color: _primaryContainer, size: 22),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: _primaryContainer,
+                size: 22,
+              ),
             ),
           ),
         ],
@@ -303,41 +379,85 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Lịch tiêm', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Lịch tiêm',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 14),
           GestureDetector(
             onTap: _pickDate,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_rounded, color: _primary, size: 18),
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    color: _primary,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Ngày tiêm dự kiến', style: TextStyle(fontFamily: 'Lexend', fontSize: 10, color: _onSurfaceVariant)),
+                        const Text(
+                          'Ngày tiêm dự kiến',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 10,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
                         Text(
                           '${_scheduledDate.day.toString().padLeft(2, '0')}/${_scheduledDate.month.toString().padLeft(2, '0')}/${_scheduledDate.year}',
-                          style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant, size: 18),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: _onSurfaceVariant,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
-          const Text('Nhắc trước', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+          const Text(
+            'Nhắc trước',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -347,14 +467,22 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
                 onTap: () => setState(() => _leadTimeDays = d),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: selected ? _primary : _surface,
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Text(
                     '$d ngày',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : _onSurface),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : _onSurface,
+                    ),
                   ),
                 ),
               );
@@ -371,14 +499,32 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: _locationCtrl,
-        style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
-        decoration: _inputDeco('Địa điểm tiêm chủng', hint: 'VNVC, phòng khám...').copyWith(
-          prefixIcon: const Icon(Icons.location_on_rounded, color: _primaryContainer, size: 20),
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          color: _onSurface,
         ),
+        decoration:
+            _inputDeco(
+              'Địa điểm tiêm chủng',
+              hint: 'VNVC, phòng khám...',
+            ).copyWith(
+              prefixIcon: const Icon(
+                Icons.location_on_rounded,
+                color: _primaryContainer,
+                size: 20,
+              ),
+            ),
       ),
     );
   }
@@ -389,21 +535,44 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome_rounded, color: _primaryContainer, size: 16),
+              Icon(
+                Icons.auto_awesome_rounded,
+                color: _primaryContainer,
+                size: 16,
+              ),
               SizedBox(width: 8),
-              Text('Lịch tiêm tham khảo', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+              Text(
+                'Lịch tiêm tham khảo',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (_isLoadingSuggestions)
-            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: _primaryContainer)))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: _primaryContainer),
+              ),
+            )
           else
             ...(_suggestions.take(3).map((s) => _buildSuggestionTile(s))),
         ],
@@ -419,21 +588,48 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           children: [
-            const Icon(Icons.vaccines_rounded, color: _primaryContainer, size: 20),
+            const Icon(
+              Icons.vaccines_rounded,
+              color: _primaryContainer,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
-                  if (date != null) Text(date, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
+                  if (date != null)
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant, size: 16),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: _onSurfaceVariant,
+              size: 16,
+            ),
           ],
         ),
       ),
@@ -445,7 +641,10 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_primaryContainer.withAlpha(35), _primaryContainer.withAlpha(15)],
+          colors: [
+            _primaryContainer.withAlpha(35),
+            _primaryContainer.withAlpha(15),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -453,12 +652,21 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
       ),
       child: const Row(
         children: [
-          Icon(Icons.lightbulb_outline_rounded, color: _primaryContainer, size: 20),
+          Icon(
+            Icons.lightbulb_outline_rounded,
+            color: _primaryContainer,
+            size: 20,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Tiêm chủng đầy đủ giúp bé phòng ngừa các bệnh truyền nhiễm nguy hiểm. Hãy theo dõi lịch tiêm định kỳ.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant, height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -477,8 +685,22 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
         elevation: 0,
       ),
       child: _isSaving
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-          : const Text('Lưu nhắc lịch', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700)),
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Lưu nhắc lịch',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
     );
   }
 
@@ -489,13 +711,27 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
         child: Center(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20)]),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20),
+              ],
+            ),
             child: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.vaccines_rounded, color: _primary, size: 48),
                 SizedBox(height: 12),
-                Text('Đã lưu lịch tiêm!', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: _onSurface)),
+                Text(
+                  'Đã lưu lịch tiêm!',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -507,14 +743,31 @@ class _CreateVaccinationReminderScreenState extends State<CreateVaccinationRemin
   InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
     labelText: label,
     hintText: hint,
-    labelStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
-    hintStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBBA9A4)),
+    labelStyle: const TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 12,
+      color: _onSurfaceVariant,
+    ),
+    hintStyle: const TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 13,
+      color: Color(0xFFBBA9A4),
+    ),
     filled: true,
     fillColor: Colors.white,
     counterText: '',
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _primaryContainer, width: 2)),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _surface, width: 2),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _surface, width: 2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+    ),
   );
 }

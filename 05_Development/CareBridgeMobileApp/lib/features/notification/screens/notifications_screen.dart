@@ -97,13 +97,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer),
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
                     )
                   : _error != null
-                      ? _buildErrorState()
-                      : _notifications.isEmpty
-                          ? _buildEmptyState()
-                          : _buildNotificationList(),
+                  ? _buildErrorState()
+                  : _notifications.isEmpty
+                  ? _buildEmptyState()
+                  : _buildNotificationList(),
             ),
           ],
         ),
@@ -201,8 +203,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_rounded,
-              color: _outlineVariant, size: 64),
+          Icon(
+            Icons.notifications_none_rounded,
+            color: _outlineVariant,
+            size: 64,
+          ),
           const SizedBox(height: 16),
           const Text(
             'Chưa có thông báo nào',
@@ -238,7 +243,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _filters.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
           final isSelected = _selectedFilter == index;
           return GestureDetector(
@@ -248,9 +253,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               decoration: BoxDecoration(
                 color: isSelected ? _primaryContainer : _surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(9999),
-                border: isSelected
-                    ? null
-                    : Border.all(color: _outlineVariant),
+                border: isSelected ? null : Border.all(color: _outlineVariant),
                 boxShadow: isSelected
                     ? [
                         const BoxShadow(
@@ -363,7 +366,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: isUnread ? 16 : 16,
-                        fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: isUnread
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         color: _onSurface,
                       ),
                     ),
@@ -425,10 +430,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(
-        color: bgColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
       child: Icon(icon, color: iconColor, size: 24),
     );
   }

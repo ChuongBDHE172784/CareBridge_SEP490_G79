@@ -14,7 +14,8 @@ class HealthMetricTrendScreen extends StatefulWidget {
   });
 
   @override
-  State<HealthMetricTrendScreen> createState() => _HealthMetricTrendScreenState();
+  State<HealthMetricTrendScreen> createState() =>
+      _HealthMetricTrendScreenState();
 }
 
 class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
@@ -26,12 +27,42 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
 
   static const _metricOptions = [
-    _MetricOption(apiValue: 'BLOOD_PRESSURE_SYSTOLIC', label: 'Huyết áp tâm thu', unit: 'mmHg', icon: Icons.favorite_border_rounded),
-    _MetricOption(apiValue: 'BLOOD_PRESSURE_DIASTOLIC', label: 'Huyết áp tâm trương', unit: 'mmHg', icon: Icons.favorite_border_rounded),
-    _MetricOption(apiValue: 'WEIGHT', label: 'Cân nặng', unit: 'kg', icon: Icons.monitor_weight_outlined),
-    _MetricOption(apiValue: 'HEART_RATE', label: 'Nhịp tim', unit: 'bpm', icon: Icons.show_chart_rounded),
-    _MetricOption(apiValue: 'BLOOD_GLUCOSE', label: 'Đường huyết', unit: 'mg/dL', icon: Icons.water_drop_outlined),
-    _MetricOption(apiValue: 'TEMPERATURE', label: 'Nhiệt độ', unit: '°C', icon: Icons.thermostat_rounded),
+    _MetricOption(
+      apiValue: 'BLOOD_PRESSURE_SYSTOLIC',
+      label: 'Huyết áp tâm thu',
+      unit: 'mmHg',
+      icon: Icons.favorite_border_rounded,
+    ),
+    _MetricOption(
+      apiValue: 'BLOOD_PRESSURE_DIASTOLIC',
+      label: 'Huyết áp tâm trương',
+      unit: 'mmHg',
+      icon: Icons.favorite_border_rounded,
+    ),
+    _MetricOption(
+      apiValue: 'WEIGHT',
+      label: 'Cân nặng',
+      unit: 'kg',
+      icon: Icons.monitor_weight_outlined,
+    ),
+    _MetricOption(
+      apiValue: 'HEART_RATE',
+      label: 'Nhịp tim',
+      unit: 'bpm',
+      icon: Icons.show_chart_rounded,
+    ),
+    _MetricOption(
+      apiValue: 'BLOOD_GLUCOSE',
+      label: 'Đường huyết',
+      unit: 'mg/dL',
+      icon: Icons.water_drop_outlined,
+    ),
+    _MetricOption(
+      apiValue: 'TEMPERATURE',
+      label: 'Nhiệt độ',
+      unit: '°C',
+      icon: Icons.thermostat_rounded,
+    ),
   ];
 
   late _MetricOption _selectedMetric;
@@ -46,14 +77,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   void initState() {
     super.initState();
     _selectedMetric = _metricOptions.firstWhere(
-      (o) => o.apiValue == (widget.initialMetricType ?? 'BLOOD_PRESSURE_SYSTOLIC'),
+      (o) =>
+          o.apiValue == (widget.initialMetricType ?? 'BLOOD_PRESSURE_SYSTOLIC'),
       orElse: () => _metricOptions.first,
     );
     _loadTrend();
   }
 
   Future<void> _loadTrend() async {
-    setState(() { _isLoading = true; _errorMsg = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+    });
     try {
       final from = DateTime.now().subtract(Duration(days: _periodDays));
       final result = await _service.getMetricTrend(
@@ -93,7 +128,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         ),
         title: const Text(
           'Chỉ số sức khỏe',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _primary),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _primary,
+          ),
         ),
         actions: [
           IconButton(
@@ -148,9 +188,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
               child: DropdownButton<_MetricOption>(
                 value: _selectedMetric,
                 isExpanded: true,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: _onSurface,
+                ),
                 items: _metricOptions
-                    .map((o) => DropdownMenuItem(value: o, child: Text(o.label)))
+                    .map(
+                      (o) => DropdownMenuItem(value: o, child: Text(o.label)),
+                    )
                     .toList(),
                 onChanged: _onMetricChanged,
                 dropdownColor: _canvas,
@@ -162,11 +208,22 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: _surfaceContainer, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+            color: _surfaceContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Row(
             children: [
-              _PeriodPill(label: '7 ngày', active: _periodDays == 7, onTap: () => _onPeriodChanged(7)),
-              _PeriodPill(label: '30 ngày', active: _periodDays == 30, onTap: () => _onPeriodChanged(30)),
+              _PeriodPill(
+                label: '7 ngày',
+                active: _periodDays == 7,
+                onTap: () => _onPeriodChanged(7),
+              ),
+              _PeriodPill(
+                label: '30 ngày',
+                active: _periodDays == 30,
+                onTap: () => _onPeriodChanged(30),
+              ),
             ],
           ),
         ),
@@ -183,12 +240,26 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.error_outline_rounded, color: _primaryContainer, size: 48),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: _primaryContainer,
+            size: 48,
+          ),
           const SizedBox(height: 12),
-          Text(_errorMsg!, textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          Text(
+            _errorMsg!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
-          TextButton(onPressed: _loadTrend, child: const Text('Thử lại', style: TextStyle(color: _primary))),
+          TextButton(
+            onPressed: _loadTrend,
+            child: const Text('Thử lại', style: TextStyle(color: _primary)),
+          ),
         ],
       ),
     );
@@ -207,7 +278,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(18), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: _primary.withAlpha(18),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -222,19 +297,29 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                     Text(
                       '${avg.toStringAsFixed(avg % 1 == 0 ? 0 : 1)} $unit',
                       style: const TextStyle(
-                        fontFamily: 'Lexend', fontSize: 22, fontWeight: FontWeight.w700, color: _onSurface,
+                        fontFamily: 'Lexend',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
                       ),
                     ),
                     const Text(
                       'Trung bình giai đoạn này',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
               if (trendPct != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _primary.withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
@@ -242,14 +327,21 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        isDown ? Icons.trending_down_rounded : Icons.trending_up_rounded,
+                        isDown
+                            ? Icons.trending_down_rounded
+                            : Icons.trending_up_rounded,
                         color: _primary,
                         size: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${trendPct!.abs().toStringAsFixed(1)}%',
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                        '${trendPct.abs().toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
                       ),
                     ],
                   ),
@@ -264,7 +356,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                 child: Text(
                   'Chưa có dữ liệu trong giai đoạn này',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: _onSurfaceVariant,
+                  ),
                 ),
               ),
             )
@@ -303,7 +399,16 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: labels
-          .map((l) => Text(l, style: const TextStyle(fontFamily: 'Lexend', fontSize: 10, color: _onSurfaceVariant)))
+          .map(
+            (l) => Text(
+              l,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 10,
+                color: _onSurfaceVariant,
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -316,21 +421,25 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   Widget _buildBentoSummary() {
     return Row(
       children: [
-        Expanded(child: _buildBentoCard(
-          icon: Icons.monitor_weight_outlined,
-          label: 'Cân nặng',
-          value: '—',
-          unit: 'kg',
-          trend: null,
-        )),
+        Expanded(
+          child: _buildBentoCard(
+            icon: Icons.monitor_weight_outlined,
+            label: 'Cân nặng',
+            value: '—',
+            unit: 'kg',
+            trend: null,
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _buildBentoCard(
-          icon: Icons.show_chart_rounded,
-          label: 'Nhịp tim',
-          value: '—',
-          unit: 'bpm',
-          trend: null,
-        )),
+        Expanded(
+          child: _buildBentoCard(
+            icon: Icons.show_chart_rounded,
+            label: 'Nhịp tim',
+            value: '—',
+            unit: 'bpm',
+            trend: null,
+          ),
+        ),
       ],
     );
   }
@@ -349,7 +458,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(12), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -357,11 +470,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         children: [
           Icon(icon, color: _primaryContainer, size: 22),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             '$value $unit',
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
           ),
         ],
       ),
@@ -387,19 +512,34 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
               children: [
                 const Text(
                   'Lưu ý từ hệ thống',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'Nếu các chỉ số có xu hướng bất thường, hãy tham khảo ý kiến bác sĩ ngay.',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant, height: 1.5),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {},
                   child: const Text(
                     'Trò chuyện ngay →',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
                   ),
                 ),
               ],
@@ -417,7 +557,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
           child: ElevatedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-            label: const Text('Thêm chỉ số', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Thêm chỉ số',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primary,
               foregroundColor: Colors.white,
@@ -437,7 +583,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
               side: const BorderSide(color: _surfaceContainer, width: 1.5),
               shape: const StadiumBorder(),
             ),
-            child: const Text('Xem chi tiết', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Xem chi tiết',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],
@@ -459,7 +611,8 @@ class _MetricOption {
   });
 
   @override
-  bool operator ==(Object other) => other is _MetricOption && other.apiValue == apiValue;
+  bool operator ==(Object other) =>
+      other is _MetricOption && other.apiValue == apiValue;
 
   @override
   int get hashCode => apiValue.hashCode;
@@ -470,7 +623,11 @@ class _PeriodPill extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  const _PeriodPill({required this.label, required this.active, required this.onTap});
+  const _PeriodPill({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -564,7 +721,13 @@ class _LineChartPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     for (final pos in positions) {
-      canvas.drawCircle(pos, 5, Paint()..color = Colors.white..style = PaintingStyle.fill);
+      canvas.drawCircle(
+        pos,
+        5,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill,
+      );
       canvas.drawCircle(pos, 4, dotPaint);
       canvas.drawCircle(pos, 5, dotBorder);
     }

@@ -155,7 +155,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     const SizedBox(height: 14),
                     if (_topics.isEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           borderRadius: BorderRadius.circular(10),
@@ -163,12 +166,19 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 18),
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.orange.shade700,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Chưa có chủ đề nào. Quản trị viên cần tạo chủ đề trước khi bạn có thể đặt câu hỏi.',
-                                style: TextStyle(fontSize: 13, color: Colors.orange.shade800),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.orange.shade800,
+                                ),
                               ),
                             ),
                           ],
@@ -176,15 +186,19 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       )
                     else
                       DropdownButtonFormField<String>(
-                        value: _selectedTopicId,
+                        initialValue: _selectedTopicId,
                         decoration: _inputDeco('Chủ đề *'),
-                        items: _topics.map(
-                          (t) => DropdownMenuItem(
-                            value: t['id'].toString(),
-                            child: Text(t['name'] ?? t['id'].toString()),
-                          ),
-                        ).toList(),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Vui lòng chọn chủ đề' : null,
+                        items: _topics
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t['id'].toString(),
+                                child: Text(t['name'] ?? t['id'].toString()),
+                              ),
+                            )
+                            .toList(),
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Vui lòng chọn chủ đề'
+                            : null,
                         onChanged: (v) => setState(() => _selectedTopicId = v),
                       ),
                     const SizedBox(height: 14),
@@ -244,7 +258,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: const StadiumBorder(),
                       ),
-                      onPressed: (_submitting || _topics.isEmpty) ? null : _submit,
+                      onPressed: (_submitting || _topics.isEmpty)
+                          ? null
+                          : _submit,
                       child: _submitting
                           ? const SizedBox(
                               height: 20,

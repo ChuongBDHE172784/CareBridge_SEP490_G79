@@ -43,7 +43,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyFiles(filter: _activeFilter);
-      if (mounted) setState(() { _files = list; _loading = false; });
+      if (mounted)
+        setState(() {
+          _files = list;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -59,14 +63,24 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa tệp?', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: Text('Xóa "${f.originalName}"? Không thể khôi phục.', style: const TextStyle(fontFamily: 'Lexend')),
+        title: const Text(
+          'Xóa tệp?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Xóa "${f.originalName}"? Không thể khôi phục.',
+          style: const TextStyle(fontFamily: 'Lexend'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend'))),
-          FilledButton(onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: _error),
-              child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: _error),
+            child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend')),
+          ),
         ],
       ),
     );
@@ -76,7 +90,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _load();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể xóa.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể xóa.')));
     }
   }
 
@@ -92,7 +108,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             _buildFilterRow(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : RefreshIndicator(
                       color: _primaryContainer,
                       onRefresh: _load,
@@ -107,8 +127,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
         onPressed: () async {
-          final uploaded = await Navigator.push<bool>(context,
-              MaterialPageRoute(builder: (_) => const UploadFileScreen()));
+          final uploaded = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (_) => const UploadFileScreen()),
+          );
           if (uploaded == true) _load();
         },
         child: const Icon(Icons.upload),
@@ -126,11 +148,21 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
           ),
           const Expanded(
-            child: Text('Hồ sơ & Tài liệu',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+            child: Text(
+              'Hồ sơ & Tài liệu',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
+            ),
           ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: _onSurfaceVariant)),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.search, color: _onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -145,7 +177,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withAlpha(13),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,10 +191,23 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Bộ nhớ',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                Text('${_usedMb.toInt()} MB / ${_totalMb.toInt()} MB',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                const Text(
+                  'Bộ nhớ',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                Text(
+                  '${_usedMb.toInt()} MB / ${_totalMb.toInt()} MB',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -172,8 +223,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            Text('${(pct * 100).toInt()}% đã dùng',
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+            Text(
+              '${(pct * 100).toInt()}% đã dùng',
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
@@ -187,13 +244,29 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
-          _FilterChip(label: 'Tất cả', selected: _activeFilter == null, onTap: () => _setFilter(null)),
+          _FilterChip(
+            label: 'Tất cả',
+            selected: _activeFilter == null,
+            onTap: () => _setFilter(null),
+          ),
           const SizedBox(width: 8),
-          _FilterChip(label: 'Siêu âm', selected: _activeFilter == FileCategory.ultrasound, onTap: () => _setFilter(FileCategory.ultrasound)),
+          _FilterChip(
+            label: 'Siêu âm',
+            selected: _activeFilter == FileCategory.ultrasound,
+            onTap: () => _setFilter(FileCategory.ultrasound),
+          ),
           const SizedBox(width: 8),
-          _FilterChip(label: 'Hồ sơ', selected: _activeFilter == FileCategory.medicalRecord, onTap: () => _setFilter(FileCategory.medicalRecord)),
+          _FilterChip(
+            label: 'Hồ sơ',
+            selected: _activeFilter == FileCategory.medicalRecord,
+            onTap: () => _setFilter(FileCategory.medicalRecord),
+          ),
           const SizedBox(width: 8),
-          _FilterChip(label: 'Hình ảnh', selected: _activeFilter == FileCategory.photo, onTap: () => _setFilter(FileCategory.photo)),
+          _FilterChip(
+            label: 'Hình ảnh',
+            selected: _activeFilter == FileCategory.photo,
+            onTap: () => _setFilter(FileCategory.photo),
+          ),
         ],
       ),
     );
@@ -203,8 +276,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
       itemCount: _files.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _FileCard(file: _files[i], onDelete: () => _deleteFile(_files[i])),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (_, i) =>
+          _FileCard(file: _files[i], onDelete: () => _deleteFile(_files[i])),
     );
   }
 
@@ -215,9 +289,20 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         children: [
           Icon(Icons.folder_open, size: 64, color: Color(0xFFC98C7B)),
           SizedBox(height: 12),
-          Text('Chưa có tệp nào', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+          Text(
+            'Chưa có tệp nào',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF271812),
+            ),
+          ),
           SizedBox(height: 8),
-          Text('Nhấn + để tải lên tài liệu', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440))),
+          Text(
+            'Nhấn + để tải lên tài liệu',
+            style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440)),
+          ),
         ],
       ),
     );
@@ -229,7 +314,11 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -241,13 +330,25 @@ class _FilterChip extends StatelessWidget {
           color: selected ? const Color(0xFFC98C7B) : Colors.white,
           borderRadius: BorderRadius.circular(99),
           border: selected ? null : Border.all(color: const Color(0xFFD6C2BD)),
-          boxShadow: selected ? [const BoxShadow(color: Color(0xFFC98C7B), blurRadius: 8, offset: Offset(0, 3))] : null,
+          boxShadow: selected
+              ? [
+                  const BoxShadow(
+                    color: Color(0xFFC98C7B),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w500,
-              color: selected ? Colors.white : const Color(0xFF524440),
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? Colors.white : const Color(0xFF524440),
+          ),
+        ),
       ),
     );
   }
@@ -280,13 +381,23 @@ class _FileCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withAlpha(13),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: const Color(0xFFFFE9E3), borderRadius: BorderRadius.circular(10)),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE9E3),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(_icon, color: _iconColor),
           ),
           const SizedBox(width: 12),
@@ -294,20 +405,50 @@ class _FileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(file.originalName,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF271812)),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  file.originalName,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF271812),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 Row(
                   children: [
                     if (file.sizeLabel.isNotEmpty) ...[
-                      const Icon(Icons.data_usage, size: 12, color: Color(0xFF524440)),
+                      const Icon(
+                        Icons.data_usage,
+                        size: 12,
+                        color: Color(0xFF524440),
+                      ),
                       const SizedBox(width: 3),
-                      Text(file.sizeLabel, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF524440))),
+                      Text(
+                        file.sizeLabel,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          color: Color(0xFF524440),
+                        ),
+                      ),
                       const SizedBox(width: 8),
                     ],
-                    const Icon(Icons.calendar_today, size: 12, color: Color(0xFF524440)),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 12,
+                      color: Color(0xFF524440),
+                    ),
                     const SizedBox(width: 3),
-                    Text(file.dateLabel, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF524440))),
+                    Text(
+                      file.dateLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: Color(0xFF524440),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -319,13 +460,21 @@ class _FileCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                file.visibility == FileVisibility.private ? Icons.lock_outline : Icons.share,
+                file.visibility == FileVisibility.private
+                    ? Icons.lock_outline
+                    : Icons.share,
                 size: 16,
-                color: file.visibility == FileVisibility.private ? const Color(0xFF524440) : const Color(0xFF845143),
+                color: file.visibility == FileVisibility.private
+                    ? const Color(0xFF524440)
+                    : const Color(0xFF845143),
               ),
               Text(
                 file.visibility.displayLabel,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 9, color: Color(0xFF524440)),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 9,
+                  color: Color(0xFF524440),
+                ),
               ),
             ],
           ),
@@ -335,16 +484,46 @@ class _FileCard extends StatelessWidget {
               if (v == 'delete') onDelete();
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'view', child: Row(
-                children: [Icon(Icons.visibility, size: 18), SizedBox(width: 8), Text('Xem', style: TextStyle(fontFamily: 'Lexend'))],
-              )),
-              const PopupMenuItem(value: 'share', child: Row(
-                children: [Icon(Icons.share, size: 18), SizedBox(width: 8), Text('Chia sẻ', style: TextStyle(fontFamily: 'Lexend'))],
-              )),
-              const PopupMenuItem(value: 'delete', child: Row(
-                children: [Icon(Icons.delete_outline, size: 18, color: Color(0xFFBA1A1A)), SizedBox(width: 8),
-                  Text('Xóa', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A)))],
-              )),
+              const PopupMenuItem(
+                value: 'view',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility, size: 18),
+                    SizedBox(width: 8),
+                    Text('Xem', style: TextStyle(fontFamily: 'Lexend')),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share, size: 18),
+                    SizedBox(width: 8),
+                    Text('Chia sẻ', style: TextStyle(fontFamily: 'Lexend')),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Color(0xFFBA1A1A),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Xóa',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: Color(0xFFBA1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],

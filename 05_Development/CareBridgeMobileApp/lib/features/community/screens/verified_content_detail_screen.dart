@@ -43,11 +43,12 @@ class _VerifiedContentDetailScreenState
       final content = await ContentService.instance.getContentDetail(
         widget.contentId,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _content = content;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) {
         setState(() {

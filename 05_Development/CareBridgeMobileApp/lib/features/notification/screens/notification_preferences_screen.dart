@@ -67,7 +67,9 @@ class _NotificationPreferencesScreenState
   Future<void> _save(List<NotificationPreference> updated) async {
     setState(() => _prefs = updated);
     try {
-      final result = await NotificationService.instance.updatePreferences(updated);
+      final result = await NotificationService.instance.updatePreferences(
+        updated,
+      );
       if (mounted) setState(() => _prefs = result);
     } on ApiException {
       if (mounted) _load();
@@ -113,10 +115,13 @@ class _NotificationPreferencesScreenState
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer))
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : _buildBody(),
+                  ? _buildError()
+                  : _buildBody(),
             ),
           ],
         ),
@@ -171,31 +176,33 @@ class _NotificationPreferencesScreenState
           ),
         ),
         const SizedBox(height: 16),
-        _card(children: [
-          _channelRow(
-            icon: Icons.notifications_outlined,
-            title: 'Thông báo đẩy (Push)',
-            subtitle: 'Trực tiếp trên thiết bị',
-            value: _pushGlobal,
-            onChanged: _setGlobalPush,
-          ),
-          _divider(),
-          _channelRow(
-            icon: Icons.email_outlined,
-            title: 'Email',
-            subtitle: 'Bản tin và báo cáo chi tiết',
-            value: _emailGlobal,
-            onChanged: _setGlobalEmail,
-          ),
-          _divider(),
-          _channelRow(
-            icon: Icons.sms_outlined,
-            title: 'Tin nhắn SMS',
-            subtitle: 'Mã xác thực và cảnh báo khẩn',
-            value: false,
-            onChanged: null,
-          ),
-        ]),
+        _card(
+          children: [
+            _channelRow(
+              icon: Icons.notifications_outlined,
+              title: 'Thông báo đẩy (Push)',
+              subtitle: 'Trực tiếp trên thiết bị',
+              value: _pushGlobal,
+              onChanged: _setGlobalPush,
+            ),
+            _divider(),
+            _channelRow(
+              icon: Icons.email_outlined,
+              title: 'Email',
+              subtitle: 'Bản tin và báo cáo chi tiết',
+              value: _emailGlobal,
+              onChanged: _setGlobalEmail,
+            ),
+            _divider(),
+            _channelRow(
+              icon: Icons.sms_outlined,
+              title: 'Tin nhắn SMS',
+              subtitle: 'Mã xác thực và cảnh báo khẩn',
+              value: false,
+              onChanged: null,
+            ),
+          ],
+        ),
         const SizedBox(height: 32),
 
         // Section 2: Notification types
@@ -210,30 +217,32 @@ class _NotificationPreferencesScreenState
           ),
         ),
         const SizedBox(height: 16),
-        _card(children: [
-          _typeRow(
-            title: 'Lịch hẹn & Nhắc nhở',
-            subtitle: 'Lịch khám, tiêm phòng, lịch uống thuốc',
-            type: 'REMINDER',
-          ),
-          _divider(),
-          _typeRow(
-            title: 'Cộng đồng & Tương tác',
-            subtitle: 'Bình luận, lượt thích, tin nhắn mới',
-            type: 'COMMUNITY_REPLY',
-          ),
-          _divider(),
-          _typeRow(
-            title: 'Khuyến mãi & Ưu đãi',
-            subtitle: 'Chương trình đối tác, quà tặng',
-            type: 'CONSULTATION',
-          ),
-          _divider(),
-          _typeRowLocked(
-            title: 'Hệ thống & An toàn',
-            subtitle: 'Cập nhật quan trọng, bảo mật tài khoản',
-          ),
-        ]),
+        _card(
+          children: [
+            _typeRow(
+              title: 'Lịch hẹn & Nhắc nhở',
+              subtitle: 'Lịch khám, tiêm phòng, lịch uống thuốc',
+              type: 'REMINDER',
+            ),
+            _divider(),
+            _typeRow(
+              title: 'Cộng đồng & Tương tác',
+              subtitle: 'Bình luận, lượt thích, tin nhắn mới',
+              type: 'COMMUNITY_REPLY',
+            ),
+            _divider(),
+            _typeRow(
+              title: 'Khuyến mãi & Ưu đãi',
+              subtitle: 'Chương trình đối tác, quà tặng',
+              type: 'CONSULTATION',
+            ),
+            _divider(),
+            _typeRowLocked(
+              title: 'Hệ thống & An toàn',
+              subtitle: 'Cập nhật quan trọng, bảo mật tài khoản',
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -262,32 +271,35 @@ class _NotificationPreferencesScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: locked ? _onSurfaceVariant : _onSurface,
-                  )),
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: locked ? _onSurfaceVariant : _onSurface,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    color: _onSurfaceVariant,
-                  )),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
         Switch(
           value: value,
           onChanged: locked ? null : onChanged,
-          activeColor: _primaryContainer,
+          activeThumbColor: _primaryContainer,
           activeTrackColor: _surfaceVariant,
           inactiveThumbColor: Colors.white,
           inactiveTrackColor: _outlineVariant,
-          trackOutlineColor:
-              WidgetStateProperty.all(Colors.transparent),
+          trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
         ),
       ],
     );
@@ -300,34 +312,40 @@ class _NotificationPreferencesScreenState
   }) {
     final pref = _prefs.where((p) => p.type == type).firstOrNull;
     final enabled =
-        pref?.pushEnabled == true || pref?.emailEnabled == true || pref?.inAppEnabled == true;
+        pref?.pushEnabled == true ||
+        pref?.emailEnabled == true ||
+        pref?.inAppEnabled == true;
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: _onSurface,
-                  )),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    color: _onSurfaceVariant,
-                  )),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
         Switch(
           value: enabled,
           onChanged: (v) => _setTypeEnabled(type, v),
-          activeColor: _primaryContainer,
+          activeThumbColor: _primaryContainer,
           activeTrackColor: _surfaceVariant,
           inactiveThumbColor: Colors.white,
           inactiveTrackColor: _outlineVariant,
@@ -337,10 +355,7 @@ class _NotificationPreferencesScreenState
     );
   }
 
-  Widget _typeRowLocked({
-    required String title,
-    required String subtitle,
-  }) {
+  Widget _typeRowLocked({required String title, required String subtitle}) {
     final pref = _prefs.where((p) => p.type == 'EMERGENCY').firstOrNull;
     final enabled = pref?.pushEnabled ?? true;
     return Row(
@@ -351,32 +366,39 @@ class _NotificationPreferencesScreenState
             children: [
               Row(
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _onSurface,
-                      )),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
                   const SizedBox(width: 6),
-                  const Icon(Icons.shield_outlined,
-                      color: _primaryContainer, size: 14),
+                  const Icon(
+                    Icons.shield_outlined,
+                    color: _primaryContainer,
+                    size: 14,
+                  ),
                 ],
               ),
               const SizedBox(height: 2),
-              Text(subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    color: _onSurfaceVariant,
-                  )),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
         Switch(
           value: enabled,
           onChanged: null,
-          activeColor: _primaryContainer,
+          activeThumbColor: _primaryContainer,
           activeTrackColor: const Color(0xFFE8D0CB),
           trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
         ),
@@ -434,23 +456,30 @@ class _NotificationPreferencesScreenState
           children: [
             const Icon(Icons.error_outline, color: _primary, size: 48),
             const SizedBox(height: 16),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _onSurfaceVariant)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _load,
               style: FilledButton.styleFrom(
-                  backgroundColor: _primaryContainer,
-                  shape: const StadiumBorder()),
-              child: const Text('Thử lại',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),

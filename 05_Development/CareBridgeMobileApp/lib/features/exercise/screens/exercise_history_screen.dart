@@ -47,8 +47,9 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
       _error = null;
     });
     try {
-      final trimesterScope =
-          _activeFilter == 0 ? null : _filters[_activeFilter].scope;
+      final trimesterScope = _activeFilter == 0
+          ? null
+          : _filters[_activeFilter].scope;
       final result = await ExerciseService.instance.getHistory(
         trimesterScope: trimesterScope,
       );
@@ -84,35 +85,38 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer))
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : RefreshIndicator(
-                          color: _primaryContainer,
-                          onRefresh: _load,
-                          child: ListView(
-                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 80),
-                            children: [
-                              _buildStats(),
-                              const SizedBox(height: 24),
-                              if (_history.isEmpty)
-                                _buildEmpty()
-                              else ...[
-                                const Text(
-                                  'Gần đây',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                    color: _onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ..._history.map(_buildHistoryCard),
-                              ],
-                            ],
-                          ),
-                        ),
+                  ? _buildError()
+                  : RefreshIndicator(
+                      color: _primaryContainer,
+                      onRefresh: _load,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 80),
+                        children: [
+                          _buildStats(),
+                          const SizedBox(height: 24),
+                          if (_history.isEmpty)
+                            _buildEmpty()
+                          else ...[
+                            const Text(
+                              'Gần đây',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: _onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ..._history.map(_buildHistoryCard),
+                          ],
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -161,7 +165,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         scrollDirection: Axis.horizontal,
         itemCount: _filters.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final active = _activeFilter == i;
           final f = _filters[i];
@@ -181,16 +185,25 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (active) ...[
-                    const Icon(Icons.calendar_today_outlined,
-                        color: Colors.white, size: 14),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                   ] else if (f.scope == 'YOGA') ...[
-                    const Icon(Icons.self_improvement_outlined,
-                        color: _primary, size: 14),
+                    const Icon(
+                      Icons.self_improvement_outlined,
+                      color: _primary,
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                   ] else if (f.scope == 'WALKING') ...[
-                    const Icon(Icons.directions_walk_outlined,
-                        color: _primary, size: 14),
+                    const Icon(
+                      Icons.directions_walk_outlined,
+                      color: _primary,
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                   ],
                   Text(
@@ -391,9 +404,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
 
   IconData _exerciseIcon(String title) {
     final t = title.toLowerCase();
-    if (t.contains('yoga') || t.contains('thiền')) return Icons.self_improvement;
-    if (t.contains('đi bộ') || t.contains('walking')) return Icons.directions_walk;
-    if (t.contains('kegel') || t.contains('sàn chậu')) return Icons.fitness_center;
+    if (t.contains('yoga') || t.contains('thiền'))
+      return Icons.self_improvement;
+    if (t.contains('đi bộ') || t.contains('walking'))
+      return Icons.directions_walk;
+    if (t.contains('kegel') || t.contains('sàn chậu'))
+      return Icons.fitness_center;
     return Icons.sports_gymnastics;
   }
 
@@ -433,23 +449,30 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
           children: [
             const Icon(Icons.error_outline, color: _primary, size: 48),
             const SizedBox(height: 16),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _onSurfaceVariant)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _load,
               style: FilledButton.styleFrom(
-                  backgroundColor: _primaryContainer,
-                  shape: const StadiumBorder()),
-              child: const Text('Thử lại',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),

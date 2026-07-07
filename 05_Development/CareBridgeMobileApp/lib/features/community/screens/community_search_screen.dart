@@ -54,14 +54,19 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   }
 
   void _onScroll() {
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 && !_loading && _hasMore) {
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 &&
+        !_loading &&
+        _hasMore) {
       _search();
     }
   }
 
   void _onSearchChanged(String v) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () => _search(refresh: true));
+    _debounce = Timer(
+      const Duration(milliseconds: 400),
+      () => _search(refresh: true),
+    );
   }
 
   Future<void> _search({bool refresh = false}) async {
@@ -72,15 +77,23 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     if (!_hasMore || _loading) return;
     setState(() => _loading = true);
     try {
-      final stage = _selectedStage == 0 ? null : (_selectedStage == 1 ? 'PREGNANCY' : 'NEWBORN');
+      final stage = _selectedStage == 0
+          ? null
+          : (_selectedStage == 1 ? 'PREGNANCY' : 'NEWBORN');
       final items = await CommunityService.instance.searchQuestions(
-        keyword: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        keyword: _searchCtrl.text.trim().isEmpty
+            ? null
+            : _searchCtrl.text.trim(),
         stage: stage,
         page: _page,
       );
       if (mounted) {
         setState(() {
-          if (refresh) _results = items; else _results.addAll(items);
+          if (refresh) {
+            _results = items;
+          } else {
+            _results.addAll(items);
+          }
           _hasMore = items.length >= 20;
           _page++;
           _hasSearched = true;
@@ -109,7 +122,14 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
               icon: const Icon(Icons.arrow_back, color: _primary),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            title: const Text('Tìm kiếm cộng đồng', style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17)),
+            title: const Text(
+              'Tìm kiếm cộng đồng',
+              style: TextStyle(
+                color: _primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+              ),
+            ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(112),
               child: Column(
@@ -132,10 +152,16 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                               controller: _searchCtrl,
                               onChanged: _onSearchChanged,
                               decoration: const InputDecoration(
-                                hintText: 'Tìm câu hỏi, chủ đề hoặc chuyên gia...',
-                                hintStyle: TextStyle(color: _outline, fontSize: 14),
+                                hintText:
+                                    'Tìm câu hỏi, chủ đề hoặc chuyên gia...',
+                                hintStyle: TextStyle(
+                                  color: _outline,
+                                  fontSize: 14,
+                                ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
@@ -176,7 +202,11 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                 child: Text(
                   'Kết quả tìm kiếm (${_results.length})',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _primary),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
                 ),
               ),
             ),
@@ -184,29 +214,30 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) {
-                  // Insert bento section after 2nd card
-                  if (i == 2) return _buildBentoSection();
-                  final idx = i > 2 ? i - 1 : i;
-                  if (idx >= _results.length) return null;
-                  final q = _results[idx];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              delegate: SliverChildBuilderDelegate((context, i) {
+                // Insert bento section after 2nd card
+                if (i == 2) return _buildBentoSection();
+                final idx = i > 2 ? i - 1 : i;
+                if (idx >= _results.length) return null;
+                final q = _results[idx];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
                         builder: (_) => PostAnswerScreen(
                           questionId: q.id,
                           questionTitle: q.title,
-                          topicName: q.topicName.isNotEmpty ? q.topicName : null,
+                          topicName: q.topicName.isNotEmpty
+                              ? q.topicName
+                              : null,
                         ),
-                      )),
-                      child: _QuestionResultCard(item: q),
+                      ),
                     ),
-                  );
-                },
-                childCount: _results.isEmpty ? 0 : _results.length + 1,
-              ),
+                    child: _QuestionResultCard(item: q),
+                  ),
+                );
+              }, childCount: _results.isEmpty ? 0 : _results.length + 1),
             ),
           ),
           // Loading indicator
@@ -214,7 +245,9 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator(color: _primary)),
+                child: Center(
+                  child: CircularProgressIndicator(color: _primary),
+                ),
               ),
             ),
           // Expert recommendations
@@ -223,7 +256,14 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.only(left: 20, bottom: 12),
-                child: Text('Chuyên gia được đề xuất', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _primary)),
+                child: Text(
+                  'Chuyên gia được đề xuất',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
+                ),
               ),
             ),
             SliverToBoxAdapter(child: _buildExpertSection()),
@@ -257,8 +297,22 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[Icon(icon, size: 16, color: selected ? Colors.white : _onSurfaceVariant), const SizedBox(width: 4)],
-            Text(label, style: TextStyle(fontSize: 12, color: selected ? Colors.white : _onSurfaceVariant, fontWeight: FontWeight.w500)),
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : _onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected ? Colors.white : _onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -276,7 +330,10 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
+          ),
           const Icon(Icons.expand_more, size: 14, color: _onSurfaceVariant),
         ],
       ),
@@ -294,7 +351,10 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
+          ),
           const SizedBox(width: 4),
           const Icon(Icons.verified, size: 14, color: _onSurfaceVariant),
         ],
@@ -310,22 +370,48 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: _primaryContainer, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: _primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(Icons.live_help, color: Colors.white, size: 28),
                   const SizedBox(height: 8),
-                  const Text('Chưa tìm thấy câu trả lời?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  const Text(
+                    'Chưa tìm thấy câu trả lời?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  const Text('Đặt câu hỏi cho cộng đồng và nhận phản hồi từ chuyên gia.', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                  const Text(
+                    'Đặt câu hỏi cho cộng đồng và nhận phản hồi từ chuyên gia.',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: () {},
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(color: const Color(0xFF51271B), borderRadius: BorderRadius.circular(99)),
-                      child: const Text('Đặt câu hỏi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _primaryContainer)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF51271B),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Text(
+                        'Đặt câu hỏi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryContainer,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -339,24 +425,47 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
               decoration: BoxDecoration(
                 color: _surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _primaryContainer.withValues(alpha: 0.15)),
+                border: Border.all(
+                  color: _primaryContainer.withValues(alpha: 0.15),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 36, height: 36,
-                    decoration: const BoxDecoration(color: Color(0xFFF6DACF), shape: BoxShape.circle),
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF6DACF),
+                      shape: BoxShape.circle,
+                    ),
                     child: const Icon(Icons.groups, color: _primary, size: 20),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Tham gia nhóm', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+                  const Text(
+                    'Tham gia nhóm',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  const Text('Kết nối với các mẹ có cùng giai đoạn phát triển.', style: TextStyle(fontSize: 11, color: _onSurfaceVariant)),
+                  const Text(
+                    'Kết nối với các mẹ có cùng giai đoạn phát triển.',
+                    style: TextStyle(fontSize: 11, color: _onSurfaceVariant),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: const [
-                      Text('Khám phá', style: TextStyle(fontSize: 12, color: _primary, fontWeight: FontWeight.w600)),
+                      Text(
+                        'Khám phá',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       Icon(Icons.chevron_right, size: 14, color: _primary),
                     ],
                   ),
@@ -382,18 +491,41 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: experts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, i) => Container(
           width: 140,
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: const Color(0xFFFFF1EC), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF1EC),
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             children: [
-              CircleAvatar(radius: 28, backgroundColor: const Color(0xFFFFE9E3), child: const Icon(Icons.person, color: _primaryContainer, size: 28)),
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: const Color(0xFFFFE9E3),
+                child: const Icon(
+                  Icons.person,
+                  color: _primaryContainer,
+                  size: 28,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(experts[i]['name']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _onSurface), textAlign: TextAlign.center),
+              Text(
+                experts[i]['name']!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: _onSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 2),
-              Text(experts[i]['spec']!, style: const TextStyle(fontSize: 10, color: _onSurfaceVariant), textAlign: TextAlign.center),
+              Text(
+                experts[i]['spec']!,
+                style: const TextStyle(fontSize: 10, color: _onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
@@ -403,7 +535,10 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 5),
                     shape: const StadiumBorder(),
-                    textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    textStyle: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   onPressed: () {},
@@ -431,7 +566,13 @@ class _QuestionResultCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,11 +587,23 @@ class _QuestionResultCard extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              const Icon(Icons.bookmark_border, color: Color(0xFF84736F), size: 20),
+              const Icon(
+                Icons.bookmark_border,
+                color: Color(0xFF84736F),
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(item.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF271812), height: 1.3)),
+          Text(
+            item.title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF271812),
+              height: 1.3,
+            ),
+          ),
           const SizedBox(height: 10),
           const Divider(color: Color(0xFFFADCD3), height: 1),
           const SizedBox(height: 10),
@@ -460,7 +613,10 @@ class _QuestionResultCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: hasExpert
                             ? const Color(0xFF845143).withValues(alpha: 0.1)
@@ -470,14 +626,36 @@ class _QuestionResultCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(hasExpert ? Icons.verified : Icons.forum, size: 14, color: hasExpert ? const Color(0xFF845143) : const Color(0xFF524440)),
+                          Icon(
+                            hasExpert ? Icons.verified : Icons.forum,
+                            size: 14,
+                            color: hasExpert
+                                ? const Color(0xFF845143)
+                                : const Color(0xFF524440),
+                          ),
                           const SizedBox(width: 4),
-                          Text(hasExpert ? 'Bác sĩ chuyên gia' : 'Thảo luận sôi nổi', style: TextStyle(fontSize: 11, color: hasExpert ? const Color(0xFF845143) : const Color(0xFF524440))),
+                          Text(
+                            hasExpert
+                                ? 'Bác sĩ chuyên gia'
+                                : 'Thảo luận sôi nổi',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: hasExpert
+                                  ? const Color(0xFF845143)
+                                  : const Color(0xFF524440),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text('• ${item.answerCount} câu trả lời', style: const TextStyle(fontSize: 11, color: Color(0xFF524440))),
+                    Text(
+                      '• ${item.answerCount} câu trả lời',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF524440),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -487,7 +665,15 @@ class _QuestionResultCard extends StatelessWidget {
                   item.answerCount > 0 ? (item.answerCount > 3 ? 2 : 1) : 0,
                   (i) => Align(
                     widthFactor: 0.7,
-                    child: CircleAvatar(radius: 12, backgroundColor: const Color(0xFFFFE9E3), child: const Icon(Icons.person, size: 12, color: Color(0xFFC98C7B))),
+                    child: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: const Color(0xFFFFE9E3),
+                      child: const Icon(
+                        Icons.person,
+                        size: 12,
+                        color: Color(0xFFC98C7B),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -500,12 +686,18 @@ class _QuestionResultCard extends StatelessWidget {
 
   String _stageLabel(String stage) {
     switch (stage) {
-      case 'NEWBORN': return 'Sơ sinh';
-      case 'INFANT': return '1-2 tuổi';
-      case 'TODDLER': return '3-5 tuổi';
-      case 'PRESCHOOL': return '6+ tuổi';
-      case 'PREGNANCY': return 'Mang thai';
-      default: return stage;
+      case 'NEWBORN':
+        return 'Sơ sinh';
+      case 'INFANT':
+        return '1-2 tuổi';
+      case 'TODDLER':
+        return '3-5 tuổi';
+      case 'PRESCHOOL':
+        return '6+ tuổi';
+      case 'PREGNANCY':
+        return 'Mang thai';
+      default:
+        return stage;
     }
   }
 }
@@ -518,8 +710,18 @@ class _TagBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: const Color(0xFFFFE2D9), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF845143), fontWeight: FontWeight.w500)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE2D9),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Color(0xFF845143),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }

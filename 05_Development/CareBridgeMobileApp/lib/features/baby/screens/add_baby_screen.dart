@@ -73,10 +73,12 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
         child: child!,
       ),
     );
-    if (picked != null) setState(() {
-      _birthDate = picked;
-      _dateCtrl.text = _displayDate(picked);
-    });
+    if (picked != null) {
+      setState(() {
+        _birthDate = picked;
+        _dateCtrl.text = _displayDate(picked);
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -85,19 +87,24 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       setState(() => _errorMsg = 'Vui lòng chọn ngày sinh của bé.');
       return;
     }
-    setState(() { _loading = true; _errorMsg = null; });
+    setState(() {
+      _loading = true;
+      _errorMsg = null;
+    });
     try {
-      await _service.createBabyProfile(CreateBabyRequest(
-        nickname: _nicknameCtrl.text.trim(),
-        birthDate: _formatDate(_birthDate!),
-        gender: _gender,
-        birthWeightKg: _weightCtrl.text.trim().isNotEmpty
-            ? double.tryParse(_weightCtrl.text.trim())
-            : null,
-        birthLengthCm: _lengthCtrl.text.trim().isNotEmpty
-            ? double.tryParse(_lengthCtrl.text.trim())
-            : null,
-      ));
+      await _service.createBabyProfile(
+        CreateBabyRequest(
+          nickname: _nicknameCtrl.text.trim(),
+          birthDate: _formatDate(_birthDate!),
+          gender: _gender,
+          birthWeightKg: _weightCtrl.text.trim().isNotEmpty
+              ? double.tryParse(_weightCtrl.text.trim())
+              : null,
+          birthLengthCm: _lengthCtrl.text.trim().isNotEmpty
+              ? double.tryParse(_lengthCtrl.text.trim())
+              : null,
+        ),
+      );
       if (!mounted) return;
       Navigator.pop(context);
     } on ApiException catch (e) {
@@ -196,7 +203,11 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
           Expanded(
             child: Text(
               _errorMsg!,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _error),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _error,
+              ),
             ),
           ),
         ],
@@ -244,7 +255,11 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     return TextFormField(
       controller: _nicknameCtrl,
       textCapitalization: TextCapitalization.words,
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 16,
+        color: _onSurface,
+      ),
       decoration: _inputDecoration(
         label: 'Tên bé',
         hint: 'VD: Sushi, Mochi...',
@@ -262,13 +277,18 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
         child: TextFormField(
           controller: _dateCtrl,
           readOnly: true,
-          style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 16,
+            color: _onSurface,
+          ),
           decoration: _inputDecoration(
             label: 'Ngày sinh',
             hint: 'DD/MM/YYYY',
             icon: Icons.cake_outlined,
           ),
-          validator: (_) => _birthDate == null ? 'Vui lòng chọn ngày sinh.' : null,
+          validator: (_) =>
+              _birthDate == null ? 'Vui lòng chọn ngày sinh.' : null,
         ),
       ),
     );
@@ -284,7 +304,11 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
             const SizedBox(width: 8),
             const Text(
               'Giới tính',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -292,12 +316,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
         Row(
           children: BabyGender.values.map((g) {
             final selected = _gender == g;
-            final label = g == BabyGender.unknown ? 'Chưa biết' : g.displayLabel;
+            final label = g == BabyGender.unknown
+                ? 'Chưa biết'
+                : g.displayLabel;
             final icon = g == BabyGender.male
                 ? Icons.male
                 : g == BabyGender.female
-                    ? Icons.female
-                    : Icons.device_unknown_outlined;
+                ? Icons.female
+                : Icons.device_unknown_outlined;
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -309,16 +335,24 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: selected ? _primaryContainer : _surfaceVariant.withAlpha(80),
+                      color: selected
+                          ? _primaryContainer
+                          : _surfaceVariant.withAlpha(80),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? _primaryContainer : _outlineVariant.withAlpha(100),
+                        color: selected
+                            ? _primaryContainer
+                            : _outlineVariant.withAlpha(100),
                         width: selected ? 2 : 1,
                       ),
                     ),
                     child: Column(
                       children: [
-                        Icon(icon, size: 22, color: selected ? Colors.white : _onSurfaceVariant),
+                        Icon(
+                          icon,
+                          size: 22,
+                          color: selected ? Colors.white : _onSurfaceVariant,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           label,
@@ -345,8 +379,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     return TextFormField(
       controller: _weightCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+      ],
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 16,
+        color: _onSurface,
+      ),
       decoration: _inputDecoration(
         label: 'Cân nặng lúc sinh',
         hint: 'VD: 3.2',
@@ -356,7 +396,8 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
         final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 10) return 'Cân nặng không hợp lệ (0–10 kg).';
+        if (n == null || n <= 0 || n > 10)
+          return 'Cân nặng không hợp lệ (0–10 kg).';
         return null;
       },
     );
@@ -366,8 +407,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     return TextFormField(
       controller: _lengthCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+      ],
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 16,
+        color: _onSurface,
+      ),
       decoration: _inputDecoration(
         label: 'Chiều dài lúc sinh',
         hint: 'VD: 50',
@@ -377,7 +424,8 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
         final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 80) return 'Chiều dài không hợp lệ (0–80 cm).';
+        if (n == null || n <= 0 || n > 80)
+          return 'Chiều dài không hợp lệ (0–80 cm).';
         return null;
       },
     );
@@ -398,7 +446,10 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
             ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
               )
             : const Text(
                 'Lưu hồ sơ bé',
@@ -422,11 +473,17 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+      labelStyle: const TextStyle(
+        fontFamily: 'Lexend',
+        color: _onSurfaceVariant,
+      ),
       hintStyle: const TextStyle(fontFamily: 'Lexend', color: _outlineVariant),
       prefixIcon: Icon(icon, color: _onSurfaceVariant, size: 20),
       suffixText: suffix,
-      suffixStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+      suffixStyle: const TextStyle(
+        fontFamily: 'Lexend',
+        color: _onSurfaceVariant,
+      ),
       filled: true,
       fillColor: _surfaceContainerLow,
       border: OutlineInputBorder(
