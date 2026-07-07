@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
+import '../models/file_model.dart';
 
 class FileService {
   String get _baseUrl {
@@ -67,7 +68,13 @@ class FileService {
     return all.where((f) => f.category == filter).toList();
   }
 
-  // TODO: DELETE /api/v1/files/{id} when endpoint available (UC-169)
+  // UC-168: Get file details and presigned URL
+  Future<ViewFileResponse> getFile(String fileId) async {
+    final data = await apiGet('/api/v1/files/$fileId');
+    return ViewFileResponse.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-169: Delete file
   Future<void> deleteFile(String fileId) async {
     await apiDelete('/api/v1/files/$fileId');
   }

@@ -3,9 +3,23 @@ import '../models/health_record_model.dart';
 
 class HealthRecordService {
   // UC211: Get single health record detail
-  Future<HealthRecord> getHealthRecord(String recordId) async {
+  Future<HealthRecordDetail> getHealthRecord(String recordId) async {
     final data = await apiGet('/api/v1/health-records/$recordId');
+    return HealthRecordDetail.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-40: Partial update health record
+  Future<HealthRecord> updateHealthRecord(
+    String recordId,
+    UpdateHealthRecordRequest request,
+  ) async {
+    final data = await apiPatch('/api/v1/health-records/$recordId', request.toJson());
     return HealthRecord.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-41: Archive health record (soft-delete)
+  Future<void> archiveHealthRecord(String recordId) async {
+    await apiPatch('/api/v1/health-records/$recordId/archive', {});
   }
 
   // TODO: Replace with GET /api/v1/health-records?journeyId=X when list endpoint available (UC-40/41/42)

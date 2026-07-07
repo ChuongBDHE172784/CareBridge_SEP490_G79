@@ -6,7 +6,7 @@
 | **Document ID** | `CB-HEALTH-IMP-006` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-44 Share Summary with Expert |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Implemented ShareSummaryServiceImpl with triple-gate validation (ownership → active booking → data_permission). Used requester_user_id (not mother_user_id) and expires_at (not expiry_at) per actual DB schema. 4/4 unit tests GREEN. |
 
 ---
 

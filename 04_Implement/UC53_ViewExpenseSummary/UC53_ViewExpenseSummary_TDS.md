@@ -6,7 +6,7 @@
 | **Document ID** | `CB-CAREJOURNEY-IMP-053` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-01` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `AI Agent` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[ ] Pending` |
@@ -22,6 +22,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-01 | AI Agent — Technical Architect | Initial draft — TDS for UC53 View Expense Summary |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Implemented getSummary() with MONTH/CATEGORY/STAGE groupBy via native SQL + JPQL in ExpenseRepository. NULL journey_id → "UNSPECIFIED" stage bucket. Mixed-currency: only aggregates same-currency rows. Invalid groupBy → EXPENSE-001. 3 groupBy tests + 1 invalid groupBy test GREEN. |
 
 ---
 

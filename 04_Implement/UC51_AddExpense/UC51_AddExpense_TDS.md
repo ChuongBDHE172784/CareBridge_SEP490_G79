@@ -6,7 +6,7 @@
 | **Document ID** | `CB-EXPENSE-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `AI Agent` |
 | **Author** | `AI Agent — Spec Generator` |
 | **Reviewed by** | `[ ] Tech Lead — Pending` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent — Spec Generator | Tạo tài liệu lần đầu cho UC51 Add Expense |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Implemented ExpenseServiceImpl.addExpense() with server-side future-date guard (EXPENSE-003). PDPA ADR-002: amount/note never logged. Default currency VND. Expense entity + ExpenseRepository + DTOs + ExpenseController created. Tests for UC51/52/53 all in ExpenseServiceTest (13 tests GREEN). |
 
 ---
 

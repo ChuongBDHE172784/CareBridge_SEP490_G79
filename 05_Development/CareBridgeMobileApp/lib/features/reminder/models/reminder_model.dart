@@ -66,6 +66,17 @@ extension RecurrenceTypeExtension on RecurrenceType {
   }
 }
 
+extension RecurrenceTypeApi on RecurrenceType {
+  String toApiValue() {
+    switch (this) {
+      case RecurrenceType.daily: return 'DAILY';
+      case RecurrenceType.weekly: return 'WEEKLY';
+      case RecurrenceType.monthly: return 'MONTHLY';
+      case RecurrenceType.none: return 'NONE';
+    }
+  }
+}
+
 // "Mẹ" or "Bé"
 enum ReminderAssignee { mother, baby }
 

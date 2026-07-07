@@ -78,3 +78,54 @@ class UserFile {
     return '$d/$m/$y';
   }
 }
+
+// UC-168: View file response from GET /api/v1/files/{fileId}
+class ViewFileResponse {
+  final String fileId;
+  final String originalName;
+  final String? mimeType;
+  final int? fileSizeBytes;
+  final String? presignedUrl;
+  final String? status;
+  final DateTime? createdAt;
+
+  const ViewFileResponse({
+    required this.fileId,
+    required this.originalName,
+    this.mimeType,
+    this.fileSizeBytes,
+    this.presignedUrl,
+    this.status,
+    this.createdAt,
+  });
+
+  factory ViewFileResponse.fromJson(Map<String, dynamic> json) {
+    return ViewFileResponse(
+      fileId: json['fileId']?.toString() ?? '',
+      originalName: json['originalName'] as String? ?? '',
+      mimeType: json['mimeType'] as String?,
+      fileSizeBytes: json['fileSizeBytes'] as int?,
+      presignedUrl: json['presignedUrl'] as String?,
+      status: json['status'] as String?,
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
+    );
+  }
+
+  bool get isPdf => mimeType == 'application/pdf' || originalName.toLowerCase().endsWith('.pdf');
+  bool get isImage => mimeType?.startsWith('image/') == true;
+
+  String get sizeLabel {
+    if (fileSizeBytes == null) return '';
+    final kb = fileSizeBytes! / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    return '${(kb / 1024).toStringAsFixed(1)} MB';
+  }
+
+  String get dateLabel {
+    if (createdAt == null) return '';
+    final d = createdAt!.day.toString().padLeft(2, '0');
+    final m = createdAt!.month.toString().padLeft(2, '0');
+    final y = createdAt!.year;
+    return '$d/$m/$y';
+  }
+}

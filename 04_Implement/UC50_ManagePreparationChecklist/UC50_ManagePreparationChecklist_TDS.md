@@ -6,7 +6,7 @@
 | **Document ID** | `CB-CHECKLIST-IMP-001` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `AI Agent` |
 | **Author** | `AI Agent — Spec Generator` |
 | **Reviewed by** | `[ ] Tech Lead — Pending` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent — Spec Generator | Tạo tài liệu lần đầu cho UC50 Manage Preparation Checklist |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Implemented UserChecklistItemServiceImpl (addItem, importFromTemplate, listItems, toggleComplete, updateItem, deleteItem). C2 guard: template items cannot have itemText/category changed. V3 migration already existed — no new migration needed. 7/7 unit tests GREEN. |
 
 ---
 

@@ -58,9 +58,9 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
         PostpartumLog log = PostpartumLog.builder()
                 .journeyId(journeyId)
                 .logDate(request.getLogDate())
-                .painLevel(toShort(request.getPainLevel()))
+                .painLevel(request.getPainLevel())
                 .bleedingLevel(request.getBleedingLevel())
-                .moodLevel(toShort(request.getMoodLevel()))
+                .moodLevel(request.getMoodLevel())
                 .sleepHours(request.getSleepHours())
                 .breastfeedingNote(request.getBreastfeedingNote())
                 .symptomNote(request.getSymptomNote())
@@ -73,8 +73,8 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
         boolean redFlag = false;
         try {
             PostpartumAiAnalyzer.InsightResult insight = postpartumAiAnalyzer
-                    .analyze(toInteger(saved.getPainLevel()), saved.getBleedingLevel(),
-                             toInteger(saved.getMoodLevel()), saved.getSleepHours())
+                    .analyze(saved.getPainLevel(), saved.getBleedingLevel(),
+                             saved.getMoodLevel(), saved.getSleepHours())
                     .get(5, java.util.concurrent.TimeUnit.SECONDS);
             if (insight != null) {
                 aiInsight = insight.insight();
@@ -92,9 +92,9 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
                 .postpartumLogId(saved.getId())
                 .journeyId(saved.getJourneyId())
                 .logDate(saved.getLogDate())
-                .painLevel(toInteger(saved.getPainLevel()))
+                .painLevel(saved.getPainLevel())
                 .bleedingLevel(saved.getBleedingLevel() != null ? saved.getBleedingLevel().name() : null)
-                .moodLevel(toInteger(saved.getMoodLevel()))
+                .moodLevel(saved.getMoodLevel())
                 .sleepHours(saved.getSleepHours())
                 .breastfeedingNote(saved.getBreastfeedingNote())
                 .symptomNote(saved.getSymptomNote())
@@ -104,11 +104,5 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
                 .build();
     }
 
-    private static Short toShort(Integer value) {
-        return value != null ? value.shortValue() : null;
-    }
 
-    private static Integer toInteger(Short value) {
-        return value != null ? value.intValue() : null;
-    }
 }

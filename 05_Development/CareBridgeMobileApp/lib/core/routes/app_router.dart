@@ -14,6 +14,20 @@ import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
+import '../../features/baby/screens/edit_baby_daily_log_screen.dart';
+import '../../features/baby/screens/baby_log_summary_screen.dart';
+import '../../features/baby/screens/record_milestone_screen.dart';
+import '../../features/baby/models/baby_daily_log_model.dart';
+
+import '../../features/healthRecords/screens/edit_health_record_screen.dart';
+
+import '../../features/reminder/screens/create_medication_reminder_screen.dart';
+import '../../features/reminder/screens/create_vaccination_reminder_screen.dart';
+import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
+import '../../features/reminder/models/reminder_model.dart';
+
+import '../../features/fileManager/screens/file_viewer_screen.dart';
+import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
 
 import '../../features/reminder/screens/reminder_detail_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
@@ -185,6 +199,85 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return EditBabyProfileScreen(babyId: id);
+      },
+    ),
+    // CB-234: Edit Baby Daily Log (UC-35)
+    GoRoute(
+      path: '/babies/:babyId/daily-logs/:logId/edit',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        final logId = state.pathParameters['logId'] ?? '';
+        final initialLog = state.extra as BabyDailyLog?;
+        return EditBabyDailyLogScreen(babyId: babyId, logId: logId, initialLog: initialLog);
+      },
+    ),
+    // CB-235: View Baby Log Summary (UC-36)
+    GoRoute(
+      path: '/babies/:babyId/log-summary',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        return BabyLogSummaryScreen(babyId: babyId);
+      },
+    ),
+    // CB-236: Record Development Milestone (UC-37)
+    GoRoute(
+      path: '/babies/:babyId/milestones/add',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        return RecordMilestoneScreen(babyId: babyId);
+      },
+    ),
+    // CB-237: Edit Health Record (UC-40)
+    GoRoute(
+      path: '/health-records/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return EditHealthRecordScreen(recordId: id);
+      },
+    ),
+    // CB-241: Create Medication Reminder (UC-46)
+    GoRoute(
+      path: '/reminders/medication/add',
+      builder: (context, state) => const CreateMedicationReminderScreen(),
+    ),
+    // CB-242: Create Vaccination Reminder (UC-47)
+    GoRoute(
+      path: '/reminders/vaccination/add',
+      builder: (context, state) => const CreateVaccinationReminderScreen(),
+    ),
+    // CB-243: Update or Snooze Reminder (UC-48)
+    GoRoute(
+      path: '/reminders/:id/manage',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        final initialReminder = state.extra as Reminder?;
+        return UpdateSnoozeReminderScreen(reminderId: id, initialReminder: initialReminder);
+      },
+    ),
+    // CB-123: File Viewer (UC-168)
+    GoRoute(
+      path: '/files/:fileId/view',
+      builder: (context, state) {
+        final fileId = state.pathParameters['fileId'] ?? '';
+        final extra = state.extra as Map<String, dynamic>?;
+        return FileViewerScreen(fileId: fileId, fileName: extra?['fileName'] as String?);
+      },
+    ),
+    // CB-146: Shared File Viewer (UC-168)
+    GoRoute(
+      path: '/files/:fileId/shared-view',
+      builder: (context, state) {
+        final fileId = state.pathParameters['fileId'] ?? '';
+        final extra = state.extra as Map<String, dynamic>?;
+        return SharedFileViewerScreen(
+          fileId: fileId,
+          expertName: extra?['expertName'] as String?,
+          expertAvatarUrl: extra?['expertAvatarUrl'] as String?,
+          patientName: extra?['patientName'] as String?,
+          consultationLink: extra?['consultationLink'] as String?,
+          accessExpiry: extra?['accessExpiry'] as DateTime?,
+          accessPurpose: extra?['accessPurpose'] as String?,
+        );
       },
     ),
     // CB-230: Edit Maternal Health Metric (UC-26)
