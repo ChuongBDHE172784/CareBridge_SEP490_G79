@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Điểm Đóng Góp - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#f8ddd2",
+                        "tertiary-container": "#a09a95",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "inverse-surface": "#3e2c26",
+                        "surface-variant": "#fadcd3",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-tertiary-container": "#36322e",
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "on-surface": "#271812",
+                        "on-primary-fixed": "#341006",
+                        "on-primary-container": "#51271b",
+                        "tertiary-fixed": "#e9e1db",
+                        "outline": "#84736f",
+                        "surface": "#fff8f6",
+                        "surface-container": "#ffe9e3",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#fab7a4",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "background": "#fff8f6",
+                        "on-background": "#271812",
+                        "surface-dim": "#f1d4ca",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary-fixed": "#271812",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-bright": "#fff8f6",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#f6dacf",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-container": "#735e56",
+                        "surface-container-low": "#fff1ec",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-highest": "#fadcd3",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "gutter": "16px",
+                        "safe-margin": "24px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background-color: #fff8f6; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+<!-- TopAppBar (Web) -->
+<header class="bg-background dark:bg-background docked full-width top-0 flex justify-between items-center px-safe-margin h-touch-target-min w-full hidden md:flex z-50">
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim font-bold tracking-tight">CareBridge</span>
+<nav class="hidden lg:flex gap-6 ml-8">
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2 px-3 py-2 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="home">home</span> Trang chủ</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2 px-3 py-2 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span> Hành trình</a>
+<a class="font-label-md text-label-md text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-lg hover:opacity-80 transition-opacity flex items-center gap-2 px-3 py-2" href="#"><span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span> Cộng đồng</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2 px-3 py-2 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="fact_check">fact_check</span> Việc cần làm</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-button text-button overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
+<img class="object-cover w-full h-full" data-alt="A professional headshot of a modern Asian woman with a warm, caring smile. She is wearing a soft pastel blouse. The lighting is soft and natural, suggesting a bright, welcoming office environment. The overall aesthetic is clean, professional, and trustworthy, matching the organic minimalism style of a maternal care app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1jN8pZGhwqbE7tIDji4IskQu3dfJQJ17Y6zumcaITaSeKNU1Aq0ugpM4MPipO1D0FIgOgGpJKUcCReekebyr4sN_5npJAtFuFDG-6BsfJVqqLDw5Tu2dpqpVqdtvZfD_qS7N5bEfZoUc1hgzlc6A0YweG7xlSZMPo8KBIPChnLaxydkzX8lXrW0rexWcGbjye6SUPP7SyBtfR7pwg38Df6d8wM6vHQYxfQekeChDLAfWPT5pM6-jzg5xAQ9S92c6XTimht9WYaSo"/>
+</div>
+</div>
+</header>
+<!-- TopAppBar (Mobile Fallback for consistency, though prompt specifies Web Portal) -->
+<header class="bg-background dark:bg-background docked full-width top-0 flex justify-between items-center px-safe-margin h-touch-target-min w-full md:hidden z-50 shadow-sm">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-primary-fixed-dim font-bold tracking-tight">CareBridge</span>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-container overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="A small, professional avatar portrait of a friendly Asian woman in a light-filled setting. Soft, warm tones. Clean and modern aesthetic suitable for a premium caregiving application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPPlh3C4552JszLMZB4v7l6h5mUBuJGvo_jYOV81u5Le0pvYph-QAIO7K5QULcHohRB4gbxd5sJIvaHdMPBcgiPTlEjc7cwI1iLnOOG0601lCJke-JMiHnfR2TENM136speF8C3eDJrNE9ey9yVICxvFqpFCJSL6SqyqU-MsfwBKEKte8YhuQ__8Wxu0c0KGEgeswGYAGYsU8F7eRSYEbz8hiLk4KazPfPj1o-9tdx2XYGXyk5vZ6H4EnoeSRWpKn4U6WUZUi3tFM"/>
+</div>
+</div>
+</header>
+<main class="flex-grow px-safe-margin py-stack-lg max-w-[1200px] mx-auto w-full mb-20 md:mb-0">
+<div class="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-2">Điểm Đóng Góp</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Theo dõi hoạt động và phần thưởng trong cộng đồng CareBridge.</p>
+</div>
+<button class="bg-primary-container text-on-primary rounded-full px-6 py-3 font-button text-button hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 self-start md:self-auto h-[52px]">
+<span class="material-symbols-outlined" data-icon="redeem">redeem</span>
+                Đổi Điểm
+            </button>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-stack-lg">
+<!-- Current Points Summary -->
+<div class="bg-surface-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col justify-between border border-surface-container md:col-span-1 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+<div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="stars" style="font-variation-settings: 'FILL' 1;">stars</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Điểm Hiện Tại</h2>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-[48px] leading-[56px] text-primary font-bold">2,450</span>
+<span class="font-body-md text-body-md text-on-surface-variant">pts</span>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-surface-container-high">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Hạng: Chuyên Gia</span>
+<span class="font-label-md text-label-md text-primary font-semibold">Cấp 4</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full w-[70%]" style="width: 70%;"></div>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant mt-2 text-right">550 pts nữa để lên Cấp 5</p>
+</div>
+</div>
+<!-- Badges -->
+<div class="bg-surface-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-container md:col-span-2 flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="military_tech">military_tech</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Huy Hiệu Gần Đây</h2>
+</div>
+<a class="font-label-md text-label-md text-primary hover:underline" href="#">Xem tất cả</a>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-grow">
+<div class="flex flex-col items-center justify-center p-4 bg-surface-container-low rounded-lg text-center gap-2 hover:bg-surface-container transition-colors">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="forum" style="font-variation-settings: 'FILL' 1;">forum</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Người Chia Sẻ</span>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-70 text-[10px]">50 Bài viết</span>
+</div>
+<div class="flex flex-col items-center justify-center p-4 bg-surface-container-low rounded-lg text-center gap-2 hover:bg-surface-container transition-colors">
+<div class="w-12 h-12 rounded-full bg-[#E8A87C]/20 flex items-center justify-center text-[#935a38]">
+<span class="material-symbols-outlined" data-icon="thumb_up" style="font-variation-settings: 'FILL' 1;">thumb_up</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Được Yêu Thích</span>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-70 text-[10px]">100 Lượt thích</span>
+</div>
+<div class="flex flex-col items-center justify-center p-4 bg-surface-container-low rounded-lg text-center gap-2 hover:bg-surface-container transition-colors">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="event_available" style="font-variation-settings: 'FILL' 1;">event_available</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Chăm Chỉ</span>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-70 text-[10px]">30 Ngày liên tục</span>
+</div>
+<div class="flex flex-col items-center justify-center p-4 border border-dashed border-outline-variant rounded-lg text-center gap-2 opacity-60">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Cố Vấn</span>
+<span class="font-label-md text-label-md text-on-surface-variant text-[10px]">Cần 3,000 pts</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Activity History List -->
+<div class="bg-surface-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-container lg:col-span-2">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Lịch Sử Hoạt Động</h2>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-container-low rounded-md font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors">Tháng này</button>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-container-high">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container/50 flex items-center justify-center text-on-secondary-container shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit_document">edit_document</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-medium">Viết bài chia sẻ kinh nghiệm</h3>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">14 Tháng 10, 2023</p>
+</div>
+</div>
+<div class="font-button text-button text-primary bg-primary-container/10 px-3 py-1 rounded-full">+50 pts</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-container-high">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-[#E8A87C]/20 flex items-center justify-center text-[#935a38] shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="thumb_up">thumb_up</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-medium">Nhận 5 lượt thích cho bình luận</h3>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">12 Tháng 10, 2023</p>
+</div>
+</div>
+<div class="font-button text-button text-primary bg-primary-container/10 px-3 py-1 rounded-full">+10 pts</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-container-high">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-medium">Hoàn thành khảo sát dinh dưỡng</h3>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">10 Tháng 10, 2023</p>
+</div>
+</div>
+<div class="font-button text-button text-primary bg-primary-container/10 px-3 py-1 rounded-full">+100 pts</div>
+</div>
+<!-- Item 4 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-container-high">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="login">login</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-medium">Đăng nhập 7 ngày liên tiếp</h3>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">09 Tháng 10, 2023</p>
+</div>
+</div>
+<div class="font-button text-button text-primary bg-primary-container/10 px-3 py-1 rounded-full">+20 pts</div>
+</div>
+</div>
+<div class="mt-4 text-center">
+<button class="font-button text-button text-primary hover:underline px-4 py-2">Tải thêm lịch sử</button>
+</div>
+</div>
+<!-- Qualifying Activities Info -->
+<div class="bg-surface-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-container lg:col-span-1">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Cách Nhận Điểm</h2>
+<div class="space-y-5">
+<div class="flex gap-4 items-start">
+<div class="mt-1 w-8 h-8 rounded-full bg-primary-container/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="post_add">post_add</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Tạo bài viết mới</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Chia sẻ kinh nghiệm hoặc đặt câu hỏi chất lượng. <strong class="text-primary">+50 pts</strong></p>
+</div>
+</div>
+<div class="flex gap-4 items-start">
+<div class="mt-1 w-8 h-8 rounded-full bg-primary-container/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="quickreply">quickreply</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Bình luận hữu ích</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Hỗ trợ các phụ huynh khác bằng bình luận chi tiết. <strong class="text-primary">+15 pts</strong></p>
+</div>
+</div>
+<div class="flex gap-4 items-start">
+<div class="mt-1 w-8 h-8 rounded-full bg-primary-container/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="task_alt">task_alt</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Hoàn thành nhiệm vụ</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-1">Tham gia các khóa học hoặc điền hồ sơ bé. <strong class="text-primary">Lên tới +200 pts</strong></p>
+</div>
+</div>
+</div>
+<div class="mt-8 p-4 bg-surface-container-low rounded-lg border border-surface-container-high">
+<div class="flex items-center gap-2 mb-2 text-on-surface">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+<span class="font-label-md text-label-md font-bold">Lưu ý</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Điểm đóng góp sẽ được xét duyệt để tránh tình trạng spam. Việc lạm dụng có thể dẫn đến trừ điểm.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm md:hidden rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-4 py-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+</body></html>

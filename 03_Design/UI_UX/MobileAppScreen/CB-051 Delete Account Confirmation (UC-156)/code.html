@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xóa tài khoản - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap');
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "tertiary-container": "#a09a95",
+                        "secondary-container": "#f6dacf",
+                        "primary-container": "#c98c7b",
+                        "on-primary-fixed": "#341006",
+                        "surface-tint": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#fff8f6",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-container": "#ffe9e3",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "inverse-surface": "#3e2c26",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-surface": "#271812",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#fadcd3",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-surface-variant": "#524440",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-variant": "#fadcd3",
+                        "background": "#fff8f6",
+                        "on-secondary-container": "#735e56",
+                        "on-tertiary-container": "#36322e",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#fab7a4",
+                        "on-secondary-fixed": "#271812",
+                        "primary-fixed": "#ffdbd1",
+                        "on-primary-container": "#51271b",
+                        "surface-container-high": "#ffe2d9",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#625d59",
+                        "primary-fixed-dim": "#fab7a4",
+                        "secondary": "#6e5a52",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "surface-dim": "#f1d4ca",
+                        "surface-bright": "#fff8f6",
+                        "primary": "#845143",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#e9e1db"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "button": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md h-screen w-full flex justify-center items-center overflow-hidden antialiased md:bg-surface-container-lowest">
+<div class="relative w-full max-w-[390px] h-full max-h-[844px] bg-background md:shadow-[0px_4px_20px_rgba(90,70,63,0.06)] md:rounded-xl overflow-hidden flex flex-col">
+<!-- Mock Content Behind the Modal -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background flat no shadows">
+<div class="flex items-center gap-stack-sm">
+<span class="material-symbols-outlined text-primary font-[24px]">arrow_back</span>
+<h1 class="font-headline-lg text-headline-lg text-primary">Cài đặt</h1>
+</div>
+</header>
+<main class="flex-1 px-safe-margin py-stack-lg space-y-stack-md opacity-20 filter blur-[1px]">
+<div class="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Bảo mật</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Mật khẩu, 2FA</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-5 flex items-center justify-between shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Thông báo</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Email, Push</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="mt-8">
+<button class="w-full h-touch-target-min flex items-center justify-start px-4 rounded-xl bg-error-container/20 text-error font-button text-button">
+<span class="material-symbols-outlined mr-2">delete</span>
+                    Xóa tài khoản
+                 </button>
+</div>
+</main>
+<!-- Dimming Overlay -->
+<div class="absolute inset-0 bg-on-background/40 z-40 transition-opacity"></div>
+<!-- Destructive Confirmation Sheet/Card -->
+<div class="absolute bottom-0 left-0 w-full bg-surface-container-lowest rounded-t-xl z-50 flex flex-col shadow-[0px_-8px_24px_rgba(90,70,63,0.12)] transform transition-transform duration-300">
+<!-- Handle -->
+<div class="w-full flex justify-center py-3">
+<div class="w-10 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<div class="px-safe-margin pb-safe-margin pt-2 flex flex-col gap-stack-lg">
+<!-- Header -->
+<div class="flex flex-col items-center text-center gap-stack-sm">
+<div class="w-12 h-12 rounded-full bg-error-container flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Xóa tài khoản?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px]">
+                        Hành động này không thể hoàn tác. Vui lòng đọc kỹ các thông tin dưới đây.
+                    </p>
+</div>
+<!-- Impact Details -->
+<div class="bg-surface-container p-4 rounded-lg flex flex-col gap-3">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-error text-[20px] shrink-0 mt-0.5">delete_forever</span>
+<div>
+<span class="font-body-md text-body-md text-on-surface block font-medium">Mất dữ liệu vĩnh viễn</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Toàn bộ hồ sơ của bé, nhật ký phát triển và hình ảnh sẽ bị xóa.</span>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/50"></div>
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-error text-[20px] shrink-0 mt-0.5">group_remove</span>
+<div>
+<span class="font-body-md text-body-md text-on-surface block font-medium">Rời khỏi nhóm chăm sóc</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Bạn sẽ bị xóa khỏi tất cả các nhóm gia đình hiện tại.</span>
+</div>
+</div>
+</div>
+<!-- Acknowledgement Checkbox -->
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center h-5 w-5 mt-0.5">
+<input class="peer h-5 w-5 cursor-pointer appearance-none rounded border-2 border-outline checked:border-error checked:bg-error transition-all" id="ack-checkbox" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-on-error text-[16px] opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity font-bold">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
+                        Tôi hiểu rằng việc xóa tài khoản là vĩnh viễn và không thể khôi phục dữ liệu.
+                    </span>
+</label>
+<!-- Actions -->
+<div class="flex flex-col gap-stack-sm mt-2">
+<button class="h-[52px] w-full rounded-full bg-surface-variant text-on-surface-variant font-button text-button transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" id="delete-btn">
+                        Xóa tài khoản
+                    </button>
+<button class="h-[52px] w-full rounded-full bg-primary-container text-on-primary font-button text-button hover:bg-primary-container/90 transition-colors flex items-center justify-center">
+                        Hủy
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+        const checkbox = document.getElementById('ack-checkbox');
+        const deleteBtn = document.getElementById('delete-btn');
+
+        // Initial state
+        deleteBtn.disabled = true;
+
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                deleteBtn.disabled = false;
+                deleteBtn.classList.remove('bg-surface-variant', 'text-on-surface-variant');
+                deleteBtn.classList.add('bg-error', 'text-on-error');
+            } else {
+                deleteBtn.disabled = true;
+                deleteBtn.classList.add('bg-surface-variant', 'text-on-surface-variant');
+                deleteBtn.classList.remove('bg-error', 'text-on-error');
+            }
+        });
+    </script>
+</body></html>

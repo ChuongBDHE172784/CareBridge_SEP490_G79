@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hồ sơ tài khoản - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#51271b",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#271812",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "background": "#fff8f6",
+                        "surface-variant": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary-fixed": "#271812",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary": "#625d59",
+                        "secondary-container": "#f6dacf",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "outline": "#84736f",
+                        "on-background": "#271812",
+                        "surface": "#fff8f6",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary": "#6e5a52",
+                        "primary": "#845143",
+                        "outline-variant": "#d6c2bd",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#fadcd3",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-dim": "#f1d4ca",
+                        "surface-container-high": "#ffe2d9",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-surface-variant": "#524440",
+                        "primary-container": "#c98c7b",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "inverse-surface": "#3e2c26",
+                        "surface-container": "#ffe9e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC; /* As requested, #F6F1EC background */
+        }
+        .text-brown-custom {
+            color: #5A463F; /* Custom brown as requested */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface antialiased min-h-screen flex flex-col md:flex-row relative">
+<!-- Desktop Sidebar Placeholder -->
+<aside class="hidden md:flex flex-col w-64 h-screen sticky top-0 bg-surface-container-low shadow-sm p-4 gap-4 flex-shrink-0 z-40 border-r border-outline-variant/30"></aside>
+<main class="flex-1 w-full max-w-md mx-auto md:max-w-4xl flex flex-col min-h-screen pb-24 md:pb-0 relative">
+<!-- TopAppBar (from JSON) -->
+<header class="docked full-width top-0 bg-background dark:bg-background flat no shadows flex justify-between items-center px-safe-margin h-touch-target-min w-full sticky z-30">
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95 duration-200 bg-surface-container-low text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed-dim tracking-tight">Hồ sơ tài khoản</h1>
+<div class="flex items-center">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95 duration-200 text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="notifications" data-weight="fill" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+</div>
+</header>
+<!-- Profile Canvas -->
+<div class="flex-1 px-safe-margin py-stack-md flex flex-col gap-stack-lg animate-fade-in-up">
+<!-- Profile Header -->
+<section class="flex flex-col items-center justify-center mt-stack-md mb-stack-lg text-center">
+<div class="relative mb-4">
+<div class="w-28 h-28 rounded-full overflow-hidden border-4 border-surface shadow-[0px_4px_20px_rgba(90,70,63,0.08)] bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="A professional, warm, and inviting portrait of a Vietnamese woman with a gentle smile, looking directly at the camera. Soft natural lighting highlights her features. She is wearing a simple, elegant blouse. The background is slightly blurred and features a soft, warm, minimal setting that aligns perfectly with a premium maternal and childcare app aesthetic. The overall mood is nurturing and reliable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaiBu2Q4Y0AkuwFrRs60Kw8cr0HzG8xy3UMbT_E0rDfBa_HuWjbBScW6prGSW1qkWtkep_JaO1nKnbUBiID03b7BQK83KJEc62DVjvLYKWbWmawjskvpQQF1bP4cPOCYg-AwBCHxgAeQdiJIkKl0ba4bJusPrPZ9iLw2gyAJQTNazvJoRz8ENJgU1qu5QzmbmLpz-0TGOZnBrO8xuj83pQj2FhPr-PONVccj2NqXEk7zLQhY0LOm7RLz00ux9vFqiZMuVHdPbgEV0"/>
+</div>
+<button class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-md active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+</button>
+</div>
+<h2 class="font-headline-md text-headline-md text-brown-custom mb-1 flex items-center gap-2">
+                    Nguyễn Thị Mai
+                    <span class="material-symbols-outlined text-primary-container text-[20px]" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+</h2>
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high">
+<span class="material-symbols-outlined text-primary text-[16px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md text-brown-custom uppercase">Người dùng VIP</span>
+</div>
+</section>
+<!-- Menu List (Glassmorphism-inspired Cards) -->
+<section class="flex flex-col gap-3">
+<!-- Account Group -->
+<div class="bg-surface/80 backdrop-blur-sm rounded-[24px] p-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/30 flex flex-col">
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="person_outline">person_outline</span>
+</div>
+<span class="font-body-lg text-body-lg text-brown-custom">Chỉnh sửa hồ sơ</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="h-[1px] w-full bg-surface-variant/50 mx-4" style="width: calc(100% - 32px);"></div>
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="lock_outline">lock_outline</span>
+</div>
+<span class="font-body-lg text-body-lg text-brown-custom">Đổi mật khẩu</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="h-[1px] w-full bg-surface-variant/50 mx-4" style="width: calc(100% - 32px);"></div>
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications_none">notifications_none</span>
+</div>
+<span class="font-body-lg text-body-lg text-brown-custom">Cài đặt thông báo</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Privacy & Sessions Group -->
+<div class="bg-surface/80 backdrop-blur-sm rounded-[24px] p-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/30 flex flex-col mt-2">
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="devices">devices</span>
+</div>
+<span class="font-body-lg text-body-lg text-brown-custom">Phiên đăng nhập</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="h-[1px] w-full bg-surface-variant/50 mx-4" style="width: calc(100% - 32px);"></div>
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="shield_person">shield_person</span>
+</div>
+<span class="font-body-lg text-body-lg text-brown-custom">Quyền riêng tư</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Danger Zone -->
+<div class="bg-surface/80 backdrop-blur-sm rounded-[24px] p-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-error-container/50 flex flex-col mt-4 mb-8">
+<button class="flex items-center justify-between p-4 rounded-xl hover:bg-error-container/20 transition-colors active:scale-[0.98] duration-200 w-full text-left group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error-container/30 flex items-center justify-center text-error group-hover:bg-error-container/50 transition-colors">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</div>
+<span class="font-body-lg text-body-lg text-error font-medium">Đăng xuất</span>
+</div>
+</button>
+</div>
+</section>
+</div>
+<!-- BottomNavBar (from JSON) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim rounded-t-lg shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] border-t-0">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md">Việc cần làm</span>
+</a>
+<!-- Active State: Hồ sơ -->
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</a>
+</nav>
+</main>
+<style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+    </style>
+</body></html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Shared Care Calendar</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-container-highest": "#fadcd3",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "tertiary": "#625d59",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "on-secondary-fixed": "#271812",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24 font-body-md">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background docked full-width top-0 flat no shadows flex justify-between items-center px-safe-margin h-touch-target-min w-full sticky z-40">
+<div class="flex items-center gap-stack-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl">person</span>
+</div>
+<span class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim">CareBridge</span>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-safe-margin pt-stack-md flex flex-col gap-stack-lg">
+<!-- Calendar Header Area -->
+<section class="flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Tháng 10, 2023</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Lịch chăm sóc chung</p>
+</div>
+<button class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full font-button text-button active:scale-95 transition-transform">
+                Hôm nay
+            </button>
+</section>
+<!-- Filter Pills -->
+<section class="flex gap-stack-sm overflow-x-auto pb-2 scrollbar-hide -mx-safe-margin px-safe-margin">
+<button class="shrink-0 bg-primary-container text-on-primary rounded-full px-4 h-10 font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">group</span> Tất cả
+            </button>
+<button class="shrink-0 bg-surface-container-high text-on-surface-variant border border-outline-variant rounded-full px-4 h-10 font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">face</span> Bé Mỡ
+            </button>
+<button class="shrink-0 bg-surface-container-high text-on-surface-variant border border-outline-variant rounded-full px-4 h-10 font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">pregnant_woman</span> Mẹ Linh
+            </button>
+</section>
+<!-- Week Calendar View -->
+<section class="bg-surface-container-lowest rounded-2xl p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex justify-between">
+<div class="flex flex-col items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">T2</span>
+<div class="w-10 h-10 rounded-full flex items-center justify-center font-body-lg text-body-lg text-on-surface">16</div>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">T3</span>
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-body-lg text-body-lg shadow-[0px_4px_12px_rgba(201,140,123,0.3)]">17</div>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">T4</span>
+<div class="w-10 h-10 rounded-full flex items-center justify-center font-body-lg text-body-lg text-on-surface relative">
+                    18
+                    <div class="absolute bottom-1 w-1 h-1 rounded-full bg-primary"></div>
+</div>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">T5</span>
+<div class="w-10 h-10 rounded-full flex items-center justify-center font-body-lg text-body-lg text-on-surface">19</div>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">T6</span>
+<div class="w-10 h-10 rounded-full flex items-center justify-center font-body-lg text-body-lg text-on-surface">20</div>
+</div>
+</section>
+<!-- Event List -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Sự kiện hôm nay</h2>
+<!-- Event Card 1 -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container rounded-l-2xl"></div>
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">vaccines</span>
+</div>
+<div class="flex-1">
+<h3 class="font-button text-button text-on-surface mb-1">Tiêm chủng - Bé Mỡ</h3>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                        9:00 AM - 10:30 AM
+                    </div>
+</div>
+</div>
+<!-- Event Card 2 -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary-fixed-dim rounded-l-2xl"></div>
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container text-2xl" style="font-variation-settings: 'FILL' 1;">medication</span>
+</div>
+<div class="flex-1">
+<h3 class="font-button text-button text-on-surface mb-1">Mua vitamin - Mẹ Linh</h3>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                        2:00 PM
+                    </div>
+</div>
+</div>
+<!-- Upcoming Event Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start relative overflow-hidden opacity-70">
+<div class="w-12 h-12 rounded-xl bg-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-2xl" style="font-variation-settings: 'FILL' 1;">stroller</span>
+</div>
+<div class="flex-1">
+<h3 class="font-button text-button text-on-surface mb-1">Đi dạo công viên</h3>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">event</span>
+                        Ngày mai, 4:00 PM
+                    </div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg md:hidden pb-safe-margin">
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-4 py-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="font-label-md text-label-md">Hành trình</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl">
+<span class="material-symbols-outlined mb-1">group</span>
+<span class="font-label-md text-label-md">Cộng đồng</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl">
+<span class="material-symbols-outlined mb-1">fact_check</span>
+<span class="font-label-md text-label-md">Việc cần làm</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</button>
+</nav>
+</body></html>

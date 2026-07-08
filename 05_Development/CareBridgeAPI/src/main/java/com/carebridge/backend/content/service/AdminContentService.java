@@ -1,0 +1,34 @@
+package com.carebridge.backend.content.service;
+
+import com.carebridge.backend.content.dto.request.CreateContentRequest;
+import com.carebridge.backend.content.dto.request.HideContentRequest;
+import com.carebridge.backend.content.dto.request.UpdateContentRequest;
+import com.carebridge.backend.content.dto.response.CreateContentResponse;
+import com.carebridge.backend.content.dto.response.HideContentResponse;
+import com.carebridge.backend.content.dto.response.UpdateContentResponse;
+import java.security.Principal;
+import java.util.UUID;
+
+public interface AdminContentService {
+
+    CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId);
+
+    /**
+     * Updates an existing content item; increments versionNo (ADR-002).
+     *
+     * @throws com.carebridge.backend.content.exception.ContentException (CNT-003) if id not found
+     * @throws com.carebridge.backend.content.exception.ContentException (CNT-002) if title/stage change
+     *         collides with another item's title+stage+type (ADR-004)
+     */
+    UpdateContentResponse updateContent(UUID id, UpdateContentRequest request, Principal principal);
+
+    /**
+     * Hides/soft-deletes a content item by transitioning status to ARCHIVED (ADR-001 — reuses
+     * the existing enum value, no hard delete). Allowed from any non-ARCHIVED status (ADR-002).
+     *
+     * @throws com.carebridge.backend.content.exception.ContentException (CNT-003) if id not found (reused)
+     * @throws com.carebridge.backend.content.exception.ContentException (CNT-006) if already ARCHIVED
+     * @throws com.carebridge.backend.content.exception.ContentException (CNT-007) if reason is blank (ADR-005)
+     */
+    HideContentResponse hideContent(UUID id, HideContentRequest request, Principal principal);
+}

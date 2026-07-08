@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Upload Verification Documents</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#fff1ec",
+                        "on-primary-container": "#51271b",
+                        "tertiary": "#625d59",
+                        "on-background": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-surface": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#341006",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#f1d4ca",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-error-container": "#93000a",
+                        "background": "#fff8f6",
+                        "on-secondary-container": "#735e56",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#e9e1db",
+                        "primary-fixed": "#ffdbd1",
+                        "outline": "#84736f",
+                        "surface-container-high": "#ffe2d9",
+                        "inverse-surface": "#3e2c26",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-tertiary-container": "#36322e",
+                        "primary": "#845143",
+                        "inverse-on-surface": "#ffede7",
+                        "secondary": "#6e5a52",
+                        "inverse-primary": "#fab7a4",
+                        "secondary-container": "#f6dacf",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-highest": "#fadcd3",
+                        "on-secondary-fixed": "#271812",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased flex flex-col">
+<!-- TopAppBar (Transactional - Hidden Navigation Links based on intent) -->
+<header class="bg-background flex justify-between items-center px-safe-margin h-[72px] w-full docked full-width top-0 sticky z-40 border-b border-surface-variant">
+<div class="flex items-center gap-4">
+<button aria-label="Go back" class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-primary active:scale-95 duration-200">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<span class="font-display-lg text-display-lg text-primary tracking-tight">CareBridge</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-surface-variant">Hỗ trợ</span>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant active:scale-95 duration-200">
+<span class="material-symbols-outlined text-xl">help</span>
+</button>
+</div>
+</header>
+<main class="flex-grow flex justify-center py-12 px-safe-margin bg-background">
+<div class="w-full max-w-4xl">
+<!-- Header Section -->
+<div class="mb-stack-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-stack-sm">Xác thực hồ sơ chuyên môn</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Vui lòng tải lên các tài liệu dưới đây để hoàn tất quá trình xác thực tài khoản chuyên gia của bạn.</p>
+</div>
+<!-- Bento Grid Layout for Uploads -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-stack-lg">
+<!-- Main Upload List (Left Column) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-md">
+<!-- Document Item: Bằng cấp chuyên môn -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background">Bằng cấp chuyên môn</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Số hiệu: **** **** 1234</p>
+</div>
+</div>
+<!-- Status Chip: Success -->
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-container bg-opacity-20 text-primary-container border border-primary-container border-opacity-30">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span class="font-label-md text-label-md text-[#51271b]">Đã tải lên</span>
+</div>
+</div>
+<div class="bg-surface rounded-DEFAULT border border-dashed border-outline-variant p-stack-md flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">description</span>
+<span class="font-body-md text-body-md text-on-background">Bang_Cap_Y_Khoa_2023.pdf</span>
+</div>
+<button class="font-button text-button text-primary hover:bg-surface-container-low px-4 h-[40px] rounded-full transition-colors active:scale-95">
+                                Thay đổi
+                            </button>
+</div>
+</div>
+<!-- Document Item: Chứng chỉ hành nghề -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background">Chứng chỉ hành nghề</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Số hiệu: Chưa cập nhật</p>
+</div>
+</div>
+<!-- Status Chip: Warning/Needed -->
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-variant text-on-surface-variant border border-outline-variant border-opacity-50">
+<span class="material-symbols-outlined text-[16px]">error</span>
+<span class="font-label-md text-label-md">Cần cập nhật</span>
+</div>
+</div>
+<!-- Upload Area -->
+<div class="bg-background rounded-DEFAULT border-2 border-dashed border-outline-variant hover:border-primary hover:bg-surface-container transition-all cursor-pointer p-stack-lg flex flex-col items-center justify-center text-center">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary mb-3">
+<span class="material-symbols-outlined">cloud_upload</span>
+</div>
+<p class="font-button text-button text-primary mb-1">Nhấn để tải lên hoặc kéo thả tệp</p>
+<p class="font-body-md text-body-md text-outline">Hỗ trợ PDF, JPG, PNG (Tối đa 5MB)</p>
+</div>
+</div>
+<!-- Document Item: CCCD/Hộ chiếu -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">badge</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background">CCCD/Hộ chiếu</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Số hiệu: **** **** 5678</p>
+</div>
+</div>
+<!-- Status Chip: Success -->
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-container bg-opacity-20 text-primary-container border border-primary-container border-opacity-30">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span class="font-label-md text-label-md text-[#51271b]">Đã tải lên</span>
+</div>
+</div>
+<div class="bg-surface rounded-DEFAULT border border-dashed border-outline-variant p-stack-md flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">image</span>
+<span class="font-body-md text-body-md text-on-background">CCCD_MatTruoc.jpg</span>
+</div>
+<button class="font-button text-button text-primary hover:bg-surface-container-low px-4 h-[40px] rounded-full transition-colors active:scale-95">
+                                Thay đổi
+                            </button>
+</div>
+</div>
+</div>
+<!-- Info & Actions Sidebar (Right Column) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-md">
+<!-- Glassmorphism Info Card -->
+<div class="bg-surface-container-lowest/80 backdrop-blur-md rounded-DEFAULT p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant sticky top-[96px]">
+<div class="flex items-center gap-3 mb-stack-md text-primary">
+<span class="material-symbols-outlined">security</span>
+<h3 class="font-headline-md text-headline-md">Bảo mật thông tin</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg leading-relaxed">
+                            Tài liệu của bạn được mã hóa an toàn và chỉ được sử dụng cho mục đích xác minh danh tính và năng lực chuyên môn bởi đội ngũ quản lý CareBridge.
+                        </p>
+<div class="w-full bg-surface-container-low h-2 rounded-full mb-2 overflow-hidden">
+<div class="bg-primary-container h-full rounded-full w-2/3 transition-all duration-500"></div>
+</div>
+<p class="font-label-md text-label-md text-outline text-right mb-stack-lg">Tiến độ: 2/3 tài liệu</p>
+<!-- Primary CTA -->
+<button class="w-full h-[52px] rounded-full bg-primary-container text-on-primary font-button text-button shadow-[0px_8px_24px_rgba(90,70,63,0.12)] hover:bg-opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 opacity-70 cursor-not-allowed">
+<span class="material-symbols-outlined">send</span>
+                            Gửi xác thực
+                        </button>
+<p class="font-label-md text-label-md text-center text-outline mt-3">
+                            Vui lòng tải lên tất cả tài liệu cần thiết.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

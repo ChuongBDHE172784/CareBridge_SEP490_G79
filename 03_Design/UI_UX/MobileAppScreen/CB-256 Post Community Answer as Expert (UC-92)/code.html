@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6c2bd;
+            border-radius: 10px;
+        }
+        .floating-panel {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+        .safe-scope-checkbox:checked + label .check-icon {
+            display: block;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#484643",
+                      "inverse-on-surface": "#f6f0eb",
+                      "surface-container-high": "#ede7e3",
+                      "on-secondary-fixed": "#1e1b18",
+                      "primary-fixed-dim": "#fab7a4",
+                      "on-primary-fixed": "#341006",
+                      "text-body": "#524F4C",
+                      "surface-main": "#FFFFFF",
+                      "surface-accent-muted": "#F2EAE4",
+                      "surface-tint": "#845143",
+                      "inverse-surface": "#32302d",
+                      "primary-container": "#c98c7b",
+                      "background": "#fef8f4",
+                      "surface-dim": "#dfd9d5",
+                      "text-heading": "#2D2A28",
+                      "on-secondary-container": "#68635f",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f9f2ee",
+                      "tertiary-fixed-dim": "#cac6c1",
+                      "surface-bright": "#fef8f4",
+                      "surface-container-highest": "#e7e1dd",
+                      "error": "#ba1a1a",
+                      "on-background": "#1d1b19",
+                      "on-tertiary-container": "#34322f",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "surface-accent-light": "#F6F1EC",
+                      "secondary": "#625d59",
+                      "surface-variant": "#e7e1dd",
+                      "secondary-fixed-dim": "#ccc5c0",
+                      "secondary-container": "#e9e1db",
+                      "primary-fixed": "#ffdbd1",
+                      "on-tertiary-fixed": "#1d1b19",
+                      "surface": "#fef8f4",
+                      "secondary-fixed": "#e9e1db",
+                      "on-secondary": "#ffffff",
+                      "tertiary-fixed": "#e6e2dd",
+                      "tertiary": "#605e5a",
+                      "on-surface": "#1d1b19",
+                      "status-active": "#C98C7B",
+                      "inverse-primary": "#fab7a4",
+                      "outline": "#84736f",
+                      "tertiary-container": "#9e9a96",
+                      "on-primary-container": "#51271b",
+                      "on-secondary-fixed-variant": "#4a4642",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container": "#f3ede8",
+                      "primary": "#845143",
+                      "outline-variant": "#d6c2bd",
+                      "on-surface-variant": "#524440",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "panel-gap": "24px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "grid-gutter": "24px",
+                      "container-padding": "32px",
+                      "sidebar-width": "280px"
+              },
+              "fontFamily": {
+                      "label-md": ["Quicksand"],
+                      "headline-sm": ["Quicksand"],
+                      "display-lg": ["Quicksand"],
+                      "body-lg": ["Quicksand"],
+                      "headline-md": ["Quicksand"],
+                      "body-md": ["Quicksand"],
+                      "nav-item": ["Quicksand"]
+              },
+              "fontSize": {
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen pb-32">
+<!-- Top AppBar -->
+<header class="bg-background dark:bg-on-background w-full top-0 sticky z-40 transition-opacity">
+<div class="flex justify-between items-center px-6 py-4">
+<button class="text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">Expert Portal</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</header>
+<main class="max-w-3xl mx-auto px-4 md:px-8 mt-6 flex flex-col gap-panel-gap">
+<!-- Question Context Card -->
+<section class="bg-surface-container-lowest rounded-lg p-6 floating-panel border border-surface-accent-light">
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-md text-label-md">Dinh dưỡng Nhi khoa</span>
+<span class="bg-surface-accent-muted text-primary px-3 py-1 rounded-full font-label-md text-label-md">Trẻ 6-12 tháng</span>
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">priority_high</span>
+                    Khẩn cấp
+                </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-text-heading mb-2">Bé biếng ăn và quấy khóc khi ăn dặm?</h2>
+<p class="font-body-md text-body-md text-text-body leading-relaxed">
+                Chào bác sĩ, bé nhà em được 8 tháng tuổi. Dạo gần đây bé rất lười ăn, cứ thấy thìa là khóc thét lên. Bé vẫn chơi ngoan nhưng cứ đến bữa là cực hình. Em nên làm gì ạ?
+            </p>
+<div class="mt-4 pt-4 border-t border-surface-accent-light flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">schedule</span>
+<span class="font-label-md text-label-md">Đã đăng 2 giờ trước • Từ Hà Nội</span>
+</div>
+</section>
+<!-- Answer Composer -->
+<section class="bg-surface-container-lowest rounded-lg p-6 floating-panel border border-surface-accent-light">
+<!-- Expert Profile Header -->
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-accent-muted border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="A professional portrait of a smiling pediatrician in a modern clinic office. She is wearing a crisp white medical coat with a stethoscope around her neck. The background is softly blurred with warm wooden accents and a bright, airy medical office aesthetic, matching the expert portal's professional and empathetic vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzrBomZd5IlWVcYIIAv3-T4D_IMMi4kVkG_d2hPfiNwuFb8J1HrLiQJ5F1U316RyZ3vvTUu4Ye95q6Ycx5JJ3KYo7YajjtBBnDuJG7KMiNxS4ZJN5SRHA0490S5mzq_j2YcrGdxMuvdbwsLVMoVl_o0d2OVtDDgLla1ndda2z9S6-rBuXeFSQYez4umIXlaCRf_yYOSbqcmpas5--A_XCuDQBrNEBXteAzzozbSyJjk1nlAeChl9XNqjJFjBLhArxsmRhWb9VKRyA"/>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-text-heading">BS. Minh Anh</span>
+<span class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+                            EXPERT
+                        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase">Chuyên khoa Dinh dưỡng</p>
+</div>
+</div>
+<!-- Text Area -->
+<div class="relative mb-6">
+<textarea class="w-full min-h-[200px] p-4 bg-white border-2 border-surface-accent-muted rounded-lg font-body-md text-text-body focus:ring-0 focus:border-primary-container transition-colors resize-none custom-scrollbar" placeholder="Viết câu trả lời chuyên gia của bạn tại đây..."></textarea>
+</div>
+<!-- Mandatory Safe Scope Acknowledgement -->
+<div class="bg-surface-accent-light p-4 rounded-lg mb-6 border-l-4 border-primary">
+<div class="flex gap-3">
+<div class="relative flex items-center">
+<input class="safe-scope-checkbox hidden" id="safe-scope" type="checkbox"/>
+<label class="w-6 h-6 border-2 border-primary-container rounded cursor-pointer flex items-center justify-center bg-white" for="safe-scope">
+<span class="material-symbols-outlined check-icon hidden text-primary font-bold text-lg">check</span>
+</label>
+</div>
+<label class="font-body-md text-body-md text-on-surface-variant cursor-pointer" for="safe-scope">
+                        Tôi xác nhận rằng tư vấn này dựa trên thông tin được cung cấp và không thay thế cho việc thăm khám trực tiếp tại cơ sở y tế.
+                    </label>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center justify-end gap-4">
+<button class="px-6 py-2 rounded-full font-nav-item text-nav-item text-secondary hover:bg-surface-variant transition-colors">
+                    Lưu nháp
+                </button>
+<button class="bg-primary-container hover:opacity-90 active:scale-95 transition-all text-white px-8 py-3 rounded-full font-headline-sm text-headline-sm flex items-center gap-2 shadow-md">
+<span class="material-symbols-outlined">send</span>
+                    Đăng trả lời
+                </button>
+</div>
+</section>
+<!-- Suggested Resources for Expert -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-panel-gap">
+<div class="bg-white p-5 rounded-lg floating-panel border border-surface-accent-light flex items-center gap-4 hover:bg-surface-accent-light transition-colors cursor-pointer group">
+<div class="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">menu_book</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Tài liệu tham khảo</p>
+<p class="font-body-md text-body-md text-text-heading group-hover:text-primary transition-colors">Hướng dẫn ăn dặm 2024</p>
+</div>
+</div>
+<div class="bg-white p-5 rounded-lg floating-panel border border-surface-accent-light flex items-center gap-4 hover:bg-surface-accent-light transition-colors cursor-pointer group">
+<div class="w-12 h-12 bg-tertiary-fixed-dim rounded-lg flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-tertiary">Lịch sử trả lời</p>
+<p class="font-body-md text-body-md text-text-heading group-hover:text-tertiary transition-colors">Các câu hỏi tương tự</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface-container-low dark:bg-inverse-surface shadow-[0_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-[10px] uppercase mt-1">Trang chủ</span>
+</a>
+<!-- Requests -->
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">pending_actions</span>
+<span class="font-label-caps text-[10px] uppercase mt-1">Yêu cầu</span>
+</a>
+<!-- Community (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-xl px-4 py-1 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-caps text-[10px] uppercase mt-1">Cộng đồng</span>
+</a>
+<!-- Recent -->
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-caps text-[10px] uppercase mt-1">Gần đây</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-[10px] uppercase mt-1">Hồ sơ</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for the checkbox
+        const checkbox = document.getElementById('safe-scope');
+        const submitBtn = document.querySelector('button.bg-primary-container');
+
+        // Initial state
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.pointerEvents = 'none';
+
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                submitBtn.style.opacity = '1';
+                submitBtn.style.pointerEvents = 'auto';
+            } else {
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.pointerEvents = 'none';
+            }
+        });
+
+        // Add visual feedback on textarea focus
+        const textarea = document.querySelector('textarea');
+        textarea.addEventListener('focus', () => {
+            textarea.parentElement.classList.add('scale-[1.01]');
+            textarea.parentElement.style.transition = 'transform 0.3s ease';
+        });
+        textarea.addEventListener('blur', () => {
+            textarea.parentElement.classList.remove('scale-[1.01]');
+        });
+    </script>
+</body></html>

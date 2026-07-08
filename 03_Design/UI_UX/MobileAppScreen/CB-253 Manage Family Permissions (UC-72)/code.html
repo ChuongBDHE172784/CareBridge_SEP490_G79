@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quản lý quyền hạn thành viên | CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(242, 234, 228, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #fef8f4;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e9e1db;
+            border-radius: 10px;
+        }
+        /* Toggle Switch Custom */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #dfd9d5;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #C98C7B;
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#845143",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "background": "#fef8f4",
+                        "surface": "#fef8f4",
+                        "surface-accent-muted": "#F2EAE4",
+                        "surface-container": "#f3ede8",
+                        "secondary": "#625d59",
+                        "outline": "#84736f",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem"
+                    },
+                    "fontFamily": {
+                        "display": ["Quicksand"],
+                        "body": ["Quicksand"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- Top AppBar (JSON Content) -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary text-2xl">arrow_back</span>
+</button>
+<h1 class="font-bold text-xl tracking-tight text-primary">CareBridge</h1>
+</div>
+<button class="active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</header>
+<main class="pt-24 px-4 md:px-8 max-w-5xl mx-auto space-y-6">
+<!-- Member Profile Header -->
+<section class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(201,140,123,0.08)] flex flex-col md:flex-row items-center gap-6">
+<div class="relative w-24 h-24 rounded-full border-4 border-surface-accent-muted overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A warm, high-quality portrait of a smiling middle-aged woman with kind eyes, set against a soft, sun-drenched home interior with warm wooden accents. The photography style is natural and airy, with a gentle bokeh effect that emphasizes her friendly expression. The lighting is golden and soft, reflecting a sense of care and trust within a modern, minimalist family environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCY0ogp4Tkdw-GOwUMSSvVsuGEGUw701ubSSyrShbdRUCseC1J4Tf5iWwTco1XRPOddwOJ4xJfc70K9_0VRLmCTbYK3hoWAFc8992Fbit28lZBvJkTiP0WVgINw1UgIWzJXA9AML_TDsbrOifyg7IYgve9WjBcI9tCbPBwlIi-ejMFEwEZ678n1dB23nmCL-9Ou_cngFbjhUZ0Xhr5mUJ2oVwcdMM1EROVzQw4Dss6SLMq12dYoQ_lGsdTInln1qGXH1E6x5FfWJl8"/>
+</div>
+<div class="text-center md:text-left flex-1">
+<div class="flex items-center justify-center md:justify-start gap-2">
+<h2 class="font-bold text-2xl text-primary">Nguyễn Minh Hương</h2>
+<span class="bg-primary-container/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">Gia đình</span>
+</div>
+<p class="text-secondary font-medium">Vai trò: Bà Ngoại</p>
+<div class="mt-2 flex flex-wrap justify-center md:justify-start gap-4 text-sm text-outline">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">mail</span> huong.nguyen@email.com</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">verified_user</span> Đã xác thực</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 rounded-full border-2 border-error text-error font-bold text-sm active:scale-95 transition-all hover:bg-error/5">
+                    Thu hồi quyền
+                </button>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Granular Permissions (Left & Middle) -->
+<div class="lg:col-span-2 space-y-6">
+<div class="bg-white rounded-lg p-8 shadow-[0px_4px_20px_rgba(201,140,123,0.08)]">
+<h3 class="font-bold text-lg text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">security</span>
+                        Quyền hạn chi tiết
+                    </h3>
+<div class="space-y-6">
+<!-- Lịch trình -->
+<div class="flex items-center justify-between p-4 rounded-xl bg-background border border-surface-accent-muted transition-all hover:border-primary-container">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_month</span>
+</div>
+<div>
+<h4 class="font-bold text-primary">Lịch trình</h4>
+<p class="text-xs text-secondary">Xem và chỉnh sửa lịch tiêm chủng, khám định kỳ.</p>
+</div>
+</div>
+<label class="switch">
+<input checked="" type="checkbox"/>
+<span class="slider"></span>
+</label>
+</div>
+<!-- Việc cần làm -->
+<div class="flex items-center justify-between p-4 rounded-xl bg-background border border-surface-accent-muted transition-all hover:border-primary-container">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">checklist</span>
+</div>
+<div>
+<h4 class="font-bold text-primary">Việc cần làm</h4>
+<p class="text-xs text-secondary">Quản lý danh sách mua sắm, chuẩn bị đồ cho bé.</p>
+</div>
+</div>
+<label class="switch">
+<input checked="" type="checkbox"/>
+<span class="slider"></span>
+</label>
+</div>
+<!-- Nhật ký bé -->
+<div class="flex items-center justify-between p-4 rounded-xl bg-background border border-surface-accent-muted transition-all hover:border-primary-container">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">auto_stories</span>
+</div>
+<div>
+<h4 class="font-bold text-primary">Nhật ký bé</h4>
+<p class="text-xs text-secondary">Xem lại các khoảnh khắc, hình ảnh và ghi chú hàng ngày.</p>
+</div>
+</div>
+<label class="switch">
+<input type="checkbox"/>
+<span class="slider"></span>
+</label>
+</div>
+<!-- Sức khỏe -->
+<div class="flex items-center justify-between p-4 rounded-xl bg-background border border-surface-accent-muted transition-all hover:border-primary-container">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">monitor_heart</span>
+</div>
+<div>
+<h4 class="font-bold text-primary">Sức khỏe</h4>
+<p class="text-xs text-secondary">Thông số chiều cao, cân nặng và tiền sử bệnh lý.</p>
+</div>
+</div>
+<label class="switch">
+<input type="checkbox"/>
+<span class="slider"></span>
+</label>
+</div>
+</div>
+</div>
+<!-- Purpose & Expiry -->
+<div class="bg-white rounded-lg p-8 shadow-[0px_4px_20px_rgba(201,140,123,0.08)]">
+<h3 class="font-bold text-lg text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">info</span>
+                        Mục đích &amp; Thời hạn
+                    </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-sm font-bold text-secondary">Lý do chia sẻ</label>
+<select class="w-full rounded-xl border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 transition-colors p-3 bg-white">
+<option>Hỗ trợ chăm sóc hàng ngày</option>
+<option>Theo dõi sức khỏe tạm thời</option>
+<option>Giúp đỡ khi bố mẹ vắng nhà</option>
+<option>Khác</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-bold text-secondary">Ngày hết hạn (Nếu có)</label>
+<input class="w-full rounded-xl border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 transition-colors p-3 bg-white" type="date"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Consent Summary (Right Sidebar) -->
+<div class="space-y-6">
+<div class="bg-surface-accent-muted rounded-lg p-6 sticky top-24">
+<h3 class="font-bold text-primary mb-4">Minh bạch &amp; Đồng thuận</h3>
+<div class="space-y-4">
+<div class="flex gap-3 text-sm">
+<span class="material-symbols-outlined text-primary shrink-0">check_circle</span>
+<p class="text-secondary">Quyền truy cập của <b>Bà Ngoại</b> được giới hạn trong phạm vi gia đình.</p>
+</div>
+<div class="flex gap-3 text-sm">
+<span class="material-symbols-outlined text-primary shrink-0">history</span>
+<p class="text-secondary">Mọi thay đổi trong nhật ký sẽ được lưu vết với tên người thực hiện.</p>
+</div>
+<div class="flex gap-3 text-sm">
+<span class="material-symbols-outlined text-primary shrink-0">lock</span>
+<p class="text-secondary">Dữ liệu sức khỏe chỉ có thể được xem, không có quyền xuất tập tin.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-primary/10">
+<p class="text-xs text-outline italic mb-6">
+                            Bằng cách nhấn "Lưu thay đổi", bạn đồng ý chia sẻ các dữ liệu đã chọn với thành viên này. Bạn có thể thu hồi quyền bất cứ lúc nào.
+                        </p>
+<button class="w-full bg-primary text-white font-bold py-4 rounded-full shadow-lg active:scale-95 transition-all hover:bg-primary/90">
+                            Lưu thay đổi
+                        </button>
+</div>
+</div>
+<!-- Animated Atmospheric Effect (Canvas replacement) -->
+<div class="relative h-48 rounded-lg overflow-hidden bg-primary/5 flex items-center justify-center group">
+
+<div class="relative z-10 text-center p-4">
+<span class="material-symbols-outlined text-primary text-4xl mb-2">diversity_1</span>
+<p class="text-primary font-bold">Gia đình gắn kết</p>
+<p class="text-[10px] text-secondary uppercase tracking-widest mt-1">CareBridge Security</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (JSON Content Logic) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg z-50 md:hidden">
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-semibold mt-1">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span class="text-[10px] font-semibold mt-1">Sức khỏe</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">notifications</span>
+<span class="text-[10px] font-semibold mt-1">Thông báo</span>
+</div>
+<!-- Active Tab: Cá nhân (Current context: Profile Management) -->
+<div class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="text-[10px] mt-1">Cá nhân</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions for switches
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const parent = this.closest('.rounded-xl');
+                if(this.checked) {
+                    parent.classList.add('ring-2', 'ring-primary-container/20');
+                    setTimeout(() => parent.classList.remove('ring-2'), 400);
+                }
+            });
+        });
+
+        // Hover animations for cards
+        document.querySelectorAll('.rounded-xl').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

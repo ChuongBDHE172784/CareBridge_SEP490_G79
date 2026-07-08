@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Chỉnh sửa Nhật ký</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; }
+        
+        /* Claymorphism Effects */
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                inset -8px -8px 12px rgba(201, 140, 123, 0.05),
+                inset 8px 8px 12px rgba(255, 255, 255, 0.8),
+                10px 15px 30px rgba(90, 70, 63, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .clay-button-primary {
+            background: #C98C7B;
+            border-radius: 9999px;
+            box-shadow: 
+                inset -4px -4px 8px rgba(0, 0, 0, 0.1),
+                inset 4px 4px 8px rgba(255, 255, 255, 0.2),
+                0 8px 16px rgba(201, 140, 123, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .clay-button-primary:active {
+            transform: scale(0.96);
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .clay-input {
+            background: #F6F1EC;
+            border: 2px solid transparent;
+            border-radius: 1.25rem;
+            box-shadow: 
+                inset 4px 4px 8px rgba(90, 70, 63, 0.05),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .clay-input:focus {
+            outline: none;
+            border-color: #C98C7B;
+            background: #ffffff;
+        }
+
+        .type-pill {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .type-pill.active {
+            background: #C98C7B;
+            color: white;
+            box-shadow: 0 4px 12px rgba(201, 140, 123, 0.25);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        .bottom-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .error-shake { animation: shake 0.2s ease-in-out 0s 2; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-6 h-16">
+<button class="text-primary active:scale-95 transition-transform duration-200" onclick="history.back()">
+<span class="material-symbols-outlined text-[28px]">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Chỉnh sửa nhật ký</h1>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[28px]">close</span>
+</button>
+</header>
+<main class="pt-24 px-6 max-w-2xl mx-auto">
+<!-- Log Type Selector -->
+<div class="mb-8 overflow-x-auto no-scrollbar">
+<div class="flex gap-3 pb-2" id="typeSelector">
+<button class="type-pill active flex-shrink-0 px-6 py-3 rounded-full font-bold flex items-center gap-2 text-nav-item" onclick="changeType('feeding')">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+                    Cho bé ăn
+                </button>
+<button class="type-pill bg-surface-accent-muted text-secondary flex-shrink-0 px-6 py-3 rounded-full font-bold flex items-center gap-2 text-nav-item" onclick="changeType('sleep')">
+<span class="material-symbols-outlined">bedtime</span>
+                    Ngủ nghỉ
+                </button>
+<button class="type-pill bg-surface-accent-muted text-secondary flex-shrink-0 px-6 py-3 rounded-full font-bold flex items-center gap-2 text-nav-item" onclick="changeType('diaper')">
+<span class="material-symbols-outlined">baby_changing_station</span>
+                    Thay tã
+                </button>
+<button class="type-pill bg-surface-accent-muted text-secondary flex-shrink-0 px-6 py-3 rounded-full font-bold flex items-center gap-2 text-nav-item" onclick="changeType('symptom')">
+<span class="material-symbols-outlined">medical_services</span>
+                    Sức khỏe
+                </button>
+</div>
+</div>
+<!-- Form Card -->
+<div class="clay-card p-8 space-y-6">
+<div class="flex items-center justify-between border-b border-surface-container pb-4 mb-2">
+<div class="flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined text-sm">edit_note</span>
+<span class="text-label-md uppercase tracking-widest font-bold">Nguồn: Tự nhập</span>
+</div>
+</div>
+<!-- Common Field: Time -->
+<div class="space-y-2">
+<label class="block font-bold text-primary text-label-md px-1">Thời gian ghi nhận</label>
+<div class="relative">
+<input class="clay-input w-full p-4 text-body-lg text-on-surface" id="logTime" onchange="validateTime(this)" type="datetime-local"/>
+<p class="hidden text-error text-xs mt-1 px-1 font-medium flex items-center gap-1" id="timeWarning">
+<span class="material-symbols-outlined text-xs">warning</span> 
+                        Thời gian không thể ở tương lai!
+                    </p>
+</div>
+</div>
+<!-- Dynamic Content Area -->
+<div class="space-y-6" id="dynamicFields">
+<!-- Placeholder for dynamic JS rendering -->
+</div>
+<!-- Notes -->
+<div class="space-y-2">
+<label class="block font-bold text-primary text-label-md px-1">Ghi chú thêm</label>
+<textarea class="clay-input w-full p-4 text-body-md resize-none" placeholder="Nhập cảm nhận của bé hoặc lưu ý đặc biệt..." rows="3"></textarea>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="clay-button-primary flex-1 py-4 text-white font-bold text-body-lg flex items-center justify-center gap-2" onclick="saveLog()">
+<span class="material-symbols-outlined">save</span>
+                    Lưu nhật ký
+                </button>
+<button class="bg-surface-accent-muted text-error flex-1 py-4 rounded-full font-bold text-body-lg flex items-center justify-center gap-2 hover:bg-error-container transition-colors" onclick="openDeleteSheet()">
+<span class="material-symbols-outlined">delete</span>
+                    Xóa bản ghi
+                </button>
+</div>
+</div>
+<!-- Decor Image -->
+<div class="mt-12 flex justify-center opacity-30">
+<img class="w-48 h-auto" data-alt="A charming and soft 3D claymorphism illustration of a stylized wooden baby rattle and a soft knitted blanket, using a warm palette of terracotta, cream, and muted peach. The lighting is diffused and gentle, creating soft shadows that emphasize the tactile, rounded forms of the objects. The scene is set against a clean, warm white background, evoking a sense of peaceful nursery care and artisanal quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAqJqjNrLMW67UuNOjSp0IkIipmy08jwTiNQpvQgvcWsWclT3NesRjjw5cP_fuVyid797uKerOcTfVJRjCTFYt8DKr3SDQVqU6eHT_Gb54DTtVoDfH6PQNpkwmC5RHA9oiIN47lIqn6AQhr0Pbcm34qdQpRPr8BLu91vH1ewr5g8fYEzcWL900QHrNzzdADvfKxlT3iKyhDdKOIh3LGdQOMe4Ny2H8p5wxSHLcilYMxkyDQIXJQljTPPF00rrH-QA2wF6V20BnqAE"/>
+</div>
+</main>
+<!-- Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface dark:bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg z-50">
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-[10px] mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="font-label-caps text-[10px] mt-1">Sức khỏe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-label-caps text-[10px] mt-1">Thông báo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-[10px] mt-1">Cá nhân</span>
+</a>
+</nav>
+<!-- Confirmation Bottom Sheet -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0" id="overlay" onclick="closeDeleteSheet()"></div>
+<div class="fixed bottom-0 left-0 w-full bg-white rounded-t-[3rem] p-8 z-[70] bottom-sheet shadow-[0_-10px_40px_rgba(0,0,0,0.1)]" id="deleteSheet">
+<div class="w-12 h-1.5 bg-surface-container-high rounded-full mx-auto mb-8"></div>
+<div class="text-center space-y-4">
+<div class="w-20 h-20 bg-error-container text-error rounded-full flex items-center justify-center mx-auto mb-4">
+<span class="material-symbols-outlined text-4xl">delete_forever</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-text-heading">Xác nhận xóa nhật ký?</h2>
+<p class="text-body-md text-secondary max-w-xs mx-auto">Hành động này không thể hoàn tác. Dữ liệu ghi chép hôm nay sẽ bị xóa vĩnh viễn.</p>
+<div class="flex flex-col gap-3 pt-6">
+<button class="w-full py-4 bg-error text-white font-bold rounded-full text-body-lg active:scale-95 transition-transform" onclick="confirmDelete()">Xóa ngay bây giờ</button>
+<button class="w-full py-4 text-secondary font-bold text-body-lg" onclick="closeDeleteSheet()">Quay lại</button>
+</div>
+</div>
+</div>
+<script>
+        const fieldsTemplates = {
+            feeding: `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="block font-bold text-primary text-label-md px-1">Lượng dùng</label>
+                        <input type="number" value="120" class="clay-input w-full p-4 text-body-lg" placeholder="0">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block font-bold text-primary text-label-md px-1">Đơn vị</label>
+                        <select class="clay-input w-full p-4 text-body-lg appearance-none">
+                            <option>ml</option>
+                            <option>oz</option>
+                            <option>g</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="block font-bold text-primary text-label-md px-1">Loại thực phẩm</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="px-4 py-2 rounded-xl bg-primary text-white text-body-md font-bold">Sữa mẹ</button>
+                        <button class="px-4 py-2 rounded-xl bg-surface-accent-muted text-secondary text-body-md font-bold">Sữa công thức</button>
+                        <button class="px-4 py-2 rounded-xl bg-surface-accent-muted text-secondary text-body-md font-bold">Ăn dặm</button>
+                    </div>
+                </div>
+            `,
+            sleep: `
+                <div class="space-y-2">
+                    <label class="block font-bold text-primary text-label-md px-1">Thời lượng ngủ</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex items-center gap-2">
+                            <input type="number" value="1" class="clay-input w-full p-4 text-body-lg" placeholder="Giờ">
+                            <span class="text-secondary font-bold">h</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" value="30" class="clay-input w-full p-4 text-body-lg" placeholder="Phút">
+                            <span class="text-secondary font-bold">m</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="block font-bold text-primary text-label-md px-1">Chất lượng giấc ngủ</label>
+                    <div class="flex justify-between px-2">
+                        <span class="material-symbols-outlined text-3xl text-primary cursor-pointer">sentiment_very_dissatisfied</span>
+                        <span class="material-symbols-outlined text-3xl text-primary/50 cursor-pointer">sentiment_dissatisfied</span>
+                        <span class="material-symbols-outlined text-3xl text-primary/50 cursor-pointer">sentiment_neutral</span>
+                        <span class="material-symbols-outlined text-3xl text-primary cursor-pointer" style="font-variation-settings: 'FILL' 1;">sentiment_satisfied</span>
+                        <span class="material-symbols-outlined text-3xl text-primary/50 cursor-pointer">sentiment_very_satisfied</span>
+                    </div>
+                </div>
+            `,
+            diaper: `
+                <div class="space-y-2">
+                    <label class="block font-bold text-primary text-label-md px-1">Trạng thái tã</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button class="p-3 rounded-2xl bg-primary text-white flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined">water_drop</span>
+                            <span class="text-[10px] font-bold">Ướt</span>
+                        </button>
+                        <button class="p-3 rounded-2xl bg-surface-accent-muted text-secondary flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined">💩</span>
+                            <span class="text-[10px] font-bold">Bẩn</span>
+                        </button>
+                        <button class="p-3 rounded-2xl bg-surface-accent-muted text-secondary flex flex-col items-center gap-1">
+                            <span class="material-symbols-outlined">done_all</span>
+                            <span class="text-[10px] font-bold">Cả hai</span>
+                        </button>
+                    </div>
+                </div>
+            `,
+            symptom: `
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block font-bold text-primary text-label-md px-1">Nhiệt độ cơ thể</label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" step="0.1" value="36.5" class="clay-input flex-1 p-4 text-body-lg">
+                            <span class="text-headline-sm text-secondary">°C</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block font-bold text-primary text-label-md px-1">Triệu chứng phổ biến</label>
+                        <div class="flex gap-2 flex-wrap">
+                            <span class="px-3 py-1 bg-surface-accent-muted border border-surface-container rounded-full text-xs font-bold text-secondary">Ho nhẹ</span>
+                            <span class="px-3 py-1 bg-primary text-white rounded-full text-xs font-bold">Sổ mũi</span>
+                            <span class="px-3 py-1 bg-surface-accent-muted border border-surface-container rounded-full text-xs font-bold text-secondary">Nổi ban</span>
+                            <span class="px-3 py-1 bg-surface-accent-muted border border-surface-container rounded-full text-xs font-bold text-secondary">Chán ăn</span>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        function changeType(type) {
+            // Update UI buttons
+            const buttons = document.querySelectorAll('#typeSelector button');
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'bg-primary', 'text-white');
+                btn.classList.add('bg-surface-accent-muted', 'text-secondary');
+                const icon = btn.querySelector('.material-symbols-outlined');
+                if (icon) icon.style.fontVariationSettings = "'FILL' 0";
+            });
+
+            const activeBtn = event.currentTarget;
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('bg-surface-accent-muted', 'text-secondary');
+            const activeIcon = activeBtn.querySelector('.material-symbols-outlined');
+            if (activeIcon) activeIcon.style.fontVariationSettings = "'FILL' 1";
+
+            // Update Dynamic Fields
+            const container = document.getElementById('dynamicFields');
+            container.style.opacity = '0';
+            setTimeout(() => {
+                container.innerHTML = fieldsTemplates[type];
+                container.style.opacity = '1';
+                container.classList.add('fade-in');
+            }, 150);
+        }
+
+        function validateTime(input) {
+            const selectedTime = new Date(input.value);
+            const now = new Date();
+            const warning = document.getElementById('timeWarning');
+            
+            if (selectedTime > now) {
+                warning.classList.remove('hidden');
+                input.classList.add('error-shake', 'border-error');
+                input.style.borderColor = '#ba1a1a';
+                setTimeout(() => input.classList.remove('error-shake'), 400);
+            } else {
+                warning.classList.add('hidden');
+                input.classList.remove('border-error');
+                input.style.borderColor = 'transparent';
+            }
+        }
+
+        function openDeleteSheet() {
+            document.getElementById('overlay').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('overlay').classList.add('opacity-100');
+                document.getElementById('deleteSheet').classList.add('open');
+            }, 10);
+        }
+
+        function closeDeleteSheet() {
+            document.getElementById('overlay').classList.remove('opacity-100');
+            document.getElementById('deleteSheet').classList.remove('open');
+            setTimeout(() => {
+                document.getElementById('overlay').classList.add('hidden');
+            }, 300);
+        }
+
+        function confirmDelete() {
+            // Logic for deletion
+            alert("Đã xóa nhật ký thành công!");
+            closeDeleteSheet();
+        }
+
+        function saveLog() {
+            const timeInput = document.getElementById('logTime');
+            const selectedTime = new Date(timeInput.value);
+            if (selectedTime > new Date()) {
+                timeInput.classList.add('error-shake');
+                setTimeout(() => timeInput.classList.remove('error-shake'), 400);
+                return;
+            }
+            alert("Dữ liệu đã được lưu!");
+        }
+
+        // Set initial state
+        window.onload = () => {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('logTime').value = now.toISOString().slice(0, 16);
+            document.getElementById('dynamicFields').innerHTML = fieldsTemplates.feeding;
+        };
+    </script>
+</body></html>

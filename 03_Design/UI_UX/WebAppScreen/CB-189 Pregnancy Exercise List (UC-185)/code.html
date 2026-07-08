@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareTech Admin - Danh sách Bài tập Thai kỳ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#fef8f4",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-high": "#ede7e3",
+                        "status-active": "#C98C7B",
+                        "outline": "#84736f",
+                        "on-primary-container": "#51271b",
+                        "on-surface-variant": "#524440",
+                        "text-heading": "#2D2A28",
+                        "tertiary": "#605e5a",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-highest": "#e7e1dd",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#e9e1db",
+                        "background": "#fef8f4",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "surface-main": "#FFFFFF",
+                        "inverse-surface": "#32302d",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-on-surface": "#f6f0eb",
+                        "secondary": "#625d59",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "tertiary-container": "#9e9a96",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#f3ede8",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#d6c2bd",
+                        "text-body": "#524F4C",
+                        "surface-accent-muted": "#F2EAE4",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "primary": "#845143",
+                        "on-background": "#1d1b19",
+                        "surface-accent-light": "#F6F1EC",
+                        "on-surface": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "on-secondary-container": "#68635f",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#845143",
+                        "inverse-primary": "#fab7a4",
+                        "surface": "#fef8f4",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed": "#e6e2dd",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "primary-container": "#c98c7b",
+                        "surface-dim": "#dfd9d5",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#e9e1db",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-variant": "#e7e1dd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "sidebar-width": "280px",
+                        "panel-gap": "24px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "label-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "body-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .warm-shadow {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-screen w-sidebar-width bg-surface-accent-muted flex flex-col h-full py-container-padding gap-stack-md z-40 border-r border-surface-variant/50">
+<div class="px-container-padding mb-8">
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">CareTech Admin</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Healthcare Portal</p>
+</div>
+<div class="flex-1 px-4 flex flex-col gap-2">
+<a class="flex items-center gap-4 px-4 py-3 rounded-r-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-nav-item text-nav-item">Overview</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-r-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-nav-item text-nav-item">Users</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-r-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">security</span>
+<span class="font-nav-item text-nav-item">Security</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-r-full bg-primary-container text-on-primary-container font-bold scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-nav-item text-nav-item">Content Management</span>
+</a>
+</div>
+<div class="px-container-padding mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-full font-nav-item text-nav-item hover:bg-primary/90 transition-colors active:scale-95">
+                New Entry
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width flex-1 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="h-20 bg-background flex justify-between items-center px-container-padding w-full sticky top-0 z-30">
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container rounded-full outline-none font-body-md text-body-md w-64 transition-colors" placeholder="Tìm kiếm bài tập..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-on-surface-variant hover:text-primary transition-all rounded-full p-2 hover:bg-surface-container-low">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all rounded-full p-2 hover:bg-surface-container-low">
+<span class="material-symbols-outlined">history</span>
+</button>
+<div class="h-8 w-px bg-surface-variant"></div>
+<img alt="Admin User Avatar" class="w-10 h-10 rounded-full object-cover border border-surface-variant" data-alt="A small, circular profile picture of an administrative user in a professional healthcare portal context. The image should be warm, well-lit, and convey a sense of trust and competence, suitable for a minimalist medical or fitness application interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH7x2QCj5hG9LZ9IQcgvcc1idz9bzcSsRAGVrArfLYeu39XpXB7L8MsknA9chC7RcfUlw3qziIjlY8n2wpYDKBCqJBkEuHbDKj8-oNrVNhYwKurUa-AHxJSqen7MxOPJN_H9KOd2bOapABOmfDODLNgJ8wtDXlICJayO6a6QDAbOaabXoyAd2lF6fG3sme0aIZXUprURwcPpqodSRcbTrgEuDLrIt2LoDhKJSmhzy3DyKuxALaXlUNvpZe_vgK9xTDim7cwuQ59UM"/>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-container-padding pt-4 flex-1">
+<!-- Page Header & Actions -->
+<div class="flex justify-between items-end mb-panel-gap">
+<div>
+<h2 class="font-headline-md text-headline-md text-text-heading">Danh sách Bài tập</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Quản lý nội dung bài tập thai kỳ và AI Pose.</p>
+</div>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-nav-item text-nav-item flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-md">
+<span class="material-symbols-outlined">add</span>
+                    Thêm bài tập
+                </button>
+</div>
+<!-- Filters -->
+<div class="bg-surface-main rounded-xl p-4 mb-panel-gap warm-shadow flex gap-4">
+<select class="bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container rounded-lg px-4 py-2 font-body-md text-body-md text-text-heading outline-none transition-colors">
+<option value="">Tất cả Tam cá nguyệt</option>
+<option value="1">Tam cá nguyệt 1</option>
+<option value="2">Tam cá nguyệt 2</option>
+<option value="3">Tam cá nguyệt 3</option>
+</select>
+<select class="bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container rounded-lg px-4 py-2 font-body-md text-body-md text-text-heading outline-none transition-colors">
+<option value="">Độ khó</option>
+<option value="easy">Dễ</option>
+<option value="medium">Trung bình</option>
+</select>
+<select class="bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container rounded-lg px-4 py-2 font-body-md text-body-md text-text-heading outline-none transition-colors">
+<option value="">Trạng thái</option>
+<option value="published">Đã xuất bản</option>
+<option value="draft">Bản nháp</option>
+</select>
+</div>
+<!-- Data Table Panel -->
+<div class="bg-surface-main rounded-xl p-container-padding warm-shadow overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-accent-muted">
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider w-24">Hình ảnh</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Tiêu đề</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Tam cá nguyệt</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Độ khó</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Thời lượng</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Chế độ AI</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider">Trạng thái</th>
+<th class="font-label-md text-label-md text-on-surface-variant pb-4 font-semibold uppercase tracking-wider text-right">Thao tác</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Row 1 -->
+<tr class="border-b border-surface-accent-muted hover:bg-surface-accent-light transition-colors group">
+<td class="py-4">
+<div class="w-16 h-12 bg-surface-container rounded-md overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist thumbnail image showing a pregnant woman performing a gentle prenatal yoga stretch. The setting is a bright, calm room with warm sunlight. Soft peach and white color palette, highly professional and reassuring." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG1qJwqymKp8VAZ_dfNZlN8_SRrkSBCK5mcHz1I0NlBx99DnYt0Kgl7sI_QYNXN0UFrzQrITwoi2sviqWXwdh9VlYrwcdNMdZtc6-qYUV0VCobekurwZx8CoKKwu5HV9cswxKkV_QLppIVzmiY3oMZdeRuw5rMVzG8rIWXDW5jWBmuSoNiaJTcS9RxfAC_7wudKc3shs2VBmlrKjNrL3SM7WNZal_qG3f-ajaImfZiWiejTnFRpo2RvngUYdF6c2TtRsim5kRzDi8"/>
+</div>
+</td>
+<td class="py-4 font-semibold text-text-heading">Yoga Chào Ngày Mới</td>
+<td class="py-4 text-on-surface-variant">Tam cá nguyệt 1, 2</td>
+<td class="py-4 text-on-surface-variant">Dễ</td>
+<td class="py-4 text-on-surface-variant">15 phút</td>
+<td class="py-4">
+<span class="inline-flex items-center gap-1 bg-surface-container-high px-2 py-1 rounded-md text-xs font-semibold text-text-heading">
+<span class="material-symbols-outlined text-[14px]">videocam</span> AI Live
+                                </span>
+</td>
+<td class="py-4">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">Đã xuất bản</span>
+</td>
+<td class="py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined">edit</span></button>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1"><span class="material-symbols-outlined">delete</span></button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-surface-accent-muted hover:bg-surface-accent-light transition-colors group">
+<td class="py-4">
+<div class="w-16 h-12 bg-surface-container rounded-md overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A high-quality thumbnail showing a pregnant woman doing light Pilates with a stability ball. The environment is a modern, minimalist studio with warm wooden floors and soft white walls. The lighting is bright and soft." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3h7IAiCZwjoTPE3MgLH2euCyoZa_kk9Ue4jgp6W6smQrXH1HeZf1ZNhAURga9xHv-SOwBdt3cicxlvuv8BXRoFBiaiAYwFO_913PCyZx_FnP2NcqVa3CLr5TffyoISJSsECRv0A2-LR37Yn0s-vxi6qnLSl5Qx7K7pQPdHyZTDUm41G8GVM2sSGbamAmowUw4lQxwKZ4tXqin7qL07eLygEhAWcOR_JYcSQijkXjtAdyyQlczezHRVbWj1VS49wqIcdumOLwoSbY"/>
+</div>
+</td>
+<td class="py-4 font-semibold text-text-heading">Giãn Cơ Lưng Dưới</td>
+<td class="py-4 text-on-surface-variant">Tam cá nguyệt 3</td>
+<td class="py-4 text-on-surface-variant">Trung bình</td>
+<td class="py-4 text-on-surface-variant">20 phút</td>
+<td class="py-4">
+<span class="inline-flex items-center gap-1 bg-surface-container-high px-2 py-1 rounded-md text-xs font-semibold text-text-heading">
+<span class="material-symbols-outlined text-[14px]">videocam</span> AI Live
+                                </span>
+</td>
+<td class="py-4">
+<span class="bg-surface-variant/50 text-on-surface-variant px-3 py-1 rounded-full text-xs font-bold">Bản nháp</span>
+</td>
+<td class="py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined">edit</span></button>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1"><span class="material-symbols-outlined">delete</span></button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-accent-light transition-colors group">
+<td class="py-4">
+<div class="w-16 h-12 bg-surface-container rounded-md overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A serene thumbnail image of a pregnant woman practicing deep breathing exercises while sitting cross-legged on a yoga mat. Warm, soft lighting, minimalist background with a touch of indoor greenery. Professional and calming." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAakm0PyQOrop48bW3k564UKtHnRZKQXUu41gC2gT3_OoNJH9G9_LtXECFjJxwKmb9j0wuSItYgMejSESaS-1GK615Xw8bAW7ZU3gltaYqDLogE7XCpr_PpjR7mfWUDqRlcXWct_sDYYeOzZY9Bl70xKeXtqN0NkDrAJ0zQ7iLDdy61OT7e-9_1JyF4Tp3Uxz9VNqkSMkUe9qAmVrPCpobtWLS0pjSVzdtwdNnngk2TJxNbmuaktLjil6d1Fk6muEro9zJxIbdPRqg"/>
+</div>
+</td>
+<td class="py-4 font-semibold text-text-heading">Thở Thư Giãn</td>
+<td class="py-4 text-on-surface-variant">Tam cá nguyệt 1, 2, 3</td>
+<td class="py-4 text-on-surface-variant">Dễ</td>
+<td class="py-4 text-on-surface-variant">10 phút</td>
+<td class="py-4 text-on-surface-variant">
+                                -
+                            </td>
+<td class="py-4">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">Đã xuất bản</span>
+</td>
+<td class="py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined">edit</span></button>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1"><span class="material-symbols-outlined">delete</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="mt-6 flex justify-between items-center border-t border-surface-accent-muted pt-4">
+<span class="font-label-md text-label-md text-on-surface-variant">Hiển thị 1-3 trong số 24 bài tập</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-surface-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-accent-light transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<button class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container font-bold flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded-full border border-surface-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-accent-light transition-colors">2</button>
+<button class="w-8 h-8 rounded-full border border-surface-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-accent-light transition-colors">3</button>
+<button class="w-8 h-8 rounded-full border border-surface-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-accent-light transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

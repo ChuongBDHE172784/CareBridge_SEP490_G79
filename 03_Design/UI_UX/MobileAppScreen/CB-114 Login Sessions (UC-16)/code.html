@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Phiên đăng nhập - CareBridge</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-container": "#51271b",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#271812",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "background": "#fff8f6",
+                        "surface-variant": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary-fixed": "#271812",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary": "#625d59",
+                        "secondary-container": "#f6dacf",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "outline": "#84736f",
+                        "on-background": "#271812",
+                        "surface": "#fff8f6",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary": "#6e5a52",
+                        "primary": "#845143",
+                        "outline-variant": "#d6c2bd",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#fadcd3",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-dim": "#f1d4ca",
+                        "surface-container-high": "#ffe2d9",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-surface-variant": "#524440",
+                        "primary-container": "#c98c7b",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "inverse-surface": "#3e2c26",
+                        "surface-container": "#ffe9e3"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Lexend", "sans-serif"],
+                        "body-lg": ["Lexend", "sans-serif"],
+                        "headline-md": ["Lexend", "sans-serif"],
+                        "button": ["Lexend", "sans-serif"],
+                        "headline-lg": ["Lexend", "sans-serif"],
+                        "display-lg": ["Lexend", "sans-serif"],
+                        "label-md": ["Lexend", "sans-serif"]
+                    },
+                    fontSize: {
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "button": ["16px", { lineHeight: "20px", fontWeight: "600" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col antialiased">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-safe-margin h-[72px] w-full bg-background sticky top-0 z-50">
+<button aria-label="Quay lại" class="h-touch-target-min w-touch-target-min flex items-center justify-start text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-lg text-headline-lg text-primary flex-1 text-center">Phiên đăng nhập</h1>
+<div class="h-touch-target-min w-touch-target-min"></div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-safe-margin pb-safe-margin flex flex-col gap-stack-lg pt-4">
+<!-- Contextual Intro -->
+<div class="flex flex-col gap-2 items-center text-center px-4 mb-2">
+<div class="w-16 h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-2 text-primary">
+<span class="material-symbols-outlined text-[32px]">security</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                Quản lý các thiết bị đang đăng nhập vào tài khoản của bạn. Đăng xuất khỏi các thiết bị không xác định để bảo vệ tài khoản.
+            </p>
+</div>
+<!-- Current Session Card (Level 1 Elevation) -->
+<div class="bg-surface rounded-[24px] p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/50 relative overflow-hidden">
+<!-- Subtle accent for current device -->
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container"></div>
+<div class="flex items-start gap-stack-md">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary shrink-0 mt-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smartphone</span>
+</div>
+<div class="flex flex-col gap-1 flex-1">
+<div class="flex justify-between items-start">
+<h2 class="font-headline-md text-headline-md text-on-surface">iPhone 13 - Safari</h2>
+<!-- Active Badge -->
+<div class="flex items-center gap-1 bg-primary-container/20 px-2 py-1 rounded-full text-primary">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md">Đang hoạt động</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                        TP. Hồ Chí Minh
+                    </p>
+<p class="font-label-md text-label-md text-outline mt-1">Thiết bị hiện tại</p>
+</div>
+</div>
+</div>
+<div class="h-px w-full bg-surface-variant/50 my-2"></div>
+<!-- Other Sessions List -->
+<div class="flex flex-col gap-stack-md">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Các thiết bị khác</h3>
+<!-- Other Session Card 1 -->
+<div class="bg-surface rounded-[24px] p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md">
+<div class="flex items-start gap-stack-md">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined">desktop_windows</span>
+</div>
+<div class="flex flex-col gap-1 flex-1">
+<h2 class="font-body-lg text-body-lg text-on-surface font-semibold">MacBook Pro - Chrome</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            Hà Nội
+                        </p>
+<p class="font-label-md text-label-md text-outline mt-1">Đăng nhập lần cuối: 2 giờ trước</p>
+</div>
+</div>
+<button class="w-full h-touch-target-min bg-error-container/30 text-error font-button text-button rounded-full flex items-center justify-center gap-2 hover:bg-error-container/50 active:scale-95 transition-all">
+<span class="material-symbols-outlined">logout</span>
+                    Đăng xuất
+                </button>
+</div>
+<!-- Other Session Card 2 -->
+<div class="bg-surface rounded-[24px] p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md">
+<div class="flex items-start gap-stack-md">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined">tablet_mac</span>
+</div>
+<div class="flex flex-col gap-1 flex-1">
+<h2 class="font-body-lg text-body-lg text-on-surface font-semibold">iPad Air - App</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            TP. Hồ Chí Minh
+                        </p>
+<p class="font-label-md text-label-md text-outline mt-1">Đăng nhập lần cuối: 3 ngày trước</p>
+</div>
+</div>
+<button class="w-full h-touch-target-min bg-error-container/30 text-error font-button text-button rounded-full flex items-center justify-center gap-2 hover:bg-error-container/50 active:scale-95 transition-all">
+<span class="material-symbols-outlined">logout</span>
+                    Đăng xuất
+                </button>
+</div>
+</div>
+</main>
+</body></html>

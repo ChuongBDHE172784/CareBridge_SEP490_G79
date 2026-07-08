@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;NON_KEYWORDS=VALUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.springframework.orm: DEBUG
+    com.carebridge.backend: DEBUG
+
+carebridge:
+  security:
+    jwt:
+      secret: test-secret-key-must-be-at-least-32-characters-long
+      access-token-expiration-ms: 900000
+      refresh-token-expiration-ms: 604800000
+    otp:
+      expiration-seconds: 300
+      max-attempts: 5

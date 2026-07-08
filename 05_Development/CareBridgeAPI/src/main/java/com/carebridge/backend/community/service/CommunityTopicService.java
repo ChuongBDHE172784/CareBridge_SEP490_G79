@@ -1,0 +1,18 @@
+package com.carebridge.backend.community.service;
+
+import com.carebridge.backend.community.dto.request.CreateCommunityTopicRequest;
+import com.carebridge.backend.community.dto.request.UpdateCommunityTopicRequest;
+import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
+import java.util.List;
+import java.util.UUID;
+
+public interface CommunityTopicService {
+
+    List<CommunityTopicResponse> getTopics(boolean includeHidden, UUID currentUserId);
+
+    List<CommunityTopicResponse> searchTopics(String keyword, boolean includeHidden, UUID currentUserId);
+
+    CommunityTopicResponse createTopic(java.util.UUID createdBy, CreateCommunityTopicRequest request);
+
+    CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request);
+}

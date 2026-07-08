@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge Partner - Danh mục Dịch vụ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#6e5a52",
+                        "outline": "#84736f",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-tint": "#845143",
+                        "inverse-surface": "#3e2c26",
+                        "primary-fixed": "#ffdbd1",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-surface-variant": "#524440",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#341006",
+                        "on-secondary-container": "#735e56",
+                        "primary": "#845143",
+                        "on-tertiary-container": "#36322e",
+                        "secondary-container": "#f6dacf",
+                        "surface-dim": "#f1d4ca",
+                        "surface-container-highest": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#625d59",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-variant": "#fadcd3",
+                        "on-secondary-fixed": "#271812",
+                        "on-primary-container": "#51271b",
+                        "surface-container-high": "#ffe2d9",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#271812",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-container": "#ffe9e3",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "tertiary-fixed": "#e9e1db",
+                        "primary-container": "#c98c7b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "safe-margin": "24px",
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .drawer-transition { transition: transform 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-container-lowest h-screen w-72 flex flex-col fixed left-0 top-0 bottom-0 z-40 py-6" style="box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.12);">
+<div class="px-safe-margin mb-8">
+<h1 class="font-display-lg text-display-lg text-primary font-bold">CareBridge</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">B2B Partner Portal</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-2">
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Tổng quan</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-md text-label-md">Chuyên gia liên kết</span>
+</a>
+</li>
+<li>
+<a class="bg-primary text-on-primary rounded-full mx-2 flex items-center gap-3 px-4 py-3 translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-label-md text-label-md">Dịch vụ</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">event_note</span>
+<span class="font-label-md text-label-md">Giới thiệu lịch</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Chiến dịch</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-md text-label-md">Hiệu quả</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-safe-margin mt-auto mb-4">
+<button class="w-full bg-primary-container text-on-primary-container font-button text-button h-[52px] rounded-full hover:opacity-90 transition-opacity">
+                Nâng cấp gói
+            </button>
+</div>
+<ul class="space-y-2 mt-4 border-t border-outline-variant/30 pt-4">
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Cài đặt</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:text-primary mx-2 flex items-center gap-3 px-4 py-3 hover:bg-secondary-container rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Đăng xuất</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-72 flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface-dim shadow-sm flex justify-between items-center px-safe-margin w-full h-16 border-b border-outline-variant/30 sticky top-0 z-30" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed-dim">
+                Danh mục Dịch vụ
+            </div>
+<div class="flex items-center gap-4">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="bg-surface-container-low border border-outline-variant rounded-full pl-10 pr-4 py-2 text-body-md font-body-md focus:outline-none focus:border-primary w-64" placeholder="Tìm kiếm..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:bg-secondary-container/50 p-2 rounded-full transition-colors w-[48px] h-[48px] flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-secondary-container/50 p-2 rounded-full transition-colors w-[48px] h-[48px] flex items-center justify-center">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant cursor-pointer ml-2">
+<img alt="Partner Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a mature female pediatrician smiling warmly, wearing a white coat over a soft beige blouse. The background is a gently blurred, light-filled modern clinic setting. The lighting is soft and bright, emphasizing approachability and trustworthy care in the maternal and childcare sector." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbUcTNuFNGgBu2dt4YGpUTYoB3Nn-pCFuUmLE7HSQ1uPd0oyDS6wBg3bQivyJFXAncAfjZCuScE5HP65kG0jkhJyaq2twUvHLyp3GWQTbsz8bANtpShNW6-yhkoU3i2U47_ddr9EA_HDMh1reP8gRd15GgH8dBR2BlSarw-X3Wo2zSitFfg0DTLHwMNlOusfhfGPj5DDI3Pa2cIyrM9TdkgjLCbHGynRgM4PDZnm790SljzPTthP5wlVs4mkezYKr4m696vN0qElA"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-safe-margin flex-1">
+<!-- Actions Bar -->
+<div class="flex justify-between items-center mb-stack-lg">
+<div class="flex gap-4">
+<button class="bg-surface border border-outline-variant text-on-surface font-button text-button h-[48px] px-6 rounded-full flex items-center gap-2 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+                        Lọc
+                    </button>
+</div>
+<button class="bg-primary-container text-on-primary-container font-button text-button h-[52px] px-8 rounded-full flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md" onclick="document.getElementById('service-drawer').classList.remove('translate-x-full'); document.getElementById('drawer-overlay').classList.remove('hidden')">
+<span class="material-symbols-outlined">add</span>
+                    Thêm dịch vụ
+                </button>
+</div>
+<!-- Service List (Bento Grid approach for modern feel instead of strict table) -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-gutter">
+<!-- Service Item 1 -->
+<div class="bg-white rounded-DEFAULT p-6 flex flex-col gap-4 border border-outline-variant/20 hover:shadow-md transition-shadow cursor-pointer relative" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Khám sức khỏe tổng quát cho bé</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined" style="font-size: 16px;">health_and_safety</span>
+                                    Sức khỏe
+                                </span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant/20 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[#845143]"></span>
+<span class="font-body-md text-body-md text-primary">Đang hoạt động</span>
+</div>
+<span class="font-body-md text-body-md text-outline">Tạo: 12/10/2023</span>
+</div>
+</div>
+<!-- Service Item 2 -->
+<div class="bg-white rounded-DEFAULT p-6 flex flex-col gap-4 border border-outline-variant/20 hover:shadow-md transition-shadow cursor-pointer relative" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Tư vấn dinh dưỡng thai kỳ</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="bg-surface-container-low text-on-surface-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined" style="font-size: 16px;">restaurant_menu</span>
+                                    Dinh dưỡng
+                                </span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant/20 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[#845143]"></span>
+<span class="font-body-md text-body-md text-primary">Đang hoạt động</span>
+</div>
+<span class="font-body-md text-body-md text-outline">Tạo: 05/11/2023</span>
+</div>
+</div>
+<!-- Service Item 3 (Inactive) -->
+<div class="bg-white/60 rounded-DEFAULT p-6 flex flex-col gap-4 border border-outline-variant/20 relative" style="box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface-variant mb-1">Lớp học tiền sản cơ bản</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="bg-surface-container text-on-surface-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined" style="font-size: 16px;">school</span>
+                                    Giáo dục
+                                </span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant/20 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-body-md text-body-md text-outline">Tạm ngưng</span>
+</div>
+<span class="font-body-md text-body-md text-outline">Tạo: 20/09/2023</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Overlay for Drawer -->
+<div class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-50 hidden transition-opacity" id="drawer-overlay" onclick="document.getElementById('service-drawer').classList.add('translate-x-full'); this.classList.add('hidden')"></div>
+<!-- Drawer: Add Service -->
+<div class="fixed top-0 right-0 h-full w-full max-w-md bg-surface z-50 shadow-2xl transform translate-x-full drawer-transition flex flex-col" id="service-drawer" style="box-shadow: -8px 0px 24px rgba(90, 70, 63, 0.12);">
+<div class="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low">
+<h2 class="font-headline-md text-headline-md text-on-surface">Thêm dịch vụ mới</h2>
+<button class="text-on-surface-variant hover:bg-secondary-container p-2 rounded-full transition-colors w-[48px] h-[48px] flex items-center justify-center" onclick="document.getElementById('service-drawer').classList.add('translate-x-full'); document.getElementById('drawer-overlay').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Form Group -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Tên dịch vụ *</label>
+<input class="w-full bg-white border border-outline-variant rounded-lg px-4 h-[56px] font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface placeholder-tertiary-container transition-all" placeholder="Nhập tên dịch vụ..." type="text"/>
+</div>
+<!-- Grid for two columns -->
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Danh mục</label>
+<div class="relative">
+<select class="w-full bg-white border border-outline-variant rounded-lg px-4 h-[56px] font-body-md text-body-md focus:border-primary outline-none text-on-surface appearance-none">
+<option>Sức khỏe</option>
+<option>Dinh dưỡng</option>
+<option>Giáo dục</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Địa điểm</label>
+<div class="relative">
+<select class="w-full bg-white border border-outline-variant rounded-lg px-4 h-[56px] font-body-md text-body-md focus:border-primary outline-none text-on-surface appearance-none">
+<option>Trực tuyến</option>
+<option>Tại phòng khám</option>
+<option>Tại nhà</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Mô tả ngắn gọn</label>
+<textarea class="w-full bg-white border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface placeholder-tertiary-container transition-all resize-none" placeholder="Mô tả về dịch vụ (hiển thị trên app)..." rows="3"></textarea>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Điều kiện tham gia (Eligibility)</label>
+<input class="w-full bg-white border border-outline-variant rounded-lg px-4 h-[56px] font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface placeholder-tertiary-container transition-all" placeholder="Vd: Trẻ từ 0-6 tháng tuổi..." type="text"/>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2 text-[16px]">Quy trình đặt lịch (Routing)</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Chọn chuyên gia phụ trách hoặc hệ thống tự động phân bổ.</p>
+<label class="flex items-center gap-3 cursor-pointer mb-3">
+<input checked="" class="w-5 h-5 text-primary focus:ring-primary border-outline-variant" name="routing" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface">Khách hàng chọn chuyên gia</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer">
+<input class="w-5 h-5 text-primary focus:ring-primary border-outline-variant" name="routing" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface">Tự động phân bổ theo lịch trống</span>
+</label>
+</div>
+</div>
+<div class="p-6 border-t border-outline-variant/30 bg-surface flex justify-end gap-4">
+<button class="bg-secondary-container text-on-secondary-container font-button text-button h-[52px] px-6 rounded-full hover:bg-secondary-fixed transition-colors" onclick="document.getElementById('service-drawer').classList.add('translate-x-full'); document.getElementById('drawer-overlay').classList.add('hidden')">
+                Hủy bỏ
+            </button>
+<button class="bg-primary-container text-on-primary-container font-button text-button h-[52px] px-8 rounded-full hover:opacity-90 transition-opacity" onclick="document.getElementById('service-drawer').classList.add('translate-x-full'); document.getElementById('drawer-overlay').classList.add('hidden')">
+                Lưu dịch vụ
+            </button>
+</div>
+</div>
+</body></html>
