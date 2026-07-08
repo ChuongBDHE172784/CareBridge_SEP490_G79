@@ -5,7 +5,9 @@ import com.carebridge.backend.map.dto.response.FacilityResponse;
 import com.carebridge.backend.map.dto.response.NearbyResponse;
 import com.carebridge.backend.map.dto.response.RoutePoint;
 import com.carebridge.backend.map.dto.response.RouteResponse;
+import com.carebridge.backend.map.entity.CareFacility;
 import com.carebridge.backend.map.exception.MapException;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import com.carebridge.backend.map.trackasia.TrackAsiaClient;
 import com.carebridge.backend.map.service.ICareFacilityService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,80 +27,92 @@ import java.util.UUID;
 public class CareFacilityServiceImpl implements ICareFacilityService {
 
     private final TrackAsiaClient trackAsiaClient;
+    private final CareFacilityRepository facilityRepository;
 
     @Override
     public List<FacilityResponse> getAllFacilities() {
-        // DB fallback if TrackAsia is unavailable
         return List.of();
     }
 
     @Override
     public FacilityResponse getFacilityById(UUID id) {
-        throw new MapException(HttpStatus.NOT_FOUND, "MAP-002", "Facility not found");
+        CareFacility facility = facilityRepository.findById(id)
+                .orElseThrow(() -> new MapException(HttpStatus.NOT_FOUND, "MAP-002", "Facility not found"));
+        return toResponse(facility);
     }
 
     @Override
     public NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type) {
+        int radius = radiusMeters != null ? radiusMeters : 5000;
+
+        // Try TrackAsia first
         try {
-            JsonNode root = trackAsiaClient.searchNearby(
-                    lat.doubleValue(), lng.doubleValue(),
-                    radiusMeters != null ? radiusMeters : 5000,
-                    type);
-
-            List<FacilityResponse> results = new ArrayList<>();
-            JsonNode features = root.get("features");
-            if (features == null || !features.isArray()) {
-                return new NearbyResponse(results, 0);
-            }
-
-            for (JsonNode feature : features) {
-                JsonNode poi = feature.get("poi");
-                JsonNode props = poi != null && poi.isObject()
-                        ? poi.get("properties") : null;
-                if (props == null) continue;
-
-                String name = safeText(props, "name");
-                String address = safeText(props, "address");
-                String phone = safeText(props, "tel");
-                String category = safeText(props, "category");
-                safeText(props, "id");
-
-                JsonNode geom = feature.get("geometry");
-                BigDecimal fLat = null, fLng = null;
-                if (geom != null && geom.isObject()) {
-                    JsonNode coords = geom.get("coordinates");
-                    if (coords != null && coords.isArray() && coords.size() >= 2) {
-                        fLng = BigDecimal.valueOf(coords.get(0).asDouble());
-                        fLat = BigDecimal.valueOf(coords.get(1).asDouble());
-                    }
+            JsonNode root = trackAsiaClient.searchNearby(lat.doubleValue(), lng.doubleValue(), radius, type);
+            if (root != null) {
+                List<FacilityResponse> results = parseTrackAsiaResults(root);
+                if (!results.isEmpty()) {
+                    return new NearbyResponse(results, results.size());
                 }
-
-                int distanceM = 0;
-                JsonNode distMeta = feature.get("properties");
-                if (distMeta != null && distMeta.has("distance")) {
-                    distanceM = distMeta.get("distance").asInt();
-                }
-
-                results.add(FacilityResponse.builder()
-                        .name(name)
-                        .address(address)
-                        .phone(phone)
-                        .facilityType(category)
-                        .latitude(fLat)
-                        .longitude(fLng)
-                        .sourceType("TRACKASIA")
-                        .verificationStatus("UNVERIFIED")
-                        .distanceMeters(distanceM > 0 ? distanceM : null)
-                        .build());
             }
-
-            return new NearbyResponse(results, results.size());
         } catch (Exception e) {
             log.error("[CareFacility] TrackAsia search failed: {}", e.getMessage());
-            throw new MapException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "MAP-001",
-                    "Failed to search nearby facilities: " + e.getMessage());
         }
+
+        // Fallback: DB-verified facilities
+        List<CareFacility> dbResults = facilityRepository.findNearby(lat, lng, radius);
+        List<FacilityResponse> verified = new ArrayList<>();
+        for (CareFacility f : dbResults) {
+            verified.add(toResponse(f));
+        }
+        return new NearbyResponse(verified, verified.size());
+    }
+
+    private List<FacilityResponse> parseTrackAsiaResults(JsonNode root) {
+        List<FacilityResponse> results = new ArrayList<>();
+        JsonNode features = root.get("features");
+        if (features == null || !features.isArray()) {
+            return results;
+        }
+
+        for (JsonNode feature : features) {
+            JsonNode poi = feature.get("poi");
+            JsonNode props = poi != null && poi.isObject() ? poi.get("properties") : null;
+            if (props == null) continue;
+
+            String name = safeText(props, "name");
+            String address = safeText(props, "address");
+            String phone = safeText(props, "tel");
+            String category = safeText(props, "category");
+
+            BigDecimal fLat = null, fLng = null;
+            JsonNode geom = feature.get("geometry");
+            if (geom != null && geom.isObject()) {
+                JsonNode coords = geom.get("coordinates");
+                if (coords != null && coords.isArray() && coords.size() >= 2) {
+                    fLng = BigDecimal.valueOf(coords.get(0).asDouble());
+                    fLat = BigDecimal.valueOf(coords.get(1).asDouble());
+                }
+            }
+
+            int distanceM = 0;
+            JsonNode distMeta = feature.get("properties");
+            if (distMeta != null && distMeta.has("distance")) {
+                distanceM = distMeta.get("distance").asInt();
+            }
+
+            results.add(FacilityResponse.builder()
+                    .name(name)
+                    .address(address)
+                    .phone(phone)
+                    .facilityType(category)
+                    .latitude(fLat)
+                    .longitude(fLng)
+                    .sourceType("TRACKASIA")
+                    .verificationStatus("UNVERIFIED")
+                    .distanceMeters(distanceM > 0 ? distanceM : null)
+                    .build());
+        }
+        return results;
     }
 
     @Override
@@ -113,8 +127,7 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
 
             JsonNode routes = root.get("routes");
             if (routes == null || !routes.isArray() || routes.isEmpty()) {
-                throw new MapException(
-                        HttpStatus.NOT_FOUND, "MAP-003", "No route found");
+                throw new MapException(HttpStatus.NOT_FOUND, "MAP-003", "No route found");
             }
 
             JsonNode leg = routes.get(0);
@@ -143,16 +156,30 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
                     BigDecimal.valueOf(Math.round(distanceM)),
                     etaMin,
                     points,
-                    request.getTransportMode() != null
-                            ? request.getTransportMode() : "DRIVING");
+                    request.getTransportMode() != null ? request.getTransportMode() : "DRIVING");
         } catch (MapException e) {
             throw e;
         } catch (Exception e) {
             log.error("[CareFacility] TrackAsia route failed: {}", e.getMessage());
-            throw new MapException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "MAP-004",
+            throw new MapException(HttpStatus.INTERNAL_SERVER_ERROR, "MAP-004",
                     "Failed to get route: " + e.getMessage());
         }
+    }
+
+    private FacilityResponse toResponse(CareFacility f) {
+        return FacilityResponse.builder()
+                .facilityId(f.getFacilityId())
+                .partnerId(f.getPartnerId())
+                .name(f.getName())
+                .facilityType(f.getFacilityType())
+                .address(f.getAddress())
+                .latitude(f.getLatitude())
+                .longitude(f.getLongitude())
+                .phone(f.getPhone())
+                .openingHoursJson(f.getOpeningHoursJson())
+                .sourceType(f.getSourceType() != null ? f.getSourceType() : "MANUAL")
+                .verificationStatus(f.getVerificationStatus() != null ? f.getVerificationStatus().name() : "UNVERIFIED")
+                .build();
     }
 
     private static String safeText(JsonNode node, String field) {
