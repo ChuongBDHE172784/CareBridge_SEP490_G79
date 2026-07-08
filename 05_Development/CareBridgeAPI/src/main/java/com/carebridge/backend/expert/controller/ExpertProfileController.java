@@ -7,6 +7,7 @@ import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
 import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
+import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -95,6 +96,35 @@ public class ExpertProfileController {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
         expertProfileService.rejectExpert(expertProfileId, adminId, reason);
         return ResponseEntity.ok(ApiResponse.success(null, "Expert rejected"));
+    }
+
+    // UC-63: View verification status
+    @GetMapping("/profiles/me/verification-status")
+    @PreAuthorize("hasRole('EXPERT')")
+    public ResponseEntity<ApiResponse<VerificationStatusResponse>> getMyVerificationStatus(Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(expertProfileService.getMyVerificationStatus(userId)));
+    }
+
+    // UC-63: Renew verification submission
+    @PostMapping("/profiles/me/renew")
+    @PreAuthorize("hasRole('EXPERT')")
+    public ResponseEntity<ApiResponse<Void>> renewVerification(Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        expertProfileService.renewVerification(userId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã gửi yêu cầu gia hạn"));
+    }
+
+    // UC-71: Admin set trust status
+    @PatchMapping("/profiles/{expertProfileId}/trust")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'CONTENT_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> setTrustStatus(
+            @PathVariable UUID expertProfileId,
+            Principal principal,
+            @RequestParam com.carebridge.backend.expert.verificationstatus.VerificationStatus status) {
+        UUID adminId = SecurityUtils.requireCurrentUserId(principal);
+        expertProfileService.setTrustStatus(expertProfileId, status, adminId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Trạng thái đã cập nhật"));
     }
 
     // Helper: get list of verified experts (for integration)

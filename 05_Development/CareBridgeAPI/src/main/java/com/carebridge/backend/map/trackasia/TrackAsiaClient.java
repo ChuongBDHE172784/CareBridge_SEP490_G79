@@ -28,7 +28,7 @@ public class TrackAsiaClient {
     private final String apiKey;
 
     public TrackAsiaClient(
-            @Value("${carebridge.trackasia.api-key:}") String apiKey) {
+            @Value("${TRACKASIA_API_KEY:}") String apiKey) {
         this.apiKey = apiKey;
         this.http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))

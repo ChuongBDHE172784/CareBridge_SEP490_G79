@@ -10,9 +10,15 @@ import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
 
-// Admin portal screens (placeholders — replace via /build-screen)
-import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
+// Expert Portal screens (CB-054, 055, 056, 057, 063)
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
+import ExpertProfilePage from '../../features/expert/pages/ExpertProfilePage';
+import VerificationDocumentsPage from '../../features/expert/pages/VerificationDocumentsPage';
+import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
+import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
+
+// Admin portal screens
+import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -32,22 +38,22 @@ import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
-// Content Management screens (CB-076, CB-077, CB-079, CB-087)
+// Content Management screens (CB-076, 077, 079, 087)
 import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
 import EditContentPage from '../../features/contentManagement/pages/EditContentPage';
 import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
 import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
 
-// Partner Portal screens (CB-096, CB-097, CB-099)
+// Partner Portal screens (CB-096, 097, 099)
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 
-// Moderation screens (CB-072, CB-088)
+// Moderation screens (CB-072, 088)
 import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
 import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
 
-// Moderation screens (CB-068, CB-069, CB-070, CB-071)
+// Moderation screens (CB-068, 069, 070, 071)
 import ModerationItemDetailPage from '../../features/moderation/pages/ModerationItemDetailPage';
 import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
 import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
@@ -56,7 +62,7 @@ import ViolationHistoryPage from '../../features/moderation/pages/ViolationHisto
 // CB-MOD-IMP-004: pending-content queue (first-time moderation, no ContentReport required)
 import PendingContentQueuePage from '../../features/moderation/pages/PendingContentQueuePage';
 
-// SYSTEM_ADMIN-only ModPortal screens (CB-066, CB-090, CB-091)
+// SYSTEM_ADMIN-only ModPortal screens (CB-066, 090, 091)
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
 import ImpactReportDashboardPage from '../../features/dashboard/pages/ImpactReportDashboardPage';
 import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
@@ -85,8 +91,7 @@ export const router = createBrowserRouter([
   { path: '/partner', element: <PartnerLandingPage /> },
   { path: '/partner/register', element: <RegisterPartnerPage /> },
 
-  // Role-aware root redirect — sits outside ProtectedRoute so all roles are handled,
-  // including MOTHER/FAMILY who land on /no-web-access without hitting /forbidden.
+  // Role-aware root redirect
   { path: '/', element: <RoleAwareRedirect /> },
 
   {
@@ -129,8 +134,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // ContentApprovalController is @PreAuthorize hasRole('SYSTEM_ADMIN') at class level —
-            // guard matches the backend, not the broader CONTENT_ADMIN content group above.
+            // ContentApprovalController is @PreAuthorize hasRole('SYSTEM_ADMIN') at class level
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
               { path: '/content/approval-queue', element: <ContentApprovalQueuePage /> },
@@ -145,6 +149,14 @@ export const router = createBrowserRouter([
             children: [
               { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
               { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+              // CB-055: Expert Profile
+              { path: '/expert/profile', element: <ExpertProfilePage /> },
+              // CB-056: Verification Documents
+              { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
+              // CB-057: Availability Calendar
+              { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
+              // CB-063: Expert Question Queue
+              { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
             ],
           },
           {
@@ -170,9 +182,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // RedFlagRuleController / CommunityDashboardController / ImpactReportController are all
-            // @PreAuthorize hasRole('SYSTEM_ADMIN') at the backend (UC-110/UC-111/UC-113 TDS ADR) —
-            // guard matches the backend, narrower than the general /moderator group above.
+            // RedFlagRuleController / CommunityDashboardController / ImpactReportController
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
               { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },

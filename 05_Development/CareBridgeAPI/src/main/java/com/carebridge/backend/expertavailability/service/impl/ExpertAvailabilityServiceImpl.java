@@ -2,6 +2,7 @@ package com.carebridge.backend.expertavailability.service.impl;
 
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +43,9 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
 
         var profile = expertProfileRepository.findById(expertProfileId)
                 .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+        if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+            throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-010", "Expert profile not verified");
+        }
 
         var availability = availabilityMapper.toEntity(expertProfileId, request);
         var saved = availabilityRepository.save(availability);
@@ -48,7 +53,6 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<AvailabilityResponse> getMyAvailability(UUID expertProfileId) {
         return availabilityRepository.findByExpertProfileId(expertProfileId).stream()
                 .map(availabilityMapper::toResponse)
@@ -69,12 +73,10 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
 
     @Override
     public LocationShareResponse shareLocation(UUID expertProfileId, ShareLocationRequest request) {
-        // Consent check: PDPA requirement
         if (request.getConsentReference() == null) {
             throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-013", "Valid location consent required");
         }
 
-        // Validate coordinates
         if (request.getLatitude().compareTo(new java.math.BigDecimal("90.1")) > 0
                 || request.getLatitude().compareTo(new java.math.BigDecimal("-90.1")) < 0) {
             throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-014", "Invalid latitude");
