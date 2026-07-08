@@ -9,8 +9,8 @@ import com.carebridge.backend.community.entity.CommunityBookmark;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.QuestionStatus;
-import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
@@ -41,12 +41,12 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
     private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityFeedMapper feedMapper;
     private final AuditService auditService;
+    private final CommunitySafetyPolicy communitySafetyPolicy;
 
     @Override
     @Transactional
     public BookmarkToggleResponse toggleBookmark(UUID userId, UUID questionId) {
-        questionRepository.findById(questionId)
-                .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
+        communitySafetyPolicy.requireVisibleQuestion(userId, questionId);
 
         if (bookmarkRepository.existsByUserIdAndQuestionId(userId, questionId)) {
             CommunityBookmark bookmark = bookmarkRepository
@@ -119,7 +119,7 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
                 })
                 .collect(Collectors.toList());
 
-        Page<CommunityFeedItemResponse> feedPage = new PageImpl<>(items, pageable, bookmarkPage.getTotalElements());
+        Page<CommunityFeedItemResponse> feedPage = new PageImpl<>(items, pageable, items.size());
         return PaginatedResponse.of(feedPage);
     }
 }

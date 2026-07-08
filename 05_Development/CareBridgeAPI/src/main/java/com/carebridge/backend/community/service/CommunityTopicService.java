@@ -14,5 +14,5 @@ public interface CommunityTopicService {
 
     CommunityTopicResponse createTopic(java.util.UUID createdBy, CreateCommunityTopicRequest request);
 
-    CommunityTopicResponse updateTopic(UUID id, UpdateCommunityTopicRequest request);
+    CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request);
 }

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
-import { TARGET_TYPE_LABELS, canHideTarget } from '../models/moderation';
+import { TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
+import type { ResolutionOutcome } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -41,12 +42,19 @@ export default function ContentReportDetailPage() {
 
   useEffect(() => { loadItem(); }, [loadItem]);
 
-  const handleAction = async (outcome: 'APPROVE' | 'HIDE' | 'DISMISS') => {
+  const handleAction = async (outcome: ResolutionOutcome) => {
     if (!item) return;
+    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT'].includes(outcome) && !reason.trim()) {
+      setActionError('Cần nhập ghi chú/lý do cho hành động này.');
+      return;
+    }
+    const expiresAt = outcome === 'SUSPEND' || outcome === 'RESTRICT'
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
     setSubmitting(outcome);
     setActionError('');
     try {
-      await resolveReport(item.id, outcome, reason || undefined);
+      await resolveReport(item.id, outcome, reason || undefined, expiresAt);
       navigate('/moderator/reports');
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -136,8 +144,8 @@ export default function ContentReportDetailPage() {
                     {submitting === 'APPROVE' ? 'Đang xử lý...' : 'Duyệt nội dung'}
                   </button>
 
-                  <button
-                    onClick={() => handleAction('HIDE')}
+	                  <button
+	                    onClick={() => handleAction('HIDE')}
                     disabled={!canHideTarget(item.targetType) || submitting !== null}
                     title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ xoá cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Xoá khỏi hệ thống (thực thi qua outcome HIDE)'}
                     className="w-full py-3.5 mb-2.5 rounded-2xl bg-error text-on-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -153,10 +161,60 @@ export default function ContentReportDetailPage() {
                     className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <span className="material-symbols-outlined text-lg">visibility_off</span>
-                    Ẩn nội dung
-                  </button>
+	                    Ẩn nội dung
+	                  </button>
 
-                  <button
+		                  <button
+		                    onClick={() => handleAction('LOCK')}
+	                    disabled={item.targetType !== 'QUESTION' || submitting !== null}
+	                    title={item.targetType !== 'QUESTION' ? 'Chỉ câu hỏi cộng đồng hỗ trợ khóa thảo luận' : 'Khóa câu hỏi và đóng báo cáo'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-highest border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">lock</span>
+		                    {submitting === 'LOCK' ? 'Đang xử lý...' : 'Khóa thảo luận'}
+		                  </button>
+
+		                  <button
+		                    onClick={() => handleAction('REQUEST_REVISION')}
+		                    disabled={!canHideTarget(item.targetType) || submitting !== null}
+		                    title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ yêu cầu sửa cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Yêu cầu tác giả sửa lại; nội dung giữ/chuyển về trạng thái PENDING'}
+		                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-high border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+		                  >
+		                    <span className="material-symbols-outlined text-lg">edit_note</span>
+		                    {submitting === 'REQUEST_REVISION' ? 'Đang xử lý...' : 'Yêu cầu sửa'}
+		                  </button>
+
+		                  <button
+	                    onClick={() => handleAction('WARN')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Cảnh cáo tài khoản liên quan và đóng báo cáo'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">warning</span>
+	                    {submitting === 'WARN' ? 'Đang xử lý...' : 'Cảnh cáo người dùng'}
+	                  </button>
+
+	                  <button
+	                    onClick={() => handleAction('RESTRICT')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Hạn chế đăng cộng đồng trong 7 ngày'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">speaker_notes_off</span>
+	                    {submitting === 'RESTRICT' ? 'Đang xử lý...' : 'Hạn chế đăng 7 ngày'}
+	                  </button>
+
+	                  <button
+	                    onClick={() => handleAction('SUSPEND')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-error-container text-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">person_off</span>
+	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
+	                  </button>
+
+	                  <button
                     onClick={() => handleAction('DISMISS')}
                     disabled={submitting !== null}
                     title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"

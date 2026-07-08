@@ -82,10 +82,26 @@ export async function resolveReport(
   reportId: string,
   outcome: ResolutionOutcome,
   reason?: string,
+  expiresAt?: string,
 ): Promise<ResolveReportResult> {
   const res = await apiClient.post<ResolveReportResult>(
     `/api/v1/admin/moderation/reports/${reportId}/resolve`,
-    { outcome, reason },
+    { outcome, reason, expiresAt },
   );
+  return res.data;
+}
+
+export async function moderateAccount(
+  targetUserId: string,
+  actionType: Extract<ModerationActionType, 'WARN' | 'SUSPEND' | 'RESTRICT'>,
+  reason: string,
+  expiresAt?: string,
+) {
+  const res = await apiClient.post('/api/v1/admin/moderation/account-actions', {
+    targetUserId,
+    actionType,
+    reason,
+    expiresAt,
+  });
   return res.data;
 }

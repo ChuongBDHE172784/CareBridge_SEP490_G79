@@ -83,6 +83,42 @@ export default function PendingContentQueuePage() {
     }
   };
 
+  const handleLock = async (item: PendingContentItem) => {
+    const reason = window.prompt('Nhập lý do khóa thảo luận này (bắt buộc):');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setError('Cần nhập lý do để khóa thảo luận.');
+      return;
+    }
+    setActioningId(item.targetId);
+    try {
+      await moderateContentDirect(item.targetId, item.targetType, 'LOCK', reason.trim());
+      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
+    } catch {
+      setError('Khóa thảo luận thất bại, vui lòng thử lại.');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleRequestRevision = async (item: PendingContentItem) => {
+    const reason = window.prompt('Nhập nội dung cần tác giả chỉnh sửa (bắt buộc):');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setError('Cần nhập lý do để yêu cầu sửa.');
+      return;
+    }
+    setActioningId(item.targetId);
+    try {
+      await moderateContentDirect(item.targetId, item.targetType, 'REQUEST_REVISION', reason.trim());
+      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
+    } catch {
+      setError('Yêu cầu sửa thất bại, vui lòng thử lại.');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <ModPortalSidebar />
@@ -177,15 +213,33 @@ export default function PendingContentQueuePage() {
                         >
                           {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
                         </button>
-                        <button
-                          type="button"
-                          disabled={actioningId === item.targetId}
-                          onClick={() => handleHide(item)}
+	                        <button
+	                          type="button"
+	                          disabled={actioningId === item.targetId}
+	                          onClick={() => handleHide(item)}
                           className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50"
                         >
-                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
-                        </button>
-                      </div>
+	                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
+	                        </button>
+		                        {item.targetType === 'QUESTION' && (
+		                          <button
+	                            type="button"
+	                            disabled={actioningId === item.targetId}
+	                            onClick={() => handleLock(item)}
+	                            className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50"
+	                          >
+	                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
+		                          </button>
+		                        )}
+		                        <button
+		                          type="button"
+		                          disabled={actioningId === item.targetId}
+		                          onClick={() => handleRequestRevision(item)}
+		                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50"
+		                        >
+		                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
+		                        </button>
+		                      </div>
                     </td>
                   </tr>
                 ))}

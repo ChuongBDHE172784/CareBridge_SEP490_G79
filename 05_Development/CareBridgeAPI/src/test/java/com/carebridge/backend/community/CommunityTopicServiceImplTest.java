@@ -132,7 +132,7 @@ class CommunityTopicServiceImplTest {
         UpdateCommunityTopicRequest request = UpdateCommunityTopicRequest.builder()
                 .isHidden(true)
                 .build();
-        CommunityTopicResponse response = topicService.updateTopic(topicId, request);
+        CommunityTopicResponse response = topicService.updateTopic(topicId, MODERATOR_ID, request);
 
         // Soft delete: isHidden=true, record not deleted
         verify(topicRepository).save(any(CommunityTopic.class));
@@ -152,7 +152,7 @@ class CommunityTopicServiceImplTest {
         UpdateCommunityTopicRequest request = UpdateCommunityTopicRequest.builder()
                 .name("Tên mới")
                 .build();
-        CommunityTopicResponse response = topicService.updateTopic(topicId, request);
+        CommunityTopicResponse response = topicService.updateTopic(topicId, MODERATOR_ID, request);
 
         assertEquals("Tên mới", response.getName());
         verify(topicRepository).save(any(CommunityTopic.class));
@@ -170,7 +170,7 @@ class CommunityTopicServiceImplTest {
                 .name("CHĂM SÓC BÉ")
                 .build();
         assertThrows(DuplicateTopicNameException.class,
-                () -> topicService.updateTopic(topicId, request));
+                () -> topicService.updateTopic(topicId, MODERATOR_ID, request));
 
         verify(topicRepository, never()).save(any());
     }
@@ -185,7 +185,7 @@ class CommunityTopicServiceImplTest {
                 .isHidden(true)
                 .build();
         assertThrows(ResourceNotFoundException.class,
-                () -> topicService.updateTopic(topicId, request));
+                () -> topicService.updateTopic(topicId, MODERATOR_ID, request));
     }
 
     // getTopics(false) — chỉ trả non-hidden

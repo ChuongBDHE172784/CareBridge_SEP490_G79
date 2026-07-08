@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { to: '/content/list', label: 'Thư viện', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/faq', label: 'FAQ', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/checklists', label: 'Checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/topics', label: 'Danh mục', roles: ['MODERATOR'] },
+  { to: '/content/topics', label: 'Danh mục', roles: ['MODERATOR', 'CONTENT_ADMIN'] },
   { to: '/expert/dashboard', label: 'Expert', roles: ['EXPERT'] },
   // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
   { to: '/partner/dashboard', label: 'Partner', roles: ['PARTNER'] },

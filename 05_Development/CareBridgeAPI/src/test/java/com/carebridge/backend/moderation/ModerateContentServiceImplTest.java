@@ -221,6 +221,28 @@ class ModerateContentServiceImplTest {
         verify(moderationActionRepository, times(2)).save(any(ModerationAction.class));
     }
 
+    @Test
+    void moderateContent_requestRevisionAnswer_updatesStatusToPendingAndRecordsReason() {
+        CommunityAnswer answer = makeAnswer(a -> a.setStatus(AnswerStatus.APPROVED));
+        when(communityAnswerRepository.findById(ANSWER_ID)).thenReturn(Optional.of(answer));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ModerateContentRequest request = makeRequest(ANSWER_ID, ReportTargetType.ANSWER,
+                ModerationActionType.REQUEST_REVISION, "Cần bổ sung nguồn và chỉnh lời khuyên an toàn hơn");
+
+        ModerateContentResponse response = moderationService.moderateContent(request, principal);
+
+        assertThat(response.resultingStatus()).isEqualTo("PENDING");
+        ArgumentCaptor<CommunityAnswer> answerCaptor = ArgumentCaptor.forClass(CommunityAnswer.class);
+        verify(communityAnswerRepository).save(answerCaptor.capture());
+        assertThat(answerCaptor.getValue().getStatus()).isEqualTo(AnswerStatus.PENDING);
+
+        ArgumentCaptor<ModerationAction> actionCaptor = ArgumentCaptor.forClass(ModerationAction.class);
+        verify(moderationActionRepository).save(actionCaptor.capture());
+        assertThat(actionCaptor.getValue().getActionType()).isEqualTo(ModerationActionType.REQUEST_REVISION);
+        assertThat(actionCaptor.getValue().getReason()).contains("bổ sung nguồn");
+    }
+
     // MOD-TC-105: LOCK on ANSWER → 400 MOD-008 (AnswerStatus has no LOCKED value)
     @Test
     void moderateContent_lockAnswer_throwsMod008AndNeverLooksUp() {

@@ -137,11 +137,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // UC-109: topic management is MODERATOR-only per the approved TDS
-            // (BR-RBAC: "Chỉ ROLE_MODERATOR được tạo/sửa/ẩn topic") — the backend
-            // enforces hasRole('MODERATOR') with no SYSTEM_ADMIN override, so this
-            // guard intentionally does not include CONTENT_ADMIN/SYSTEM_ADMIN.
-            element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
+            element: <ProtectedRoute requiredRoles={['MODERATOR', 'CONTENT_ADMIN']} />,
             children: [{ path: '/content/topics', element: <ManageTopicsPage /> }],
           },
           {

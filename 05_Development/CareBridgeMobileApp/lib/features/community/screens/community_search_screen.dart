@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/community_service.dart';
 import '../models/community_model.dart';
-import 'post_answer_screen.dart';
+import 'create_question_screen.dart';
+import 'question_detail_screen.dart';
+import 'topic_directory_screen.dart';
 
 class CommunitySearchScreen extends StatefulWidget {
   const CommunitySearchScreen({super.key});
@@ -15,17 +17,18 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
   static const _surfaceContainerLowest = Colors.white;
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
   static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _secondary = Color(0xFF6E5A52);
 
-  static const _stageFilters = ['Tất cả', 'Mang thai', 'Chăm sóc bé'];
+  static const _stageFilters = [
+    'Tất cả',
+    'Mang thai',
+    'Sau sinh',
+    'Chăm sóc bé',
+  ];
 
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -36,6 +39,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   bool _hasSearched = false;
   int _page = 0;
   bool _hasMore = true;
+  bool _verifiedOnly = false;
   final _scroll = ScrollController();
 
   @override
@@ -77,14 +81,18 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     if (!_hasMore || _loading) return;
     setState(() => _loading = true);
     try {
-      final stage = _selectedStage == 0
-          ? null
-          : (_selectedStage == 1 ? 'PREGNANCY' : 'NEWBORN');
+      final stage = switch (_selectedStage) {
+        1 => 'PREGNANCY',
+        2 => 'POSTPARTUM',
+        3 => 'BABY_CARE',
+        _ => null,
+      };
       final items = await CommunityService.instance.searchQuestions(
         keyword: _searchCtrl.text.trim().isEmpty
             ? null
             : _searchCtrl.text.trim(),
         stage: stage,
+        hasExpertAnswer: _verifiedOnly ? true : null,
         page: _page,
       );
       if (mounted) {
@@ -179,13 +187,14 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       children: [
-                        _buildFilterChip('Tất cả', 0, icon: Icons.tune),
-                        const SizedBox(width: 8),
-                        _buildDropdownChip('Giai đoạn'),
-                        const SizedBox(width: 8),
-                        _buildDropdownChip('Chủ đề'),
-                        const SizedBox(width: 8),
-                        _buildDropdownChip('Trạng thái'),
+                        for (var i = 0; i < _stageFilters.length; i++) ...[
+                          _buildFilterChip(
+                            _stageFilters[i],
+                            i,
+                            icon: i == 0 ? Icons.tune : null,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         const SizedBox(width: 8),
                         _buildVerifiedChip('Chuyên gia'),
                       ],
@@ -225,13 +234,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => PostAnswerScreen(
-                          questionId: q.id,
-                          questionTitle: q.title,
-                          topicName: q.topicName.isNotEmpty
-                              ? q.topicName
-                              : null,
-                        ),
+                        builder: (_) => QuestionDetailScreen(questionId: q.id),
                       ),
                     ),
                     child: _QuestionResultCard(item: q),
@@ -274,7 +277,9 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
-        onPressed: () {},
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const CreateQuestionScreen())),
         child: const Icon(Icons.add_comment),
       ),
     );
@@ -319,45 +324,37 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     );
   }
 
-  Widget _buildDropdownChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: _outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
-          ),
-          const Icon(Icons.expand_more, size: 14, color: _onSurfaceVariant),
-        ],
-      ),
-    );
-  }
-
   Widget _buildVerifiedChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: _outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.verified, size: 14, color: _onSurfaceVariant),
-        ],
+    return GestureDetector(
+      onTap: () {
+        setState(() => _verifiedOnly = !_verifiedOnly);
+        _search(refresh: true);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: _verifiedOnly ? _primary : _surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(99),
+          border: _verifiedOnly ? null : Border.all(color: _outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: _verifiedOnly ? Colors.white : _onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.verified,
+              size: 14,
+              color: _verifiedOnly ? Colors.white : _onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -394,7 +391,11 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                   ),
                   const SizedBox(height: 12),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CreateQuestionScreen(),
+                      ),
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -456,18 +457,25 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                     style: TextStyle(fontSize: 11, color: _onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Text(
-                        'Khám phá',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TopicDirectoryScreen(),
                       ),
-                      Icon(Icons.chevron_right, size: 14, color: _primary),
-                    ],
+                    ),
+                    child: Row(
+                      children: const [
+                        Text(
+                          'Khám phá',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, size: 14, color: _primary),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -688,14 +696,14 @@ class _QuestionResultCard extends StatelessWidget {
     switch (stage) {
       case 'NEWBORN':
         return 'Sơ sinh';
-      case 'INFANT':
-        return '1-2 tuổi';
-      case 'TODDLER':
-        return '3-5 tuổi';
-      case 'PRESCHOOL':
-        return '6+ tuổi';
+      case 'PRE_PREGNANCY':
+        return 'Chuẩn bị mang thai';
       case 'PREGNANCY':
         return 'Mang thai';
+      case 'POSTPARTUM':
+        return 'Sau sinh';
+      case 'BABY_CARE':
+        return 'Chăm sóc bé';
       default:
         return stage;
     }

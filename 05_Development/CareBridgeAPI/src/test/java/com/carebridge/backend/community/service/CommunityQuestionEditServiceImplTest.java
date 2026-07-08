@@ -9,6 +9,7 @@ import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotEditableException;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class CommunityQuestionEditServiceImplTest {
     @Mock CommunityTopicRepository topicRepository;
     @Mock CommunityQuestionMapper questionMapper;
     @Mock AuditService auditService;
+    @Mock CommunitySafetyPolicy communitySafetyPolicy;
     @InjectMocks CommunityQuestionServiceImpl questionService;
 
     private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

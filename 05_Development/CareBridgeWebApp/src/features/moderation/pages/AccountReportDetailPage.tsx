@@ -1,14 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
-import { fetchModerationQueue } from '../services/moderationApi';
+import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-const DURATIONS = ['3 Ngày', '7 Ngày', '14 Ngày', '30 Ngày'];
+const DURATIONS = [
+  { label: '3 Ngày', days: 3 },
+  { label: '7 Ngày', days: 7 },
+  { label: '14 Ngày', days: 14 },
+  { label: '30 Ngày', days: 30 },
+];
 
 type ActionChoice = 'WARN' | 'RESTRICT' | 'SUSPEND';
 
@@ -19,15 +24,17 @@ export default function AccountReportDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [choice, setChoice] = useState<ActionChoice>('RESTRICT');
-  const [duration, setDuration] = useState(DURATIONS[0]);
+  const [durationDays, setDurationDays] = useState(DURATIONS[0].days);
   const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
     setIsLoading(true);
     setError('');
     try {
-      const page = await fetchModerationQueue({ targetType: 'ACCOUNT', size: 50 });
+      const page = await fetchModerationQueue({ size: 50 });
       const found = page.content.find((i) => i.id === reportId);
       if (!found) setError('Không tìm thấy báo cáo tài khoản này trong hàng đợi hiện tại.');
       setItem(found ?? null);
@@ -39,6 +46,32 @@ export default function AccountReportDetailPage() {
   }, [reportId]);
 
   useEffect(() => { loadItem(); }, [loadItem]);
+
+  const expiresAtFor = (action: ActionChoice) => {
+    if (action === 'WARN') return undefined;
+    const expires = new Date();
+    expires.setDate(expires.getDate() + durationDays);
+    return expires.toISOString();
+  };
+
+  const handleApply = async () => {
+    if (!item || !reportId) return;
+    if (!note.trim()) {
+      setActionError('Cần nhập lý do xử lý.');
+      return;
+    }
+    setSubmitting(true);
+    setActionError('');
+    try {
+      await resolveReport(reportId, choice, note.trim(), expiresAtFor(choice));
+      navigate('/moderator/reports');
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setActionError(message || 'Áp dụng xử lý thất bại. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,10 +110,13 @@ export default function AccountReportDetailPage() {
                     <span className="material-symbols-outlined text-primary text-xl">person</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Thông tin Tài khoản Bị báo cáo</h2>
                   </div>
-                  <div className="bg-surface-container-low rounded-2xl p-4 text-sm text-outline">
-                    Chưa có dữ liệu — endpoint hàng đợi kiểm duyệt chưa trả về targetId/thông tin hồ sơ của tài khoản
-                    bị báo cáo (chỉ có reportId). Cần bổ sung field này ở backend để hiển thị đầy đủ.
-                  </div>
+	                  <div className="bg-surface-container-low rounded-2xl p-4 text-sm text-outline">
+	                    <p className="m-0 text-on-surface-variant">
+	                      Mục tiêu: <strong>{item.contentPreview || item.targetId || '—'}</strong>
+	                    </p>
+	                    <p className="m-0 mt-2 text-xs">Target ID: {item.targetId ?? '—'}</p>
+	                    <p className="m-0 mt-1 text-xs">Reporter ID: {item.reporterUserId ?? '—'}</p>
+	                  </div>
                 </div>
 
                 <div className="bg-surface rounded-2xl p-6 shadow-md">
@@ -106,17 +142,9 @@ export default function AccountReportDetailPage() {
                     <p className="text-sm font-bold text-on-surface m-0">Hành động Xử lý</p>
                   </div>
 
-                  <div className="bg-error-container rounded-2xl p-3 mb-4">
-                    <p className="text-xs text-error">
-                      Backend từ chối cứng outcome WARN/SUSPEND qua report resolution, và endpoint
-                      account-actions cần targetUserId mà hàng đợi kiểm duyệt chưa cung cấp. Khối hành động này
-                      hiện chưa thể gọi được từ giao diện.
-                    </p>
-                  </div>
-
-                  <fieldset disabled className="opacity-50 cursor-not-allowed">
-                    <label className="flex items-start gap-3 p-3 rounded-xl border border-outline-variant mb-2">
-                      <input type="radio" name="account-action" checked={choice === 'WARN'} onChange={() => setChoice('WARN')} className="accent-primary mt-0.5" />
+	                  <fieldset disabled={submitting}>
+	                    <label className="flex items-start gap-3 p-3 rounded-xl border border-outline-variant mb-2">
+	                      <input type="radio" name="account-action" checked={choice === 'WARN'} onChange={() => setChoice('WARN')} className="accent-primary mt-0.5" />
                       <span>
                         <span className="block text-sm font-semibold text-on-surface">Cảnh cáo</span>
                         <span className="block text-xs text-outline">Gửi thông báo nhắc nhở nội quy.</span>
@@ -128,43 +156,45 @@ export default function AccountReportDetailPage() {
                       <span className="flex-1">
                         <span className="block text-sm font-semibold text-on-surface">Hạn chế Tạm thời</span>
                         <span className="block text-xs text-outline mb-2">Cấm đăng bài/bình luận.</span>
-                        <select
-                          value={duration}
-                          onChange={(e) => setDuration(e.target.value)}
-                          className="w-full py-1.5 px-3 rounded-lg border border-outline-variant text-xs"
-                        >
-                          {DURATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                        </select>
+	                        <select
+	                          value={durationDays}
+	                          onChange={(e) => setDurationDays(Number(e.target.value))}
+	                          className="w-full py-1.5 px-3 rounded-lg border border-outline-variant text-xs"
+	                        >
+	                          {DURATIONS.map((d) => <option key={d.days} value={d.days}>{d.label}</option>)}
+	                        </select>
                       </span>
                     </label>
 
                     <label className="flex items-start gap-3 p-3 rounded-xl border border-outline-variant mb-4">
                       <input type="radio" name="account-action" checked={choice === 'SUSPEND'} onChange={() => setChoice('SUSPEND')} className="accent-primary mt-0.5" />
-                      <span>
-                        <span className="block text-sm font-semibold text-error">Khóa Tài khoản</span>
-                        <span className="block text-xs text-outline">Đình chỉ vĩnh viễn quyền truy cập.</span>
-                      </span>
-                    </label>
-                  </fieldset>
+	                        <span>
+	                          <span className="block text-sm font-semibold text-error">Khóa Tài khoản</span>
+	                        <span className="block text-xs text-outline">Đình chỉ tạm thời quyền truy cập.</span>
+	                      </span>
+	                    </label>
+	                  </fieldset>
 
                   <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
                     Ghi chú Nội bộ (Tùy chọn)
                   </p>
                   <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Nhập lý do xử lý chi tiết..."
-                    rows={3}
-                    disabled
-                    className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans opacity-50 cursor-not-allowed mb-4"
-                  />
+	                    value={note}
+	                    onChange={(e) => setNote(e.target.value)}
+	                    placeholder="Nhập lý do xử lý chi tiết..."
+	                    rows={3}
+	                    disabled={submitting}
+	                    className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans mb-2"
+	                  />
+	                  {actionError && <p className="text-error text-xs mb-3">{actionError}</p>}
 
-                  <button
-                    disabled
-                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold opacity-40 cursor-not-allowed"
-                  >
-                    Áp dụng Xử lý
-                  </button>
+	                  <button
+	                    disabled={submitting}
+	                    onClick={handleApply}
+	                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    {submitting ? 'Đang xử lý...' : 'Áp dụng Xử lý'}
+	                  </button>
                   <button
                     disabled
                     title="Backend chưa có endpoint chuyển tuyến báo cáo lên cấp trên"

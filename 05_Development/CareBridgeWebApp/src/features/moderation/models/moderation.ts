@@ -1,11 +1,13 @@
-export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT';
+export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | 'EXPERT' | 'USER';
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
-export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'WARN' | 'SUSPEND';
-export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'WARN' | 'SUSPEND';
+export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
+export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
 
 export interface ModerationQueueItem {
   id: string;
+  targetId: string | null;
   targetType: ReportTargetType;
+  reporterUserId: string | null;
   contentPreview: string;
   reportCount: number;
   reportedAt: string;
@@ -37,7 +39,7 @@ export interface PendingContentQueuePage {
   size: number;
 }
 
-// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER, read from moderation_actions
+// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK/REQUEST_REVISION actions on QUESTION/ANSWER, read from moderation_actions
 export interface ModerationHistoryItem {
   actionId: string;
   targetId: string;
@@ -60,8 +62,10 @@ export const ACTION_TYPE_LABELS: Record<ModerationActionType, string> = {
   APPROVE: 'Duyệt',
   HIDE: 'Ẩn',
   LOCK: 'Khoá',
+  REQUEST_REVISION: 'Yêu cầu sửa',
   WARN: 'Cảnh cáo',
   SUSPEND: 'Đình chỉ',
+  RESTRICT: 'Hạn chế đăng',
 };
 
 export interface ResolveReportResult {
@@ -91,6 +95,8 @@ export const TARGET_TYPE_LABELS: Record<ReportTargetType, string> = {
   ANSWER: 'Câu trả lời cộng đồng',
   CONTENT: 'Nội dung thư viện',
   ACCOUNT: 'Tài khoản',
+  EXPERT: 'Chuyên gia',
+  USER: 'Người dùng',
 };
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
@@ -99,8 +105,10 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: 'Đã bỏ qua',
 };
 
-// Only QUESTION/ANSWER targets accept HIDE via resolveReport — CONTENT/ACCOUNT reports
-// throw contentActionNotSupportedForReport / accountActionNotAvailable on the backend.
 export function canHideTarget(targetType: ReportTargetType): boolean {
   return targetType === 'QUESTION' || targetType === 'ANSWER';
+}
+
+export function canEnforceAccount(targetType: ReportTargetType): boolean {
+  return targetType === 'QUESTION' || targetType === 'ANSWER' || targetType === 'USER' || targetType === 'EXPERT' || targetType === 'ACCOUNT';
 }

@@ -12,8 +12,11 @@ import com.carebridge.backend.community.exception.AnswerNotEditableException;
 import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
+import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.security.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -29,19 +32,24 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
+    private final CommunitySafetyPolicy communitySafetyPolicy;
 
     @Override
     @Transactional
     public CommunityAnswerResponse postAnswer(UUID authorId, UUID questionId, PostCommunityAnswerRequest request) {
+        User author = communitySafetyPolicy.requirePostingAllowed(authorId);
+
         // ADR-COM-006: only APPROVED questions accept answers
         questionRepository.findByIdAndStatus(questionId, QuestionStatus.APPROVED)
                 .orElseThrow(() -> new QuestionNotAnswerableException(questionId.toString()));
 
-        CommunityAnswer answer = answerMapper.toEntity(request, authorId, questionId);
+        boolean expertLabeled = communitySafetyPolicy.isVerifiedActiveExpert(author);
+        CommunityAnswer answer = answerMapper.toEntity(request, authorId, questionId, expertLabeled);
         answer = answerRepository.save(answer);
+        communitySafetyPolicy.autoReportIfRedFlag(authorId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
 
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
-                "CommunityAnswer", answer.getId().toString(), "posted");
+                "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
 
         return answerMapper.toResponse(answer);
     }
@@ -65,6 +73,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         answer.setStatus(AnswerStatus.PENDING);
 
         answer = answerRepository.save(answer);
+        communitySafetyPolicy.autoReportIfRedFlag(callerId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
                 "CommunityAnswer", answer.getId().toString(), "edited");
 

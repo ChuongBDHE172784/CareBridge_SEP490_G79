@@ -17,12 +17,14 @@ import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.content.entity.ReportTargetType;
 
 import java.util.List;
 import java.util.Set;
@@ -46,6 +48,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
+    private final CommunitySafetyPolicy communitySafetyPolicy;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,12 +89,16 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     @Override
     @Transactional
     public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
+        communitySafetyPolicy.requirePostingAllowed(authorId);
+
         // BR-COM-002: reject hidden or non-existent topics (ADR-COM-005)
         topicRepository.findByIdAndIsHiddenFalse(request.getTopicId())
                 .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
 
         CommunityQuestion question = questionMapper.toEntity(request, authorId);
         question = questionRepository.save(question);
+        communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION,
+                question.getTitle() + "\n" + question.getBody());
 
         auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId,
                 "CommunityQuestion", question.getId().toString(), "created");
@@ -109,7 +116,9 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
             throw new AccessDeniedException("Only the author can edit this question");
         }
 
-        if (question.getStatus() == QuestionStatus.LOCKED || question.getStatus() == QuestionStatus.HIDDEN) {
+        if (question.getStatus() == QuestionStatus.LOCKED
+                || question.getStatus() == QuestionStatus.HIDDEN
+                || question.getStatus() == QuestionStatus.DELETED) {
             throw new QuestionNotEditableException(questionId.toString());
         }
 
@@ -117,8 +126,11 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
         if (request.getBody() != null) question.setBody(request.getBody());
         if (request.getIsAnonymous() != null) question.setAnonymous(request.getIsAnonymous());
         if (request.getUrgency() != null) question.setUrgency(request.getUrgency());
+        question.setStatus(QuestionStatus.PENDING);
 
         question = questionRepository.save(question);
+        communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION,
+                question.getTitle() + "\n" + question.getBody());
         auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId,
                 "CommunityQuestion", question.getId().toString(), "edited");
 

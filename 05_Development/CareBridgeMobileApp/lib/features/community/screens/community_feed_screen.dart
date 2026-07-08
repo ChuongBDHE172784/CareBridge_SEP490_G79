@@ -39,17 +39,35 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   static const _error = Color(0xFFBA1A1A);
 
   final _service = CommunityService.instance;
+  final _scrollController = ScrollController();
 
   List<CommunityTopic> _topics = [];
   List<CommunityFeedItem> _items = [];
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _page = 0;
   String? _selectedTopicId; // null = "Tất cả"
 
   @override
   void initState() {
     super.initState();
     _selectedTopicId = widget.initialTopicId;
+    _scrollController.addListener(_onScroll);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 240) {
+      _loadMore();
+    }
   }
 
   Future<void> _load() async {
@@ -57,12 +75,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     try {
       final results = await Future.wait([
         _service.getTopics(),
-        _service.getFeed(topicId: _selectedTopicId),
+        _service.getFeed(topicId: _selectedTopicId, page: 0),
       ]);
+      final feed = results[1] as List<CommunityFeedItem>;
       if (mounted) {
         setState(() {
           _topics = results[0] as List<CommunityTopic>;
-          _items = results[1] as List<CommunityFeedItem>;
+          _items = feed;
+          _page = 1;
+          _hasMore = feed.length >= 20;
           _loading = false;
         });
       }
@@ -71,9 +92,30 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         setState(() {
           _topics = [];
           _items = [];
+          _hasMore = false;
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final feed = await _service.getFeed(
+        topicId: _selectedTopicId,
+        page: _page,
+      );
+      if (mounted) {
+        setState(() {
+          _items.addAll(feed);
+          _page++;
+          _hasMore = feed.length >= 20;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -84,10 +126,23 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       _loading = true;
     });
     try {
-      final feed = await _service.getFeed(topicId: topicId);
-      if (mounted) setState(() { _items = feed; _loading = false; });
+      final feed = await _service.getFeed(topicId: topicId, page: 0);
+      if (mounted) {
+        setState(() {
+          _items = feed;
+          _page = 1;
+          _hasMore = feed.length >= 20;
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _items = []; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _items = [];
+          _hasMore = false;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -116,19 +171,28 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           color: _primaryContainer,
           onRefresh: _load,
           child: CustomScrollView(
+            controller: _scrollController,
             slivers: [
               SliverToBoxAdapter(child: _buildTopBar()),
               SliverToBoxAdapter(child: _buildTopicChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
               if (_loading)
                 const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(color: _primaryContainer)),
+                  child: Center(
+                    child: CircularProgressIndicator(color: _primaryContainer),
+                  ),
                 )
               else if (_items.isEmpty)
                 const SliverFillRemaining(
                   child: Center(
-                    child: Text('Chưa có bài viết nào.',
-                        style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+                    child: Text(
+                      'Chưa có bài viết nào.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 )
               else
@@ -141,6 +205,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                         child: _buildPostCard(_items[index]),
                       ),
                       childCount: _items.length,
+                    ),
+                  ),
+                ),
+              if (_loadingMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
                     ),
                   ),
                 ),
@@ -162,27 +237,50 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const Expanded(
             child: Text(
               'Cộng đồng',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w700, color: _primary),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+              ),
             ),
           ),
           // Search button (UC-162)
           Container(
-            width: 44, height: 44,
-            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: _surfaceContainer,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.search, color: _onSurfaceVariant, size: 22),
+              icon: const Icon(
+                Icons.search,
+                color: _onSurfaceVariant,
+                size: 22,
+              ),
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CommunitySearchScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const CommunitySearchScreen(),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 8),
           // Topic directory button (UC-163 / CB-118)
           Container(
-            width: 44, height: 44,
-            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: _surfaceContainer,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.bookmarks_outlined, color: _onSurfaceVariant, size: 22),
+              icon: const Icon(
+                Icons.bookmarks_outlined,
+                color: _onSurfaceVariant,
+                size: 22,
+              ),
               tooltip: 'Thư viện chủ đề',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const TopicDirectoryScreen()),
@@ -192,13 +290,23 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const SizedBox(width: 8),
           // Verified content search button (UC-224)
           Container(
-            width: 44, height: 44,
-            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: _surfaceContainer,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.verified_outlined, color: _onSurfaceVariant, size: 22),
+              icon: const Icon(
+                Icons.verified_outlined,
+                color: _onSurfaceVariant,
+                size: 22,
+              ),
               tooltip: 'Nội dung đã kiểm duyệt',
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VerifiedContentSearchScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const VerifiedContentSearchScreen(),
+                ),
               ),
             ),
           ),
@@ -215,20 +323,30 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _topicChip(label: 'Tất cả', isActive: _selectedTopicId == null, onTap: () => _onTopicSelected(null)),
-          ..._topics.where((t) => !t.isHidden).map(
-            (t) => _topicChip(
-              label: t.name,
-              isActive: _selectedTopicId == t.id,
-              onTap: () => _onTopicSelected(t.id),
-            ),
+          _topicChip(
+            label: 'Tất cả',
+            isActive: _selectedTopicId == null,
+            onTap: () => _onTopicSelected(null),
           ),
+          ..._topics
+              .where((t) => !t.isHidden)
+              .map(
+                (t) => _topicChip(
+                  label: t.name,
+                  isActive: _selectedTopicId == t.id,
+                  onTap: () => _onTopicSelected(t.id),
+                ),
+              ),
         ],
       ),
     );
   }
 
-  Widget _topicChip({required String label, required bool isActive, required VoidCallback onTap}) {
+  Widget _topicChip({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -255,9 +373,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
   // UC-199: navigate to full question detail instead of jumping straight to answer
   void _navigateToQuestionDetail(CommunityFeedItem item) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => QuestionDetailScreen(questionId: item.id),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QuestionDetailScreen(questionId: item.id),
+      ),
+    );
   }
 
   // UC-58: toggle bookmark with optimistic UI — hydrated from the server's `bookmarked`
@@ -270,11 +390,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     try {
       final result = await _service.toggleBookmark(questionId);
       if (mounted) {
-        setState(() => _items[index] = _items[index].copyWith(bookmarked: result.bookmarked));
+        setState(
+          () => _items[index] = _items[index].copyWith(
+            bookmarked: result.bookmarked,
+          ),
+        );
       }
     } catch (_) {
       // Rollback on error
-      if (mounted) setState(() => _items[index] = _items[index].copyWith(bookmarked: was));
+      if (mounted) {
+        setState(() => _items[index] = _items[index].copyWith(bookmarked: was));
+      }
     }
   }
 
@@ -285,19 +411,31 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     if (index == -1) return;
     final wasLiked = _items[index].liked;
     final prevCount = _items[index].likeCount;
-    setState(() => _items[index] = _items[index].copyWith(
-        liked: !wasLiked, likeCount: wasLiked ? prevCount - 1 : prevCount + 1));
+    setState(
+      () => _items[index] = _items[index].copyWith(
+        liked: !wasLiked,
+        likeCount: wasLiked ? prevCount - 1 : prevCount + 1,
+      ),
+    );
     try {
       final result = await _service.toggleQuestionLike(questionId);
       if (mounted) {
-        setState(() => _items[index] =
-            _items[index].copyWith(liked: result.liked, likeCount: result.likeCount));
+        setState(
+          () => _items[index] = _items[index].copyWith(
+            liked: result.liked,
+            likeCount: result.likeCount,
+          ),
+        );
       }
     } catch (_) {
       // Rollback on error
       if (mounted) {
-        setState(() =>
-            _items[index] = _items[index].copyWith(liked: wasLiked, likeCount: prevCount));
+        setState(
+          () => _items[index] = _items[index].copyWith(
+            liked: wasLiked,
+            likeCount: prevCount,
+          ),
+        );
       }
     }
   }
@@ -308,166 +446,269 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     return GestureDetector(
       onTap: () => _navigateToQuestionDetail(item),
       child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: const Color(0x0F5A463F), blurRadius: 20, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Author row
-          Row(
-            children: [
-              // Avatar
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _surfaceContainerHigh,
-                  border: Border.all(color: _surfaceContainerHighest, width: 1),
-                ),
-                child: Center(
-                  child: Text(
-                    item.authorDisplay.isNotEmpty ? item.authorDisplay[0] : '?',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _primary),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Author row
+            Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _surfaceContainerHigh,
+                    border: Border.all(
+                      color: _surfaceContainerHighest,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      item.authorDisplay.isNotEmpty
+                          ? item.authorDisplay[0]
+                          : '?',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.authorDisplay,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
+                      Text(
+                        _timeAgo(item.createdAt),
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // UC-58: bookmark toggle
+                GestureDetector(
+                  onTap: () => _toggleBookmark(item.id),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                      size: 22,
+                      color: bookmarked ? _primary : _onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Title
+            Text(
+              item.title,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+                height: 1.3,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            const SizedBox(height: 8),
+            // Body preview (3 lines)
+            Text(
+              _mockBodyForItem(item),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            // Expert answer badge
+            if (item.hasExpertAnswer) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _secondaryContainer.withAlpha(77),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
                   children: [
-                    Text(item.authorDisplay,
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                    Text(_timeAgo(item.createdAt),
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: _secondaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.verified,
+                        size: 18,
+                        color: _primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Bác sĩ Nhi khoa đã trả lời',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _onSurface,
+                            ),
+                          ),
+                          Text(
+                            '"Mẹ đừng quá lo lắng, giai đoạn...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: _onSurfaceVariant.withAlpha(178),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-              // UC-58: bookmark toggle
-              GestureDetector(
-                onTap: () => _toggleBookmark(item.id),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    bookmarked ? Icons.bookmark : Icons.bookmark_border,
-                    size: 22,
-                    color: bookmarked ? _primary : _onSurfaceVariant,
+            ],
+            const SizedBox(height: 16),
+            // Footer: likes, comments, topic tag
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => _toggleQuestionLike(item.id),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        item.liked ? Icons.favorite : Icons.favorite_border,
+                        size: 20,
+                        color: item.liked ? _primary : _onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${item.likeCount}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Title
-          Text(item.title,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _primary, height: 1.3)),
-          const SizedBox(height: 8),
-          // Body preview (3 lines)
-          Text(
-            _mockBodyForItem(item),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5),
-          ),
-          // Expert answer badge
-          if (item.hasExpertAnswer) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _secondaryContainer.withAlpha(77),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32, height: 32,
-                    decoration: const BoxDecoration(color: _secondaryContainer, shape: BoxShape.circle),
-                    child: const Icon(Icons.verified, size: 18, color: _primary),
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.chat_bubble_outline,
+                  size: 20,
+                  color: _onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${item.answerCount}',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: _onSurfaceVariant,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Bác sĩ Nhi khoa đã trả lời',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
-                        Text('"Mẹ đừng quá lo lắng, giai đoạn...',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant.withAlpha(178))),
-                      ],
+                ),
+                const Spacer(),
+                if (item.topicName.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(
+                        color: _surfaceContainerHigh,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      item.topicName,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            // UC-199: view detail + UC-56: reply CTA
+            GestureDetector(
+              onTap: () => _navigateToQuestionDetail(item),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.open_in_new, size: 16, color: _primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Xem chi tiết (${item.answerCount} câu trả lời)',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          // Footer: likes, comments, topic tag
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _toggleQuestionLike(item.id),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item.liked ? Icons.favorite : Icons.favorite_border,
-                        size: 20, color: item.liked ? _primary : _onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text('${item.likeCount}',
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Icon(Icons.chat_bubble_outline, size: 20, color: _onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text('${item.answerCount}',
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
-              const Spacer(),
-              if (item.topicName.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: _surfaceContainerHigh, width: 1),
-                  ),
-                  child: Text(item.topicName,
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w500, color: _onSurfaceVariant)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // UC-199: view detail + UC-56: reply CTA
-          GestureDetector(
-            onTap: () => _navigateToQuestionDetail(item),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: _surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.open_in_new, size: 16, color: _primary),
-                  const SizedBox(width: 6),
-                  Text('Xem chi tiết (${item.answerCount} câu trả lời)',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary)),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   // Provides a mock body for items that don't carry body text
@@ -489,15 +730,23 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       decoration: BoxDecoration(
         color: _primaryContainer,
         borderRadius: BorderRadius.circular(99),
-        boxShadow: [BoxShadow(color: _primaryContainer.withAlpha(77), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primaryContainer.withAlpha(77),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(99),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreateQuestionScreen()),
-          ).then((_) => _load()),
+          onTap: () => Navigator.of(context)
+              .push(
+                MaterialPageRoute(builder: (_) => const CreateQuestionScreen()),
+              )
+              .then((_) => _load()),
           child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -505,8 +754,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               children: [
                 Icon(Icons.edit, size: 20, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Đặt câu hỏi',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                Text(
+                  'Đặt câu hỏi',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),

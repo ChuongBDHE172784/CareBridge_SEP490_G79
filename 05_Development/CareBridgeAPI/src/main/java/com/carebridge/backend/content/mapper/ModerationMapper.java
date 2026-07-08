@@ -21,7 +21,9 @@ public class ModerationMapper {
             ContentReport report, String rawPreview, long reportCount) {
         return new ModerationQueueItemResponse(
                 report.getId(),
+                report.getTargetId(),
                 report.getTargetType(),
+                report.getReporterUserId(),
                 truncate(rawPreview),
                 reportCount,
                 report.getCreatedAt(),

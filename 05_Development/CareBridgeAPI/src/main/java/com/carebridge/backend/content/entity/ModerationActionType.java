@@ -4,6 +4,8 @@ public enum ModerationActionType {
     APPROVE,
     HIDE,
     LOCK,
+    REQUEST_REVISION,
     WARN,
-    SUSPEND
+    SUSPEND,
+    RESTRICT
 }

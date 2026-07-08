@@ -2,6 +2,9 @@ package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.community.entity.AnswerStatus;
+import com.carebridge.backend.community.entity.CommunityAnswer;
+import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.CreateReportRequest;
@@ -42,7 +45,7 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional
     public CreateReportResponse createReport(CreateReportRequest request, UUID reporterUserId) {
-        validateTarget(request.getTargetType(), request.getTargetId());
+        validateTarget(request.getTargetType(), request.getTargetId(), reporterUserId);
 
         Instant since = Instant.now().minus(Duration.ofHours(24));
         int recentCount = contentReportRepository.countByReporterUserIdAndTargetIdAndCreatedAtAfter(
@@ -80,10 +83,19 @@ public class ReportServiceImpl implements ReportService {
                 .build();
     }
 
-    private void validateTarget(ReportTargetType targetType, UUID targetId) {
+    private void validateTarget(ReportTargetType targetType, UUID targetId, UUID reporterUserId) {
         boolean exists = switch (targetType) {
-            case QUESTION -> communityQuestionRepository.existsById(targetId);
-            case ANSWER -> communityAnswerRepository.existsById(targetId);
+            case QUESTION -> communityQuestionRepository.findById(targetId)
+                    .filter(q -> q.getStatus() == QuestionStatus.APPROVED
+                            || (q.getStatus() == QuestionStatus.PENDING
+                            && q.getAuthorId().equals(reporterUserId)))
+                    .isPresent();
+            case ANSWER -> communityAnswerRepository.findById(targetId)
+                    .filter(a -> a.getStatus() == AnswerStatus.APPROVED)
+                    .map(CommunityAnswer::getQuestionId)
+                    .flatMap(communityQuestionRepository::findById)
+                    .filter(q -> q.getStatus() == QuestionStatus.APPROVED)
+                    .isPresent();
             case CONTENT -> contentRepository.existsById(targetId);
             case EXPERT, USER -> userRepository.existsById(targetId);
             case ACCOUNT -> throw ReportException.targetNotFound(targetId.toString());

@@ -227,12 +227,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       decoration: _inputDeco('Mức độ khẩn cấp'),
                       items: const [
                         DropdownMenuItem(
+                          value: 'LOW',
+                          child: Text('Không gấp'),
+                        ),
+                        DropdownMenuItem(
                           value: 'NORMAL',
                           child: Text('Bình thường'),
                         ),
-                        DropdownMenuItem(value: 'HIGH', child: Text('Khẩn')),
                         DropdownMenuItem(
-                          value: 'EMERGENCY',
+                          value: 'URGENT',
                           child: Text('Khẩn cấp'),
                         ),
                       ],

@@ -78,6 +78,9 @@ public class User {
     @Column(name = "suspended_until")
     private Instant suspendedUntil;
 
+    @Column(name = "community_posting_restricted_until")
+    private Instant communityPostingRestrictedUntil;
+
     @Builder.Default
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword = false;

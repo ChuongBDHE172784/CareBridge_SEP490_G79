@@ -93,7 +93,7 @@ public class ModerationException extends RuntimeException {
     public static ModerationException accountActionNotAvailable(ModerationActionType actionType) {
         return new ModerationException(
                 "MOD-013",
-                "Account action " + actionType + " is not yet available — pending UC-102",
+                "Account action " + actionType + " is not supported for this report target",
                 HttpStatus.BAD_REQUEST);
     }
 
@@ -123,6 +123,13 @@ public class ModerationException extends RuntimeException {
         return new ModerationException(
                 "MOD-018",
                 "expiresAt is required and must be in the future for action type SUSPEND",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException restrictExpiresAtInvalid() {
+        return new ModerationException(
+                "MOD-024",
+                "expiresAt is required and must be in the future for action type RESTRICT",
                 HttpStatus.BAD_REQUEST);
     }
 

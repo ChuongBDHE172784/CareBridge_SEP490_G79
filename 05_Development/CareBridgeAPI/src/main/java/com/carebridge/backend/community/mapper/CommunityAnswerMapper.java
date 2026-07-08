@@ -13,12 +13,17 @@ import java.util.UUID;
 public class CommunityAnswerMapper {
 
     public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorId, UUID questionId) {
+        return toEntity(request, authorId, questionId, false);
+    }
+
+    public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorId, UUID questionId,
+            boolean expertLabeled) {
         return CommunityAnswer.builder()
                 .questionId(questionId)
                 .authorId(authorId)
                 .body(request.getBody())
                 .personalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()))
-                .expertLabeled(false)   // ADR-COM-005: never from request
+                .expertLabeled(expertLabeled)   // ADR-COM-005: never from request
                 .status(AnswerStatus.PENDING) // ADR-COM-006: always PENDING
                 .build();
     }
