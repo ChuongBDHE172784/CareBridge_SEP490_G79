@@ -184,16 +184,28 @@ export default function VerificationDocumentsPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
       {children}
     </div>
   );
 }
 
-function SelectField({ label, children, value, onChange, required }: any) {
+function SelectField({
+  label,
+  children,
+  value,
+  onChange,
+  required = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+}) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
