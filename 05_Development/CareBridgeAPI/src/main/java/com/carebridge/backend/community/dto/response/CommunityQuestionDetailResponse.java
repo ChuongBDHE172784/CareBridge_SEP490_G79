@@ -27,6 +27,7 @@ public class CommunityQuestionDetailResponse {
     private String urgency;
     private boolean anonymous;
     private UUID authorId;
+    private String authorDisplay;
     private String status;
     private int answerCount;
     private int likeCount;

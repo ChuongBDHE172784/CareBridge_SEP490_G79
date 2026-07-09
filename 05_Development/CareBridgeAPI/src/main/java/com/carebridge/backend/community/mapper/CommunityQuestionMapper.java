@@ -51,15 +51,23 @@ public class CommunityQuestionMapper {
     // UC-199: map to full detail response including answers and topic name
     public CommunityQuestionDetailResponse toDetailResponse(
             CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers) {
-        return toDetailResponse(entity, topicName, answers, false, false);
+        return toDetailResponse(entity, topicName, null, answers, false, false);
+    }
+
+    public CommunityQuestionDetailResponse toDetailResponse(
+            CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers,
+            boolean isBookmarked, boolean isLiked) {
+        return toDetailResponse(entity, topicName, null, answers, isBookmarked, isLiked);
     }
 
     // UC-58 hydration fix: "isBookmarked" reflects the CURRENT viewer's bookmark state, computed
     // by the caller — never derivable from the entity alone.
     public CommunityQuestionDetailResponse toDetailResponse(
-            CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers,
+            CommunityQuestion entity, String topicName, String authorDisplay, List<CommunityAnswerResponse> answers,
             boolean isBookmarked, boolean isLiked) {
         UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
+        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+                : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return CommunityQuestionDetailResponse.builder()
                 .id(entity.getId())
                 .topicId(entity.getTopicId())
@@ -72,6 +80,7 @@ public class CommunityQuestionMapper {
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
+                .authorDisplay(finalAuthorDisplay)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())

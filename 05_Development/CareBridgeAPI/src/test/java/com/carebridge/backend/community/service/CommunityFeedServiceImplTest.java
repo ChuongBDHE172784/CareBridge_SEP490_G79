@@ -14,6 +14,7 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -55,6 +56,9 @@ class CommunityFeedServiceImplTest {
 
     @Mock
     private CommunityQuestionLikeRepository likeRepository;
+
+    @Mock
+    private CommunityProfileRepository profileRepository;
 
     @InjectMocks
     private CommunityFeedServiceImpl service;
