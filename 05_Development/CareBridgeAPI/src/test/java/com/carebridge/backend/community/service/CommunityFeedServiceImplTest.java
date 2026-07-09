@@ -63,6 +63,9 @@ class CommunityFeedServiceImplTest {
     @Mock
     private com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
 
+    @Mock
+    private com.carebridge.backend.security.repository.UserRepository userRepository;
+
     @InjectMocks
     private CommunityFeedServiceImpl service;
 

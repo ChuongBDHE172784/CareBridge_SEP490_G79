@@ -35,6 +35,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityProfileRepository profileRepository;
     private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
+    private final com.carebridge.backend.security.repository.UserRepository userRepository;
     private final CommunityFeedMapper feedMapper;
 
     @Override
@@ -66,14 +67,26 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
                         (existing, replacement) -> existing
                 ));
 
-        // Fallback to UserProfile.displayName if CommunityProfile not found or name blank
-        Set<UUID> missingAuthorIds = authorIds.stream()
+        // Fallback 1: UserProfile.displayName if CommunityProfile not found or name blank
+        Set<UUID> missingFromCommunity = authorIds.stream()
                 .filter(id -> id != null && (!authorDisplayNames.containsKey(id) || authorDisplayNames.get(id) == null || authorDisplayNames.get(id).isBlank()))
                 .collect(Collectors.toSet());
-        if (!missingAuthorIds.isEmpty()) {
-            userProfileRepository.findAllByUserIdIn(missingAuthorIds).forEach(up -> {
+        if (!missingFromCommunity.isEmpty()) {
+            userProfileRepository.findAllByUserIdIn(missingFromCommunity).forEach(up -> {
                 if (up.getDisplayName() != null && !up.getDisplayName().isBlank()) {
                     authorDisplayNames.put(up.getUserId(), up.getDisplayName());
+                }
+            });
+        }
+
+        // Fallback 2: User.fullName (from users table) if still not found or name blank
+        Set<UUID> missingFromBoth = authorIds.stream()
+                .filter(id -> id != null && (!authorDisplayNames.containsKey(id) || authorDisplayNames.get(id) == null || authorDisplayNames.get(id).isBlank()))
+                .collect(Collectors.toSet());
+        if (!missingFromBoth.isEmpty()) {
+            userRepository.findAllById(missingFromBoth).forEach(u -> {
+                if (u.getName() != null && !u.getName().isBlank()) {
+                    authorDisplayNames.put(u.getId(), u.getName());
                 }
             });
         }

@@ -34,6 +34,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityProfileRepository profileRepository;
     private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
+    private final com.carebridge.backend.security.repository.UserRepository userRepository;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
@@ -61,6 +62,11 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         if (displayName == null || displayName.isBlank()) {
             displayName = userProfileRepository.findByUserId(authorId)
                     .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
+                    .orElse(null);
+        }
+        if (displayName == null || displayName.isBlank()) {
+            displayName = userRepository.findById(authorId)
+                    .map(User::getName)
                     .orElse(null);
         }
         return answerMapper.toResponse(answer, displayName, false);
@@ -99,6 +105,11 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         if (displayName == null || displayName.isBlank()) {
             displayName = userProfileRepository.findByUserId(callerId)
                     .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
+                    .orElse(null);
+        }
+        if (displayName == null || displayName.isBlank()) {
+            displayName = userRepository.findById(callerId)
+                    .map(User::getName)
                     .orElse(null);
         }
         return answerMapper.toResponse(answer, displayName, false);

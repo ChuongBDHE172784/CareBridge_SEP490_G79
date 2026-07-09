@@ -51,6 +51,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityQuestionLikeRepository questionLikeRepository;
     private final CommunityProfileRepository profileRepository;
     private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
+    private final com.carebridge.backend.security.repository.UserRepository userRepository;
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
@@ -83,6 +84,11 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
                         .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
                         .orElse(null);
             }
+            if (questionAuthorDisplay == null || questionAuthorDisplay.isBlank()) {
+                questionAuthorDisplay = userRepository.findById(question.getAuthorId())
+                        .map(com.carebridge.backend.security.entity.User::getName)
+                        .orElse(null);
+            }
         }
 
         List<CommunityAnswer> answerEntities = answerRepository
@@ -108,6 +114,18 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
             userProfileRepository.findAllByUserIdIn(missingAnswerAuthorIds).forEach(up -> {
                 if (up.getDisplayName() != null && !up.getDisplayName().isBlank()) {
                     answerAuthorNames.put(up.getUserId(), up.getDisplayName());
+                }
+            });
+        }
+
+        // Fallback to User if UserProfile still missing or name blank
+        Set<UUID> stillMissingAnswerAuthorIds = answerAuthorIds.stream()
+                .filter(id -> !answerAuthorNames.containsKey(id) || answerAuthorNames.get(id) == null || answerAuthorNames.get(id).isBlank())
+                .collect(Collectors.toSet());
+        if (!stillMissingAnswerAuthorIds.isEmpty()) {
+            userRepository.findAllById(stillMissingAnswerAuthorIds).forEach(u -> {
+                if (u.getName() != null && !u.getName().isBlank()) {
+                    answerAuthorNames.put(u.getId(), u.getName());
                 }
             });
         }
