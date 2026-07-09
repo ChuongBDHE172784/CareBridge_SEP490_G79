@@ -51,7 +51,7 @@ public class CommunityQuestionMapper {
     // UC-199: map to full detail response including answers and topic name
     public CommunityQuestionDetailResponse toDetailResponse(
             CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers) {
-        return toDetailResponse(entity, topicName, answers, false, false);
+        return toDetailResponse(entity, topicName, null, answers, false, false, null);
     }
 
     // UC-58 hydration fix: "isBookmarked" reflects the CURRENT viewer's bookmark state, computed
@@ -59,7 +59,19 @@ public class CommunityQuestionMapper {
     public CommunityQuestionDetailResponse toDetailResponse(
             CommunityQuestion entity, String topicName, List<CommunityAnswerResponse> answers,
             boolean isBookmarked, boolean isLiked) {
-        UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
+        return toDetailResponse(entity, topicName, null, answers, isBookmarked, isLiked, null);
+    }
+
+    // authorId/authorDisplay masking for anonymous questions must stay viewer-aware: the AUTHOR
+    // themselves still needs their own raw authorId back (mobile's "is this my question" /
+    // edit-button check depends on it), everyone else gets it nulled out per ADR-COM-002.
+    public CommunityQuestionDetailResponse toDetailResponse(
+            CommunityQuestion entity, String topicName, String authorDisplay, List<CommunityAnswerResponse> answers,
+            boolean isBookmarked, boolean isLiked, UUID currentUserId) {
+        boolean viewerIsAuthor = currentUserId != null && currentUserId.equals(entity.getAuthorId());
+        UUID exposedAuthorId = (entity.isAnonymous() && !viewerIsAuthor) ? null : entity.getAuthorId();
+        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+                : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return CommunityQuestionDetailResponse.builder()
                 .id(entity.getId())
                 .topicId(entity.getTopicId())
@@ -72,6 +84,7 @@ public class CommunityQuestionMapper {
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
+                .authorDisplay(finalAuthorDisplay)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())

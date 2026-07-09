@@ -22,6 +22,7 @@ import com.carebridge.backend.community.exception.AnswerNotEditableException;
 import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 
@@ -54,6 +55,12 @@ class CommunityAnswerServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private CommunitySafetyPolicy communitySafetyPolicy;
+
+    @Mock
+    private CommunityAuthorDisplayResolver authorDisplayResolver;
+
     @InjectMocks
     private CommunityAnswerServiceImpl service;
 
@@ -78,6 +85,42 @@ class CommunityAnswerServiceImplTest {
                 .id(QUESTION_ID)
                 .status(QuestionStatus.APPROVED)
                 .build();
+    }
+
+    // Author display name is resolved via the shared cascade (community/user profile/registration
+    // name) and threaded through the response — this is the fix for community posts always
+    // showing the generic "Thành viên" fallback instead of the poster's real name.
+    @Test
+    void postAnswer_authorHasDisplayName_responseCarriesRealName() {
+        when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
+                .thenReturn(Optional.of(makeApprovedQuestion()));
+        CommunityAnswer saved = CommunityAnswer.builder()
+                .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
+                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(true)
+                .build();
+        when(answerRepository.save(any())).thenReturn(saved);
+        when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn("Nguyễn Thị A");
+
+        CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
+
+        assertThat(response.getAuthorDisplay()).isEqualTo("Nguyễn Thị A");
+    }
+
+    // No profile anywhere in the cascade → falls back to the generic label, never null/blank
+    @Test
+    void postAnswer_authorHasNoDisplayName_fallsBackToThanhVien() {
+        when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
+                .thenReturn(Optional.of(makeApprovedQuestion()));
+        CommunityAnswer saved = CommunityAnswer.builder()
+                .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
+                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(true)
+                .build();
+        when(answerRepository.save(any())).thenReturn(saved);
+        when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn(null);
+
+        CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
+
+        assertThat(response.getAuthorDisplay()).isEqualTo("Thành viên");
     }
 
     // COM56-TC-001: Happy path — status=PENDING, isExpertLabeled=false (ADR-COM-005, ADR-COM-006)
@@ -127,7 +170,7 @@ class CommunityAnswerServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(AUTHOR_ID),
                 org.mockito.ArgumentMatchers.eq("CommunityAnswer"),
                 any(),
-                org.mockito.ArgumentMatchers.eq("posted")
+                org.mockito.ArgumentMatchers.eq("posted expertLabeled=false")
         );
     }
 
@@ -201,6 +244,20 @@ class CommunityAnswerServiceImplTest {
         verify(answerRepository).save(argThat(a -> a.getStatus() == AnswerStatus.PENDING));
     }
 
+    // Editing an APPROVED answer takes it out of the visible/counted set until re-moderated —
+    // the question's answer_count must be decremented, mirroring deleteAnswer (ADR-COM-201-3).
+    // Otherwise the comment-count icon stays stuck showing a stale (too-high) number.
+    @Test
+    void editAnswer_ownApprovedAnswer_decrementsAnswerCount() {
+        CommunityAnswer answer = makeAnswer(AnswerStatus.APPROVED);
+        when(answerRepository.findById(ANSWER_ID)).thenReturn(Optional.of(answer));
+        when(answerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.editAnswer(ANSWER_ID, AUTHOR_ID, makeEditRequest());
+
+        verify(questionRepository).decrementAnswerCount(QUESTION_ID);
+    }
+
     // TC-200-2: author edits own PENDING answer -> stays PENDING
     @Test
     void editAnswer_ownPendingAnswer_staysPending() {
@@ -211,6 +268,7 @@ class CommunityAnswerServiceImplTest {
         CommunityAnswerResponse response = service.editAnswer(ANSWER_ID, AUTHOR_ID, makeEditRequest());
 
         assertThat(response.getStatus()).isEqualTo("PENDING");
+        verify(questionRepository, never()).decrementAnswerCount(any());
     }
 
     // TC-200-3: HIDDEN answer cannot be edited

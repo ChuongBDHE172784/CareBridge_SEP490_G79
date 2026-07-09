@@ -19,6 +19,7 @@ import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,12 +54,19 @@ class CommunityQuestionDetailServiceImplTest {
     @Mock CommunityQuestionMapper questionMapper;
     @Mock CommunityAnswerMapper answerMapper;
     @Mock AuditService auditService;
+    @Mock CommunityAuthorDisplayResolver authorDisplayResolver;
     @InjectMocks CommunityQuestionServiceImpl questionService;
 
     private static final UUID QUESTION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID TOPIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID CURRENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000009");
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(authorDisplayResolver.resolve(any())).thenReturn(null);
+        lenient().when(authorDisplayResolver.resolveBatch(any())).thenReturn(Map.of());
+    }
 
     private CommunityQuestion makeApprovedQuestion() {
         return CommunityQuestion.builder()
@@ -112,8 +122,9 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of(answer));
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(answerMapper.toResponse(answer, false)).thenReturn(answerResponse);
-        when(questionMapper.toDetailResponse(eq(question), eq("Dinh dưỡng"), any(), eq(false), eq(false)))
+        when(answerMapper.toResponse(eq(answer), any(), eq(false))).thenReturn(answerResponse);
+        when(questionMapper.toDetailResponse(
+                eq(question), eq("Dinh dưỡng"), any(), any(), eq(false), eq(false), eq(CURRENT_USER_ID)))
                 .thenReturn(expectedDetail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
@@ -168,7 +179,8 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(maskedDetail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+                .thenReturn(maskedDetail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
@@ -189,7 +201,8 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+                .thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
@@ -208,12 +221,13 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(questionMapper.toDetailResponse(any(), eq(""), any(), anyBoolean(), anyBoolean())).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), eq(""), any(), any(), anyBoolean(), anyBoolean(), any()))
+                .thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
         assertThat(result).isNotNull();
-        verify(questionMapper).toDetailResponse(any(), eq(""), any(), anyBoolean(), anyBoolean());
+        verify(questionMapper).toDetailResponse(any(), eq(""), any(), any(), anyBoolean(), anyBoolean(), any());
     }
 
     // New: bookmarked question hydrates isBookmarked=true (UC-58 hydration fix regression guard)
@@ -230,12 +244,13 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(true);
-        when(questionMapper.toDetailResponse(any(), any(), any(), eq(true), anyBoolean())).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), any(), eq(true), anyBoolean(), any()))
+                .thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
         assertThat(result.isBookmarked()).isTrue();
-        verify(questionMapper).toDetailResponse(any(), any(), any(), eq(true), anyBoolean());
+        verify(questionMapper).toDetailResponse(any(), any(), any(), any(), eq(true), anyBoolean(), any());
     }
 
     // COMQL-TC-011: liked question hydrates isLiked=true for the current viewer
@@ -253,11 +268,12 @@ class CommunityQuestionDetailServiceImplTest {
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
         when(questionLikeRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(true);
-        when(questionMapper.toDetailResponse(any(), any(), any(), anyBoolean(), eq(true))).thenReturn(detail);
+        when(questionMapper.toDetailResponse(any(), any(), any(), any(), anyBoolean(), eq(true), any()))
+                .thenReturn(detail);
 
         CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
 
         assertThat(result.isLiked()).isTrue();
-        verify(questionMapper).toDetailResponse(any(), any(), any(), anyBoolean(), eq(true));
+        verify(questionMapper).toDetailResponse(any(), any(), any(), any(), anyBoolean(), eq(true), any());
     }
 }

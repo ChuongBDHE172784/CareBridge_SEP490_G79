@@ -27,7 +27,9 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
+    private final CommunityAuthorDisplayResolver authorDisplayResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,15 +69,24 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
                 .map(t -> t.getName())
                 .orElse("");
 
+        // Fetch question author's display name
+        String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
+
         List<CommunityAnswer> answerEntities = answerRepository
                 .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+
+        // Batch fetch display names for all answer authors to avoid N+1
+        Set<UUID> answerAuthorIds = answerEntities.stream()
+                .map(CommunityAnswer::getAuthorId)
+                .collect(Collectors.toSet());
+        Map<UUID, String> answerAuthorNames = authorDisplayResolver.resolveBatch(answerAuthorIds);
 
         // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
         List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();
         Set<UUID> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(currentUserId, answerIds);
 
         List<CommunityAnswerResponse> answers = answerEntities.stream()
-                .map(a -> answerMapper.toResponse(a, likedAnswerIds.contains(a.getId())))
+                .map(a -> answerMapper.toResponse(a, answerAuthorNames.get(a.getAuthorId()), likedAnswerIds.contains(a.getId())))
                 .toList();
 
         // UC-58 hydration fix: current viewer's bookmark state for this question
@@ -83,7 +95,8 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
         // Current viewer's like state for this question
         boolean isLiked = questionLikeRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
 
-        return questionMapper.toDetailResponse(question, topicName, answers, isBookmarked, isLiked);
+        return questionMapper.toDetailResponse(
+                question, topicName, questionAuthorDisplay, answers, isBookmarked, isLiked, currentUserId);
     }
 
     @Override

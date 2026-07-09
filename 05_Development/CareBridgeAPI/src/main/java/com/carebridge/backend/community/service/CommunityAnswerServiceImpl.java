@@ -33,6 +33,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
+    private final CommunityAuthorDisplayResolver authorDisplayResolver;
 
     @Override
     @Transactional
@@ -51,7 +52,8 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
                 "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
 
-        return answerMapper.toResponse(answer);
+        String displayName = authorDisplayResolver.resolve(authorId);
+        return answerMapper.toResponse(answer, displayName, false);
     }
 
     @Override
@@ -68,16 +70,24 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
             throw new AnswerNotEditableException(answerId.toString());
         }
 
+        // ADR-COM-201-3: edited content drops out of the approved/visible set until re-moderated,
+        // so the question's answer_count must be decremented to stay in sync (mirrors deleteAnswer).
+        boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
+
         answerMapper.applyEdit(answer, request);
         // ADR-COM-200-2: reset to PENDING so edited content is re-moderated
         answer.setStatus(AnswerStatus.PENDING);
 
         answer = answerRepository.save(answer);
+        if (wasApproved) {
+            questionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
         communitySafetyPolicy.autoReportIfRedFlag(callerId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
                 "CommunityAnswer", answer.getId().toString(), "edited");
 
-        return answerMapper.toResponse(answer);
+        String displayName = authorDisplayResolver.resolve(callerId);
+        return answerMapper.toResponse(answer, displayName, false);
     }
 
     @Override

@@ -592,7 +592,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          q.anonymous ? 'Ẩn danh' : 'Người dùng',
+                          q.authorDisplay ?? 'Người dùng',
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -860,7 +860,7 @@ class _AnswerCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          answer.expertLabeled ? 'Chuyên gia' : 'Thành viên',
+                          answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,

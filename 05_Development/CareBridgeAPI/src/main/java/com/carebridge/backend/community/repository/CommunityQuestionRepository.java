@@ -70,6 +70,11 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount - 1 WHERE q.id = :questionId AND q.answerCount > 0")
     void decrementAnswerCount(@Param("questionId") UUID questionId);
 
+    // Moderation approve: an answer entering APPROVED status becomes visible in the count
+    @Modifying
+    @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount + 1 WHERE q.id = :questionId")
+    void incrementAnswerCount(@Param("questionId") UUID questionId);
+
     // UC-111: dashboard aggregation — question count grouped by status
     @Query("SELECT q.status, COUNT(q) FROM CommunityQuestion q GROUP BY q.status")
     List<Object[]> countGroupByStatus();

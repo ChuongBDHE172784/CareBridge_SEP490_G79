@@ -103,6 +103,7 @@ class CommunityAnswer {
   final String id;
   final String questionId;
   final String? authorId;
+  final String? authorDisplay;
   final String body;
   final bool personalExperience;
   final bool expertLabeled;
@@ -115,6 +116,7 @@ class CommunityAnswer {
     required this.id,
     required this.questionId,
     this.authorId,
+    this.authorDisplay,
     required this.body,
     required this.personalExperience,
     required this.expertLabeled,
@@ -128,6 +130,7 @@ class CommunityAnswer {
     id: json['id'] as String,
     questionId: json['questionId'] as String? ?? '',
     authorId: json['authorId'] as String?,
+    authorDisplay: json['authorDisplay'] as String?,
     body: json['body'] as String? ?? '',
     personalExperience: json['personalExperience'] as bool? ?? false,
     expertLabeled: json['expertLabeled'] as bool? ?? false,
@@ -141,6 +144,7 @@ class CommunityAnswer {
     id: id,
     questionId: questionId,
     authorId: authorId,
+    authorDisplay: authorDisplay,
     body: body,
     personalExperience: personalExperience,
     expertLabeled: expertLabeled,
@@ -163,6 +167,7 @@ class QuestionDetail {
   final String urgency;
   final bool anonymous;
   final String? authorId;
+  final String? authorDisplay;
   final String status;
   final int answerCount;
   final int likeCount;
@@ -184,6 +189,7 @@ class QuestionDetail {
     required this.urgency,
     required this.anonymous,
     this.authorId,
+    this.authorDisplay,
     required this.status,
     required this.answerCount,
     required this.likeCount,
@@ -206,6 +212,7 @@ class QuestionDetail {
     urgency: json['urgency'] as String? ?? 'NORMAL',
     anonymous: json['anonymous'] as bool? ?? false,
     authorId: json['authorId'] as String?,
+    authorDisplay: json['authorDisplay'] as String?,
     status: json['status'] as String? ?? 'APPROVED',
     answerCount: json['answerCount'] as int? ?? 0,
     likeCount: json['likeCount'] as int? ?? 0,
