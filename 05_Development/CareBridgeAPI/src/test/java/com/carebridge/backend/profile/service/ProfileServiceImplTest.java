@@ -13,6 +13,8 @@ import com.carebridge.backend.profile.dto.UpdateProfileRequest;
 import com.carebridge.backend.profile.entity.UserProfile;
 import com.carebridge.backend.profile.repository.ProfileRepository;
 import com.carebridge.backend.profile.service.impl.ProfileServiceImpl;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +38,9 @@ class ProfileServiceImplTest {
     private ProfileRepository profileRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private AuditService auditService;
 
     @InjectMocks
@@ -51,6 +56,12 @@ class ProfileServiceImplTest {
                 "0912345678",
                 LocalDate.of(1995, 6, 15),
                 "Ha Noi");
+    }
+
+    private void mockAccountUser() {
+        User user = User.builder().id(USER_ID).name("Original Name").build();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     // PRF-TC-004 — dateOfBirth in the future is rejected with PRF-002 (Oracle: BR-PRF-DOB).
@@ -87,6 +98,7 @@ class ProfileServiceImplTest {
     @DisplayName("PRF-TC-009: Successful update writes a PROFILE_UPDATED audit record")
     void updateProfile_success_writesAuditLog() {
         UUID profileId = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+        mockAccountUser();
         when(profileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(profileRepository.save(any(UserProfile.class))).thenAnswer(inv -> {
             UserProfile p = inv.getArgument(0);
@@ -98,6 +110,8 @@ class ProfileServiceImplTest {
 
         assertNotNull(response);
         assertEquals(USER_ID, response.userId());
+        assertEquals("Nguyen Test", response.displayName());
+        verify(userRepository).save(argThat(user -> "Nguyen Test".equals(user.getName())));
         verify(profileRepository, times(1)).save(any(UserProfile.class));
         verify(auditService, times(1)).log(
                 eq(AuditAction.PROFILE_UPDATED),
@@ -111,6 +125,7 @@ class ProfileServiceImplTest {
     @Test
     @DisplayName("PRF-TC-009b: Failed persistence writes no audit record")
     void updateProfile_saveFails_noAuditLog() {
+        mockAccountUser();
         when(profileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(profileRepository.save(any(UserProfile.class))).thenThrow(new RuntimeException("DB error"));
 
@@ -125,6 +140,7 @@ class ProfileServiceImplTest {
     @DisplayName("PRF-TC-006: Persisted profile always uses the authenticated userId")
     void updateProfile_persistsAuthenticatedUserId() {
         UUID profileId = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
+        mockAccountUser();
         when(profileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(profileRepository.save(any(UserProfile.class))).thenAnswer(inv -> {
             UserProfile p = inv.getArgument(0);
@@ -144,6 +160,7 @@ class ProfileServiceImplTest {
     @DisplayName("PRF-TC-007: HTML tags in displayName are stripped before persistence")
     void updateProfile_htmlInDisplayName_isStripped() {
         UUID profileId = UUID.fromString("00000000-0000-0000-0000-0000000000cc");
+        mockAccountUser();
         when(profileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(profileRepository.save(any(UserProfile.class))).thenAnswer(inv -> {
             UserProfile p = inv.getArgument(0);
@@ -158,5 +175,24 @@ class ProfileServiceImplTest {
 
         assertFalse(response.displayName().contains("<"));
         assertFalse(response.displayName().contains(">"));
+        verify(userRepository).save(argThat(user -> "Hello World".equals(user.getName())));
+    }
+
+    @Test
+    @DisplayName("PRF-TC-010: Profile displayName is read from users.full_name")
+    void getProfile_returnsCanonicalUserFullName() {
+        UserProfile profile = UserProfile.builder()
+                .profileId(UUID.fromString("00000000-0000-0000-0000-0000000000dd"))
+                .userId(USER_ID)
+                .phoneNumber("0912345678")
+                .build();
+        User user = User.builder().id(USER_ID).name("Canonical Name").build();
+        when(profileRepository.findByUserId(USER_ID)).thenReturn(Optional.of(profile));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        ProfileResponse response = profileService.getProfile(USER_ID);
+
+        assertEquals("Canonical Name", response.displayName());
+        assertEquals("0912345678", response.phoneNumber());
     }
 }

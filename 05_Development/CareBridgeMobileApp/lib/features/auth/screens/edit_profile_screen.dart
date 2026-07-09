@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
+import '../services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -21,6 +22,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
 
   final _nameController = TextEditingController();
+  String? _email;
   String? _phone;
   String? _avatarUrl;
   String? _selectedArea;
@@ -37,10 +39,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _loadProfile() async {
     try {
       final res = await apiGet('/api/v1/profile');
+      String? email;
+      try {
+        email = (await AuthService.instance.getProfile()).email;
+      } catch (_) {
+        email = null;
+      }
       final data = res['data'] as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _nameController.text = data['displayName'] as String? ?? '';
+        _email = email;
         _phone = data['phoneNumber'] as String?;
         _avatarUrl = data['avatarUrl'] as String?;
         _selectedArea = data['area'] as String?;
@@ -57,7 +66,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final body = <String, dynamic>{
         'displayName': _nameController.text.trim(),
-        if (_selectedArea != null && _selectedArea!.isNotEmpty) 'area': _selectedArea,
+        if (_selectedArea != null && _selectedArea!.isNotEmpty)
+          'area': _selectedArea,
       };
       await apiPatch('/api/v1/profile', body);
       if (mounted) Navigator.of(context).pop();
@@ -98,7 +108,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: _bgColor,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : Column(
                 children: [
                   _buildAppBar(),
@@ -138,7 +150,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _primaryColor),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _primaryColor,
+                      ),
                     )
                   : const Text(
                       'Lưu',
@@ -166,9 +181,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               CircleAvatar(
                 radius: 56,
                 backgroundColor: _surfaceContainerLow,
-                backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                backgroundImage: _avatarUrl != null
+                    ? NetworkImage(_avatarUrl!)
+                    : null,
                 child: _avatarUrl == null
-                    ? const Icon(Icons.person, size: 48, color: _primaryContainer)
+                    ? const Icon(
+                        Icons.person,
+                        size: 48,
+                        color: _primaryContainer,
+                      )
                     : null,
               ),
               Positioned(
@@ -182,7 +203,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -192,6 +217,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _buildLabel('Họ và tên'),
         const SizedBox(height: 8),
         _buildTextField(_nameController, 'Nhập họ và tên'),
+        const SizedBox(height: 20),
+        _buildLabel('Email'),
+        const SizedBox(height: 8),
+        _buildReadOnlyField(_email ?? '', Icons.lock_outline),
         const SizedBox(height: 20),
         _buildLabel('Số điện thoại'),
         const SizedBox(height: 8),
@@ -219,10 +248,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildTextField(TextEditingController controller, String hint) {
     return TextField(
       controller: controller,
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 16,
+        color: _onSurface,
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _outlineVariant),
+        hintStyle: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 16,
+          color: _outlineVariant,
+        ),
         filled: true,
         fillColor: _surfaceContainerLowest,
         border: OutlineInputBorder(
@@ -237,7 +274,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: _primaryContainer, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
       ),
     );
   }
@@ -255,7 +295,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Expanded(
             child: Text(
               value.isNotEmpty ? value : 'Chưa cập nhật',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurfaceVariant),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                color: _onSurfaceVariant,
+              ),
             ),
           ),
           Icon(icon, color: _outlineVariant, size: 20),
@@ -328,7 +372,6 @@ class _AddressPickerSheet extends StatefulWidget {
 }
 
 class _AddressPickerSheetState extends State<_AddressPickerSheet> {
-  static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
@@ -378,9 +421,12 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
       _selectedWard = null;
     });
     try {
-      final res = await http.get(Uri.parse('$_apiBase/p/$provinceCode?depth=2'));
+      final res = await http.get(
+        Uri.parse('$_apiBase/p/$provinceCode?depth=2'),
+      );
       if (!mounted) return;
-      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final list = data['districts'] as List<dynamic>;
       setState(() {
         _districts = list
@@ -400,9 +446,12 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
       _selectedWard = null;
     });
     try {
-      final res = await http.get(Uri.parse('$_apiBase/d/$districtCode?depth=2'));
+      final res = await http.get(
+        Uri.parse('$_apiBase/d/$districtCode?depth=2'),
+      );
       if (!mounted) return;
-      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final list = data['wards'] as List<dynamic>;
       setState(() {
         _wards = list
@@ -433,7 +482,9 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24, 16, 24,
+        24,
+        16,
+        24,
         MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       child: Column(
@@ -559,7 +610,10 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
         child: SizedBox(
           width: 22,
           height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2, color: _primaryContainer),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: _primaryContainer,
+          ),
         ),
       ),
     );
@@ -585,12 +639,22 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
           isExpanded: true,
           hint: Text(
             hint,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, color: _outlineVariant),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              color: _outlineVariant,
+            ),
           ),
-          style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, color: _onSurface),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 15,
+            color: _onSurface,
+          ),
           icon: const Icon(Icons.expand_more, color: _onSurfaceVariant),
           items: items
-              .map((e) => DropdownMenuItem<T>(value: e, child: Text(labelOf(e))))
+              .map(
+                (e) => DropdownMenuItem<T>(value: e, child: Text(labelOf(e))),
+              )
               .toList(),
           onChanged: onChanged,
         ),

@@ -46,11 +46,9 @@ class ReminderService extends ChangeNotifier {
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // TODO: Replace with GET /api/v1/reminders?date=today when endpoint available (UC-45/46/47)
   Future<List<Reminder>> listTodayReminders() async {
     try {
-      final today = DateTime.now().toIso8601String().split('T').first;
-      final data = await apiGet('/api/v1/reminders?date=$today');
+      final data = await apiGet('/api/v1/reminders/today');
       final list = data['data'] as List? ?? [];
       return list
           .map((e) => Reminder.fromJson(e as Map<String, dynamic>))

@@ -8,7 +8,8 @@ class EnableFallDetectionScreen extends StatefulWidget {
   const EnableFallDetectionScreen({super.key});
 
   @override
-  State<EnableFallDetectionScreen> createState() => _EnableFallDetectionScreenState();
+  State<EnableFallDetectionScreen> createState() =>
+      _EnableFallDetectionScreenState();
 }
 
 class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
@@ -27,16 +28,17 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
   // "Thời gian chờ" — countdown before auto-alert fires. The backend has no
   // field for this yet; kept as local-only UI state (TODO when added).
   int _countdownSeconds = 30;
-  // Mapped to SafetyConfigRequest.emergencyAutoAlert — closest existing
-  // backend field for "share location & auto-contact family on fall".
-  bool _shareLocation = true;
+  // Mapped to SafetyConfigRequest.emergencyAutoAlert.
+  bool _autoFamilyAlert = true;
   bool _consentChecked = false;
   bool _submitting = false;
 
   Future<void> _enable() async {
     if (!_consentChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đồng ý điều kiện sử dụng trước khi tiếp tục')),
+        const SnackBar(
+          content: Text('Vui lòng đồng ý điều kiện sử dụng trước khi tiếp tục'),
+        ),
       );
       return;
     }
@@ -45,14 +47,17 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
       await _safetyService.updateConfig(
         fallDetectionEnabled: true,
         sensitivityLevel: 'MEDIUM',
-        emergencyAutoAlert: _shareLocation,
+        emergencyAutoAlert: _autoFamilyAlert,
       );
       await _safetyService.enableFallDetection();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể bật phát hiện ngã: $e'), backgroundColor: _error),
+          SnackBar(
+            content: Text('Không thể bật phát hiện ngã: $e'),
+            backgroundColor: _error,
+          ),
         );
       }
     } finally {
@@ -97,9 +102,15 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               ),
             ),
             const Expanded(
-              child: Text('Kích hoạt cảm biến',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _primary)),
+              child: Text(
+                'Kích hoạt cảm biến',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _primary,
+                ),
+              ),
             ),
             const SizedBox(
               width: 48,
@@ -121,14 +132,23 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           child: Container(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(color: _primaryContainer.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: const Icon(Icons.share_location, color: _primary, size: 40),
+            decoration: BoxDecoration(
+              color: _primaryContainer.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.sensors, color: _primary, size: 40),
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Phát hiện Ngã & Khẩn cấp',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface)),
+        const Text(
+          'Phát hiện Ngã & Khẩn cấp',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: _onSurface,
+          ),
+        ),
         const SizedBox(height: 8),
         const Text(
           'CareBridge sử dụng cảm biến trên điện thoại để nhận diện các cú ngã mạnh và tự động liên hệ người thân.',
@@ -141,9 +161,15 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(color: _surfaceVariant.withValues(alpha: 0.3)),
-            boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F5A463F),
+                blurRadius: 20,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,11 +178,25 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: _primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: const Icon(Icons.settings_input_antenna, color: _primary, size: 20),
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.settings_input_antenna,
+                      color: _primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  const Text('Cấp quyền truy cập', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _onSurface)),
+                  const Text(
+                    'Cấp quyền truy cập',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -169,38 +209,69 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildInfoTile(Icons.battery_charging_full, 'Thiết bị cần được bật nguồn và sạc đầy')),
+            Expanded(
+              child: _buildInfoTile(
+                Icons.battery_charging_full,
+                'Thiết bị cần được bật nguồn và sạc đầy',
+              ),
+            ),
             const SizedBox(width: 16),
-            Expanded(child: _buildInfoTile(Icons.signal_cellular_alt, 'Kết nối Internet (Wifi/4G) ổn định')),
+            Expanded(
+              child: _buildInfoTile(
+                Icons.signal_cellular_alt,
+                'Kết nối Internet (Wifi/4G) ổn định',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        // Countdown + location sharing
+        // Countdown + emergency alert
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(color: _surfaceVariant.withValues(alpha: 0.3)),
-            boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F5A463F),
+                blurRadius: 20,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(children: const [
-                    Icon(Icons.timer_outlined, color: _primary),
-                    SizedBox(width: 8),
-                    Text('Thời gian chờ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                  ]),
+                  Row(
+                    children: const [
+                      Icon(Icons.timer_outlined, color: _primary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Thời gian chờ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                   DropdownButton<int>(
                     value: _countdownSeconds,
                     underline: const SizedBox.shrink(),
                     items: const [15, 30, 60]
-                        .map((v) => DropdownMenuItem(value: v, child: Text('$v giây')))
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text('$v giây'),
+                          ),
+                        )
                         .toList(),
-                    onChanged: (v) => setState(() => _countdownSeconds = v ?? 30),
+                    onChanged: (v) =>
+                        setState(() => _countdownSeconds = v ?? 30),
                   ),
                 ],
               ),
@@ -208,16 +279,28 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(children: const [
-                    Icon(Icons.location_on_outlined, color: _primary),
-                    SizedBox(width: 8),
-                    Text('Chia sẻ vị trí', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                  ]),
+                  Row(
+                    children: const [
+                      Icon(
+                        Icons.notification_important_outlined,
+                        color: _primary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tự động báo người thân',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                   Switch(
-                    value: _shareLocation,
+                    value: _autoFamilyAlert,
                     activeThumbColor: Colors.white,
                     activeTrackColor: _primary,
-                    onChanged: (v) => setState(() => _shareLocation = v),
+                    onChanged: (v) => setState(() => _autoFamilyAlert = v),
                   ),
                 ],
               ),
@@ -230,7 +313,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: _primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
             border: const Border(left: BorderSide(color: _primary, width: 4)),
           ),
           child: Row(
@@ -241,12 +324,28 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               Expanded(
                 child: RichText(
                   text: const TextSpan(
-                    style: TextStyle(fontSize: 14, color: _onSurfaceVariant, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                      height: 1.4,
+                    ),
                     children: [
-                      TextSpan(text: 'Cảnh báo quan trọng\n', style: TextStyle(fontWeight: FontWeight.bold, color: _onSurface)),
+                      TextSpan(
+                        text: 'Cảnh báo quan trọng\n',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _onSurface,
+                        ),
+                      ),
                       TextSpan(text: 'Tính năng này được thiết kế để hỗ trợ, '),
-                      TextSpan(text: 'đây không phải là chẩn đoán y khoa', style: TextStyle(fontWeight: FontWeight.bold)),
-                      TextSpan(text: ' hoặc hệ thống cứu hộ chuyên nghiệp. Độ chính xác phụ thuộc vào phần cứng thiết bị.'),
+                      TextSpan(
+                        text: 'đây không phải là chẩn đoán y khoa',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text:
+                            ' hoặc hệ thống cứu hộ chuyên nghiệp. Độ chính xác phụ thuộc vào phần cứng thiết bị.',
+                      ),
                     ],
                   ),
                 ),
@@ -291,9 +390,19 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               elevation: 4,
             ),
             icon: _submitting
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : const Icon(Icons.power_settings_new),
-            label: const Text('Bật phát hiện ngã', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Bật phát hiện ngã',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -301,8 +410,13 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           width: double.infinity,
           height: 52,
           child: TextButton(
-            onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
-            child: const Text('Để sau', style: TextStyle(color: _onSurfaceVariant, fontSize: 16)),
+            onPressed: _submitting
+                ? null
+                : () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Để sau',
+              style: TextStyle(color: _onSurfaceVariant, fontSize: 16),
+            ),
           ),
         ),
       ],
@@ -314,16 +428,25 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: _surfaceVariant.withValues(alpha: 0.3)),
-        boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: _primary),
           const SizedBox(height: 8),
-          Text(text, style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -340,7 +463,12 @@ class _PermissionRow extends StatelessWidget {
       children: [
         const Icon(Icons.check_circle, color: Color(0xFF845143), size: 18),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF524440)))),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF524440)),
+          ),
+        ),
       ],
     );
   }

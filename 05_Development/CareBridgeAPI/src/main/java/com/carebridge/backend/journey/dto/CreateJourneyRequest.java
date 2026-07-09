@@ -15,6 +15,8 @@ public class CreateJourneyRequest {
     @NotNull
     private LocalDate startDate;
 
+    private LocalDate lastMenstrualDate;
+
     private LocalDate estimatedDueDate;
 
     private String notes;

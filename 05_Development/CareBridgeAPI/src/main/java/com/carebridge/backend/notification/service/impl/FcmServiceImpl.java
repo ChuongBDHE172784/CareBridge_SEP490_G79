@@ -1,5 +1,6 @@
 package com.carebridge.backend.notification.service.impl;
 
+import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.notification.service.FcmService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -26,5 +27,17 @@ public class FcmServiceImpl implements FcmService {
     public int sendToTokens(List<String> fcmTokens, String title, String body) {
         log.info("[FCM-STUB] Would send to {} token(s) title='{}' body='{}'", fcmTokens.size(), title, body);
         return 0;
+    }
+
+    @Override
+    public FcmDeliveryResult sendWithRetry(String fcmToken, String title, String body, int maxAttempts) {
+        int attempts = Math.max(1, maxAttempts);
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            String messageId = sendToToken(fcmToken, title, body);
+            if (messageId != null && !messageId.isBlank()) {
+                return FcmDeliveryResult.success(messageId, attempt);
+            }
+        }
+        return FcmDeliveryResult.failed("FCM_SEND_FAILED", attempts);
     }
 }

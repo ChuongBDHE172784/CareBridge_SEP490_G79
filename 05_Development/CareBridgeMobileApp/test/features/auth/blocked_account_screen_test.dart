@@ -20,8 +20,14 @@ void main() {
       await tester.pumpWidget(_wrap(const BlockedAccountScreen()));
       await tester.pump();
 
-      expect(find.text('Tài khoản bị vô hiệu hoá'), findsOneWidget);
-      expect(find.text('Quay lại đăng nhập'), findsOneWidget);
+      expect(find.text('Tài khoản bị hạn chế'), findsOneWidget);
+      expect(
+        find.text(
+          'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ đội hỗ trợ để được giải quyết.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Quay lại màn hình đăng nhập'), findsOneWidget);
     });
 
     testWidgets('shows locked title and message when reason is ACCOUNT_LOCKED', (tester) async {
@@ -31,8 +37,14 @@ void main() {
       await tester.pumpWidget(_wrap(const BlockedAccountScreen()));
       await tester.pump();
 
-      expect(find.text('Tài khoản bị khoá tạm thời'), findsOneWidget);
-      expect(find.text('Quay lại đăng nhập'), findsOneWidget);
+      expect(find.text('Tài khoản bị hạn chế'), findsOneWidget);
+      expect(
+        find.text(
+          'Tài khoản của bạn tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Quay lại màn hình đăng nhập'), findsOneWidget);
     });
 
     testWidgets('clearBlockedReason clears the blocked state', (tester) async {

@@ -1,11 +1,16 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../auth/services/auth_service.dart';
 import '../models/journey_model.dart';
 import '../services/journey_service.dart';
-import '../../../core/network/api_client.dart';
 
-/// CB-007 — Mother Journey Setup (UC-22)
-/// Step 1 of 3 onboarding flow. User selects their maternal stage and optionally
-/// enters date info. Calls POST /api/v1/journeys on submit.
+/// CB-007 - Mother Journey Setup (UC-22)
+/// Pregnancy dating wizard based on the setup mother journey screenflow.
 class JourneySetupScreen extends StatefulWidget {
   const JourneySetupScreen({super.key});
 
@@ -13,172 +18,342 @@ class JourneySetupScreen extends StatefulWidget {
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
 }
 
-enum _Stage { prePregnancy, pregnancy, postpartum }
+enum _SetupStep {
+  method,
+  lmpDate,
+  conceptionDate,
+  gestationalAge,
+  dueDate,
+  cycleLength,
+  obstetricResult,
+  fetalAgeResult,
+  dueDateResult,
+  loading,
+}
+
+enum _DatingMethod { lmp, conception, gestationalAge, dueDate }
 
 class _JourneySetupScreenState extends State<JourneySetupScreen> {
-  static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _outline = Color(0xFF84736F);
-  static const _tertiary = Color(0xFF625D59);
-  static const _activeCardBorder = Color(0xFFC98C7B);
-  static const _activeCardBg = Color(0x1AC98C7B);
+  static const _primary = Color(0xFFC98C7B);
+  static const _primaryDark = Color(0xFF845143);
+  static const _canvas = Color(0xFFF6F1EC);
+  static const _surface = Colors.white;
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _text = Color(0xFF5A463F);
+  static const _muted = Color(0xFF9C857C);
+  static const _border = Color(0xFFE8DDD6);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
-  _Stage? _selectedStage;
-  DateTime? _dueDate;
+  final _service = JourneyService();
+  final List<_SetupStep> _history = [];
+
+  _SetupStep _step = _SetupStep.method;
+  _DatingMethod? _selectedMethod;
   DateTime? _lmpDate;
-  DateTime? _babyBirthDate;
+  DateTime? _conceptionDate;
+  DateTime? _dueDate;
+  int _gestationalWeeks = 4;
+  int _gestationalDays = 0;
+  int _cycleLength = 28;
+  bool _cycleUnknown = false;
   bool _loading = false;
   String? _error;
 
-  final _service = JourneyService();
+  DateTime get _today {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
-  bool get _canSubmit => _selectedStage != null;
+  int get _effectiveCycleLength => _cycleUnknown ? 28 : _cycleLength;
 
-  String _formatDate(DateTime date) {
+  int get _enteredGestationalAgeDays =>
+      (_gestationalWeeks * 7) + _gestationalDays;
+
+  DateTime? get _calculatedDueDate {
+    switch (_selectedMethod) {
+      case _DatingMethod.lmp:
+        final lmp = _lmpDate;
+        if (lmp == null) return null;
+        return lmp.add(Duration(days: 280 + (_effectiveCycleLength - 28)));
+      case _DatingMethod.conception:
+        final conception = _conceptionDate;
+        if (conception == null) return null;
+        return conception.add(const Duration(days: 266));
+      case _DatingMethod.gestationalAge:
+        return _today.add(Duration(days: 280 - _enteredGestationalAgeDays));
+      case _DatingMethod.dueDate:
+        return _dueDate;
+      case null:
+        return null;
+    }
+  }
+
+  int get _obstetricAgeDays {
+    final dueDate = _calculatedDueDate;
+    if (dueDate == null) return 0;
+    final age = 280 - dueDate.difference(_today).inDays;
+    return age.clamp(0, 294).toInt();
+  }
+
+  int get _fetalAgeDays => (_obstetricAgeDays - 14).clamp(0, 280).toInt();
+
+  bool get _canContinue {
+    if (_loading) return false;
+    switch (_step) {
+      case _SetupStep.method:
+        return _selectedMethod != null;
+      case _SetupStep.lmpDate:
+        return _lmpDate != null;
+      case _SetupStep.conceptionDate:
+        return _conceptionDate != null;
+      case _SetupStep.dueDate:
+        return _dueDate != null;
+      case _SetupStep.gestationalAge:
+        return _enteredGestationalAgeDays > 0 &&
+            _enteredGestationalAgeDays <= 294;
+      case _SetupStep.cycleLength:
+      case _SetupStep.obstetricResult:
+      case _SetupStep.fetalAgeResult:
+      case _SetupStep.dueDateResult:
+        return true;
+      case _SetupStep.loading:
+        return false;
+    }
+  }
+
+  int get _progressIndex {
+    const order = [
+      _SetupStep.method,
+      _SetupStep.lmpDate,
+      _SetupStep.cycleLength,
+      _SetupStep.obstetricResult,
+      _SetupStep.fetalAgeResult,
+      _SetupStep.dueDateResult,
+      _SetupStep.loading,
+    ];
+    switch (_step) {
+      case _SetupStep.conceptionDate:
+      case _SetupStep.gestationalAge:
+      case _SetupStep.dueDate:
+        return 2;
+      default:
+        return order.indexOf(_step) + 1;
+    }
+  }
+
+  double get _progress => (_progressIndex / 7).clamp(0.12, 1.0);
+
+  String _formatApiDate(DateTime date) {
     final y = date.year.toString().padLeft(4, '0');
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
   }
 
-  String _displayDate(DateTime date) {
-    final d = date.day.toString().padLeft(2, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    return '$d/$m/${date.year}';
+  String _formatDisplayDate(DateTime date) =>
+      '${date.day} tháng ${date.month}, ${date.year}';
+
+  String _sourceDescription() {
+    switch (_selectedMethod) {
+      case _DatingMethod.lmp:
+        return 'được tính từ ngày bắt đầu kỳ kinh cuối cùng';
+      case _DatingMethod.conception:
+        return 'được xác định từ ngày thụ tinh';
+      case _DatingMethod.gestationalAge:
+        return 'được tính từ tuổi thai bạn đã nhập';
+      case _DatingMethod.dueDate:
+        return 'được tính từ ngày dự sinh bác sĩ đã cung cấp';
+      case null:
+        return 'được CareBridge ước tính cho hành trình của bạn';
+    }
   }
 
-  DateTime _dueDateFromLmp(DateTime lmp) => lmp.add(const Duration(days: 280));
-
-  Future<void> _pickDate({
-    required DateTime? current,
-    required DateTime firstDate,
-    required DateTime lastDate,
-    required ValueChanged<DateTime> onPicked,
-  }) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: current ?? DateTime.now(),
-      firstDate: firstDate,
-      lastDate: lastDate,
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: _primaryContainer,
-            onPrimary: Colors.white,
-            surface: _canvas,
-            onSurface: _onSurface,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null) onPicked(picked);
+  String _notes() {
+    final parts = <String>[
+      'Setup source: ${_selectedMethod?.name ?? 'unknown'}',
+      'Cycle length: ${_cycleUnknown ? 'unknown' : _cycleLength}',
+    ];
+    if (_lmpDate != null) parts.add('LMP: ${_formatApiDate(_lmpDate!)}');
+    if (_conceptionDate != null) {
+      parts.add('Conception: ${_formatApiDate(_conceptionDate!)}');
+    }
+    if (_dueDate != null) parts.add('Doctor EDD: ${_formatApiDate(_dueDate!)}');
+    if (_selectedMethod == _DatingMethod.gestationalAge) {
+      parts.add('Gestational age: ${_gestationalWeeks}w${_gestationalDays}d');
+    }
+    return parts.join('; ');
   }
 
-  Future<void> _submit() async {
-    if (!_canSubmit) return;
-    setState(() { _loading = true; _error = null; });
-    try {
-      final today = _formatDate(DateTime.now());
-      late CreateJourneyRequest req;
-      switch (_selectedStage!) {
-        case _Stage.prePregnancy:
-          req = CreateJourneyRequest(journeyType: JourneyType.prePregnancy, startDate: today);
-        case _Stage.pregnancy:
-          String? dueDate;
-          if (_dueDate != null) {
-            dueDate = _formatDate(_dueDate!);
-          } else if (_lmpDate != null) {
-            dueDate = _formatDate(_dueDateFromLmp(_lmpDate!));
-          }
-          req = CreateJourneyRequest(
-              journeyType: JourneyType.pregnancy, startDate: today, estimatedDueDate: dueDate);
-        case _Stage.postpartum:
-          final start = _babyBirthDate != null ? _formatDate(_babyBirthDate!) : today;
-          req = CreateJourneyRequest(journeyType: JourneyType.postpartum, startDate: start);
-      }
-      await _service.createJourney(req);
-      if (!mounted) return;
-      // TODO: Navigate to step 2/3 when that screen is available
-      Navigator.of(context).pop();
-    } on ApiException catch (e) {
+  void _goTo(_SetupStep next) {
+    setState(() {
+      _history.add(_step);
+      _step = next;
+      _error = null;
+    });
+  }
+
+  void _handleBack() {
+    if (_loading) return;
+    if (_history.isNotEmpty) {
       setState(() {
+        _step = _history.removeLast();
+        _error = null;
+      });
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
+  void _handleContinue() {
+    if (!_canContinue) return;
+    switch (_step) {
+      case _SetupStep.method:
+        switch (_selectedMethod) {
+          case _DatingMethod.lmp:
+            _goTo(_SetupStep.lmpDate);
+          case _DatingMethod.conception:
+            _goTo(_SetupStep.conceptionDate);
+          case _DatingMethod.gestationalAge:
+            _goTo(_SetupStep.gestationalAge);
+          case _DatingMethod.dueDate:
+            _goTo(_SetupStep.dueDate);
+          case null:
+            break;
+        }
+      case _SetupStep.lmpDate:
+      case _SetupStep.conceptionDate:
+      case _SetupStep.gestationalAge:
+      case _SetupStep.dueDate:
+        _goTo(_SetupStep.cycleLength);
+      case _SetupStep.cycleLength:
+        _goTo(_SetupStep.obstetricResult);
+      case _SetupStep.obstetricResult:
+        _goTo(_SetupStep.fetalAgeResult);
+      case _SetupStep.fetalAgeResult:
+        _goTo(_SetupStep.dueDateResult);
+      case _SetupStep.dueDateResult:
+        unawaited(_submitJourney());
+      case _SetupStep.loading:
+        break;
+    }
+  }
+
+  Future<void> _submitJourney() async {
+    final dueDate = _calculatedDueDate;
+    if (dueDate == null) return;
+    setState(() {
+      _history.add(_step);
+      _step = _SetupStep.loading;
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 650));
+      await _service.createJourney(
+        CreateJourneyRequest(
+          journeyType: JourneyType.pregnancy,
+          startDate: _formatApiDate(_today),
+          lastMenstrualDate: _lmpDate != null
+              ? _formatApiDate(_lmpDate!)
+              : null,
+          estimatedDueDate: _formatApiDate(dueDate),
+          notes: _notes(),
+        ),
+      );
+      await AuthService.instance.refreshSession();
+      if (!mounted) return;
+      context.go('/');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _step = _SetupStep.dueDateResult;
+        _loading = false;
         _error = e.statusCode == 409
             ? 'Bạn đã có một hành trình đang hoạt động.'
             : 'Không thể tạo hành trình. Vui lòng thử lại.';
       });
     } catch (_) {
-      setState(() => _error = 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _step = _SetupStep.dueDateResult;
+        _loading = false;
+        _error = 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildAppBar(),
-                _buildProgressBar(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 160),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 32),
-                        _buildStageCards(),
-                      ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildTopBar(),
+                  _buildProgressBar(),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: SingleChildScrollView(
+                        key: ValueKey(_step),
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 170),
+                        child: _buildStepContent(),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomAction()),
-          ],
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildBottomBar(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildTopBar() {
     return SizedBox(
-      height: 48,
+      height: 56,
       child: Row(
         children: [
+          const SizedBox(width: 8),
           IconButton(
-            onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back),
-            color: _onSurface,
+            onPressed: _loading ? null : _handleBack,
+            icon: const Icon(Icons.arrow_back_rounded),
+            color: _text,
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'BƯỚC 1 / 3',
+              _step == _SetupStep.loading
+                  ? 'ĐANG THIẾT LẬP'
+                  : 'BƯỚC $_progressIndex / 7',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.8,
-                color: _onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+                color: _muted,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          const SizedBox(width: 56),
         ],
       ),
     );
@@ -186,15 +361,15 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   Widget _buildProgressBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(99),
         child: Stack(
           children: [
-            Container(height: 6, color: _surfaceContainerHighest),
+            Container(height: 8, color: _border.withAlpha(150)),
             FractionallySizedBox(
-              widthFactor: 1 / 3,
-              child: Container(height: 6, color: _primaryContainer),
+              widthFactor: _progress,
+              child: Container(height: 8, color: _primary),
             ),
           ],
         ),
@@ -202,293 +377,607 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Thiết lập hành trình',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            color: _primary,
-            letterSpacing: -0.64,
-            height: 1.25,
-          ),
-        ),
-        SizedBox(height: 12),
-        Text(
-          'Chọn giai đoạn hiện tại của bạn để CareBridge có thể cá nhân hóa thông tin chăm sóc tốt nhất.',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            color: _onSurfaceVariant,
-            height: 1.5,
-          ),
-        ),
-      ],
-    );
+  Widget _buildStepContent() {
+    switch (_step) {
+      case _SetupStep.method:
+        return _buildMethodStep();
+      case _SetupStep.lmpDate:
+        return _buildDateStep(
+          title: 'Ngày đầu tiên của chu kỳ',
+          selectedDate: _lmpDate,
+          firstDate: _today.subtract(const Duration(days: 294)),
+          lastDate: _today,
+          onChanged: (date) => setState(() => _lmpDate = date),
+        );
+      case _SetupStep.conceptionDate:
+        return _buildDateStep(
+          title: 'Ngày thụ thai',
+          selectedDate: _conceptionDate,
+          firstDate: _today.subtract(const Duration(days: 280)),
+          lastDate: _today,
+          onChanged: (date) => setState(() => _conceptionDate = date),
+        );
+      case _SetupStep.gestationalAge:
+        return _buildGestationalAgeStep();
+      case _SetupStep.dueDate:
+        return _buildDateStep(
+          title: 'Ngày sinh dự kiến',
+          selectedDate: _dueDate,
+          firstDate: _today.subtract(const Duration(days: 14)),
+          lastDate: _today.add(const Duration(days: 294)),
+          onChanged: (date) => setState(() => _dueDate = date),
+        );
+      case _SetupStep.cycleLength:
+        return _buildCycleLengthStep();
+      case _SetupStep.obstetricResult:
+        return _buildAgeResultStep(
+          title: 'Thời hạn sản khoa của thai kỳ bạn',
+          ageDays: _obstetricAgeDays,
+          highlightWord: 'tuần',
+          notePrefix: 'Thời hạn sản khoa',
+        );
+      case _SetupStep.fetalAgeResult:
+        return _buildAgeResultStep(
+          title: 'Tuổi thai của bạn',
+          ageDays: _fetalAgeDays,
+          highlightWord: 'tuần',
+          notePrefix: 'Tuổi thai của thai nhi',
+        );
+      case _SetupStep.dueDateResult:
+        return _buildDueDateResultStep();
+      case _SetupStep.loading:
+        return _buildLoadingStep();
+    }
   }
 
-  Widget _buildStageCards() {
+  Widget _buildMethodStep() {
     return Column(
-      children: [
-        _StageCard(
-          icon: Icons.favorite,
-          title: 'Chuẩn bị mang thai',
-          subtitle: 'Theo dõi chu kỳ và tối ưu hóa sức khỏe sinh sản',
-          isSelected: _selectedStage == _Stage.prePregnancy,
-          onTap: () => setState(() {
-            _selectedStage = _Stage.prePregnancy;
-            _dueDate = null; _lmpDate = null; _babyBirthDate = null; _error = null;
-          }),
-        ),
-        _buildInlineForm(
-          visible: _selectedStage == _Stage.prePregnancy,
-          child: const Text(
-            'Tuyệt vời! Chúng tôi sẽ chuẩn bị không gian tối ưu cho hành trình sắp tới của bạn.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _StageCard(
-          icon: Icons.pregnant_woman,
-          title: 'Đang mang thai',
-          subtitle: 'Theo dõi thai kỳ, sự phát triển của bé và lịch khám',
-          isSelected: _selectedStage == _Stage.pregnancy,
-          onTap: () => setState(() {
-            _selectedStage = _Stage.pregnancy;
-            _babyBirthDate = null; _error = null;
-          }),
-        ),
-        _buildInlineForm(
-          visible: _selectedStage == _Stage.pregnancy,
-          child: _buildPregnancyFields(),
-        ),
-        const SizedBox(height: 16),
-        _StageCard(
-          icon: Icons.child_care,
-          title: 'Sau sinh',
-          subtitle: 'Chăm sóc bé sơ sinh và phục hồi sức khỏe mẹ',
-          isSelected: _selectedStage == _Stage.postpartum,
-          onTap: () => setState(() {
-            _selectedStage = _Stage.postpartum;
-            _dueDate = null; _lmpDate = null; _error = null;
-          }),
-        ),
-        _buildInlineForm(
-          visible: _selectedStage == _Stage.postpartum,
-          child: _buildPostpartumFields(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInlineForm({required bool visible, required Widget child}) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: visible
-          ? Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _outlineVariant),
-                ),
-                child: child,
-              ),
-            )
-          : const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildPregnancyFields() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Thông tin thai kỳ',
+          'Hãy xác định thời gian mang thai của bạn. Bạn đã biết gì rồi?',
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _primary,
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+            height: 1.22,
           ),
         ),
-        const SizedBox(height: 16),
-        _DateField(
-          label: 'Ngày dự sinh (nếu biết)',
-          icon: Icons.calendar_today,
-          displayValue: _dueDate != null ? _displayDate(_dueDate!) : null,
-          onTap: () => _pickDate(
-            current: _dueDate,
-            firstDate: DateTime.now(),
-            lastDate: DateTime.now().add(const Duration(days: 280)),
-            onPicked: (d) => setState(() { _dueDate = d; _lmpDate = null; }),
+        const SizedBox(height: 34),
+        _MethodCard(
+          title: 'Tôi nhớ ngày đầu tiên của chu kỳ',
+          subtitle: 'CareBridge sẽ tính dự sinh từ kỳ kinh cuối.',
+          icon: Icons.event_note_rounded,
+          selected: _selectedMethod == _DatingMethod.lmp,
+          onTap: () => setState(() => _selectedMethod = _DatingMethod.lmp),
+        ),
+        const SizedBox(height: 14),
+        _MethodCard(
+          title: 'Tôi có thể chỉ định ngày thụ thai',
+          subtitle: 'Phù hợp khi bạn nhớ mốc rụng trứng hoặc IVF.',
+          icon: Icons.favorite_rounded,
+          selected: _selectedMethod == _DatingMethod.conception,
+          onTap: () =>
+              setState(() => _selectedMethod = _DatingMethod.conception),
+        ),
+        const SizedBox(height: 14),
+        _MethodCard(
+          title: 'Tôi đã biết thời gian sản khoa của mình',
+          subtitle: 'Nhập số tuần và số ngày thai hiện tại.',
+          icon: Icons.timeline_rounded,
+          selected: _selectedMethod == _DatingMethod.gestationalAge,
+          onTap: () =>
+              setState(() => _selectedMethod = _DatingMethod.gestationalAge),
+        ),
+        const SizedBox(height: 14),
+        _MethodCard(
+          title: 'Bác sĩ đã nói cho tôi ngày dự sinh dự kiến',
+          subtitle: 'Dùng ngày dự sinh đã được tư vấn.',
+          icon: Icons.medical_information_rounded,
+          selected: _selectedMethod == _DatingMethod.dueDate,
+          onTap: () => setState(() => _selectedMethod = _DatingMethod.dueDate),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateStep({
+    required String title,
+    required DateTime? selectedDate,
+    required DateTime firstDate,
+    required DateTime lastDate,
+    required ValueChanged<DateTime> onChanged,
+  }) {
+    final initial = selectedDate ?? _today.clampDate(firstDate, lastDate);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+            height: 1.22,
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: const [
-            Expanded(child: Divider(color: _outlineVariant)),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                'HOẶC',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
-                  color: _outline,
-                ),
+        const SizedBox(height: 34),
+        Container(
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _border.withAlpha(180)),
+            boxShadow: [
+              BoxShadow(
+                color: _text.withAlpha(16),
+                blurRadius: 32,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 18, 12, 12),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: _primary,
+                onPrimary: Colors.white,
+                surface: _surface,
+                onSurface: _text,
               ),
             ),
-            Expanded(child: Divider(color: _outlineVariant)),
-          ],
+            child: CalendarDatePicker(
+              initialDate: initial,
+              firstDate: firstDate,
+              lastDate: lastDate,
+              onDateChanged: onChanged,
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
-        _DateField(
-          label: 'Ngày đầu kỳ kinh cuối (LMP)',
-          icon: Icons.calendar_month,
-          displayValue: _lmpDate != null ? _displayDate(_lmpDate!) : null,
-          onTap: () => _pickDate(
-            current: _lmpDate,
-            firstDate: DateTime.now().subtract(const Duration(days: 280)),
-            lastDate: DateTime.now(),
-            onPicked: (d) => setState(() { _lmpDate = d; _dueDate = null; }),
+        const SizedBox(height: 20),
+        _InfoPill(
+          icon: Icons.calendar_today_rounded,
+          text: selectedDate == null
+              ? 'Chọn một ngày để tiếp tục'
+              : 'Đã chọn ${_formatDisplayDate(selectedDate)}',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGestationalAgeStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Thai kỳ',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+          ),
+        ),
+        const SizedBox(height: 42),
+        Container(
+          height: 220,
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _border.withAlpha(180)),
+            boxShadow: [
+              BoxShadow(
+                color: _text.withAlpha(16),
+                blurRadius: 32,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _NumberWheel(
+                  min: 0,
+                  max: 42,
+                  value: _gestationalWeeks,
+                  label: 'tuần',
+                  onChanged: (value) =>
+                      setState(() => _gestationalWeeks = value),
+                ),
+              ),
+              Container(width: 1, height: 160, color: _border),
+              Expanded(
+                child: _NumberWheel(
+                  min: 0,
+                  max: 6,
+                  value: _gestationalDays,
+                  label: 'ngày',
+                  onChanged: (value) =>
+                      setState(() => _gestationalDays = value),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _InfoPill(
+          icon: Icons.timeline_rounded,
+          text:
+              'Tuổi thai hiện tại: $_gestationalWeeks tuần và $_gestationalDays ngày',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCycleLengthStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Chu kỳ kinh trung bình',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+            height: 1.22,
+          ),
+        ),
+        const SizedBox(height: 36),
+        Container(
+          height: 220,
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _border.withAlpha(180)),
+            boxShadow: [
+              BoxShadow(
+                color: _text.withAlpha(16),
+                blurRadius: 32,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: _NumberWheel(
+            min: 21,
+            max: 35,
+            value: _cycleLength,
+            label: 'ngày',
+            onChanged: (value) => setState(() {
+              _cycleLength = value;
+              _cycleUnknown = false;
+            }),
+          ),
+        ),
+        const SizedBox(height: 20),
+        TextButton(
+          onPressed: () {
+            setState(() => _cycleUnknown = true);
+            _goTo(_SetupStep.obstetricResult);
+          },
+          child: const Text(
+            'KHÔNG BIẾT',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: _primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        _InfoPill(
+          icon: Icons.lightbulb_rounded,
+          text: _cycleUnknown
+              ? 'CareBridge sẽ dùng chu kỳ chuẩn 28 ngày'
+              : 'Chu kỳ trung bình: $_cycleLength ngày',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeResultStep({
+    required String title,
+    required int ageDays,
+    required String highlightWord,
+    required String notePrefix,
+  }) {
+    final weeks = ageDays ~/ 7;
+    final weekRange = List<int>.generate(
+      5,
+      (index) => (weeks - 2 + index).clamp(1, 42).toInt(),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+            height: 1.22,
+          ),
+        ),
+        const SizedBox(height: 76),
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+              color: _text,
+              height: 1.15,
+            ),
+            children: [
+              TextSpan(
+                text: '$weeks $highlightWord ',
+                style: const TextStyle(color: _primary),
+              ),
+              TextSpan(text: 'và ${ageDays % 7} ngày'),
+            ],
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          _lmpDate != null
-              ? 'Ngày dự sinh ước tính: ${_displayDate(_dueDateFromLmp(_lmpDate!))}'
-              : 'CareBridge sẽ tự động tính toán ngày dự sinh cho bạn.',
+          'đây là tuần thai thứ ${weeks + 1} của bạn',
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 13,
-            color: _onSurfaceVariant,
-            height: 1.4,
+            fontSize: 15,
+            color: _muted,
+            height: 1.5,
           ),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          height: 86,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemBuilder: (context, index) {
+              final week = weekRange[index];
+              final selected = week == weeks;
+              return _WeekBubble(week: week, selected: selected);
+            },
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemCount: weekRange.length,
+          ),
+        ),
+        const SizedBox(height: 28),
+        _InsightCard(
+          icon: Icons.lightbulb_rounded,
+          text: '$notePrefix ${_sourceDescription()}.',
         ),
       ],
     );
   }
 
-  Widget _buildPostpartumFields() {
+  Widget _buildDueDateResultStep() {
+    final dueDate = _calculatedDueDate;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Thông tin bé yêu',
+          'Ngày dự kiến sinh của bạn',
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _primary,
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: _primaryDark,
+            height: 1.22,
           ),
         ),
-        const SizedBox(height: 16),
-        _DateField(
-          label: 'Ngày sinh của bé',
-          icon: Icons.cake,
-          displayValue: _babyBirthDate != null ? _displayDate(_babyBirthDate!) : null,
-          onTap: () => _pickDate(
-            current: _babyBirthDate,
-            firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
-            lastDate: DateTime.now(),
-            onPicked: (d) => setState(() => _babyBirthDate = d),
+        const SizedBox(height: 44),
+        Container(
+          height: 210,
+          decoration: BoxDecoration(
+            color: _surfaceLow,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: _border.withAlpha(160)),
           ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                left: 30,
+                top: 46,
+                child: _Cloud(
+                  width: 92,
+                  height: 38,
+                  color: const Color(0xFF7EA6A0),
+                ),
+              ),
+              Positioned(
+                right: 26,
+                bottom: 44,
+                child: _Cloud(
+                  width: 104,
+                  height: 42,
+                  color: const Color(0xFF7EA6A0),
+                ),
+              ),
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  color: _primary.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.child_care_rounded,
+                  color: _primary,
+                  size: 58,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 34),
+        Text(
+          dueDate == null
+              ? 'Chưa có ngày dự sinh'
+              : _formatDisplayDate(dueDate),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 34,
+            fontWeight: FontWeight.w900,
+            color: _primary,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _InsightCard(
+          icon: Icons.verified_rounded,
+          text:
+              'CareBridge sẽ dùng mốc này để cá nhân hóa nội dung theo tuần thai.',
         ),
       ],
     );
   }
 
-  Widget _buildBottomAction() {
+  Widget _buildLoadingStep() {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.64,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.12, end: 0.96),
+            duration: const Duration(milliseconds: 900),
+            builder: (context, value, child) {
+              return SizedBox(
+                width: 210,
+                height: 210,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 14,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: _border,
+                      color: _primary,
+                    ),
+                    Text(
+                      '${(value * 100).round()}%',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: _primary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 46),
+          const Text(
+            'Tạo chương trình cá nhân...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: _text,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    if (_step == _SetupStep.loading) return const SizedBox.shrink();
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [_canvas, _canvas, Colors.transparent],
-          stops: [0.0, 0.65, 1.0],
+          colors: [_canvas, _canvas, Color(0x00F6F1EC)],
+          stops: [0.0, 0.72, 1.0],
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 44, 24, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_error != null) ...[
             Container(
+              width: double.infinity,
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _errorBg,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Text(
                 _error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 13,
+                  fontSize: 14,
                   color: _errorText,
                   height: 1.4,
                 ),
               ),
             ),
           ],
-          Row(
-            children: const [
-              Icon(Icons.lock, size: 14, color: _tertiary),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Thông tin của bạn được mã hóa và bảo mật an toàn. '
-                  'Chúng tôi sử dụng dữ liệu này để cá nhân hóa nội dung y khoa.',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 11,
-                    color: _tertiary,
-                    height: 1.4,
-                  ),
+          if (_step == _SetupStep.obstetricResult ||
+              _step == _SetupStep.fetalAgeResult ||
+              _step == _SetupStep.dueDateResult) ...[
+            TextButton(
+              onPressed: () => _goTo(_SetupStep.method),
+              child: const Text(
+                'TÍNH LẠI',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: _primary,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 56,
             child: FilledButton(
-              onPressed: _canSubmit && !_loading ? _submit : null,
+              onPressed: _canContinue ? _handleContinue : null,
               style: FilledButton.styleFrom(
-                backgroundColor: _primaryContainer,
+                backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: _primaryContainer.withAlpha(128),
-                disabledForegroundColor: Colors.white.withAlpha(178),
+                disabledBackgroundColor: _primary.withAlpha(115),
                 shape: const StadiumBorder(),
+                elevation: 0,
               ),
-              child: _loading
-                  ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text(
-                      'Bắt đầu hành trình',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              child: Text(
+                _step == _SetupStep.dueDateResult
+                    ? 'Tạo hành trình'
+                    : 'Tiếp theo',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.9,
+                ),
+              ),
             ),
           ),
         ],
@@ -497,115 +986,98 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   }
 }
 
-// ─── Reusable sub-widgets ────────────────────────────────────────────────────
-
-class _StageCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _StageCard({
-    required this.icon,
+class _MethodCard extends StatelessWidget {
+  const _MethodCard({
     required this.title,
     required this.subtitle,
-    required this.isSelected,
+    required this.icon,
+    required this.selected,
     required this.onTap,
   });
 
-  static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _activeCardBorder = Color(0xFFC98C7B);
-  static const _activeCardBg = Color(0x1AC98C7B);
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const _primary = Color(0xFFC98C7B);
+  static const _surface = Colors.white;
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _text = Color(0xFF5A463F);
+  static const _muted = Color(0xFF9C857C);
+  static const _border = Color(0xFFE8DDD6);
 
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 220),
       decoration: BoxDecoration(
-        color: isSelected ? _activeCardBg : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? _activeCardBorder : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: isSelected
-            ? []
-            : [
-                BoxShadow(
-                  color: const Color(0xFF5A463F).withAlpha(15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+        color: selected ? _surfaceLow : _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: selected ? _primary : _border, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: _text.withAlpha(14),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
+                Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: isSelected ? _primary : _surfaceContainerHighest,
+                    color: selected ? _primary : _surfaceLow,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 26,
-                      color: isSelected ? Colors.white : _primary),
+                  child: Icon(icon, color: selected ? Colors.white : _primary),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: _onSurface,
-                            height: 1.4,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: _text,
+                          height: 1.35,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: _onSurfaceVariant,
-                            height: 1.43,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          color: _muted,
+                          height: 1.35,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: isSelected ? 1.0 : 0.0,
-                    child: const Icon(Icons.check_circle,
-                        color: _primaryContainer, size: 24),
+                const SizedBox(width: 10),
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 160),
+                  opacity: selected ? 1 : 0,
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: _primary,
                   ),
                 ),
               ],
@@ -617,75 +1089,302 @@ class _StageCard extends StatelessWidget {
   }
 }
 
-class _DateField extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final String? displayValue;
-  final VoidCallback onTap;
-
-  const _DateField({
+class _NumberWheel extends StatelessWidget {
+  const _NumberWheel({
+    required this.min,
+    required this.max,
+    required this.value,
     required this.label,
-    required this.icon,
-    required this.displayValue,
-    required this.onTap,
+    required this.onChanged,
   });
 
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _outline = Color(0xFF84736F);
+  final int min;
+  final int max;
+  final int value;
+  final String label;
+  final ValueChanged<int> onChanged;
+
+  static const _primary = Color(0xFFC98C7B);
+  static const _text = Color(0xFF5A463F);
+  static const _muted = Color(0xFF9C857C);
+  static const _surfaceLow = Color(0xFFF2EAE4);
 
   @override
   Widget build(BuildContext context) {
-    final hasValue = displayValue != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final values = List<int>.generate(max - min + 1, (index) => min + index);
+    final initialItem = values
+        .indexOf(value)
+        .clamp(0, values.length - 1)
+        .toInt();
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.5,
-            color: _onSurfaceVariant,
+        Container(height: 58, color: _surfaceLow),
+        CupertinoPicker(
+          scrollController: FixedExtentScrollController(
+            initialItem: initialItem,
           ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: hasValue ? _primaryContainer : _outlineVariant,
-                width: hasValue ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    displayValue ?? 'DD/MM/YYYY',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: hasValue ? _onSurface : _outline,
-                      height: 1.5,
+          itemExtent: 58,
+          magnification: 1.12,
+          squeeze: 1.05,
+          useMagnifier: true,
+          selectionOverlay: const SizedBox.shrink(),
+          onSelectedItemChanged: (index) => onChanged(values[index]),
+          children: values
+              .map(
+                (item) => Center(
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _muted,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '$item',
+                          style: TextStyle(
+                            color: item == value
+                                ? _primary
+                                : _text.withAlpha(145),
+                            fontSize: item == value ? 34 : 28,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' $label',
+                          style: TextStyle(
+                            color: item == value ? _primary : _muted,
+                            fontSize: item == value ? 15 : 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                Icon(icon, size: 22, color: _onSurfaceVariant),
-              ],
-            ),
-          ),
+              )
+              .toList(),
         ),
       ],
     );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _text = Color(0xFF5A463F);
+  static const _primary = Color(0xFFC98C7B);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _primary, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _text,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  static const _surface = Colors.white;
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _text = Color(0xFF5A463F);
+  static const _primary = Color(0xFFC98C7B);
+  static const _border = Color(0xFFE8DDD6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 26, 20, 20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _border.withAlpha(180)),
+        boxShadow: [
+          BoxShadow(
+            color: _text.withAlpha(15),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: const BoxDecoration(
+              color: _surfaceLow,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: _primary, size: 26),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _text,
+              height: 1.55,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekBubble extends StatelessWidget {
+  const _WeekBubble({required this.week, required this.selected});
+
+  final int week;
+  final bool selected;
+
+  static const _primary = Color(0xFFC98C7B);
+  static const _text = Color(0xFF5A463F);
+  static const _muted = Color(0xFF9C857C);
+  static const _border = Color(0xFFE8DDD6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 76,
+      height: 76,
+      decoration: BoxDecoration(
+        color: selected ? _primary : Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: selected ? _primary : _border, width: 2),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$week',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: selected ? Colors.white : _text,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'TUẦN',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: selected ? Colors.white : _muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Cloud extends StatelessWidget {
+  const _Cloud({
+    required this.width,
+    required this.height,
+    required this.color,
+  });
+
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            bottom: 0,
+            child: Container(
+              width: width,
+              height: height * 0.58,
+              decoration: BoxDecoration(
+                color: color.withAlpha(70),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          Positioned(
+            left: width * 0.12,
+            bottom: height * 0.18,
+            child: Container(
+              width: height * 0.85,
+              height: height * 0.85,
+              decoration: BoxDecoration(
+                color: color.withAlpha(70),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            left: width * 0.42,
+            bottom: height * 0.12,
+            child: Container(
+              width: height * 0.72,
+              height: height * 0.72,
+              decoration: BoxDecoration(
+                color: color.withAlpha(70),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+extension on DateTime {
+  DateTime clampDate(DateTime min, DateTime max) {
+    if (isBefore(min)) return min;
+    if (isAfter(max)) return max;
+    return this;
   }
 }

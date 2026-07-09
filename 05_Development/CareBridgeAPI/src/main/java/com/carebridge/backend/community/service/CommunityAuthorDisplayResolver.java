@@ -2,8 +2,6 @@ package com.carebridge.backend.community.service;
 
 import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.community.repository.CommunityProfileRepository;
-import com.carebridge.backend.profile.entity.UserProfile;
-import com.carebridge.backend.profile.repository.ProfileRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,15 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 // Cascade priority for the name shown next to a community post/answer:
-// CommunityProfile.displayName (public community profile) -> UserProfile.displayName
-// (private account profile) -> User.name (registration name) -> null (caller applies the
-// final "Người dùng"/"Thành viên" fallback text).
+// CommunityProfile.displayName (public community profile) -> User.name (account full
+// name) -> null (caller applies the final "Người dùng"/"Thành viên" fallback text).
 @Component
 @RequiredArgsConstructor
 public class CommunityAuthorDisplayResolver {
 
     private final CommunityProfileRepository communityProfileRepository;
-    private final ProfileRepository userProfileRepository;
     private final UserRepository userRepository;
 
     public String resolve(UUID authorId) {
@@ -44,12 +40,7 @@ public class CommunityAuthorDisplayResolver {
 
         Set<UUID> missing = missingFrom(ids, names);
         if (!missing.isEmpty()) {
-            userProfileRepository.findAllByUserIdIn(missing).forEach(p -> putIfPresent(names, p.getUserId(), p.getDisplayName()));
-        }
-
-        Set<UUID> stillMissing = missingFrom(ids, names);
-        if (!stillMissing.isEmpty()) {
-            userRepository.findAllById(stillMissing).forEach(u -> putIfPresent(names, u.getId(), u.getName()));
+            userRepository.findAllById(missing).forEach(u -> putIfPresent(names, u.getId(), u.getName()));
         }
 
         return names;

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../models/safety_config_model.dart';
 import '../services/fall_detection_sensor_service.dart';
 import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
 import 'enable_fall_detection_screen.dart';
-import '../../emergency/screens/emergency_map_screen.dart';
+import '../../emergency/screens/emergency_contacts_screen.dart';
+import '../../emergency/services/emergency_service.dart';
 
 /// CB-023 — Safety Monitoring (UC-133..UC-141, UC-176)
 /// Hub screen for fall detection, SOS, and safety event history.
@@ -35,11 +35,13 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
   static const _tertiary = Color(0xFF625D59);
 
   final _safetyService = SafetyService();
+  final _emergencyService = EmergencyService();
   final _fallSensorService = FallDetectionSensorService.instance;
   SafetyConfig? _config;
+  List<SafetyEvent> _events = const [];
   bool _loading = true;
-  // Local-only device permission toggle (no backend field / no sensor
-  // package wired yet) — represents whether motion-sensor access is granted.
+  // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
+  // streams; backend fall detection remains controlled by SafetyConfig.
   bool _imuSensorActive = false;
 
   @override
@@ -52,6 +54,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
     setState(() => _loading = true);
     try {
       final config = await _safetyService.getConfig();
+      final events = await _safetyService.getSafetyEvents();
       if (config.fallDetectionEnabled) {
         await _fallSensorService.start();
       } else {
@@ -60,13 +63,24 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       if (mounted) {
         setState(() {
           _config = config;
+          _events = events;
           _imuSensorActive = _fallSensorService.isRunning;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _config = const SafetyConfig(fallDetectionEnabled: false, sensitivityLevel: 'MEDIUM', emergencyAutoAlert: true));
+      if (mounted) {
+        setState(
+          () => _config = const SafetyConfig(
+            fallDetectionEnabled: false,
+            sensitivityLevel: 'MEDIUM',
+            emergencyAutoAlert: true,
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -97,7 +111,30 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
     } else {
       await _fallSensorService.stop();
     }
-    if (mounted) setState(() => _imuSensorActive = _fallSensorService.isRunning);
+    if (mounted) {
+      setState(() => _imuSensorActive = _fallSensorService.isRunning);
+    }
+  }
+
+  Future<void> _triggerManualEmergency() async {
+    try {
+      await _emergencyService.openFlow(triggerSource: 'MANUAL');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã kích hoạt hỗ trợ khẩn cấp và gửi cảnh báo người thân',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể kích hoạt hỗ trợ khẩn cấp: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -107,7 +144,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       backgroundColor: _surface,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : RefreshIndicator(
                 color: _primaryContainer,
                 onRefresh: _load,
@@ -118,11 +157,22 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                     children: [
                       _buildTopBar(),
                       const SizedBox(height: 16),
-                      const Text('Giám sát an toàn',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface)),
+                      const Text(
+                        'Giám sát an toàn',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      const Text('Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
-                          style: TextStyle(fontSize: 14, color: _onSurfaceVariant)),
+                      const Text(
+                        'Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
                       const SizedBox(height: 24),
@@ -157,15 +207,32 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(color: _surfaceContainerHighest, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: _surfaceContainerHighest,
+              shape: BoxShape.circle,
+            ),
             child: const Center(
-              child: Text('N', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _primary)),
+              child: Text(
+                'N',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _primary,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text('CareBridge',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: _primary, letterSpacing: -0.5)),
+            child: Text(
+              'CareBridge',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+                letterSpacing: -0.5,
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: _primary),
@@ -181,9 +248,15 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(32),
         border: Border.all(color: _surfaceContainer),
-        boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -193,7 +266,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: _primaryContainer.withValues(alpha: 0.2), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: _primaryContainer.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.sensors, color: _primary),
               ),
               const SizedBox(width: 12),
@@ -201,13 +277,33 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Cảm biến IMU', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+                    const Text(
+                      'Cảm biến IMU',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
                     Row(
                       children: [
-                        Container(width: 8, height: 8, decoration: const BoxDecoration(color: _primary, shape: BoxShape.circle)),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: _primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                         const SizedBox(width: 4),
-                        Text(_imuSensorActive ? 'Đang hoạt động' : 'Đã tắt',
-                            style: const TextStyle(fontSize: 14, color: _primary, fontWeight: FontWeight.w500)),
+                        Text(
+                          _imuSensorActive ? 'Đang hoạt động' : 'Đã tắt',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: _primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -225,11 +321,16 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(children: [
-                const Icon(Icons.personal_injury_outlined, color: _tertiary),
-                const SizedBox(width: 8),
-                const Text('Phát hiện ngã (Fall Detection)', style: TextStyle(fontSize: 14, color: _onSurface)),
-              ]),
+              Row(
+                children: [
+                  const Icon(Icons.personal_injury_outlined, color: _tertiary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Phát hiện ngã (Fall Detection)',
+                    style: TextStyle(fontSize: 14, color: _onSurface),
+                  ),
+                ],
+              ),
               Switch(
                 value: fallDetectionEnabled,
                 activeThumbColor: Colors.white,
@@ -252,9 +353,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
             label: 'Gọi khẩn cấp SOS',
             background: _errorContainer,
             foreground: _onErrorContainer,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EmergencyMapScreen()),
-            ),
+            onTap: _triggerManualEmergency,
           ),
         ),
         const SizedBox(width: 16),
@@ -264,10 +363,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
             label: 'Liên hệ người thân',
             background: _secondaryContainer,
             foreground: _onSecondaryContainer,
-            // UC-176 (dedicated emergency contacts) has no backend yet —
-            // reuse the existing Care Groups screen as the closest "người
-            // thân" contact list until that UC is implemented.
-            onTap: () => context.push('/care-groups'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const EmergencyContactsScreen(),
+              ),
+            ),
           ),
         ),
       ],
@@ -275,74 +375,255 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
   }
 
   Widget _buildEventHistory() {
-    // UC-139 (View Safety Event History) has no backend endpoint exposing
-    // ISafetyEventRepository yet — showing mock data pending that work.
-    final events = const [
-      _SafetyEventDisplay(
-        icon: Icons.warning,
-        color: Color(0xFFE8A87C),
-        title: 'Phát hiện chuyển động bất thường',
-        description: 'Hệ thống ghi nhận gia tốc tăng đột ngột. Vui lòng kiểm tra tình trạng bé.',
-        time: '10:45 AM',
-      ),
-      _SafetyEventDisplay(
-        icon: Icons.info,
-        color: Color(0xFFD6C2BD),
-        title: 'Bắt đầu theo dõi giấc ngủ',
-        description: 'Chế độ giám sát ban đêm đã được kích hoạt.',
-        time: '08:00 PM (Hôm qua)',
-      ),
-    ];
+    final eventDisplays = _events.take(5).map(_toEventDisplay).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Lịch sử sự kiện', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
-            TextButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tính năng đang được phát triển')),
+            const Text(
+              'Lịch sử sự kiện',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
               ),
-              child: const Text('Xem tất cả', style: TextStyle(color: _primary, fontWeight: FontWeight.w500)),
+            ),
+            TextButton(
+              onPressed: _load,
+              child: const Text(
+                'Xem tất cả',
+                style: TextStyle(color: _primary, fontWeight: FontWeight.w500),
+              ),
             ),
           ],
         ),
-        ...events.map((e) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(16),
-                border: Border(left: BorderSide(color: e.color, width: 4)),
-                boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(padding: const EdgeInsets.only(top: 2), child: Icon(e.icon, color: e.color, size: 20)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text(e.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface))),
-                            Text(e.time, style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(e.description, style: const TextStyle(fontSize: 14, color: _onSurfaceVariant)),
-                      ],
+        const SizedBox(height: 8),
+        if (eventDisplays.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F5A463F),
+                  blurRadius: 20,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Text(
+              'Chưa có sự kiện an toàn nào được ghi nhận.',
+              style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
+            ),
+          )
+        else
+          ...eventDisplays.map(
+            (e) => InkWell(
+              onTap: e.event == null ? null : () => _showEventActions(e.event!),
+              borderRadius: BorderRadius.circular(28),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border(left: BorderSide(color: e.color, width: 4)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0F5A463F),
+                      blurRadius: 20,
+                      offset: Offset(0, 4),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(e.icon, color: e.color, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  e.title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: _onSurface,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                e.time,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            e.description,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
+          ),
       ],
     );
+  }
+
+  _SafetyEventDisplay _toEventDisplay(SafetyEvent event) {
+    final isOpen = event.status == 'OPEN';
+    final isFalsePositive = event.status == 'FALSE_POSITIVE';
+    final isSafe = event.status == 'CONFIRMED_SAFE';
+    final time = _formatEventTime(event.detectedAt);
+    if (isFalsePositive) {
+      return _SafetyEventDisplay(
+        event: event,
+        icon: Icons.info_outline,
+        color: _surfaceVariant,
+        title: 'Đã báo cáo cảnh báo sai',
+        description: event.notes?.isNotEmpty == true
+            ? event.notes!
+            : 'Sự kiện đã được đánh dấu là phát hiện nhầm.',
+        time: time,
+      );
+    }
+    if (isSafe) {
+      return _SafetyEventDisplay(
+        event: event,
+        icon: Icons.check_circle_outline,
+        color: _primaryContainer,
+        title: 'Đã xác nhận an toàn',
+        description: event.notes?.isNotEmpty == true
+            ? event.notes!
+            : 'Người dùng đã xác nhận không cần hỗ trợ khẩn cấp.',
+        time: time,
+      );
+    }
+    return _SafetyEventDisplay(
+      event: event,
+      icon: isOpen ? Icons.warning_amber_outlined : Icons.emergency_outlined,
+      color: isOpen ? const Color(0xFFE8A87C) : _onErrorContainer,
+      title: event.eventType == 'SUSPECTED_IMPACT'
+          ? 'Phát hiện va chạm nghi ngờ'
+          : 'Phát hiện chuyển động bất thường',
+      description:
+          'Hệ thống ghi nhận gia tốc ${event.magnitude.toStringAsFixed(1)} m/s². Vui lòng kiểm tra tình trạng an toàn.',
+      time: time,
+    );
+  }
+
+  String _formatEventTime(DateTime? value) {
+    if (value == null) return '--:--';
+    final local = value.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _showEventActions(SafetyEvent event) async {
+    if (event.status != 'OPEN') return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Xử lý cảnh báo an toàn',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _EventActionButton(
+                  icon: Icons.check_circle_outline,
+                  label: 'Tôi vẫn an toàn',
+                  onTap: () => _handleEventAction(
+                    event,
+                    () => _safetyService.confirmSafetyCheck(
+                      event.id,
+                      note: 'Người dùng xác nhận an toàn từ ứng dụng.',
+                    ),
+                  ),
+                ),
+                _EventActionButton(
+                  icon: Icons.report_gmailerrorred_outlined,
+                  label: 'Báo cáo phát hiện sai',
+                  onTap: () => _handleEventAction(
+                    event,
+                    () => _safetyService.reportFalsePositive(
+                      event.id,
+                      note: 'Người dùng báo cáo phát hiện sai.',
+                    ),
+                  ),
+                ),
+                _EventActionButton(
+                  icon: Icons.emergency_outlined,
+                  label: 'Gửi cảnh báo khẩn cấp',
+                  color: _onErrorContainer,
+                  onTap: () => _handleEventAction(
+                    event,
+                    () => _safetyService.sendEmergencyAlertForEvent(event.id),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleEventAction(
+    SafetyEvent event,
+    Future<void> Function() action,
+  ) async {
+    Navigator.of(context).pop();
+    try {
+      await action();
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể cập nhật sự kiện: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildPermissionStatus() {
@@ -350,8 +631,14 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -361,8 +648,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Quyền truy cập thiết bị', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                Text('Bluetooth, Vị trí đã cấp quyền', style: TextStyle(fontSize: 12, color: _tertiary)),
+                Text(
+                  'Quyền truy cập thiết bị',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                Text(
+                  'Cảm biến, thông báo đã sẵn sàng',
+                  style: TextStyle(fontSize: 12, color: _tertiary),
+                ),
               ],
             ),
           ),
@@ -374,6 +671,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
 }
 
 class _SafetyEventDisplay {
+  final SafetyEvent? event;
   final IconData icon;
   final Color color;
   final String title;
@@ -381,12 +679,44 @@ class _SafetyEventDisplay {
   final String time;
 
   const _SafetyEventDisplay({
+    this.event,
     required this.icon,
     required this.color,
     required this.title,
     required this.description,
     required this.time,
   });
+}
+
+class _EventActionButton extends StatelessWidget {
+  const _EventActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color = const Color(0xFF845143),
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          minimumSize: const Size.fromHeight(52),
+          shape: const StadiumBorder(),
+        ),
+      ),
+    );
+  }
 }
 
 class _BentoButton extends StatelessWidget {
@@ -408,20 +738,30 @@ class _BentoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(28),
       child: Container(
         height: 120,
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: foreground, size: 32),
             const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center, style: TextStyle(color: foreground, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),

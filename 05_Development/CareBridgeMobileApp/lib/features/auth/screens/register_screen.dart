@@ -5,9 +5,7 @@ import 'otp_verification_screen.dart';
 import 'login_screen.dart';
 
 /// CB-002 — Register Account (UC-01)
-/// Collects name, email/phone, role, password → calls POST /api/v1/auth/register → navigates to OTP screen.
-/// Note: RegisterRequest does not accept 'name'. The name field is collected here for UX
-/// but is updated separately via PUT /api/v1/auth/profile (implemented in CB-111 Edit Profile).
+/// Collects name, email/phone, password → calls POST /api/v1/auth/register → navigates to OTP screen.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -31,19 +29,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
-  String _selectedRole = 'MOTHER';
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _termsAccepted = false;
   bool _isLoading = false;
   String? _errorMessage;
   String? _confirmPasswordError;
-
-  final _roles = const [
-    ('MOTHER', 'Mẹ bầu'),
-    ('FAMILY', 'Người thân'),
-    ('EXPERT', 'Chuyên gia'),
-  ];
 
   @override
   void dispose() {
@@ -61,12 +52,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
 
   Future<void> _submit() async {
+    final name = _nameCtrl.text.trim();
     final identifier = _identifierCtrl.text.trim();
     final password = _passwordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
 
-    if (identifier.isEmpty || password.isEmpty) {
+    if (name.isEmpty || identifier.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
+      return;
+    }
+    if (name.length < 2 || name.length > 120) {
+      setState(() => _errorMessage = 'Họ và tên phải có từ 2 đến 120 ký tự.');
       return;
     }
     if (password != confirmPassword) {
@@ -90,10 +86,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await AuthService.instance.register(
+        name: name,
         email: _isEmailInput ? identifier : null,
         phone: !_isEmailInput ? identifier : null,
         password: password,
-        role: _selectedRole,
       );
       if (!mounted) return;
       Navigator.push(
@@ -273,9 +269,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             hint: '09xx xxx xxx',
             keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 16),
-          // Role selector
-          _buildRoleSelector(),
           const SizedBox(height: 16),
           // Password field
           _buildPasswordInput(
@@ -468,59 +461,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRoleSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Vai trò của bạn',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: _mutedColor,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: _roles.map((role) {
-            final (value, label) = role;
-            final isSelected = _selectedRole == value;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedRole = value),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? _primaryColor : _surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: isSelected
-                        ? _primaryColor
-                        : _borderColor.withValues(alpha: 0.5),
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: isSelected ? Colors.white : _mutedColor,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 

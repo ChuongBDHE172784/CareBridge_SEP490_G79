@@ -1,10 +1,14 @@
 package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
+import com.carebridge.backend.security.dto.request.SelectRoleRequest;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
+import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.mapper.UserMapper;
 import com.carebridge.backend.security.policy.AuthenticationPolicy;
 import com.carebridge.backend.security.policy.PasswordComplexityPolicy;
 import com.carebridge.backend.security.rbac.Role;
@@ -16,6 +20,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,6 +66,7 @@ class AuthServiceRegisterTest {
     void register_IntegrationTest_Email() {
         // Tạo request
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail("test@example.com");
         request.setPhone(null);
         request.setPassword("MyP@ssw0rd123");
@@ -84,6 +90,7 @@ class AuthServiceRegisterTest {
     private final OtpVerificationRepository otpRepoMock = mock(OtpVerificationRepository.class);
     private final PasswordComplexityPolicy passwordComplexityPolicyMock = mock(PasswordComplexityPolicy.class);
     private final PasswordEncoder passwordEncoderMock = mock(PasswordEncoder.class);
+    private final UserMapper userMapperMock = mock(UserMapper.class);
 
     private AuthServiceImpl newUnitAuthService(AuthenticationPolicy authenticationPolicy) {
         AuthServiceImpl svc = new AuthServiceImpl(
@@ -92,7 +99,7 @@ class AuthServiceRegisterTest {
                 otpRepoMock,
                 mock(com.carebridge.backend.audit.service.AuditService.class),
                 mock(com.carebridge.backend.security.jwt.JwtTokenProvider.class),
-                mock(com.carebridge.backend.security.mapper.UserMapper.class),
+                userMapperMock,
                 authenticationPolicy,
                 passwordComplexityPolicyMock,
                 mock(com.carebridge.backend.security.policy.RateLimitPolicy.class),
@@ -108,10 +115,26 @@ class AuthServiceRegisterTest {
 
     private RegisterRequest registerRequest(String email, String phone, String password, Role role) {
         RegisterRequest req = new RegisterRequest();
+        req.setName("Test User");
         req.setEmail(email);
         req.setPhone(phone);
         req.setPassword(password);
         req.setRole(role);
+        return req;
+    }
+
+    private SelectRoleRequest selectRoleRequest(Role role) {
+        SelectRoleRequest req = new SelectRoleRequest();
+        req.setRole(role);
+        return req;
+    }
+
+    private ChangePasswordRequest changePasswordRequest(
+            String oldPassword, String newPassword, String confirmPassword) {
+        ChangePasswordRequest req = new ChangePasswordRequest();
+        req.setOldPassword(oldPassword);
+        req.setNewPassword(newPassword);
+        req.setConfirmPassword(confirmPassword);
         return req;
     }
 
@@ -152,8 +175,35 @@ class AuthServiceRegisterTest {
         // Password must be persisted as a BCrypt hash, never plaintext.
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepositoryMock).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getName()).isEqualTo("Test User");
         assertThat(userCaptor.getValue().getPasswordHash()).isEqualTo("$2a$12$hashedvalue");
         assertThat(userCaptor.getValue().isEnabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-001b: Registration without role persists unassigned account")
+    void register_withoutRole_persistsUnassignedUserAndSendsOtp() {
+        AuthenticationPolicy policy = mock(AuthenticationPolicy.class);
+        AuthServiceImpl svc = newUnitAuthService(policy);
+        when(passwordComplexityPolicyMock.isComplexEnough(anyString())).thenReturn(true);
+        when(policy.resolveSelfRegistrationRole(null)).thenReturn(null);
+        when(userRepositoryMock.existsByEmail("new.user@example.com")).thenReturn(false);
+        when(passwordEncoderMock.encode("MyP@ssw0rd123")).thenReturn("$2a$12$hashedvalue");
+        when(userRepositoryMock.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            if (u.getId() == null) {
+                u.setId(UUID.randomUUID());
+            }
+            return u;
+        });
+        when(otpRepoMock.save(any(OtpVerification.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.register(registerRequest("new.user@example.com", null, "MyP@ssw0rd123", null));
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepositoryMock).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isNull();
+        verify(emailService).sendOtpVerificationEmail(eq("new.user@example.com"), anyString(), anyInt());
     }
 
     @Test
@@ -232,6 +282,112 @@ class AuthServiceRegisterTest {
         inOrder.verify(emailService).sendOtpVerificationEmail(eq("otp.user@example.com"), anyString(), anyInt());
     }
 
+    @Test
+    @DisplayName("AUTH-TC-010: Unassigned account can select allowed self-service role")
+    void selectRole_unassignedUser_assignsSelectedRole() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).build();
+        AuthenticationPolicy policy = mock(AuthenticationPolicy.class);
+        AuthServiceImpl svc = newUnitAuthService(policy);
+        when(userRepositoryMock.findById(userId)).thenReturn(Optional.of(user));
+        when(policy.resolveSelfRegistrationRole(Role.FAMILY)).thenReturn(Role.FAMILY);
+        when(userRepositoryMock.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userMapperMock.toProfileResponse(any(User.class))).thenAnswer(inv -> {
+            User saved = inv.getArgument(0);
+            return UserProfileResponse.builder()
+                    .id(saved.getId())
+                    .role(saved.getRole())
+                    .build();
+        });
+
+        var response = svc.selectRole(userId, selectRoleRequest(Role.FAMILY));
+
+        assertThat(response.getRole()).isEqualTo(Role.FAMILY);
+        verify(userRepositoryMock).save(argThat(saved -> saved.getRole() == Role.FAMILY));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-011: Account with existing role cannot select another role")
+    void selectRole_existingRole_rejected() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).role(Role.MOTHER).build();
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+        when(userRepositoryMock.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> svc.selectRole(userId, selectRoleRequest(Role.EXPERT)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("already been assigned");
+
+        verify(userRepositoryMock, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-007-002: Wrong current password returns AUTH-071")
+    void changePassword_wrongCurrentPassword_returnsAuth071() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).passwordHash("$2a$12$currenthash").build();
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+        when(userRepositoryMock.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoderMock.matches("Wrong@123", user.getPasswordHash())).thenReturn(false);
+
+        assertThatThrownBy(() -> svc.changePassword(
+                userId,
+                changePasswordRequest("Wrong@123", "NewPass@123", "NewPass@123")))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(error -> assertThat(((ValidationException) error).getCode())
+                        .isEqualTo("AUTH-071"));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-007-003: Confirmation mismatch returns AUTH-072")
+    void changePassword_confirmationMismatch_returnsAuth072() {
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+
+        assertThatThrownBy(() -> svc.changePassword(
+                UUID.randomUUID(),
+                changePasswordRequest("Current@123", "NewPass@123", "OtherPass@123")))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(error -> assertThat(((ValidationException) error).getCode())
+                        .isEqualTo("AUTH-072"));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-007-004: Weak new password returns AUTH-073")
+    void changePassword_correctCurrentButWeakNewPassword_returnsAuth073() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).passwordHash("$2a$12$currenthash").build();
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+        when(userRepositoryMock.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoderMock.matches("Current@123", user.getPasswordHash())).thenReturn(true);
+        when(passwordComplexityPolicyMock.isComplexEnough("weakpass1")).thenReturn(false);
+        when(passwordComplexityPolicyMock.getRequirements()).thenReturn("Password is too weak");
+
+        assertThatThrownBy(() -> svc.changePassword(
+                userId,
+                changePasswordRequest("Current@123", "weakpass1", "weakpass1")))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(error -> assertThat(((ValidationException) error).getCode())
+                        .isEqualTo("AUTH-073"));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-007-005: Reusing current password returns AUTH-074")
+    void changePassword_reusedCurrentPassword_returnsAuth074() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).passwordHash("$2a$12$currenthash").build();
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+        when(userRepositoryMock.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoderMock.matches("Current@123", user.getPasswordHash())).thenReturn(true);
+        when(passwordComplexityPolicyMock.isComplexEnough("Current@123")).thenReturn(true);
+
+        assertThatThrownBy(() -> svc.changePassword(
+                userId,
+                changePasswordRequest("Current@123", "Current@123", "Current@123")))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(error -> assertThat(((ValidationException) error).getCode())
+                        .isEqualTo("AUTH-074"));
+    }
+
     // ─── DTO Bean-Validation layer (AUTH-TC-006, 007, 009, 005-null) ───
 
     private static Validator beanValidator() {
@@ -241,6 +397,17 @@ class AuthServiceRegisterTest {
 
     private static boolean hasViolationOn(Set<ConstraintViolation<RegisterRequest>> violations, String field) {
         return violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals(field));
+    }
+
+    @Test
+    @DisplayName("AUTH-TC-005a: Blank full name is rejected")
+    void registerDto_blankName_violation() {
+        RegisterRequest req = registerRequest("valid@test.com", null, "MyP@ssw0rd123", null);
+        req.setName(" ");
+
+        Set<ConstraintViolation<RegisterRequest>> violations = beanValidator().validate(req);
+
+        assertThat(hasViolationOn(violations, "name")).isTrue();
     }
 
     @Test
@@ -260,11 +427,11 @@ class AuthServiceRegisterTest {
     }
 
     @Test
-    @DisplayName("AUTH-TC-005b: Null role rejected by @NotNull")
-    void registerDto_nullRole_violation() {
+    @DisplayName("AUTH-TC-005b: Null role is allowed so onboarding can assign it later")
+    void registerDto_nullRole_allowed() {
         RegisterRequest req = registerRequest("valid@test.com", null, "MyP@ssw0rd123", null);
         Set<ConstraintViolation<RegisterRequest>> violations = beanValidator().validate(req);
-        assertThat(hasViolationOn(violations, "role")).isTrue();
+        assertThat(hasViolationOn(violations, "role")).isFalse();
     }
 
     @Test

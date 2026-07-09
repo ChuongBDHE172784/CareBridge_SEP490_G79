@@ -46,7 +46,12 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     setState(() => _isLoading = true);
     try {
       final profile = await AuthService.instance.getProfile();
-      if (mounted) setState(() { _profile = profile; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -58,7 +63,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       backgroundColor: _bgColor,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : Column(
                 children: [
                   _buildAppBar(),
@@ -84,8 +91,16 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             else
               const SizedBox(width: 48),
             const Expanded(
-              child: Text('Hồ sơ tài khoản', textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor)),
+              child: Text(
+                'Hồ sơ tài khoản',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _primaryColor,
+                ),
+              ),
             ),
             const SizedBox(width: 48),
           ],
@@ -106,11 +121,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           const SizedBox(height: 24),
           _buildMenuCard([
             _menuItem(Icons.person_outline, 'Chỉnh sửa hồ sơ', () async {
-              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
               _loadProfile();
             }),
             _menuItem(Icons.lock_outline, 'Đổi mật khẩu', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+              );
             }),
             _menuItem(Icons.notifications_outlined, 'Cài đặt thông báo', () {
               // TODO: navigate to notification preferences (CB-113)
@@ -119,38 +138,60 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           const SizedBox(height: 16),
           _buildMenuCard([
             _menuItem(Icons.child_care_outlined, 'Hồ sơ bé', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BabyProfilesScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BabyProfilesScreen()),
+              );
             }),
             _menuItem(Icons.group_outlined, 'Nhóm chăm sóc', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CareGroupsScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CareGroupsScreen()),
+              );
             }),
             _menuItem(Icons.folder_outlined, 'Quản lý tệp', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FileManagerScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FileManagerScreen()),
+              );
             }),
           ]),
           const SizedBox(height: 16),
           _buildMenuCard([
             _menuItem(Icons.devices_outlined, 'Phiên đăng nhập', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginSessionsScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LoginSessionsScreen()),
+              );
             }),
             _menuItem(Icons.shield_outlined, 'Quyền riêng tư', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const PrivacySettingsScreen(),
+                ),
+              );
             }),
             _menuItem(Icons.person_off_outlined, 'Vô hiệu hoá tài khoản', () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DeactivateAccountScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DeactivateAccountScreen(),
+                ),
+              );
             }),
           ]),
           if (AuthState.instance.role == 'EXPERT') ...[
             const SizedBox(height: 16),
             _buildMenuCard([
-              _menuItem(Icons.question_answer_outlined, 'Hàng đợi câu hỏi (Expert)', () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ExpertQuestionQueueScreen(
-                    expertName: _profile?.name,
-                    expertAvatarUrl: _profile?.avatarUrl,
-                  ),
-                ));
-              }),
+              _menuItem(
+                Icons.question_answer_outlined,
+                'Hàng đợi câu hỏi (Expert)',
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ExpertQuestionQueueScreen(
+                        expertName: _profile?.name,
+                        expertAvatarUrl: _profile?.avatarUrl,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ]),
           ],
           const SizedBox(height: 16),
@@ -168,14 +209,24 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             CircleAvatar(
               radius: 56,
               backgroundColor: _surfaceContainerLow,
-              backgroundImage: p?.avatarUrl != null ? NetworkImage(p!.avatarUrl!) : null,
-              child: p?.avatarUrl == null ? const Icon(Icons.person, size: 48, color: _primaryContainer) : null,
+              backgroundImage: p?.avatarUrl != null
+                  ? NetworkImage(p!.avatarUrl!)
+                  : null,
+              child: p?.avatarUrl == null
+                  ? const Icon(Icons.person, size: 48, color: _primaryContainer)
+                  : null,
             ),
             Positioned(
-              bottom: 0, right: 0,
+              bottom: 0,
+              right: 0,
               child: Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(color: _primaryContainer, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _primaryContainer,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
                 child: const Icon(Icons.edit, size: 16, color: Colors.white),
               ),
             ),
@@ -185,21 +236,71 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(p?.name ?? 'Người dùng', style: const TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w700, color: _onSurface)),
+            Text(
+              p?.name ?? 'Người dùng',
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
             const SizedBox(width: 4),
-            const Icon(Icons.verified_outlined, color: _primaryContainer, size: 20),
+            const Icon(
+              Icons.verified_outlined,
+              color: _primaryContainer,
+              size: 20,
+            ),
           ],
         ),
         const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.email_outlined,
+              color: _onSurfaceVariant,
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                p?.email?.trim().isNotEmpty == true
+                    ? p!.email!.trim()
+                    : 'Chưa có email',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(color: _surfaceContainerLow, borderRadius: BorderRadius.circular(9999)),
+          decoration: BoxDecoration(
+            color: _surfaceContainerLow,
+            borderRadius: BorderRadius.circular(9999),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.star_outline, color: _primaryColor, size: 16),
               const SizedBox(width: 4),
-              Text('NGƯỜI DÙNG VIP', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6, color: _primaryColor)),
+              Text(
+                'NGƯỜI DÙNG VIP',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                  color: _primaryColor,
+                ),
+              ),
             ],
           ),
         ),
@@ -212,7 +313,13 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color.fromRGBO(90, 70, 63, 0.06), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(children: items),
     );
@@ -227,12 +334,26 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
         child: Row(
           children: [
             Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: _surfaceContainerLow, shape: BoxShape.circle),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _surfaceContainerLow,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: _primaryColor, size: 20),
             ),
             const SizedBox(width: 16),
-            Expanded(child: Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w400, color: _onSurface))),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: _onSurface,
+                ),
+              ),
+            ),
             const Icon(Icons.chevron_right, color: _outlineVariant, size: 20),
           ],
         ),
@@ -245,7 +366,13 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color.fromRGBO(90, 70, 63, 0.06), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: InkWell(
         onTap: () => showLogoutConfirmationSheet(context),
@@ -255,12 +382,24 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           child: Row(
             children: [
               Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: _errorContainer.withValues(alpha: 0.4), shape: BoxShape.circle),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _errorContainer.withValues(alpha: 0.4),
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.logout, color: _errorColor, size: 20),
               ),
               const SizedBox(width: 16),
-              const Text('Đăng xuất', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _errorColor)),
+              const Text(
+                'Đăng xuất',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _errorColor,
+                ),
+              ),
             ],
           ),
         ),

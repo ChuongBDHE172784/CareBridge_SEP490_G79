@@ -96,6 +96,7 @@ class RegistrationIntegrationTest {
         String password = "MyP@ssw0rd123";
 
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail(email);
         request.setPhone(null);
         request.setPassword(password);
@@ -132,6 +133,7 @@ class RegistrationIntegrationTest {
         String password = "MyP@ssw0rd123";
 
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail(null);
         request.setPhone(phone);
         request.setPassword(password);
@@ -157,6 +159,7 @@ class RegistrationIntegrationTest {
     void register_WithWeakPassword_ShouldReturnBadRequest() throws Exception {
         // Given
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail("test@example.com");
         request.setPhone(null);
         request.setPassword("weak");
@@ -175,6 +178,7 @@ class RegistrationIntegrationTest {
         // Given - First registration
         String email = "duplicate@example.com";
         RegisterRequest firstRequest = new RegisterRequest();
+        firstRequest.setName("Test User");
         firstRequest.setEmail(email);
         firstRequest.setPhone(null);
         firstRequest.setPassword("MyP@ssw0rd123");
@@ -186,6 +190,7 @@ class RegistrationIntegrationTest {
 
         // When/Then - Second registration with same email
         RegisterRequest secondRequest = new RegisterRequest();
+        secondRequest.setName("Test User");
         secondRequest.setEmail(email);
         secondRequest.setPhone("+84987654321");
         secondRequest.setPassword("AnotherPass123!");
@@ -201,6 +206,7 @@ class RegistrationIntegrationTest {
     void register_WithInvalidEmailFormat_ShouldReturnBadRequest() throws Exception {
         // Given
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail("invalid-email");
         request.setPhone(null);
         request.setPassword("MyP@ssw0rd123");
@@ -217,6 +223,7 @@ class RegistrationIntegrationTest {
     void register_WithInvalidPhoneFormat_ShouldReturnBadRequest() throws Exception {
         // Given
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail(null);
         request.setPhone("0901234567"); // Not E.164
         request.setPassword("MyP@ssw0rd123");
@@ -233,6 +240,7 @@ class RegistrationIntegrationTest {
     void register_WithNoEmailOrPhone_ShouldReturnBadRequest() throws Exception {
         // Given
         RegisterRequest request = new RegisterRequest();
+        request.setName("Test User");
         request.setEmail(null);
         request.setPhone(null);
         request.setPassword("MyP@ssw0rd123");
@@ -253,6 +261,7 @@ class RegistrationIntegrationTest {
         String email = "verify@example.com";
         String password = "MyP@ssw0rd123";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setEmail(email);
         registerRequest.setPhone(null);
         registerRequest.setPassword(password);
@@ -317,6 +326,7 @@ class RegistrationIntegrationTest {
         // already persisted by register().
         String email = "mixedcase@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setEmail(email);
         registerRequest.setPhone(null);
         registerRequest.setPassword("MyP@ssw0rd123");
@@ -348,6 +358,7 @@ class RegistrationIntegrationTest {
         // Given: Register and get OTP record
         String phone = "+84901234567";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setEmail(null);
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");
@@ -429,6 +440,7 @@ class RegistrationIntegrationTest {
         // Given: Register a user
         String phone = "+84911234567";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setEmail(null);
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");
@@ -493,6 +505,7 @@ class RegistrationIntegrationTest {
     void resendOtp_WithPhoneAndEmail_ShouldRejectWithoutSideEffects() throws Exception {
         String phone = "+84922222222";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
@@ -601,6 +614,7 @@ class RegistrationIntegrationTest {
     void resendOtp_WithMultiplePendingRows_ShouldInvalidateNewestOtp() throws Exception {
         String phone = "+84933333333";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
@@ -653,6 +667,7 @@ class RegistrationIntegrationTest {
         // Given: Register a user
         String phone = "+84955555555";
         RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setName("Test User");
         registerRequest.setEmail(null);
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");

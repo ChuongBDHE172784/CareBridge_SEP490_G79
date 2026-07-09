@@ -10,6 +10,8 @@ const NAV_LINKS = [
   { to: '/moderator', label: 'Kiểm duyệt', icon: 'shield', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
   { to: '/content/dashboard', label: 'Tổng quan CMS', icon: 'article', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/list', label: 'Thư viện', icon: 'folder', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/content/exercises', label: 'Bài tập thai kỳ', icon: 'fitness_center', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
   { to: '/content/faq', label: 'FAQ', icon: 'help', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/checklists', label: 'Checklist', icon: 'checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
   { to: '/content/topics', label: 'Danh mục', icon: 'category', roles: ['MODERATOR', 'CONTENT_ADMIN'] },

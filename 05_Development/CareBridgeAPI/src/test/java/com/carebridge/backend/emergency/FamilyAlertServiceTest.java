@@ -5,6 +5,7 @@ import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.FcmNotificationPort;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
+import com.carebridge.backend.emergency.service.SmsFallbackPort;
 import com.carebridge.backend.emergency.service.impl.FamilyAlertService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -35,6 +37,9 @@ class FamilyAlertServiceTest {
 
     @Mock
     private LocationConsentPort locationConsentPort;
+
+    @Mock
+    private SmsFallbackPort smsFallbackPort;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -87,7 +92,35 @@ class FamilyAlertServiceTest {
 
         familyAlertService.sendAlert(eventWithLocation);
 
-        verify(fcmNotificationPort).sendBatch(anyList(),
+        verify(fcmNotificationPort).sendBatch(
+                argThat(tokens -> tokens.size() == 2 && tokens.containsAll(List.of("token-001", "token-002"))),
                 argThat(payload -> payload.containsKey("latitude") && payload.containsKey("longitude")));
+    }
+
+    @Test
+    void sendAlert_fcmFailure_shouldTriggerSmsFallbackPlaceholder() {
+        when(familyAlertLogRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(true);
+        when(familyMemberPort.getFamilyFcmTokens(USER_ID)).thenReturn(List.of("token-001", "token-002"));
+        doThrow(new RuntimeException("FCM unavailable")).when(fcmNotificationPort).sendBatch(anyList(), any());
+
+        familyAlertService.sendAlert(EmergencyTestFactory.makeEmergencySessionOpenedEvent());
+
+        verify(smsFallbackPort).sendFallback(eq(USER_ID), eq(SESSION_ID), any());
+        verify(familyAlertLogRepository).save(any());
+    }
+
+    @Test
+    void sendAlert_payload_shouldContainUc161SafetyFields() {
+        when(familyAlertLogRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(false);
+        when(familyMemberPort.getFamilyFcmTokens(USER_ID)).thenReturn(List.of("token-001"));
+
+        familyAlertService.sendAlert(EmergencyTestFactory.makeEmergencySessionOpenedEvent());
+
+        verify(fcmNotificationPort).sendBatch(anyList(), argThat((Map<String, String> payload) ->
+                SESSION_ID.toString().equals(payload.get("safetyEventId"))
+                        && USER_ID.toString().equals(payload.get("userId"))
+                        && payload.containsKey("detectedAt")));
     }
 }

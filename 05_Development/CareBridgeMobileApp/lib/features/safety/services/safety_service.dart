@@ -23,7 +23,10 @@ class SafetyService {
 
   // UC-134: idempotent — returns existing ACTIVE session if already enabled.
   Future<ImuMonitoringSession> enableFallDetection() async {
-    final data = await apiPost('/api/v1/safety/fall-detection/enable', const {});
+    final data = await apiPost(
+      '/api/v1/safety/fall-detection/enable',
+      const {},
+    );
     return ImuMonitoringSession.fromJson(data['data'] as Map<String, dynamic>);
   }
 
@@ -51,5 +54,38 @@ class SafetyService {
       'gyroscopeZ': gyroscopeZ,
       'timestamp': timestamp.toUtc().toIso8601String(),
     });
+  }
+
+  Future<List<SafetyEvent>> getSafetyEvents({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final data = await apiGet('/api/v1/safety/events?page=$page&size=$size');
+    final items = data['data'] as List<dynamic>? ?? const [];
+    return items
+        .map((item) => SafetyEvent.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<SafetyEvent> confirmSafetyCheck(String eventId, {String? note}) async {
+    final data = await apiPost('/api/v1/safety/events/$eventId/confirm', {
+      'note': note,
+    });
+    return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<SafetyEvent> reportFalsePositive(
+    String eventId, {
+    String? note,
+  }) async {
+    final data = await apiPost(
+      '/api/v1/safety/events/$eventId/false-positive',
+      {'note': note},
+    );
+    return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> sendEmergencyAlertForEvent(String eventId) async {
+    await apiPost('/api/v1/safety/events/$eventId/emergency-alert', const {});
   }
 }

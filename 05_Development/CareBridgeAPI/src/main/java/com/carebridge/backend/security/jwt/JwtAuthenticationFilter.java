@@ -2,6 +2,8 @@ package com.carebridge.backend.security.jwt;
 
 import com.carebridge.backend.common.constants.SecurityConstants;
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.identity.entity.UserSession;
+import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -30,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final ObjectProvider<UserSessionRepository> userSessionRepositoryProvider;
 
     /** Skip account-state check for public auth endpoints that never require a session. */
     @Override
@@ -89,6 +93,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         UUID sessionId = jwtTokenProvider.getSessionId(token);
+        UserSessionRepository sessionRepository = userSessionRepositoryProvider.getIfAvailable();
+        if (sessionId != null && sessionRepository != null) {
+            Optional<UserSession> sessionOpt = sessionRepository.findById(sessionId);
+            if (sessionOpt.isEmpty() || !isActiveSession(sessionOpt.get(), userId)) {
+                writeError(request, response, 401, "SESSION_REVOKED",
+                        "This session is no longer active");
+                return;
+            }
+        }
+
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(
                 subject,
                 null,
@@ -101,6 +115,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.setContext(securityContext);
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isActiveSession(UserSession session, UUID userId) {
+        return userId.equals(session.getUserId())
+                && !session.isRevoked()
+                && "active".equals(session.getStatus())
+                && session.getExpiresAt() != null
+                && session.getExpiresAt().isAfter(Instant.now());
     }
 
     private String resolveToken(HttpServletRequest request) {

@@ -6,6 +6,7 @@ import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.when;
 class JourneyDashboardServiceImplTest {
 
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
 
     private JourneyServiceImpl journeyService;
@@ -39,7 +41,7 @@ class JourneyDashboardServiceImplTest {
     void setUp() {
         // Fixed clock = 2026-06-26 00:00 UTC (matches JourneyDashboardTestFactory.TODAY)
         Clock fixedClock = Clock.fixed(Instant.parse("2026-06-26T00:00:00Z"), ZoneOffset.UTC);
-        journeyService = new JourneyServiceImpl(journeyRepository, auditService, fixedClock);
+        journeyService = new JourneyServiceImpl(journeyRepository, userRepository, auditService, fixedClock);
     }
 
     /** TC-024-001: Active PREGNANCY journey → ACTIVE_PREGNANCY with week + trimester calculated. */

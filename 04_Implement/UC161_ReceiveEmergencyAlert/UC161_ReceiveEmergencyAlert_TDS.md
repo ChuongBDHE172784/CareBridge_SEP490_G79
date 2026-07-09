@@ -4,15 +4,15 @@
 | Field              | Value                                          |
 |--------------------|------------------------------------------------|
 | **Document ID**    | `CB-NOTIF-IMP-004`                             |
-| **Version**        | `1.0`                                          |
+| **Version**        | `1.1`                                          |
 | **Date**           | `2026-06-26`                                   |
-| **Status**         | `Approved`                                     |
+| **Status**         | `Implemented (service-level)`                  |
 | **Document Owner** | `PhuongNT`                                     |
 | **Author**         | `AI Agent`                                     |
 | **Reviewed by**    | `[Tech Lead]`                                  |
 | **DPO Sign-off**   | `[ ] Pending`                                  |
 | **Approved by**    | `[Principal Architect]`                        |
-| **Last Review**    | `2026-06-26`                                   |
+| **Last Review**    | `2026-07-07`                                   |
 | **Based on EDS**   | `v2.0`                                         |
 
 > **PRIORITY:** 🔴 CRITICAL — Emergency alert involves user safety. This module requires Principal Architect and DPO sign-off before implementation.
@@ -1028,3 +1028,13 @@ CRITICAL: Đây là safety-critical module — failure phải fail-safe (SMS fal
 | TrackAsia API              | https://maps.track-asia.com/                        |
 | CareBridge CLAUDE.md       | `d:\SEP490\CareBridge_SEP490_G79\CLAUDE.md`         |
 | UC-158 TDS                 | `04_Implement/UC158_ReceiveReminderNotification/`   |
+
+### C. Implementation Evidence
+
+| Field | Value |
+|-------|-------|
+| Implementation Date | `2026-07-07` |
+| Code Evidence | `FamilyAlertService`, `SmsFallbackPort`, `SmsFallbackPortAdapter` |
+| Test Evidence | `mvn test -Dtest=ReminderNotificationServiceTest,CommunityReplyNotificationServiceTest,ConsultationNotificationServiceTest,FamilyAlertServiceTest` |
+| Result | `22 tests run, 0 failures, 0 errors` |
+| Scope Note | Service-level UC161 emergency alert receive path is implemented via existing emergency family-alert flow; public safety-event endpoint/integration scope remains governed by DPO/Principal Architect sign-off. |

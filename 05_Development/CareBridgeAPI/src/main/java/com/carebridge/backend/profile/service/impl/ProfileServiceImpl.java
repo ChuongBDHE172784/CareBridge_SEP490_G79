@@ -9,6 +9,8 @@ import com.carebridge.backend.profile.dto.UpdateProfileRequest;
 import com.carebridge.backend.profile.entity.UserProfile;
 import com.carebridge.backend.profile.repository.ProfileRepository;
 import com.carebridge.backend.profile.service.ProfileService;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileServiceImpl implements ProfileService {
 
     private final ProfileRepository profileRepository;
+    private final UserRepository userRepository;
     private final AuditService auditService;
 
     @Override
@@ -34,10 +37,13 @@ public class ProfileServiceImpl implements ProfileService {
 
         UserProfile profile = profileRepository.findByUserId(authenticatedUserId)
                 .orElse(UserProfile.builder().userId(authenticatedUserId).build());
+        User user = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // C2: sanitize displayName (strip HTML tags)
         if (request.displayName() != null) {
-            profile.setDisplayName(sanitizeDisplayName(request.displayName()));
+            user.setName(sanitizeDisplayName(request.displayName()));
+            userRepository.save(user);
         }
         if (request.avatarUrl() != null) {
             profile.setAvatarUrl(request.avatarUrl());
@@ -64,7 +70,7 @@ public class ProfileServiceImpl implements ProfileService {
         );
 
         log.info("Profile updated: userId={}", authenticatedUserId);
-        return toResponse(saved);
+        return toResponse(saved, user.getName());
     }
 
     @Override
@@ -72,7 +78,9 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse getProfile(UUID authenticatedUserId) {
         UserProfile profile = profileRepository.findByUserId(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
-        return toResponse(profile);
+        User user = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return toResponse(profile, user.getName());
     }
 
     private void validateDateOfBirth(LocalDate dob) {
@@ -92,10 +100,10 @@ public class ProfileServiceImpl implements ProfileService {
         return name.replaceAll("<[^>]*>", "").trim();
     }
 
-    private ProfileResponse toResponse(UserProfile profile) {
+    private ProfileResponse toResponse(UserProfile profile, String displayName) {
         return new ProfileResponse(
                 profile.getUserId(),
-                profile.getDisplayName(),
+                displayName,
                 profile.getAvatarUrl(),
                 profile.getPhoneNumber(),
                 profile.getDateOfBirth(),

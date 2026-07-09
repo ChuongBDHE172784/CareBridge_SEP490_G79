@@ -4,15 +4,15 @@
 | Field                  | Value                                               |
 |------------------------|-----------------------------------------------------|
 | **Document ID**        | `CB-NOTIF-TEST-004`                                 |
-| **Version**            | `1.0`                                               |
+| **Version**            | `1.1`                                               |
 | **Date**               | `2026-06-26`                                        |
-| **Status**             | `Approved`                                          |
+| **Status**             | `Implemented (service-level)`                       |
 | **Document Owner**     | `PhuongNT`                                          |
 | **Author**             | `AI Agent`                                          |
 | **Reviewed by**        | `[Tech Lead]`                                       |
 | **DPO Sign-off**       | `[ ] Pending`                                       |
 | **Approved by**        | `[Principal Architect]`                             |
-| **Last Review**        | `2026-06-26`                                        |
+| **Last Review**        | `2026-07-07`                                        |
 | **Based on EDS**       | `v2.0`                                              |
 | **TDS Reference**      | `CB-NOTIF-IMP-004`                                  |
 | **Standard**           | `ISO/IEC/IEEE 29119-3:2021`                         |
@@ -514,12 +514,12 @@ WHERE safety_event_id = 'safety-event-uuid';
 
 | TC ID              | Test File                                                    | 🔴 RED | 🟢 GREEN | 🔵 REFACTOR                      |
 |--------------------|--------------------------------------------------------------|--------|----------|----------------------------------|
-| `EMERG-TC-001`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | Extract `broadcastToMember()`    |
-| `EMERG-TC-002`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | Extract `triggerFallback()`      |
+| `EMERG-TC-001`     | `...FamilyAlertServiceTest.java`                             | `[x]`  | `[x] 2026-07-07` | Existing batch broadcast verifies all resolved FCM tokens |
+| `EMERG-TC-002`     | `...FamilyAlertServiceTest.java`                             | `[x]`  | `[x] 2026-07-07` | SMS fallback placeholder triggered on FCM failure |
 | `EMERG-TC-003`     | `...FcmHighPriorityServiceImplTest.java`                     | `[ ]`  | —        | Extract `buildHighPriorityMessage()` |
 | `EMERG-TC-004`     | `...SafetyEventControllerTest.java`                          | `[ ]`  | —        | —                                |
 | `EMERG-TC-005`     | `...SafetyEventControllerTest.java`                          | `[ ]`  | —        | —                                |
-| `EMERG-TC-006`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | Extract `buildPayload()` pure fn |
+| `EMERG-TC-006`     | `...FamilyAlertServiceTest.java`                             | `[x]`  | `[x] 2026-07-07` | Payload includes UC161 safety fields and location when consented |
 | `EMERG-TC-007`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | CRITICAL — no shortcuts          |
 | `EMERG-TC-008`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | —                                |
 | `EMERG-TC-009`     | `...EmergencyAlertServiceTest.java`                          | `[ ]`  | —        | Extract `determineAlertStatus()` |
@@ -623,7 +623,18 @@ curl -X GET https://[host]/actuator/health
 
 ---
 
-## 8. CASE 2.0 Anti-Pattern Detection
+## 8. Implementation Evidence
+
+| Field | Value |
+|-------|-------|
+| Implementation Date | `2026-07-07` |
+| Test Command | `mvn test -Dtest=ReminderNotificationServiceTest,CommunityReplyNotificationServiceTest,ConsultationNotificationServiceTest,FamilyAlertServiceTest` |
+| Targeted Result | `22 tests run, 0 failures, 0 errors` |
+| Scope Note | UC161 service-level receive/broadcast path is green. Controller UUID/idempotency, APNs high-priority verification, partial alert status FSM, and Testcontainers integration remain outside this implementation pass pending critical-module review gates. |
+
+---
+
+## 9. CASE 2.0 Anti-Pattern Detection
 
 | AP-ID     | Anti-Pattern           | Dấu hiệu trong Test Spec                        | Check | Gate chặn |
 |-----------|------------------------|-------------------------------------------------|-------|-----------|
