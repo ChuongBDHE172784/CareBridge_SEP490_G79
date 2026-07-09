@@ -50,6 +50,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityAnswerLikeRepository answerLikeRepository;
     private final CommunityQuestionLikeRepository questionLikeRepository;
     private final CommunityProfileRepository profileRepository;
+    private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
@@ -77,6 +78,11 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
             questionAuthorDisplay = profileRepository.findByUserId(question.getAuthorId())
                     .map(CommunityProfile::getDisplayName)
                     .orElse(null);
+            if (questionAuthorDisplay == null || questionAuthorDisplay.isBlank()) {
+                questionAuthorDisplay = userProfileRepository.findByUserId(question.getAuthorId())
+                        .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
+                        .orElse(null);
+            }
         }
 
         List<CommunityAnswer> answerEntities = answerRepository
@@ -93,6 +99,18 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
                         CommunityProfile::getDisplayName,
                         (existing, replacement) -> existing
                 ));
+
+        // Fallback to UserProfile if CommunityProfile missing or name blank
+        Set<UUID> missingAnswerAuthorIds = answerAuthorIds.stream()
+                .filter(id -> !answerAuthorNames.containsKey(id) || answerAuthorNames.get(id) == null || answerAuthorNames.get(id).isBlank())
+                .collect(Collectors.toSet());
+        if (!missingAnswerAuthorIds.isEmpty()) {
+            userProfileRepository.findAllByUserIdIn(missingAnswerAuthorIds).forEach(up -> {
+                if (up.getDisplayName() != null && !up.getDisplayName().isBlank()) {
+                    answerAuthorNames.put(up.getUserId(), up.getDisplayName());
+                }
+            });
+        }
 
         // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
         List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();

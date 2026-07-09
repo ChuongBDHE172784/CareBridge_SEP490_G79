@@ -66,6 +66,9 @@ class CommunityQuestionServiceImplTest {
     @Mock
     private CommunityProfileRepository profileRepository;
 
+    @Mock
+    private com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
+
     @Spy
     private CommunityQuestionMapper questionMapper = new CommunityQuestionMapper();
 
