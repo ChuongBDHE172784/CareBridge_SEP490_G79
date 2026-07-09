@@ -3,6 +3,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
+import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
@@ -167,7 +168,11 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
+            // ModerationController is @PreAuthorize hasRole('MODERATOR') on every endpoint
+            // (queue, pending-content, reports, violations, safety-cases, resolve/actions) —
+            // SYSTEM_ADMIN is NOT accepted by the backend here, so it must not be granted
+            // frontend access either (it would 403 on every data call).
+            element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
             children: [
               { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/queue/:reportId', element: <ModerationItemDetailPage /> },
@@ -178,7 +183,6 @@ export const router = createBrowserRouter([
               { path: '/moderator/violations', element: <ViolationHistoryPage /> },
               { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
               { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
-              { path: '/moderator', element: <Navigate to="/moderator/safety-cases" replace /> },
             ],
           },
           {
@@ -189,6 +193,13 @@ export const router = createBrowserRouter([
               { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
               { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
             ],
+          },
+          {
+            // Role-aware landing for the bare '/moderator' entry point — MODERATOR and
+            // SYSTEM_ADMIN each only have backend access to a disjoint subset of ModPortal
+            // pages (see the two guards above), so a single hardcoded redirect can't serve both.
+            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
+            children: [{ path: '/moderator', element: <ModeratorIndexRedirect /> }],
           },
         ],
       },
