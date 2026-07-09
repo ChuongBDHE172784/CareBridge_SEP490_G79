@@ -44,6 +44,14 @@ import CreateContentPage from '../../features/contentManagement/pages/CreateCont
 import EditContentPage from '../../features/contentManagement/pages/EditContentPage';
 import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
 import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
+import PregnancyExerciseListPage from '../../features/contentManagement/pages/PregnancyExerciseListPage';
+import PregnancyExerciseDetailPage from '../../features/contentManagement/pages/PregnancyExerciseDetailPage';
+import CreatePregnancyExercisePage from '../../features/contentManagement/pages/CreatePregnancyExercisePage';
+import EditPregnancyExercisePage from '../../features/contentManagement/pages/EditPregnancyExercisePage';
+import ExercisePreviewPage from '../../features/contentManagement/pages/ExercisePreviewPage';
+import PostureConfigListPage from '../../features/postureConfiguration/pages/PostureConfigListPage';
+import PostureConfigDetailPage from '../../features/postureConfiguration/pages/PostureConfigDetailPage';
+import EditPostureConfigPage from '../../features/postureConfiguration/pages/EditPostureConfigPage';
 
 // Partner Portal screens (CB-096, 097, 099)
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
@@ -117,6 +125,10 @@ export const router = createBrowserRouter([
               { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/notifications', element: <NotificationCenterPage /> },
               { path: '/settings/privacy', element: <PrivacySettingsPage /> },
+              { path: '/posture-configs', element: <PostureConfigListPage /> },
+              { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
+              { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
+              { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
             ],
           },
           {
@@ -132,6 +144,12 @@ export const router = createBrowserRouter([
               { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
               { path: '/content/faq', element: <FaqListPage /> },
               { path: '/content/checklists', element: <ChecklistListPage /> },
+              { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
+              { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
+              { path: '/content/exercises/:exerciseId', element: <PregnancyExerciseDetailPage /> },
+              { path: '/content/exercises/:exerciseId/edit', element: <EditPregnancyExercisePage /> },
+              { path: '/content/exercises/:exerciseId/preview', element: <ExercisePreviewPage /> },
+              { path: '/content/exercises/preview', element: <ExercisePreviewPage /> },
             ],
           },
           {

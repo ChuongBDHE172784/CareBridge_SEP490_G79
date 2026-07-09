@@ -59,10 +59,9 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 50, nullable = false)
-    private Role role = Role.MOTHER;
+    @Column(name = "role", length = 50)
+    private Role role;
 
     @Builder.Default
     @Column(name = "enabled", nullable = false)

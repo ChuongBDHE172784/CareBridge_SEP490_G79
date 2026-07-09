@@ -10,6 +10,9 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.rbac.Role;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -28,6 +32,7 @@ import static org.mockito.Mockito.*;
 class JourneyServiceImplTest {
 
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
     @InjectMocks private JourneyServiceImpl journeyService;
 
@@ -51,9 +56,17 @@ class JourneyServiceImplTest {
                 .build();
     }
 
+    private void givenMotherUser() {
+        when(userRepository.findById(CALLER_ID)).thenReturn(Optional.of(User.builder()
+                .id(CALLER_ID)
+                .role(Role.MOTHER)
+                .build()));
+    }
+
     // JOURNEY-TC-001: Happy path — PREGNANCY journey created, status=ACTIVE
     @Test
     void createJourney_validRequest_returns201WithActiveStatus() {
+        givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
                 CALLER_ID, JourneyType.PREGNANCY, JourneyStatus.ACTIVE)).thenReturn(false);
         UUID newId = UUID.randomUUID();
@@ -69,6 +82,7 @@ class JourneyServiceImplTest {
     // JOURNEY-TC-002: Duplicate active journey → JOURNEY-002 / 409
     @Test
     void createJourney_duplicateActiveJourney_throwsBusinessException409() {
+        givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
                 CALLER_ID, JourneyType.PREGNANCY, JourneyStatus.ACTIVE)).thenReturn(true);
 
@@ -86,6 +100,7 @@ class JourneyServiceImplTest {
     // JOURNEY-TC-003: Audit event emitted on success
     @Test
     void createJourney_success_auditEventEmitted() {
+        givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
         when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
 
@@ -98,11 +113,25 @@ class JourneyServiceImplTest {
     // JOURNEY-TC-004: accountId from JWT never from body (ownerUserId = callerId)
     @Test
     void createJourney_ownerUserIdSetToCallerId() {
+        givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
         when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
 
         journeyService.createJourney(makeRequest(), CALLER_ID);
 
         verify(journeyRepository).save(argThat(j -> j.getOwnerUserId().equals(CALLER_ID)));
+    }
+
+    @Test
+    void createJourney_unassignedRole_assignsMotherBeforeCreatingJourney() {
+        User unassigned = User.builder().id(CALLER_ID).build();
+        when(userRepository.findById(CALLER_ID)).thenReturn(Optional.of(unassigned));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
+        when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
+
+        journeyService.createJourney(makeRequest(), CALLER_ID);
+
+        verify(userRepository).save(argThat(user -> user.getRole() == Role.MOTHER));
     }
 }

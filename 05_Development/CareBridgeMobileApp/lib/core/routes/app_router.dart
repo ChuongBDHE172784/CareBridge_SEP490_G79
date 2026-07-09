@@ -5,6 +5,7 @@ import '../auth/auth_state.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
+import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 
@@ -43,6 +44,7 @@ import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
 import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
+import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
 import '../../features/aiTriage/screens/rag_chat_screen.dart';
@@ -60,12 +62,14 @@ final GoRouter appRouter = GoRouter(
     final isAuth = auth.isAuthenticated;
     final isRestoring = auth.isRestoring;
     final blockedReason = auth.blockedReason;
+    final hasAssignedRole = auth.role != null && auth.role!.trim().isNotEmpty;
 
     // Do not redirect while restoring state
     if (isRestoring) return null;
 
-    final isAuthRoute = state.matchedLocation.startsWith('/welcome') ||
-                        state.matchedLocation.startsWith('/login');
+    final isAuthRoute =
+        state.matchedLocation.startsWith('/welcome') ||
+        state.matchedLocation.startsWith('/login');
 
     if (blockedReason != null && state.matchedLocation != '/blocked') {
       return '/blocked';
@@ -75,12 +79,20 @@ final GoRouter appRouter = GoRouter(
       return '/welcome';
     }
 
+    if (isAuth &&
+        !hasAssignedRole &&
+        state.matchedLocation != '/role-selection') {
+      return '/role-selection';
+    }
+
+    if (isAuth &&
+        hasAssignedRole &&
+        state.matchedLocation == '/role-selection') {
+      return '/';
+    }
+
     if (isAuth && isAuthRoute) {
-      // Logic kiểm tra xem có Mother Journey chưa (mock).
-      // Thực tế bạn có thể fetch JourneyService() trong một Provider / Bloc,
-      // hoặc AuthState để biết có journey chưa.
-      // Tạm thời redirect thẳng về trang Home / Dashboard.
-      return '/'; 
+      return hasAssignedRole ? '/' : '/role-selection';
     }
 
     return null;
@@ -90,20 +102,23 @@ final GoRouter appRouter = GoRouter(
       path: '/welcome',
       builder: (context, state) => const WelcomeScreen(),
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/blocked',
       builder: (context, state) => const BlockedAccountScreen(),
+    ),
+    GoRoute(
+      path: '/role-selection',
+      builder: (context, state) => const RoleSelectionScreen(),
     ),
     GoRoute(
       path: '/',
       builder: (context, state) {
         // Tab index query param (e.g. /?tab=1 for Journey Dashboard)
         final tabParam = state.uri.queryParameters['tab'];
-        final int initialIndex = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+        final int initialIndex = tabParam != null
+            ? int.tryParse(tabParam) ?? 0
+            : 0;
         return HomeShell(initialIndex: initialIndex);
       },
     ),
@@ -147,7 +162,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/reminders/add',
       builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Create Appointment Reminder Screen (3.3.1.22)')),
+        body: Center(
+          child: Text('Create Appointment Reminder Screen (3.3.1.22)'),
+        ),
       ),
     ),
     GoRoute(
@@ -171,7 +188,11 @@ final GoRouter appRouter = GoRouter(
       path: '/care-groups/members/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return CareGroupMembersScreen(groupId: id, groupName: 'Nhóm $id', members: const []);
+        return CareGroupMembersScreen(
+          groupId: id,
+          groupName: 'Nhóm $id',
+          members: const [],
+        );
       },
     ),
     GoRoute(
@@ -208,7 +229,11 @@ final GoRouter appRouter = GoRouter(
         final babyId = state.pathParameters['babyId'] ?? '';
         final logId = state.pathParameters['logId'] ?? '';
         final initialLog = state.extra as BabyDailyLog?;
-        return EditBabyDailyLogScreen(babyId: babyId, logId: logId, initialLog: initialLog);
+        return EditBabyDailyLogScreen(
+          babyId: babyId,
+          logId: logId,
+          initialLog: initialLog,
+        );
       },
     ),
     // CB-235: View Baby Log Summary (UC-36)
@@ -251,7 +276,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         final initialReminder = state.extra as Reminder?;
-        return UpdateSnoozeReminderScreen(reminderId: id, initialReminder: initialReminder);
+        return UpdateSnoozeReminderScreen(
+          reminderId: id,
+          initialReminder: initialReminder,
+        );
       },
     ),
     // CB-123: File Viewer (UC-168)
@@ -260,7 +288,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final fileId = state.pathParameters['fileId'] ?? '';
         final extra = state.extra as Map<String, dynamic>?;
-        return FileViewerScreen(fileId: fileId, fileName: extra?['fileName'] as String?);
+        return FileViewerScreen(
+          fileId: fileId,
+          fileName: extra?['fileName'] as String?,
+        );
       },
     ),
     // CB-146: Shared File Viewer (UC-168)
@@ -299,7 +330,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final journeyId = state.pathParameters['journeyId'] ?? '';
         final metricType = state.uri.queryParameters['metricType'];
-        return HealthMetricTrendScreen(journeyId: journeyId, initialMetricType: metricType);
+        return HealthMetricTrendScreen(
+          journeyId: journeyId,
+          initialMetricType: metricType,
+        );
       },
     ),
     GoRoute(
@@ -333,6 +367,13 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final sessionId = state.pathParameters['sessionId'] ?? '';
         return EmergencyAlertDetailScreen(sessionId: sessionId);
+      },
+    ),
+    GoRoute(
+      path: '/family-alert/:sessionId',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['sessionId'] ?? '';
+        return FamilyAlertDetailScreen(sessionId: sessionId);
       },
     ),
     GoRoute(

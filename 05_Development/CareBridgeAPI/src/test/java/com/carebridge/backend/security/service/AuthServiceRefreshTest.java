@@ -2,7 +2,6 @@ package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.common.exception.InvalidRefreshTokenException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
-import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
@@ -142,7 +141,7 @@ class AuthServiceRefreshTest {
     }
 
     @Test
-    void refresh_WithNoActiveSession_ThrowsSessionNotFoundException() {
+    void refresh_WithNoActiveSession_ThrowsInvalidRefreshTokenException() {
         // Arrange
         when(sessionRepository.findByRefreshTokenHashAndRevokedFalse(eq(refreshTokenHash))).thenReturn(Optional.empty());
 
@@ -151,7 +150,7 @@ class AuthServiceRefreshTest {
 
         // Act & Assert
         assertThatThrownBy(() -> authService.refresh(request))
-                .isInstanceOf(SessionNotFoundException.class)
+                .isInstanceOf(InvalidRefreshTokenException.class)
                 .hasMessageContaining("No active session");
     }
 
@@ -303,7 +302,7 @@ class AuthServiceRefreshTest {
 
         // Act & Assert
         assertThatThrownBy(() -> authService.refresh(request))
-                .isInstanceOf(SessionNotFoundException.class)
+                .isInstanceOf(InvalidRefreshTokenException.class)
                 .hasMessageContaining("No active session");
     }
 

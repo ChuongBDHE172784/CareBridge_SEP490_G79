@@ -49,9 +49,12 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
         StringBuilder payload = new StringBuilder("{")
                 .append("\"sub\":\"").append(escape(user.getId().toString())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_PHONE).append("\":\"").append(escape(user.getPhone())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_ROLE).append("\":\"").append(escape(user.getRole().getAuthority())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_TOKEN_TYPE).append("\":\"").append(SecurityConstants.ACCESS_TOKEN_TYPE).append("\",")
+                .append("\"").append(SecurityConstants.CLAIM_PHONE).append("\":\"").append(escape(user.getPhone())).append("\",");
+        if (user.getRole() != null) {
+            payload.append("\"").append(SecurityConstants.CLAIM_ROLE).append("\":\"")
+                    .append(escape(user.getRole().getAuthority())).append("\",");
+        }
+        payload.append("\"").append(SecurityConstants.CLAIM_TOKEN_TYPE).append("\":\"").append(SecurityConstants.ACCESS_TOKEN_TYPE).append("\",")
                 .append("\"iat\":").append(now.getEpochSecond()).append(",")
                 .append("\"exp\":").append(now.plusMillis(accessTokenExpirationMs).getEpochSecond());
         if (sessionId != null) {

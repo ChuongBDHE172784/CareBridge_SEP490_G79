@@ -4,15 +4,15 @@
 | Field              | Value                                              |
 |--------------------|----------------------------------------------------|
 | **Document ID**    | `CB-NOTIF-IMP-002`                                 |
-| **Version**        | `1.0`                                              |
+| **Version**        | `1.1`                                              |
 | **Date**           | `2026-06-26`                                       |
-| **Status**         | `Approved`                                         |
+| **Status**         | `Implemented`                                      |
 | **Document Owner** | `PhuongNT`                                         |
 | **Author**         | `AI Agent`                                         |
 | **Reviewed by**    | `[Tech Lead]`                                      |
 | **DPO Sign-off**   | `[ ] Pending`                                      |
 | **Approved by**    | `[Principal Architect]`                            |
-| **Last Review**    | `2026-06-26`                                       |
+| **Last Review**    | `2026-07-07`                                       |
 | **Based on EDS**   | `v2.0`                                             |
 
 ---
@@ -621,3 +621,12 @@ curl -X GET https://[host]/api/v1/notifications/me \
 |----------------------|---------------------------------------------------|
 | UC-158 TDS           | `04_Implement/UC158_ReceiveReminderNotification/` |
 | CareBridge CLAUDE.md | `d:\SEP490\CareBridge_SEP490_G79\CLAUDE.md`       |
+
+### C. Implementation Evidence
+
+| Field | Value |
+|-------|-------|
+| Implementation Date | `2026-07-07` |
+| Code Evidence | `CommunityReplyNotificationService`, `QuestionNotificationMute`, `QuestionNotificationMuteRepository`, `NotificationRecord.metadata` |
+| Test Evidence | `mvn test -Dtest=ReminderNotificationServiceTest,CommunityReplyNotificationServiceTest,ConsultationNotificationServiceTest,FamilyAlertServiceTest` |
+| Result | `22 tests run, 0 failures, 0 errors` |

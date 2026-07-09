@@ -1,6 +1,7 @@
 package com.carebridge.backend.notification.service.impl;
 
 import com.carebridge.backend.notification.service.FcmService;
+import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -60,5 +61,17 @@ public class FirebaseFcmServiceImpl implements FcmService {
             log.warn("FCM multicast send failed: {}", e.getMessage());
             return 0;
         }
+    }
+
+    @Override
+    public FcmDeliveryResult sendWithRetry(String fcmToken, String title, String body, int maxAttempts) {
+        int attempts = Math.max(1, maxAttempts);
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            String messageId = sendToToken(fcmToken, title, body);
+            if (messageId != null && !messageId.isBlank()) {
+                return FcmDeliveryResult.success(messageId, attempt);
+            }
+        }
+        return FcmDeliveryResult.failed("FCM_SEND_FAILED", attempts);
     }
 }

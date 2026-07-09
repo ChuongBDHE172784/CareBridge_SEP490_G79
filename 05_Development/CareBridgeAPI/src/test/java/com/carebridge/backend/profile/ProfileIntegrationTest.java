@@ -67,10 +67,11 @@ class ProfileIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(jsonPath("$.data.displayName").value("Nguyen Test"))
                 .andExpect(jsonPath("$.data.phoneNumber").value("0912345678"));
 
-        // DB assertion: user_profiles row persisted
+        // Account name and profile-specific fields are persisted separately.
         UserProfile saved = profileRepository.findByUserId(user.getId()).orElseThrow();
-        assertThat(saved.getDisplayName()).isEqualTo("Nguyen Test");
         assertThat(saved.getPhoneNumber()).isEqualTo("0912345678");
+        assertThat(userRepository.findById(user.getId()).orElseThrow().getName())
+                .isEqualTo("Nguyen Test");
 
         // DB assertion: PROFILE_UPDATED audit row recorded for this user
         // (query directly rather than via the repository's `search` method: its optional

@@ -63,6 +63,7 @@ class RegisterAccountIntegrationTest extends AbstractPostgresIntegrationTest {
         String email = "int.register@test.com";
 
         RegisterRequest request = new RegisterRequest();
+        request.setName("Integration Mother");
         request.setEmail(email);
         request.setPhone(null);
         request.setPassword("Test@1234");
@@ -80,6 +81,7 @@ class RegisterAccountIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
         assertThat(user.getId()).isNotNull();
+        assertThat(user.getName()).isEqualTo("Integration Mother");
         assertThat(user.isEnabled()).isFalse();
         assertThat(user.getAccountStatus()).isEqualTo("PENDING_ACTIVATION");
         assertThat(user.getRole()).isEqualTo(Role.MOTHER);

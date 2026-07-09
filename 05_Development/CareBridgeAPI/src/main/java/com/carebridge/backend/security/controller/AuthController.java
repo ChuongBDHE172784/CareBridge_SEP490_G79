@@ -11,6 +11,7 @@ import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.ResetPasswordRequest;
+import com.carebridge.backend.security.dto.request.SelectRoleRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
@@ -209,6 +210,28 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(
                 authService.updateProfile(SecurityUtils.requireCurrentUserId(principal), request),
                 "Profile updated"));
+    }
+
+    @PutMapping("/role")
+    @Operation(
+        summary = "Select current user role",
+        description = "Assign a self-service role to an authenticated account that does not have a role yet. Once assigned, the role cannot be changed through this endpoint.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Selected role",
+            content = @Content(schema = @Schema(implementation = SelectRoleRequest.class))
+        ),
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Role selected", content = @Content(schema = @Schema(implementation = UserProfileResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid or already assigned role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
+        }
+    )
+    public ResponseEntity<ApiResponse<UserProfileResponse>> selectRole(
+            Principal principal,
+            @Valid @RequestBody SelectRoleRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                authService.selectRole(SecurityUtils.requireCurrentUserId(principal), request),
+                "Role selected"));
     }
 
     @PostMapping("/forgot-password")

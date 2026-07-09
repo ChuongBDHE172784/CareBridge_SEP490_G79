@@ -6,8 +6,6 @@ import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.community.repository.CommunityProfileRepository;
-import com.carebridge.backend.profile.entity.UserProfile;
-import com.carebridge.backend.profile.repository.ProfileRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 
@@ -33,9 +31,6 @@ class CommunityAuthorDisplayResolverTest {
     private CommunityProfileRepository communityProfileRepository;
 
     @Mock
-    private ProfileRepository userProfileRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -51,7 +46,6 @@ class CommunityAuthorDisplayResolverTest {
     @Test
     void resolve_onlyUserFullNamePresent_returnsUserName() {
         when(communityProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of());
-        when(userProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of());
         when(userRepository.findAllById(Set.of(USER_ID))).thenReturn(List.of(makeUser("Nguyễn Thị A")));
 
         String result = resolver.resolve(USER_ID);
@@ -61,7 +55,7 @@ class CommunityAuthorDisplayResolverTest {
 
     // CommunityProfile.displayName takes priority over the other two when present.
     @Test
-    void resolve_communityProfilePresent_takesPriorityOverUserProfileAndUser() {
+    void resolve_communityProfilePresent_takesPriorityOverUser() {
         CommunityProfile profile = CommunityProfile.builder().userId(USER_ID).displayName("Community Name").build();
         when(communityProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of(profile));
 
@@ -70,13 +64,12 @@ class CommunityAuthorDisplayResolverTest {
         assertThat(result).isEqualTo("Community Name");
     }
 
-    // CommunityProfile absent/blank falls through to UserProfile.displayName before User.name.
+    // CommunityProfile absent/blank falls through to the canonical User.name.
     @Test
-    void resolve_communityProfileBlank_fallsThroughToUserProfile() {
+    void resolve_communityProfileBlank_fallsThroughToUser() {
         CommunityProfile blankProfile = CommunityProfile.builder().userId(USER_ID).displayName("  ").build();
         when(communityProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of(blankProfile));
-        UserProfile userProfile = UserProfile.builder().userId(USER_ID).displayName("Profile Name").build();
-        when(userProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of(userProfile));
+        when(userRepository.findAllById(Set.of(USER_ID))).thenReturn(List.of(makeUser("Profile Name")));
 
         String result = resolver.resolve(USER_ID);
 
@@ -87,7 +80,6 @@ class CommunityAuthorDisplayResolverTest {
     @Test
     void resolve_noNameAnywhere_returnsNull() {
         when(communityProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of());
-        when(userProfileRepository.findAllByUserIdIn(Set.of(USER_ID))).thenReturn(List.of());
         when(userRepository.findAllById(Set.of(USER_ID))).thenReturn(List.of(makeUser(null)));
 
         String result = resolver.resolve(USER_ID);
@@ -112,22 +104,22 @@ class CommunityAuthorDisplayResolverTest {
     @Test
     void resolveBatch_mixedSources_resolvesEachIndependently() {
         UUID communityUser = UUID.fromString("00000000-0000-0000-0000-0000000000b1");
-        UUID userProfileUser = UUID.fromString("00000000-0000-0000-0000-0000000000b2");
+        UUID accountUser = UUID.fromString("00000000-0000-0000-0000-0000000000b2");
         UUID plainUser = UUID.fromString("00000000-0000-0000-0000-0000000000b3");
-        Set<UUID> ids = Set.of(communityUser, userProfileUser, plainUser);
+        Set<UUID> ids = Set.of(communityUser, accountUser, plainUser);
 
         when(communityProfileRepository.findAllByUserIdIn(ids)).thenReturn(
                 List.of(CommunityProfile.builder().userId(communityUser).displayName("Community").build()));
-        when(userProfileRepository.findAllByUserIdIn(any())).thenReturn(
-                List.of(UserProfile.builder().userId(userProfileUser).displayName("Profile").build()));
         when(userRepository.findAllById(any())).thenReturn(
-                List.of(User.builder().id(plainUser).name("Plain Name").build()));
+                List.of(
+                        User.builder().id(accountUser).name("Account Name").build(),
+                        User.builder().id(plainUser).name("Plain Name").build()));
 
         Map<UUID, String> result = resolver.resolveBatch(ids);
 
         assertThat(result)
                 .containsEntry(communityUser, "Community")
-                .containsEntry(userProfileUser, "Profile")
+                .containsEntry(accountUser, "Account Name")
                 .containsEntry(plainUser, "Plain Name");
     }
 }

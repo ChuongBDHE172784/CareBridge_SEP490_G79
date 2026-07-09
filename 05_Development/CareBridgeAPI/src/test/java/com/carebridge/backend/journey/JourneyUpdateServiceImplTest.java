@@ -7,6 +7,7 @@ import com.carebridge.backend.journey.dto.JourneyResponse;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,13 +34,14 @@ import static org.mockito.Mockito.when;
 class JourneyUpdateServiceImplTest {
 
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
 
     private JourneyServiceImpl journeyService;
 
     @BeforeEach
     void setUp() {
-        journeyService = new JourneyServiceImpl(journeyRepository, auditService);
+        journeyService = new JourneyServiceImpl(journeyRepository, userRepository, auditService);
     }
 
     /** TC-023-001: Happy path — update notes + estimatedDueDate. */

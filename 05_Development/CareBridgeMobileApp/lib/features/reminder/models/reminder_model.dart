@@ -3,21 +3,33 @@ enum ReminderType { appointment, medication, vaccination, task, other }
 extension ReminderTypeExtension on ReminderType {
   String get displayLabel {
     switch (this) {
-      case ReminderType.appointment: return 'Lịch khám';
-      case ReminderType.medication: return 'Thuốc';
-      case ReminderType.vaccination: return 'Tiêm chủng';
-      case ReminderType.task: return 'Việc cần làm';
-      case ReminderType.other: return 'Khác';
+      case ReminderType.appointment:
+        return 'Lịch khám';
+      case ReminderType.medication:
+        return 'Thuốc';
+      case ReminderType.vaccination:
+        return 'Tiêm chủng';
+      case ReminderType.task:
+        return 'Việc cần làm';
+      case ReminderType.other:
+        return 'Khác';
     }
   }
 
   static ReminderType fromApi(String? v) {
     switch (v) {
-      case 'APPOINTMENT': return ReminderType.appointment;
-      case 'MEDICATION': return ReminderType.medication;
-      case 'VACCINATION': return ReminderType.vaccination;
-      case 'TASK': return ReminderType.task;
-      default: return ReminderType.other;
+      case 'APPOINTMENT':
+        return ReminderType.appointment;
+      case 'MEDICATION':
+        return ReminderType.medication;
+      case 'VACCINATION':
+        return ReminderType.vaccination;
+      case 'TASK':
+        return ReminderType.task;
+      case 'CARE_TASK':
+        return ReminderType.task;
+      default:
+        return ReminderType.other;
     }
   }
 }
@@ -27,19 +39,29 @@ enum ReminderStatus { pending, done, snoozed, skipped }
 extension ReminderStatusExtension on ReminderStatus {
   String get displayLabel {
     switch (this) {
-      case ReminderStatus.pending: return 'Chờ thực hiện';
-      case ReminderStatus.done: return 'Đã hoàn thành';
-      case ReminderStatus.snoozed: return 'Đã hoãn';
-      case ReminderStatus.skipped: return 'Đã bỏ qua';
+      case ReminderStatus.pending:
+        return 'Chờ thực hiện';
+      case ReminderStatus.done:
+        return 'Đã hoàn thành';
+      case ReminderStatus.snoozed:
+        return 'Đã hoãn';
+      case ReminderStatus.skipped:
+        return 'Đã bỏ qua';
     }
   }
 
   static ReminderStatus fromApi(String? v) {
     switch (v) {
-      case 'DONE': return ReminderStatus.done;
-      case 'SNOOZED': return ReminderStatus.snoozed;
-      case 'SKIPPED': return ReminderStatus.skipped;
-      default: return ReminderStatus.pending;
+      case 'DONE':
+        return ReminderStatus.done;
+      case 'COMPLETED':
+        return ReminderStatus.done;
+      case 'SNOOZED':
+        return ReminderStatus.snoozed;
+      case 'SKIPPED':
+        return ReminderStatus.skipped;
+      default:
+        return ReminderStatus.pending;
     }
   }
 }
@@ -49,19 +71,27 @@ enum RecurrenceType { none, daily, weekly, monthly }
 extension RecurrenceTypeExtension on RecurrenceType {
   String get displayLabel {
     switch (this) {
-      case RecurrenceType.none: return 'Không lặp';
-      case RecurrenceType.daily: return '1 Lần / Ngày';
-      case RecurrenceType.weekly: return '1 Lần / Tuần';
-      case RecurrenceType.monthly: return '1 Lần / Tháng';
+      case RecurrenceType.none:
+        return 'Không lặp';
+      case RecurrenceType.daily:
+        return '1 Lần / Ngày';
+      case RecurrenceType.weekly:
+        return '1 Lần / Tuần';
+      case RecurrenceType.monthly:
+        return '1 Lần / Tháng';
     }
   }
 
   static RecurrenceType fromApi(String? v) {
     switch (v) {
-      case 'DAILY': return RecurrenceType.daily;
-      case 'WEEKLY': return RecurrenceType.weekly;
-      case 'MONTHLY': return RecurrenceType.monthly;
-      default: return RecurrenceType.none;
+      case 'DAILY':
+        return RecurrenceType.daily;
+      case 'WEEKLY':
+        return RecurrenceType.weekly;
+      case 'MONTHLY':
+        return RecurrenceType.monthly;
+      default:
+        return RecurrenceType.none;
     }
   }
 }
@@ -69,10 +99,14 @@ extension RecurrenceTypeExtension on RecurrenceType {
 extension RecurrenceTypeApi on RecurrenceType {
   String toApiValue() {
     switch (this) {
-      case RecurrenceType.daily: return 'DAILY';
-      case RecurrenceType.weekly: return 'WEEKLY';
-      case RecurrenceType.monthly: return 'MONTHLY';
-      case RecurrenceType.none: return 'NONE';
+      case RecurrenceType.daily:
+        return 'DAILY';
+      case RecurrenceType.weekly:
+        return 'WEEKLY';
+      case RecurrenceType.monthly:
+        return 'MONTHLY';
+      case RecurrenceType.none:
+        return 'NONE';
     }
   }
 }
@@ -112,11 +146,16 @@ class Reminder {
   factory Reminder.fromJson(Map<String, dynamic> json) {
     return Reminder(
       id: json['id'] as String,
-      reminderType: ReminderTypeExtension.fromApi(json['reminderType'] as String?),
+      reminderType: ReminderTypeExtension.fromApi(
+        (json['reminderType'] ?? json['type']) as String?,
+      ),
       title: json['title'] as String,
       scheduledAt: DateTime.parse(json['scheduledAt'] as String),
-      recurrenceType: RecurrenceTypeExtension.fromApi(json['recurrenceType'] as String?),
+      recurrenceType: RecurrenceTypeExtension.fromApi(
+        json['recurrenceType'] as String?,
+      ),
       status: ReminderStatusExtension.fromApi(json['status'] as String?),
+      location: json['location'] as String?,
       note: json['note'] as String?,
     );
   }

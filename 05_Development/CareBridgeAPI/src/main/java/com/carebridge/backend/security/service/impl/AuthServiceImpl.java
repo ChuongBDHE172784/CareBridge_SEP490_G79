@@ -21,6 +21,7 @@ import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
+import com.carebridge.backend.security.dto.request.SelectRoleRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
@@ -138,7 +139,8 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Account already exists");
         }
 
-        // 4. Resolve role through authentication policy
+        // 4. Resolve optional role through authentication policy.
+        // Consumer self-registration intentionally starts without a role when omitted.
         Role role = authenticationPolicy.resolveSelfRegistrationRole(request.getRole());
 
         // 5. Hash password with BCrypt
@@ -146,6 +148,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 6. Create user with enabled=false
         User user = User.builder()
+                .name(StringUtils.sanitizeBasicText(request.getName()))
                 .email(email != null && !email.isBlank() ? email : null)
                 .phone(phone != null && !phone.isBlank() ? phone : null)
                 .role(role)
@@ -195,7 +198,7 @@ public class AuthServiceImpl implements AuthService {
                     Map.entry("purpose", "REGISTER"),
                     Map.entry("email", email != null ? email : ""),
                     Map.entry("phone", phone != null ? phone : ""),
-                    Map.entry("role", role.name())));
+                    Map.entry("role", role != null ? role.name() : "UNASSIGNED")));
 
         return OtpSendResponse.builder()
                 .message("Registration initiated. Please verify your OTP.")
@@ -699,7 +702,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         UserSession session = sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
-                .orElseThrow(() -> new SessionNotFoundException("No active session found for this token"));
+                .orElseThrow(() -> new InvalidRefreshTokenException(
+                        "No active session found for this token"));
 
         if (session.isRevoked()) {
             throw new RevokedSessionException("Session has been revoked");
@@ -823,25 +827,49 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public UserProfileResponse selectRole(UUID userId, SelectRoleRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getRole() != null) {
+            throw new ValidationException("Role has already been assigned");
+        }
+
+        Role selectedRole = authenticationPolicy.resolveSelfRegistrationRole(request.getRole());
+        if (selectedRole == null) {
+            throw new ValidationException("Role is required");
+        }
+
+        user.setRole(selectedRole);
+        User saved = userRepository.save(user);
+        auditService.log(AuditAction.PROFILE_UPDATED, userId, "User", userId.toString(),
+                Map.of("role", selectedRole.name()));
+        return userMapper.toProfileResponse(saved);
+    }
+
+    @Override
     @Transactional
     public void changePassword(UUID userId, ChangePasswordRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new ValidationException("Password confirmation does not match the new password");
+            throw new ValidationException(
+                    "AUTH-072",
+                    "Password confirmation does not match the new password");
         }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
-            throw new ValidationException("Current password is incorrect");
+            throw new ValidationException("AUTH-071", "Current password is incorrect");
         }
 
         if (!passwordComplexityPolicy.isComplexEnough(request.getNewPassword())) {
-            throw new ValidationException(passwordComplexityPolicy.getRequirements());
+            throw new ValidationException("AUTH-073", passwordComplexityPolicy.getRequirements());
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
-            throw new ValidationException("New password must be different from the current password");
+            throw new ValidationException(
+                    "AUTH-074",
+                    "New password must be different from the current password");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));

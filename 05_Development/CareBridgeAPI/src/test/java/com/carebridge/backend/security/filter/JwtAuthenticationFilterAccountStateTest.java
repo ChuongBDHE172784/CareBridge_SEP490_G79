@@ -11,10 +11,13 @@ import com.carebridge.backend.content.controller.ContentController;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
+import com.carebridge.backend.identity.entity.UserSession;
+import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,7 +61,11 @@ class JwtAuthenticationFilterAccountStateTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private UserSessionRepository userSessionRepository;
+
     private static final UUID USER_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    private static final UUID SESSION_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
     private static final String FAKE_TOKEN = "fake.jwt.token";
     private static final String AUTH_HEADER = "Authorization";
 
@@ -66,8 +73,11 @@ class JwtAuthenticationFilterAccountStateTest {
     void setupTokenProvider() {
         when(jwtTokenProvider.validateToken(FAKE_TOKEN)).thenReturn(true);
         when(jwtTokenProvider.getSubject(FAKE_TOKEN)).thenReturn(USER_ID.toString());
+        when(jwtTokenProvider.getSessionId(FAKE_TOKEN)).thenReturn(SESSION_ID);
         when(jwtTokenProvider.getAuthorities(FAKE_TOKEN))
                 .thenReturn(List.of(new SimpleGrantedAuthority("ROLE_MOTHER")));
+        when(userSessionRepository.findById(SESSION_ID))
+                .thenReturn(Optional.of(buildSession(false, "active", Instant.now().plusSeconds(3600))));
     }
 
     private User buildUser(boolean enabled, boolean locked) {
@@ -76,6 +86,18 @@ class JwtAuthenticationFilterAccountStateTest {
                 .locked(locked)
                 .role(Role.MOTHER)
                 .phone("0900000001")
+                .build();
+    }
+
+    private UserSession buildSession(boolean revoked, String status, Instant expiresAt) {
+        return UserSession.builder()
+                .sessionId(SESSION_ID)
+                .userId(USER_ID)
+                .refreshTokenHash("refresh-token-hash")
+                .revoked(revoked)
+                .status(status)
+                .expiresAt(expiresAt)
+                .createdAt(Instant.now())
                 .build();
     }
 
@@ -129,5 +151,19 @@ class JwtAuthenticationFilterAccountStateTest {
     void noToken_shouldReturn401WithoutCallingRepository() throws Exception {
         mockMvc.perform(get("/api/v1/content"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void revokedSession_withValidToken_shouldReturn401SessionRevoked() throws Exception {
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(buildUser(true, false)));
+        when(userSessionRepository.findById(SESSION_ID))
+                .thenReturn(Optional.of(buildSession(
+                        true, "revoked", Instant.now().plusSeconds(3600))));
+
+        mockMvc.perform(get("/api/v1/content").header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("SESSION_REVOKED"))
+                .andExpect(jsonPath("$.status").value(401));
     }
 }

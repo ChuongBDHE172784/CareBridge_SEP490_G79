@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
-import '../../emergency/screens/emergency_map_screen.dart';
+import '../../emergency/services/emergency_service.dart';
 
 /// CB-016 — Risk Triage Result (UC-61)
 /// Shows the AI risk classification (GREEN/YELLOW/RED) for a completed
@@ -29,8 +29,10 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   static const _secondary = Color(0xFF6E5A52);
 
   final _triageService = TriageService();
+  final _emergencyService = EmergencyService();
   TriageResult? _result;
   bool _loading = true;
+  bool _openingEmergency = false;
   String? _error;
 
   @override
@@ -54,7 +56,32 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     }
   }
 
-  _RiskPresentation get _presentation => _RiskPresentation.forLevel(_result?.riskLevel);
+  _RiskPresentation get _presentation =>
+      _RiskPresentation.forLevel(_result?.riskLevel);
+
+  Future<void> _openEmergencyFlow() async {
+    setState(() => _openingEmergency = true);
+    try {
+      await _emergencyService.openFlow(triggerSource: 'AI_TRIAGE');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã kích hoạt hỗ trợ khẩn cấp và gửi cảnh báo người thân',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể kích hoạt hỗ trợ khẩn cấp: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingEmergency = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +93,17 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             _buildTopBar(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                          child: _buildContent(),
-                        ),
+                  ? _buildError()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                      child: _buildContent(),
+                    ),
             ),
           ],
         ),
@@ -97,9 +128,15 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               ),
             ),
             const Expanded(
-              child: Text('Kết quả',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+              child: Text(
+                'Kết quả',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
             ),
             const SizedBox(width: 48, height: 48),
           ],
@@ -115,7 +152,11 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _onSurfaceVariant)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _onSurfaceVariant),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: _load, child: const Text('Thử lại')),
           ],
@@ -134,8 +175,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: p.cardColor,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+            borderRadius: BorderRadius.circular(40),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F5A463F),
+                blurRadius: 20,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
@@ -143,56 +190,100 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                 width: 64,
                 height: 64,
                 margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(color: p.iconBg, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: p.iconBg,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(p.icon, size: 32, color: p.iconColor),
               ),
-              Text(p.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: _onSurface)),
+              Text(
+                p.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(p.description,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: _onSurfaceVariant, height: 1.4)),
+              Text(
+                p.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: _onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 24),
         // Recommended actions
-        const Text('Hành động khuyến nghị',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+        const Text(
+          'Hành động khuyến nghị',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: _onSurface,
+          ),
+        ),
         const SizedBox(height: 16),
-        ...p.actions.map((a) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _outlineVariant.withValues(alpha: 0.3)),
-                  boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+        ...p.actions.map(
+          (a) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.3),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(a.icon, color: _primary),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(a.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface)),
-                          const SizedBox(height: 4),
-                          Text(a.description, style: const TextStyle(fontSize: 14, color: _onSurfaceVariant)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0F5A463F),
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-            )),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(a.icon, color: _primary),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          a.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          a.description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
         // Action buttons
         SizedBox(
@@ -208,14 +299,21 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             ),
             // TODO: navigate to Expert Directory (CB-018) once that screen is implemented
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tính năng liên hệ bác sĩ tư vấn đang được phát triển')),
+              const SnackBar(
+                content: Text(
+                  'Tính năng liên hệ bác sĩ tư vấn đang được phát triển',
+                ),
+              ),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.phone, size: 20),
                 SizedBox(width: 8),
-                Text('Liên hệ bác sĩ tư vấn', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(
+                  'Liên hệ bác sĩ tư vấn',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),
@@ -231,15 +329,36 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               shape: const StadiumBorder(),
               elevation: 0,
             ),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EmergencyMapScreen()),
-            ),
-            child: const Row(
+            onPressed: _openingEmergency
+                ? null
+                : _result?.riskLevel == 'RED'
+                ? _openEmergencyFlow
+                : () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Tính năng tìm phòng khám gần nhất thuộc TV4 Map/Location',
+                      ),
+                    ),
+                  ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_hospital_outlined, size: 20),
-                SizedBox(width: 8),
-                Text('Tìm phòng khám gần nhất', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Icon(
+                  _result?.riskLevel == 'RED'
+                      ? Icons.emergency_outlined
+                      : Icons.local_hospital_outlined,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _result?.riskLevel == 'RED'
+                      ? 'Kích hoạt hỗ trợ khẩn cấp'
+                      : 'Tìm phòng khám gần nhất',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -250,7 +369,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: _surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Row(
@@ -261,11 +380,19 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               Expanded(
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontSize: 12, color: _tertiary, height: 1.4),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _tertiary,
+                      height: 1.4,
+                    ),
                     children: [
-                      const TextSpan(text: 'Lưu ý quan trọng: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const TextSpan(
+                        text: 'Lưu ý quan trọng: ',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       TextSpan(
-                        text: _result?.disclaimer ??
+                        text:
+                            _result?.disclaimer ??
                             'CareBridge AI cung cấp thông tin tham khảo dựa trên dữ liệu nhập vào, không thay thế chẩn đoán y khoa chuyên nghiệp. Nếu tình trạng của bé trở nặng, hãy liên hệ ngay với cơ sở y tế.',
                       ),
                     ],
@@ -312,44 +439,83 @@ class _RiskPresentation {
       case 'GREEN':
         return const _RiskPresentation(
           title: 'Bình thường',
-          description: 'Hiện tại chưa thấy dấu hiệu đáng lo ngại. Mẹ hãy tiếp tục theo dõi bé như thường lệ.',
+          description:
+              'Hiện tại chưa thấy dấu hiệu đáng lo ngại. Mẹ hãy tiếp tục theo dõi bé như thường lệ.',
           icon: Icons.check_circle,
           cardColor: Color(0xFFE3EFE6),
           iconBg: Color(0x334CAF50),
           iconColor: Color(0xFF2E7D32),
           actions: [
-            _RecommendedAction(Icons.monitor_heart, 'Theo dõi tại nhà', 'Tiếp tục quan sát các biểu hiện của bé trong 24 giờ tới.'),
-            _RecommendedAction(Icons.water_drop, 'Bổ sung nước', 'Cho bé bú hoặc uống nước thường xuyên.'),
-            _RecommendedAction(Icons.assignment_outlined, 'Ghi chép triệu chứng', 'Sử dụng tính năng nhật ký để theo dõi bất kỳ thay đổi nào.'),
+            _RecommendedAction(
+              Icons.monitor_heart,
+              'Theo dõi tại nhà',
+              'Tiếp tục quan sát các biểu hiện của bé trong 24 giờ tới.',
+            ),
+            _RecommendedAction(
+              Icons.water_drop,
+              'Bổ sung nước',
+              'Cho bé bú hoặc uống nước thường xuyên.',
+            ),
+            _RecommendedAction(
+              Icons.assignment_outlined,
+              'Ghi chép triệu chứng',
+              'Sử dụng tính năng nhật ký để theo dõi bất kỳ thay đổi nào.',
+            ),
           ],
         );
       case 'RED':
         return const _RiskPresentation(
           title: 'Cần cấp cứu ngay',
-          description: 'Các dấu hiệu cho thấy bé cần được khám cấp cứu ngay lập tức. Vui lòng liên hệ cơ sở y tế gần nhất.',
+          description:
+              'Các dấu hiệu cho thấy bé cần được khám cấp cứu ngay lập tức. Vui lòng liên hệ cơ sở y tế gần nhất.',
           icon: Icons.emergency,
           cardColor: Color(0xFFFFDAD6),
           iconBg: Color(0x33BA1A1A),
           iconColor: Color(0xFFBA1A1A),
           actions: [
-            _RecommendedAction(Icons.local_hospital, 'Đến cơ sở y tế ngay', 'Đưa bé đến phòng cấp cứu gần nhất hoặc gọi xe cứu thương.'),
-            _RecommendedAction(Icons.campaign, 'Báo cho người thân', 'Thông báo cho người thân để hỗ trợ kịp thời.'),
-            _RecommendedAction(Icons.monitor_heart, 'Theo dõi sát', 'Quan sát liên tục các dấu hiệu sinh tồn của bé trên đường di chuyển.'),
+            _RecommendedAction(
+              Icons.local_hospital,
+              'Đến cơ sở y tế ngay',
+              'Đưa bé đến phòng cấp cứu gần nhất hoặc gọi xe cứu thương.',
+            ),
+            _RecommendedAction(
+              Icons.campaign,
+              'Báo cho người thân',
+              'Thông báo cho người thân để hỗ trợ kịp thời.',
+            ),
+            _RecommendedAction(
+              Icons.monitor_heart,
+              'Theo dõi sát',
+              'Quan sát liên tục các dấu hiệu sinh tồn của bé trên đường di chuyển.',
+            ),
           ],
         );
       case 'YELLOW':
       default:
         return const _RiskPresentation(
           title: 'Cần theo dõi',
-          description: 'Dựa trên thông tin bạn cung cấp, có một số dấu hiệu cần được quan sát thêm.',
+          description:
+              'Dựa trên thông tin bạn cung cấp, có một số dấu hiệu cần được quan sát thêm.',
           icon: Icons.warning,
           cardColor: Color(0xFFFFE2D9),
           iconBg: Color(0x33E8A87C),
           iconColor: Color(0xFFD97706),
           actions: [
-            _RecommendedAction(Icons.monitor_heart, 'Theo dõi nhiệt độ', 'Kiểm tra nhiệt độ của bé mỗi 4 giờ một lần và ghi chú lại.'),
-            _RecommendedAction(Icons.water_drop, 'Bổ sung nước', 'Cho bé bú hoặc uống nước thường xuyên để tránh mất nước.'),
-            _RecommendedAction(Icons.assignment_outlined, 'Ghi chép triệu chứng', 'Sử dụng tính năng nhật ký để theo dõi bất kỳ thay đổi nào.'),
+            _RecommendedAction(
+              Icons.monitor_heart,
+              'Theo dõi nhiệt độ',
+              'Kiểm tra nhiệt độ của bé mỗi 4 giờ một lần và ghi chú lại.',
+            ),
+            _RecommendedAction(
+              Icons.water_drop,
+              'Bổ sung nước',
+              'Cho bé bú hoặc uống nước thường xuyên để tránh mất nước.',
+            ),
+            _RecommendedAction(
+              Icons.assignment_outlined,
+              'Ghi chép triệu chứng',
+              'Sử dụng tính năng nhật ký để theo dõi bất kỳ thay đổi nào.',
+            ),
           ],
         );
     }
