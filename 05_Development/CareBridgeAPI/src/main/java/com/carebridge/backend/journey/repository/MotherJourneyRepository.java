@@ -7,12 +7,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UUID> {
 
     boolean existsByOwnerUserIdAndJourneyTypeAndStatus(UUID ownerUserId, JourneyType type, JourneyStatus status);
+
+    List<MotherJourney> findByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtAsc(
+        UUID ownerUserId, JourneyType type, JourneyStatus status);
 
     long countByOwnerUserIdAndStatus(UUID ownerUserId, JourneyStatus status);
 
