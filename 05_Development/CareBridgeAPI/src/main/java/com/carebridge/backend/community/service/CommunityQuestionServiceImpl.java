@@ -18,20 +18,16 @@ import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
-import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -49,9 +45,6 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
     private final CommunityBookmarkRepository bookmarkRepository;
     private final CommunityAnswerLikeRepository answerLikeRepository;
     private final CommunityQuestionLikeRepository questionLikeRepository;
-    private final CommunityProfileRepository profileRepository;
-    private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
-    private final com.carebridge.backend.security.repository.UserRepository userRepository;
     private final CommunityQuestionMapper questionMapper;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
@@ -73,72 +66,15 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
                 .map(t -> t.getName())
                 .orElse("");
 
-        // Fetch question author profile display name
-        String questionAuthorDisplay = null;
-        if (question.getAuthorId() != null) {
-            questionAuthorDisplay = profileRepository.findByUserId(question.getAuthorId())
-                    .map(CommunityProfile::getDisplayName)
-                    .orElse(null);
-            if (questionAuthorDisplay == null || questionAuthorDisplay.isBlank()) {
-                questionAuthorDisplay = userProfileRepository.findByUserId(question.getAuthorId())
-                        .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
-                        .orElse(null);
-            }
-            if (questionAuthorDisplay == null || questionAuthorDisplay.isBlank()) {
-                questionAuthorDisplay = userRepository.findById(question.getAuthorId())
-                        .map(com.carebridge.backend.security.entity.User::getName)
-                        .orElse(null);
-            }
-        }
-
         List<CommunityAnswer> answerEntities = answerRepository
                 .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
-
-        // Fetch display names for all answer authors
-        Set<UUID> answerAuthorIds = answerEntities.stream()
-                .map(CommunityAnswer::getAuthorId)
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, String> answerAuthorNames = profileRepository.findAllByUserIdIn(answerAuthorIds).stream()
-                .collect(Collectors.toMap(
-                        CommunityProfile::getUserId,
-                        CommunityProfile::getDisplayName,
-                        (existing, replacement) -> existing
-                ));
-
-        // Fallback to UserProfile if CommunityProfile missing or name blank
-        Set<UUID> missingAnswerAuthorIds = answerAuthorIds.stream()
-                .filter(id -> !answerAuthorNames.containsKey(id) || answerAuthorNames.get(id) == null || answerAuthorNames.get(id).isBlank())
-                .collect(Collectors.toSet());
-        if (!missingAnswerAuthorIds.isEmpty()) {
-            userProfileRepository.findAllByUserIdIn(missingAnswerAuthorIds).forEach(up -> {
-                if (up.getDisplayName() != null && !up.getDisplayName().isBlank()) {
-                    answerAuthorNames.put(up.getUserId(), up.getDisplayName());
-                }
-            });
-        }
-
-        // Fallback to User if UserProfile still missing or name blank
-        Set<UUID> stillMissingAnswerAuthorIds = answerAuthorIds.stream()
-                .filter(id -> !answerAuthorNames.containsKey(id) || answerAuthorNames.get(id) == null || answerAuthorNames.get(id).isBlank())
-                .collect(Collectors.toSet());
-        if (!stillMissingAnswerAuthorIds.isEmpty()) {
-            userRepository.findAllById(stillMissingAnswerAuthorIds).forEach(u -> {
-                if (u.getName() != null && !u.getName().isBlank()) {
-                    answerAuthorNames.put(u.getId(), u.getName());
-                }
-            });
-        }
 
         // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
         List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();
         Set<UUID> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(currentUserId, answerIds);
 
         List<CommunityAnswerResponse> answers = answerEntities.stream()
-                .map(a -> {
-                    String authorDisplay = answerAuthorNames.get(a.getAuthorId());
-                    return answerMapper.toResponse(a, authorDisplay, likedAnswerIds.contains(a.getId()));
-                })
+                .map(a -> answerMapper.toResponse(a, likedAnswerIds.contains(a.getId())))
                 .toList();
 
         // UC-58 hydration fix: current viewer's bookmark state for this question
@@ -147,7 +83,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
         // Current viewer's like state for this question
         boolean isLiked = questionLikeRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
 
-        return questionMapper.toDetailResponse(question, topicName, questionAuthorDisplay, answers, isBookmarked, isLiked);
+        return questionMapper.toDetailResponse(question, topicName, answers, isBookmarked, isLiked);
     }
 
     @Override

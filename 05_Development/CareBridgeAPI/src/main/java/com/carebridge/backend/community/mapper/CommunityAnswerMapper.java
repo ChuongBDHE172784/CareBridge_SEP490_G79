@@ -29,27 +29,16 @@ public class CommunityAnswerMapper {
     }
 
     public CommunityAnswerResponse toResponse(CommunityAnswer entity) {
-        return toResponse(entity, null, false);
-    }
-
-    public CommunityAnswerResponse toResponse(CommunityAnswer entity, boolean liked) {
-        return toResponse(entity, null, liked);
+        return toResponse(entity, false);
     }
 
     // UC-59 hydration fix: "liked" reflects the CURRENT viewer's like state, computed by the
     // caller (batch per-user lookup) — never derivable from the entity alone.
-    public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorDisplay, boolean liked) {
-        String finalAuthorDisplay;
-        if (entity.isExpertLabeled()) {
-            finalAuthorDisplay = "Chuyên gia";
-        } else {
-            finalAuthorDisplay = (authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Thành viên";
-        }
+    public CommunityAnswerResponse toResponse(CommunityAnswer entity, boolean liked) {
         return CommunityAnswerResponse.builder()
                 .id(entity.getId())
                 .questionId(entity.getQuestionId())
                 .authorId(entity.getAuthorId())
-                .authorDisplay(finalAuthorDisplay)
                 .body(entity.getBody())
                 .personalExperience(entity.isPersonalExperience())
                 .expertLabeled(entity.isExpertLabeled())

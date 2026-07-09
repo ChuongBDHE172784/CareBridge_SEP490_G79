@@ -23,13 +23,6 @@ import com.carebridge.backend.community.exception.CommunityTopicNotFoundExceptio
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
-import com.carebridge.backend.community.repository.CommunityAnswerRepository;
-import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
-import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
-import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
-import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
-import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -51,38 +44,11 @@ class CommunityQuestionServiceImplTest {
     @Mock
     private CommunityTopicRepository topicRepository;
 
-    @Mock
-    private CommunityAnswerRepository answerRepository;
-
-    @Mock
-    private CommunityBookmarkRepository bookmarkRepository;
-
-    @Mock
-    private CommunityAnswerLikeRepository answerLikeRepository;
-
-    @Mock
-    private CommunityQuestionLikeRepository questionLikeRepository;
-
-    @Mock
-    private CommunityProfileRepository profileRepository;
-
-    @Mock
-    private com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
-
-    @Mock
-    private com.carebridge.backend.security.repository.UserRepository userRepository;
-
     @Spy
     private CommunityQuestionMapper questionMapper = new CommunityQuestionMapper();
 
     @Mock
-    private CommunityAnswerMapper answerMapper = new CommunityAnswerMapper();
-
-    @Mock
     private AuditService auditService;
-
-    @Mock
-    private CommunitySafetyPolicy communitySafetyPolicy;
 
     @InjectMocks
     private CommunityQuestionServiceImpl questionService;

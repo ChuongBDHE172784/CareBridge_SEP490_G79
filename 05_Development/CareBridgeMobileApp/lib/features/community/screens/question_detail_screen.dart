@@ -440,7 +440,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             onPressed: _toggleBookmark,
             tooltip: 'Lưu câu hỏi',
           ),
-          if (_isMyQuestion && !_question!.anonymous)
+          if (_isMyQuestion)
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
               onPressed: () async {
@@ -592,7 +592,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          q.anonymous ? 'Ẩn danh' : (q.authorDisplay ?? 'Người dùng'),
+                          q.anonymous ? 'Ẩn danh' : 'Người dùng',
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -860,7 +860,7 @@ class _AnswerCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
+                          answer.expertLabeled ? 'Chuyên gia' : 'Thành viên',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,

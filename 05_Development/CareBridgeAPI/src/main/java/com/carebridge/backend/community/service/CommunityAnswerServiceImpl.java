@@ -13,9 +13,7 @@ import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
-import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.security.entity.User;
@@ -32,9 +30,6 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
     private final CommunityAnswerRepository answerRepository;
     private final CommunityQuestionRepository questionRepository;
-    private final CommunityProfileRepository profileRepository;
-    private final com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
-    private final com.carebridge.backend.security.repository.UserRepository userRepository;
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
@@ -56,20 +51,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
                 "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
 
-        String displayName = profileRepository.findByUserId(authorId)
-                .map(CommunityProfile::getDisplayName)
-                .orElse(null);
-        if (displayName == null || displayName.isBlank()) {
-            displayName = userProfileRepository.findByUserId(authorId)
-                    .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
-                    .orElse(null);
-        }
-        if (displayName == null || displayName.isBlank()) {
-            displayName = userRepository.findById(authorId)
-                    .map(User::getName)
-                    .orElse(null);
-        }
-        return answerMapper.toResponse(answer, displayName, false);
+        return answerMapper.toResponse(answer);
     }
 
     @Override
@@ -86,33 +68,16 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
             throw new AnswerNotEditableException(answerId.toString());
         }
 
-        boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
         answerMapper.applyEdit(answer, request);
         // ADR-COM-200-2: reset to PENDING so edited content is re-moderated
         answer.setStatus(AnswerStatus.PENDING);
 
         answer = answerRepository.save(answer);
-        if (wasApproved) {
-            questionRepository.decrementAnswerCount(answer.getQuestionId());
-        }
         communitySafetyPolicy.autoReportIfRedFlag(callerId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
                 "CommunityAnswer", answer.getId().toString(), "edited");
 
-        String displayName = profileRepository.findByUserId(callerId)
-                .map(CommunityProfile::getDisplayName)
-                .orElse(null);
-        if (displayName == null || displayName.isBlank()) {
-            displayName = userProfileRepository.findByUserId(callerId)
-                    .map(com.carebridge.backend.profile.entity.UserProfile::getDisplayName)
-                    .orElse(null);
-        }
-        if (displayName == null || displayName.isBlank()) {
-            displayName = userRepository.findById(callerId)
-                    .map(User::getName)
-                    .orElse(null);
-        }
-        return answerMapper.toResponse(answer, displayName, false);
+        return answerMapper.toResponse(answer);
     }
 
     @Override

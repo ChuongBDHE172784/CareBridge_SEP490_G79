@@ -317,7 +317,6 @@ public class ModerationServiceImpl implements ModerationService {
         CommunityAnswer answer = communityAnswerRepository.findById(targetId)
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.ANSWER));
 
-        AnswerStatus oldStatus = answer.getStatus();
         AnswerStatus newStatus = switch (actionType) {
             case APPROVE -> AnswerStatus.APPROVED;
             case HIDE -> AnswerStatus.HIDDEN;
@@ -327,13 +326,6 @@ public class ModerationServiceImpl implements ModerationService {
 
         answer.setStatus(newStatus);
         communityAnswerRepository.save(answer);
-
-        if (oldStatus != AnswerStatus.APPROVED && newStatus == AnswerStatus.APPROVED) {
-            communityQuestionRepository.incrementAnswerCount(answer.getQuestionId());
-        } else if (oldStatus == AnswerStatus.APPROVED && newStatus != AnswerStatus.APPROVED) {
-            communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
-        }
-
         return newStatus.name();
     }
 

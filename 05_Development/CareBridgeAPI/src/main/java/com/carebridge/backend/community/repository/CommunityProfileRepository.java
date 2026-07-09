@@ -1,8 +1,6 @@
 package com.carebridge.backend.community.repository;
 
 import com.carebridge.backend.community.entity.CommunityProfile;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +12,4 @@ public interface CommunityProfileRepository extends JpaRepository<CommunityProfi
     boolean existsByUserId(UUID userId);
 
     Optional<CommunityProfile> findByUserId(UUID userId);
-
-    List<CommunityProfile> findAllByUserIdIn(Collection<UUID> userIds);
 }

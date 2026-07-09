@@ -17,7 +17,6 @@ public class CommunityAnswerResponse {
     private UUID id;
     private UUID questionId;
     private UUID authorId;
-    private String authorDisplay;
     private String body;
     private boolean personalExperience;
     private boolean expertLabeled;

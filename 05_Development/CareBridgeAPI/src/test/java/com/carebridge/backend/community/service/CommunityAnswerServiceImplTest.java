@@ -24,8 +24,6 @@ import com.carebridge.backend.community.exception.QuestionNotAnswerableException
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
-import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -50,23 +48,11 @@ class CommunityAnswerServiceImplTest {
     @Mock
     private CommunityQuestionRepository questionRepository;
 
-    @Mock
-    private CommunityProfileRepository profileRepository;
-
-    @Mock
-    private com.carebridge.backend.profile.repository.ProfileRepository userProfileRepository;
-
-    @Mock
-    private com.carebridge.backend.security.repository.UserRepository userRepository;
-
     @Spy
     private CommunityAnswerMapper answerMapper = new CommunityAnswerMapper();
 
     @Mock
     private AuditService auditService;
-
-    @Mock
-    private CommunitySafetyPolicy communitySafetyPolicy;
 
     @InjectMocks
     private CommunityAnswerServiceImpl service;
@@ -141,7 +127,7 @@ class CommunityAnswerServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(AUTHOR_ID),
                 org.mockito.ArgumentMatchers.eq("CommunityAnswer"),
                 any(),
-                org.mockito.ArgumentMatchers.eq("posted expertLabeled=false")
+                org.mockito.ArgumentMatchers.eq("posted")
         );
     }
 
