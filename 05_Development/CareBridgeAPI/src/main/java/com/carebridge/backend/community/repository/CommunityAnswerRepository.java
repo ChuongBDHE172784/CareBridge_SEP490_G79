@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,6 +20,9 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
     // UC-198: batch-check which questions in a set have at least one expert-labeled answer
     @Query("SELECT DISTINCT a.questionId FROM CommunityAnswer a WHERE a.questionId IN :questionIds AND a.expertLabeled = true")
     Set<UUID> findQuestionIdsWithExpertAnswer(java.util.Collection<UUID> questionIds);
+
+    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded answer by question+author
+    Optional<CommunityAnswer> findByQuestionIdAndAuthorId(UUID questionId, UUID authorId);
 
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING answers directly,
     // independent of ContentReport — for first-time moderation discovery

@@ -22,6 +22,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 
+    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
+    Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
+
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING questions directly,
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);

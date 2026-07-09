@@ -1,6 +1,7 @@
 package com.carebridge.backend.content.repository;
 
 import com.carebridge.backend.content.entity.ModerationAction;
+import com.carebridge.backend.content.entity.ModerationActionType;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import java.util.Collection;
 import java.util.UUID;
@@ -17,4 +18,7 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
     // account-violation history view, not this content-moderation history)
     Page<ModerationAction> findByTargetTypeInOrderByActionAtDesc(
             Collection<ReportTargetType> targetTypes, Pageable pageable);
+
+    // Dev seed idempotency (DevDataSeeder) — a given target only gets one seeded action of each type
+    boolean existsByTargetIdAndActionType(UUID targetId, ModerationActionType actionType);
 }
