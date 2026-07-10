@@ -16,7 +16,6 @@ import com.carebridge.backend.safety.service.FallAnalysisResult;
 import com.carebridge.backend.safety.service.IFallDetectionAlgorithmService;
 import com.carebridge.backend.safety.service.IFallDetectionService;
 import com.carebridge.backend.safety.service.ImuDataPayload;
-import com.carebridge.backend.safety.service.LocationConsentPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -36,7 +35,6 @@ public class FallDetectionService implements IFallDetectionService {
     private final IImuMonitoringSessionRepository imuSessionRepository;
     private final ISafetyEventRepository safetyEventRepository;
     private final IFallDetectionAlgorithmService algorithmService;
-    private final LocationConsentPort locationConsentPort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -81,17 +79,11 @@ public class FallDetectionService implements IFallDetectionService {
             return null;
         }
 
-        boolean hasConsent = locationConsentPort.hasLocationConsent(userId);
-        BigDecimal latitude = hasConsent ? payload.latitude() : null;
-        BigDecimal longitude = hasConsent ? payload.longitude() : null;
-
         SafetyEvent event = SafetyEvent.builder()
                 .userId(userId)
                 .imuSessionId(activeSession.getId())
                 .eventType(analysis.eventType())
                 .magnitude(BigDecimal.valueOf(analysis.magnitude()))
-                .userLatitude(latitude)
-                .userLongitude(longitude)
                 .detectedAt(Instant.now())
                 .createdBy("SYSTEM")
                 .build();
@@ -104,8 +96,8 @@ public class FallDetectionService implements IFallDetectionService {
                 saved.getId(),
                 analysis.eventType().name(),
                 analysis.magnitude(),
-                latitude,
-                longitude,
+                null,
+                null,
                 saved.getDetectedAt()));
 
         return toEventResponse(saved);
@@ -150,8 +142,8 @@ public class FallDetectionService implements IFallDetectionService {
                 saved.getId(),
                 saved.getEventType().name(),
                 saved.getMagnitude().doubleValue(),
-                saved.getUserLatitude(),
-                saved.getUserLongitude(),
+                null,
+                null,
                 saved.getDetectedAt()));
     }
 

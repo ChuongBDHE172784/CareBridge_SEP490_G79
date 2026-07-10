@@ -3,17 +3,10 @@ import '../models/emergency_alert_model.dart';
 import '../models/emergency_session_model.dart';
 
 class EmergencyService {
-  // UC-62: Idempotent open — returns the existing ACTIVE session if one exists.
-  // Also triggers UC-65 family alert server-side as a side effect (event-driven).
-  Future<EmergencySession> openFlow({
-    required String triggerSource,
-    double? latitude,
-    double? longitude,
-  }) async {
+  // UC-62: idempotent open. Server-side events trigger UC-65 family alert.
+  Future<EmergencySession> openFlow({required String triggerSource}) async {
     final data = await apiPost('/api/v1/emergency/sessions', {
       'triggerSource': triggerSource,
-      if (latitude != null) 'userLatitude': latitude,
-      if (longitude != null) 'userLongitude': longitude,
     });
     return EmergencySession.fromJson(data['data'] as Map<String, dynamic>);
   }
@@ -29,12 +22,13 @@ class EmergencyService {
   }
 
   Future<EmergencySession> resolve(String sessionId) async {
-    final data = await apiPatch('/api/v1/emergency/sessions/$sessionId/resolve', const {});
+    final data = await apiPatch(
+      '/api/v1/emergency/sessions/$sessionId/resolve',
+      const {},
+    );
     return EmergencySession.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // UC-65/UC-141: family member (or the mother) fetches real alert detail
-  // after tapping the FCM push notification.
   Future<EmergencyAlert> getAlertDetail(String sessionId) async {
     final data = await apiGet('/api/v1/emergency/sessions/$sessionId/alert');
     return EmergencyAlert.fromDetailJson(data['data'] as Map<String, dynamic>);

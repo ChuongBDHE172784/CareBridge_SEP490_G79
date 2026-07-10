@@ -43,8 +43,6 @@ public class SuspectedFallDetectedHandler {
 
         OpenEmergencyRequest request = OpenEmergencyRequest.builder()
                 .triggerSource("FALL_DETECTION")
-                .userLatitude(event.latitude())
-                .userLongitude(event.longitude())
                 .build();
 
         emergencyService.openFlow(request, event.userId());

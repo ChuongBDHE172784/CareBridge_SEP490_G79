@@ -31,7 +31,7 @@ public class DevPortMockConfiguration {
         );
     }
 
-    // LocationConsentPort (safety + emergency), FamilyMemberPort, and
+    // Emergency LocationConsentPort, FamilyMemberPort, and
     // FcmNotificationPort now have real @Component adapters
     // (consent/family/notification modules) — their mock fallbacks here were
     // removed to avoid duplicate-bean conflicts with those adapters.

@@ -23,7 +23,6 @@ import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
-import '../../features/emergency/screens/emergency_map_screen.dart';
 import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
@@ -46,8 +45,9 @@ final GoRouter appRouter = GoRouter(
     // Do not redirect while restoring state
     if (isRestoring) return null;
 
-    final isAuthRoute = state.matchedLocation.startsWith('/welcome') ||
-                        state.matchedLocation.startsWith('/login');
+    final isAuthRoute =
+        state.matchedLocation.startsWith('/welcome') ||
+        state.matchedLocation.startsWith('/login');
 
     if (blockedReason != null && state.matchedLocation != '/blocked') {
       return '/blocked';
@@ -62,7 +62,7 @@ final GoRouter appRouter = GoRouter(
       // Thực tế bạn có thể fetch JourneyService() trong một Provider / Bloc,
       // hoặc AuthState để biết có journey chưa.
       // Tạm thời redirect thẳng về trang Home / Dashboard.
-      return '/'; 
+      return '/';
     }
 
     return null;
@@ -72,10 +72,7 @@ final GoRouter appRouter = GoRouter(
       path: '/welcome',
       builder: (context, state) => const WelcomeScreen(),
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/blocked',
       builder: (context, state) => const BlockedAccountScreen(),
@@ -85,7 +82,9 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         // Tab index query param (e.g. /?tab=1 for Journey Dashboard)
         final tabParam = state.uri.queryParameters['tab'];
-        final int initialIndex = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+        final int initialIndex = tabParam != null
+            ? int.tryParse(tabParam) ?? 0
+            : 0;
         return HomeShell(initialIndex: initialIndex);
       },
     ),
@@ -129,7 +128,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/reminders/add',
       builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Create Appointment Reminder Screen (3.3.1.22)')),
+        body: Center(
+          child: Text('Create Appointment Reminder Screen (3.3.1.22)'),
+        ),
       ),
     ),
     GoRoute(
@@ -153,7 +154,11 @@ final GoRouter appRouter = GoRouter(
       path: '/care-groups/members/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return CareGroupMembersScreen(groupId: id, groupName: 'Nhóm $id', members: const []);
+        return CareGroupMembersScreen(
+          groupId: id,
+          groupName: 'Nhóm $id',
+          members: const [],
+        );
       },
     ),
     GoRoute(
@@ -196,10 +201,6 @@ final GoRouter appRouter = GoRouter(
         final sessionId = state.pathParameters['sessionId'] ?? '';
         return RiskTriageResultScreen(sessionId: sessionId);
       },
-    ),
-    GoRoute(
-      path: '/emergency/map',
-      builder: (context, state) => const EmergencyMapScreen(),
     ),
     GoRoute(
       path: '/emergency/alert/:sessionId',

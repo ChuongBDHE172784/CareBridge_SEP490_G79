@@ -1,11 +1,9 @@
-/// Response from POST/GET /api/v1/emergency/sessions* (UC-62)
+/// Response from POST/GET /api/v1/emergency/sessions* (UC-62).
 class EmergencySession {
   final String sessionId;
   final String userId;
   final String status; // ACTIVE | RESOLVED | CANCELLED
   final String triggerSource;
-  final double? userLatitude;
-  final double? userLongitude;
   final DateTime? createdAt;
   final DateTime? resolvedAt;
 
@@ -14,8 +12,6 @@ class EmergencySession {
     required this.userId,
     required this.status,
     required this.triggerSource,
-    this.userLatitude,
-    this.userLongitude,
     this.createdAt,
     this.resolvedAt,
   });
@@ -26,10 +22,12 @@ class EmergencySession {
       userId: json['userId'] as String,
       status: json['status'] as String,
       triggerSource: json['triggerSource'] as String,
-      userLatitude: (json['userLatitude'] as num?)?.toDouble(),
-      userLongitude: (json['userLongitude'] as num?)?.toDouble(),
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'] as String) : null,
-      resolvedAt: json['resolvedAt'] != null ? DateTime.tryParse(json['resolvedAt'] as String) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : null,
+      resolvedAt: json['resolvedAt'] != null
+          ? DateTime.tryParse(json['resolvedAt'] as String)
+          : null,
     );
   }
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../models/emergency_alert_model.dart';
 import '../services/emergency_service.dart';
 
-/// CB-133 — Emergency Alert Detail (UC-65, UC-141)
-/// Reached by tapping the "EMERGENCY_ALERT" FCM push; sessionId comes from
-/// the notification payload. Data: GET /api/v1/emergency/sessions/{id}/alert.
+/// CB-133 - Emergency Alert Detail (UC-65, UC-141).
+///
+/// TV5 owns emergency trigger, acknowledgement, and family alert support only.
+/// Map, route, ETA, nearby facilities, and navigation are owned by TV4.
 class EmergencyAlertDetailScreen extends StatefulWidget {
   final String sessionId;
 
@@ -19,9 +21,7 @@ class EmergencyAlertDetailScreen extends StatefulWidget {
 class _EmergencyAlertDetailScreenState
     extends State<EmergencyAlertDetailScreen> {
   static const _bgColor = Color(0xFFFFF8F6);
-  static const _canvasColor = Color(0xFFF6F1EC);
   static const _primaryColor = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outlineVariant = Color(0xFFD6C2BD);
@@ -29,7 +29,6 @@ class _EmergencyAlertDetailScreenState
   static const _errorContainer = Color(0xFFFFDAD6);
   static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSecondaryContainer = Color(0xFF735E56);
 
   final _emergencyService = EmergencyService();
@@ -51,17 +50,25 @@ class _EmergencyAlertDetailScreenState
     });
     try {
       final alert = await _emergencyService.getAlertDetail(widget.sessionId);
-      if (mounted) {
-        setState(() {
-          _alert = alert;
-          _acknowledged = alert.acknowledged;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _alert = alert;
+        _acknowledged = alert.acknowledged;
+      });
     } catch (e) {
-      if (mounted) setState(() => _error = 'Không thể tải chi tiết cảnh báo: $e');
+      if (mounted) {
+        setState(() => _error = 'Không thể tải chi tiết cảnh báo: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _makeCall() async {
+    final phone = _alert?.phoneNumber;
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   String _formatTime(DateTime dateTime) {
@@ -85,20 +92,6 @@ class _EmergencyAlertDetailScreenState
     }
   }
 
-  Future<void> _makeCall() async {
-    final phone = _alert?.phoneNumber;
-    if (phone == null) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-  }
-
-  Future<void> _openDirections() async {
-    if (_alert?.latitude == null || _alert?.longitude == null) return;
-    final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=${_alert!.latitude},${_alert!.longitude}');
-    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,44 +101,11 @@ class _EmergencyAlertDetailScreenState
           children: [
             _buildAppBar(),
             Expanded(child: _buildBody()),
-            if (!_loading && _error == null && _alert != null) _buildActionBar(),
+            if (!_loading && _error == null && _alert != null)
+              _buildActionBar(),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: _primaryColor));
-    }
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _errorColor)),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _load, child: const Text('Thử lại')),
-            ],
-          ),
-        ),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-      children: [
-        _buildAlertBanner(),
-        const SizedBox(height: 24),
-        _buildMapPlaceholder(),
-        const SizedBox(height: 16),
-        _buildLocationCard(),
-        const SizedBox(height: 16),
-        _buildStatsRow(),
-        const SizedBox(height: 24),
-      ],
     );
   }
 
@@ -183,6 +143,45 @@ class _EmergencyAlertDetailScreenState
     );
   }
 
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _primaryColor),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: _errorColor),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _load, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      children: [
+        _buildAlertBanner(),
+        const SizedBox(height: 16),
+        _buildSupportCard(),
+        const SizedBox(height: 16),
+        _buildStatsRow(),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
   Widget _buildAlertBanner() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -201,7 +200,11 @@ class _EmergencyAlertDetailScreenState
               color: _errorColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_rounded, color: Colors.white, size: 28),
+            child: const Icon(
+              Icons.warning_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -211,7 +214,7 @@ class _EmergencyAlertDetailScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       'KHẨN CẤP',
                       style: TextStyle(
                         fontFamily: 'Lexend',
@@ -236,7 +239,7 @@ class _EmergencyAlertDetailScreenState
                 const SizedBox(height: 4),
                 Text(
                   _alertTypeLabel,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
@@ -249,7 +252,11 @@ class _EmergencyAlertDetailScreenState
                     CircleAvatar(
                       radius: 12,
                       backgroundColor: _surfaceContainer,
-                      child: const Icon(Icons.person, size: 16, color: _primaryColor),
+                      child: const Icon(
+                        Icons.person,
+                        size: 16,
+                        color: _primaryColor,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -273,87 +280,13 @@ class _EmergencyAlertDetailScreenState
     );
   }
 
-  Widget _buildMapPlaceholder() {
-    return Container(
-      height: 220,
-      decoration: BoxDecoration(
-        color: _surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _outlineVariant),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: _primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person_pin_circle,
-                      color: Colors.white, size: 24),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(9999),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(90, 70, 63, 0.12),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'Vị trí của Mẹ',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: _primaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.1),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.map_outlined,
-                  color: _onSurfaceVariant, size: 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationCard() {
+  Widget _buildSupportCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.3)),
         boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(90, 70, 63, 0.06),
@@ -362,43 +295,46 @@ class _EmergencyAlertDetailScreenState
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: _surfaceContainerLow,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.location_on, color: _primaryColor, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Vị trí hiện tại',
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: _surfaceContainerLow,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.support_agent,
+                  color: _primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Text(
+                  'Hỗ trợ khẩn cấp',
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.6,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _alert!.address ?? 'Không xác định',
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                     color: _onSurface,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Thông báo đã được gửi đến người thân. TV5 chỉ xử lý cảnh báo và liên hệ khẩn cấp; bản đồ, tuyến đường, ETA và cơ sở gần nhất thuộc TV4.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              height: 1.35,
+              color: _onSurfaceVariant,
             ),
           ),
         ],
@@ -409,17 +345,36 @@ class _EmergencyAlertDetailScreenState
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatCard(Icons.favorite_outline, 'Nhịp tim',
-            '${_alert!.heartRate ?? '--'}', 'bpm', _primaryColor)),
+        Expanded(
+          child: _buildStatCard(
+            Icons.favorite_outline,
+            'Nhịp tim',
+            '${_alert!.heartRate ?? '--'}',
+            'bpm',
+            _primaryColor,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard(Icons.battery_charging_full_outlined,
-            'Thiết bị', '${_alert!.deviceBattery ?? '--'}%', null, _onSurface)),
+        Expanded(
+          child: _buildStatCard(
+            Icons.battery_charging_full_outlined,
+            'Thiết bị',
+            '${_alert!.deviceBattery ?? '--'}%',
+            null,
+            _onSurface,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildStatCard(
-      IconData icon, String label, String value, String? unit, Color valueColor) {
+    IconData icon,
+    String label,
+    String value,
+    String? unit,
+    Color valueColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -441,30 +396,36 @@ class _EmergencyAlertDetailScreenState
             children: [
               Icon(icon, color: _primaryColor, size: 18),
               const SizedBox(width: 8),
-              Text(label,
-                  style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.6,
-                      color: _onSurfaceVariant)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           RichText(
             text: TextSpan(
               style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: valueColor),
+                fontFamily: 'Lexend',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: valueColor,
+              ),
               children: [
                 TextSpan(text: value),
                 if (unit != null)
                   TextSpan(
                     text: ' $unit',
                     style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w400),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
               ],
             ),
@@ -475,12 +436,14 @@ class _EmergencyAlertDetailScreenState
   }
 
   Widget _buildActionBar() {
+    final hasPhone = _alert?.phoneNumber?.isNotEmpty == true;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.8),
         border: Border(
-            top: BorderSide(color: _outlineVariant.withValues(alpha: 0.2))),
+          top: BorderSide(color: _outlineVariant.withValues(alpha: 0.2)),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -492,21 +455,20 @@ class _EmergencyAlertDetailScreenState
               onPressed: _acknowledged
                   ? null
                   : () => setState(() => _acknowledged = true),
-              icon: Icon(_acknowledged
-                  ? Icons.check_circle
-                  : Icons.check_circle_outline, size: 20),
+              icon: Icon(
+                _acknowledged ? Icons.check_circle : Icons.check_circle_outline,
+                size: 20,
+              ),
               label: Text(
-                _acknowledged
-                    ? 'Đã tiếp nhận cảnh báo'
-                    : 'Tiếp nhận cảnh báo',
+                _acknowledged ? 'Đã tiếp nhận cảnh báo' : 'Tiếp nhận cảnh báo',
                 style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600),
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    _acknowledged ? _surfaceContainer : _surfaceContainer,
+                backgroundColor: _surfaceContainer,
                 foregroundColor: _onSecondaryContainer,
                 disabledBackgroundColor: _surfaceContainer,
                 disabledForegroundColor: _onSecondaryContainer,
@@ -516,52 +478,29 @@ class _EmergencyAlertDetailScreenState
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: _makeCall,
-                    icon: const Icon(Icons.call, size: 22),
-                    label: const Text('Gọi ngay',
-                        style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder(),
-                      elevation: 2,
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: hasPhone ? _makeCall : null,
+              icon: const Icon(Icons.call, size: 22),
+              label: const Text(
+                'Gọi ngay',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: _openDirections,
-                    icon: const Icon(Icons.directions, size: 22),
-                    label: const Text('Chỉ đường',
-                        style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _secondaryContainer,
-                      foregroundColor: _onSecondaryContainer,
-                      shape: const StadiumBorder(),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
+              style: FilledButton.styleFrom(
+                backgroundColor: _primaryColor,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: _surfaceContainer,
+                disabledForegroundColor: _onSurfaceVariant,
+                shape: const StadiumBorder(),
+                elevation: 2,
               ),
-            ],
+            ),
           ),
         ],
       ),
