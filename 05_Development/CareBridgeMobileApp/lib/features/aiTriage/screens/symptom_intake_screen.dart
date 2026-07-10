@@ -43,10 +43,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     'Hơn 1 tuần',
   ];
 
-  int _step = 2; // Start at step 2 per design
+  int _step = 1;
   int? _subjectIndex;
   int? _symptomIndex;
   int? _durationIndex;
+  final _ageMonthsCtrl = TextEditingController();
   final _otherSymptomCtrl = TextEditingController();
   final _additionalCtrl = TextEditingController();
   bool _submitting = false;
@@ -54,6 +55,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   @override
   void dispose() {
+    _ageMonthsCtrl.dispose();
     _otherSymptomCtrl.dispose();
     _additionalCtrl.dispose();
     super.dispose();
@@ -95,8 +97,32 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
     setState(() => _submitting = true);
     try {
+      final symptomLabel = _symptomIndex == null
+          ? ''
+          : (_symptomIndex == 4
+              ? _otherSymptomCtrl.text.trim()
+              : _primarySymptoms[_symptomIndex!]);
       final result = await apiPost('/api/v1/triage/intake', {
         'symptoms': symptoms,
+        'childAgeMonths': int.tryParse(_ageMonthsCtrl.text.trim()),
+        'symptomList': symptomLabel.isEmpty ? <String>[] : <String>[symptomLabel],
+        'duration': _durationIndex == null ? null : _durations[_durationIndex!],
+        'temperatureC': _symptomIndex == 0 ? 38.6 : null,
+        'feedingStatus': symptoms.contains('bỏ bú') || symptoms.contains('không uống')
+            ? 'bỏ bú/không uống được'
+            : 'bú/uống được',
+        'breathingStatus': symptoms.contains('khó thở') || symptoms.contains('tím tái')
+            ? 'khó thở/tím tái'
+            : 'thở bình thường',
+        'consciousnessStatus': symptoms.contains('li bì') || symptoms.contains('lơ mơ')
+            ? 'lơ mơ/li bì'
+            : 'tỉnh táo',
+        'vomiting': symptoms.contains('nôn') ? symptoms : null,
+        'diarrhea': symptoms.contains('tiêu chảy') ? symptoms : null,
+        'rash': symptoms.contains('phát ban') ? symptoms : null,
+        'seizure': symptoms.contains('co giật'),
+        'dehydrationSigns': symptoms.contains('mất nước') ? <String>['mất nước'] : <String>[],
+        'parentFreeText': symptoms,
       });
       final sessionId =
           (result['data'] as Map<String, dynamic>)['sessionId'] as String;
@@ -256,6 +282,25 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             label: e.value,
             selected: _subjectIndex == e.key,
             onTap: () => setState(() => _subjectIndex = e.key),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _ageMonthsCtrl,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Tuổi của trẻ (tháng)',
+            hintText: 'Ví dụ: 18',
+            filled: true,
+            fillColor: _surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _outlineVariant),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _primary),
+            ),
           ),
         ),
       ],

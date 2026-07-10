@@ -1,17 +1,22 @@
 package com.carebridge.backend.triage.service.impl;
 
 import com.carebridge.backend.triage.IntakeStatus;
-
+import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.dto.response.TriageResultResponse;
 import com.carebridge.backend.triage.entity.IntakeSession;
+import com.carebridge.backend.triage.engine.ChildTriageResult;
+import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
-import com.carebridge.backend.triage.service.GeminiTriageClient;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +26,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,22 +40,16 @@ public class TriageService implements ITriageService {
 
     private static final Logger log = LoggerFactory.getLogger(TriageService.class);
 
-    private static final String CONSTRAINT_BLOCK =
-        "[CONSTRAINT: You are a medical triage assistant. You MUST: " +
-        "1. ONLY classify as GREEN (low risk), YELLOW (moderate risk), or RED (high risk). " +
-        "2. NEVER diagnose any condition. 3. NEVER prescribe medications. " +
-        "4. ALWAYS include disclaimer that this is AI guidance only, not medical diagnosis. " +
-        "Respond in JSON: {\"riskLevel\": \"GREEN|YELLOW|RED\", \"disclaimer\": \"...\"}] ";
-
     private final IIntakeSessionRepository intakeSessionRepository;
-    private final GeminiTriageClient geminiTriageClient;
+    private final TriageGraphService triageGraphService;
+    private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public IntakeSessionResponse runIntake(RunIntakeRequest request, UUID userId) {
         IntakeSession session = IntakeSession.builder()
                 .userId(userId)
-                .symptoms(request.getSymptoms())
+                .symptoms(snapshotRequest(request))
                 .babyProfileId(request.getBabyProfileId())
                 .status(IntakeStatus.PROCESSING)
                 .createdAt(Instant.now())
@@ -55,35 +57,42 @@ public class TriageService implements ITriageService {
                 .build();
         session = intakeSessionRepository.save(session);
         UUID sessionId = session.getId();
-        // C3 (UC60): NO symptom text in logs — session ID only
         log.info("Processing intake for session [{}]", sessionId);
 
         try {
-            // Constraint prompt passed to Gemini; symptoms are never logged (PDPA C3)
-            String constrainedPrompt = CONSTRAINT_BLOCK + "User symptoms: [REDACTED]";
-            GeminiTriageClient.AiTriageResult result = geminiTriageClient.analyzeSymptoms(constrainedPrompt);
+            ChildTriageResult graphResult = triageGraphService.run(request);
+            String aiResponse = objectMapper.writeValueAsString(graphResult);
+            JsonNode result = objectMapper.readTree(aiResponse);
+            String triageStatus = result.path("status").asText("COMPLETED");
+            String riskLevel = result.path("riskLevel").isMissingNode() || result.path("riskLevel").isNull()
+                    ? null
+                    : result.path("riskLevel").asText();
 
-            session.setRiskLevel(result.riskLevel());
-            session.setDisclaimer(result.disclaimer());
-            session.setStatus(IntakeStatus.COMPLETED);
+            session.setRawAiResponse(aiResponse);
+            session.setRiskLevel(riskLevel != null ? RiskLevel.valueOf(riskLevel) : null);
+            session.setDisclaimer(result.path("disclaimer").asText(null));
+            session.setStatus("NEED_MORE_INFO".equals(triageStatus)
+                    ? IntakeStatus.NEED_MORE_INFO
+                    : IntakeStatus.COMPLETED);
             session.setCompletedAt(Instant.now());
             session = intakeSessionRepository.save(session);
 
-            eventPublisher.publishEvent(new IntakeSessionCompleted(
-                    UUID.randomUUID(), session.getId(), userId,
-                    result.riskLevel(), session.getCompletedAt()));
+            if (session.getStatus() == IntakeStatus.COMPLETED && session.getRiskLevel() != null) {
+                eventPublisher.publishEvent(new IntakeSessionCompleted(
+                        UUID.randomUUID(), session.getId(), userId,
+                        session.getRiskLevel(), session.getCompletedAt()));
+            }
 
-            log.info("Intake completed for session [{}] riskLevel=[{}]", sessionId, result.riskLevel());
-
+            log.info("Intake completed for session [{}] status=[{}] riskLevel=[{}]",
+                    sessionId, session.getStatus(), session.getRiskLevel());
         } catch (Exception e) {
-            // C6 (UC60): Gemini timeout/error → FAILED + publish IntakeSessionFailed
-            log.warn("Gemini unavailable for session [{}]: {}", sessionId, e.getClass().getSimpleName());
+            log.warn("Triage graph failed for session [{}]: {}", sessionId, e.getClass().getSimpleName());
             session.setStatus(IntakeStatus.FAILED);
-            session = intakeSessionRepository.save(session);
+            intakeSessionRepository.save(session);
             eventPublisher.publishEvent(new IntakeSessionFailed(
                     UUID.randomUUID(), session.getId(), userId,
-                    "AI service unavailable", Instant.now()));
-            throw new TriageException(HttpStatus.SERVICE_UNAVAILABLE, "TRIAGE-005", "AI service unavailable");
+                    "Triage processing failed", Instant.now()));
+            throw new TriageException(HttpStatus.SERVICE_UNAVAILABLE, "TRIAGE-005", "Triage processing failed");
         }
 
         return toResponse(session);
@@ -98,8 +107,19 @@ public class TriageService implements ITriageService {
 
         return TriageResultResponse.builder()
                 .sessionId(session.getId())
-                .riskLevel(session.getRiskLevel() != null ? session.getRiskLevel().name() : null)
-                .disclaimer(session.getDisclaimer())
+                .triageStatus(readText(session, "status", session.getStatus().name()))
+                .riskLevel(readText(session, "riskLevel"))
+                .riskColor(readText(session, "riskColor"))
+                .summary(readText(session, "summary"))
+                .possibleConcern(readText(session, "possibleConcern"))
+                .recommendedAction(readText(session, "recommendedAction"))
+                .emergencyActionRequired(readBoolean(session, "emergencyActionRequired"))
+                .redFlags(readStringList(session, "redFlags"))
+                .matchedRules(readStringList(session, "matchedRules"))
+                .citations(readObjectList(session, "citations"))
+                .disclaimer(readText(session, "disclaimer", session.getDisclaimer()))
+                .questions(readStringList(session, "questions"))
+                .warning(readText(session, "warning"))
                 .status(session.getStatus().name())
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
@@ -124,5 +144,62 @@ public class TriageService implements ITriageService {
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
                 .build();
+    }
+
+    private String snapshotRequest(RunIntakeRequest request) {
+        try {
+            return objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException e) {
+            return request.getSymptoms() != null ? request.getSymptoms() : "";
+        }
+    }
+
+    private JsonNode rawResult(IntakeSession session) {
+        if (session.getRawAiResponse() == null || session.getRawAiResponse().isBlank()) {
+            return objectMapper.createObjectNode();
+        }
+        try {
+            return objectMapper.readTree(session.getRawAiResponse());
+        } catch (JsonProcessingException e) {
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    private String readText(IntakeSession session, String field) {
+        return readText(session, field, null);
+    }
+
+    private String readText(IntakeSession session, String field, String fallback) {
+        JsonNode node = rawResult(session).path(field);
+        if (node.isMissingNode() || node.isNull()) {
+            if ("riskLevel".equals(field) && session.getRiskLevel() != null) {
+                return session.getRiskLevel().name();
+            }
+            return fallback;
+        }
+        return node.asText();
+    }
+
+    private Boolean readBoolean(IntakeSession session, String field) {
+        JsonNode node = rawResult(session).path(field);
+        return node.isMissingNode() || node.isNull() ? Boolean.FALSE : node.asBoolean();
+    }
+
+    private List<String> readStringList(IntakeSession session, String field) {
+        JsonNode node = rawResult(session).path(field);
+        if (!node.isArray()) {
+            return Collections.emptyList();
+        }
+        List<String> values = new ArrayList<>();
+        node.forEach(item -> values.add(item.asText()));
+        return values;
+    }
+
+    private List<Map<String, Object>> readObjectList(IntakeSession session, String field) {
+        JsonNode node = rawResult(session).path(field);
+        if (!node.isArray()) {
+            return Collections.emptyList();
+        }
+        return objectMapper.convertValue(node, new TypeReference<List<Map<String, Object>>>() {});
     }
 }
