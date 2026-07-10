@@ -632,7 +632,7 @@ public class ModerationServiceImpl implements ModerationService {
                 .targetType(original.getTargetType())
                 .actionType(ModerationActionType.UNDO)
                 .moderatorUserId(moderatorUserId)
-                .reason("Hoàn tác hành động " + original.getActionType() + " (moderation_action_id=" + actionId + ")")
+                .reason("Hoàn tác hành động " + original.getActionType())
                 .actionAt(Instant.now())
                 .build();
         ModerationAction savedUndoAction = moderationActionRepository.save(undoAction);

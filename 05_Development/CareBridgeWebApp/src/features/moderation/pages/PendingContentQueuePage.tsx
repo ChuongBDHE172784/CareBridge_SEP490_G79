@@ -61,6 +61,9 @@ export default function PendingContentQueuePage() {
   const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  // Set only when "Xem chi tiết" is opened from the "Đã xử lý" tab — carries the reason/moderator
+  // info that ModerationContentDetail (the content itself) doesn't have, since that's action-level data.
+  const [detailHistoryItem, setDetailHistoryItem] = useState<ModerationHistoryItem | null>(null);
 
   const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
   const [undoSubmitting, setUndoSubmitting] = useState(false);
@@ -111,11 +114,13 @@ export default function PendingContentQueuePage() {
     setPendingAction({ item, type });
   };
 
-  // CB-MOD-IMP-008: full (non-truncated) detail — used by "Xem chi tiết" on all 3 tabs.
-  const openDetail = async (targetId: string, targetType: ReportTargetType) => {
+  // CB-MOD-IMP-008: full (non-truncated) detail — used by "Xem chi tiết" on all 3 tabs. `historyItem`
+  // is only passed from the "Đã xử lý" tab, to also surface reason/moderatorName in the dialog.
+  const openDetail = async (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
     setDetailTarget({ targetId, targetType });
     setDetailData(null);
     setDetailError('');
+    setDetailHistoryItem(historyItem ?? null);
     setDetailLoading(true);
     try {
       const detail = await fetchContentDetail(targetType, targetId);
@@ -198,7 +203,7 @@ export default function PendingContentQueuePage() {
               <table className="w-full min-w-[860px] border-collapse">
                 <thead>
                   <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
-                    {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
+                    {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
                       <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
                     ))}
                   </tr>
@@ -219,14 +224,13 @@ export default function PendingContentQueuePage() {
                           {ACTION_TYPE_LABELS[item.actionType]}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-sm text-on-surface-variant max-w-[240px] truncate">{item.reason ?? '—'}</td>
                       <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
                       <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex gap-2 flex-nowrap">
                           <button
                             type="button"
-                            onClick={() => openDetail(item.targetId, item.targetType)}
+                            onClick={() => openDetail(item.targetId, item.targetType, item)}
                             className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold whitespace-nowrap"
                           >
                             Xem chi tiết
@@ -245,7 +249,7 @@ export default function PendingContentQueuePage() {
                     </tr>
                   ))}
                   {historyItems.length === 0 && (
-                    <tr><td colSpan={7} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
+                    <tr><td colSpan={6} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -365,7 +369,17 @@ export default function PendingContentQueuePage() {
         loading={detailLoading}
         errorText={detailError}
         detail={detailData}
-        onClose={() => setDetailTarget(null)}
+        moderationContext={
+          detailHistoryItem
+            ? {
+                actionTypeLabel: ACTION_TYPE_LABELS[detailHistoryItem.actionType],
+                reason: detailHistoryItem.reason,
+                moderatorName: detailHistoryItem.moderatorName,
+                actionAt: detailHistoryItem.actionAt,
+              }
+            : undefined
+        }
+        onClose={() => { setDetailTarget(null); setDetailHistoryItem(null); }}
       />
     </div>
   );

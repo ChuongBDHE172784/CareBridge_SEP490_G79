@@ -17,6 +17,15 @@ export interface ContentDetail {
   updatedAt: string | null;
 }
 
+// Action-level info (from the "Đã xử lý" history row) — distinct from ContentDetail, which only
+// describes the underlying question/answer itself, not the moderation decision made on it.
+export interface ModerationActionContext {
+  actionTypeLabel: string;
+  reason: string | null;
+  moderatorName: string | null;
+  actionAt: string;
+}
+
 interface ContentDetailDialogProps {
   open: boolean;
   targetTypeLabel: string;
@@ -24,6 +33,7 @@ interface ContentDetailDialogProps {
   loading: boolean;
   errorText?: string;
   detail: ContentDetail | null;
+  moderationContext?: ModerationActionContext;
   onClose: () => void;
 }
 
@@ -36,6 +46,7 @@ export default function ContentDetailDialog({
   loading,
   errorText,
   detail,
+  moderationContext,
   onClose,
 }: ContentDetailDialogProps) {
   if (!open) return null;
@@ -97,6 +108,24 @@ export default function ContentDetailDialog({
             <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant mb-4">
               <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{detail.body}</p>
             </div>
+
+            {moderationContext && (
+              <div className="bg-primary-container/40 rounded-2xl p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-primary text-lg">gavel</span>
+                  <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] m-0">
+                    Xử lý kiểm duyệt — {moderationContext.actionTypeLabel}
+                  </p>
+                </div>
+                <p className="text-sm text-on-surface mb-2">
+                  Lý do: <span className="text-on-surface-variant">{moderationContext.reason ?? '—'}</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 text-xs text-outline">
+                  <span>Người xử lý: {moderationContext.moderatorName ?? '—'}</span>
+                  <span>Thời gian: {formatDateTime(moderationContext.actionAt)}</span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 text-xs text-outline">
               <p className="m-0">
