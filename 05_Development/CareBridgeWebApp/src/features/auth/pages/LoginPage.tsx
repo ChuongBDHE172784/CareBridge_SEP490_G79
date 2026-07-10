@@ -62,14 +62,24 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { message?: string; error?: string } } };
       const status = error.response?.status;
-      if (status === 429) {
-        setServerError('Tài khoản tạm khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau 15 phút.');
-      } else if (status === 403) {
-        const code = error.response?.data?.error;
-        if (code === 'ACCOUNT_DISABLED' || code === 'ACCOUNT_LOCKED') return;
-        setServerError('Tài khoản không có quyền truy cập.');
+      const code = error.response?.data?.error;
+
+      if (status === undefined) {
+        setServerError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.');
+      } else if (code === 'ACCOUNT_LOCKED') {
+        navigate('/account-blocked?reason=locked', { replace: true });
+      } else if (code === 'ACCOUNT_DISABLED') {
+        navigate('/account-blocked?reason=disabled', { replace: true });
+      } else if (code === 'ACCOUNT_SUSPENDED') {
+        navigate('/account-blocked?reason=suspended', { replace: true });
+      } else if (status === 401) {
+        setServerError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.');
+      } else if (status === 429) {
+        setServerError('Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau ít phút.');
+      } else if (status === 400) {
+        setServerError(error.response?.data?.message ?? 'Thông tin đăng nhập không hợp lệ. Vui lòng kiểm tra lại.');
       } else {
-        setServerError(error.response?.data?.message ?? 'Email hoặc mật khẩu không chính xác. Vui lòng thử lại.');
+        setServerError('Đã xảy ra lỗi. Vui lòng thử lại sau.');
       }
     }
   };

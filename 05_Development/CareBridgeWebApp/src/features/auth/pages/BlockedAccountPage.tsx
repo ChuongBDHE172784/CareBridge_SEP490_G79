@@ -8,8 +8,10 @@ export default function BlockedAccountPage() {
 
   const message =
     reason === 'disabled'
-      ? 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ kỹ thuật.'
-      : 'Tài khoản của bạn đã bị khoá tạm thời. Vui lòng thử lại sau.';
+      ? 'Tài khoản của bạn chưa được kích hoạt hoặc đã bị vô hiệu hóa. Vui lòng kiểm tra email xác thực hoặc liên hệ hỗ trợ kỹ thuật.'
+      : reason === 'suspended'
+        ? 'Tài khoản của bạn đã bị tạm ngưng hoạt động. Vui lòng liên hệ hỗ trợ để biết thêm chi tiết.'
+        : 'Tài khoản của bạn đã bị khoá tạm thời do đăng nhập sai nhiều lần. Vui lòng thử lại sau ít phút.';
 
   return (
     <div className="font-sans bg-[#F6F1EC] min-h-screen flex items-center justify-center">
