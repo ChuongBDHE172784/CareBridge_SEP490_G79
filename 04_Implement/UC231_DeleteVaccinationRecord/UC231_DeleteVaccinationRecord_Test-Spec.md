@@ -4,7 +4,7 @@
 **Document ID:** `CB-VAC-TDD-231`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (9/14 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -31,6 +31,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 9/14 tests PASS in VaccinationServiceImplTest; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | `2026-07-03` | `AI Agent — Test Designer` | Khởi tạo tài liệu — TDD spec cho UC-231 Delete Vaccination Record, dựa trên `CB-VAC-IMP-231` (Draft). |
 
 ---
@@ -238,7 +239,7 @@ class VaccinationRecordTestFactory {
 **Legal:** `BR-PRIVACY, PDPA`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `CB-VAC-IMP-231 §11.3 Chặng 2` (service pseudocode) + ADR-VAC-DELETE-001 (soft-delete via `status=DELETED`) + ADR-VAC-DELETE-002 (owner-only)
 
@@ -257,7 +258,7 @@ class VaccinationRecordTestFactory {
 - Record bị xóa cứng (`deleteById`/`delete()` gọi thay vì `save()`) → vi phạm C1 (§17 TDS)
 - Hoặc `save()` không được gọi / status không đổi
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Không dùng `recordRepository.delete()`/`deleteById()` — chỉ `save()` sau khi `setStatus(DELETED)`.
 
 ---
@@ -267,7 +268,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `CB-VAC-IMP-231 §6.3` State Machine — *"Firm decision: MỌI status non-DELETED đều xóa được"* (BR-PRIVACY "incorrectly entered data" rationale, parallel UC-236)
 
@@ -280,7 +281,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** Xóa thành công bất kể status = SCHEDULED (chưa hoàn thành)
 **Expected Result (FAIL):** Service từ chối xóa vì record "chưa hoàn thành" (giả định sai — không có precondition nào giới hạn theo status trong ADR)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -289,7 +290,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `CB-VAC-IMP-231 §6.3` State Machine (POSTPONED → DELETED transition)
 
@@ -302,7 +303,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** Xóa thành công từ POSTPONED
 **Expected Result (FAIL):** Exception không mong muốn hoặc status không đổi
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -311,7 +312,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `CB-VAC-IMP-231 §3 ADR-VAC-DELETE-003` — reused từ `UC215_DeleteReminder_TDS.md §ADR-REM-DELETE-002` (idempotent success, no-op, không phát lại event)
 
@@ -324,7 +325,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** Không side-effect nào (no UPDATE, no event); controller layer trả `204 No Content`
 **Expected Result (FAIL):** `save()` hoặc `publishEvent()` bị gọi lại (audit trùng) — vi phạm C3; hoặc method throw lỗi 409 (sai lựa chọn — phải là no-op theo ADR)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Guard đầu hàm: `if (rec.getStatus() == DELETED) return;` — trước khi set status/save/publish.
 
 ---
@@ -336,7 +337,7 @@ class VaccinationRecordTestFactory {
 **Legal:** `BR-RBAC, BR-PRIVACY (minimum-necessary)`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `CB-VAC-IMP-231 §3 ADR-VAC-DELETE-002` + `§10` (VAC-013, 403)
 
@@ -349,7 +350,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(403, VAC-013, "Delete restricted to the baby owner")`
 **Expected Result (FAIL):** Xóa thành công (thiếu tầng owner check) hoặc trả nhầm mã lỗi (vd VAC-002)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -360,7 +361,7 @@ class VaccinationRecordTestFactory {
 **Legal:** `BR-RBAC, BR-PRIVACY`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `CB-VAC-IMP-231 §3 ADR-VAC-DELETE-002` + `§10` (VAC-002, 403, reused từ UC-228)
 
@@ -373,7 +374,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS = an toàn):** `403 VAC-002`, cùng response shape dù record tồn tại hay không (không leak)
 **Expected Result (FAIL = lỗ hổng):** Trả `404` khác biệt cho case "record không tồn tại" vs "record tồn tại nhưng không được xem" theo cách lộ thông tin, hoặc bỏ qua canView check
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -382,7 +383,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `CB-VAC-IMP-231 §10` (VAC-001, 404, reused — nhất quán với `getVaccinationSchedule` dòng 39–41 REAL CODE)
 
@@ -394,7 +395,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `404 VAC-001`
 **Expected Result (FAIL):** NPE hoặc lỗi 500 không kiểm soát
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -403,7 +404,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `CB-VAC-IMP-231 §10` (VAC-001, 404)
 
@@ -416,7 +417,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `404 VAC-001`
 **Expected Result (FAIL):** Lỗi khác mã hoặc không throw
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -469,7 +470,7 @@ class VaccinationRecordTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationServiceImpl.deleteVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplDeleteTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `CB-VAC-IMP-231 §10` (VAC-016, 500) + `§11.3` (`@Transactional` on delete method)
 
@@ -481,7 +482,7 @@ class VaccinationRecordTestFactory {
 
 **Expected Result (PASS):** Không event nào bị publish khi save fail; transaction rollback (no partial state)
 **Expected Result (FAIL):** Event được publish trước khi persistence xác nhận thành công (race điều kiện dữ liệu không nhất quán)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -641,7 +642,7 @@ public class VaccinationServiceImpl implements IVaccinationService {
 | `VAC231-TC-014` | N/A — `@PreAuthorize` gate fires before service call, still expect 401 (test targets filter chain, not stub) | 🔴 FAIL *(compile-time, method not yet routed)* | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
-- Stub commit hash: `___` *(điền khi bắt đầu implement)*
+- Stub commit hash: `N/A - Red Gate not reconstructed because production implementation already existed before this execution.`
 - Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
 - Log file: `[path to red-gate-evidence.log]` *(điền sau khi chạy)*
 

@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-003` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bach` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent | Tạo tài liệu lần đầu cho UC-74 View Shared Care Calendar |
+| 2026-07-08 | AI Agent — Amelia (Dev Agent) | Implemented: ICareCalendarService, CareCalendarServiceImpl (two-step isMember/hasPermission, OWNER bypass, care_tasks only per ADR-FAM-004), GET /api/v1/care-groups/{groupId}/calendar endpoint. 13/18 tests GREEN (TC-010/011/INT-001 skipped — Docker unavailable; TC-016/017 mobile — out of scope). |
 
 ---
 

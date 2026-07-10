@@ -6,7 +6,7 @@
 | **Document ID** | `CB-BABY-IMP-012` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3 sync: backend service coverage added in `GrowthServiceTest`; `GrowthServiceTest` 19/19 PASS and carejourney suite 65/65 PASS. Controller/integration/full Test-Spec matrix still pending. |
 | 2026-07-03 | AI Agent | Tạo tài liệu lần đầu cho UC-236 Delete Growth Measurement (soft-delete via new `deleted_at` column) |
 
 ---
@@ -1175,4 +1176,4 @@ Output tuân thủ §8. Tests cover §13.
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft.*
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Partially Implemented.*

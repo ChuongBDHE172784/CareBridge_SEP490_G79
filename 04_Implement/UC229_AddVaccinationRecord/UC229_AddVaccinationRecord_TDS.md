@@ -6,7 +6,7 @@
 | **Document ID** | `CB-VAC-IMP-229` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `LamVH (feature author, per SRS Table 251)` |
 | **Author** | `AI Agent (Technical Architect role)` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation - 9/18 tests PASS; service-level coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu cho UC-229 Add Vaccination Record. Model theo REAL CODE (`com.carebridge.backend.vaccination`), không theo TDS-doc UC228 (đã drift). |
 
 ---

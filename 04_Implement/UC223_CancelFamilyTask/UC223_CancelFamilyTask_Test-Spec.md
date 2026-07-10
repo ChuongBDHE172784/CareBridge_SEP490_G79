@@ -4,7 +4,7 @@
 **Document ID:** `FPT-EDU-TDD-TEMPLATE-001` (instance for `CB-FAM-IMP-223`)
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-07-10 (17/21 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -23,7 +23,7 @@
 - PDPA (Vietnam) — minimum-necessary access; *(Luật 91/2025, NĐ 356/2025 — Not applicable; no specific article identified, generic BR-RBAC/BR-PRIVACY cited instead)*
 
 > **Quy ước TDD:** Tài liệu này mô tả test cases TRƯỚC khi viết production code.
-> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
+> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL ðŸ”´ → implement → PASS ðŸŸ¢ → refactor ðŸ”µ.
 > Không mark test là ✅ nếu `./mvnw test` chưa xanh.
 > Không dùng PII thật trong test data — chỉ dùng SYNTHETIC data.
 
@@ -33,6 +33,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 17/21 tests PASS in targeted service suite; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | 2026-07-03 | AI Agent | Khởi tạo tài liệu — Test-Spec cho UC-223 Cancel Family Task |
 
 ---
@@ -59,7 +60,7 @@
 | **Feature / Gap ID** | `GAP-FAM223` |
 | **Module** | `family` — Care Task Cancellation (status-transition-only) |
 | **Spec gốc** | `CB-FAM-IMP-223` |
-| **Priority** | 🟠 P1 (Medium per SRS) |
+| **Priority** | ðŸŸ  P1 (Medium per SRS) |
 | **Sprint** | `Sprint 3 — Cross-Domain Integration` *(mirrors sibling UC-73/UC-222 batch; exact date not confirmed — Open, do not invent)* |
 | **Milestone** | `M3 Alpha` *(not confirmed in available sources — Open)* |
 | **Data Classification** | `Internal` (family/task identity + notification trigger — see TDS §1) |
@@ -179,7 +180,7 @@ Family / CareTask Cancel (UC-223) bao gồm các layer:
 
 > **TC ID format:** `FAM223-TC-[NNN]`
 > **Severity:** CRITICAL / HIGH / MEDIUM / LOW
-> **Status:** 🔴 Not written / 🟡 Written-failing / 🟢 Passing
+> **Status:** ðŸ”´ Not written / ðŸŸ¡ Written-failing / ðŸŸ¢ Passing
 
 ### Props Isolation Boilerplate (CASE 2.0 — BẮT BUỘC)
 
@@ -253,7 +254,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `src/test/java/com/carebridge/backend/family/service/CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS §3.3.17.8` Normal Flow ("Cancels a task and notifies related members") + `TDS §8.1 CancelFamilyTaskResponse` + `ADR-FAM-080`
 
@@ -271,7 +272,7 @@ class CareTaskCancelTestFactory {
 **Expected Result (FAIL):**
 - Exception thrown, `status` not transitioned, or `save()`/audit/event not invoked
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Base happy path — verifies the full success chain (auth → load → transition → persist → audit → event).
 
 ---
@@ -281,7 +282,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `TDS ADR-FAM-080` ("cancellable = OPEN ∪ IN_PROGRESS")
 
@@ -294,7 +295,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** 200-equivalent success, `status = CANCELLED`
 **Expected Result (FAIL):** `FAM-080` incorrectly thrown for `IN_PROGRESS`
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -303,7 +304,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `TDS ADR-FAM-080` — error `FAM-080` per `TDS §10`
 
@@ -316,7 +317,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** Exception `FAM-080`/409; no persistence or event side effect
 **Expected Result (FAIL):** A completed task is silently cancelled
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -325,7 +326,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `TDS ADR-FAM-081` Decision ("re-cancelling an already-CANCELLED task throws `BusinessException(409, FAM-081)`") — a deliberate design choice for consistency with UC-222's ADR-FAM-073 precedent
 
@@ -338,7 +339,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** Exception `FAM-081`/409 — distinct code from the DONE case
 **Expected Result (FAIL):** Re-cancel silently succeeds (200 no-op), or reuses `FAM-080` instead of the distinct `FAM-081`
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the **idempotency-as-error** anti-regression test — the core behavioural distinction of ADR-FAM-081 from a naive idempotent-200 design.
 
 ---
@@ -347,8 +348,8 @@ class CareTaskCancelTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canCancelTask()` (via `CareTaskServiceImpl.cancelFamilyTask()`)
-**Test File:** `CareTaskAuthorizationPolicyTest.java`, `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplCancelTest.java`, `CareTaskServiceImplCancelTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `TDS ADR-FAM-079` (owner-only, reuses ADR-FAM-032/ADR-FAM-072 predicate); error `FAM-079` per `TDS §10`
 
@@ -361,7 +362,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** 403 `FAM-079`
 **Expected Result (FAIL):** MEMBER role permitted to cancel — privilege escalation
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -369,8 +370,8 @@ class CareTaskCancelTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canCancelTask()`
-**Test File:** `CareTaskAuthorizationPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplCancelTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `TDS ADR-FAM-079`; error `FAM-079`
 
@@ -383,7 +384,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** `false` → service throws `FAM-079`/403
 **Expected Result (FAIL):** `true` returned for VIEWER
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -391,8 +392,8 @@ class CareTaskCancelTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canCancelTask()`
-**Test File:** `CareTaskAuthorizationPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplCancelTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `TDS ADR-FAM-079`; error `FAM-079`
 
@@ -405,7 +406,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** `false` → 403 `FAM-079`
 **Expected Result (FAIL):** `NullPointerException` or `true`
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -414,7 +415,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `TDS §10` — `FAM-033` reused from UC-73's reservation for "care task not found"
 
@@ -427,7 +428,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** 404 `FAM-033`
 **Expected Result (FAIL):** `NoSuchElementException`/500, or wrong error code
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -436,7 +437,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `TDS §8.2` (`findByIdAndCareGroupId` — scoped lookup); error `FAM-033`
 
@@ -449,7 +450,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** 404 `FAM-033` — no cross-group task info leaked
 **Expected Result (FAIL):** Task from another group is loaded and cancelled — cross-tenant data leak
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -458,7 +459,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`, `CareTaskCancelled` construction
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `TDS §7.3` Payload Schema + `ADR-FAM-082` Decision ("payload carries `careGroupId`, `assignedTo`, `assignedBy`, `cancelledBy`, `title`")
 
@@ -471,7 +472,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** All payload fields present and correctly populated per §7.3
 **Expected Result (FAIL):** A field is missing, null when it shouldn't be, or the event carries the full `description` free-text (BR-PRIVACY violation)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This test does **not** assert a recipient list — that remains `Open` (OPEN-2) by design; it verifies the payload is *sufficient* for a future consumer to decide.
 
 ---
@@ -481,7 +482,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-011`
 **Oracle Source:** `TDS §4.2` Data Integrity & Concurrency ("Notification exactly-once-ish... never on a rejected re-cancel") + `ADR-FAM-081`/`082`
 
@@ -494,7 +495,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** No event published on the rejected path
 **Expected Result (FAIL):** An event is published even though the cancel was rejected
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -503,7 +504,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-012`
 **Oracle Source:** `TDS ADR-FAM-081` Consequences ("protects the notification contract... a rejected re-cancel does NOT re-emit `CareTaskCancelled`, so members are never double-notified")
 
@@ -516,7 +517,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** No event published; members are not double-notified
 **Expected Result (FAIL):** A second `CareTaskCancelled` fires on a stale re-cancel — a duplicate-notification bug
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the **core anti-regression test** for the idempotency-as-error design — flagged CRITICAL because a failure here directly causes duplicate member notifications in production.
 
 ---
@@ -526,7 +527,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-013`
 **Oracle Source:** `TDS ADR-FAM-083` invariant #1 (§6.3): "writes ONLY `status`... content fields and `completed_at` are unchanged"
 
@@ -539,7 +540,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** Only `status`/`updatedAt` change; every content field bit-identical to input
 **Expected Result (FAIL):** Any content field mutated as a side effect — violates the UC-222/UC-223 disjoint-mutation boundary (ADR-FAM-083)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the **reciprocal** of UC-222's `FAM222-TC-020`/`023` (which assert `status`/`completedAt` unchanged on *update*) — together the two TCs prove the two UCs partition `care_tasks`'s mutable surface cleanly.
 
 ---
@@ -549,7 +550,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `LOW`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-014`
 **Oracle Source:** `TDS §5.2` (`@UpdateTimestamp` on `updated_at`) + `TDS ADR-FAM-080` ("no `cancelled_at` column... only `updated_at` reflects the transition time")
 
@@ -562,7 +563,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** `updatedAt` is populated in the response and reflects the transition
 **Expected Result (FAIL):** `updatedAt` is null or stale in the response
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -571,7 +572,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-015`
 **Oracle Source:** `TDS §6.1` Happy Path sequence diagram (policy check precedes `TaskRepo.findByIdAndCareGroupId`) — mirrors UC-222's `FAM222-TC-009` gate-ordering pattern
 
@@ -584,7 +585,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** 403 `FAM-079`; no task-repository interaction — non-owners cannot even infer whether a `taskId` exists
 **Expected Result (FAIL):** Task is loaded before the authorization check — minor information-disclosure risk (existence oracle) and wasted work
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -593,7 +594,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()`
 **Test File:** `CareTaskServiceImplCancelTest.java` (unit-level via mock verification), reconfirmed at `FAM223-TC-INT-001` (integration, real DB)
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-016`
 **Oracle Source:** `TDS ADR-FAM-080` Decision ("a soft lifecycle transition; the row and all its content columns are retained — NO hard delete")
 
@@ -606,7 +607,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** Only `save()` is used; no delete method is ever invoked
 **Expected Result (FAIL):** The service calls a delete method — a hard-delete regression against ADR-FAM-080
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -614,8 +615,8 @@ class CareTaskCancelTestFactory {
 
 **Severity:** `LOW`
 **Feature Under Test:** `CareTaskMapper.toCancelResponse()`
-**Test File:** `CareTaskMapperTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplCancelTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-017`
 **Oracle Source:** `TDS §8.1` `CancelFamilyTaskResponse` field list; CLAUDE.md "Never expose JPA entities in API responses; use DTOs and mappers"
 
@@ -628,7 +629,7 @@ class CareTaskCancelTestFactory {
 
 **Expected Result (PASS):** Response shape matches `TDS §8.1` exactly
 **Expected Result (FAIL):** Response accidentally includes `description`/`dueAt` or exposes the raw entity
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -646,7 +647,7 @@ class CareTaskCancelTestFactory {
 **Legal:** `BR-RBAC`
 **Feature Under Test:** `CareGroupController.cancelTask()` (Spring Security filter chain)
 **Test File:** `CareGroupControllerCancelTaskTest.java` (`@WebMvcTest` + Spring Security test support)
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Oracle Source:** `SRS §3.3.17.8` Exception E1 ("Access is denied when the actor is unauthenticated...") / `BR-RBAC`
 
 **Preconditions:** No `Authorization` header supplied
@@ -662,7 +663,7 @@ class CareTaskCancelTestFactory {
 **Expected Result (FAIL = lỗ hổng tồn tại):**
 - Request reaches the service layer without authentication
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -674,7 +675,7 @@ class CareTaskCancelTestFactory {
 **Legal:** `BR-PRIVACY`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()` (via `CareGroupControllerCancelTaskTest`, full path)
 **Test File:** `CareTaskServiceImplIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Oracle Source:** `TDS §8.2` (`findByIdAndCareGroupId` scoped lookup) + `ADR-FAM-080`/`§10` (`FAM-033`, not a 403, to avoid an existence oracle)
 
 **Preconditions:** FX-001, FX-002, FX-009 (task real group = `GROUP_B`)
@@ -690,7 +691,7 @@ class CareTaskCancelTestFactory {
 **Expected Result (FAIL = lỗ hổng tồn tại):**
 - Task in a foreign group is cancelled, or its existence is confirmed via a distinguishable error code — either is a cross-tenant data exposure/mutation
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -705,7 +706,7 @@ class CareTaskCancelTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `Full flow: POST /cancel endpoint → CareTaskServiceImpl → CareTaskRepository/CareGroupMemberRepository → PostgreSQL`
 **Test File:** `src/test/java/com/carebridge/backend/family/CareTaskCancelIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-020`
 **Oracle Source:** `TDS §6.1` Happy Path sequence diagram + `TDS ADR-FAM-080`/`083` (status/content invariant) + `V1__init_schema.sql` (`care_tasks` column set)
 
@@ -735,7 +736,7 @@ assertThat(record.getAssignedTo()).isEqualTo(MEMBER_USER);
 assertThat(record.getCompletedAt()).isNull();
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -744,7 +745,7 @@ assertThat(record.getCompletedAt()).isNull();
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.cancelFamilyTask()` under concurrent invocation
 **Test File:** `CareTaskCancelIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-021`
 **Oracle Source:** `TDS §4.2` Data Integrity & Concurrency ("the second committed cancel observes `CANCELLED` and is rejected `FAM-081`... Optimistic `@Version` locking is OUT of scope for v1") + `ADR-FAM-081`/`082`
 
@@ -758,31 +759,31 @@ assertThat(record.getCompletedAt()).isNull();
 
 **Expected Result (PASS):** Exactly one success + one `FAM-081` rejection; exactly one event; final DB state is `CANCELLED`, not corrupted
 **Expected Result (FAIL):** Both calls succeed (2 events published — duplicate notification), or a deadlock/exception occurs, or the final state is inconsistent
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
+| TC ID | Test File | ðŸ”´ RED confirmed | ðŸŸ¢ GREEN (commit) | ðŸ”µ REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `FAM223-TC-001` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-002` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-003` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-004` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-005` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-006` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-007` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-008` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-009` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-010` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-011` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-012` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-013` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-014` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-015` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-016` | `CareTaskServiceImplCancelTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM223-TC-017` | `CareTaskMapperTest.java:TBD` | `[ ]` | `[ ]` | |
+| `FAM223-TC-001` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-002` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-003` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-004` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-005` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-006` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-007` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-008` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-009` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-010` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-011` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-012` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-013` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-014` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-015` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-016` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM223-TC-017` | `CareTaskServiceImplCancelTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
 | `FAM223-TC-018` | `CareGroupControllerCancelTaskTest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM223-TC-019` | `CareTaskServiceImplIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM223-TC-INT-001` | `CareTaskCancelIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
@@ -824,13 +825,13 @@ public class CareTaskAuthorizationPolicy {
 | `FAM223-TC-010` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `FAM223-TC-012` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 | `FAM223-TC-013` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `FAM223-TC-018` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
+| `FAM223-TC-018` | `throw('Not implemented')` | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | |
 | *(remaining TCs follow the same stub-must-fail pattern — full table populated at Red Gate execution time)* | | | | |
 
 **Red Gate Evidence:**
 
-- Stub commit hash: `___` *(to be filled at implementation time)*
-- Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
+- Stub commit hash: `N/A` — Red Gate not reconstructed because production implementation already existed before this execution.
+- All FAIL? ☐ Not reconstructed — production implementation pre-existed; service-level Green evidence captured on 2026-07-10.
 - Log file: `[path to red-gate-evidence.log]` *(TBD)*
 
 > **Nếu bất kỳ test PASS:** Dừng lại. Xác định root cause từ bảng trên. Rewrite test từ TC-ID spec
@@ -931,4 +932,6 @@ git checkout -- src/test/java/com/carebridge/backend/family/
 ---
 
 *TDD Template v2.0 — Tích hợp CASE 2.0 Anti-Pattern Detection & Red Gate Protocol*
-*Status: `Draft`. Companion to `04_Implement/UC223_CancelFamilyTask/UC223_CancelFamilyTask_TDS.md` (`CB-FAM-IMP-223`).*
+*Status: `Partially Implemented`. Companion to `04_Implement/UC223_CancelFamilyTask/UC223_CancelFamilyTask_TDS.md` (`CB-FAM-IMP-223`).*
+
+

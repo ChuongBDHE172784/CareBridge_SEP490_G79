@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-220` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC-220 Leave Care Group |
+| 2026-07-10 | AI Agent | Phase 3: Implementation — 15/22 tests PASS; unit/service coverage green, E2E/INT pending |
 
 ---
 
@@ -1289,4 +1290,4 @@ Tests phải cover Test-Spec §4 test cases (companion file UC220_LeaveCareGroup
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft — pending review.*
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Partially Implemented — unit/service evidence updated 2026-07-10.*

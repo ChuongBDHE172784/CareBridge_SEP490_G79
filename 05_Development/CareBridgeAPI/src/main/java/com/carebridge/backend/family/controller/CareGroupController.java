@@ -6,18 +6,39 @@ import com.carebridge.backend.family.dto.CareGroupMemberDto;
 import com.carebridge.backend.family.dto.CareGroupMembersResponse;
 import com.carebridge.backend.family.dto.CreateCareGroupRequest;
 import com.carebridge.backend.family.dto.CreateCareGroupResponse;
-import com.carebridge.backend.family.dto.InviteCareGroupMemberRequest;
+import com.carebridge.backend.family.dto.FamilyPermissionResponse;
+import com.carebridge.backend.family.dto.InviteFamilyMemberRequest;
+import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.dto.CareGroupSummaryDto;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
+import com.carebridge.backend.family.dto.UpdateFamilyPermissionRequest;
+import com.carebridge.backend.family.dto.AcceptInvitationByTokenResponse;
+import com.carebridge.backend.family.dto.AssignFamilyTaskRequest;
+import com.carebridge.backend.family.dto.AssignFamilyTaskResponse;
+import com.carebridge.backend.family.dto.CancelFamilyTaskResponse;
+import com.carebridge.backend.family.dto.CareTaskDetailResponse;
+import com.carebridge.backend.family.dto.CareTasksResponse;
+import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
+import com.carebridge.backend.family.dto.RemoveMemberResponse;
+import com.carebridge.backend.family.dto.RevokeInvitationResponse;
+import com.carebridge.backend.family.dto.SharedCareCalendarResponse;
+import com.carebridge.backend.family.dto.UpdateFamilyTaskRequest;
+import com.carebridge.backend.family.dto.UpdateFamilyTaskResponse;
+import com.carebridge.backend.family.dto.UpdateTaskStatusRequest;
+import com.carebridge.backend.family.dto.UpdateTaskStatusResponse;
+import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
+import com.carebridge.backend.family.service.ICareTaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +48,8 @@ import java.util.UUID;
 public class CareGroupController {
 
     private final ICareGroupService careGroupService;
+    private final ICareTaskService careTaskService;
+    private final ICareCalendarService careCalendarService;
 
     // UC70: Create care group
     @PostMapping
@@ -59,15 +82,15 @@ public class CareGroupController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // UC83: Owner invites a member by email
+    // UC71: Invite family member via LINK, QR, or PHONE channel
     @PostMapping("/{groupId}/invitations")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<CareGroupMemberDto>> inviteMember(
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<InviteFamilyMemberResponse>> inviteFamilyMember(
             @PathVariable UUID groupId,
-            @Valid @RequestBody InviteCareGroupMemberRequest request,
+            @Valid @RequestBody InviteFamilyMemberRequest request,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = careGroupService.inviteMember(groupId, request, callerId);
+        var response = careGroupService.inviteFamilyMember(groupId, request, callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Invitation sent"));
     }
@@ -100,5 +123,163 @@ public class CareGroupController {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         careGroupService.declineInvite(groupId, callerId);
         return ResponseEntity.ok(ApiResponse.success(null, "Invitation declined"));
+    }
+
+    // UC217: Owner revokes a still-pending invitation
+    @PostMapping("/{groupId}/invitations/{targetUserId}/revoke")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<RevokeInvitationResponse>> revokeInvitation(
+            @PathVariable UUID groupId,
+            @PathVariable UUID targetUserId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.revokeInvitation(groupId, targetUserId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Invitation revoked"));
+    }
+
+    // UC219: Owner removes an accepted non-owner member
+    @DeleteMapping("/{groupId}/members/{targetUserId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<RemoveMemberResponse>> removeMember(
+            @PathVariable UUID groupId,
+            @PathVariable UUID targetUserId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.removeMember(groupId, targetUserId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Member removed"));
+    }
+
+    // UC220: Accepted non-owner member leaves the group
+    @PostMapping("/{groupId}/leave")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<LeaveCareGroupResponse>> leaveCareGroup(
+            @PathVariable UUID groupId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.leaveCareGroup(groupId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "You have left the care group"));
+    }
+
+    // UC83: Accept a pending invitation by invite token (token-based deep-link / QR / PHONE accept)
+    @PostMapping("/invitations/{token}/accept")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<AcceptInvitationByTokenResponse>> acceptInvitationByToken(
+            @PathVariable("token") String token,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.acceptInvitationByToken(token, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Invitation accepted"));
+    }
+
+    // UC72: Update a member's permission flags (OWNER only)
+    @PatchMapping("/{groupId}/members/{memberId}/permissions")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<FamilyPermissionResponse>> updateFamilyPermission(
+            @PathVariable UUID groupId,
+            @PathVariable UUID memberId,
+            @RequestBody UpdateFamilyPermissionRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.updateFamilyPermission(groupId, memberId, request, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Family permission updated successfully"));
+    }
+
+    // UC72: View current permission grant for a member (target or OWNER)
+    @GetMapping("/{groupId}/members/{memberId}/permissions")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<FamilyPermissionResponse>> getFamilyPermission(
+            @PathVariable UUID groupId,
+            @PathVariable UUID memberId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.getFamilyPermission(groupId, memberId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // UC73: Assign a care task to an ACCEPTED member (OWNER only)
+    @PostMapping("/{groupId}/tasks")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<AssignFamilyTaskResponse>> assignTask(
+            @PathVariable UUID groupId,
+            @Valid @RequestBody AssignFamilyTaskRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.assignFamilyTask(groupId, request, callerId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Task assigned successfully"));
+    }
+
+    // UC73: List all care tasks in a group (any ACCEPTED member)
+    @GetMapping("/{groupId}/tasks")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<CareTasksResponse>> listTasks(
+            @PathVariable UUID groupId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.listTasks(groupId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // UC221: View assigned task detail
+    @GetMapping("/{groupId}/tasks/{taskId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<CareTaskDetailResponse>> getTaskDetail(
+            @PathVariable UUID groupId,
+            @PathVariable UUID taskId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.getTaskDetail(groupId, taskId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // UC222: Update task content only
+    @PatchMapping("/{groupId}/tasks/{taskId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<UpdateFamilyTaskResponse>> updateTask(
+            @PathVariable UUID groupId,
+            @PathVariable UUID taskId,
+            @Valid @RequestBody UpdateFamilyTaskRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.updateFamilyTask(groupId, taskId, request, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Care task updated successfully"));
+    }
+
+    // UC223: Cancel an incomplete task
+    @PostMapping("/{groupId}/tasks/{taskId}/cancel")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<CancelFamilyTaskResponse>> cancelTask(
+            @PathVariable UUID groupId,
+            @PathVariable UUID taskId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.cancelFamilyTask(groupId, taskId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Care task cancelled successfully"));
+    }
+
+    // UC85: Update assigned task status (assignee only — FSM validated)
+    @PatchMapping("/{groupId}/tasks/{taskId}/status")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UpdateTaskStatusResponse>> updateTaskStatus(
+            @PathVariable UUID groupId,
+            @PathVariable UUID taskId,
+            @Valid @RequestBody UpdateTaskStatusRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careTaskService.updateTaskStatus(groupId, taskId, request, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Task status updated"));
+    }
+
+    // UC74: View shared care calendar filtered by member permissions
+    @GetMapping("/{groupId}/calendar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SharedCareCalendarResponse>> getCalendar(
+            @PathVariable UUID groupId,
+            @RequestParam Instant rangeStart,
+            @RequestParam Instant rangeEnd,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careCalendarService.getCalendar(groupId, callerId, rangeStart, rangeEnd);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

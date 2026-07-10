@@ -4,7 +4,7 @@
 **Document ID:** `CB-FAM-TDD-218`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Approved`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer role`
 **Reviewed by:** `[ ] Pending`

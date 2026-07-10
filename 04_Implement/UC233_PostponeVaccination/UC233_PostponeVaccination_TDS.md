@@ -6,7 +6,7 @@
 | **Document ID** | `CB-VAC-IMP-233` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation - 8/17 tests PASS; service-level coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent (Technical Architect) | Tạo tài liệu lần đầu cho UC-233 Postpone Vaccination — thiết kế dual-path (update-existing / create-new, reuse pattern UC-232), repeatable-postpone, và ADR đề xuất migration cho cột `postpone_reason` còn thiếu trong schema |
 | 2026-07-04 | AI Agent (Technical Architect) | ADR-VAC-233-005 chuyển `Proposed → Accepted` — user/product owner chọn **Option A** (thêm cột `postpone_reason TEXT` vào `vaccination_records` qua migration `V20260703000001`, không phải audit-log-only). Cập nhật §2 traceability, §4.2 NFR, §5.1/§5.2 schema, §7.3/§8 interface, §11 quy trình, §17 constraints và Phụ lục C (OPEN-4/OPEN-9) để phản ánh quyết định firm; version migration `V20260703000001` re-verify không trùng (migration mới nhất vẫn là `V20260702002000`). Status tài liệu vẫn `Draft`. |
 

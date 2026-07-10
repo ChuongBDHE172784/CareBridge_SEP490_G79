@@ -26,4 +26,8 @@ public class BabyAccessPolicy {
         return memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
                 profile.getId(), callerId, InviteStatus.ACCEPTED);
     }
+
+    public boolean isOwner(BabyProfile profile, UUID callerId) {
+        return profile.getOwnerUserId().equals(callerId);
+    }
 }
