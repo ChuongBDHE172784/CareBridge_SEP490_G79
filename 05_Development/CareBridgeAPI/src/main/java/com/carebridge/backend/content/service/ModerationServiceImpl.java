@@ -17,6 +17,7 @@ import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
@@ -506,6 +507,81 @@ public class ModerationServiceImpl implements ModerationService {
             case RESTRICT -> "COMMUNITY_RESTRICTED_UNTIL_" + response.expiresAt();
             default -> throw ModerationException.accountActionTypeNotSupported(response.actionType());
         };
+    }
+
+    // CB-MOD-IMP-008 ADR-002: only QUESTION/ANSWER carry full body text — same restriction as the
+    // Pending Content Queue (reuses pendingContentTargetTypeUnsupported, MOD-023, no new error code)
+    private static final Set<ReportTargetType> CONTENT_DETAIL_SUPPORTED_TARGET_TYPES =
+            Set.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER);
+
+    // CB-MOD-IMP-008 ADR-001: reads directly via repository.findById() — deliberately does NOT
+    // reuse CommunityQuestionService.getQuestionDetail(), which filters out non-APPROVED content
+    // not owned by the caller and would 404 for a moderator reviewing a PENDING/HIDDEN/LOCKED item.
+    @Override
+    public ModerationContentDetailResponse getContentDetail(
+            ReportTargetType targetType, UUID targetId, Principal principal) {
+        if (!CONTENT_DETAIL_SUPPORTED_TARGET_TYPES.contains(targetType)) {
+            throw ModerationException.pendingContentTargetTypeUnsupported(targetType);
+        }
+
+        ModerationContentDetailResponse response = targetType == ReportTargetType.QUESTION
+                ? buildQuestionDetail(targetId)
+                : buildAnswerDetail(targetId);
+
+        String userId = principal != null ? principal.getName() : null;
+        auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
+                "content-detail-viewed targetType=" + targetType + " targetId=" + targetId);
+
+        return response;
+    }
+
+    private ModerationContentDetailResponse buildQuestionDetail(UUID targetId) {
+        CommunityQuestion question = communityQuestionRepository.findById(targetId)
+                .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.QUESTION));
+
+        // ADR-003: authorId/authorName returned even when the question was posted anonymously —
+        // `anonymous` only gates the public-facing feed/detail views, not this moderator-only endpoint.
+        return new ModerationContentDetailResponse(
+                question.getId(),
+                ReportTargetType.QUESTION,
+                question.getAuthorId(),
+                resolveAuthorName(question.getAuthorId()),
+                question.getTitle(),
+                question.getBody(),
+                question.getStatus().name(),
+                question.isAnonymous(),
+                null,
+                null,
+                question.getCreatedAt(),
+                question.getUpdatedAt());
+    }
+
+    private ModerationContentDetailResponse buildAnswerDetail(UUID targetId) {
+        CommunityAnswer answer = communityAnswerRepository.findById(targetId)
+                .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.ANSWER));
+
+        // Parent question title gives the moderator context for what the answer is responding to.
+        String questionTitle = communityQuestionRepository.findById(answer.getQuestionId())
+                .map(CommunityQuestion::getTitle)
+                .orElse(null);
+
+        return new ModerationContentDetailResponse(
+                answer.getId(),
+                ReportTargetType.ANSWER,
+                answer.getAuthorId(),
+                resolveAuthorName(answer.getAuthorId()),
+                null,
+                answer.getBody(),
+                answer.getStatus().name(),
+                false,
+                answer.getQuestionId(),
+                questionTitle,
+                answer.getCreatedAt(),
+                answer.getUpdatedAt());
+    }
+
+    private String resolveAuthorName(UUID authorId) {
+        return userRepository.findById(authorId).map(User::getName).orElse(null);
     }
 
     private static ModerationActionType mapToActionType(ResolutionOutcome outcome) {

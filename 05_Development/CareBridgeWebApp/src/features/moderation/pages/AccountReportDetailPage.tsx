@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
 
@@ -17,6 +18,12 @@ const DURATIONS = [
 
 type ActionChoice = 'WARN' | 'RESTRICT' | 'SUSPEND';
 
+const ACTION_CHOICE_CONFIG: Record<ActionChoice, { title: string; icon: string; tone: 'default' | 'danger' }> = {
+  WARN: { title: 'Gửi cảnh cáo tới tài khoản này?', icon: 'warning', tone: 'default' },
+  RESTRICT: { title: 'Hạn chế đăng bài/bình luận?', icon: 'speaker_notes_off', tone: 'danger' },
+  SUSPEND: { title: 'Đình chỉ tài khoản này?', icon: 'person_off', tone: 'danger' },
+};
+
 export default function AccountReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>();
   const navigate = useNavigate();
@@ -28,6 +35,7 @@ export default function AccountReportDetailPage() {
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [confirming, setConfirming] = useState(false);
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
@@ -54,12 +62,18 @@ export default function AccountReportDetailPage() {
     return expires.toISOString();
   };
 
-  const handleApply = async () => {
+  const handleApply = () => {
     if (!item || !reportId) return;
     if (!note.trim()) {
       setActionError('Cần nhập lý do xử lý.');
       return;
     }
+    setActionError('');
+    setConfirming(true);
+  };
+
+  const executeApply = async () => {
+    if (!item || !reportId) return;
     setSubmitting(true);
     setActionError('');
     try {
@@ -68,6 +82,7 @@ export default function AccountReportDetailPage() {
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Áp dụng xử lý thất bại. Vui lòng thử lại.');
+      setConfirming(false);
     } finally {
       setSubmitting(false);
     }
@@ -208,6 +223,19 @@ export default function AccountReportDetailPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title={ACTION_CHOICE_CONFIG[choice].title}
+        description={note.trim() ? `Ghi chú: "${note.trim()}"` : undefined}
+        icon={ACTION_CHOICE_CONFIG[choice].icon}
+        tone={ACTION_CHOICE_CONFIG[choice].tone}
+        confirmLabel="Xác nhận"
+        submitting={submitting}
+        errorText={actionError}
+        onConfirm={executeApply}
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   );
 }

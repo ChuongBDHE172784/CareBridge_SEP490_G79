@@ -58,12 +58,7 @@ import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLa
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 
-// Moderation screens (CB-072, 088)
-import EscalatedModerationCasesPage from '../../features/moderation/pages/EscalatedModerationCasesPage';
-import EscalatedSafetyCasePage from '../../features/moderation/pages/EscalatedSafetyCasePage';
-
 // Moderation screens (CB-068, 069, 070, 071)
-import ModerationItemDetailPage from '../../features/moderation/pages/ModerationItemDetailPage';
 import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
 import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
 import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
@@ -187,20 +182,19 @@ export const router = createBrowserRouter([
           },
           {
             // ModerationController is @PreAuthorize hasRole('MODERATOR') on every endpoint
-            // (queue, pending-content, reports, violations, safety-cases, resolve/actions) —
+            // (queue, pending-content, reports, violations, resolve/actions) —
             // SYSTEM_ADMIN is NOT accepted by the backend here, so it must not be granted
             // frontend access either (it would 403 on every data call).
             element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
             children: [
-              { path: '/moderator/queue', element: <EscalatedModerationCasesPage /> },
-              { path: '/moderator/queue/:reportId', element: <ModerationItemDetailPage /> },
+              // /moderator/queue (UC-99 View Moderation Queue) is served by ReportsQueuePage —
+              // redirect the old path so bookmarks/links keep working without a duplicate sidebar entry.
+              { path: '/moderator/queue', element: <Navigate to="/moderator/reports" replace /> },
               { path: '/moderator/pending-content', element: <PendingContentQueuePage /> },
               { path: '/moderator/reports', element: <ReportsQueuePage /> },
               { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
               { path: '/moderator/violations', element: <ViolationHistoryPage /> },
-              { path: '/moderator/safety-cases', element: <EscalatedModerationCasesPage /> },
-              { path: '/moderator/safety-cases/:caseId', element: <EscalatedSafetyCasePage /> },
             ],
           },
           {

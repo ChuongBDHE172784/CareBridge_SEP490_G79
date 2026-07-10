@@ -1,8 +1,38 @@
 import { useEffect, useState, useCallback } from 'react';
 import ModPortalSidebar from '../components/ModPortalSidebar';
-import { fetchPendingContentQueue, fetchModerationHistory, moderateContentDirect } from '../services/moderationApi';
-import type { PendingContentItem, ModerationHistoryItem, ReportTargetType } from '../models/moderation';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import ContentDetailDialog from '../../../shared/components/ContentDetailDialog';
+import {
+  fetchPendingContentQueue,
+  fetchModerationHistory,
+  moderateContentDirect,
+  fetchContentDetail,
+} from '../services/moderationApi';
+import type { PendingContentItem, ModerationHistoryItem, ModerationContentDetail, ReportTargetType } from '../models/moderation';
 import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS } from '../models/moderation';
+
+type PendingActionType = 'HIDE' | 'LOCK' | 'REQUEST_REVISION';
+
+const PENDING_ACTION_CONFIG: Record<PendingActionType, { title: string; reasonLabel: string; reasonPlaceholder: string; tone: 'default' | 'danger' }> = {
+  HIDE: {
+    title: 'Ẩn nội dung này?',
+    reasonLabel: 'Lý do ẩn nội dung (bắt buộc)',
+    reasonPlaceholder: 'Nhập lý do ẩn nội dung này...',
+    tone: 'danger',
+  },
+  LOCK: {
+    title: 'Khóa thảo luận này?',
+    reasonLabel: 'Lý do khóa thảo luận (bắt buộc)',
+    reasonPlaceholder: 'Nhập lý do khóa thảo luận này...',
+    tone: 'default',
+  },
+  REQUEST_REVISION: {
+    title: 'Yêu cầu tác giả chỉnh sửa?',
+    reasonLabel: 'Nội dung cần chỉnh sửa (bắt buộc)',
+    reasonPlaceholder: 'Mô tả nội dung cần tác giả chỉnh sửa...',
+    tone: 'default',
+  },
+};
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -23,6 +53,13 @@ export default function PendingContentQueuePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
+  const [dialogError, setDialogError] = useState('');
+
+  const [detailTarget, setDetailTarget] = useState<{ targetId: string; targetType: ReportTargetType } | null>(null);
+  const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -62,58 +99,40 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  // Backend (C6, ADR-006 của UC-100) bắt buộc lý do khi HIDE — dùng window.prompt() theo đúng
-  // convention đã có sẵn trong project (window.confirm() ở SafetyRuleManagementPage), không có
-  // shared modal component nào để tái dùng.
-  const handleHide = async (item: PendingContentItem) => {
-    const reason = window.prompt('Nhập lý do ẩn nội dung này (bắt buộc):');
-    if (reason === null) return;
-    if (!reason.trim()) {
-      setError('Cần nhập lý do để ẩn nội dung.');
-      return;
-    }
-    setActioningId(item.targetId);
+  // Backend (C6, ADR-006 của UC-100) bắt buộc lý do khi HIDE/LOCK/REQUEST_REVISION — thu thập
+  // qua ConfirmDialog (shared/components/ConfirmDialog.tsx) thay vì window.prompt().
+  const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
+    setDialogError('');
+    setPendingAction({ item, type });
+  };
+
+  // CB-MOD-IMP-008: full (non-truncated) detail — used by "Xem chi tiết" on all 3 tabs.
+  const openDetail = async (targetId: string, targetType: ReportTargetType) => {
+    setDetailTarget({ targetId, targetType });
+    setDetailData(null);
+    setDetailError('');
+    setDetailLoading(true);
     try {
-      await moderateContentDirect(item.targetId, item.targetType, 'HIDE', reason.trim());
-      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
+      const detail = await fetchContentDetail(targetType, targetId);
+      setDetailData(detail);
     } catch {
-      setError('Ẩn nội dung thất bại, vui lòng thử lại.');
+      setDetailError('Không tải được nội dung chi tiết. Vui lòng thử lại.');
     } finally {
-      setActioningId(null);
+      setDetailLoading(false);
     }
   };
 
-  const handleLock = async (item: PendingContentItem) => {
-    const reason = window.prompt('Nhập lý do khóa thảo luận này (bắt buộc):');
-    if (reason === null) return;
-    if (!reason.trim()) {
-      setError('Cần nhập lý do để khóa thảo luận.');
-      return;
-    }
+  const confirmPendingAction = async (reason?: string) => {
+    if (!pendingAction || !reason) return;
+    const { item, type } = pendingAction;
     setActioningId(item.targetId);
+    setDialogError('');
     try {
-      await moderateContentDirect(item.targetId, item.targetType, 'LOCK', reason.trim());
+      await moderateContentDirect(item.targetId, item.targetType, type, reason);
       setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
+      setPendingAction(null);
     } catch {
-      setError('Khóa thảo luận thất bại, vui lòng thử lại.');
-    } finally {
-      setActioningId(null);
-    }
-  };
-
-  const handleRequestRevision = async (item: PendingContentItem) => {
-    const reason = window.prompt('Nhập nội dung cần tác giả chỉnh sửa (bắt buộc):');
-    if (reason === null) return;
-    if (!reason.trim()) {
-      setError('Cần nhập lý do để yêu cầu sửa.');
-      return;
-    }
-    setActioningId(item.targetId);
-    try {
-      await moderateContentDirect(item.targetId, item.targetType, 'REQUEST_REVISION', reason.trim());
-      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
-    } catch {
-      setError('Yêu cầu sửa thất bại, vui lòng thử lại.');
+      setDialogError('Thao tác thất bại, vui lòng thử lại.');
     } finally {
       setActioningId(null);
     }
@@ -155,7 +174,7 @@ export default function PendingContentQueuePage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
-                  {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN'].map((h) => (
+                  {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
                     <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
                   ))}
                 </tr>
@@ -179,10 +198,19 @@ export default function PendingContentQueuePage() {
                     <td className="py-3.5 px-4 text-sm text-on-surface-variant max-w-[240px] truncate">{item.reason ?? '—'}</td>
                     <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
                     <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
+                    <td className="py-3.5 px-4">
+                      <button
+                        type="button"
+                        onClick={() => openDetail(item.targetId, item.targetType)}
+                        className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold"
+                      >
+                        Xem chi tiết
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {historyItems.length === 0 && (
-                  <tr><td colSpan={6} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
+                  <tr><td colSpan={7} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
                 )}
               </tbody>
             </table>
@@ -207,39 +235,46 @@ export default function PendingContentQueuePage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
+                          onClick={() => openDetail(item.targetId, item.targetType)}
+                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold"
+                        >
+                          Xem chi tiết
+                        </button>
+                        <button
+                          type="button"
                           disabled={actioningId === item.targetId}
                           onClick={() => handleApprove(item)}
                           className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold disabled:opacity-50"
                         >
                           {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
                         </button>
-	                        <button
-	                          type="button"
-	                          disabled={actioningId === item.targetId}
-	                          onClick={() => handleHide(item)}
+                        <button
+                          type="button"
+                          disabled={actioningId === item.targetId}
+                          onClick={() => openPendingAction(item, 'HIDE')}
                           className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50"
                         >
-	                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
-	                        </button>
-		                        {item.targetType === 'QUESTION' && (
-		                          <button
-	                            type="button"
-	                            disabled={actioningId === item.targetId}
-	                            onClick={() => handleLock(item)}
-	                            className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50"
-	                          >
-	                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
-		                          </button>
-		                        )}
-		                        <button
-		                          type="button"
-		                          disabled={actioningId === item.targetId}
-		                          onClick={() => handleRequestRevision(item)}
-		                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50"
-		                        >
-		                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
-		                        </button>
-		                      </div>
+                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
+                        </button>
+                        {item.targetType === 'QUESTION' && (
+                          <button
+                            type="button"
+                            disabled={actioningId === item.targetId}
+                            onClick={() => openPendingAction(item, 'LOCK')}
+                            className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50"
+                          >
+                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={actioningId === item.targetId}
+                          onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
+                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50"
+                        >
+                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -251,6 +286,31 @@ export default function PendingContentQueuePage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        key={pendingAction ? `${pendingAction.item.targetId}-${pendingAction.type}` : 'none'}
+        open={pendingAction !== null}
+        title={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].title : ''}
+        icon={pendingAction?.type === 'HIDE' ? 'visibility_off' : pendingAction?.type === 'LOCK' ? 'lock' : 'edit_note'}
+        tone={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].tone : 'default'}
+        reasonLabel={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonLabel : ''}
+        reasonPlaceholder={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonPlaceholder : ''}
+        confirmLabel="Xác nhận"
+        submitting={pendingAction !== null && actioningId === pendingAction.item.targetId}
+        errorText={dialogError}
+        onConfirm={confirmPendingAction}
+        onCancel={() => setPendingAction(null)}
+      />
+
+      <ContentDetailDialog
+        open={detailTarget !== null}
+        targetTypeLabel={detailTarget ? TARGET_TYPE_LABELS[detailTarget.targetType] : ''}
+        statusLabel={detailData ? detailData.status : undefined}
+        loading={detailLoading}
+        errorText={detailError}
+        detail={detailData}
+        onClose={() => setDetailTarget(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
 import { TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
@@ -9,6 +10,17 @@ import type { ResolutionOutcome } from '../models/moderation';
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
+
+// Outcomes that mutate content/account state get a confirmation step before firing —
+// APPROVE and DISMISS stay immediate since they're non-destructive.
+const CONFIRM_CONFIG: Partial<Record<ResolutionOutcome, { title: string; icon: string; tone: 'default' | 'danger' }>> = {
+  HIDE: { title: 'Ẩn/xóa nội dung này?', icon: 'visibility_off', tone: 'danger' },
+  LOCK: { title: 'Khóa thảo luận này?', icon: 'lock', tone: 'default' },
+  REQUEST_REVISION: { title: 'Yêu cầu tác giả chỉnh sửa?', icon: 'edit_note', tone: 'default' },
+  WARN: { title: 'Cảnh cáo người dùng này?', icon: 'warning', tone: 'default' },
+  RESTRICT: { title: 'Hạn chế đăng bài 7 ngày?', icon: 'speaker_notes_off', tone: 'danger' },
+  SUSPEND: { title: 'Đình chỉ tài khoản 7 ngày?', icon: 'person_off', tone: 'danger' },
+};
 
 export default function ContentReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>();
@@ -19,6 +31,7 @@ export default function ContentReportDetailPage() {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [confirmingOutcome, setConfirmingOutcome] = useState<ResolutionOutcome | null>(null);
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
@@ -42,12 +55,24 @@ export default function ContentReportDetailPage() {
 
   useEffect(() => { loadItem(); }, [loadItem]);
 
-  const handleAction = async (outcome: ResolutionOutcome) => {
+  // Outcomes in CONFIRM_CONFIG open a ConfirmDialog first (misclick protection on destructive
+  // actions); the rest (APPROVE/DISMISS) execute immediately as before.
+  const handleAction = (outcome: ResolutionOutcome) => {
     if (!item) return;
     if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT'].includes(outcome) && !reason.trim()) {
       setActionError('Cần nhập ghi chú/lý do cho hành động này.');
       return;
     }
+    setActionError('');
+    if (CONFIRM_CONFIG[outcome]) {
+      setConfirmingOutcome(outcome);
+      return;
+    }
+    void executeAction(outcome);
+  };
+
+  const executeAction = async (outcome: ResolutionOutcome) => {
+    if (!item) return;
     const expiresAt = outcome === 'SUSPEND' || outcome === 'RESTRICT'
       ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       : undefined;
@@ -59,6 +84,7 @@ export default function ContentReportDetailPage() {
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Xử lý thất bại. Vui lòng thử lại.');
+      setConfirmingOutcome(null);
     } finally {
       setSubmitting(null);
     }
@@ -259,6 +285,19 @@ export default function ContentReportDetailPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmingOutcome !== null}
+        title={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.title : ''}
+        description={reason.trim() ? `Ghi chú: "${reason.trim()}"` : undefined}
+        icon={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.icon : 'help'}
+        tone={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.tone : 'default'}
+        confirmLabel="Xác nhận"
+        submitting={confirmingOutcome !== null && submitting === confirmingOutcome}
+        errorText={confirmingOutcome !== null ? actionError : ''}
+        onConfirm={() => confirmingOutcome && executeAction(confirmingOutcome)}
+        onCancel={() => setConfirmingOutcome(null)}
+      />
     </div>
   );
 }

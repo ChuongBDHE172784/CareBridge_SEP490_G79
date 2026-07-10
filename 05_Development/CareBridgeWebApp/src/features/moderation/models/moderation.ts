@@ -78,6 +78,23 @@ export interface ResolveReportResult {
   resultingStatus: string | null;
 }
 
+// CB-MOD-IMP-008: GET /content/{targetType}/{targetId} response — full body, not truncated like
+// contentPreview elsewhere in this file (ContentPreviewService caps that at 200 chars).
+export interface ModerationContentDetail {
+  targetId: string;
+  targetType: ReportTargetType;
+  authorId: string | null;
+  authorName: string | null;
+  title: string | null;
+  body: string;
+  status: string;
+  anonymous: boolean;
+  questionId: string | null;
+  questionTitle: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 // UC-100's POST /actions response — used directly by the Pending Content queue (no ContentReport)
 export interface ModerateContentResult {
   actionId: string;

@@ -22,6 +22,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
+import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
@@ -390,5 +391,171 @@ class ModerationServiceImplTest {
         ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
 
         assertThat(response.content().get(0).reason()).isEqualTo("Nội dung không phù hợp");
+    }
+
+    private CommunityQuestion makeQuestion(UUID id, QuestionStatus status, UUID authorId, boolean anonymous, int bodyLength) {
+        return CommunityQuestion.builder()
+                .id(id)
+                .topicId(UUID.randomUUID())
+                .authorId(authorId)
+                .title("Tieu de cau hoi")
+                .body("x".repeat(bodyLength))
+                .stage(com.carebridge.backend.community.entity.PregnancyStage.PREGNANCY)
+                .urgency(com.carebridge.backend.community.entity.UrgencyLevel.LOW)
+                .status(status)
+                .anonymous(anonymous)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    private CommunityAnswer makeAnswer(UUID id, UUID questionId, AnswerStatus status, UUID authorId, int bodyLength) {
+        return CommunityAnswer.builder()
+                .id(id)
+                .questionId(questionId)
+                .authorId(authorId)
+                .body("y".repeat(bodyLength))
+                .status(status)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    // DETAIL-TC-001: QUESTION PENDING, body 250 chars — not truncated at 200 like contentPreview
+    @Test
+    void getContentDetail_questionPending_returnsFullBodyUntruncated() {
+        UUID authorId = UUID.randomUUID();
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.PENDING, authorId, false, 250);
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("Nguyen Thi A").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal);
+
+        assertThat(response.body()).hasSize(250);
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(response.title()).isEqualTo("Tieu de cau hoi");
+    }
+
+    // DETAIL-TC-002: QUESTION HIDDEN still readable — unlike CommunityQuestionService.getQuestionDetail()
+    @Test
+    void getContentDetail_questionHidden_isReadableNotFiltered() {
+        UUID authorId = UUID.randomUUID();
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.HIDDEN, authorId, true, 50);
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("Nguyen Thi A").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal);
+
+        assertThat(response.status()).isEqualTo("HIDDEN");
+    }
+
+    // DETAIL-TC-003: QUESTION LOCKED still readable
+    @Test
+    void getContentDetail_questionLocked_isReadable() {
+        UUID authorId = UUID.randomUUID();
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.LOCKED, authorId, false, 50);
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("Nguyen Thi A").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal);
+
+        assertThat(response.status()).isEqualTo("LOCKED");
+    }
+
+    // DETAIL-TC-004: QUESTION APPROVED still readable via moderator endpoint (used by "Đã xử lý" tab)
+    @Test
+    void getContentDetail_questionApproved_isReadable() {
+        UUID authorId = UUID.randomUUID();
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, authorId, false, 50);
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("Nguyen Thi A").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal);
+
+        assertThat(response.status()).isEqualTo("APPROVED");
+    }
+
+    // DETAIL-TC-005: ANSWER returns questionId/questionTitle of its parent question
+    @Test
+    void getContentDetail_answer_returnsParentQuestionContext() {
+        UUID authorId = UUID.randomUUID();
+        UUID questionId = TARGET_ID_1;
+        CommunityQuestion parentQuestion = makeQuestion(questionId, QuestionStatus.PENDING, UUID.randomUUID(), false, 50);
+        CommunityAnswer answer = makeAnswer(TARGET_ID_2, questionId, AnswerStatus.APPROVED, authorId, 50);
+        when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
+        when(communityQuestionRepository.findById(questionId)).thenReturn(java.util.Optional.of(parentQuestion));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("BS. Tran Van B").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.ANSWER, TARGET_ID_2, mockPrincipal);
+
+        assertThat(response.questionId()).isEqualTo(questionId);
+        assertThat(response.questionTitle()).isEqualTo("Tieu de cau hoi");
+        assertThat(response.title()).isNull();
+    }
+
+    // DETAIL-TC-006: ANSWER body full, not truncated
+    @Test
+    void getContentDetail_answer_returnsFullBodyUntruncated() {
+        UUID authorId = UUID.randomUUID();
+        CommunityAnswer answer = makeAnswer(TARGET_ID_2, TARGET_ID_1, AnswerStatus.PENDING, authorId, 300);
+        when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.empty());
+        when(userRepository.findById(authorId)).thenReturn(java.util.Optional.empty());
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.ANSWER, TARGET_ID_2, mockPrincipal);
+
+        assertThat(response.body()).hasSize(300);
+    }
+
+    // DETAIL-TC-007: targetId not found → MOD-007
+    @Test
+    void getContentDetail_targetNotFound_throwsMod007() {
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.empty());
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-007");
+    }
+
+    // DETAIL-TC-008: targetType not supported (CONTENT/ACCOUNT/EXPERT/USER) → MOD-023, no repo call
+    @Test
+    void getContentDetail_unsupportedTargetType_throwsMod023WithoutQuerying() {
+        for (ReportTargetType unsupported : List.of(
+                ReportTargetType.CONTENT, ReportTargetType.ACCOUNT, ReportTargetType.EXPERT, ReportTargetType.USER)) {
+            ModerationException ex = assertThrows(ModerationException.class,
+                    () -> moderationService.getContentDetail(unsupported, TARGET_ID_1, mockPrincipal));
+            assertThat(ex.getCode()).isEqualTo("MOD-023");
+        }
+        verify(communityQuestionRepository, times(0)).findById(any());
+        verify(communityAnswerRepository, times(0)).findById(any());
+    }
+
+    // DETAIL-TC-011: anonymous=true still returns real authorId/authorName (ADR-003)
+    @Test
+    void getContentDetail_anonymousQuestion_stillReturnsRealAuthor() {
+        UUID authorId = UUID.randomUUID();
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.PENDING, authorId, true, 50);
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(userRepository.findById(authorId)).thenReturn(
+                java.util.Optional.of(User.builder().id(authorId).name("Nguyen Thi A").build()));
+
+        ModerationContentDetailResponse response =
+                moderationService.getContentDetail(ReportTargetType.QUESTION, TARGET_ID_1, mockPrincipal);
+
+        assertThat(response.authorId()).isEqualTo(authorId);
+        assertThat(response.authorName()).isEqualTo("Nguyen Thi A");
+        assertThat(response.anonymous()).isTrue();
     }
 }

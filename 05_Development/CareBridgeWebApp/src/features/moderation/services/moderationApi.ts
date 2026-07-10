@@ -3,6 +3,7 @@ import type {
   ModerationQueuePage,
   ModerateContentResult,
   ModerationActionType,
+  ModerationContentDetail,
   ModerationHistoryPage,
   PendingContentQueuePage,
   ReportTargetType,
@@ -87,6 +88,18 @@ export async function resolveReport(
   const res = await apiClient.post<ResolveReportResult>(
     `/api/v1/admin/moderation/reports/${reportId}/resolve`,
     { outcome, reason, expiresAt },
+  );
+  return res.data;
+}
+
+// CB-MOD-IMP-008: full (non-truncated) body — distinct from the *.contentPreview fields elsewhere
+// in this file, which are always capped at 200 chars server-side.
+export async function fetchContentDetail(
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<ModerationContentDetail> {
+  const res = await apiClient.get<ModerationContentDetail>(
+    `/api/v1/admin/moderation/content/${targetType}/${targetId}`,
   );
   return res.data;
 }

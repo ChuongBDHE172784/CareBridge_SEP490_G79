@@ -2,18 +2,16 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/auth/useAuth';
 
 // roles must mirror the ProtectedRoute guards in app/router/index.tsx for each path.
-// ModerationController (queue/pending-content/reports/violations/safety-cases) is
+// ModerationController (pending-content/reports/violations) is
 // @PreAuthorize("hasRole('MODERATOR')") on every endpoint on the backend — SYSTEM_ADMIN
 // is NOT accepted there, so it must not see those entries (it would 403 on data load).
 // RedFlagRuleController / CommunityDashboardController / ImpactReportController are the
 // reverse: SYSTEM_ADMIN-only on the backend, so MODERATOR must not see those entries.
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/moderator/dashboard', roles: ['SYSTEM_ADMIN'] },
-  { label: 'Hàng đợi', icon: 'queue', path: '/moderator/queue', roles: ['MODERATOR'] },
   { label: 'Nội dung mới', icon: 'fact_check', path: '/moderator/pending-content', roles: ['MODERATOR'] },
   { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports', roles: ['MODERATOR'] },
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations', roles: ['MODERATOR'] },
-  { label: 'Ca an toàn', icon: 'health_and_safety', path: '/moderator/safety-cases', roles: ['MODERATOR'] },
   { label: 'Quy tắc AI', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
   { label: 'Tác động & vận hành', icon: 'insights', path: '/moderator/impact-report', roles: ['SYSTEM_ADMIN'] },
 ] as const;

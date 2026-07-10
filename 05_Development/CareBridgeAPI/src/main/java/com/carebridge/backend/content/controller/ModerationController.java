@@ -7,6 +7,7 @@ import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
@@ -130,5 +131,16 @@ public class ModerationController {
             Principal principal) {
         WarnOrSuspendAccountResponse response = moderationService.moderateAccount(request, principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // C1: RBAC enforcement — MODERATOR only (ADR-002); CB-MOD-IMP-008 — controller has no business logic
+    @GetMapping("/content/{targetType}/{targetId}")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<ModerationContentDetailResponse> getContentDetail(
+            @PathVariable ReportTargetType targetType,
+            @PathVariable UUID targetId,
+            Principal principal) {
+        ModerationContentDetailResponse response = moderationService.getContentDetail(targetType, targetId, principal);
+        return ResponseEntity.ok(response);
     }
 }
