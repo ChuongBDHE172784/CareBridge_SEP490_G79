@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
+import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
@@ -142,5 +143,16 @@ public class ModerationController {
             Principal principal) {
         ModerationContentDetailResponse response = moderationService.getContentDetail(targetType, targetId, principal);
         return ResponseEntity.ok(response);
+    }
+
+    // C1: RBAC enforcement — MODERATOR only (ADR-006); CB-MOD-IMP-009 — controller has no business logic
+    @PostMapping("/actions/{actionId}/undo")
+    @PreAuthorize("hasRole('MODERATOR')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<UndoModerationActionResponse> undoModerationAction(
+            @PathVariable UUID actionId,
+            Principal principal) {
+        UndoModerationActionResponse response = moderationService.undoModerationAction(actionId, principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

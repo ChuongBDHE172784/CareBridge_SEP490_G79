@@ -12,6 +12,7 @@ import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
+import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import java.security.Principal;
@@ -111,4 +112,26 @@ public interface ModerationService {
      *         resolve to an existing row
      */
     ModerationContentDetailResponse getContentDetail(ReportTargetType targetType, UUID targetId, Principal principal);
+
+    /**
+     * CB-MOD-IMP-009: undoes a single direct (reportId == null) APPROVE/HIDE/LOCK action on a
+     * QUESTION/ANSWER, setting the target's status back to PENDING (ADR-001 — never attempts to
+     * reconstruct a prior status). Only allowed when actionId is the most recent action for its
+     * target (ADR-002 guard 1) AND the target's current status still matches what that action
+     * produced (ADR-002 guard 2). Records a new append-only ModerationAction (actionType=UNDO) —
+     * the original action row is never mutated (ADR-005).
+     *
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-025) if actionId does not exist
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-026) if the action's targetType
+     *         is not QUESTION or ANSWER
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-027) if the action's reportId
+     *         is not null (originated from resolveReport(), out of scope — ADR-004)
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-028) if the action's actionType
+     *         is not one of APPROVE/HIDE/LOCK
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-029) if actionId is not the
+     *         most recent action for its target
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-030) if the target's current
+     *         status no longer matches what this action produced
+     */
+    UndoModerationActionResponse undoModerationAction(UUID actionId, Principal principal);
 }

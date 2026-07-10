@@ -1,7 +1,11 @@
 export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | 'EXPERT' | 'USER';
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
 export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
-export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
+export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'UNDO';
+
+// actionType values a moderator can undo from the "Đã xử lý" tab — REQUEST_REVISION/WARN/SUSPEND/
+// RESTRICT/UNDO are excluded server-side too (CB-MOD-IMP-009 ADR-001/ADR-004, MOD-028/MOD-026).
+export const UNDOABLE_ACTION_TYPES: ReadonlySet<ModerationActionType> = new Set(['APPROVE', 'HIDE', 'LOCK']);
 
 export interface ModerationQueueItem {
   id: string;
@@ -66,6 +70,7 @@ export const ACTION_TYPE_LABELS: Record<ModerationActionType, string> = {
   WARN: 'Cảnh cáo',
   SUSPEND: 'Đình chỉ',
   RESTRICT: 'Hạn chế đăng',
+  UNDO: 'Hoàn tác',
 };
 
 export interface ResolveReportResult {
@@ -93,6 +98,17 @@ export interface ModerationContentDetail {
   questionTitle: string | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+// CB-MOD-IMP-009: POST /actions/{actionId}/undo response — resultingStatus is always "PENDING".
+export interface UndoModerationActionResult {
+  undoActionId: string;
+  originalActionId: string;
+  targetId: string;
+  targetType: ReportTargetType;
+  moderatorUserId: string;
+  actionAt: string;
+  resultingStatus: string;
 }
 
 // UC-100's POST /actions response — used directly by the Pending Content queue (no ContentReport)

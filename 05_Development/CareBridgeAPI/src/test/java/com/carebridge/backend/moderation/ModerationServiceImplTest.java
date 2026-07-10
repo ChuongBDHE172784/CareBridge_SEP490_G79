@@ -26,6 +26,7 @@ import com.carebridge.backend.content.dto.response.ModerationContentDetailRespon
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
@@ -557,5 +558,271 @@ class ModerationServiceImplTest {
         assertThat(response.authorId()).isEqualTo(authorId);
         assertThat(response.authorName()).isEqualTo("Nguyen Thi A");
         assertThat(response.anonymous()).isTrue();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CB-MOD-IMP-009 — Undo Moderation Action
+    // ═══════════════════════════════════════════════════════════
+
+    private static final UUID ACTION_ID_1 = UUID.fromString("33333333-0000-0000-0000-000000000001");
+    // undoModerationAction() calls SecurityUtils.requireCurrentUserId(), which requires a valid UUID
+    // string (unlike getModerationQueue()/etc., which read principal.getName() as a plain string) —
+    // mockPrincipal = () -> "1" is not a valid UUID, so the happy-path undo tests need this instead.
+    private final Principal moderatorPrincipal = UUID.randomUUID()::toString;
+
+    // UNDO-TC-001: Undo APPROVE on QUESTION -> PENDING
+    @Test
+    void undoModerationAction_approveOnQuestion_setsStatusPending() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, UUID.randomUUID(), null);
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, UUID.randomUUID(), false, 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(moderationActionRepository.save(any(ModerationAction.class)))
+                .thenAnswer(inv -> {
+                    ModerationAction a = inv.getArgument(0);
+                    a.setId(UUID.randomUUID());
+                    return a;
+                });
+
+        UndoModerationActionResponse response = moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        assertThat(question.getStatus()).isEqualTo(QuestionStatus.PENDING);
+        assertThat(response.resultingStatus()).isEqualTo("PENDING");
+        assertThat(response.originalActionId()).isEqualTo(ACTION_ID_1);
+        verify(communityQuestionRepository, times(1)).save(question);
+    }
+
+    // UNDO-TC-002: Undo HIDE on QUESTION -> PENDING
+    @Test
+    void undoModerationAction_hideOnQuestion_setsStatusPending() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.HIDE, UUID.randomUUID(), "spam");
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.HIDDEN, UUID.randomUUID(), false, 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        assertThat(question.getStatus()).isEqualTo(QuestionStatus.PENDING);
+    }
+
+    // UNDO-TC-003: Undo LOCK on QUESTION -> PENDING
+    @Test
+    void undoModerationAction_lockOnQuestion_setsStatusPending() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.LOCK, UUID.randomUUID(), "locked for review");
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.LOCKED, UUID.randomUUID(), false, 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        assertThat(question.getStatus()).isEqualTo(QuestionStatus.PENDING);
+    }
+
+    // UNDO-TC-004: Undo APPROVE on ANSWER -> decrements answer_count exactly once (ADR-003)
+    @Test
+    void undoModerationAction_approveOnAnswer_decrementsAnswerCountOnce() {
+        UUID questionId = UUID.randomUUID();
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_2, ReportTargetType.ANSWER,
+                ModerationActionType.APPROVE, UUID.randomUUID(), null);
+        CommunityAnswer answer = makeAnswer(TARGET_ID_2, questionId, AnswerStatus.APPROVED, UUID.randomUUID(), 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        assertThat(answer.getStatus()).isEqualTo(AnswerStatus.PENDING);
+        verify(communityQuestionRepository, times(1)).decrementAnswerCount(questionId);
+        verify(communityQuestionRepository, times(0)).incrementAnswerCount(any());
+    }
+
+    // UNDO-TC-005: Undo HIDE on ANSWER (never APPROVED) -> answer_count untouched (ADR-003)
+    @Test
+    void undoModerationAction_hideOnAnswer_doesNotTouchAnswerCount() {
+        UUID questionId = UUID.randomUUID();
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_2, ReportTargetType.ANSWER,
+                ModerationActionType.HIDE, UUID.randomUUID(), "spam");
+        CommunityAnswer answer = makeAnswer(TARGET_ID_2, questionId, AnswerStatus.HIDDEN, UUID.randomUUID(), 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        verify(communityQuestionRepository, times(0)).decrementAnswerCount(any());
+        verify(communityQuestionRepository, times(0)).incrementAnswerCount(any());
+    }
+
+    // UNDO-TC-006: guard "most recent" fails -> MOD-029, no mutation
+    @Test
+    void undoModerationAction_notMostRecentAction_throwsMod029WithoutMutating() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, UUID.randomUUID(), null);
+        ModerationAction newer = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.HIDE, UUID.randomUUID(), "later action");
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(newer));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-029");
+        verify(communityQuestionRepository, times(0)).save(any());
+        verify(moderationActionRepository, times(0)).save(any());
+    }
+
+    // UNDO-TC-007: guard "status khớp" fails (target already superseded by a self-edit) -> MOD-030
+    @Test
+    void undoModerationAction_statusSuperseded_throwsMod030WithoutMutating() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, UUID.randomUUID(), null);
+        // status is PENDING, not APPROVED as the action would imply — simulates an untracked self-edit
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.PENDING, UUID.randomUUID(), false, 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-030");
+        verify(communityQuestionRepository, times(0)).save(any());
+        verify(moderationActionRepository, times(0)).save(any());
+    }
+
+    // UNDO-TC-008: action from resolveReport() (reportId != null) -> 400 MOD-027 (ADR-004)
+    @Test
+    void undoModerationAction_reportResolutionOrigin_throwsMod027() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.HIDE, UUID.randomUUID(), "reported content");
+        original.setReportId(UUID.randomUUID());
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-027");
+        verify(contentReportRepository, times(0)).findById(any());
+    }
+
+    // UNDO-TC-009: actionType=REQUEST_REVISION cannot be undone -> 400 MOD-028 (ADR-001)
+    @Test
+    void undoModerationAction_requestRevisionActionType_throwsMod028() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.REQUEST_REVISION, UUID.randomUUID(), "please fix");
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-028");
+    }
+
+    // UNDO-TC-010: targetType=ACCOUNT (WARN/SUSPEND/RESTRICT) rejected by targetType guard -> MOD-026,
+    // not MOD-028 — targetType is validated before actionType (fixed guard order)
+    @Test
+    void undoModerationAction_accountActionTypes_throwMod026NotMod028() {
+        for (ModerationActionType accountActionType : List.of(
+                ModerationActionType.WARN, ModerationActionType.SUSPEND, ModerationActionType.RESTRICT)) {
+            UUID actionId = UUID.randomUUID();
+            ModerationAction original = makeAction(actionId, UUID.randomUUID(), ReportTargetType.ACCOUNT,
+                    accountActionType, UUID.randomUUID(), "reason");
+            when(moderationActionRepository.findById(actionId)).thenReturn(java.util.Optional.of(original));
+
+            ModerationException ex = assertThrows(ModerationException.class,
+                    () -> moderationService.undoModerationAction(actionId, mockPrincipal));
+
+            assertThat(ex.getCode()).isEqualTo("MOD-026");
+        }
+    }
+
+    // UNDO-TC-011: targetType=ACCOUNT -> 400 MOD-026
+    @Test
+    void undoModerationAction_accountTargetType_throwsMod026() {
+        ModerationAction original = makeAction(ACTION_ID_1, UUID.randomUUID(), ReportTargetType.ACCOUNT,
+                ModerationActionType.WARN, UUID.randomUUID(), "reason");
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-026");
+    }
+
+    // UNDO-TC-012: actionType=UNDO cannot itself be undone -> 400 MOD-028 (no UNDO-of-UNDO loop)
+    @Test
+    void undoModerationAction_alreadyAnUndoAction_throwsMod028() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.UNDO, UUID.randomUUID(), "Hoàn tác hành động APPROVE");
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-028");
+    }
+
+    // UNDO-TC-013: actionId does not exist -> 404 MOD-025
+    @Test
+    void undoModerationAction_actionNotFound_throwsMod025() {
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.empty());
+
+        ModerationException ex = assertThrows(ModerationException.class,
+                () -> moderationService.undoModerationAction(ACTION_ID_1, mockPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-025");
+    }
+
+    // UNDO-TC-014: append-only invariant — a NEW ModerationAction(actionType=UNDO) is saved,
+    // the original action object is never mutated (ADR-005, BR-MOD-021)
+    @Test
+    void undoModerationAction_appendOnly_savesNewActionWithoutMutatingOriginal() {
+        ModerationAction original = makeAction(ACTION_ID_1, TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.APPROVE, UUID.randomUUID(), null);
+        CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, UUID.randomUUID(), false, 50);
+
+        when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+                .thenReturn(java.util.Optional.of(original));
+        when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
+
+        ArgumentCaptor<ModerationAction> savedCaptor = forClass(ModerationAction.class);
+        when(moderationActionRepository.save(savedCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        moderationService.undoModerationAction(ACTION_ID_1, moderatorPrincipal);
+
+        ModerationAction saved = savedCaptor.getValue();
+        assertThat(saved.getActionType()).isEqualTo(ModerationActionType.UNDO);
+        assertThat(saved.getReportId()).isNull();
+        // The original action object must retain its own actionType — it is never mutated in place
+        assertThat(original.getActionType()).isEqualTo(ModerationActionType.APPROVE);
+        assertThat(saved).isNotSameAs(original);
     }
 }

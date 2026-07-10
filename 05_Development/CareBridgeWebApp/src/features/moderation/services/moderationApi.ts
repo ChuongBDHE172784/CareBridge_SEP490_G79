@@ -10,6 +10,7 @@ import type {
   ReportStatus,
   ResolutionOutcome,
   ResolveReportResult,
+  UndoModerationActionResult,
 } from '../models/moderation';
 
 // ModerationController returns raw DTOs (no ApiResponse envelope) — unlike content endpoints.
@@ -100,6 +101,15 @@ export async function fetchContentDetail(
 ): Promise<ModerationContentDetail> {
   const res = await apiClient.get<ModerationContentDetail>(
     `/api/v1/admin/moderation/content/${targetType}/${targetId}`,
+  );
+  return res.data;
+}
+
+// CB-MOD-IMP-009: reverts a direct APPROVE/HIDE/LOCK action back to PENDING. Backend enforces the
+// "most recent action" + "status still matches" guards (409 MOD-029/MOD-030 otherwise).
+export async function undoModerationAction(actionId: string): Promise<UndoModerationActionResult> {
+  const res = await apiClient.post<UndoModerationActionResult>(
+    `/api/v1/admin/moderation/actions/${actionId}/undo`,
   );
   return res.data;
 }

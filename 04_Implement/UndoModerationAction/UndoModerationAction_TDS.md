@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-MOD-IMP-009`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-10`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Claude`                     |
 | **Reviewed by**    | `[x] HuyND — 2026-07-10`                |
@@ -23,6 +23,7 @@
 |------------|------------------|--------------------|
 | 2026-07-10 | AI Agent — Claude | Tạo tài liệu lần đầu — TDS cho tính năng "Hoàn tác" ở tab "Đã xử lý" (Status=Draft). Ngữ nghĩa Undo (luôn về PENDING) và phạm vi (chỉ hành động trực tiếp UC-100, không undo được report-resolution UC-101) đã được người dùng xác nhận qua AskUserQuestion trước khi viết tài liệu này. |
 | 2026-07-10 | HuyND | Approved qua chat ("Approved") — chuyển Status sang `Approved`, cho phép Phase 3 Implementation bắt đầu |
+| 2026-07-10 | AI Agent — Claude (Dev Agent) | Phase 3: Implementation — 18/18 test PASS (`ModerationServiceImplTest` x14, `ModerationControllerSecurityTest` x2, `ModerateContentServiceImplTest` x1 regression, `UndoModerationActionIntegrationTest` x2 [happy path + repeat-call 409]). `undoModerationAction()` implemented in `ModerationServiceImpl`/`ModerationController`; `ModerationActionType.UNDO` added (no Flyway migration — confirmed no DB CHECK constraint); `ModerationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc()` added; 6 new error codes MOD-025..030. Frontend: `undoModerationAction()`, `UNDOABLE_ACTION_TYPES`, "Hoàn tác" button wired into "Đã xử lý" tab (only shown for APPROVE/HIDE/LOCK rows), reuses `ConfirmDialog`. `npx tsc -b` + `npm run build` PASS. Full backend regression unchanged at 32 pre-existing failures (same baseline as CB-MOD-IMP-008, re-verified). |
 
 ---
 

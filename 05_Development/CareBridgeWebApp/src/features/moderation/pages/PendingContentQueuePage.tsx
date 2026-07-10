@@ -7,9 +7,10 @@ import {
   fetchModerationHistory,
   moderateContentDirect,
   fetchContentDetail,
+  undoModerationAction,
 } from '../services/moderationApi';
 import type { PendingContentItem, ModerationHistoryItem, ModerationContentDetail, ReportTargetType } from '../models/moderation';
-import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS } from '../models/moderation';
+import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
 
 type PendingActionType = 'HIDE' | 'LOCK' | 'REQUEST_REVISION';
 
@@ -60,6 +61,10 @@ export default function PendingContentQueuePage() {
   const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+
+  const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
+  const [undoSubmitting, setUndoSubmitting] = useState(false);
+  const [undoError, setUndoError] = useState('');
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -122,6 +127,24 @@ export default function PendingContentQueuePage() {
     }
   };
 
+  // CB-MOD-IMP-009: reverts a direct APPROVE/HIDE/LOCK action back to PENDING. Backend rejects
+  // (409) if this isn't the most recent action for its target, or the status was already superseded.
+  const confirmUndo = async () => {
+    if (!undoTarget) return;
+    setUndoSubmitting(true);
+    setUndoError('');
+    try {
+      await undoModerationAction(undoTarget.actionId);
+      setUndoTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setUndoError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
+    } finally {
+      setUndoSubmitting(false);
+    }
+  };
+
   const confirmPendingAction = async (reason?: string) => {
     if (!pendingAction || !reason) return;
     const { item, type } = pendingAction;
@@ -171,118 +194,133 @@ export default function PendingContentQueuePage() {
           <div className="bg-error-container rounded-2xl p-6 text-error text-sm">{error}</div>
         ) : tab === 'HISTORY' ? (
           <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
-                  {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
-                    <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {historyItems.map((item) => (
-                  <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-container-low">
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface max-w-[320px] truncate">{item.contentPreview ?? '—'}</td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`py-1 px-3 rounded-full text-xs font-semibold ${
-                          item.actionType === 'APPROVE'
-                            ? 'bg-primary-container text-on-primary-container'
-                            : 'bg-error-container text-error'
-                        }`}
-                      >
-                        {ACTION_TYPE_LABELS[item.actionType]}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant max-w-[240px] truncate">{item.reason ?? '—'}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        type="button"
-                        onClick={() => openDetail(item.targetId, item.targetType)}
-                        className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold"
-                      >
-                        Xem chi tiết
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[860px] border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
+                    {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'LÝ DO', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
+                      <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                    ))}
                   </tr>
-                ))}
-                {historyItems.length === 0 && (
-                  <tr><td colSpan={7} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {historyItems.map((item) => (
+                    <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-container-low">
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface max-w-[320px] truncate">{item.contentPreview ?? '—'}</td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`py-1 px-3 rounded-full text-xs font-semibold ${
+                            item.actionType === 'APPROVE'
+                              ? 'bg-primary-container text-on-primary-container'
+                              : 'bg-error-container text-error'
+                          }`}
+                        >
+                          {ACTION_TYPE_LABELS[item.actionType]}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant max-w-[240px] truncate">{item.reason ?? '—'}</td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex gap-2 flex-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item.targetId, item.targetType)}
+                            className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold whitespace-nowrap"
+                          >
+                            Xem chi tiết
+                          </button>
+                          {UNDOABLE_ACTION_TYPES.has(item.actionType) && (
+                            <button
+                              type="button"
+                              onClick={() => { setUndoError(''); setUndoTarget(item); }}
+                              className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold whitespace-nowrap"
+                            >
+                              Hoàn tác
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {historyItems.length === 0 && (
+                    <tr><td colSpan={7} className="py-12 text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
-                  {['LOẠI', 'NỘI DUNG XEM TRƯỚC', 'THỜI GIAN ĐĂNG', ''].map((h) => (
-                    <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.targetId} className="border-b border-surface-container-highest hover:bg-surface-container-low">
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface max-w-[420px] truncate">{item.contentPreview}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openDetail(item.targetId, item.targetType)}
-                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold"
-                        >
-                          Xem chi tiết
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actioningId === item.targetId}
-                          onClick={() => handleApprove(item)}
-                          className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold disabled:opacity-50"
-                        >
-                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actioningId === item.targetId}
-                          onClick={() => openPendingAction(item, 'HIDE')}
-                          className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50"
-                        >
-                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
-                        </button>
-                        {item.targetType === 'QUESTION' && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
+                    {['LOẠI', 'NỘI DUNG XEM TRƯỚC', 'THỜI GIAN ĐĂNG', ''].map((h) => (
+                      <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.targetId} className="border-b border-surface-container-highest hover:bg-surface-container-low">
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface max-w-[420px] truncate">{item.contentPreview}</td>
+                      <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex gap-2 flex-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item.targetId, item.targetType)}
+                            className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold whitespace-nowrap"
+                          >
+                            Xem chi tiết
+                          </button>
                           <button
                             type="button"
                             disabled={actioningId === item.targetId}
-                            onClick={() => openPendingAction(item, 'LOCK')}
-                            className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50"
+                            onClick={() => handleApprove(item)}
+                            className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
                           >
-                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
+                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={actioningId === item.targetId}
-                          onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
-                          className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50"
-                        >
-                          {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={4} className="py-12 text-center text-outline">Không có nội dung nào đang chờ duyệt lần đầu.</td></tr>
-                )}
-              </tbody>
-            </table>
+                          <button
+                            type="button"
+                            disabled={actioningId === item.targetId}
+                            onClick={() => openPendingAction(item, 'HIDE')}
+                            className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
+                          </button>
+                          {item.targetType === 'QUESTION' && (
+                            <button
+                              type="button"
+                              disabled={actioningId === item.targetId}
+                              onClick={() => openPendingAction(item, 'LOCK')}
+                              className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={actioningId === item.targetId}
+                            onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
+                            className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr><td colSpan={4} className="py-12 text-center text-outline">Không có nội dung nào đang chờ duyệt lần đầu.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -300,6 +338,24 @@ export default function PendingContentQueuePage() {
         errorText={dialogError}
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
+      />
+
+      <ConfirmDialog
+        key={undoTarget ? undoTarget.actionId : 'none'}
+        open={undoTarget !== null}
+        title="Hoàn tác hành động này?"
+        description={
+          undoTarget
+            ? `Nội dung sẽ quay lại hàng đợi chờ duyệt (${TARGET_TYPE_LABELS[undoTarget.targetType]} — "${ACTION_TYPE_LABELS[undoTarget.actionType]}").`
+            : undefined
+        }
+        icon="undo"
+        tone="default"
+        confirmLabel="Hoàn tác"
+        submitting={undoSubmitting}
+        errorText={undoError}
+        onConfirm={confirmUndo}
+        onCancel={() => setUndoTarget(null)}
       />
 
       <ContentDetailDialog

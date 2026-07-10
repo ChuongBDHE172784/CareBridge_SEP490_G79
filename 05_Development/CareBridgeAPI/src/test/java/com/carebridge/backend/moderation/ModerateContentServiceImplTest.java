@@ -294,6 +294,21 @@ class ModerateContentServiceImplTest {
         verifyNoInteractions(communityQuestionRepository);
     }
 
+    // UNDO-TC-017 (CB-MOD-IMP-009): actionType=UNDO at this endpoint → 400 MOD-009 — UNDO may only
+    // be created via ModerationServiceImpl.undoModerationAction()'s dedicated guarded path (ADR-005 §C7)
+    @Test
+    void moderateContent_undoActionType_throwsMod009() {
+        ModerateContentRequest undoRequest = makeRequest(QUESTION_ID, ReportTargetType.QUESTION,
+                ModerationActionType.UNDO, null);
+
+        assertThatThrownBy(() -> moderationService.moderateContent(undoRequest, principal))
+                .isInstanceOf(ModerationException.class)
+                .extracting(ex -> ((ModerationException) ex).getCode())
+                .isEqualTo("MOD-009");
+
+        verifyNoInteractions(communityQuestionRepository);
+    }
+
     // MOD-TC-108: HIDE/LOCK missing reason → 400 MOD-010
     @Test
     void moderateContent_hideOrLockWithoutReason_throwsMod010() {
