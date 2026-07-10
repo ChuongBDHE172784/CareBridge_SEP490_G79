@@ -41,18 +41,27 @@ class AuthService {
     String? phone,
     required String password,
   }) async {
+    print('[loginDirect] email=$email phone=$phone pwLen=${password.length}');
     final body = <String, dynamic>{'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+    print('[loginDirect] POST body keys: ${body.keys}');
     final res = await apiPost('/api/v1/auth/login-direct', body);
-    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    print('[loginDirect] res type=${res.runtimeType} keys=${res.keys}');
+    final data = res['data'];
+    print('[loginDirect] data type=${data.runtimeType}');
+    final auth = AuthResponse.fromJson(data as Map<String, dynamic>);
+    print('[loginDirect] parsed: tokenStart=${auth.accessToken.substring(0, auth.accessToken.length > 20 ? 20 : auth.accessToken.length)}... userId=${auth.user.id} role=${auth.user.role}');
+    print('[loginDirect] calling AuthState.setTokens...');
     await AuthState.instance.setTokens(
       accessToken: auth.accessToken,
       refreshToken: auth.refreshToken,
       userId: auth.user.id,
       role: auth.user.role,
     );
+    print('[loginDirect] setTokens done. inMemory: access=${AuthState.instance.accessToken != null ? 'set' : 'null'} role=${AuthState.instance.role}');
     unawaited(FcmService.instance.registerToken());
+    print('[loginDirect] returning auth');
     return auth;
   }
 

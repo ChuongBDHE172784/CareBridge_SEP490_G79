@@ -123,10 +123,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           'Bạn có chắc muốn xóa câu hỏi này? Hành động này không thể hoàn tác.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
@@ -140,9 +137,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể xóa câu hỏi: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể xóa câu hỏi: $e')));
       }
     }
   }
@@ -179,14 +174,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Lưu'),
-            ),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Lưu')),
           ],
         ),
       ),
@@ -217,10 +206,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         title: const Text('Xóa câu trả lời'),
         content: const Text('Bạn có chắc muốn xóa câu trả lời này?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
@@ -320,14 +306,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Gửi báo cáo'),
-            ),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Gửi báo cáo')),
           ],
         ),
       ),
@@ -342,16 +322,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã gửi báo cáo đến đội ngũ kiểm duyệt'),
-          ),
+          const SnackBar(content: Text('Đã gửi báo cáo đến đội ngũ kiểm duyệt')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể gửi báo cáo: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể gửi báo cáo: $e')));
       }
     }
   }
@@ -397,18 +373,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         ),
         title: const Text(
           'Chi tiết câu hỏi',
-          style: TextStyle(
-            color: _primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
+          style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17),
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.smart_toy_outlined,
-              color: _onSurfaceVariant,
-            ),
+            icon: const Icon(Icons.smart_toy_outlined, color: _onSurfaceVariant),
             onPressed: () => context.push('/rag-chat'),
             tooltip: 'Hỏi AI CareBridge (UC-132)',
           ),
@@ -422,10 +391,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
           if (_question?.authorId != null && !_isMyQuestion)
             IconButton(
-              icon: const Icon(
-                Icons.person_off_outlined,
-                color: _onSurfaceVariant,
-              ),
+              icon: const Icon(Icons.person_off_outlined, color: _onSurfaceVariant),
               onPressed: () => _reportTarget(
                 targetType: 'USER',
                 targetId: _question!.authorId!,
@@ -486,10 +452,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 );
                 if (answered == true) _loadDetail();
               },
-        label: const Text(
-          'Trả lời',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        label: const Text('Trả lời', style: TextStyle(fontWeight: FontWeight.w600)),
         icon: const Icon(Icons.edit_note),
       ),
       body: _loading
@@ -524,6 +487,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       ),
     );
   }
+
+  bool _hasExpertProfileTap(CommunityAnswer a) =>
+      a.expertLabeled &&
+      a.expertProfileId != null &&
+      a.expertProfileId!.isNotEmpty;
 
   Widget _buildContent() {
     final q = _question!;
@@ -612,10 +580,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: _surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(4),
@@ -668,9 +633,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                             size: 16,
-                            color: _questionLiked
-                                ? _primary
-                                : _onSurfaceVariant,
+                            color: _questionLiked ? _primary : _onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -762,8 +725,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     targetId: q.answers[i].id,
                   ),
                   onReportAuthor:
-                      q.answers[i].authorId != null &&
-                          !_isOwnAnswer(q.answers[i])
+                      q.answers[i].authorId != null && !_isOwnAnswer(q.answers[i])
                       ? () => _reportTarget(
                           targetType: 'USER',
                           targetId: q.answers[i].authorId!,
@@ -776,6 +738,36 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  static const _container = Color(0xFFEEDDD5);
+  static const _txt = Color(0xFF845143);
+
+  final String label;
+  final Color? color;
+  final Color? textColor;
+
+  const _Tag(this.label, {this.color, this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color ?? _container,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: textColor ?? _txt,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
@@ -805,25 +797,20 @@ class _AnswerCard extends StatelessWidget {
     this.onReportAuthor,
   });
 
-  static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surface = Colors.white;
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-
   @override
   Widget build(BuildContext context) {
+    final hasExpertProfileId = answer.expertLabeled &&
+        answer.expertProfileId != null &&
+        answer.expertProfileId!.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _surface,
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: answer.expertLabeled
             ? Border.all(
-                color: _primaryContainer.withValues(alpha: 0.4),
+                color: const Color(0xFFC98C7B).withValues(alpha: 0.4),
                 width: 1.5,
               )
             : null,
@@ -844,12 +831,12 @@ class _AnswerCard extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: answer.expertLabeled
-                    ? _primaryContainer
-                    : _secondaryContainer,
+                    ? const Color(0xFFC98C7B)
+                    : const Color(0xFFF6DACF),
                 child: Icon(
                   answer.expertLabeled ? Icons.verified : Icons.person,
                   size: 16,
-                  color: answer.expertLabeled ? Colors.white : _primary,
+                  color: answer.expertLabeled ? Colors.white : const Color(0xFF845143),
                 ),
               ),
               const SizedBox(width: 8),
@@ -857,32 +844,40 @@ class _AnswerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: answer.expertLabeled ? _primary : _onSurface,
-                          ),
-                        ),
-                        if (answer.expertLabeled)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(
-                              Icons.verified,
-                              size: 14,
-                              color: _primary,
+                    GestureDetector(
+                      onTap: hasExpertProfileId
+                          ? () => context.push('/expert/public/${answer.expertProfileId}')
+                          : null,
+                      child: Row(
+                        children: [
+                          Text(
+                            answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: answer.expertLabeled
+                                  ? const Color(0xFF845143)
+                                  : const Color(0xFF271812),
+                              decoration: hasExpertProfileId
+                                  ? TextDecoration.underline
+                                  : null,
+                              decorationColor: const Color(0xFFC98C7B),
                             ),
                           ),
-                      ],
+                          if (hasExpertProfileId)
+                            const Icon(
+                              Icons.verified,
+                              size: 14,
+                              color: Color(0xFF845143),
+                            ),
+                        ],
+                      ),
                     ),
                     Text(
                       formatTimeAgo(answer.createdAt),
                       style: const TextStyle(
                         fontSize: 11,
-                        color: _onSurfaceVariant,
+                        color: Color(0xFF524440),
                       ),
                     ),
                   ],
@@ -890,17 +885,14 @@ class _AnswerCard extends StatelessWidget {
               ),
               if (answer.personalExperience)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: _surfaceContainerHigh,
+                    color: const Color(0xFFFFE2D9),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
                     'Kinh nghiệm',
-                    style: TextStyle(fontSize: 10, color: _primary),
+                    style: TextStyle(fontSize: 10, color: Color(0xFF845143)),
                   ),
                 ),
               if (isOwnAnswer)
@@ -908,7 +900,7 @@ class _AnswerCard extends StatelessWidget {
                   icon: const Icon(
                     Icons.more_vert,
                     size: 18,
-                    color: _onSurfaceVariant,
+                    color: Color(0xFF524440),
                   ),
                   onSelected: (value) {
                     if (value == 'edit') onEdit();
@@ -927,12 +919,12 @@ class _AnswerCard extends StatelessWidget {
             answer.body,
             style: const TextStyle(
               fontSize: 14,
-              color: _onSurface,
+              color: Color(0xFF271812),
               height: 1.5,
             ),
           ),
           const SizedBox(height: 10),
-          const Divider(color: _outlineVariant, height: 1),
+          const Divider(color: Color(0xFFD6C2BD), height: 1),
           const SizedBox(height: 8),
           // Like action
           Row(
@@ -941,27 +933,22 @@ class _AnswerCard extends StatelessWidget {
                 onTap: onLike,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         liked ? Icons.favorite : Icons.favorite_border,
                         size: 18,
-                        color: liked ? _primary : _onSurfaceVariant,
+                        color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '$likeCount',
                         style: TextStyle(
                           fontSize: 12,
-                          color: liked ? _primary : _onSurfaceVariant,
-                          fontWeight: liked
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+                          color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
+                          fontWeight: liked ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -974,7 +961,7 @@ class _AnswerCard extends StatelessWidget {
                 icon: const Icon(
                   Icons.flag_outlined,
                   size: 18,
-                  color: _onSurfaceVariant,
+                  color: Color(0xFF524440),
                 ),
                 onSelected: (value) {
                   if (value == 'answer') onReport();
@@ -1002,33 +989,14 @@ class _AnswerCard extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color textColor;
-
-  const _Tag(
-    this.label, {
-    this.color = const Color(0xFFFFE2D9),
-    this.textColor = const Color(0xFF845143),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: textColor,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+class _AnswerCardColors {
+  static const primary = Color(0xFF845143);
+  static const primaryContainer = Color(0xFFC98C7B);
+  static const surface = Color(0xFFFFFFFF);
+  static const secondaryContainer = Color(0xFFF6DACF);
+  static const onSurface = Color(0xFF271812);
+  static const onSurfaceVariant = Color(0xFF524440);
+  static const outlineVariant = Color(0xFFD6C2BD);
+  static const surfaceContainerHigh = Color(0xFFFFE2D9);
+  static const surfaceContainerLow = Color(0xFFFFF1EC);
 }
