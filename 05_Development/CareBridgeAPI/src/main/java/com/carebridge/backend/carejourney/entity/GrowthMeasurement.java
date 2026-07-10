@@ -45,6 +45,9 @@ public class GrowthMeasurement {
     @Column(name = "note", columnDefinition = "text")
     private String note;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

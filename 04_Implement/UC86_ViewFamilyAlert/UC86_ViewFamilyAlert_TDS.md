@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-007` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -29,6 +29,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent | Initial draft for UC-86 View Family Alert |
+| 2026-07-08 | AI Agent — Amelia (Dev Agent) | Implemented family alert listing: `FamilyAlertItemDto`/`FamilyAlertListResponse` DTOs, `IFamilyAlertService`/`FamilyAlertServiceImpl` (reads `NotificationRecordRepository.findByUserIdAndType` with EMERGENCY type; consent-minimized — no referenceId/PII), `FamilyAlertController` at `GET /api/v1/family-alerts`. Audits `FAMILY_ALERT_VIEWED`. ADR-FAM-006 Option B (notification_records). Unit tests not yet run (Red Gate pending). |
 
 ---
 

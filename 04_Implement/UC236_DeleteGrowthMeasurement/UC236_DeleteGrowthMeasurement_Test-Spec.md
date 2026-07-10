@@ -4,7 +4,7 @@
 **Document ID:** `CB-BABY-IMP-012-TEST`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (service coverage PASS; full TC matrix pending)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -33,6 +33,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after backend test pass: service-level UC236 cases added to `GrowthServiceTest`; `GrowthServiceTest` 19/19 PASS and `com.carebridge.backend.carejourney.**.*Test` 65/65 PASS. Red Gate/controller/integration/full TC matrix not reconstructed yet. |
 | `2026-07-03` | `AI Agent` | Khởi tạo TDD spec cho UC-236 Delete Growth Measurement (soft-delete via `deleted_at`) |
 
 ---
@@ -702,4 +703,4 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
 ---
 
 *TDD Template v2.0 — Tích hợp CASE 2.0 Anti-Pattern Detection & Red Gate Protocol*
-*Status: Draft. Không được set Approved cho tới khi ADR-BABY-012-001/002/003 được Tech Lead + DBA Accept và Red Gate (§5.1) được xác nhận FAIL thật trên stub.*
+*Status: Partially Implemented. Red Gate/controller/integration/full TC matrix vẫn cần xác nhận trước khi set Implemented.*

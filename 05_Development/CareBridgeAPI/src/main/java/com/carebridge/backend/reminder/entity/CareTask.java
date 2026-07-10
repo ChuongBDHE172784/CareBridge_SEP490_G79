@@ -8,7 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
+@Entity(name = "ReminderCareTask")
 @Table(name = "care_tasks")
 @Getter
 @Setter

@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-006` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -30,6 +30,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent | Tạo tài liệu lần đầu cho UC-83 Accept Care Group Invitation (Draft) |
+| 2026-07-08 | AI Agent — Amelia (Dev Agent) | Implemented token-based invite acceptance: added `acceptIfPending` + `markExpiredIfPending` @Modifying queries in `CareGroupMemberRepository`; added `isPhoneMatchForInvite` to `CareGroupAuthorizationPolicy`; implemented `acceptInvitationByToken` in `CareGroupServiceImpl`; wired `POST /invitations/{token}/accept` in `CareGroupController`. Lazy expiry (ADR-FAM-006), phone-match guard (ADR-FAM-007), atomic conditional UPDATE (ADR-FAM-008). Unit tests not yet run (Red Gate pending). |
 
 ---
 

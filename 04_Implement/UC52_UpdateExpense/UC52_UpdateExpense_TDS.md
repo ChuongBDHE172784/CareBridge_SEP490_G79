@@ -732,7 +732,7 @@ curl -X GET https://<host>/api/v1/health
 
 ### 11.4. Deployment Checklist
 
-- [ ] `./mvnw test` green
+- [x] `./mvnw test` green for documented UC52 update/delete service subset (4/4 passed in Test-Spec)
 - [ ] `PATCH`/`DELETE` manually verified against seeded test expense owned by `mother@carebridge.dev`
 - [ ] Audit log entries visible for both update and delete
 - [ ] No PII (amount/category/note) leaked in application logs

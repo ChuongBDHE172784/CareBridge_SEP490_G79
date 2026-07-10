@@ -3,7 +3,11 @@ package com.carebridge.backend.family.repository;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.InviteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,4 +23,31 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
     Optional<CareGroupMember> findByCareGroupIdAndUserId(UUID careGroupId, UUID userId);
 
     List<CareGroupMember> findByUserIdAndInviteStatus(UUID userId, InviteStatus status);
+
+    Optional<CareGroupMember> findByInviteToken(String inviteToken);
+
+    long countByCareGroupIdAndInviteStatus(UUID careGroupId, InviteStatus status);
+
+    Optional<CareGroupMember> findByIdAndCareGroupId(UUID memberId, UUID careGroupId);
+
+    /**
+     * UC-83 (ADR-FAM-008): single-use conditional accept.
+     * Returns 1 if the row was PENDING and was transitioned; 0 if already in a non-PENDING state (race lost).
+     */
+    @Modifying
+    @Query("UPDATE CareGroupMember m SET m.inviteStatus = com.carebridge.backend.family.entity.InviteStatus.ACCEPTED, " +
+           "m.joinedAt = :joinedAt, m.updatedAt = :joinedAt " +
+           "WHERE m.id = :id AND m.inviteStatus = com.carebridge.backend.family.entity.InviteStatus.PENDING")
+    int acceptIfPending(@Param("id") UUID id, @Param("joinedAt") Instant joinedAt);
+
+    /**
+     * UC-83 (ADR-FAM-006): lazy expiry — transitions PENDING+expired row to EXPIRED.
+     * Returns 1 if transitioned; 0 if already non-PENDING or not yet past expiresAt.
+     */
+    @Modifying
+    @Query("UPDATE CareGroupMember m SET m.inviteStatus = com.carebridge.backend.family.entity.InviteStatus.EXPIRED, " +
+           "m.updatedAt = :now " +
+           "WHERE m.id = :id AND m.inviteStatus = com.carebridge.backend.family.entity.InviteStatus.PENDING " +
+           "AND m.inviteExpiresAt < :now")
+    int markExpiredIfPending(@Param("id") UUID id, @Param("now") Instant now);
 }

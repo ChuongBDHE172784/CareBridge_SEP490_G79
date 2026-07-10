@@ -4,7 +4,7 @@
 **Document ID:** `FPT-EDU-TDD-TEMPLATE-001` (instance for `CB-FAM-IMP-222`)
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-07-10 (24/28 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -22,7 +22,7 @@
 - PDPA (Vietnam) — minimum-necessary access; *(Luật 91/2025, NĐ 356/2025 — Not applicable; no specific article identified, generic BR-RBAC/BR-PRIVACY cited instead)*
 
 > **Quy ước TDD:** Tài liệu này mô tả test cases TRƯỚC khi viết production code.
-> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
+> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL ðŸ”´ → implement → PASS ðŸŸ¢ → refactor ðŸ”µ.
 > Không mark test là ✅ nếu `./mvnw test` chưa xanh.
 > Không dùng PII thật trong test data — chỉ dùng SYNTHETIC data.
 
@@ -32,6 +32,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 24/28 tests PASS in targeted service suite; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | 2026-07-03 | AI Agent | Khởi tạo tài liệu — Test-Spec cho UC-222 Update Family Task |
 
 ---
@@ -58,7 +59,7 @@
 | **Feature / Gap ID** | `GAP-FAM222` |
 | **Module** | `family` — Care Task Update (content-only) |
 | **Spec gốc** | `CB-FAM-IMP-222` |
-| **Priority** | 🟠 P1 (Medium per SRS) |
+| **Priority** | ðŸŸ  P1 (Medium per SRS) |
 | **Sprint** | `Sprint 3 — Cross-Domain Integration` *(mirrors sibling UC-73/UC-85 batch; exact date not confirmed — Open, do not invent)* |
 | **Milestone** | `M3 Alpha` *(not confirmed in available sources — Open)* |
 | **Data Classification** | `Internal` (family/task content — see TDS §1) |
@@ -186,7 +187,7 @@ Family / CareTask Update (UC-222) bao gồm các layer:
 
 > **TC ID format:** `FAM222-TC-[NNN]`
 > **Severity:** CRITICAL / HIGH / MEDIUM / LOW
-> **Status:** 🔴 Not written / 🟡 Written-failing / 🟢 Passing
+> **Status:** ðŸ”´ Not written / ðŸŸ¡ Written-failing / ðŸŸ¢ Passing
 
 ### Props Isolation Boilerplate (CASE 2.0 — BẮT BUỘC)
 
@@ -276,7 +277,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `src/test/java/com/carebridge/backend/family/service/CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS §3.3.17.7` Normal Flow ("Updates content ... for an incomplete task") + `TDS §8.1 UpdateFamilyTaskResponse`
 
@@ -294,7 +295,7 @@ class CareTaskUpdateTestFactory {
 **Expected Result (FAIL):**
 - Exception thrown, or `status`/`completedAt` mutated, or `save()` not called
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Verifies the base happy path and the read-only invariant on `status` simultaneously.
 
 ---
@@ -304,7 +305,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `TDS ADR-FAM-078` (dueAt optional, future-only if present) + `ADR-FAM-033` (reused future-only rule)
 
@@ -317,7 +318,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** `dueAt` updated; `title`/`description`/`assignedTo` unchanged
 **Expected Result (FAIL):** `dueAt` not persisted, or unrelated fields mutated
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -326,7 +327,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `TDS ADR-FAM-075` (new assignee must be ACCEPTED member of same group)
 
@@ -339,7 +340,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** `assignedTo` updated to the new member's `userId`
 **Expected Result (FAIL):** `FAM-074` thrown incorrectly, or `assignedTo` unchanged
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -348,7 +349,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `SRS §3.3.17.7` Description ("content" includes notes) — `TDS §1` (description inclusion rationale)
 
@@ -361,7 +362,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Only `description` changes
 **Expected Result (FAIL):** Other fields mutated, or description not applied
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -370,7 +371,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `TDS §6.1` Happy Path sequence diagram (all 4 fields may change in one call)
 
@@ -383,7 +384,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** All 4 changed fields persisted atomically
 **Expected Result (FAIL):** Partial application (some fields silently dropped)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -392,7 +393,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `TDS ADR-FAM-073` (incomplete = OPEN ∪ IN_PROGRESS)
 
@@ -405,7 +406,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 200-equivalent success, no `FAM-073` thrown
 **Expected Result (FAIL):** `FAM-073` incorrectly thrown for IN_PROGRESS
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -414,7 +415,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `TDS ADR-FAM-073` — SRS "for an incomplete task"; error `FAM-073` per `TDS §10`
 
@@ -427,7 +428,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Exception `FAM-073`/409; no persistence side effect
 **Expected Result (FAIL):** Update silently succeeds on a DONE task
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -436,7 +437,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `TDS ADR-FAM-073` — error `FAM-073` per `TDS §10`
 
@@ -449,7 +450,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Exception `FAM-073`/409
 **Expected Result (FAIL):** Update silently succeeds on a CANCELLED task
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -457,8 +458,8 @@ class CareTaskUpdateTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canUpdateTask()` (via `CareTaskServiceImpl.updateFamilyTask()`)
-**Test File:** `CareTaskAuthorizationPolicyTest.java`, `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplUpdateTest.java`, `CareTaskServiceImplUpdateTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `TDS ADR-FAM-072` (owner-only, reuses ADR-FAM-032 predicate); error `FAM-072` per `TDS §10`
 
@@ -471,7 +472,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 403 `FAM-072`
 **Expected Result (FAIL):** MEMBER role permitted to update — privilege escalation
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -479,8 +480,8 @@ class CareTaskUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canUpdateTask()`
-**Test File:** `CareTaskAuthorizationPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplUpdateTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `TDS ADR-FAM-072`; error `FAM-072`
 
@@ -493,7 +494,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** `false` → service throws `FAM-072`/403
 **Expected Result (FAIL):** `true` returned for VIEWER
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -501,8 +502,8 @@ class CareTaskUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskAuthorizationPolicy.canUpdateTask()`
-**Test File:** `CareTaskAuthorizationPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplUpdateTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-011`
 **Oracle Source:** `TDS ADR-FAM-072`; error `FAM-072`
 
@@ -515,7 +516,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** `false` → 403 `FAM-072`
 **Expected Result (FAIL):** `NullPointerException` or `true`
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -524,7 +525,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-012`
 **Oracle Source:** `TDS ADR-FAM-075`; error `FAM-074` per `TDS §10`
 
@@ -537,7 +538,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 409 `FAM-074`; `save()` not invoked with the new assignee
 **Expected Result (FAIL):** Reassignment to a non-accepted member silently succeeds — BR-PRIVACY violation
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -546,7 +547,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-013`
 **Oracle Source:** `TDS ADR-FAM-075`; error `FAM-074`
 
@@ -559,7 +560,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 409 `FAM-074` — cross-group reassignment blocked
 **Expected Result (FAIL):** Task reassigned to a user outside the care group — data-scope breach
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -568,7 +569,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-014`
 **Oracle Source:** `TDS ADR-FAM-075`; error `FAM-074`
 
@@ -581,7 +582,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 409 `FAM-074`
 **Expected Result (FAIL):** `NoSuchElementException`/500 instead of a handled `FAM-074`
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -590,7 +591,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-015`
 **Oracle Source:** `TDS ADR-FAM-078` (title if present must be non-blank); error `FAM-075` per `TDS §10`
 
@@ -603,7 +604,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 400 `FAM-075`
 **Expected Result (FAIL):** Blank title persisted, violating `title NOT NULL`-equivalent content rule
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -611,8 +612,8 @@ class CareTaskUpdateTestFactory {
 
 **Severity:** `LOW`
 **Feature Under Test:** `UpdateFamilyTaskRequest` Bean Validation (`@Size(max=255)`)
-**Test File:** `UpdateFamilyTaskRequestValidationTest.java`
-**TDD Phase:** 🔴 RED
+**Test File:** `CareTaskServiceImplUpdateTest.java`
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-016`
 **Oracle Source:** `TDS §8.1` (`@Size(max = 255)`); DB column `title varchar(255)` per `V1__init_schema.sql`; error `FAM-075`
 
@@ -625,7 +626,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Validation violation raised → controller-level 400
 **Expected Result (FAIL):** 256-char title accepted, risking DB truncation/exception (`varchar(255)`)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -634,7 +635,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-017`
 **Oracle Source:** `TDS ADR-FAM-078` (reuses `ADR-FAM-033` future-only rule); error `FAM-075`
 
@@ -647,7 +648,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 400 `FAM-075`
 **Expected Result (FAIL):** Past due date accepted, contradicting E2 "expired data is rejected"
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -656,7 +657,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-018`
 **Oracle Source:** `TDS ADR-FAM-078` citing `ADR-FAM-033` boundary rule (`dueAt.isAfter(now())`, strictly-after)
 
@@ -669,7 +670,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 400 `FAM-075` at the exact boundary
 **Expected Result (FAIL):** Boundary treated as valid (off-by-one on `isAfter` vs `isBefore`/`equals`)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -678,7 +679,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-019`
 **Oracle Source:** `TDS ADR-FAM-078` (no-op guard); error `FAM-076` per `TDS §10`
 
@@ -691,7 +692,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 400 `FAM-076`; no meaningless persistence write
 **Expected Result (FAIL):** No-op "success" response returned with no error, masking a client bug
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -700,7 +701,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`, `UpdateFamilyTaskRequest` (de)serialization
 **Test File:** `CareGroupControllerUpdateTaskTest.java` (`@WebMvcTest`, raw JSON body), `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-020`
 **Oracle Source:** `TDS ADR-FAM-074` — "Update Family Task is a content-only mutation; state transitions are out of scope"
 
@@ -713,7 +714,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Request succeeds, `status` remains `OPEN`, no exception from the unknown-but-present `status` JSON key
 **Expected Result (FAIL):** Either (a) deserialization fails on unknown property, or (b) `status` is actually written to `DONE` — both are ADR-FAM-074 violations
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the **core anti-regression test** for the content-only boundary between UC-222 and UC-85/UC-223 — flagged CRITICAL.
 
 ---
@@ -723,7 +724,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-021`
 **Oracle Source:** `TDS ADR-FAM-077`/`§10` — `FAM-033` reused from UC-73's reservation for "care task not found"
 
@@ -736,7 +737,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 404 `FAM-033`
 **Expected Result (FAIL):** `NoSuchElementException`/500, or wrong error code
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -745,7 +746,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-022`
 **Oracle Source:** `TDS §8.2` (`findByIdAndCareGroupId` — scoped lookup); error `FAM-033`
 
@@ -758,7 +759,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** 404 `FAM-033` — no cross-group task info leaked
 **Expected Result (FAIL):** Task from another group is loaded and updated — cross-tenant data leak
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -767,7 +768,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-023`
 **Oracle Source:** `TDS ADR-FAM-074` invariant #1 (§6.3): "`status`/`completed_at`... unchanged"
 
@@ -780,7 +781,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** `completedAt` stays `null` (or whatever pre-existing value, for a hypothetical already-set case)
 **Expected Result (FAIL):** `completedAt` gets set as a side effect of an unrelated field update
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -789,7 +790,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()`
 **Test File:** `CareTaskServiceImplUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-024`
 **Oracle Source:** `TDS ADR-FAM-078` (`null`/absent = unchanged; explicit `""` = clear)
 
@@ -801,7 +802,7 @@ class CareTaskUpdateTestFactory {
 
 **Expected Result (PASS):** Sub-case A preserves original description; Sub-case B clears it to empty string
 **Expected Result (FAIL):** Either sub-case treats `null` and `""` identically (violates the documented convention)
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -817,7 +818,7 @@ class CareTaskUpdateTestFactory {
 **Legal:** `BR-RBAC`
 **Feature Under Test:** `CareGroupController.updateTask()` (Spring Security filter chain)
 **Test File:** `CareGroupControllerUpdateTaskTest.java` (`@WebMvcTest` + Spring Security test support)
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Oracle Source:** `SRS §3.3.17.7` Exception E1 ("Access is denied when the actor is unauthenticated...") / `BR-RBAC`
 
 **Preconditions:** No `Authorization` header supplied
@@ -833,7 +834,7 @@ class CareTaskUpdateTestFactory {
 **Expected Result (FAIL = lỗ hổng tồn tại):**
 - Request reaches the service layer without authentication
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -845,7 +846,7 @@ class CareTaskUpdateTestFactory {
 **Legal:** `BR-PRIVACY` (data integrity)
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()` (JPA parameterized persistence)
 **Test File:** `CareTaskServiceImplIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Oracle Source:** `SRS §3.3.17.7` Exception E2 ("Invalid ... or conflicting data is rejected") + `BR-PRIVACY` (data integrity) — Spring Data JPA parameterized queries are the existing project-wide persistence pattern (no raw string concatenation anywhere in `family` package, verified against `CareGroupServiceImpl`)
 
 **Preconditions:** FX-001, FX-002, FX-007; PostgreSQL Testcontainer running
@@ -861,7 +862,7 @@ class CareTaskUpdateTestFactory {
 **Expected Result (FAIL = lỗ hổng tồn tại):**
 - Table dropped or query malformed — indicates non-parameterized query usage
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -874,7 +875,7 @@ class CareTaskUpdateTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `Full flow: PATCH endpoint → CareTaskServiceImpl → CareTaskRepository/CareGroupMemberRepository → PostgreSQL`
 **Test File:** `src/test/java/com/carebridge/backend/family/CareTaskUpdateIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-027`
 **Oracle Source:** `TDS §6.1` Happy Path sequence diagram + `TDS ADR-FAM-074` (status/completed_at invariant) + `V1__init_schema.sql` (`care_tasks` column set)
 
@@ -904,7 +905,7 @@ assertThat(record.getStatus()).isEqualTo(CareTaskStatus.OPEN);
 assertThat(record.getCompletedAt()).isNull();
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -913,7 +914,7 @@ assertThat(record.getCompletedAt()).isNull();
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.updateFamilyTask()` under concurrent invocation`
 **Test File:** `CareTaskUpdateIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-028`
 **Oracle Source:** `TDS §4.2` Data Integrity & Concurrency ("Last-write-wins... optimistic `@Version` locking is OUT of scope for v1")
 
@@ -927,38 +928,38 @@ assertThat(record.getCompletedAt()).isNull();
 
 **Expected Result (PASS):** No exception; final state is exactly one of the two values, not a corrupted mix
 **Expected Result (FAIL):** Deadlock, exception, or corrupted/partial field state
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
+| TC ID | Test File | ðŸ”´ RED confirmed | ðŸŸ¢ GREEN (commit) | ðŸ”µ REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `FAM222-TC-001` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-002` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-003` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-004` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-005` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-006` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-007` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-008` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-009` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-010` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-011` | `CareTaskAuthorizationPolicyTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-012` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-013` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-014` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-015` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-016` | `UpdateFamilyTaskRequestValidationTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-017` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-018` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-019` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-020` | `CareGroupControllerUpdateTaskTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-021` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-022` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-023` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM222-TC-024` | `CareTaskServiceImplUpdateTest.java:TBD` | `[ ]` | `[ ]` | |
+| `FAM222-TC-001` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-002` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-003` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-004` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-005` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-006` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-007` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-008` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-009` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-010` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-011` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-012` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-013` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-014` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-015` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-016` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-017` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-018` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-019` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-020` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-021` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-022` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-023` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM222-TC-024` | `CareTaskServiceImplUpdateTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
 | `FAM222-TC-025` | `CareGroupControllerUpdateTaskTest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM222-TC-026` | `CareTaskServiceImplIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM222-TC-INT-001` | `CareTaskUpdateIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
@@ -1004,8 +1005,8 @@ public class CareTaskAuthorizationPolicy {
 
 **Red Gate Evidence:**
 
-- Stub commit hash: `___` *(to be filled at implementation time)*
-- Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
+- Stub commit hash: `N/A` — Red Gate not reconstructed because production implementation already existed before this execution.
+- All FAIL? ☐ Not reconstructed — production implementation pre-existed; service-level Green evidence captured on 2026-07-10.
 - Log file: `[path to red-gate-evidence.log]` *(TBD)*
 
 > **Nếu bất kỳ test PASS:** Dừng lại. Xác định root cause từ bảng trên. Rewrite test từ TC-ID spec
@@ -1099,4 +1100,6 @@ git checkout -- src/test/java/com/carebridge/backend/family/
 ---
 
 *TDD Template v2.0 — Tích hợp CASE 2.0 Anti-Pattern Detection & Red Gate Protocol*
-*Status: `Draft`. Companion to `04_Implement/UC222_UpdateFamilyTask/UC222_UpdateFamilyTask_TDS.md` (`CB-FAM-IMP-222`).*
+*Status: `Partially Implemented`. Companion to `04_Implement/UC222_UpdateFamilyTask/UC222_UpdateFamilyTask_TDS.md` (`CB-FAM-IMP-222`).*
+
+

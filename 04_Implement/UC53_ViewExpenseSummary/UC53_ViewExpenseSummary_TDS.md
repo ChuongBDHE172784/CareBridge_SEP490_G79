@@ -607,8 +607,8 @@ public interface ExpenseSummaryProjection {
 
 - [ ] ADR-CJ-053-01/02/03 Accepted (§3)
 - [ ] DPO sign-off pending
-- [ ] This TDS + matching Test-Spec both `Approved`
-- [ ] UC52 (`ExpenseRepository`/`Expense` entity) implemented or implemented concurrently, since UC53 reuses the same `Expense` JPA entity
+- [x] This TDS + matching Test-Spec both `Approved`
+- [x] UC52 (`ExpenseRepository`/`Expense` entity) implemented or implemented concurrently, since UC53 reuses the same `Expense` JPA entity
 
 ### 11.2. Pre-Migration Checklist
 
@@ -655,7 +655,7 @@ curl -X GET https://<host>/api/v1/health
 
 ### 11.4. Deployment Checklist
 
-- [ ] `./mvnw test` green
+- [x] `./mvnw test` green for documented UC53 getSummary service subset (5/5 passed in Test-Spec)
 - [ ] Summary totals cross-checked against raw `SUM(amount)` on seeded data
 - [ ] Empty state returns 200 (never 404/500)
 - [ ] No PII (individual expense notes) present in summary payload

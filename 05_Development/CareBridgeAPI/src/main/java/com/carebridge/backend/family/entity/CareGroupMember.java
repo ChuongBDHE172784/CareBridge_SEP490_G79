@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+
 @Entity
 @Table(name = "care_group_members")
 @Getter
@@ -40,6 +41,22 @@ public class CareGroupMember {
 
     @Column(name = "joined_at")
     private Instant joinedAt;
+
+    @Column(name = "invite_token", length = 64)
+    private String inviteToken;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invite_channel", length = 20)
+    private InviteChannel inviteChannel;
+
+    @Column(name = "invite_expires_at")
+    private Instant inviteExpiresAt;
+
+    @Column(name = "invited_phone", length = 20)
+    private String invitedPhone;
+
+    @Column(name = "permission_json", columnDefinition = "jsonb")
+    private String permissionJson;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

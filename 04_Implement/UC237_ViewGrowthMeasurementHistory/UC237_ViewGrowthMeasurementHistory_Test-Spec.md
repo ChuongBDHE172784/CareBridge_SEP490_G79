@@ -4,7 +4,7 @@
 **Document ID:** `CB-BABY-IMP-013-TEST`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (service coverage PASS; full TC matrix pending)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 -- Software Testing Part 3: Test Documentation
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] -- Pending`
@@ -25,6 +25,7 @@
 
 | Ngay | Nguoi thuc hien | Noi dung thay doi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Truthful sync after backend test pass: service-level UC237 cases added to `GrowthServiceTest`; `GrowthServiceTest` 19/19 PASS and `com.carebridge.backend.carejourney.**.*Test` 65/65 PASS. Red Gate/controller/integration/full TC matrix not reconstructed yet. |
 | 2026-07-03 | AI Agent | Khoi tao TDD spec cho UC-237 View Growth Measurement History |
 
 ---

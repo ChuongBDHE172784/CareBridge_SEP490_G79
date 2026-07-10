@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-221` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation — 20/24 tests PASS; unit/service coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC-221 View Assigned Task Detail |
 
 ---
@@ -940,7 +941,7 @@ curl -X GET https://[host]/api/v1/care-groups/{groupId}/members -H "Authorizatio
 
 | Thời điểm | Người nhận | Kênh | Template |
 |-----------|------------|------|----------|
-| Ngay khi phát hiện | On-call team | Slack `#incident` | "🚨 UC-221 task-detail incident: [mô tả]" |
+| Ngay khi phát hiện | On-call team | Slack `#incident` | "ðŸš¨ UC-221 task-detail incident: [mô tả]" |
 | Nếu cross-group/PII leak | DPO | Email | *(Bắt buộc — PDPA; task notes + member names exposed cross-group)* |
 
 ### 12.4. Post-Incident Review (PIR)
@@ -1155,3 +1156,4 @@ Tests phải cover companion file UC221_ViewAssignedTaskDetail_Test-Spec.md §4.
 ---
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft — pending review.*
+

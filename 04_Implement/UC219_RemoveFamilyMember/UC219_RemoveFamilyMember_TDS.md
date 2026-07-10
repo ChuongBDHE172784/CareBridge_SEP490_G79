@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-219` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent (Technical Architect + Test Designer role)` |
 | **Reviewed by** | `[ ] Pending` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-03 | AI Agent — Technical Architect | Initial draft — TDS for UC-219 Remove Family Member |
+| 2026-07-10 | AI Agent | Phase 3: Implementation — 12/16 tests PASS; unit/service coverage green, E2E/INT pending |
 
 ---
 
@@ -1395,7 +1396,7 @@ curl -X DELETE https://[host]/api/v1/care-groups/CG-001/members/MEMBER-003
 | C2 | Set target `invitation_status = REVOKED` (existing enum value) — do NOT add a new enum value / migration; differentiate via `AuditAction.CARE_GROUP_MEMBER_REMOVED` | ADR-FAM-059, ADR-FAM-062 | 2026-07-03 |
 | C3 | Reject target whose `memberRole == OWNER` with `FAM-061` (409) BEFORE the status check (covers owner-targets-self); reject non-`ACCEPTED` target with `FAM-060` (409) | ADR-FAM-060, ADR-FAM-059 | 2026-07-03 |
 | C4 | `callerId` from JWT `Principal` (`SecurityUtils.requireCurrentUserId`); `targetUserId`/`groupId` from path — never from body | BR-RBAC | 2026-07-03 |
-| C5 | Do NOT touch any `care_tasks` / `CareTask*` (sub-domain does not exist); no auto-reassignment; response exposes IDs/status only (no email/phone) | ADR-FAM-061, BR-PRIVACY | 2026-07-03 |
+| C5 | Do NOT invoke `CareTaskRepository` / task reassignment from UC-219; no auto-reassignment; response exposes IDs/status only (no email/phone) | ADR-FAM-061, BR-PRIVACY | 2026-07-10 |
 
 > ⚠️ `Last Verified` > 2 sprints → re-verify before injecting.
 

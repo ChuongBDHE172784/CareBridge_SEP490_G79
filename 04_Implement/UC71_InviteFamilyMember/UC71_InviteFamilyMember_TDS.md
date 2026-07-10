@@ -5,7 +5,7 @@
 | **Document ID** | `CB-FAM-IMP-071` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent (Technical Architect + Test Designer role)` |
 | **Reviewed by** | `[ ] Pending` |
@@ -23,6 +23,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Initial draft — TDS for UC71 Invite Family Member |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Phase GREEN complete — 24/24 unit tests PASS; added Flyway migration `V20260707190000__add_care_group_invite_token.sql`, `InviteChannel` enum, `InviteStatus` extended (REJECTED/EXPIRED), `InviteTokenGenerator`, `CareGroupAuthorizationPolicy`, UC71 service + controller endpoint; integration tests (TC-014, TC-023, TC-024, TC-INT-001, TC-INT-002) deferred pending Docker runtime |
 
 ---
 

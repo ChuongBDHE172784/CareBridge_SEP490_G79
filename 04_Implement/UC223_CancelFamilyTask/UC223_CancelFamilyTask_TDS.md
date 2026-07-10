@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-223` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation — 17/21 tests PASS; unit/service coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC-223 Cancel Family Task |
 
 ---
@@ -1174,7 +1175,7 @@ curl -X POST https://[host]/api/v1/care-groups/{groupId}/tasks/{taskId}/cancel \
 
 | Thời điểm | Người nhận | Kênh | Template |
 |-----------|------------|------|----------|
-| Ngay khi phát hiện | On-call team | Slack `#incident` | "🚨 UC-223 incident: [mô tả]" |
+| Ngay khi phát hiện | On-call team | Slack `#incident` | "ðŸš¨ UC-223 incident: [mô tả]" |
 | Trong 30 phút nếu ảnh hưởng dữ liệu hoặc gửi nhầm thông báo | Tech Lead | Email/Slack | Impact + rollback status |
 
 ### 12.4. Post-Incident Review (PIR)
@@ -1415,4 +1416,5 @@ Tests must cover §13 scenarios and the companion Test-Spec.
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: `Draft`.*
+*EDS v2.1 — CASE 2.0 AI Prompt Constraints (§17). Status: `Partially Implemented`.*
+

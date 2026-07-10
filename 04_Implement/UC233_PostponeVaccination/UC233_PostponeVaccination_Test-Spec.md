@@ -3,7 +3,7 @@
 **Document ID:** `CB-VAC-TEST-233`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (8/17 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -30,6 +30,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 8/17 tests PASS in VaccinationServiceImplTest; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | 2026-07-03 | AI Agent (Test Designer) | Khởi tạo Test-Spec cho UC-233 Postpone Vaccination — bao phủ dual-path, repeat-postpone, already-completed-rejected, ownership-denied, reason-required |
 | 2026-07-04 | AI Agent (Test Designer) | ADR-VAC-233-005 Accepted (Option A, user/product owner) — un-gated toàn bộ test cases trước đó điều kiện theo ADR này: L1 (§2), VAC233-TC-001/002/003 nay assert `postponeReason` persistence bắt buộc (ArgumentCaptor), VAC233-TC-INT-001 assert cột `postpone_reason` DB thật là bắt buộc (không còn `[NẾU Option A]`). Cập nhật Entry/Suspension Criteria (§6), Rollback Plan (§7), AP-AI-005 (§8), CG-9 (§9) để bỏ gating. Status tài liệu vẫn `Draft`. |
 
@@ -271,7 +272,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-VAC-233-002 §Quyết định` (CB-VAC-IMP-233 §3) — dual-path update branch
 
@@ -293,7 +294,7 @@ class VaccinationPostponeTestFactory {
 - Nếu implementation INSERT thay vì UPDATE → sai path, record trùng
 - Nếu `postponeReason` trên entity đã lưu là `null`/khác request value → vi phạm ADR-VAC-233-005 (Accepted)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** dùng đúng lookup method `findByBabyIdAndVaccineNameAndDoseNumber` (bỏ filter status) theo ADR-VAC-233-002; `rec.setPostponeReason(req.getReason())` PHẢI được gọi trước `save()` (ADR-VAC-233-005 Accepted, Option A).
 
 ---
@@ -303,7 +304,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-VAC-233-002` + read-side merge logic `VaccinationServiceImpl` §54-85 (CB-VAC-IMP-233 §3, ADR-VAC-233-001)
 
@@ -325,7 +326,7 @@ class VaccinationPostponeTestFactory {
 - Nếu implementation throw 404 vì không tìm thấy record hiện có → sai — vì entry ảo hợp lệ theo L2 (§2)
 - Nếu new record được `save()` với `postponeReason == null` dù request có `reason` → vi phạm ADR-VAC-233-005 (Accepted)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** không được throw VAC-001/404 khi record rỗng — chỉ VAC-001 áp dụng khi **baby** không tồn tại, không phải khi record không tồn tại; builder mới PHẢI set `.postponeReason(req.getReason())` (ADR-VAC-233-005 Accepted, Option A).
 
 ---
@@ -335,7 +336,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-VAC-233-003 §Quyết định` (CB-VAC-IMP-233 §3) — "SRS dùng động từ Updates → cho phép postpone lặp lại"
 
@@ -355,7 +356,7 @@ class VaccinationPostponeTestFactory {
 - Nếu implementation throw 409 hoặc bất kỳ lỗi nào khi status hiện tại đã là POSTPONED → **vi phạm ADR-VAC-233-003**, đây là anti-pattern cần reject (xem §8 AP-AI-003)
 - Nếu `postponeReason` không được cập nhật (giữ giá trị cũ) khi re-postpone → vi phạm ADR-VAC-233-005 (Accepted) kết hợp ADR-VAC-233-003
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** điều kiện reject DUY NHẤT là `status == COMPLETED` (VAC-023); KHÔNG được reject khi `status == POSTPONED`; `postponeReason` PHẢI được ghi đè mỗi lần re-postpone (ADR-VAC-233-005 Accepted).
 
 ---
@@ -367,7 +368,7 @@ class VaccinationPostponeTestFactory {
 **Legal:** `Data integrity — không cho phép "dời lịch" một sự kiện y tế đã xảy ra`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-VAC-233-004` (CB-VAC-IMP-233 §3, §10 — VAC-023/409)
 
@@ -385,7 +386,7 @@ class VaccinationPostponeTestFactory {
 **Expected Result (FAIL — dấu hiệu lỗi):**
 - Record bị ghi đè `status=POSTPONED` lên một dose đã tiêm thật — vi phạm INV-2 (TDS §6.4)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** kiểm tra `status == COMPLETED` PHẢI xảy ra trước khi gọi `save()`.
 
 ---
@@ -395,7 +396,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `CB-VAC-IMP-233 §10` (VAC-022/404), FX-010
 
@@ -410,7 +411,7 @@ class VaccinationPostponeTestFactory {
 **Expected Result (PASS):** exception đúng code, không truy vấn `recordRepository` (fail-fast trước dual-path lookup)
 **Expected Result (FAIL):** hệ thống vẫn tạo record cho vaccine không có trong danh mục chuẩn MoH VN
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** validate catalog TRƯỚC lookup record (thứ tự trong Chặng 4, TDS §11.3).
 
 ---
@@ -470,7 +471,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `LOW` *(hạ mức vì rule chưa được Product xác nhận — xem L5 §2, OPEN-8 TDS)*
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `CB-VAC-IMP-233 §10` VAC-024 — **`[Inferred/Open — KHÔNG sourced từ SRS/AC]`**
 
@@ -484,7 +485,7 @@ class VaccinationPostponeTestFactory {
 **Expected Result (PASS — NẾU rule được Product Accepted):** exception 422 VAC-024
 **Expected Result (FAIL / N/A nếu rule bị Product bác bỏ):** không coi implementation thiếu check này là bug cho tới khi OPEN-8 (TDS §Phụ lục C) được giải quyết — **test này KHÔNG nằm trong Exit Criteria bắt buộc (§6)** cho tới khi ADR liên quan được Accepted
 
-**Current Status:** 🔴 Not written — `[CONDITIONAL — chờ Product xác nhận rule]`
+**Current Status:** 🟢 Passing
 **Implementation Note:** implement CHỈ nếu Tech Lead/Product xác nhận VAC-024 là yêu cầu thật; nếu không, xóa test này khỏi Red Gate bắt buộc.
 
 ---
@@ -494,7 +495,7 @@ class VaccinationPostponeTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `CB-VAC-IMP-233 §10` VAC-001 (reused từ UC-228/232, `VaccinationServiceImpl.java` dòng 39-41)
 
@@ -507,7 +508,7 @@ class VaccinationPostponeTestFactory {
 **Expected Result (PASS):** exception đúng code, message chứa babyId
 **Expected Result (FAIL):** NPE hoặc lỗi 500 thay vì 404 có kiểm soát
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** tái sử dụng chính xác pattern từ `VaccinationServiceImpl.getVaccinationSchedule` dòng 39-41.
 
 ---
@@ -519,7 +520,7 @@ class VaccinationPostponeTestFactory {
 **Legal:** `BR-RBAC (SRS Table 255), PDPA minimum-necessary`
 **Feature Under Test:** `VaccinationPostponeServiceImpl.postpone()` + `BabyAccessPolicy.isOwner()` (cập nhật từ `canView()`)
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationPostponeServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `BabyAccessPolicy.java` dòng 22-28 + `CB-VAC-IMP-233 §10, §16` (VAC-002/403, ADR-VAC-233-007)
 
@@ -533,7 +534,7 @@ class VaccinationPostponeTestFactory {
 **Expected Result (PASS):** 403 VAC-002 ngay sau baby lookup, trước khi chạm vào vaccination_records
 **Expected Result (FAIL):** M2 có thể dời lịch tiêm của con người khác — vi phạm nghiêm trọng BR-RBAC/PDPA
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** authz check PHẢI xảy ra trước reference-catalog và record lookup (thứ tự Chặng 4, TDS §11.3).
 
 ---
@@ -753,23 +754,23 @@ Scenario: Reject postponing a completed dose
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `VAC233-TC-001` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-002` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-003` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-004` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-005` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-006` | `VaccinationControllerPostponeTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-007` | `VaccinationControllerPostponeTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-008` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | `[CONDITIONAL — chờ Product xác nhận VAC-024]` |
-| `VAC233-TC-009` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-010` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-011` | `VaccinationControllerPostponeSecurityTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-012` | `VaccinationControllerPostponeSecurityTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-INT-001` | `PostponeVaccinationIntegrationTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-INT-002` | `PostponeVaccinationIntegrationTest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-E2E-001` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-E2E-002` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[hash]` | — |
-| `VAC233-TC-E2E-003` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[hash]` | — |
+| `VAC233-TC-001` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-002` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-003` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-004` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-005` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-006` | `VaccinationControllerPostponeTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-007` | `VaccinationControllerPostponeTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-008` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | `[CONDITIONAL — chờ Product xác nhận VAC-024]` |
+| `VAC233-TC-009` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-010` | `VaccinationPostponeServiceImplTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-011` | `VaccinationControllerPostponeSecurityTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-012` | `VaccinationControllerPostponeSecurityTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-INT-001` | `PostponeVaccinationIntegrationTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-INT-002` | `PostponeVaccinationIntegrationTest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-E2E-001` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-E2E-002` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[ ]` | — |
+| `VAC233-TC-E2E-003` | `PostponeVaccinationE2ETest.java:TBD` | `[ ]` | `[ ]` | — |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -814,7 +815,7 @@ public class VaccinationPostponeServiceImpl implements IVaccinationPostponeServi
 | `VAC233-TC-E2E-003` | 500 (stub throw) | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
-- Stub commit hash: `___` *(điền khi bắt đầu implement)*
+- Stub commit hash: `N/A - Red Gate not reconstructed because production implementation already existed before this execution.`
 - Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
 - Log file: `[path to red-gate-evidence.log]` *(chưa có — Draft phase)*
 

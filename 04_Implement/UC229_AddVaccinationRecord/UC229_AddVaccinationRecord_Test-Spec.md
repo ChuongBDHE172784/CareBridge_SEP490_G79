@@ -4,7 +4,7 @@
 **Document ID:** `CB-VAC-TDD-229`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (9/18 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -30,6 +30,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 9/18 tests PASS in VaccinationServiceImplTest; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | 2026-07-03 | AI Agent — Test Designer | Khởi tạo tài liệu — Test-Spec cho UC-229 Add Vaccination Record, dựa trên TDS `CB-VAC-IMP-229` |
 
 ---
@@ -236,7 +237,7 @@ class VaccinationTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-VAC-229-002` (TDS §3) — record tạo mới PHẢI có `status=COMPLETED`, `administeredDate` NOT NULL
 
@@ -252,7 +253,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Response `201`-equivalent object với `status="COMPLETED"`, `recordRepository.save` được gọi đúng 1 lần với entity đúng field.
 **Expected Result (FAIL):** status vẫn là default `SCHEDULED`, hoặc `administeredDate` bị null.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Service phải override `@Builder.Default` bằng cách set `status(COMPLETED)` tường minh khi build entity.
 
 ---
@@ -262,7 +263,7 @@ class VaccinationTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-VAC-229-004` — proof FK validation, V1 dòng 669/1733-1734
 
@@ -278,7 +279,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** `proofRecordId` echo đúng trong response; `healthRecordRepository.findByIdAndStatus` được gọi đúng 1 lần (real method — xem `HealthRecordRepository.java`).
 **Expected Result (FAIL):** proof bị bỏ qua (null) dù request có gửi, hoặc exception sai ném ra.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -287,7 +288,7 @@ class VaccinationTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `CB-VAC-IMP-229 §10` — VAC-001 (reused từ read-side, cùng ngữ nghĩa 404 baby not found)
 
@@ -300,7 +301,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Exception đúng code/status, `recordRepository.save` KHÔNG được gọi.
 **Expected Result (FAIL):** NullPointerException hoặc code sai.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -311,7 +312,7 @@ class VaccinationTestFactory {
 **Legal:** `PDPA — BR-PRIVACY minimum-necessary access`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-VAC-229-003` — owner-only write, tái dùng mã VAC-002
 
@@ -325,7 +326,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Access bị từ chối đúng code, không có side-effect ghi dữ liệu.
 **Expected Result (FAIL):** Record vẫn được lưu (lỗ hổng bảo mật nghiêm trọng — ghi đè dữ liệu y tế của baby không thuộc quyền).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -397,7 +398,7 @@ class VaccinationTestFactory {
 **Legal:** `BR-SAFETY (SRS Table 251)`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `ADR-VAC-229-002` + `CB-VAC-IMP-229 §10` VAC-008
 
@@ -410,7 +411,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Reject đúng mã, `save` không được gọi.
 **Expected Result (FAIL):** Record ở tương lai được lưu — sai lệch lịch tiêm tương lai (rủi ro BR-SAFETY: mis-scheduling downstream).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** `@PastOrPresent` trên DTO chỉ chặn *tương lai theo giờ hệ thống lúc validate*; cần double-check ở service nếu muốn message riêng biệt VAC-008 (khác VAC-004 generic).
 
 ---
@@ -420,7 +421,7 @@ class VaccinationTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-VAC-229-004` + `CB-VAC-IMP-229 §10` VAC-005
 
@@ -433,7 +434,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Reject đúng mã, không insert record.
 **Expected Result (FAIL):** Record được lưu với `proof_record_id` trỏ tới hàng không tồn tại → vi phạm FK, DB sẽ throw constraint violation không kiểm soát (leak lỗi 500 thay vì 404 sạch).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -444,7 +445,7 @@ class VaccinationTestFactory {
 **Legal:** `PDPA — BR-PRIVACY`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `ADR-VAC-229-004` + `CB-VAC-IMP-229 §10` VAC-006
 
@@ -458,7 +459,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Reject, record KHÔNG được insert.
 **Expected Result (FAIL — lỗ hổng nghiêm trọng):** Vaccination record của BABY-1 bị liên kết tới hồ sơ y tế của BABY-2 → rò rỉ tham chiếu chéo dữ liệu sức khỏe giữa các gia đình khác nhau.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -467,7 +468,7 @@ class VaccinationTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()`
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `CB-VAC-IMP-229 §10` VAC-007; repository method `findByBabyIdAndVaccineNameAndDoseNumberAndStatus` (existing, `VaccinationRecordRepository.java` dòng 15–16)
 
@@ -481,7 +482,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** Reject đúng mã, `save` không gọi thêm lần 2.
 **Expected Result (FAIL):** Hai record COMPLETED trùng lặp cùng baby+vaccine+dose → read-side merge (`Collectors.toMap` với `(a,b)->a`, `VaccinationServiceImpl` dòng 58) sẽ âm thầm bỏ qua 1 record mà không báo lỗi.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -490,7 +491,7 @@ class VaccinationTestFactory {
 **Severity:** `LOW`
 **Feature Under Test:** `VaccinationServiceImpl.addVaccinationRecord()` — entity construction
 **Test File:** `VaccinationServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `CB-VAC-IMP-229 §6.5` (State Machine invariant) + ADR-VAC-229-002 hệ quả
 
@@ -501,7 +502,7 @@ class VaccinationTestFactory {
 **Expected Result (PASS):** `scheduledDate` không bị set nhầm từ `administeredDate`.
 **Expected Result (FAIL):** `scheduledDate` bị gán giá trị sai, gây nhầm lẫn với luồng reference-schedule tự sinh của UC-228.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -751,7 +752,7 @@ public ResponseEntity<ApiResponse<AddVaccinationRecordResponse>> addVaccinationR
 | `VAC229-TC-E2E-003` | Security filter fires BEFORE stub | 🔴 FAIL (401, not the stub exception) | ☐ FAIL ☐ PASS | ☐ Auth filter bypassed |
 
 **Red Gate Evidence:**
-- Stub commit hash: `___ (pending — chưa implement)`
+- Stub commit hash: `N/A - Red Gate not reconstructed because production implementation already existed before this execution.`
 - Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
 - Log file: `[path to red-gate-evidence.log — pending]`
 
