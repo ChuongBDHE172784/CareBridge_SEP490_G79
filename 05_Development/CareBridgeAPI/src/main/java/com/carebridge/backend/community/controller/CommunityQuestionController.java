@@ -35,7 +35,8 @@ public class CommunityQuestionController {
 
     // ADR-COM-001: Only ROLE_MOTHER can create community questions
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    
+ @PreAuthorize("hasRole('MOTHER') or hasRole('EXPERT')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> createQuestion(
             @Valid @RequestBody CreateCommunityQuestionRequest request,
             Principal principal) {
@@ -82,7 +83,7 @@ public class CommunityQuestionController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('MOTHER')")
+    
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> editQuestion(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCommunityQuestionRequest request,

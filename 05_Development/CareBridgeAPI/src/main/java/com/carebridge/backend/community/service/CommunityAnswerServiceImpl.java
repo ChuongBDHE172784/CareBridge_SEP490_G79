@@ -8,7 +8,6 @@ import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.QuestionStatus;
-import com.carebridge.backend.community.exception.AnswerNotEditableException;
 import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
@@ -72,7 +71,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         }
 
         if (answer.getStatus() == AnswerStatus.HIDDEN || answer.getStatus() == AnswerStatus.DELETED) {
-            throw new AnswerNotEditableException(answerId.toString());
+            throw new AccessDeniedException("Only the author can edit this answer");
         }
 
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
@@ -95,13 +94,18 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
     @Override
     @Transactional
-    public CommunityAnswerResponse getAnswer(UUID answerId, UUID callerId, boolean liked) {
+    public void deleteAnswer(UUID answerId, UUID callerId, boolean isModeratorCaller) {
         CommunityAnswer answer = answerRepository.findById(answerId)
             .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
 
-        String displayName = authorDisplayResolver.resolve(answer.getAuthorId());
-        UUID expertProfileId = resolveExpertProfileId(answer.getAuthorId());
-        return answerMapper.toResponse(answer, displayName, liked, expertProfileId);
+        boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
+
+        answer.setStatus(AnswerStatus.DELETED);
+        answerRepository.save(answer);
+
+        if (wasApproved) {
+            questionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
     }
 
     private UUID resolveExpertProfileId(UUID userId) {
