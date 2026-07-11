@@ -48,6 +48,11 @@ export interface PartnerPerformance {
   activeExpertLinks: number;
 }
 
+export interface PageResult<T> { content: T[]; totalElements: number; totalPages: number; number: number; size: number; }
+export interface PartnerServiceListItem { id: string; serviceName: string; description: string; priceFrom: number | null; currency: string; bookingUrl: string | null; approvalStatus: string; createdAt: string; }
+export interface SponsoredCampaignListItem { id: string; title: string; description: string; startDate: string | null; endDate: string | null; sponsorLabel: string | null; approvalStatus: string; createdAt: string; }
+export interface PartnerVerificationQueueItem { id: string; name: string; type: OrganizationType; status: OrganizationStatus; city: string; createdAt: string; }
+
 export const ORG_TYPE_LABELS: Record<OrganizationType, string> = {
   CLINIC: 'Phòng khám',
   HOSPITAL: 'Bệnh viện',

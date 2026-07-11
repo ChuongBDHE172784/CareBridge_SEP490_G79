@@ -15,4 +15,6 @@ public interface PartnerProfileService {
 
     /** Updates the current partner representative's own organization profile. */
     UpdatePartnerProfileResponse updateProfile(UpdatePartnerProfileRequest request, java.util.UUID actorId);
+
+    UpdatePartnerProfileResponse getOwnProfile(java.util.UUID actorId);
 }

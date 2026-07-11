@@ -2,6 +2,7 @@ package com.carebridge.backend.partner.mapper;
 
 import com.carebridge.backend.partner.dto.request.SubmitServiceListingRequest;
 import com.carebridge.backend.partner.dto.response.SubmitServiceListingResponse;
+import com.carebridge.backend.partner.dto.response.PartnerServiceListItemResponse;
 import com.carebridge.backend.partner.entity.*;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -18,5 +19,9 @@ public class PartnerServiceMapper {
         return new SubmitServiceListingResponse(entity.getId(),entity.getPartnerId(),entity.getServiceName(),
                 entity.getDescription(),entity.getPriceFrom(),entity.getCurrency(),entity.getBookingUrl(),
                 entity.getApprovalStatus(),entity.getCreatedAt());
+    }
+    public PartnerServiceListItemResponse toListItem(PartnerService entity) {
+        return new PartnerServiceListItemResponse(entity.getId(), entity.getServiceName(), entity.getDescription(),
+                entity.getPriceFrom(), entity.getCurrency(), entity.getBookingUrl(), entity.getApprovalStatus(), entity.getCreatedAt());
     }
 }

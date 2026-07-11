@@ -80,4 +80,12 @@ public class PartnerProfileServiceImpl implements PartnerProfileService {
 
         return partnerProfileMapper.toUpdateResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UpdatePartnerProfileResponse getOwnProfile(java.util.UUID actorId) {
+        return partnerOrganizationRepository.findByRepresentativeUserId(actorId)
+                .map(partnerProfileMapper::toUpdateResponse)
+                .orElseThrow(PartnerException::profileNotFound);
+    }
 }

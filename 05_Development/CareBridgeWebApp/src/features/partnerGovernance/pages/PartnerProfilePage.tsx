@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PortalShell, Notice } from '../components/PortalShell';
-import { updatePartnerProfile } from '../services/partnerApi';
+import { fetchPartnerProfile, updatePartnerProfile } from '../services/partnerApi';
 import type { OrganizationType } from '../models/partner';
 
 const initial = { name: '', type: 'CLINIC' as OrganizationType, address: '', city: '', phone: '', email: '', website: '', description: '', logoUrl: '' };
-// TODO: load the current profile when a GET /api/v1/partner/profile endpoint is available.
 export default function PartnerProfilePage() {
   const [form, setForm] = useState(initial); const [message, setMessage] = useState<string | null>(null); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
   const set = (key: keyof typeof initial, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  useEffect(() => { fetchPartnerProfile().then((profile) => setForm({ ...initial, ...profile, type: profile.type as OrganizationType })).catch(() => setError('Không thể tải hồ sơ đối tác.')); }, []);
   async function save() { setSaving(true); setError(null); try { await updatePartnerProfile(form); setMessage('Đã lưu thay đổi hồ sơ đối tác.'); } catch { setError('Không thể lưu hồ sơ. Vui lòng kiểm tra thông tin và thử lại.'); } finally { setSaving(false); } }
   const input = 'mt-2 w-full rounded-2xl border border-outline-variant bg-surface px-4 py-3 text-sm outline-none focus:border-primary';
   return <PortalShell title="Hồ sơ Đối tác"><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-3xl font-bold">Thông tin tổ chức</h2><p className="mt-2 text-on-surface-variant">Quản lý và cập nhật hồ sơ hiển thị công khai.</p></div><div className="flex gap-3"><button className="rounded-full border border-primary px-6 py-3 font-semibold text-primary">Hủy</button><button onClick={save} disabled={saving} className="rounded-full bg-primary px-6 py-3 font-semibold text-on-primary disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div></div>{message && <Notice>{message}</Notice>}{error && <Notice error>{error}</Notice>}

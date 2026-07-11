@@ -11,7 +11,10 @@ import com.carebridge.backend.partner.entity.PartnerService;
 import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.partner.mapper.PartnerServiceMapper;
 import java.util.UUID;
+import com.carebridge.backend.partner.dto.response.PartnerServiceListItemResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,5 +36,14 @@ public class PartnerServiceServiceImpl implements PartnerServiceService {
         auditService.log(AuditAction.PARTNER_SERVICE_SUBMITTED, actorId, "PartnerService",
                 saved.getId().toString(), "submitted");
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PartnerServiceListItemResponse> getOwnServices(UUID actorId, Pageable pageable) {
+        UUID organizationId = organizationRepository.findByRepresentativeUserId(actorId)
+                .orElseThrow(PartnerException::organizationNotFound)
+                .getId();
+        return serviceRepository.findByPartnerIdAndRemovedFalse(organizationId, pageable).map(mapper::toListItem);
     }
 }
