@@ -2,8 +2,8 @@
 
 **Phạm vi:** Kiểm tra cuối Sprint 5 cho TV1, bao gồm đăng ký/đăng nhập, tài khoản, phiên đăng nhập, quyền riêng tư, thông báo, audit/admin, danh mục bài tập, phiên tập, camera posture, cấu hình posture và các luồng nhạy cảm về an toàn.
 
-**Ngày mục tiêu:** 2026-07-08  
-**Tester:** `[tên của bạn]`  
+**Ngày mục tiêu:** 2026-07-08
+**Tester:** `[tên của bạn]`
 **Môi trường:** Local dev hoặc staging
 
 ---
@@ -73,11 +73,11 @@ flutter run
 
 Chuẩn bị hoặc tạo các tài khoản sau:
 
-| Role | Mục đích | Ví dụ |
-| --- | --- | --- |
-| `MOTHER` | Test mobile auth và luồng bài tập | `mother.tv1@test.local` |
-| `SYSTEM_ADMIN` | Test admin user, audit, posture config | `admin.tv1@test.local` |
-| `CONTENT_ADMIN` | Test quản trị bài tập thai kỳ | `content.tv1@test.local` |
+| Role              | Mục đích                            | Ví dụ                    |
+| ----------------- | -------------------------------------- | -------------------------- |
+| `MOTHER`        | Test mobile auth và luồng bài tập  | `mother.tv1@test.local`  |
+| `SYSTEM_ADMIN`  | Test admin user, audit, posture config | `admin.tv1@test.local`   |
+| `CONTENT_ADMIN` | Test quản trị bài tập thai kỳ     | `content.tv1@test.local` |
 
 Ghi credentials thật vào ghi chú riêng tư, không ghi vào file này.
 
@@ -540,17 +540,17 @@ Web posture config pages có mock fallback data. Cần xác nhận dữ liệu �
 
 ## 12. Mẫu Tổng Hợp Pass/Fail
 
-| Flow | Trạng thái | Bằng chứng | Ghi chú |
-| --- | --- | --- | --- |
-| E2E-01 Register/OTP/Login | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-02 Profile/Password | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-03 Sessions | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-04 Privacy/Consent | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-05 Notifications/FCM | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-06 Exercise Demo Path | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-07 Posture Config | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-08 Admin/Audit/Role | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
-| E2E-09 Account Blocking | `[ ] PASS [ ] FAIL [ ] PARTIAL` |  |  |
+| Flow                      | Trạng thái                      | Bằng chứng | Ghi chú |
+| ------------------------- | --------------------------------- | ------------ | -------- |
+| E2E-01 Register/OTP/Login | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-02 Profile/Password   | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-03 Sessions           | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-04 Privacy/Consent    | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-05 Notifications/FCM  | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-06 Exercise Demo Path | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-07 Posture Config     | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-08 Admin/Audit/Role   | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
+| E2E-09 Account Blocking   | `[ ] PASS [ ] FAIL [ ] PARTIAL` |              |          |
 
 Kết quả tổng:
 
@@ -564,9 +564,9 @@ Kết quả tổng:
 
 ## 13. Mẫu Ghi Defect
 
-| ID | Flow | Severity | Actual | Expected | Evidence | Owner |
-| --- | --- | --- | --- | --- | --- | --- |
-| TV1-E2E-BUG-001 |  | Critical/High/Medium/Low |  |  |  |  |
+| ID              | Flow | Severity                 | Actual | Expected | Evidence | Owner |
+| --------------- | ---- | ------------------------ | ------ | -------- | -------- | ----- |
+| TV1-E2E-BUG-001 |      | Critical/High/Medium/Low |        |          |          |       |
 
 Hướng dẫn severity:
 
