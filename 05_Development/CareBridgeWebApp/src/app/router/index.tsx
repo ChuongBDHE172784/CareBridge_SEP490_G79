@@ -18,6 +18,10 @@ import VerificationDocumentsPage from '../../features/expert/pages/VerificationD
 import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
 
+// Expert verification queue (admin side, UC-70)
+import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
+import AdminExpertTrustManagementPage from '../../features/expert/pages/AdminExpertTrustManagementPage';
+
 // Admin portal screens
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 
@@ -113,7 +117,9 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
-              { path: '/security/incidents', element: <SecurityIncidentListPage /> },
+              { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
+{ path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
+{ path: '/security/incidents', element: <SecurityIncidentListPage /> },
               { path: '/security/events', element: <SecurityEventsPage /> },
               { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
               { path: '/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },

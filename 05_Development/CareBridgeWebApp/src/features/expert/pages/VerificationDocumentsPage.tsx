@@ -1,6 +1,41 @@
 import { useState, useEffect } from 'react';
 import { getMyCredentials, submitCredential, deleteCredential } from '../services/expertApi';
 
+function CredentialFileViewModal({ url, fileName, onClose }: { url: string; fileName?: string; onClose: () => void }) {
+  if (!url) return null;
+  const ext = url.split('.').pop()?.toLowerCase();
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+  const isPdf = ext === 'pdf';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="font-semibold text-gray-800 truncate">{fileName || 'Xem tài liệu'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
+          {isImage ? (
+            <img src={url} alt={fileName} className="max-w-full max-h-[70vh] object-contain rounded" />
+          ) : isPdf ? (
+            <iframe src={url} className="w-full h-[70vh] rounded" title={fileName} />
+          ) : (
+            <div className="text-center py-12">
+              <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-gray-500 mb-4">Không thể xem trựcếp. Tải xuống để xem.</p>
+              <a href={url} download className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">
+                Tải xuống
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VerificationDocumentsPage() {
   const [credentials, setCredentials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,8 +49,10 @@ export default function VerificationDocumentsPage() {
     issuer: '',
     issuedDate: '',
     expiryDate: '',
-    fileUrl: '',
   });
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -35,14 +72,23 @@ export default function VerificationDocumentsPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await submitCredential({ ...form, issuedDate: form.issuedDate });
+      await submitCredential({ body: form, file: selectedFile! });
       setShowUpload(false);
-      setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '', fileUrl: '' });
+      setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
+      setSelectedFile(null);
       await load();
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Tải lên thất bại');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    if (file) {
+      setError(null);
     }
   };
 
@@ -122,9 +168,12 @@ export default function VerificationDocumentsPage() {
             </Field>
           </div>
 
-          <Field label="URL tài liệu (file đính kèm)">
-            <input className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-              value={form.fileUrl} onChange={(e) => setForm({ ...form, fileUrl: e.target.value })} placeholder="https://..." />
+          <Field label="Tài liệu đính kèm (PDF, JPG, PNG - tối đa 20MB)">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
+              onChange={handleFileChange} />
+            {selectedFile && (
+              <p className="mt-1 text-xs text-gray-500">Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</p>
+            )}
           </Field>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -141,7 +190,7 @@ export default function VerificationDocumentsPage() {
       )}
 
       <div className="space-y-3">
-        {credentials.length === 0 && (
+        {credentials.length === 0 && !loading && (
           <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-gray-200">
             Chưa có chứng chỉ nào. Nhấn "Tải lên chứng chỉ" để bắt đầu.
           </div>
@@ -170,13 +219,22 @@ export default function VerificationDocumentsPage() {
                   Gửi lúc: {new Date(cred.createdAt).toLocaleString('vi-VN')}
                 </p>
               </div>
+          <div className="flex flex-col items-end gap-2 ml-4">
+            {cred.fileUrl && (
               <button
-                onClick={() => handleDelete(cred.credentialId)}
-                className="text-sm text-red-600 hover:text-red-800 ml-4"
+                onClick={() => setViewFileUrl(cred.fileUrl)}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
               >
-                Xóa
+                Xem tài liệu
               </button>
-            </div>
+            )}
+            <button
+              onClick={() => handleDelete(cred.credentialId)}
+              className="text-sm text-red-600 hover:text-red-800"
+            >
+              Xóa
+            </button>
+          </div>
           </div>
         ))}
       </div>
