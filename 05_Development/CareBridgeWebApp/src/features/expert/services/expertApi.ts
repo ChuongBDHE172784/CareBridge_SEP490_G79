@@ -88,7 +88,7 @@ export interface SubmitCredentialRequest {
   issuer?: string;
   issuedDate: string;
   expiryDate?: string;
-  fileUrl?: string;
+  file?: File;
 }
 
 export interface ReviewCredentialRequest {
@@ -148,13 +148,25 @@ export async function rejectExpert(profileId: string, reason?: string): Promise<
 
 // ── PKG-02 Expert Verification ────────────────────────────────────────────
 
-export async function submitCredential(body: SubmitCredentialRequest): Promise<CredentialResponse> {
-  const { data } = await apiClient.post('/api/v1/expert/credentials', body);
+export async function submitCredential(params: {
+  body: SubmitCredentialRequest;
+  file: File;
+}): Promise<CredentialResponse> {
+  const form = new FormData();
+  form.append('credentialType', params.body.credentialType);
+  if (params.body.credentialNumber) form.append('credentialNumber', params.body.credentialNumber);
+  if (params.body.issuer) form.append('issuer', params.body.issuer);
+  form.append('issuedDate', params.body.issuedDate);
+  if (params.body.expiryDate) form.append('expiryDate', params.body.expiryDate);
+  if (params.file) form.append('file', params.file);
+  const { data } = await apiClient.post('/api/v1/expert/credentials', form, {
+    headers: { 'Content-Type': undefined },
+  });
   return data.data;
 }
 
 export async function getMyCredentials(): Promise<CredentialResponse[]> {
-  const { data } = await apiClient.get('/api/v1/expert/credentials');
+  const { data } = await apiClient.get('/api/v1/expert/credentials/me');
   return data.data;
 }
 
@@ -164,7 +176,7 @@ export async function deleteCredential(credentialId: string): Promise<void> {
 
 // Admin: pending reviews
 export async function getPendingReviews(credentialType?: string): Promise<DocumentReviewResponse[]> {
-  const { data } = await apiClient.get('/api/v1/admin/expert/credentials/reviews/pending', {
+  const { data } = await apiClient.get('/api/v1/expert/credentials/pending', {
     params: credentialType ? { credentialType } : {},
   });
   return data.data;
@@ -174,7 +186,7 @@ export async function reviewCredential(
   credentialId: string,
   body: ReviewCredentialRequest
 ): Promise<DocumentReviewResponse> {
-  const { data } = await apiClient.put(`/api/v1/admin/expert/credentials/${credentialId}/review`, body);
+  const { data } = await apiClient.put(`/api/v1/expert/credentials/${credentialId}/review`, body);
   return data.data;
 }
 
