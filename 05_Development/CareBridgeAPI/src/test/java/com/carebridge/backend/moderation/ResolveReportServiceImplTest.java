@@ -33,6 +33,8 @@ import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.content.service.ContentPreviewService;
 import com.carebridge.backend.content.service.ModerationServiceImpl;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.Optional;
@@ -72,6 +74,9 @@ class ResolveReportServiceImplTest {
     @Mock
     private ModerationActionRepository moderationActionRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private ModerationServiceImpl moderationService;
 
@@ -83,6 +88,7 @@ class ResolveReportServiceImplTest {
     private static final UUID QUESTION_ID = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000001");
     private static final UUID ANSWER_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000001");
     private static final UUID CONTENT_ID = UUID.fromString("dddddddd-0000-0000-0000-000000000001");
+    private static final UUID QUESTION_AUTHOR_ID = UUID.fromString("ffffffff-0000-0000-0000-000000000001");
 
     private Principal principal;
 
@@ -113,7 +119,7 @@ class ResolveReportServiceImplTest {
         return CommunityQuestion.builder()
                 .id(QUESTION_ID)
                 .topicId(UUID.randomUUID())
-                .authorId(UUID.randomUUID())
+                .authorId(QUESTION_AUTHOR_ID)
                 .title("Test question")
                 .body("Test body")
                 .stage(PregnancyStage.PREGNANCY)
@@ -284,23 +290,34 @@ class ResolveReportServiceImplTest {
         verifyNoInteractions(communityQuestionRepository, communityAnswerRepository);
     }
 
-    // RES-TC-108: outcome in {WARN, SUSPEND} (any targetType) -> MOD-013
+    // RES-TC-108: account action from a question report targets the question author.
     @Test
-    void resolveReport_warnOrSuspend_throwsMod013() {
+    void resolveReport_warnQuestionReport_warnsQuestionAuthor() {
         ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
                 ReportStatus.PENDING, r -> {});
         when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+        when(communityQuestionRepository.findById(QUESTION_ID))
+                .thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(userRepository.findById(QUESTION_AUTHOR_ID))
+                .thenReturn(Optional.of(User.builder().id(QUESTION_AUTHOR_ID).build()));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
 
-        for (ResolutionOutcome outcome : new ResolutionOutcome[] {ResolutionOutcome.WARN, ResolutionOutcome.SUSPEND}) {
-            ResolveReportRequest request = new ResolveReportRequest(outcome, "First offense");
-            assertThatThrownBy(() -> moderationService.resolveReport(REPORT_ID_QUESTION, request, principal))
-                    .isInstanceOf(ModerationException.class)
-                    .extracting(ex -> ((ModerationException) ex).getCode())
-                    .isEqualTo("MOD-013");
-        }
+        ResolveReportRequest request = new ResolveReportRequest(ResolutionOutcome.WARN, "First offense");
+        ResolveReportResponse response = moderationService.resolveReport(REPORT_ID_QUESTION, request, principal);
 
-        verify(contentReportRepository, never()).save(any());
-        verifyNoInteractions(moderationActionRepository);
+        assertThat(response.reportStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(response.actionType()).isEqualTo(com.carebridge.backend.content.entity.ModerationActionType.WARN);
+        assertThat(response.resultingStatus()).isEqualTo("WARNED");
+
+        ArgumentCaptor<ModerationAction> actionCaptor = ArgumentCaptor.forClass(ModerationAction.class);
+        verify(moderationActionRepository).save(actionCaptor.capture());
+        assertThat(actionCaptor.getValue().getReportId()).isEqualTo(REPORT_ID_QUESTION);
+        assertThat(actionCaptor.getValue().getTargetId()).isEqualTo(QUESTION_AUTHOR_ID);
+        assertThat(actionCaptor.getValue().getTargetType()).isEqualTo(ReportTargetType.ACCOUNT);
     }
 
     // RES-TC-109: reportId does not exist -> MOD-003

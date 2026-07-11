@@ -7,21 +7,24 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UUID> {
 
-    Optional<ExpertProfile> findByUserId(UUID userId);
+ Optional<ExpertProfile> findByUserId(UUID userId);
 
-    boolean existsByUserId(UUID userId);
+ boolean existsByUserId(UUID userId);
 
-    List<ExpertProfile> findByVerificationStatus(VerificationStatus status);
+ List<ExpertProfile> findByVerificationStatus(VerificationStatus status);
 
-    @Query("SELECT ep FROM ExpertProfile ep WHERE ep.verificationStatus = 'APPROVED' ORDER BY ep.ratingAvg DESC NULLS LAST")
-    List<ExpertProfile> findVerifiedPublic();
+ @Query("SELECT ep FROM ExpertProfile ep WHERE ep.verificationStatus = 'APPROVED' ORDER BY ep.ratingAvg DESC NULLS LAST")
+ List<ExpertProfile> findVerifiedPublic();
 
-    @Query("SELECT ep FROM ExpertProfile ep " +
-           "WHERE ep.verificationStatus = 'APPROVED' " +
-           "AND (:specialty IS NULL OR ep.specialty = :specialty)")
-    List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
+ @Query("SELECT ep FROM ExpertProfile ep " +
+ "WHERE ep.verificationStatus = 'APPROVED' " +
+ "AND (:specialty IS NULL OR ep.specialty = :specialty)")
+ List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
+
+ List<ExpertProfile> findByUserIdIn(Set<UUID> userIds);
 }

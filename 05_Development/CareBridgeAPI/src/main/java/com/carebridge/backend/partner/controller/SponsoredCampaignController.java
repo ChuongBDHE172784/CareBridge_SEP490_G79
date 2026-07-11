@@ -1,0 +1,10 @@
+package com.carebridge.backend.partner.controller;
+import com.carebridge.backend.partner.service.SponsoredCampaignService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import com.carebridge.backend.common.response.ApiResponse;import com.carebridge.backend.common.response.PaginatedResponse;import com.carebridge.backend.common.util.SecurityUtils;import com.carebridge.backend.partner.dto.request.SubmitSponsoredContentRequest;import com.carebridge.backend.partner.dto.response.SubmitSponsoredContentResponse;import com.carebridge.backend.partner.dto.response.SponsoredCampaignListItemResponse;import jakarta.validation.Valid;import jakarta.validation.constraints.Max;import jakarta.validation.constraints.Min;import java.security.Principal;import org.springframework.http.*;import org.springframework.data.domain.PageRequest;import org.springframework.data.domain.Sort;
+@RestController @RequestMapping("/api/v1/partner/campaigns") @PreAuthorize("hasRole('PARTNER')") @RequiredArgsConstructor
+public class SponsoredCampaignController { private final SponsoredCampaignService service;
+ @GetMapping public ResponseEntity<PaginatedResponse<SponsoredCampaignListItemResponse>> getOwnCampaigns(@RequestParam(defaultValue="0") @Min(0) int page,@RequestParam(defaultValue="20") @Min(1) @Max(50) int size,Principal principal){return ResponseEntity.ok(PaginatedResponse.of(service.getOwnCampaigns(SecurityUtils.requireCurrentUserId(principal),PageRequest.of(page,size,Sort.by(Sort.Direction.DESC,"createdAt")))));}
+ @PostMapping public ResponseEntity<ApiResponse<SubmitSponsoredContentResponse>> submit(@Valid @RequestBody SubmitSponsoredContentRequest request,Principal principal){var response=service.submitCampaign(request,SecurityUtils.requireCurrentUserId(principal));return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response,"Sponsored campaign submitted successfully"));}}

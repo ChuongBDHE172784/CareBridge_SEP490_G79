@@ -32,6 +32,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     private final CommunityBookmarkRepository bookmarkRepository;
     private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityFeedMapper feedMapper;
+    private final CommunityAuthorDisplayResolver authorDisplayResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -63,12 +64,17 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
         // Batch check like state to avoid N+1
         Set<UUID> likedIds = likeRepository.findLikedQuestionIds(currentUserId, questionIds);
 
+        // Batch fetch question author display names to avoid N+1
+        Set<UUID> authorIds = questions.stream().map(CommunityQuestion::getAuthorId).collect(Collectors.toSet());
+        Map<UUID, String> authorDisplayNames = authorDisplayResolver.resolveBatch(authorIds);
+
         Page<CommunityFeedItemResponse> feedPage = questions.map(q -> {
             String tName = topicNames.getOrDefault(q.getTopicId(), "");
             boolean hasExpert = expertAnsweredIds.contains(q.getId());
             boolean isBookmarked = bookmarkedIds.contains(q.getId());
             boolean isLiked = likedIds.contains(q.getId());
-            return feedMapper.toFeedItem(q, tName, null, hasExpert, isBookmarked, isLiked);
+            String authorDisplay = authorDisplayNames.get(q.getAuthorId());
+            return feedMapper.toFeedItem(q, tName, authorDisplay, hasExpert, isBookmarked, isLiked);
         });
 
         return PaginatedResponse.of(feedPage);

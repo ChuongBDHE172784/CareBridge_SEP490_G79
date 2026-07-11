@@ -14,6 +14,9 @@ import com.carebridge.backend.exercise.entity.PregnancyExercise;
 import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
 import com.carebridge.backend.exercise.mapper.ExerciseMapper;
 import com.carebridge.backend.exercise.service.IExerciseDetailQueryService;
+import com.carebridge.backend.exercise.service.IExerciseSafetyCheckService;
+import com.carebridge.backend.exercise.service.IExerciseSessionService;
+import com.carebridge.backend.exercise.service.IPostureConfigService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -43,6 +46,15 @@ class ExerciseDetailIntegrationTest {
 
     @MockitoBean
     private com.carebridge.backend.exercise.service.IExerciseQueryService exerciseQueryService;
+
+    @MockitoBean
+    private IExerciseSafetyCheckService safetyCheckService;
+
+    @MockitoBean
+    private IExerciseSessionService sessionService;
+
+    @MockitoBean
+    private IPostureConfigService postureConfigService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;

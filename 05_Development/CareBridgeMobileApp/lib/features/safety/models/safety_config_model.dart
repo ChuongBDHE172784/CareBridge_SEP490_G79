@@ -41,7 +41,45 @@ class ImuMonitoringSession {
       sessionId: json['sessionId'] as String,
       status: json['status'] as String,
       sensitivityLevel: json['sensitivityLevel'] as String,
-      startedAt: json['startedAt'] != null ? DateTime.tryParse(json['startedAt'] as String) : null,
+      startedAt: json['startedAt'] != null
+          ? DateTime.tryParse(json['startedAt'] as String)
+          : null,
+    );
+  }
+}
+
+class SafetyEvent {
+  final String id;
+  final String eventType;
+  final double magnitude;
+  final String status;
+  final DateTime? detectedAt;
+  final DateTime? resolvedAt;
+  final String? notes;
+
+  const SafetyEvent({
+    required this.id,
+    required this.eventType,
+    required this.magnitude,
+    required this.status,
+    this.detectedAt,
+    this.resolvedAt,
+    this.notes,
+  });
+
+  factory SafetyEvent.fromJson(Map<String, dynamic> json) {
+    return SafetyEvent(
+      id: json['id'] as String,
+      eventType: json['eventType'] as String? ?? 'SUSPECTED_FALL',
+      magnitude: (json['magnitude'] as num?)?.toDouble() ?? 0,
+      status: json['status'] as String? ?? 'OPEN',
+      detectedAt: json['detectedAt'] != null
+          ? DateTime.tryParse(json['detectedAt'] as String)
+          : null,
+      resolvedAt: json['resolvedAt'] != null
+          ? DateTime.tryParse(json['resolvedAt'] as String)
+          : null,
+      notes: json['notes'] as String?,
     );
   }
 }

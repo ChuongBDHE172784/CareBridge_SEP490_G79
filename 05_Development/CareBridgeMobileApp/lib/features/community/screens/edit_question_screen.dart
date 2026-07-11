@@ -88,7 +88,10 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cập nhật thất bại: $e'), backgroundColor: _error),
+          SnackBar(
+            content: Text('Cập nhật thất bại: $e'),
+            backgroundColor: _error,
+          ),
         );
       }
     } finally {
@@ -110,20 +113,38 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
         ),
         title: const Text(
           'Chỉnh sửa câu hỏi',
-          style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17),
+          style: TextStyle(
+            color: _primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
         ),
         actions: [
           if (_submitting)
             const Center(
               child: Padding(
                 padding: EdgeInsets.only(right: 16),
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _primary)),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _primary,
+                  ),
+                ),
               ),
             )
           else
             TextButton(
               onPressed: _submit,
-              child: const Text('Lưu', style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: const Text(
+                'Lưu',
+                style: TextStyle(
+                  color: _primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
         ],
       ),
@@ -141,7 +162,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
               decoration: _inputDecoration('Nhập tiêu đề câu hỏi...'),
               style: const TextStyle(fontSize: 15, color: _onSurface),
               validator: (v) {
-                if (v == null || v.trim().length < 5) return 'Tiêu đề cần ít nhất 5 ký tự';
+                if (v == null || v.trim().length < 5) {
+                  return 'Tiêu đề cần ít nhất 5 ký tự';
+                }
                 return null;
               },
             ),
@@ -157,7 +180,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
               decoration: _inputDecoration('Mô tả chi tiết vấn đề của bạn...'),
               style: const TextStyle(fontSize: 15, color: _onSurface),
               validator: (v) {
-                if (v == null || v.trim().length < 10) return 'Nội dung cần ít nhất 10 ký tự';
+                if (v == null || v.trim().length < 10) {
+                  return 'Nội dung cần ít nhất 10 ký tự';
+                }
                 return null;
               },
             ),
@@ -184,7 +209,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         color: selected ? _primary : _onSurface,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                     activeColor: _primary,
@@ -213,22 +240,39 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       color: _surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.person_off_outlined, color: _primary, size: 20),
+                    child: const Icon(
+                      Icons.person_off_outlined,
+                      color: _primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Đăng ẩn danh', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                        Text('Tên của bạn sẽ bị ẩn', style: TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                        Text(
+                          'Đăng ẩn danh',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Tên của bạn sẽ bị ẩn',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Switch(
                     value: _isAnonymous,
                     onChanged: (v) => setState(() => _isAnonymous = v),
-                    activeColor: _primary,
+                    activeThumbColor: _primary,
                   ),
                 ],
               ),
@@ -244,11 +288,21 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: const StadiumBorder(),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Lưu thay đổi'),
               ),
             ),
@@ -265,10 +319,22 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     filled: true,
     fillColor: _surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _outlineVariant)),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _outlineVariant)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _primaryContainer, width: 1.5)),
-    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _error)),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _outlineVariant),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _outlineVariant),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _primaryContainer, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _error),
+    ),
     counterStyle: const TextStyle(color: _outline, fontSize: 11),
   );
 }
@@ -281,7 +347,12 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF524440), letterSpacing: 0.2),
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF524440),
+        letterSpacing: 0.2,
+      ),
     );
   }
 }

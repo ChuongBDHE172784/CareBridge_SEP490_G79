@@ -131,3 +131,21 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 | PARTNER       | `partner@carebridge.dev`   | Test@1234 |
 | MOTHER        | `mother@carebridge.dev`    | Test@1234 |
 | FAMILY        | `family@carebridge.dev`    | Test@1234 |
+
+All accounts above plus the ones below are created by `DevDataSeeder`
+(`05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/common/dev/DevDataSeeder.java`),
+which only runs when `CAREBRIDGE_DEV_SEED_ENABLED=true` is set in `.env`.
+
+**Extra fully verified/accepted test accounts** (two more each for MOTHER, FAMILY, EXPERT — for
+scenarios needing multiple distinct accounts per role, e.g. testing family invitations or expert
+directory listings):
+
+| Role   | Email                    | Password  | Verified/accepted state                                                                                         |
+| ------ | ------------------------ | --------- | --------------------------------------------------------------------------------------------------------------- |
+| MOTHER | `mother3@carebridge.dev` | Test@1234 | Active `mother_journeys` row, type PREGNANCY                                                                    |
+| MOTHER | `mother4@carebridge.dev` | Test@1234 | Active `mother_journeys` row, type POSTPARTUM + linked active `baby_profiles` row                               |
+| FAMILY | `family2@carebridge.dev` | Test@1234 | `care_group_members.invitation_status = ACCEPTED` in mother3's care group                                       |
+| FAMILY | `family3@carebridge.dev` | Test@1234 | `care_group_members.invitation_status = ACCEPTED` in mother4's care group (incl. the baby profile)              |
+| EXPERT | `expert2@carebridge.dev` | Test@1234 | `expert_profiles.verification_status = APPROVED` (Sản khoa) + APPROVED `expert_credentials` + availability slot |
+| EXPERT | `expert3@carebridge.dev` | Test@1234 | `expert_profiles.verification_status = APPROVED` (Nhi khoa) + APPROVED `expert_credentials` + availability slot |
+ 

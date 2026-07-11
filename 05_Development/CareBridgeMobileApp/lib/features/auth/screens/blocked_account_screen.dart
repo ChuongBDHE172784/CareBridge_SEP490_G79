@@ -19,6 +19,14 @@ class BlockedAccountScreen extends StatelessWidget {
     };
   }
 
+  String _titleForReason(String code) {
+    return switch (code) {
+      'ACCOUNT_DISABLED' => 'Tài khoản bị vô hiệu hoá',
+      'ACCOUNT_LOCKED' => 'Tài khoản bị khoá tạm thời',
+      _ => 'Tài khoản bị hạn chế',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final reason = AuthState.instance.blockedReason ?? 'ACCOUNT_DISABLED';
@@ -49,7 +57,7 @@ class BlockedAccountScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               Text(
-                'Tài khoản bị hạn chế',
+                _titleForReason(reason),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 24,
@@ -79,7 +87,7 @@ class BlockedAccountScreen extends StatelessWidget {
                     shape: const StadiumBorder(),
                   ),
                   child: const Text(
-                    'Quay lại màn hình đăng nhập',
+                    'Quay lại đăng nhập',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),

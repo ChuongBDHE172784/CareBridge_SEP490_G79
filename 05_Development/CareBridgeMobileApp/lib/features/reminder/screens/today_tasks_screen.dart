@@ -58,7 +58,12 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listTodayReminders();
-      if (mounted) setState(() { _allReminders = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _allReminders = list;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -67,17 +72,40 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
   List<Reminder> get _filtered {
     return _allReminders.where((r) {
       switch (_filter) {
-        case _TaskFilter.all: return true;
-        case _TaskFilter.pending: return !_service.isDone(r);
-        case _TaskFilter.done: return _service.isDone(r);
+        case _TaskFilter.all:
+          return true;
+        case _TaskFilter.pending:
+          return !_service.isDone(r);
+        case _TaskFilter.done:
+          return _service.isDone(r);
       }
     }).toList();
   }
 
   String _todayLabel() {
-    const weekdays = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
-    const months = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+    const weekdays = [
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật',
+    ];
+    const months = [
+      'Tháng 1',
+      'Tháng 2',
+      'Tháng 3',
+      'Tháng 4',
+      'Tháng 5',
+      'Tháng 6',
+      'Tháng 7',
+      'Tháng 8',
+      'Tháng 9',
+      'Tháng 10',
+      'Tháng 11',
+      'Tháng 12',
+    ];
     final now = DateTime.now();
     final wd = weekdays[now.weekday - 1];
     return '$wd, ${now.day} ${months[now.month - 1]}';
@@ -95,24 +123,37 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
             _buildFilterRow(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : RefreshIndicator(
                       color: _primaryContainer,
                       onRefresh: _load,
                       child: _filtered.isEmpty
                           ? _buildEmpty()
                           : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                0,
+                                24,
+                                100,
+                              ),
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
                               itemBuilder: (_, i) => _TaskCard(
                                 reminder: _filtered[i],
                                 isDone: _service.isDone(_filtered[i]),
-                                onToggle: () => _service.toggleDone(_filtered[i]),
+                                onToggle: () =>
+                                    _service.toggleDone(_filtered[i]),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ReminderDetailScreen(reminderId: _filtered[i].id),
+                                    builder: (_) => ReminderDetailScreen(
+                                      reminderId: _filtered[i].id,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -148,14 +189,27 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                   icon: const Icon(Icons.arrow_back, color: _primary),
                 ),
               const Expanded(
-                child: Text('Việc cần làm',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+                child: Text(
+                  'Việc cần làm',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF271812),
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(_todayLabel(),
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: Color(0xFF524440))),
+          Text(
+            _todayLabel(),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              color: Color(0xFF524440),
+            ),
+          ),
         ],
       ),
     );
@@ -168,11 +222,23 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _FilterPill(label: 'Tất cả', selected: _filter == _TaskFilter.all, onTap: () => setState(() => _filter = _TaskFilter.all)),
+            _FilterPill(
+              label: 'Tất cả',
+              selected: _filter == _TaskFilter.all,
+              onTap: () => setState(() => _filter = _TaskFilter.all),
+            ),
             const SizedBox(width: 8),
-            _FilterPill(label: 'Cần làm', selected: _filter == _TaskFilter.pending, onTap: () => setState(() => _filter = _TaskFilter.pending)),
+            _FilterPill(
+              label: 'Cần làm',
+              selected: _filter == _TaskFilter.pending,
+              onTap: () => setState(() => _filter = _TaskFilter.pending),
+            ),
             const SizedBox(width: 8),
-            _FilterPill(label: 'Đã xong', selected: _filter == _TaskFilter.done, onTap: () => setState(() => _filter = _TaskFilter.done)),
+            _FilterPill(
+              label: 'Đã xong',
+              selected: _filter == _TaskFilter.done,
+              onTap: () => setState(() => _filter = _TaskFilter.done),
+            ),
           ],
         ),
       ),
@@ -181,8 +247,10 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
 
   Widget _buildEmpty() {
     return const Center(
-      child: Text('Không có việc nào.',
-          style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440))),
+      child: Text(
+        'Không có việc nào.',
+        style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440)),
+      ),
     );
   }
 }
@@ -192,7 +260,11 @@ class _FilterPill extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterPill({required this.label, required this.selected, required this.onTap});
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -206,14 +278,22 @@ class _FilterPill extends StatelessWidget {
           borderRadius: BorderRadius.circular(99),
           border: selected ? null : Border.all(color: const Color(0xFFFADCD3)),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF5A463F).withAlpha(15), blurRadius: 20, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: const Color(0xFF5A463F).withAlpha(15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : const Color(0xFF524440),
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : const Color(0xFF524440),
+          ),
+        ),
       ),
     );
   }
@@ -225,32 +305,49 @@ class _TaskCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onTap;
 
-  const _TaskCard({required this.reminder, required this.isDone, required this.onToggle, required this.onTap});
+  const _TaskCard({
+    required this.reminder,
+    required this.isDone,
+    required this.onToggle,
+    required this.onTap,
+  });
 
   IconData get _typeIcon {
     switch (reminder.reminderType) {
-      case ReminderType.appointment: return Icons.calendar_month;
-      case ReminderType.medication: return Icons.medication;
-      case ReminderType.vaccination: return Icons.vaccines;
-      default: return Icons.task_alt;
+      case ReminderType.appointment:
+        return Icons.calendar_month;
+      case ReminderType.medication:
+        return Icons.medication;
+      case ReminderType.vaccination:
+        return Icons.vaccines;
+      default:
+        return Icons.task_alt;
     }
   }
 
   Color get _iconBg {
     switch (reminder.reminderType) {
-      case ReminderType.appointment: return const Color(0xFFFFE2D9);
-      case ReminderType.medication: return const Color(0xFFF6DACF);
-      case ReminderType.vaccination: return const Color(0xFFE9E1DB);
-      default: return const Color(0xFFFFE9E3);
+      case ReminderType.appointment:
+        return const Color(0xFFFFE2D9);
+      case ReminderType.medication:
+        return const Color(0xFFF6DACF);
+      case ReminderType.vaccination:
+        return const Color(0xFFE9E1DB);
+      default:
+        return const Color(0xFFFFE9E3);
     }
   }
 
   Color get _iconColor {
     switch (reminder.reminderType) {
-      case ReminderType.appointment: return const Color(0xFF845143);
-      case ReminderType.medication: return const Color(0xFF6E5A52);
-      case ReminderType.vaccination: return const Color(0xFF625D59);
-      default: return const Color(0xFF845143);
+      case ReminderType.appointment:
+        return const Color(0xFF845143);
+      case ReminderType.medication:
+        return const Color(0xFF6E5A52);
+      case ReminderType.vaccination:
+        return const Color(0xFF625D59);
+      default:
+        return const Color(0xFF845143);
     }
   }
 
@@ -272,15 +369,23 @@ class _TaskCard extends StatelessWidget {
             color: const Color(0xFFFFF8F6),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: const Color(0xFF5A463F).withAlpha(15), blurRadius: 20, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: const Color(0xFF5A463F).withAlpha(15),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: _iconBg, shape: BoxShape.circle),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _iconBg,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(_typeIcon, color: _iconColor),
               ),
               const SizedBox(width: 16),
@@ -291,33 +396,57 @@ class _TaskCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(reminder.title,
-                              style: TextStyle(
-                                fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600,
-                                color: const Color(0xFF271812),
-                                decoration: isDone ? TextDecoration.lineThrough : null,
-                              )),
+                          child: Text(
+                            reminder.title,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF271812),
+                              decoration: isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
                         ),
                         if (reminder.isImportant)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFDAD6).withAlpha(77),
                               borderRadius: BorderRadius.circular(99),
                             ),
-                            child: const Text('Quan trọng',
-                                style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFFBA1A1A))),
+                            child: const Text(
+                              'Quan trọng',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 12,
+                                color: Color(0xFFBA1A1A),
+                              ),
+                            ),
                           ),
                       ],
                     ),
                     if (reminder.location != null) ...[
                       const SizedBox(height: 4),
-                      Text('${reminder.location}, ${_formatTime(reminder.scheduledAt)}',
-                          style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: Color(0xFF524440))),
+                      Text(
+                        '${reminder.location}, ${_formatTime(reminder.scheduledAt)}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          color: Color(0xFF524440),
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: reminder.assignee == ReminderAssignee.mother
                             ? const Color(0xFFF6DACF).withAlpha(128)
@@ -328,13 +457,21 @@ class _TaskCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            reminder.assignee == ReminderAssignee.mother ? Icons.person : Icons.child_care,
+                            reminder.assignee == ReminderAssignee.mother
+                                ? Icons.person
+                                : Icons.child_care,
                             size: 16,
                             color: const Color(0xFF735E56),
                           ),
                           const SizedBox(width: 4),
-                          Text(reminder.assignee.displayLabel,
-                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF735E56))),
+                          Text(
+                            reminder.assignee.displayLabel,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: Color(0xFF735E56),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -345,12 +482,17 @@ class _TaskCard extends StatelessWidget {
               GestureDetector(
                 onTap: onToggle,
                 child: Container(
-                  width: 24, height: 24,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
-                    color: isDone ? const Color(0xFF845143) : Colors.transparent,
+                    color: isDone
+                        ? const Color(0xFF845143)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: isDone ? const Color(0xFF845143) : const Color(0xFF84736F),
+                      color: isDone
+                          ? const Color(0xFF845143)
+                          : const Color(0xFF84736F),
                       width: 2,
                     ),
                   ),

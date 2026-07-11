@@ -6,6 +6,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityQuestionLike;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class CommunityQuestionLikeServiceImplTest {
     @Mock CommunityQuestionLikeRepository likeRepository;
     @Mock CommunityQuestionRepository questionRepository;
     @Mock AuditService auditService;
+    @Mock CommunitySafetyPolicy communitySafetyPolicy;
     @InjectMocks CommunityQuestionLikeServiceImpl likeService;
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -51,7 +53,7 @@ class CommunityQuestionLikeServiceImplTest {
     @Test
     void toggleLike_notYetLiked_addsLike() {
         CommunityQuestion question = makeQuestion(2);
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(question);
         when(likeRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(false);
         when(questionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -72,7 +74,7 @@ class CommunityQuestionLikeServiceImplTest {
         CommunityQuestion question = makeQuestion(3);
         CommunityQuestionLike existingLike = CommunityQuestionLike.builder()
                 .id(UUID.randomUUID()).userId(USER_ID).questionId(QUESTION_ID).build();
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(question);
         when(likeRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(true);
         when(likeRepository.findByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(Optional.of(existingLike));
         when(questionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -91,7 +93,8 @@ class CommunityQuestionLikeServiceImplTest {
     @Test
     void toggleLike_questionNotFound_throws() {
         UUID unknownId = UUID.randomUUID();
-        when(questionRepository.findById(unknownId)).thenReturn(Optional.empty());
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, unknownId))
+                .thenThrow(new QuestionNotFoundException(unknownId.toString()));
 
         assertThatThrownBy(() -> likeService.toggleLike(USER_ID, unknownId))
                 .isInstanceOf(QuestionNotFoundException.class)
@@ -106,7 +109,7 @@ class CommunityQuestionLikeServiceImplTest {
     @Test
     void toggleLike_calledTwice_secondCallUnlikes() {
         CommunityQuestion question = makeQuestion(2);
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(question);
         when(likeRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(false);
         when(questionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -130,7 +133,7 @@ class CommunityQuestionLikeServiceImplTest {
         CommunityQuestion question = makeQuestion(0);
         CommunityQuestionLike existingLike = CommunityQuestionLike.builder()
                 .id(UUID.randomUUID()).userId(USER_ID).questionId(QUESTION_ID).build();
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(question);
         when(likeRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(true);
         when(likeRepository.findByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(Optional.of(existingLike));
         when(questionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -145,7 +148,7 @@ class CommunityQuestionLikeServiceImplTest {
     @Test
     void toggleLike_responseLikeCountMatchesUpdatedValue() {
         CommunityQuestion question = makeQuestion(10);
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(question);
         when(likeRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(false);
         when(questionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../services/exercise_service.dart';
-import '../models/exercise_model.dart';
 import 'exercise_session_result_screen.dart';
 
 class ExerciseSessionScreen extends StatefulWidget {
@@ -42,8 +41,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   int _elapsedSeconds = 0;
   bool _isPaused = false;
   bool _isCompleting = false;
-  String _postureStatus = 'Tư thế chuẩn';
-  bool _postureGood = true;
+  final String _postureStatus = 'Tư thế chuẩn';
+  final bool _postureGood = true;
 
   int get _totalSeconds => widget.durationMinutes * 60;
 
@@ -89,19 +88,26 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Dừng bài tập?',
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: const Text('Bài tập sẽ được tính là chưa hoàn thành.',
-            style: TextStyle(fontFamily: 'Lexend')),
+        title: const Text(
+          'Dừng bài tập?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Bài tập sẽ được tính là chưa hoàn thành.',
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Tiếp tục tập')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Tiếp tục tập'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: _primary),
-            child: const Text('Dừng lại',
-                style: TextStyle(color: Colors.white, fontFamily: 'Lexend')),
+            child: const Text(
+              'Dừng lại',
+              style: TextStyle(color: Colors.white, fontFamily: 'Lexend'),
+            ),
           ),
         ],
       ),
@@ -115,8 +121,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
     try {
-      final result =
-          await ExerciseService.instance.completeSession(widget.sessionId);
+      final result = await ExerciseService.instance.completeSession(
+        widget.sessionId,
+      );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -127,7 +134,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       if (mounted) {
         setState(() => _isCompleting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể hoàn thành bài tập. Thử lại.')),
+          const SnackBar(
+            content: Text('Không thể hoàn thành bài tập. Thử lại.'),
+          ),
         );
       }
     }
@@ -269,24 +278,31 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               value: progress,
               minHeight: 6,
               backgroundColor: const Color(0xFFEDE0DB),
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(_primaryContainer),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                _primaryContainer,
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(_elapsedSeconds),
-                  style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _onSurfaceVariant)),
-              Text(_fmt(_totalSeconds),
-                  style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _onSurfaceVariant)),
+              Text(
+                _fmt(_elapsedSeconds),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+              Text(
+                _fmt(_totalSeconds),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ],
@@ -308,14 +324,20 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
                 ? Image.network(
                     widget.mediaUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(
-                      child: Icon(Icons.image_not_supported,
-                          color: Colors.white54, size: 64),
+                    errorBuilder: (_, _, _) => const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.white54,
+                        size: 64,
+                      ),
                     ),
                   )
                 : const Center(
-                    child: Icon(Icons.sports_gymnastics,
-                        color: Colors.white54, size: 80),
+                    child: Icon(
+                      Icons.sports_gymnastics,
+                      color: Colors.white54,
+                      size: 80,
+                    ),
                   ),
           ),
 
@@ -326,7 +348,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(9999),
               ),
               child: Row(
@@ -362,11 +384,14 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.flip_camera_ios_outlined,
-                  color: _onSurface, size: 20),
+              child: const Icon(
+                Icons.flip_camera_ios_outlined,
+                color: _onSurface,
+                size: 20,
+              ),
             ),
           ),
 
@@ -377,22 +402,27 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               left: 0,
               right: 0,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.5),
+                      Colors.black.withValues(alpha: 0.5),
                       Colors.transparent,
                     ],
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline,
-                        color: Colors.white70, size: 16),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -431,8 +461,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _stopSession,
-                child: const Icon(Icons.stop_rounded,
-                    color: Color(0xFFBA1A1A), size: 24),
+                child: const Icon(
+                  Icons.stop_rounded,
+                  color: Color(0xFFBA1A1A),
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -451,10 +484,14 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
                     ? const Padding(
                         padding: EdgeInsets.all(20),
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Icon(
-                        _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                        _isPaused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
                         color: Colors.white,
                         size: 36,
                       ),
@@ -472,8 +509,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _completeSession,
-                child: const Icon(Icons.skip_next_rounded,
-                    color: _onSurface, size: 24),
+                child: const Icon(
+                  Icons.skip_next_rounded,
+                  color: _onSurface,
+                  size: 24,
+                ),
               ),
             ),
           ),

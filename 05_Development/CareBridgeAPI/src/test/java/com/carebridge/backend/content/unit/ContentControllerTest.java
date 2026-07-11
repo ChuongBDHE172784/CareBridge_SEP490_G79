@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.content.controller.ContentController;
@@ -122,6 +123,25 @@ class ContentControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.title").value("Detail Title"))
                 .andExpect(jsonPath("$.data.version").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "USER")
+    void getContentById_uc225_responseDoesNotExposeAuthorIdentity() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(contentService.getContentById(id)).thenReturn(ContentDetailResponse.builder()
+                .id(id).type(ContentType.ARTICLE).title("Verified").body("Body")
+                .stage(ContentStage.PREGNANCY).version(1).build());
+
+        String json = mockMvc.perform(get("/api/v1/content/" + id))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json).doesNotContain("authorId").doesNotContain("authorUserId");
+    }
+
+    @Test
+    void getContentById_uc225_unauthenticatedReturns401() throws Exception {
+        mockMvc.perform(get("/api/v1/content/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
     }
 
     // ── 404 for non-existent or DRAFT content ─────────────────────────────────

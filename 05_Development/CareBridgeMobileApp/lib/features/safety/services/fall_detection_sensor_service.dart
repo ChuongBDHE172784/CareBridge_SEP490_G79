@@ -10,6 +10,7 @@ class FallDetectionSensorService {
   FallDetectionSensorService._();
 
   static final FallDetectionSensorService instance = FallDetectionSensorService._();
+  static const _samplingPeriod = SensorInterval.gameInterval;
 
   final SafetyService _safetyService = SafetyService();
 
@@ -25,14 +26,18 @@ class FallDetectionSensorService {
   Future<void> start() async {
     if (_running) return;
     _running = true;
-    _gyroscopeSubscription = gyroscopeEventStream().listen(
+    _gyroscopeSubscription = gyroscopeEventStream(
+      samplingPeriod: _samplingPeriod,
+    ).listen(
       (event) => _latestGyroscope = event,
       onError: (error, stackTrace) {
         debugPrint('[FallDetectionSensorService] gyroscope error: $error');
       },
       cancelOnError: false,
     );
-    _accelerometerSubscription = accelerometerEventStream().listen(
+    _accelerometerSubscription = accelerometerEventStream(
+      samplingPeriod: _samplingPeriod,
+    ).listen(
       _handleAccelerometer,
       onError: (error, stackTrace) {
         debugPrint('[FallDetectionSensorService] accelerometer error: $error');

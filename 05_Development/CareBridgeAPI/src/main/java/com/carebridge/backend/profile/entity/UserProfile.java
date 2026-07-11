@@ -35,10 +35,6 @@ public class UserProfile {
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
-    @Size(min = 2, max = 100)
-    @Column(name = "display_name", length = 100)
-    private String displayName;
-
     @Size(max = 500)
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;

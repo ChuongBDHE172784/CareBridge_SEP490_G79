@@ -12,8 +12,8 @@ class EmergencyService {
   }) async {
     final data = await apiPost('/api/v1/emergency/sessions', {
       'triggerSource': triggerSource,
-      if (latitude != null) 'userLatitude': latitude,
-      if (longitude != null) 'userLongitude': longitude,
+      'userLatitude': ?latitude,
+      'userLongitude': ?longitude,
     });
     return EmergencySession.fromJson(data['data'] as Map<String, dynamic>);
   }

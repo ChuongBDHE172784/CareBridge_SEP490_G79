@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-PTR-IMP-008`                        |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Partially Implemented`                 |
 | **Date**           | `2026-07-01`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | ------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-125 Remove Partner Content (Status=Draft)     |
+| 2026-07-11 | AI Agent — Amelia   | Implemented soft-remove, RBAC, audit, downstream filters; 11/13 specified conditions verified. PostgreSQL integration blocked by unavailable container runtime. |
 
 ---
 

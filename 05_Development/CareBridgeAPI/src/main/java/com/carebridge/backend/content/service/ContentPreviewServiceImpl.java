@@ -4,6 +4,7 @@ import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,7 @@ public class ContentPreviewServiceImpl implements ContentPreviewService {
     private final CommunityQuestionRepository questionRepository;
     private final CommunityAnswerRepository answerRepository;
     private final ContentRepository contentRepository;
+    private final UserRepository userRepository;
 
     @Override
     public String fetchPreview(UUID targetId, ReportTargetType targetType) {
@@ -38,8 +40,17 @@ public class ContentPreviewServiceImpl implements ContentPreviewService {
             case CONTENT -> contentRepository.findById(targetId)
                     .map(c -> c.getTitle() != null ? c.getTitle() : "")
                     .orElse("");
-            // ACCOUNT/EXPERT/USER targets are User rows, not content — no preview text applies.
-            case ACCOUNT, EXPERT, USER -> "";
+            case ACCOUNT, EXPERT, USER -> userRepository.findById(targetId)
+                    .map(user -> {
+                        if (user.getName() != null && !user.getName().isBlank()) {
+                            return user.getName();
+                        }
+                        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                            return user.getEmail();
+                        }
+                        return user.getPhone() != null ? user.getPhone() : user.getId().toString();
+                    })
+                    .orElse("");
         };
         return truncate(raw);
     }

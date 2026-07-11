@@ -10,12 +10,12 @@ class AuthService {
 
   // UC-01: Register — sends OTP; tokens not issued until OTP is verified
   Future<OtpSendResponse> register({
+    required String name,
     String? email,
     String? phone,
     required String password,
-    required String role,
   }) async {
-    final body = <String, dynamic>{'password': password, 'role': role};
+    final body = <String, dynamic>{'name': name, 'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     final res = await apiPost('/api/v1/auth/register', body);
@@ -41,18 +41,27 @@ class AuthService {
     String? phone,
     required String password,
   }) async {
+    print('[loginDirect] email=$email phone=$phone pwLen=${password.length}');
     final body = <String, dynamic>{'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+    print('[loginDirect] POST body keys: ${body.keys}');
     final res = await apiPost('/api/v1/auth/login-direct', body);
-    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    print('[loginDirect] res type=${res.runtimeType} keys=${res.keys}');
+    final data = res['data'];
+    print('[loginDirect] data type=${data.runtimeType}');
+    final auth = AuthResponse.fromJson(data as Map<String, dynamic>);
+    print('[loginDirect] parsed: tokenStart=${auth.accessToken.substring(0, auth.accessToken.length > 20 ? 20 : auth.accessToken.length)}... userId=${auth.user.id} role=${auth.user.role}');
+    print('[loginDirect] calling AuthState.setTokens...');
     await AuthState.instance.setTokens(
       accessToken: auth.accessToken,
       refreshToken: auth.refreshToken,
       userId: auth.user.id,
       role: auth.user.role,
     );
+    print('[loginDirect] setTokens done. inMemory: access=${AuthState.instance.accessToken != null ? 'set' : 'null'} role=${AuthState.instance.role}');
     unawaited(FcmService.instance.registerToken());
+    print('[loginDirect] returning auth');
     return auth;
   }
 
@@ -85,6 +94,29 @@ class AuthService {
     await apiPost('/api/v1/auth/resend-otp', body);
   }
 
+  Future<AuthResponse> refreshSession() async {
+    final refreshToken = AuthState.instance.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw ApiException(401, 'Missing refresh token');
+    }
+    final res = await apiPost('/api/v1/auth/refresh', {
+      'refreshToken': refreshToken,
+    });
+    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    await AuthState.instance.setTokens(
+      accessToken: auth.accessToken,
+      refreshToken: auth.refreshToken,
+      userId: auth.user.id,
+      role: auth.user.role,
+    );
+    return auth;
+  }
+
+  Future<UserProfile> selectRole(String role) async {
+    final res = await apiPut('/api/v1/auth/role', {'role': role});
+    return UserProfile.fromJson(res['data'] as Map<String, dynamic>? ?? {});
+  }
+
   // Current authenticated user profile for account-facing UI.
   Future<UserProfile> getProfile() async {
     final res = await apiGet('/api/v1/auth/profile');
@@ -103,13 +135,16 @@ class AuthService {
 
   // UC-15: Deactivate account — all sessions revoked, data preserved.
   Future<void> deactivateAccount(String confirmPassword) async {
-    await apiDelete('/api/v1/auth/deactivate',
-        body: {'confirmPassword': confirmPassword});
+    await apiDelete(
+      '/api/v1/auth/deactivate',
+      body: {'confirmPassword': confirmPassword},
+    );
   }
 
   // UC-156: Request account deletion — 30-day grace period before permanent deletion.
   Future<void> requestAccountDeletion(String confirmPassword) async {
-    await apiPost('/api/v1/account/deletion-request',
-        {'confirmPassword': confirmPassword});
+    await apiPost('/api/v1/account/deletion-request', {
+      'confirmPassword': confirmPassword,
+    });
   }
 }

@@ -9,7 +9,8 @@ class PendingInvitationsScreen extends StatefulWidget {
   const PendingInvitationsScreen({super.key});
 
   @override
-  State<PendingInvitationsScreen> createState() => _PendingInvitationsScreenState();
+  State<PendingInvitationsScreen> createState() =>
+      _PendingInvitationsScreenState();
 }
 
 class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
@@ -35,7 +36,12 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyInvitations();
-      if (mounted) setState(() { _invites = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _invites = list;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -54,15 +60,24 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
           _invites.removeWhere((i) => i.groupId == invite.groupId);
           _busyGroupIds.remove(invite.groupId);
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(accept ? 'Đã tham gia "${invite.groupName}"' : 'Đã từ chối lời mời'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              accept
+                  ? 'Đã tham gia "${invite.groupName}"'
+                  : 'Đã từ chối lời mời',
+            ),
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
         setState(() => _busyGroupIds.remove(invite.groupId));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể xử lý lời mời. Vui lòng thử lại.')));
+          const SnackBar(
+            content: Text('Không thể xử lý lời mời. Vui lòng thử lại.'),
+          ),
+        );
       }
     }
   }
@@ -77,24 +92,28 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
             _buildHeader(context),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _invites.isEmpty
-                      ? _buildEmpty()
-                      : RefreshIndicator(
-                          color: _primaryContainer,
-                          onRefresh: _load,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            itemCount: _invites.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (_, i) => _InviteCard(
-                              invite: _invites[i],
-                              busy: _busyGroupIds.contains(_invites[i].groupId),
-                              onAccept: () => _respond(_invites[i], true),
-                              onDecline: () => _respond(_invites[i], false),
-                            ),
-                          ),
+                  ? _buildEmpty()
+                  : RefreshIndicator(
+                      color: _primaryContainer,
+                      onRefresh: _load,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: _invites.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) => _InviteCard(
+                          invite: _invites[i],
+                          busy: _busyGroupIds.contains(_invites[i].groupId),
+                          onAccept: () => _respond(_invites[i], true),
+                          onDecline: () => _respond(_invites[i], false),
                         ),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -112,9 +131,16 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
             icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
           ),
           const Expanded(
-            child: Text('Lời mời đang chờ',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+            child: Text(
+              'Lời mời đang chờ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
+            ),
           ),
           const SizedBox(width: 48),
         ],
@@ -129,11 +155,21 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
         children: [
           const Icon(Icons.mail_outline, size: 64, color: Color(0xFFC98C7B)),
           const SizedBox(height: 16),
-          const Text('Không có lời mời nào', style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Không có lời mời nào',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Lời mời tham gia nhóm chăm sóc sẽ hiện ở đây.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
+          const Text(
+            'Lời mời tham gia nhóm chăm sóc sẽ hiện ở đây.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -146,7 +182,12 @@ class _InviteCard extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onDecline;
 
-  const _InviteCard({required this.invite, required this.busy, required this.onAccept, required this.onDecline});
+  const _InviteCard({
+    required this.invite,
+    required this.busy,
+    required this.onAccept,
+    required this.onDecline,
+  });
 
   static const _primary = Color(0xFF845143);
   static const _onSurface = Color(0xFF271812);
@@ -160,7 +201,13 @@ class _InviteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withAlpha(13),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,8 +215,12 @@ class _InviteCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 44, height: 44,
-                decoration: const BoxDecoration(color: Color(0xFFFFE9E3), shape: BoxShape.circle),
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFE9E3),
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.group, color: Color(0xFF845143)),
               ),
               const SizedBox(width: 12),
@@ -177,8 +228,23 @@ class _InviteCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(invite.groupName, style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface)),
-                    Text('Vai trò: ${invite.roleLabel}', style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                    Text(
+                      invite.groupName,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
+                    Text(
+                      'Vai trò: ${invite.roleLabel}',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -190,18 +256,38 @@ class _InviteCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: busy ? null : onDecline,
-                  style: OutlinedButton.styleFrom(foregroundColor: _error, side: const BorderSide(color: _error), shape: const StadiumBorder()),
-                  child: const Text('Từ chối', style: TextStyle(fontFamily: 'Lexend')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _error,
+                    side: const BorderSide(color: _error),
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text(
+                    'Từ chối',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
                   onPressed: busy ? null : onAccept,
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC98C7B), shape: const StadiumBorder()),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFC98C7B),
+                    shape: const StadiumBorder(),
+                  ),
                   child: busy
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Chấp nhận', style: TextStyle(fontFamily: 'Lexend')),
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Chấp nhận',
+                          style: TextStyle(fontFamily: 'Lexend'),
+                        ),
                 ),
               ),
             ],

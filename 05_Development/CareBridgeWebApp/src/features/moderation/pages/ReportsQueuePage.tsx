@@ -32,7 +32,7 @@ export default function ReportsQueuePage() {
   useEffect(() => { loadReports(); }, [loadReports]);
 
   const goToDetail = (item: ModerationQueueItem) => {
-    if (item.targetType === 'ACCOUNT') {
+    if (item.targetType === 'ACCOUNT' || item.targetType === 'USER' || item.targetType === 'EXPERT') {
       navigate(`/moderator/reports/account/${item.id}`);
     } else {
       navigate(`/moderator/reports/${item.id}`);

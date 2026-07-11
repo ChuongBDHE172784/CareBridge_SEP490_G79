@@ -17,6 +17,7 @@ import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
@@ -24,6 +25,7 @@ import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
+import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ModerationAction;
@@ -211,13 +213,16 @@ public class ModerationServiceImpl implements ModerationService {
         return contentPreviewService.batchFetchPreviews(targetIds, targetType);
     }
 
-    // WARN/SUSPEND belong to UC-102 (account moderation), not this content-status endpoint (ADR-004)
+    // Account-level enforcement belongs to moderateAccount/resolveReport, not this content-status
+    // endpoint. UNDO (CB-MOD-IMP-009) is also excluded — it may only be created via the dedicated
+    // undoModerationAction()/{actionId}/undo endpoint, which enforces the ADR-002 guards.
     private static final Set<ModerationActionType> OUT_OF_SCOPE_ACTION_TYPES =
-            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND);
+            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND, ModerationActionType.RESTRICT,
+                    ModerationActionType.UNDO);
 
-    // C6: reason required for HIDE/LOCK, optional for APPROVE (ADR-006)
+    // C6: reason required for HIDE/LOCK/REQUEST_REVISION, optional for APPROVE (ADR-006)
     private static final Set<ModerationActionType> REASON_REQUIRED_ACTION_TYPES =
-            Set.of(ModerationActionType.HIDE, ModerationActionType.LOCK);
+            Set.of(ModerationActionType.HIDE, ModerationActionType.LOCK, ModerationActionType.REQUEST_REVISION);
 
     @Override
     @Transactional
@@ -289,7 +294,7 @@ public class ModerationServiceImpl implements ModerationService {
                 resultingStatus);
     }
 
-    // C5: action-targetType compatibility per TDS §6.4 — QUESTION supports APPROVE/HIDE/LOCK
+    // C5: action-targetType compatibility per TDS §6.4 — QUESTION supports APPROVE/HIDE/LOCK/REQUEST_REVISION
     private String moderateQuestion(UUID targetId, ModerationActionType actionType) {
         CommunityQuestion question = communityQuestionRepository.findById(targetId)
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.QUESTION));
@@ -298,6 +303,7 @@ public class ModerationServiceImpl implements ModerationService {
             case APPROVE -> QuestionStatus.APPROVED;
             case HIDE -> QuestionStatus.HIDDEN;
             case LOCK -> QuestionStatus.LOCKED;
+            case REQUEST_REVISION -> QuestionStatus.PENDING;
             default -> throw ModerationException.actionNotSupportedForTargetType(
                     actionType, ReportTargetType.QUESTION);
         };
@@ -307,7 +313,7 @@ public class ModerationServiceImpl implements ModerationService {
         return newStatus.name();
     }
 
-    // C5: action-targetType compatibility per TDS §6.4 — ANSWER supports APPROVE/HIDE only (no LOCKED)
+    // C5: action-targetType compatibility per TDS §6.4 — ANSWER supports APPROVE/HIDE/REQUEST_REVISION only (no LOCKED)
     private String moderateAnswer(UUID targetId, ModerationActionType actionType) {
         if (actionType == ModerationActionType.LOCK) {
             throw ModerationException.actionNotSupportedForTargetType(actionType, ReportTargetType.ANSWER);
@@ -316,20 +322,26 @@ public class ModerationServiceImpl implements ModerationService {
         CommunityAnswer answer = communityAnswerRepository.findById(targetId)
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.ANSWER));
 
+        AnswerStatus oldStatus = answer.getStatus();
         AnswerStatus newStatus = switch (actionType) {
             case APPROVE -> AnswerStatus.APPROVED;
             case HIDE -> AnswerStatus.HIDDEN;
+            case REQUEST_REVISION -> AnswerStatus.PENDING;
             default -> throw ModerationException.actionNotSupportedForTargetType(actionType, ReportTargetType.ANSWER);
         };
 
         answer.setStatus(newStatus);
         communityAnswerRepository.save(answer);
+
+        // Keep community_questions.answer_count in sync with the visible (APPROVED) answer set
+        if (oldStatus != AnswerStatus.APPROVED && newStatus == AnswerStatus.APPROVED) {
+            communityQuestionRepository.incrementAnswerCount(answer.getQuestionId());
+        } else if (oldStatus == AnswerStatus.APPROVED && newStatus != AnswerStatus.APPROVED) {
+            communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
+
         return newStatus.name();
     }
-
-    // WARN/SUSPEND -> account-target actions rejected v1 (ADR-005 of UC-101, forward dependency on UC-102)
-    private static final Set<ResolutionOutcome> ACCOUNT_ACTION_OUTCOMES =
-            Set.of(ResolutionOutcome.WARN, ResolutionOutcome.SUSPEND);
 
     @Override
     @Transactional
@@ -344,11 +356,6 @@ public class ModerationServiceImpl implements ModerationService {
             throw ModerationException.reportAlreadyResolved(reportId);
         }
 
-        // ADR-005: WARN/SUSPEND are account-target actions — forward dependency on UC-102, report untouched
-        if (ACCOUNT_ACTION_OUTCOMES.contains(request.outcome())) {
-            throw ModerationException.accountActionNotAvailable(mapToActionType(request.outcome()));
-        }
-
         UUID actionId = null;
         ModerationActionType actionType = null;
         String resultingStatus = null;
@@ -357,16 +364,25 @@ public class ModerationServiceImpl implements ModerationService {
             // BR-MOD-010: DISMISS creates no ModerationAction
             report.setStatus(ReportStatus.DISMISSED);
         } else {
-            // ADR-004: report.targetType == CONTENT only accepts DISMISS via this endpoint
-            if (report.getTargetType() == ReportTargetType.CONTENT) {
-                throw ModerationException.contentActionNotSupportedForReport();
-            }
-
             actionType = mapToActionType(request.outcome());
-            ModerateContentResponse actionResponse = applyContentAction(report.getTargetId(), report.getTargetType(),
-                    actionType, request.reason(), moderatorUserId, report.getId());
-            actionId = actionResponse.actionId();
-            resultingStatus = actionResponse.resultingStatus();
+            if (ACCOUNT_ACTION_TYPES.contains(actionType)) {
+                UUID targetUserId = resolveAccountTargetUserId(report);
+                WarnOrSuspendAccountResponse accountResponse = applyAccountAction(targetUserId, actionType,
+                        request.reason(), request.expiresAt(), moderatorUserId, report.getId());
+                actionId = accountResponse.actionId();
+                resultingStatus = accountResultingStatus(accountResponse);
+            } else {
+                if (report.getTargetType() == ReportTargetType.CONTENT
+                        || report.getTargetType() == ReportTargetType.USER
+                        || report.getTargetType() == ReportTargetType.EXPERT
+                        || report.getTargetType() == ReportTargetType.ACCOUNT) {
+                    throw ModerationException.contentActionNotSupportedForReport();
+                }
+                ModerateContentResponse actionResponse = applyContentAction(report.getTargetId(), report.getTargetType(),
+                        actionType, request.reason(), moderatorUserId, report.getId());
+                actionId = actionResponse.actionId();
+                resultingStatus = actionResponse.resultingStatus();
+            }
             report.setStatus(ReportStatus.RESOLVED);
         }
 
@@ -391,76 +407,293 @@ public class ModerationServiceImpl implements ModerationService {
                 resultingStatus);
     }
 
-    // UC-102: only WARN/SUSPEND are valid at this endpoint (APPROVE/HIDE/LOCK belong to UC-100)
+    // UC-102/UC-58: only account-level actions are valid at this endpoint.
     private static final Set<ModerationActionType> ACCOUNT_ACTION_TYPES =
-            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND);
+            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND, ModerationActionType.RESTRICT);
 
     @Override
     @Transactional
     public WarnOrSuspendAccountResponse moderateAccount(WarnOrSuspendAccountRequest request, Principal principal) {
         UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
 
-        // ADR-007: self-action guard, checked before any other validation/lookup
-        if (request.targetUserId().equals(moderatorUserId)) {
-            throw ModerationException.selfActionForbidden();
-        }
-
-        // MOD-016: this endpoint only accepts WARN/SUSPEND
-        if (!ACCOUNT_ACTION_TYPES.contains(request.actionType())) {
-            throw ModerationException.accountActionTypeNotSupported(request.actionType());
-        }
-
-        // ADR-005: reason required (non-blank) for both WARN and SUSPEND
-        if (request.reason() == null || request.reason().isBlank()) {
-            throw ModerationException.accountReasonRequired(request.actionType());
-        }
-
-        // ADR-008: SUSPEND requires a strictly-future expiresAt; WARN must not carry one
-        if (request.actionType() == ModerationActionType.SUSPEND) {
-            if (request.expiresAt() == null || !request.expiresAt().isAfter(Instant.now())) {
-                throw ModerationException.suspendExpiresAtInvalid();
-            }
-        } else if (request.expiresAt() != null) {
-            throw ModerationException.warnExpiresAtNotAllowed();
-        }
-
-        User user = userRepository.findById(request.targetUserId())
-                .orElseThrow(() -> ModerationException.targetUserNotFound(request.targetUserId()));
-
-        boolean accountSuspended = false;
-        if (request.actionType() == ModerationActionType.SUSPEND) {
-            // ADR-001/C4: dedicated suspendedUntil column only — never reuse locked/enabled
-            user.setSuspendedUntil(request.expiresAt());
-            userRepository.save(user);
-            accountSuspended = true;
-        }
-        // ADR-004: WARN never mutates User — no userRepository.save() call on this branch
-
-        ModerationAction action = ModerationAction.builder()
-                .reportId(null)
-                .targetId(request.targetUserId())
-                .targetType(ReportTargetType.ACCOUNT)
-                .actionType(request.actionType())
-                .moderatorUserId(moderatorUserId)
-                .reason(request.reason())
-                .actionAt(Instant.now())
-                .expiresAt(request.actionType() == ModerationActionType.SUSPEND ? request.expiresAt() : null)
-                .build();
-        ModerationAction savedAction = moderationActionRepository.save(action);
+        WarnOrSuspendAccountResponse response = applyAccountAction(request.targetUserId(), request.actionType(),
+                request.reason(), request.expiresAt(), moderatorUserId, null);
 
         auditService.log(AuditAction.MODERATION_ACTION, moderatorUserId, "ACCOUNT",
                 request.targetUserId().toString(),
                 "actionType=" + request.actionType() + " reason=" + request.reason());
 
+        return response;
+    }
+
+    private WarnOrSuspendAccountResponse applyAccountAction(UUID targetUserId, ModerationActionType actionType,
+            String reason, Instant expiresAt, UUID moderatorUserId, UUID reportId) {
+        if (targetUserId.equals(moderatorUserId)) {
+            throw ModerationException.selfActionForbidden();
+        }
+
+        if (!ACCOUNT_ACTION_TYPES.contains(actionType)) {
+            throw ModerationException.accountActionTypeNotSupported(actionType);
+        }
+
+        if (reason == null || reason.isBlank()) {
+            throw ModerationException.accountReasonRequired(actionType);
+        }
+
+        if (actionType == ModerationActionType.SUSPEND) {
+            if (expiresAt == null || !expiresAt.isAfter(Instant.now())) {
+                throw ModerationException.suspendExpiresAtInvalid();
+            }
+        } else if (actionType == ModerationActionType.RESTRICT) {
+            if (expiresAt == null || !expiresAt.isAfter(Instant.now())) {
+                throw ModerationException.restrictExpiresAtInvalid();
+            }
+        } else if (expiresAt != null) {
+            throw ModerationException.warnExpiresAtNotAllowed();
+        }
+
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> ModerationException.targetUserNotFound(targetUserId));
+
+        boolean accountSuspended = false;
+        if (actionType == ModerationActionType.SUSPEND) {
+            user.setSuspendedUntil(expiresAt);
+            userRepository.save(user);
+            accountSuspended = true;
+        } else if (actionType == ModerationActionType.RESTRICT) {
+            user.setCommunityPostingRestrictedUntil(expiresAt);
+            userRepository.save(user);
+        }
+
+        ModerationAction action = ModerationAction.builder()
+                .reportId(reportId)
+                .targetId(targetUserId)
+                .targetType(ReportTargetType.ACCOUNT)
+                .actionType(actionType)
+                .moderatorUserId(moderatorUserId)
+                .reason(reason)
+                .actionAt(Instant.now())
+                .expiresAt(actionType == ModerationActionType.SUSPEND
+                        || actionType == ModerationActionType.RESTRICT ? expiresAt : null)
+                .build();
+        ModerationAction savedAction = moderationActionRepository.save(action);
+
         return new WarnOrSuspendAccountResponse(
                 savedAction.getId(),
-                request.targetUserId(),
-                request.actionType(),
+                targetUserId,
+                actionType,
                 moderatorUserId,
-                request.reason(),
+                reason,
                 savedAction.getActionAt(),
                 savedAction.getExpiresAt(),
                 accountSuspended);
+    }
+
+    private UUID resolveAccountTargetUserId(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case USER, EXPERT, ACCOUNT -> report.getTargetId();
+            case QUESTION -> communityQuestionRepository.findById(report.getTargetId())
+                    .map(CommunityQuestion::getAuthorId)
+                    .orElseThrow(() -> ModerationException.targetNotFound(
+                            report.getTargetId(), ReportTargetType.QUESTION));
+            case ANSWER -> communityAnswerRepository.findById(report.getTargetId())
+                    .map(CommunityAnswer::getAuthorId)
+                    .orElseThrow(() -> ModerationException.targetNotFound(
+                            report.getTargetId(), ReportTargetType.ANSWER));
+            case CONTENT -> throw ModerationException.accountActionNotAvailable(ModerationActionType.WARN);
+        };
+    }
+
+    private String accountResultingStatus(WarnOrSuspendAccountResponse response) {
+        return switch (response.actionType()) {
+            case WARN -> "WARNED";
+            case SUSPEND -> "SUSPENDED_UNTIL_" + response.expiresAt();
+            case RESTRICT -> "COMMUNITY_RESTRICTED_UNTIL_" + response.expiresAt();
+            default -> throw ModerationException.accountActionTypeNotSupported(response.actionType());
+        };
+    }
+
+    // CB-MOD-IMP-008 ADR-002: only QUESTION/ANSWER carry full body text — same restriction as the
+    // Pending Content Queue (reuses pendingContentTargetTypeUnsupported, MOD-023, no new error code)
+    private static final Set<ReportTargetType> CONTENT_DETAIL_SUPPORTED_TARGET_TYPES =
+            Set.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER);
+
+    // CB-MOD-IMP-008 ADR-001: reads directly via repository.findById() — deliberately does NOT
+    // reuse CommunityQuestionService.getQuestionDetail(), which filters out non-APPROVED content
+    // not owned by the caller and would 404 for a moderator reviewing a PENDING/HIDDEN/LOCKED item.
+    @Override
+    public ModerationContentDetailResponse getContentDetail(
+            ReportTargetType targetType, UUID targetId, Principal principal) {
+        if (!CONTENT_DETAIL_SUPPORTED_TARGET_TYPES.contains(targetType)) {
+            throw ModerationException.pendingContentTargetTypeUnsupported(targetType);
+        }
+
+        ModerationContentDetailResponse response = targetType == ReportTargetType.QUESTION
+                ? buildQuestionDetail(targetId)
+                : buildAnswerDetail(targetId);
+
+        String userId = principal != null ? principal.getName() : null;
+        auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
+                "content-detail-viewed targetType=" + targetType + " targetId=" + targetId);
+
+        return response;
+    }
+
+    private ModerationContentDetailResponse buildQuestionDetail(UUID targetId) {
+        CommunityQuestion question = communityQuestionRepository.findById(targetId)
+                .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.QUESTION));
+
+        // ADR-003: authorId/authorName returned even when the question was posted anonymously —
+        // `anonymous` only gates the public-facing feed/detail views, not this moderator-only endpoint.
+        return new ModerationContentDetailResponse(
+                question.getId(),
+                ReportTargetType.QUESTION,
+                question.getAuthorId(),
+                resolveAuthorName(question.getAuthorId()),
+                question.getTitle(),
+                question.getBody(),
+                question.getStatus().name(),
+                question.isAnonymous(),
+                null,
+                null,
+                question.getCreatedAt(),
+                question.getUpdatedAt());
+    }
+
+    private ModerationContentDetailResponse buildAnswerDetail(UUID targetId) {
+        CommunityAnswer answer = communityAnswerRepository.findById(targetId)
+                .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.ANSWER));
+
+        // Parent question title gives the moderator context for what the answer is responding to.
+        String questionTitle = communityQuestionRepository.findById(answer.getQuestionId())
+                .map(CommunityQuestion::getTitle)
+                .orElse(null);
+
+        return new ModerationContentDetailResponse(
+                answer.getId(),
+                ReportTargetType.ANSWER,
+                answer.getAuthorId(),
+                resolveAuthorName(answer.getAuthorId()),
+                null,
+                answer.getBody(),
+                answer.getStatus().name(),
+                false,
+                answer.getQuestionId(),
+                questionTitle,
+                answer.getCreatedAt(),
+                answer.getUpdatedAt());
+    }
+
+    private String resolveAuthorName(UUID authorId) {
+        return userRepository.findById(authorId).map(User::getName).orElse(null);
+    }
+
+    // CB-MOD-IMP-009 ADR-001: only APPROVE/HIDE/LOCK produce a status that undo can meaningfully
+    // revert (always to PENDING). REQUEST_REVISION already results in PENDING (no-op); WARN/SUSPEND/
+    // RESTRICT are account-level (ADR-004, out of scope); UNDO cannot undo itself (no UNDO-of-UNDO).
+    private static final Set<ModerationActionType> UNDOABLE_ACTION_TYPES =
+            Set.of(ModerationActionType.APPROVE, ModerationActionType.HIDE, ModerationActionType.LOCK);
+
+    // CB-MOD-IMP-009: guard order is fixed and load-bearing (Test-Spec §UNDO-TC-010 pins targetType
+    // before actionType) — not-found -> targetType -> reportId -> actionType-undoable -> most-recent
+    // -> status-match -> mutate. See ADR-001 (always PENDING), ADR-002 (2 guards), ADR-003
+    // (answer_count mirror), ADR-004 (direct actions only), ADR-005 (append-only, new UNDO row).
+    @Override
+    @Transactional
+    public UndoModerationActionResponse undoModerationAction(UUID actionId, Principal principal) {
+        ModerationAction original = moderationActionRepository.findById(actionId)
+                .orElseThrow(() -> ModerationException.moderationActionNotFound(actionId));
+
+        if (original.getTargetType() != ReportTargetType.QUESTION && original.getTargetType() != ReportTargetType.ANSWER) {
+            throw ModerationException.undoTargetTypeUnsupported(original.getTargetType());
+        }
+        if (original.getReportId() != null) {
+            throw ModerationException.undoNotSupportedForReportResolution(actionId);
+        }
+        if (!UNDOABLE_ACTION_TYPES.contains(original.getActionType())) {
+            throw ModerationException.undoActionTypeNotSupported(original.getActionType());
+        }
+
+        ModerationAction mostRecent = moderationActionRepository
+                .findTopByTargetIdAndTargetTypeOrderByActionAtDesc(original.getTargetId(), original.getTargetType())
+                .orElseThrow(() -> ModerationException.moderationActionNotFound(actionId));
+        if (!mostRecent.getId().equals(actionId)) {
+            throw ModerationException.undoNotMostRecentAction(actionId);
+        }
+
+        String resultingStatus = original.getTargetType() == ReportTargetType.QUESTION
+                ? undoQuestionAction(original)
+                : undoAnswerAction(original);
+
+        UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
+        ModerationAction undoAction = ModerationAction.builder()
+                .reportId(null)
+                .targetId(original.getTargetId())
+                .targetType(original.getTargetType())
+                .actionType(ModerationActionType.UNDO)
+                .moderatorUserId(moderatorUserId)
+                .reason("Hoàn tác hành động " + original.getActionType())
+                .actionAt(Instant.now())
+                .build();
+        ModerationAction savedUndoAction = moderationActionRepository.save(undoAction);
+
+        auditService.log(AuditAction.MODERATION_ACTION, moderatorUserId, original.getTargetType().name(),
+                original.getTargetId().toString(), "undo actionId=" + actionId + " originalActionType=" + original.getActionType());
+
+        return new UndoModerationActionResponse(
+                savedUndoAction.getId(),
+                actionId,
+                original.getTargetId(),
+                original.getTargetType(),
+                moderatorUserId,
+                savedUndoAction.getActionAt(),
+                resultingStatus);
+    }
+
+    // ADR-002 guard 2 (status-match) + mutation to PENDING for a QUESTION target.
+    private String undoQuestionAction(ModerationAction original) {
+        CommunityQuestion question = communityQuestionRepository.findById(original.getTargetId())
+                .orElseThrow(() -> ModerationException.targetNotFound(original.getTargetId(), ReportTargetType.QUESTION));
+
+        QuestionStatus expectedCurrentStatus = switch (original.getActionType()) {
+            case APPROVE -> QuestionStatus.APPROVED;
+            case HIDE -> QuestionStatus.HIDDEN;
+            case LOCK -> QuestionStatus.LOCKED;
+            default -> throw ModerationException.undoActionTypeNotSupported(original.getActionType());
+        };
+        if (question.getStatus() != expectedCurrentStatus) {
+            throw ModerationException.undoStatusSuperseded(original.getId());
+        }
+
+        question.setStatus(QuestionStatus.PENDING);
+        communityQuestionRepository.save(question);
+        return QuestionStatus.PENDING.name();
+    }
+
+    // ADR-002 guard 2 (status-match) + mutation to PENDING + ADR-003 answer_count mirror for an
+    // ANSWER target — decrements only when the action being undone was the APPROVE that counted it.
+    private String undoAnswerAction(ModerationAction original) {
+        CommunityAnswer answer = communityAnswerRepository.findById(original.getTargetId())
+                .orElseThrow(() -> ModerationException.targetNotFound(original.getTargetId(), ReportTargetType.ANSWER));
+
+        AnswerStatus expectedCurrentStatus = switch (original.getActionType()) {
+            case APPROVE -> AnswerStatus.APPROVED;
+            case HIDE -> AnswerStatus.HIDDEN;
+            default -> throw ModerationException.undoActionTypeNotSupported(original.getActionType());
+        };
+        if (answer.getStatus() != expectedCurrentStatus) {
+            throw ModerationException.undoStatusSuperseded(original.getId());
+        }
+
+        answer.setStatus(AnswerStatus.PENDING);
+        communityAnswerRepository.save(answer);
+
+        // Mirrors moderateAnswer()'s exact condition (line ~332): only APPROVED<->non-APPROVED
+        // transitions touch the counter.
+        if (expectedCurrentStatus == AnswerStatus.APPROVED) {
+            communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
+        return AnswerStatus.PENDING.name();
     }
 
     private static ModerationActionType mapToActionType(ResolutionOutcome outcome) {
@@ -468,8 +701,10 @@ public class ModerationServiceImpl implements ModerationService {
             case APPROVE -> ModerationActionType.APPROVE;
             case HIDE -> ModerationActionType.HIDE;
             case LOCK -> ModerationActionType.LOCK;
+            case REQUEST_REVISION -> ModerationActionType.REQUEST_REVISION;
             case WARN -> ModerationActionType.WARN;
             case SUSPEND -> ModerationActionType.SUSPEND;
+            case RESTRICT -> ModerationActionType.RESTRICT;
             case DISMISS -> throw new IllegalArgumentException("DISMISS has no ModerationActionType mapping");
         };
     }

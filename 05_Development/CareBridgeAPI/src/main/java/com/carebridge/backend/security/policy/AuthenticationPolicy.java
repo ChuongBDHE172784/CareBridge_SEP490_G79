@@ -41,7 +41,10 @@ public class AuthenticationPolicy {
     }
 
     public Role resolveSelfRegistrationRole(Role requestedRole) {
-        Role role = requestedRole == null ? Role.MOTHER : requestedRole;
+        if (requestedRole == null) {
+            return null;
+        }
+        Role role = requestedRole;
         if (role == Role.MOTHER || role == Role.FAMILY || role == Role.EXPERT) {
             return role;
         }

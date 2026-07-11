@@ -78,6 +78,9 @@ QODER.md
 .cursorrules
 .windsurfrules
 .opencode.json
+.serena/
+.venv-headroom/
+.codex/
 
 # Local Claude skills (untracked - keep local only)
 .claude/skills/ui-skill-system/

@@ -101,4 +101,41 @@ class ModerationControllerSecurityTest {
         mockMvc.perform(get(HISTORY_URL))
                 .andExpect(status().isForbidden());
     }
+
+    private static final String CONTENT_DETAIL_URL = "/api/v1/admin/moderation/content/QUESTION/"
+            + java.util.UUID.fromString("22222222-0000-0000-0000-000000000001");
+
+    // DETAIL-TC-009: ROLE_MOTHER cannot access content detail → 403 (CWE-862)
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void getContentDetail_asMotherRole_shouldReturn403() throws Exception {
+        mockMvc.perform(get(CONTENT_DETAIL_URL))
+                .andExpect(status().isForbidden());
+    }
+
+    // DETAIL-TC-010: no JWT → 401
+    @Test
+    void getContentDetail_withoutAuthentication_shouldReturn401() throws Exception {
+        mockMvc.perform(get(CONTENT_DETAIL_URL))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private static final String UNDO_URL = "/api/v1/admin/moderation/actions/"
+            + java.util.UUID.fromString("33333333-0000-0000-0000-000000000001") + "/undo";
+
+    // UNDO-TC-015: ROLE_MOTHER cannot undo a moderation action → 403 (CWE-862)
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void undoModerationAction_asMotherRole_shouldReturn403() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(UNDO_URL)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    // UNDO-TC-016: no JWT → 401
+    @Test
+    void undoModerationAction_withoutAuthentication_shouldReturn401() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(UNDO_URL))
+                .andExpect(status().isUnauthorized());
+    }
 }

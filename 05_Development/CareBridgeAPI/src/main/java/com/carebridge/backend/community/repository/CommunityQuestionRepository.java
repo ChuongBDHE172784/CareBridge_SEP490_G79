@@ -22,6 +22,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 
+    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
+    Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
+
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING questions directly,
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);
@@ -69,6 +72,11 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Modifying
     @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount - 1 WHERE q.id = :questionId AND q.answerCount > 0")
     void decrementAnswerCount(@Param("questionId") UUID questionId);
+
+    // Moderation approve: an answer entering APPROVED status becomes visible in the count
+    @Modifying
+    @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount + 1 WHERE q.id = :questionId")
+    void incrementAnswerCount(@Param("questionId") UUID questionId);
 
     // UC-111: dashboard aggregation — question count grouped by status
     @Query("SELECT q.status, COUNT(q) FROM CommunityQuestion q GROUP BY q.status")

@@ -1,11 +1,17 @@
-export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT';
+export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | 'EXPERT' | 'USER';
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
-export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'WARN' | 'SUSPEND';
-export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'WARN' | 'SUSPEND';
+export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
+export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'UNDO';
+
+// actionType values a moderator can undo from the "Đã xử lý" tab — REQUEST_REVISION/WARN/SUSPEND/
+// RESTRICT/UNDO are excluded server-side too (CB-MOD-IMP-009 ADR-001/ADR-004, MOD-028/MOD-026).
+export const UNDOABLE_ACTION_TYPES: ReadonlySet<ModerationActionType> = new Set(['APPROVE', 'HIDE', 'LOCK']);
 
 export interface ModerationQueueItem {
   id: string;
+  targetId: string | null;
   targetType: ReportTargetType;
+  reporterUserId: string | null;
   contentPreview: string;
   reportCount: number;
   reportedAt: string;
@@ -37,7 +43,7 @@ export interface PendingContentQueuePage {
   size: number;
 }
 
-// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER, read from moderation_actions
+// CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK/REQUEST_REVISION actions on QUESTION/ANSWER, read from moderation_actions
 export interface ModerationHistoryItem {
   actionId: string;
   targetId: string;
@@ -60,8 +66,11 @@ export const ACTION_TYPE_LABELS: Record<ModerationActionType, string> = {
   APPROVE: 'Duyệt',
   HIDE: 'Ẩn',
   LOCK: 'Khoá',
+  REQUEST_REVISION: 'Yêu cầu sửa',
   WARN: 'Cảnh cáo',
   SUSPEND: 'Đình chỉ',
+  RESTRICT: 'Hạn chế đăng',
+  UNDO: 'Hoàn tác',
 };
 
 export interface ResolveReportResult {
@@ -72,6 +81,34 @@ export interface ResolveReportResult {
   actionId: string | null;
   actionType: ModerationActionType | null;
   resultingStatus: string | null;
+}
+
+// CB-MOD-IMP-008: GET /content/{targetType}/{targetId} response — full body, not truncated like
+// contentPreview elsewhere in this file (ContentPreviewService caps that at 200 chars).
+export interface ModerationContentDetail {
+  targetId: string;
+  targetType: ReportTargetType;
+  authorId: string | null;
+  authorName: string | null;
+  title: string | null;
+  body: string;
+  status: string;
+  anonymous: boolean;
+  questionId: string | null;
+  questionTitle: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+// CB-MOD-IMP-009: POST /actions/{actionId}/undo response — resultingStatus is always "PENDING".
+export interface UndoModerationActionResult {
+  undoActionId: string;
+  originalActionId: string;
+  targetId: string;
+  targetType: ReportTargetType;
+  moderatorUserId: string;
+  actionAt: string;
+  resultingStatus: string;
 }
 
 // UC-100's POST /actions response — used directly by the Pending Content queue (no ContentReport)
@@ -91,6 +128,8 @@ export const TARGET_TYPE_LABELS: Record<ReportTargetType, string> = {
   ANSWER: 'Câu trả lời cộng đồng',
   CONTENT: 'Nội dung thư viện',
   ACCOUNT: 'Tài khoản',
+  EXPERT: 'Chuyên gia',
+  USER: 'Người dùng',
 };
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
@@ -99,8 +138,10 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: 'Đã bỏ qua',
 };
 
-// Only QUESTION/ANSWER targets accept HIDE via resolveReport — CONTENT/ACCOUNT reports
-// throw contentActionNotSupportedForReport / accountActionNotAvailable on the backend.
 export function canHideTarget(targetType: ReportTargetType): boolean {
   return targetType === 'QUESTION' || targetType === 'ANSWER';
+}
+
+export function canEnforceAccount(targetType: ReportTargetType): boolean {
+  return targetType === 'QUESTION' || targetType === 'ANSWER' || targetType === 'USER' || targetType === 'EXPERT' || targetType === 'ACCOUNT';
 }

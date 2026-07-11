@@ -2,33 +2,28 @@ package com.carebridge.backend.expertverification.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.*;
-import java.time.LocalDate;
+import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class SubmitCredentialRequest {
 
-    @NotBlank(message = "credentialType must not be blank")
-    @Size(max = 50)
-    private String credentialType;
+ @NotBlank(message = "credentialType must not be blank")
+ @Size(max = 50)
+ private String credentialType;
 
-    @Size(max = 100)
-    private String credentialNumber;
+ @Size(max = 100)
+ private String credentialNumber;
 
-    @Size(max = 200)
-    private String issuer;
+ @Size(max = 200)
+ private String issuer;
 
-    private LocalDate issuedDate;
+ private String issuedDate;
 
-    private LocalDate expiryDate;
+ private String expiryDate;
 
-    @Size(max = 500)
-    private String fileUrl;
+ @Size(max = 2000)
+ private String reviewNote;
 
-    @Size(max = 2000)
-    private String reviewNote;
+ private MultipartFile file;
 }

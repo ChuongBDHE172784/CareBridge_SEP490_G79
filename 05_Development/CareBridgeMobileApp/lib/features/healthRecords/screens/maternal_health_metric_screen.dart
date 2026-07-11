@@ -6,7 +6,7 @@ import '../../../core/network/api_client.dart';
 
 /// CB-157 — Maternal Health Metric Detail (UC-187, UC-188)
 /// Shows full detail for a single health metric: value card, detail table,
-/// edit/delete actions.
+/// mini bar chart trend, edit/delete actions.
 /// Calls GET /api/v1/health-metrics/{metricId} and DELETE /api/v1/health-metrics/{metricId}.
 class MaternalHealthMetricScreen extends StatefulWidget {
   final String metricId;
@@ -56,13 +56,19 @@ class _MaternalHealthMetricScreenState
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final m = await _service.getMetricDetail(widget.metricId);
       if (mounted) {
-        setState(() { _metric = m; _loading = false; });
+        setState(() {
+          _metric = m;
+          _loading = false;
+        });
       }
-    } on ApiException catch (e) {
+    } on ApiException {
       // Fallback mock for development
       if (mounted) {
         setState(() {
@@ -76,7 +82,9 @@ class _MaternalHealthMetricScreenState
             unit: isBp ? 'mmHg' : 'kg',
             measuredAt: DateTime.now().subtract(const Duration(hours: 2)),
             sourceType: SourceType.manual,
-            note: isBp ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.' : 'Cân nặng tăng nhẹ, ổn định.',
+            note: isBp
+                ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.'
+                : 'Cân nặng tăng nhẹ, ổn định.',
             createdAt: DateTime.now(),
           );
           _loading = false;
@@ -84,7 +92,10 @@ class _MaternalHealthMetricScreenState
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+        setState(() {
+          _error = 'Lỗi kết nối.';
+          _loading = false;
+        });
       }
     }
   }
@@ -94,10 +105,14 @@ class _MaternalHealthMetricScreenState
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa chỉ số?',
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: const Text('Hành động này không thể khôi phục.',
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 14)),
+        title: const Text(
+          'Xóa chỉ số?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Hành động này không thể khôi phục.',
+          style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -105,7 +120,9 @@ class _MaternalHealthMetricScreenState
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
+            ),
             child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend')),
           ),
         ],
@@ -148,7 +165,11 @@ class _MaternalHealthMetricScreenState
     final h = dt.hour.toString().padLeft(2, '0');
     final mi = dt.minute.toString().padLeft(2, '0');
     final ampm = dt.hour < 12 ? 'AM' : 'PM';
-    final hour12 = dt.hour == 0 ? 12 : dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    final hour12 = dt.hour == 0
+        ? 12
+        : dt.hour > 12
+        ? dt.hour - 12
+        : dt.hour;
     return '${hour12.toString().padLeft(2, '0')}:$mi $ampm';
   }
 
@@ -158,10 +179,12 @@ class _MaternalHealthMetricScreenState
       backgroundColor: _canvas,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : _error != null
-                ? _buildErrorState()
-                : _buildContent(_metric!),
+            ? _buildErrorState()
+            : _buildContent(_metric!),
       ),
     );
   }
@@ -173,11 +196,21 @@ class _MaternalHealthMetricScreenState
         children: [
           const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          Text(
+            _error!,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: _load,
-            child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+            child: const Text(
+              'Thử lại',
+              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            ),
           ),
         ],
       ),
@@ -197,6 +230,8 @@ class _MaternalHealthMetricScreenState
                 _buildMetricCard(m),
                 const SizedBox(height: 8),
                 _buildDetailsCard(m),
+                const SizedBox(height: 8),
+                _buildTrendCard(),
                 if (!readOnly) ...[
                   const SizedBox(height: 24),
                   _buildActionButtons(m),
@@ -257,7 +292,11 @@ class _MaternalHealthMetricScreenState
                   color: _primaryContainer.withAlpha(51),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.monitor_weight, color: _primary, size: 20),
+                child: const Icon(
+                  Icons.monitor_weight,
+                  color: _primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -270,6 +309,14 @@ class _MaternalHealthMetricScreenState
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
                       color: _onSurface,
+                    ),
+                  ),
+                  Text(
+                    'Hôm nay, ${_formatTime(m.measuredAt)}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -304,6 +351,8 @@ class _MaternalHealthMetricScreenState
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _TrendBadge(),
         ],
       ),
     );
@@ -342,21 +391,54 @@ class _MaternalHealthMetricScreenState
             value: m.sourceType.displayLabel,
             showDivider: m.note != null && m.note!.isNotEmpty,
           ),
-          if (m.note != null && m.note!.isNotEmpty)
-            _NoteRow(note: m.note!),
+          if (m.note != null && m.note!.isNotEmpty) _NoteRow(note: m.note!),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons(HealthMetricDetail m) {
+  Widget _buildTrendCard() {
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Xu hướng (Tháng này)',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              const Icon(Icons.insights_outlined, color: _primary, size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // TODO: wire to GET /api/v1/health-metrics?journeyId=X&type=X&period=month (UC-187)
+          SizedBox(
+            height: 128,
+            child: CustomPaint(
+              painter: _BarChartPainter(),
+              size: Size.infinite,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(HealthMetricDetail metric) {
     return Row(
       children: [
         Expanded(
           child: SizedBox(
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: () => _openEdit(m),
+              onPressed: () => _openEdit(metric),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primary,
                 side: const BorderSide(color: _primary, width: 2),
@@ -401,6 +483,7 @@ class _MaternalHealthMetricScreenState
     );
   }
 }
+
 // ─── Sub-widgets ──────────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
@@ -425,6 +508,38 @@ class _Card extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _TrendBadge extends StatelessWidget {
+  const _TrendBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE2D9),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.trending_up, size: 16, color: Color(0xFF845143)),
+          SizedBox(width: 4),
+          Text(
+            '+0.5kg so với tuần trước',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.06,
+              color: Color(0xFF845143),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -475,8 +590,7 @@ class _DetailRow extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider)
-          const Divider(height: 1, color: Color(0xFFFADCD3)),
+        if (showDivider) const Divider(height: 1, color: Color(0xFFFADCD3)),
       ],
     );
   }
@@ -532,4 +646,102 @@ class _NoteRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// Simple bar chart painter (4 bars, last is active/current month)
+class _BarChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const barHeights = [0.40, 0.45, 0.50, 0.65];
+    const labels = ['T1', 'T2', 'T3', 'HT'];
+    final barCount = barHeights.length;
+    final totalGap = size.width * 0.35;
+    final barWidth = (size.width - totalGap) / barCount;
+    final gap = totalGap / (barCount + 1);
+    const bottomPad = 24.0;
+    final chartHeight = size.height - bottomPad;
+
+    final inactivePaint = Paint()
+      ..color = const Color(0xFFFADCD3)
+      ..style = PaintingStyle.fill;
+    final activePaint = Paint()
+      ..color = const Color(0xFFC98C7B)
+      ..style = PaintingStyle.fill;
+
+    final textStyle = const TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 10,
+      color: Color(0xFF524440),
+    );
+
+    for (int i = 0; i < barCount; i++) {
+      final x = gap * (i + 1) + barWidth * i;
+      final barH = chartHeight * barHeights[i];
+      final rect = RRect.fromRectAndCorners(
+        Rect.fromLTWH(x, chartHeight - barH, barWidth, barH),
+        topLeft: const Radius.circular(4),
+        topRight: const Radius.circular(4),
+      );
+      canvas.drawRRect(rect, i == barCount - 1 ? activePaint : inactivePaint);
+
+      // Label
+      final tp = TextPainter(
+        text: TextSpan(
+          text: labels[i],
+          style: textStyle.copyWith(
+            fontWeight: i == barCount - 1 ? FontWeight.bold : FontWeight.normal,
+            color: i == barCount - 1
+                ? const Color(0xFF845143)
+                : const Color(0xFF524440),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(x + (barWidth - tp.width) / 2, chartHeight + 6));
+
+      // Tooltip on last bar
+      if (i == barCount - 1) {
+        final tooltipPaint = Paint()
+          ..color = const Color(0xFF271812)
+          ..style = PaintingStyle.fill;
+        final tooltipY = chartHeight - barH - 28;
+        const tooltipText = '62.5';
+        final ttp = TextPainter(
+          text: TextSpan(
+            text: tooltipText,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 10,
+              color: Colors.white,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final tooltipRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x - 4, tooltipY, ttp.width + 16, 20),
+          const Radius.circular(6),
+        );
+        canvas.drawRRect(tooltipRect, tooltipPaint);
+        ttp.paint(canvas, Offset(x + 4, tooltipY + 4));
+      }
+    }
+
+    // Grid lines
+    final gridPaint = Paint()
+      ..color = const Color(0xFFFADCD3)
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(0, chartHeight * 0.35),
+      Offset(size.width, chartHeight * 0.35),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(0, chartHeight),
+      Offset(size.width, chartHeight),
+      gridPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

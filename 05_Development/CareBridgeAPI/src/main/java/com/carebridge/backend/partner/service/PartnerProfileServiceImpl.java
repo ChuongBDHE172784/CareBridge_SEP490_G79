@@ -4,6 +4,8 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.partner.dto.request.CreatePartnerProfileRequest;
 import com.carebridge.backend.partner.dto.response.CreatePartnerProfileResponse;
+import com.carebridge.backend.partner.dto.request.UpdatePartnerProfileRequest;
+import com.carebridge.backend.partner.dto.response.UpdatePartnerProfileResponse;
 import com.carebridge.backend.partner.entity.PartnerOrganization;
 import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.partner.mapper.PartnerProfileMapper;
@@ -53,5 +55,37 @@ public class PartnerProfileServiceImpl implements PartnerProfileService {
                 "created");
 
         return partnerProfileMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public UpdatePartnerProfileResponse updateProfile(UpdatePartnerProfileRequest request, java.util.UUID actorId) {
+        PartnerOrganization entity = partnerOrganizationRepository.findByRepresentativeUserId(actorId)
+                .orElseThrow(PartnerException::profileNotFound);
+
+        if (entity.getStatus() == com.carebridge.backend.partner.entity.OrganizationStatus.SUSPENDED
+                || entity.getStatus() == com.carebridge.backend.partner.entity.OrganizationStatus.REJECTED) {
+            throw PartnerException.profileNotEditable();
+        }
+
+        partnerProfileMapper.updateEntity(request, entity);
+        PartnerOrganization saved = partnerOrganizationRepository.save(entity);
+
+        auditService.log(
+                AuditAction.PARTNER_PROFILE_UPDATED,
+                actorId,
+                "PartnerOrganization",
+                saved.getId().toString(),
+                "updated");
+
+        return partnerProfileMapper.toUpdateResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UpdatePartnerProfileResponse getOwnProfile(java.util.UUID actorId) {
+        return partnerOrganizationRepository.findByRepresentativeUserId(actorId)
+                .map(partnerProfileMapper::toUpdateResponse)
+                .orElseThrow(PartnerException::profileNotFound);
     }
 }

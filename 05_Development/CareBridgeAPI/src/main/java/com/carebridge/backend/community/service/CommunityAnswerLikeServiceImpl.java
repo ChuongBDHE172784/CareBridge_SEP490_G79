@@ -5,7 +5,7 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.dto.response.LikeToggleResponse;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.CommunityAnswerLike;
-import com.carebridge.backend.community.exception.AnswerNotFoundException;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +21,12 @@ public class CommunityAnswerLikeServiceImpl implements CommunityAnswerLikeServic
     private final CommunityAnswerLikeRepository likeRepository;
     private final CommunityAnswerRepository answerRepository;
     private final AuditService auditService;
+    private final CommunitySafetyPolicy communitySafetyPolicy;
 
     @Override
     @Transactional
     public LikeToggleResponse toggleLike(UUID userId, UUID answerId) {
-        CommunityAnswer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
+        CommunityAnswer answer = communitySafetyPolicy.requireVisibleAnswer(userId, answerId);
 
         if (likeRepository.existsByUserIdAndAnswerId(userId, answerId)) {
             CommunityAnswerLike like = likeRepository.findByUserIdAndAnswerId(userId, answerId)

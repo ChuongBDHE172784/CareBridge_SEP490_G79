@@ -27,7 +27,7 @@ public class JourneyController {
 
     // UC22: Create mother journey
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CreateJourneyResponse>> createJourney(
             @Valid @RequestBody CreateJourneyRequest request,
             Principal principal) {

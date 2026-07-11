@@ -93,7 +93,7 @@ public class ModerationException extends RuntimeException {
     public static ModerationException accountActionNotAvailable(ModerationActionType actionType) {
         return new ModerationException(
                 "MOD-013",
-                "Account action " + actionType + " is not yet available — pending UC-102",
+                "Account action " + actionType + " is not supported for this report target",
                 HttpStatus.BAD_REQUEST);
     }
 
@@ -123,6 +123,13 @@ public class ModerationException extends RuntimeException {
         return new ModerationException(
                 "MOD-018",
                 "expiresAt is required and must be in the future for action type SUSPEND",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException restrictExpiresAtInvalid() {
+        return new ModerationException(
+                "MOD-024",
+                "expiresAt is required and must be in the future for action type RESTRICT",
                 HttpStatus.BAD_REQUEST);
     }
 
@@ -162,5 +169,48 @@ public class ModerationException extends RuntimeException {
                 "MOD-023",
                 "targetType must be QUESTION or ANSWER for pending-content queue, got " + targetType,
                 HttpStatus.BAD_REQUEST);
+    }
+
+    // CB-MOD-IMP-009 (Undo Moderation Action, §10)
+    public static ModerationException moderationActionNotFound(java.util.UUID actionId) {
+        return new ModerationException(
+                "MOD-025",
+                "Moderation action " + actionId + " not found",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ModerationException undoTargetTypeUnsupported(ReportTargetType targetType) {
+        return new ModerationException(
+                "MOD-026",
+                "Undo is only supported for targetType QUESTION or ANSWER, got " + targetType,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException undoNotSupportedForReportResolution(java.util.UUID actionId) {
+        return new ModerationException(
+                "MOD-027",
+                "Action " + actionId + " originated from a report resolution — undo is not supported for that path",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException undoActionTypeNotSupported(ModerationActionType actionType) {
+        return new ModerationException(
+                "MOD-028",
+                "Action type " + actionType + " cannot be undone",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException undoNotMostRecentAction(java.util.UUID actionId) {
+        return new ModerationException(
+                "MOD-029",
+                "Action " + actionId + " is not the most recent action for this target — a newer action already exists",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ModerationException undoStatusSuperseded(java.util.UUID actionId) {
+        return new ModerationException(
+                "MOD-030",
+                "Current status no longer matches the result of action " + actionId + " — it may have been superseded",
+                HttpStatus.CONFLICT);
     }
 }

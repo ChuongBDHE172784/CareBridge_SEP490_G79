@@ -78,4 +78,12 @@ public class ContentException extends RuntimeException {
                 "Reason required for REJECT",
                 HttpStatus.BAD_REQUEST);
     }
+
+    public static ContentException notCurrentlyPublished() {
+        return new ContentException("CNT-010", "Content item is not currently published", HttpStatus.CONFLICT);
+    }
+
+    public static ContentException unpublishReasonRequired() {
+        return new ContentException("CNT-011", "Reason required for unpublish", HttpStatus.BAD_REQUEST);
+    }
 }

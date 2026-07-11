@@ -21,9 +21,11 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -56,8 +58,16 @@ class CommunityFeedServiceImplTest {
     @Mock
     private CommunityQuestionLikeRepository likeRepository;
 
+    @Mock
+    private CommunityAuthorDisplayResolver authorDisplayResolver;
+
     @InjectMocks
     private CommunityFeedServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        when(authorDisplayResolver.resolveBatch(any())).thenReturn(Map.of());
+    }
 
     private static final UUID TOPIC_A = UUID.fromString("00000000-0000-0000-0002-000000000001");
     private static final UUID CURRENT_USER = UUID.fromString("00000000-0000-0000-0000-000000000009");
@@ -141,6 +151,30 @@ class CommunityFeedServiceImplTest {
 
         org.mockito.Mockito.verify(questionRepository)
                 .findFeedVisible(eq(null), eq(CURRENT_USER), any());
+    }
+
+    // Regression test: the feed must pass the resolved author display name to the mapper instead
+    // of hardcoding null (which made every feed item show the generic "Người dùng" fallback).
+    @Test
+    void getFeed_authorHasDisplayName_passesResolvedNameToMapper() {
+        Instant t1 = Instant.now();
+        CommunityQuestion q1 = makeApprovedQuestion(t1, false);
+        Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
+
+        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+                .thenReturn(pageResult);
+        when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
+        when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
+        when(likeRepository.findLikedQuestionIds(any(), any())).thenReturn(Set.of());
+        when(topicRepository.findAllById(any())).thenReturn(List.of());
+        when(authorDisplayResolver.resolveBatch(any())).thenReturn(Map.of(q1.getAuthorId(), "Nguyễn Thị A"));
+        when(feedMapper.toFeedItem(eq(q1), any(), eq("Nguyễn Thị A"), eq(false), eq(false), eq(false)))
+                .thenReturn(makeFeedItem(q1.getId(), t1));
+
+        service.getFeed(null, CURRENT_USER, 0, 20);
+
+        org.mockito.Mockito.verify(feedMapper)
+                .toFeedItem(eq(q1), any(), eq("Nguyễn Thị A"), eq(false), eq(false), eq(false));
     }
 
     // COM198-TC-006: Empty results → no exception, empty content

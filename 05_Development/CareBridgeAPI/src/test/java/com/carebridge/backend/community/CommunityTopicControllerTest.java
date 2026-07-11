@@ -172,7 +172,7 @@ class CommunityTopicControllerTest {
                 .content("{\"isHidden\":true}"))
                 .andExpect(status().isForbidden());
 
-        verify(topicService, never()).updateTopic(any(), any());
+        verify(topicService, never()).updateTopic(any(), any(), any());
     }
 
     // PATCH — MODERATOR ẩn topic → 200
@@ -181,7 +181,8 @@ class CommunityTopicControllerTest {
     void updateTopic_asModerator_shouldReturn200() throws Exception {
         UUID topicId = UUID.randomUUID();
         CommunityTopicResponse updated = makeTopic(topicId, "Thai kỳ", true);
-        when(topicService.updateTopic(eq(topicId), any())).thenReturn(updated);
+        when(topicService.updateTopic(eq(topicId), eq(UUID.fromString("00000000-0000-0000-0000-000000000001")), any()))
+                .thenReturn(updated);
 
         mockMvc.perform(patch(BASE_URL + "/" + topicId).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)

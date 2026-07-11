@@ -63,6 +63,7 @@ class VerifyOtpIntegrationTest extends AbstractPostgresIntegrationTest {
         String email = "int.verify@test.com";
 
         RegisterRequest register = new RegisterRequest();
+        register.setName("Test User");
         register.setEmail(email);
         register.setPhone(null);
         register.setPassword("Test@1234");

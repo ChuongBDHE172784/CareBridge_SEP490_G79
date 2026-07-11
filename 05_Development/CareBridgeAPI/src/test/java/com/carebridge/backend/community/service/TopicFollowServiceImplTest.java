@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.service;
 
+import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.dto.response.TopicFollowResponse;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.UserTopicFollow;
@@ -27,6 +28,7 @@ class TopicFollowServiceImplTest {
 
     @Mock UserTopicFollowRepository followRepository;
     @Mock CommunityTopicRepository topicRepository;
+    @Mock AuditService auditService;
     @InjectMocks TopicFollowServiceImpl followService;
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

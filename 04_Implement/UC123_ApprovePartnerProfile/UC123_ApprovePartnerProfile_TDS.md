@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-PTR-IMP-006`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-07-01`                            |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Partially Implemented`                 |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -22,6 +22,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | ------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-123 Approve Partner Profile (Status=Draft)    |
+| 2026-07-11 | AI Agent — Amelia   | Phase 3 implementation — 11/12 tests PASS; PostgreSQL atomicity pending          |
 
 ---
 

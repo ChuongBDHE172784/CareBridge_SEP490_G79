@@ -1,13 +1,26 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
-import { TARGET_TYPE_LABELS, canHideTarget } from '../models/moderation';
+import { TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
+import type { ResolutionOutcome } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
+
+// Outcomes that mutate content/account state get a confirmation step before firing —
+// APPROVE and DISMISS stay immediate since they're non-destructive.
+const CONFIRM_CONFIG: Partial<Record<ResolutionOutcome, { title: string; icon: string; tone: 'default' | 'danger' }>> = {
+  HIDE: { title: 'Ẩn/xóa nội dung này?', icon: 'visibility_off', tone: 'danger' },
+  LOCK: { title: 'Khóa thảo luận này?', icon: 'lock', tone: 'default' },
+  REQUEST_REVISION: { title: 'Yêu cầu tác giả chỉnh sửa?', icon: 'edit_note', tone: 'default' },
+  WARN: { title: 'Cảnh cáo người dùng này?', icon: 'warning', tone: 'default' },
+  RESTRICT: { title: 'Hạn chế đăng bài 7 ngày?', icon: 'speaker_notes_off', tone: 'danger' },
+  SUSPEND: { title: 'Đình chỉ tài khoản 7 ngày?', icon: 'person_off', tone: 'danger' },
+};
 
 export default function ContentReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>();
@@ -18,6 +31,7 @@ export default function ContentReportDetailPage() {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [confirmingOutcome, setConfirmingOutcome] = useState<ResolutionOutcome | null>(null);
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
@@ -41,16 +55,36 @@ export default function ContentReportDetailPage() {
 
   useEffect(() => { loadItem(); }, [loadItem]);
 
-  const handleAction = async (outcome: 'APPROVE' | 'HIDE' | 'DISMISS') => {
+  // Outcomes in CONFIRM_CONFIG open a ConfirmDialog first (misclick protection on destructive
+  // actions); the rest (APPROVE/DISMISS) execute immediately as before.
+  const handleAction = (outcome: ResolutionOutcome) => {
     if (!item) return;
+    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT'].includes(outcome) && !reason.trim()) {
+      setActionError('Cần nhập ghi chú/lý do cho hành động này.');
+      return;
+    }
+    setActionError('');
+    if (CONFIRM_CONFIG[outcome]) {
+      setConfirmingOutcome(outcome);
+      return;
+    }
+    void executeAction(outcome);
+  };
+
+  const executeAction = async (outcome: ResolutionOutcome) => {
+    if (!item) return;
+    const expiresAt = outcome === 'SUSPEND' || outcome === 'RESTRICT'
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
     setSubmitting(outcome);
     setActionError('');
     try {
-      await resolveReport(item.id, outcome, reason || undefined);
+      await resolveReport(item.id, outcome, reason || undefined, expiresAt);
       navigate('/moderator/reports');
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Xử lý thất bại. Vui lòng thử lại.');
+      setConfirmingOutcome(null);
     } finally {
       setSubmitting(null);
     }
@@ -136,8 +170,8 @@ export default function ContentReportDetailPage() {
                     {submitting === 'APPROVE' ? 'Đang xử lý...' : 'Duyệt nội dung'}
                   </button>
 
-                  <button
-                    onClick={() => handleAction('HIDE')}
+	                  <button
+	                    onClick={() => handleAction('HIDE')}
                     disabled={!canHideTarget(item.targetType) || submitting !== null}
                     title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ xoá cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Xoá khỏi hệ thống (thực thi qua outcome HIDE)'}
                     className="w-full py-3.5 mb-2.5 rounded-2xl bg-error text-on-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -153,10 +187,60 @@ export default function ContentReportDetailPage() {
                     className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <span className="material-symbols-outlined text-lg">visibility_off</span>
-                    Ẩn nội dung
-                  </button>
+	                    Ẩn nội dung
+	                  </button>
 
-                  <button
+		                  <button
+		                    onClick={() => handleAction('LOCK')}
+	                    disabled={item.targetType !== 'QUESTION' || submitting !== null}
+	                    title={item.targetType !== 'QUESTION' ? 'Chỉ câu hỏi cộng đồng hỗ trợ khóa thảo luận' : 'Khóa câu hỏi và đóng báo cáo'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-highest border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">lock</span>
+		                    {submitting === 'LOCK' ? 'Đang xử lý...' : 'Khóa thảo luận'}
+		                  </button>
+
+		                  <button
+		                    onClick={() => handleAction('REQUEST_REVISION')}
+		                    disabled={!canHideTarget(item.targetType) || submitting !== null}
+		                    title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ yêu cầu sửa cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Yêu cầu tác giả sửa lại; nội dung giữ/chuyển về trạng thái PENDING'}
+		                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-high border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+		                  >
+		                    <span className="material-symbols-outlined text-lg">edit_note</span>
+		                    {submitting === 'REQUEST_REVISION' ? 'Đang xử lý...' : 'Yêu cầu sửa'}
+		                  </button>
+
+		                  <button
+	                    onClick={() => handleAction('WARN')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Cảnh cáo tài khoản liên quan và đóng báo cáo'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">warning</span>
+	                    {submitting === 'WARN' ? 'Đang xử lý...' : 'Cảnh cáo người dùng'}
+	                  </button>
+
+	                  <button
+	                    onClick={() => handleAction('RESTRICT')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Hạn chế đăng cộng đồng trong 7 ngày'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">speaker_notes_off</span>
+	                    {submitting === 'RESTRICT' ? 'Đang xử lý...' : 'Hạn chế đăng 7 ngày'}
+	                  </button>
+
+	                  <button
+	                    onClick={() => handleAction('SUSPEND')}
+	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
+	                    className="w-full py-3 mb-2.5 rounded-2xl bg-error-container text-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                  >
+	                    <span className="material-symbols-outlined text-lg">person_off</span>
+	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
+	                  </button>
+
+	                  <button
                     onClick={() => handleAction('DISMISS')}
                     disabled={submitting !== null}
                     title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"
@@ -201,6 +285,19 @@ export default function ContentReportDetailPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmingOutcome !== null}
+        title={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.title : ''}
+        description={reason.trim() ? `Ghi chú: "${reason.trim()}"` : undefined}
+        icon={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.icon : 'help'}
+        tone={confirmingOutcome ? CONFIRM_CONFIG[confirmingOutcome]!.tone : 'default'}
+        confirmLabel="Xác nhận"
+        submitting={confirmingOutcome !== null && submitting === confirmingOutcome}
+        errorText={confirmingOutcome !== null ? actionError : ''}
+        onConfirm={() => confirmingOutcome && executeAction(confirmingOutcome)}
+        onCancel={() => setConfirmingOutcome(null)}
+      />
     </div>
   );
 }

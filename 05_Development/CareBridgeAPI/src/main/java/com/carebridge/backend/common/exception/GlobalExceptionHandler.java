@@ -110,7 +110,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex, HttpServletRequest request) {
         logger.error("Validation exception: {}", ex.getMessage(), ex);
-        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), request);
+        return error(HttpStatus.BAD_REQUEST, ex.getCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)

@@ -1,5 +1,7 @@
 package com.carebridge.backend.community.service;
 
+import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.dto.response.TopicFollowResponse;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.UserTopicFollow;
@@ -20,6 +22,7 @@ public class TopicFollowServiceImpl implements TopicFollowService {
 
     private final UserTopicFollowRepository followRepository;
     private final CommunityTopicRepository topicRepository;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -35,10 +38,14 @@ public class TopicFollowServiceImpl implements TopicFollowService {
 
         if (existing.isPresent()) {
             followRepository.delete(existing.get());
+            auditService.log(AuditAction.COMMUNITY_PROFILE_UPDATED, userId,
+                    "CommunityTopicFollow", topicId.toString(), "unfollowed");
             return TopicFollowResponse.builder().topicId(topicId).followed(false).build();
         }
 
         followRepository.save(UserTopicFollow.builder().userId(userId).topicId(topicId).build());
+        auditService.log(AuditAction.COMMUNITY_PROFILE_UPDATED, userId,
+                "CommunityTopicFollow", topicId.toString(), "followed");
         return TopicFollowResponse.builder().topicId(topicId).followed(true).build();
     }
 }

@@ -14,10 +14,7 @@ import 'edit_question_screen.dart';
 class QuestionDetailScreen extends StatefulWidget {
   final String questionId;
 
-  const QuestionDetailScreen({
-    super.key,
-    required this.questionId,
-  });
+  const QuestionDetailScreen({super.key, required this.questionId});
 
   @override
   State<QuestionDetailScreen> createState() => _QuestionDetailScreenState();
@@ -30,7 +27,6 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   static const _surface = Colors.white;
   static const _surfaceContainerHigh = Color(0xFFFFE2D9);
   static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
@@ -123,7 +119,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xóa câu hỏi'),
-        content: const Text('Bạn có chắc muốn xóa câu hỏi này? Hành động này không thể hoàn tác.'),
+        content: const Text(
+          'Bạn có chắc muốn xóa câu hỏi này? Hành động này không thể hoàn tác.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
           TextButton(
@@ -139,9 +137,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể xóa câu hỏi: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể xóa câu hỏi: $e')));
       }
     }
   }
@@ -169,7 +165,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               ),
               CheckboxListTile(
                 value: isPersonalExperience,
-                onChanged: (v) => setDialogState(() => isPersonalExperience = v ?? false),
+                onChanged: (v) =>
+                    setDialogState(() => isPersonalExperience = v ?? false),
                 title: const Text('Đây là kinh nghiệm cá nhân'),
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
@@ -185,8 +182,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     );
     if (saved != true) return;
     try {
-      await _service.editAnswer(widget.questionId, answer.id,
-          body: controller.text, isPersonalExperience: isPersonalExperience);
+      await _service.editAnswer(
+        widget.questionId,
+        answer.id,
+        body: controller.text,
+        isPersonalExperience: isPersonalExperience,
+      );
       _loadDetail();
     } catch (e) {
       if (mounted) {
@@ -253,6 +254,84 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     }
   }
 
+  Future<void> _reportTarget({
+    required String targetType,
+    required String targetId,
+  }) async {
+    const categories = <String, String>{
+      'UNSAFE_ADVICE': 'Tư vấn không an toàn',
+      'HARASSMENT': 'Quấy rối',
+      'SPAM': 'Spam',
+      'INACCURATE_INFORMATION': 'Thông tin sai lệch',
+      'DISGUISED_ADVERTISING': 'Quảng cáo trá hình',
+      'OTHER': 'Khác',
+    };
+    String category = 'UNSAFE_ADVICE';
+    final controller = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Báo cáo nội dung'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: category,
+                decoration: const InputDecoration(labelText: 'Lý do'),
+                items: categories.entries
+                    .map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => category = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                  labelText: 'Ghi chú',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Gửi báo cáo')),
+          ],
+        ),
+      ),
+    );
+    if (submitted != true) return;
+    try {
+      await _service.reportTarget(
+        targetType: targetType,
+        targetId: targetId,
+        category: category,
+        description: controller.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi báo cáo đến đội ngũ kiểm duyệt')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể gửi báo cáo: $e')));
+      }
+    }
+  }
+
   String _formatTimeAgo(String iso) {
     try {
       final dt = DateTime.parse(iso);
@@ -267,12 +346,16 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
 
   String _stageLabel(String s) {
     switch (s) {
-      case 'NEWBORN': return 'Sơ sinh';
-      case 'INFANT': return '1–2 tuổi';
-      case 'TODDLER': return '3–5 tuổi';
-      case 'PREGNANCY': return 'Mang thai';
-      case 'POSTPARTUM': return 'Sau sinh';
-      default: return s;
+      case 'PRE_PREGNANCY':
+        return 'Chuẩn bị mang thai';
+      case 'PREGNANCY':
+        return 'Mang thai';
+      case 'POSTPARTUM':
+        return 'Sau sinh';
+      case 'BABY_CARE':
+        return 'Chăm sóc bé';
+      default:
+        return s;
     }
   }
 
@@ -299,6 +382,23 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             tooltip: 'Hỏi AI CareBridge (UC-132)',
           ),
           IconButton(
+            icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
+            onPressed: () => _reportTarget(
+              targetType: 'QUESTION',
+              targetId: widget.questionId,
+            ),
+            tooltip: 'Báo cáo câu hỏi',
+          ),
+          if (_question?.authorId != null && !_isMyQuestion)
+            IconButton(
+              icon: const Icon(Icons.person_off_outlined, color: _onSurfaceVariant),
+              onPressed: () => _reportTarget(
+                targetType: 'USER',
+                targetId: _question!.authorId!,
+              ),
+              tooltip: 'Báo cáo tài khoản',
+            ),
+          IconButton(
             icon: Icon(
               _bookmarked ? Icons.bookmark : Icons.bookmark_border,
               color: _bookmarked ? _primary : _onSurfaceVariant,
@@ -311,15 +411,17 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
               onPressed: () async {
                 if (_question == null) return;
-                final updated = await Navigator.of(context).push<bool>(MaterialPageRoute(
-                  builder: (_) => EditQuestionScreen(
-                    questionId: widget.questionId,
-                    initialTitle: _question!.title,
-                    initialBody: _question!.body,
-                    initialIsAnonymous: _question!.anonymous,
-                    initialUrgency: _question!.urgency,
+                final updated = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => EditQuestionScreen(
+                      questionId: widget.questionId,
+                      initialTitle: _question!.title,
+                      initialBody: _question!.body,
+                      initialIsAnonymous: _question!.anonymous,
+                      initialUrgency: _question!.urgency,
+                    ),
                   ),
-                ));
+                );
                 if (updated == true) _loadDetail();
               },
               tooltip: 'Chỉnh sửa',
@@ -338,14 +440,16 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         onPressed: _question == null
             ? null
             : () async {
-                final answered = await Navigator.of(context).push<bool>(MaterialPageRoute(
-                  builder: (_) => PostAnswerScreen(
-                    questionId: widget.questionId,
-                    questionTitle: _question?.title,
-                    questionBody: _question?.body,
-                    topicName: _question?.topicName,
+                final answered = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => PostAnswerScreen(
+                      questionId: widget.questionId,
+                      questionTitle: _question?.title,
+                      questionBody: _question?.body,
+                      topicName: _question?.topicName,
+                    ),
                   ),
-                ));
+                );
                 if (answered == true) _loadDetail();
               },
         label: const Text('Trả lời', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -354,8 +458,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _question == null
-              ? _buildError()
-              : _buildContent(),
+          ? _buildError()
+          : _buildContent(),
     );
   }
 
@@ -366,10 +470,16 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         children: [
           const Icon(Icons.error_outline, color: _outline, size: 48),
           const SizedBox(height: 12),
-          const Text('Không tải được câu hỏi', style: TextStyle(color: _onSurfaceVariant)),
+          const Text(
+            'Không tải được câu hỏi',
+            style: TextStyle(color: _onSurfaceVariant),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
             onPressed: _loadDetail,
             child: const Text('Thử lại'),
           ),
@@ -377,6 +487,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       ),
     );
   }
+
+  bool _hasExpertProfileTap(CommunityAnswer a) =>
+      a.expertLabeled &&
+      a.expertProfileId != null &&
+      a.expertProfileId!.isNotEmpty;
 
   Widget _buildContent() {
     final q = _question!;
@@ -390,7 +505,13 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,14 +524,23 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     if (q.topicName.isNotEmpty) _Tag(q.topicName),
                     if (q.stage.isNotEmpty) _Tag(_stageLabel(q.stage)),
                     if (q.urgency == 'URGENT')
-                      _Tag('Khẩn cấp', color: const Color(0xFFFFDAD6), textColor: const Color(0xFF93000A)),
+                      _Tag(
+                        'Khẩn cấp',
+                        color: const Color(0xFFFFDAD6),
+                        textColor: const Color(0xFF93000A),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 // Title
                 Text(
                   q.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface, height: 1.3),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                    height: 1.3,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Author & time row
@@ -419,19 +549,30 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     CircleAvatar(
                       radius: 16,
                       backgroundColor: _secondaryContainer,
-                      child: const Icon(Icons.person, size: 16, color: _primary),
+                      child: const Icon(
+                        Icons.person,
+                        size: 16,
+                        color: _primary,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          q.anonymous ? 'Ẩn danh' : 'Người dùng',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface),
+                          q.authorDisplay ?? 'Người dùng',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
+                          ),
                         ),
                         Text(
                           _formatTimeAgo(q.createdAt),
-                          style: const TextStyle(fontSize: 11, color: _onSurfaceVariant),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: _onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -444,33 +585,64 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                             color: _surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('Ẩn danh', style: TextStyle(fontSize: 10, color: _outline)),
+                          child: const Text(
+                            'Ẩn danh',
+                            style: TextStyle(fontSize: 10, color: _outline),
+                          ),
                         ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 14),
                 // Body
-                Text(q.body, style: const TextStyle(fontSize: 15, color: _onSurface, height: 1.5)),
+                Text(
+                  q.body,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: _onSurface,
+                    height: 1.5,
+                  ),
+                ),
                 const SizedBox(height: 14),
                 const Divider(color: _outlineVariant, height: 1),
                 const SizedBox(height: 12),
                 // Stats row
                 Row(
                   children: [
-                    const Icon(Icons.chat_bubble_outline, size: 16, color: _onSurfaceVariant),
+                    const Icon(
+                      Icons.chat_bubble_outline,
+                      size: 16,
+                      color: _onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
-                    Text('${q.answerCount} câu trả lời', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                    Text(
+                      '${q.answerCount} câu trả lời',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: _toggleQuestionLike,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_questionLiked ? Icons.favorite : Icons.favorite_border,
-                              size: 16, color: _questionLiked ? _primary : _onSurfaceVariant),
+                          Icon(
+                            _questionLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            size: 16,
+                            color: _questionLiked ? _primary : _onSurfaceVariant,
+                          ),
                           const SizedBox(width: 4),
-                          Text('$_questionLikeCount', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                          Text(
+                            '$_questionLikeCount',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -489,7 +661,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               children: [
                 Text(
                   'Câu trả lời (${q.answers.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _primary),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _primary,
+                  ),
                 ),
               ],
             ),
@@ -508,7 +684,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.forum_outlined, color: _primaryContainer, size: 40),
+                  const Icon(
+                    Icons.forum_outlined,
+                    color: _primaryContainer,
+                    size: 40,
+                  ),
                   const SizedBox(height: 10),
                   const Text(
                     'Chưa có câu trả lời nào',
@@ -540,6 +720,17 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   isOwnAnswer: _isOwnAnswer(q.answers[i]),
                   onEdit: () => _editAnswer(q.answers[i]),
                   onDelete: () => _deleteAnswer(q.answers[i]),
+                  onReport: () => _reportTarget(
+                    targetType: 'ANSWER',
+                    targetId: q.answers[i].id,
+                  ),
+                  onReportAuthor:
+                      q.answers[i].authorId != null && !_isOwnAnswer(q.answers[i])
+                      ? () => _reportTarget(
+                          targetType: 'USER',
+                          targetId: q.answers[i].authorId!,
+                        )
+                      : null,
                 ),
               ),
               childCount: q.answers.length,
@@ -547,6 +738,36 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  static const _container = Color(0xFFEEDDD5);
+  static const _txt = Color(0xFF845143);
+
+  final String label;
+  final Color? color;
+  final Color? textColor;
+
+  const _Tag(this.label, {this.color, this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color ?? _container,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: textColor ?? _txt,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
@@ -560,6 +781,8 @@ class _AnswerCard extends StatelessWidget {
   final bool isOwnAnswer;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onReport;
+  final VoidCallback? onReportAuthor;
 
   const _AnswerCard({
     required this.answer,
@@ -570,28 +793,34 @@ class _AnswerCard extends StatelessWidget {
     this.isOwnAnswer = false,
     required this.onEdit,
     required this.onDelete,
+    required this.onReport,
+    this.onReportAuthor,
   });
-
-  static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surface = Colors.white;
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
 
   @override
   Widget build(BuildContext context) {
+    final hasExpertProfileId = answer.expertLabeled &&
+        answer.expertProfileId != null &&
+        answer.expertProfileId!.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _surface,
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: answer.expertLabeled
-            ? Border.all(color: _primaryContainer.withValues(alpha: 0.4), width: 1.5)
+            ? Border.all(
+                color: const Color(0xFFC98C7B).withValues(alpha: 0.4),
+                width: 1.5,
+              )
             : null,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,11 +830,13 @@ class _AnswerCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: answer.expertLabeled ? _primaryContainer : _secondaryContainer,
+                backgroundColor: answer.expertLabeled
+                    ? const Color(0xFFC98C7B)
+                    : const Color(0xFFF6DACF),
                 child: Icon(
                   answer.expertLabeled ? Icons.verified : Icons.person,
                   size: 16,
-                  color: answer.expertLabeled ? Colors.white : _primary,
+                  color: answer.expertLabeled ? Colors.white : const Color(0xFF845143),
                 ),
               ),
               const SizedBox(width: 8),
@@ -613,26 +844,41 @@ class _AnswerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          answer.expertLabeled ? 'Chuyên gia' : 'Thành viên',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: answer.expertLabeled ? _primary : _onSurface,
+                    GestureDetector(
+                      onTap: hasExpertProfileId
+                          ? () => context.push('/expert/public/${answer.expertProfileId}')
+                          : null,
+                      child: Row(
+                        children: [
+                          Text(
+                            answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: answer.expertLabeled
+                                  ? const Color(0xFF845143)
+                                  : const Color(0xFF271812),
+                              decoration: hasExpertProfileId
+                                  ? TextDecoration.underline
+                                  : null,
+                              decorationColor: const Color(0xFFC98C7B),
+                            ),
                           ),
-                        ),
-                        if (answer.expertLabeled)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.verified, size: 14, color: _primary),
-                          ),
-                      ],
+                          if (hasExpertProfileId)
+                            const Icon(
+                              Icons.verified,
+                              size: 14,
+                              color: Color(0xFF845143),
+                            ),
+                        ],
+                      ),
                     ),
                     Text(
                       formatTimeAgo(answer.createdAt),
-                      style: const TextStyle(fontSize: 11, color: _onSurfaceVariant),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF524440),
+                      ),
                     ),
                   ],
                 ),
@@ -641,14 +887,21 @@ class _AnswerCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: _surfaceContainerHigh,
+                    color: const Color(0xFFFFE2D9),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('Kinh nghiệm', style: TextStyle(fontSize: 10, color: _primary)),
+                  child: const Text(
+                    'Kinh nghiệm',
+                    style: TextStyle(fontSize: 10, color: Color(0xFF845143)),
+                  ),
                 ),
               if (isOwnAnswer)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 18, color: _onSurfaceVariant),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: 18,
+                    color: Color(0xFF524440),
+                  ),
                   onSelected: (value) {
                     if (value == 'edit') onEdit();
                     if (value == 'delete') onDelete();
@@ -662,9 +915,16 @@ class _AnswerCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           // Body
-          Text(answer.body, style: const TextStyle(fontSize: 14, color: _onSurface, height: 1.5)),
+          Text(
+            answer.body,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF271812),
+              height: 1.5,
+            ),
+          ),
           const SizedBox(height: 10),
-          const Divider(color: _outlineVariant, height: 1),
+          const Divider(color: Color(0xFFD6C2BD), height: 1),
           const SizedBox(height: 8),
           // Like action
           Row(
@@ -680,20 +940,46 @@ class _AnswerCard extends StatelessWidget {
                       Icon(
                         liked ? Icons.favorite : Icons.favorite_border,
                         size: 18,
-                        color: liked ? _primary : _onSurfaceVariant,
+                        color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '$likeCount',
                         style: TextStyle(
                           fontSize: 12,
-                          color: liked ? _primary : _onSurfaceVariant,
+                          color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
                           fontWeight: liked ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
+              const Spacer(),
+              PopupMenuButton<String>(
+                tooltip: 'Báo cáo',
+                icon: const Icon(
+                  Icons.flag_outlined,
+                  size: 18,
+                  color: Color(0xFF524440),
+                ),
+                onSelected: (value) {
+                  if (value == 'answer') onReport();
+                  if (value == 'author' && onReportAuthor != null) {
+                    onReportAuthor!();
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  const PopupMenuItem(
+                    value: 'answer',
+                    child: Text('Báo cáo câu trả lời'),
+                  ),
+                  if (onReportAuthor != null)
+                    const PopupMenuItem(
+                      value: 'author',
+                      child: Text('Báo cáo tài khoản'),
+                    ),
+                ],
               ),
             ],
           ),
@@ -703,22 +989,14 @@ class _AnswerCard extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color textColor;
-
-  const _Tag(this.label, {
-    this.color = const Color(0xFFFFE2D9),
-    this.textColor = const Color(0xFF845143),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: TextStyle(fontSize: 11, color: textColor, fontWeight: FontWeight.w500)),
-    );
-  }
+class _AnswerCardColors {
+  static const primary = Color(0xFF845143);
+  static const primaryContainer = Color(0xFFC98C7B);
+  static const surface = Color(0xFFFFFFFF);
+  static const secondaryContainer = Color(0xFFF6DACF);
+  static const onSurface = Color(0xFF271812);
+  static const onSurfaceVariant = Color(0xFF524440);
+  static const outlineVariant = Color(0xFFD6C2BD);
+  static const surfaceContainerHigh = Color(0xFFFFE2D9);
+  static const surfaceContainerLow = Color(0xFFFFF1EC);
 }

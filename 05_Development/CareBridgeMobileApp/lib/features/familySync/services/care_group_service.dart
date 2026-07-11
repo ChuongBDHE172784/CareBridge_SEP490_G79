@@ -4,10 +4,13 @@ import '../models/family_permission_model.dart';
 
 class CareGroupService {
   // UC70: Create care group
-  Future<Map<String, dynamic>> createCareGroup(String groupName, {String? description}) async {
+  Future<Map<String, dynamic>> createCareGroup(
+    String groupName, {
+    String? description,
+  }) async {
     final data = await apiPost('/api/v1/care-groups', {
       'groupName': groupName,
-      if (description != null) 'description': description,
+      'description': ?description,
     });
     return data['data'] as Map<String, dynamic>;
   }
@@ -27,10 +30,14 @@ class CareGroupService {
   }
 
   // UC-83: Owner invites a member by email. memberRole omitted -> backend defaults to MEMBER.
-  Future<CareGroupMember> inviteMember(String groupId, String email, {String? memberRole}) async {
+  Future<CareGroupMember> inviteMember(
+    String groupId,
+    String email, {
+    String? memberRole,
+  }) async {
     final data = await apiPost('/api/v1/care-groups/$groupId/invitations', {
       'email': email,
-      if (memberRole != null) 'memberRole': memberRole,
+      'memberRole': ?memberRole,
     });
     return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
   }
@@ -45,7 +52,10 @@ class CareGroupService {
 
   // UC-83: Accept a pending invitation.
   Future<CareGroupMember> acceptInvite(String groupId) async {
-    final data = await apiPost('/api/v1/care-groups/$groupId/invitations/accept', const {});
+    final data = await apiPost(
+      '/api/v1/care-groups/$groupId/invitations/accept',
+      const {},
+    );
     return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
   }
 

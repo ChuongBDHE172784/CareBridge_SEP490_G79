@@ -1,0 +1,1 @@
+package com.carebridge.backend.partner.dto.response;import com.carebridge.backend.partner.entity.PartnerContentTargetType;import java.time.Instant;import java.util.UUID;public record ContentDecisionResponse(PartnerContentTargetType targetType,UUID targetId,String previousStatus,String newStatus,UUID decidedByAdminId,String reason,Instant decidedAt){}

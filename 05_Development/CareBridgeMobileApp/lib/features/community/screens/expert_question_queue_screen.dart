@@ -8,10 +8,15 @@ class ExpertQuestionQueueScreen extends StatefulWidget {
   final String? expertName;
   final String? expertAvatarUrl;
 
-  const ExpertQuestionQueueScreen({super.key, this.expertName, this.expertAvatarUrl});
+  const ExpertQuestionQueueScreen({
+    super.key,
+    this.expertName,
+    this.expertAvatarUrl,
+  });
 
   @override
-  State<ExpertQuestionQueueScreen> createState() => _ExpertQuestionQueueScreenState();
+  State<ExpertQuestionQueueScreen> createState() =>
+      _ExpertQuestionQueueScreenState();
 }
 
 class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
@@ -27,7 +32,12 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _tertiaryFixed = Color(0xFFE9E1DB);
 
-  static const _filters = ['Tất cả', 'Khẩn cấp', 'Chuyên môn của tôi', 'Chưa trả lời'];
+  static const _filters = [
+    'Tất cả',
+    'Khẩn cấp',
+    'Chuyên môn của tôi',
+    'Chưa trả lời',
+  ];
 
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -54,14 +64,19 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
   }
 
   void _onScroll() {
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 && !_loading && _hasMore) {
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 &&
+        !_loading &&
+        _hasMore) {
       _load();
     }
   }
 
   void _onSearchChanged(String v) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () => _load(refresh: true));
+    _debounce = Timer(
+      const Duration(milliseconds: 400),
+      () => _load(refresh: true),
+    );
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -75,13 +90,19 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
       bool? hasExpertAnswer;
       if (_selectedFilter == 3) hasExpertAnswer = false; // Chưa trả lời
       final items = await CommunityService.instance.searchQuestions(
-        keyword: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        keyword: _searchCtrl.text.trim().isEmpty
+            ? null
+            : _searchCtrl.text.trim(),
         hasExpertAnswer: hasExpertAnswer,
         page: _page,
       );
       if (mounted) {
         setState(() {
-          if (refresh) _questions = items; else _questions.addAll(items);
+          if (refresh) {
+            _questions = items;
+          } else {
+            _questions.addAll(items);
+          }
           _hasMore = items.length >= 20;
           _page++;
         });
@@ -104,7 +125,14 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
           icon: const Icon(Icons.arrow_back, color: _primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Hỏi đáp Cộng đồng', style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17)),
+        title: const Text(
+          'Hỏi đáp Cộng đồng',
+          style: TextStyle(
+            color: _primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
+        ),
         centerTitle: true,
         actions: [
           Padding(
@@ -112,7 +140,9 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
             child: CircleAvatar(
               radius: 18,
               backgroundColor: const Color(0xFFFFE2D9),
-              backgroundImage: widget.expertAvatarUrl != null ? NetworkImage(widget.expertAvatarUrl!) : null,
+              backgroundImage: widget.expertAvatarUrl != null
+                  ? NetworkImage(widget.expertAvatarUrl!)
+                  : null,
               child: widget.expertAvatarUrl == null
                   ? const Icon(Icons.person, color: _primaryContainer, size: 20)
                   : null,
@@ -147,7 +177,10 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
                             onChanged: _onSearchChanged,
                             decoration: const InputDecoration(
                               hintText: 'Tìm kiếm câu hỏi...',
-                              hintStyle: TextStyle(color: _outline, fontSize: 14),
+                              hintStyle: TextStyle(
+                                color: _outline,
+                                fontSize: 14,
+                              ),
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
                             ),
@@ -180,7 +213,7 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: _filters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final selected = _selectedFilter == i;
                   return GestureDetector(
@@ -189,14 +222,21 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
                       _load(refresh: true);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: selected ? _primary : _surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(99),
                       ),
                       child: Text(
                         _filters[i],
-                        style: TextStyle(fontSize: 13, color: selected ? Colors.white : _onSurfaceVariant, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: selected ? Colors.white : _onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   );
@@ -208,21 +248,25 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
           // Question list
           Expanded(
             child: _loading && _questions.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: _primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: _primary),
+                  )
                 : _questions.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.separated(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _questions.length + (_loading ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) {
-                          if (i >= _questions.length) {
-                            return const Center(child: CircularProgressIndicator(color: _primary));
-                          }
-                          return _ExpertQuestionCard(item: _questions[i]);
-                        },
-                      ),
+                ? _buildEmptyState()
+                : ListView.separated(
+                    controller: _scroll,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _questions.length + (_loading ? 1 : 0),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      if (i >= _questions.length) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: _primary),
+                        );
+                      }
+                      return _ExpertQuestionCard(item: _questions[i]);
+                    },
+                  ),
           ),
         ],
       ),
@@ -235,9 +279,16 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.question_answer_outlined, size: 56, color: _primaryContainer.withValues(alpha: 0.4)),
+          Icon(
+            Icons.question_answer_outlined,
+            size: 56,
+            color: _primaryContainer.withValues(alpha: 0.4),
+          ),
           const SizedBox(height: 12),
-          const Text('Không có câu hỏi nào', style: TextStyle(color: _onSurfaceVariant, fontSize: 15)),
+          const Text(
+            'Không có câu hỏi nào',
+            style: TextStyle(color: _onSurfaceVariant, fontSize: 15),
+          ),
         ],
       ),
     );
@@ -248,15 +299,29 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
       height: 72,
       decoration: const BoxDecoration(
         color: _surface,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, -2))],
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 12,
+            offset: Offset(0, -2),
+          ),
+        ],
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _NavItem(icon: Icons.home, label: 'Trang chủ', active: false),
           _NavItem(icon: Icons.assignment, label: 'Yêu cầu', active: false),
-          _NavItem(icon: Icons.forum, label: 'Cộng đồng', active: true, filled: true),
+          _NavItem(
+            icon: Icons.forum,
+            label: 'Cộng đồng',
+            active: true,
+            filled: true,
+          ),
           _NavItem(icon: Icons.person, label: 'Tài khoản', active: false),
         ],
       ),
@@ -278,7 +343,13 @@ class _ExpertQuestionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,21 +360,37 @@ class _ExpertQuestionCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 32, height: 32,
-                    decoration: const BoxDecoration(color: Color(0xFFF6DACF), shape: BoxShape.circle),
-                    child: const Icon(Icons.person_outline, size: 18, color: Color(0xFF524440)),
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF6DACF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_outline,
+                      size: 18,
+                      color: Color(0xFF524440),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    item.authorDisplay.isEmpty || item.authorDisplay == 'Ẩn danh' ? 'Ẩn danh' : item.authorDisplay,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF524440)),
+                    item.authorDisplay.isEmpty ||
+                            item.authorDisplay == 'Ẩn danh'
+                        ? 'Ẩn danh'
+                        : item.authorDisplay,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF524440),
+                    ),
                   ),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPending ? const Color(0xFFF6DACF) : const Color(0xFFE9E1DB),
+                  color: isPending
+                      ? const Color(0xFFF6DACF)
+                      : const Color(0xFFE9E1DB),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -311,7 +398,9 @@ class _ExpertQuestionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isPending ? const Color(0xFF524440) : const Color(0xFF4A4642),
+                    color: isPending
+                        ? const Color(0xFF524440)
+                        : const Color(0xFF4A4642),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -319,17 +408,35 @@ class _ExpertQuestionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(item.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF271812), height: 1.3)),
+          Text(
+            item.title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF271812),
+              height: 1.3,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.forum, size: 15, color: Color(0xFF845143)),
               const SizedBox(width: 4),
-              Text('${item.answerCount} câu trả lời', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF845143))),
+              Text(
+                '${item.answerCount} câu trả lời',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF845143),
+                ),
+              ),
               const SizedBox(width: 16),
               const Icon(Icons.schedule, size: 15, color: Color(0xFF84736F)),
               const SizedBox(width: 4),
-              Text(_timeAgo(item.createdAt), style: const TextStyle(fontSize: 12, color: Color(0xFF84736F))),
+              Text(
+                _timeAgo(item.createdAt),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF84736F)),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -342,38 +449,59 @@ class _ExpertQuestionCard extends StatelessWidget {
                       backgroundColor: const Color(0xFFFFE2D9),
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => PostAnswerScreen(
-                        questionId: item.id,
-                        questionTitle: item.title,
-                        authorName: item.authorDisplay,
-                        topicName: item.topicName.isNotEmpty ? item.topicName : null,
-                        timeAgo: _timeAgo(item.createdAt),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    )),
+                    ),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PostAnswerScreen(
+                          questionId: item.id,
+                          questionTitle: item.title,
+                          authorName: item.authorDisplay,
+                          topicName: item.topicName.isNotEmpty
+                              ? item.topicName
+                              : null,
+                          timeAgo: _timeAgo(item.createdAt),
+                        ),
+                      ),
+                    ),
                     icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Trả lời câu hỏi', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Trả lời câu hỏi',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   )
                 : OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFC98C7B),
-                      side: const BorderSide(color: Color(0xFFC98C7B), width: 2),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => PostAnswerScreen(
-                        questionId: item.id,
-                        questionTitle: item.title,
-                        authorName: item.authorDisplay,
-                        topicName: item.topicName.isNotEmpty ? item.topicName : null,
-                        timeAgo: _timeAgo(item.createdAt),
+                      side: const BorderSide(
+                        color: Color(0xFFC98C7B),
+                        width: 2,
                       ),
-                    )),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PostAnswerScreen(
+                          questionId: item.id,
+                          questionTitle: item.title,
+                          authorName: item.authorDisplay,
+                          topicName: item.topicName.isNotEmpty
+                              ? item.topicName
+                              : null,
+                          timeAgo: _timeAgo(item.createdAt),
+                        ),
+                      ),
+                    ),
                     icon: const Icon(Icons.visibility_outlined, size: 16),
-                    label: const Text('Xem chi tiết', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Xem chi tiết',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
           ),
         ],
@@ -400,20 +528,35 @@ class _NavItem extends StatelessWidget {
   final bool active;
   final bool filled;
 
-  const _NavItem({required this.icon, required this.label, required this.active, this.filled = false});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.active,
+    this.filled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (active) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-        decoration: BoxDecoration(color: const Color(0xFFC98C7B), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+          color: const Color(0xFFC98C7B),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: Colors.white, size: 22),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       );
@@ -423,7 +566,10 @@ class _NavItem extends StatelessWidget {
       children: [
         Icon(icon, color: const Color(0xFF6E5A52), size: 22),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6E5A52))),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Color(0xFF6E5A52)),
+        ),
       ],
     );
   }

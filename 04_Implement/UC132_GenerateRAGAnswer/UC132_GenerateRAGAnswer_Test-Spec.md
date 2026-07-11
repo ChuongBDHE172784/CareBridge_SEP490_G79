@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-RAG-TDD-001`                                  |
 | **Version**        | `1.0`                                             |
 | **Date**           | `2026-06-23`                                      |
-| **Status**         | `Approved`                                        |
+| **Status**         | `Implemented — 2026-07-11 (26/26 PASS)`             |
 | **Spec gốc**       | `CB-RAG-IMP-001` (UC132_GenerateRAGAnswer_TDS.md) |
 | **Author**         | `AI Agent — Amelia (Dev Agent)`                   |
 | **Reviewed by**    | `[ ] Pending`                                     |
@@ -23,6 +23,7 @@
 | 2026-06-23 | AI Agent — Amelia            | Khởi tạo TDD spec cho UC-132 Generate RAG Answer                       |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent) | Implement UC-132 — 18/18 tests PASS: MockRagServiceImpl, ContentItemContextRetriever, RagController, RagService interfaces, GeminiRagServiceImpl, TriageRedFlagPolicy, GeminiPromptBuilder, RagException. RED Gate verified (12 FAILs). GREEN Phase: 216/217 tổng tests PASS (1 lỗi pre-existing BackendApplicationTests DB). |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | Corrected discrepancies vs. actual source: (1) `ContentContextBuilder`/`buildContext()` renamed throughout to actual class `ContentItemContextRetriever`/`retrieveContext()`; (2) non-existent `contentRepository.findByStatus(APPROVED)` corrected to actual `ContentRepository.searchByFilters(..., ContentStatus.APPROVED, ...)`; (3) Props Isolation boilerplate corrected — `MockRagServiceImpl` has a no-arg constructor (was shown as `new MockRagServiceImpl(contentRepository)`), and `Stage.PREGNANCY` corrected to `UserStage.PREGNANCY`; (4) added `RAG-TC-B2D` entry documenting `RagNoGeminiStartupTest.java` (5 test methods covering `FallbackRagServiceImpl` wiring, unauth 401, PARTNER 403, disabled/locked account 403) which existed in the repo but was not referenced anywhere in this Test-Spec. Spot-checked RAG-TC-001 through RAG-TC-010, RAG-TC-SEC-001, RAG-TC-INT-001 against `RagServiceTest.java`/`RagControllerTest.java`/`ContentItemContextRetrieverTest.java` — all claimed 🟢 GREEN test methods exist and match description. |
+| 2026-07-11 | AI Agent — Amelia (Verification) | Re-ran the complete focused RAG suite: 26/26 passing, zero failures/errors. Verified safety-first routing, approved-only retrieval, system-owned disclaimer, conservative fallback and PARTNER exclusion. |
 
 ---
 

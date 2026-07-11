@@ -1,10 +1,11 @@
- import 'dart:async';
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/auth/auth_state.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
+import 'features/auth/services/auth_service.dart';
 import 'features/reminder/services/reminder_service.dart';
 
 void main() async {
@@ -20,6 +21,16 @@ void main() async {
   // Running them after runApp() causes a race: HomeShell fires API calls
   // before init() completes, which clears valid tokens from storage.
   await AuthState.instance.init();
+  if (AuthState.instance.isAuthenticated) {
+    try {
+      await AuthService.instance.getProfile().timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (_) {
+      // The API client clears revoked sessions. Keep local state for
+      // transient connectivity failures so offline users can retry.
+    }
+  }
   await ReminderService.instance.loadState();
   // Re-register the FCM token on relaunch for users with an existing
   // session (fresh logins register via AuthService instead).

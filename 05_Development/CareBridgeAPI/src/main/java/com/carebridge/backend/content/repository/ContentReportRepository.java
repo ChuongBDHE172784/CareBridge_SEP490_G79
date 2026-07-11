@@ -5,6 +5,7 @@ import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,4 +40,7 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
     // UC-14: duplicate check — reporter already has a PENDING report on this target
     // (idx_content_reports_duplicate, added in V2__spec_sync_from_tds.sql).
     boolean existsByReporterUserIdAndTargetIdAndStatus(UUID reporterUserId, UUID targetId, ReportStatus status);
+
+    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded report by reporter+target+category
+    Optional<ContentReport> findByReporterUserIdAndTargetIdAndCategory(UUID reporterUserId, UUID targetId, String category);
 }

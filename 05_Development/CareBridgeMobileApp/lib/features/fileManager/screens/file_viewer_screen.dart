@@ -34,11 +34,17 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
   }
 
   Future<void> _loadFile() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final f = await _service.getFile(widget.fileId);
       final expired = f.status == 'EXPIRED';
-      setState(() { _file = f; _isExpired = expired; });
+      setState(() {
+        _file = f;
+        _isExpired = expired;
+      });
     } catch (_) {
       setState(() => _error = 'Không thể tải tệp. Vui lòng thử lại.');
     } finally {
@@ -55,7 +61,10 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể mở tệp.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể mở tệp.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -66,25 +75,30 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
     if (url == null) return;
     // Basic share via clipboard — a real implementation would use share_plus package
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link chia sẻ đã được sao chép.'), backgroundColor: _primary),
+      const SnackBar(
+        content: Text('Link chia sẻ đã được sao chép.'),
+        backgroundColor: _primary,
+      ),
     );
   }
 
   void _showDeleteConfirmation() {
     if (_file == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<bool>(
-        fullscreenDialog: true,
-        builder: (_) => _DeleteFileConfirmationPage(
-          fileId: widget.fileId,
-          fileName: _file!.originalName,
-          fileSize: _file!.sizeLabel,
-          service: _service,
-        ),
-      ),
-    ).then((deleted) {
-      if (deleted == true && mounted) Navigator.of(context).pop(true);
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<bool>(
+            fullscreenDialog: true,
+            builder: (_) => _DeleteFileConfirmationPage(
+              fileId: widget.fileId,
+              fileName: _file!.originalName,
+              fileSize: _file!.sizeLabel,
+              service: _service,
+            ),
+          ),
+        )
+        .then((deleted) {
+          if (deleted == true && mounted) Navigator.of(context).pop(true);
+        });
   }
 
   @override
@@ -92,11 +106,7 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
     return Scaffold(
       backgroundColor: Colors.black87,
       body: Stack(
-        children: [
-          _buildContent(),
-          _buildTopBar(),
-          _buildBottomBar(),
-        ],
+        children: [_buildContent(), _buildTopBar(), _buildBottomBar()],
       ),
     );
   }
@@ -118,14 +128,23 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
                 children: [
                   Text(
                     f?.originalName ?? widget.fileName ?? 'Tệp tin',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (f != null)
                     Text(
                       '${f.sizeLabel}  •  ${f.dateLabel}',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Colors.white60),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: Colors.white60,
+                      ),
                     ),
                 ],
               ),
@@ -134,18 +153,33 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
                 color: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 onSelected: (v) {
                   if (v == 'delete') _showDeleteConfirmation();
                 },
                 itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'delete', child: Row(
-                    children: [
-                      Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
-                      SizedBox(width: 8),
-                      Text('Xóa tệp', style: TextStyle(fontFamily: 'Lexend', color: Colors.red)),
-                    ],
-                  )),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.red,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Xóa tệp',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
           ],
@@ -156,18 +190,36 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: _primaryContainer));
+      return const Center(
+        child: CircularProgressIndicator(color: _primaryContainer),
+      );
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white60, size: 64),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white60,
+              size: 64,
+            ),
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(fontFamily: 'Lexend', color: Colors.white70)),
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: Colors.white70,
+              ),
+            ),
             const SizedBox(height: 16),
-            TextButton(onPressed: _loadFile, child: const Text('Thử lại', style: TextStyle(color: _primaryContainer))),
+            TextButton(
+              onPressed: _loadFile,
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(color: _primaryContainer),
+              ),
+            ),
           ],
         ),
       );
@@ -196,9 +248,20 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.access_time_rounded, color: Colors.white, size: 14),
+                  Icon(
+                    Icons.access_time_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
                   SizedBox(width: 4),
-                  Text('Hết hạn chia sẻ', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Colors.white)),
+                  Text(
+                    'Hết hạn chia sẻ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -214,7 +277,7 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
         child: Image.network(
           f.presignedUrl!,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _pdfPlaceholder(f),
+          errorBuilder: (_, _, _) => _pdfPlaceholder(f),
         ),
       );
     }
@@ -230,13 +293,21 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(80), blurRadius: 24, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(80),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              f.isPdf ? Icons.picture_as_pdf_rounded : Icons.insert_drive_file_rounded,
+              f.isPdf
+                  ? Icons.picture_as_pdf_rounded
+                  : Icons.insert_drive_file_rounded,
               color: f.isPdf ? Colors.red : _primaryContainer,
               size: 72,
             ),
@@ -245,24 +316,47 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 f.originalName,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 8),
-            Text(f.sizeLabel, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+            Text(
+              f.sizeLabel,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(50)),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(50),
+              ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.open_in_new_rounded, color: _primary, size: 16),
                   SizedBox(width: 6),
-                  Text('Mở trong trình duyệt', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _primary, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Mở trong trình duyệt',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -284,16 +378,17 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
           top: 12,
           bottom: MediaQuery.of(context).padding.bottom + 12,
         ),
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(180),
-        ),
+        decoration: BoxDecoration(color: Colors.black.withAlpha(180)),
         child: Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _isLoading ? null : _openInBrowser,
                 icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Tải xuống', style: TextStyle(fontFamily: 'Lexend', fontSize: 14)),
+                label: const Text(
+                  'Tải xuống',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white38, width: 1.5),
@@ -307,7 +402,10 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _shareFile,
                 icon: const Icon(Icons.share_rounded, size: 18),
-                label: const Text('Chia sẻ', style: TextStyle(fontFamily: 'Lexend', fontSize: 14)),
+                label: const Text(
+                  'Chia sẻ',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
@@ -362,26 +460,62 @@ class _DeleteFileConfirmationPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Center(
-                    child: Icon(Icons.delete_forever_rounded, color: Colors.red, size: 56),
+                    child: Icon(
+                      Icons.delete_forever_rounded,
+                      color: Colors.red,
+                      size: 56,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   const Center(
-                    child: Text('Xóa tệp tin?', style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface)),
+                    child: Text(
+                      'Xóa tệp tin?',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.insert_drive_file_rounded, color: Colors.red, size: 32),
+                        const Icon(
+                          Icons.insert_drive_file_rounded,
+                          color: Colors.red,
+                          size: 32,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(fileName, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
-                              Text(fileSize, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                              Text(
+                                fileName,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _onSurface,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                fileSize,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 11,
+                                  color: _onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -391,12 +525,28 @@ class _DeleteFileConfirmationPage extends StatelessWidget {
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(14)),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3CD),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     child: const Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Color(0xFFFF8F00), size: 16),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFFFF8F00),
+                          size: 16,
+                        ),
                         SizedBox(width: 8),
-                        Expanded(child: Text('Tệp sẽ được chuyển vào thùng rác và xóa sau 30 ngày.', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurface))),
+                        Expanded(
+                          child: Text(
+                            'Tệp sẽ được chuyển vào thùng rác và xóa sau 30 ngày.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11,
+                              color: _onSurface,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -409,7 +559,10 @@ class _DeleteFileConfirmationPage extends StatelessWidget {
                       } catch (_) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Không thể xóa. Vui lòng thử lại.'), backgroundColor: Colors.red),
+                            const SnackBar(
+                              content: Text('Không thể xóa. Vui lòng thử lại.'),
+                              backgroundColor: Colors.red,
+                            ),
                           );
                         }
                       }
@@ -421,12 +574,26 @@ class _DeleteFileConfirmationPage extends StatelessWidget {
                       shape: const StadiumBorder(),
                       elevation: 0,
                     ),
-                    child: const Text('Xóa tệp tin', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w700)),
+                    child: const Text(
+                      'Xóa tệp tin',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+                    child: const Text(
+                      'Hủy bỏ',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ],
               ),

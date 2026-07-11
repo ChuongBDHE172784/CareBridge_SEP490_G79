@@ -39,15 +39,15 @@ public class CommunityTopicController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean includeHidden,
             Authentication authentication) {
-        boolean isModerator = SecurityUtils.hasRole("MODERATOR");
-        boolean effectiveInclude = includeHidden && isModerator;
+        boolean canManageTopics = SecurityUtils.hasRole("MODERATOR") || SecurityUtils.hasRole("CONTENT_ADMIN");
+        boolean effectiveInclude = includeHidden && canManageTopics;
         UUID currentUserId = SecurityUtils.requireCurrentUserId(authentication);
         return ResponseEntity.ok(
                 ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude, currentUserId)));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MODERATOR')")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<CommunityTopicResponse>> createTopic(
             @Valid @RequestBody CreateCommunityTopicRequest request,
             Principal principal) {
@@ -57,11 +57,13 @@ public class CommunityTopicController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('MODERATOR')")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<CommunityTopicResponse>> updateTopic(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateCommunityTopicRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(topicService.updateTopic(id, request), "Topic updated"));
+            @Valid @RequestBody UpdateCommunityTopicRequest request,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(topicService.updateTopic(id, userId, request), "Topic updated"));
     }
 
     // UC-171: toggle follow/unfollow on a community topic

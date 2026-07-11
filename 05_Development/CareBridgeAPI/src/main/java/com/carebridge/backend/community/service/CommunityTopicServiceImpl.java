@@ -72,7 +72,7 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
 
     @Override
     @Transactional
-    public CommunityTopicResponse updateTopic(UUID id, UpdateCommunityTopicRequest request) {
+    public CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request) {
         CommunityTopic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Community topic not found: " + id));
 
@@ -84,7 +84,7 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
 
         topicMapper.applyUpdate(topic, request);
         topic = topicRepository.save(topic);
-        auditService.log(AuditAction.MODERATION_ACTION, topic.getCreatedBy(), "CommunityTopic", id.toString(), "updated");
+        auditService.log(AuditAction.MODERATION_ACTION, updatedBy, "CommunityTopic", id.toString(), "updated");
         return topicMapper.toResponse(topic);
     }
 }

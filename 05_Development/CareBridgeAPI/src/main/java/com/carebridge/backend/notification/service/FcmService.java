@@ -1,6 +1,7 @@
 package com.carebridge.backend.notification.service;
 
 import java.util.List;
+import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 
 public interface FcmService {
 
@@ -15,4 +16,6 @@ public interface FcmService {
      * Returns count of successful deliveries.
      */
     int sendToTokens(List<String> fcmTokens, String title, String body);
+
+    FcmDeliveryResult sendWithRetry(String fcmToken, String title, String body, int maxAttempts);
 }

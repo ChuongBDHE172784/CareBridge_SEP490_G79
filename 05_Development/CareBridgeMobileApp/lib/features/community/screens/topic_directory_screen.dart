@@ -48,7 +48,12 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     setState(() => _loading = true);
     try {
       final topics = await _service.getTopics();
-      if (mounted) setState(() { _topics = topics; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _topics = topics;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -59,7 +64,9 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     // Client-side stage filter based on topic name keywords
     final stageKw = [null, 'thai', 'sinh', 'bé'][_selectedStage];
     if (stageKw == null) return _topics;
-    return _topics.where((t) => t.name.toLowerCase().contains(stageKw)).toList();
+    return _topics
+        .where((t) => t.name.toLowerCase().contains(stageKw))
+        .toList();
   }
 
   IconData _topicIcon(String iconName) {
@@ -83,16 +90,23 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     final index = _topics.indexWhere((t) => t.id == topicId);
     if (index == -1) return;
     final wasFollowed = _topics[index].isFollowed;
-    setState(() => _topics[index] = _topics[index].copyWith(isFollowed: !wasFollowed));
+    setState(
+      () => _topics[index] = _topics[index].copyWith(isFollowed: !wasFollowed),
+    );
     try {
       final followed = await _service.toggleFollowTopic(topicId);
       if (mounted) {
-        setState(() => _topics[index] = _topics[index].copyWith(isFollowed: followed));
+        setState(
+          () => _topics[index] = _topics[index].copyWith(isFollowed: followed),
+        );
       }
     } catch (_) {
       // Rollback on error
       if (mounted) {
-        setState(() => _topics[index] = _topics[index].copyWith(isFollowed: wasFollowed));
+        setState(
+          () =>
+              _topics[index] = _topics[index].copyWith(isFollowed: wasFollowed),
+        );
       }
     }
   }
@@ -115,11 +129,18 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
             ),
             title: const Text(
               'Thư viện chủ đề',
-              style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(
+                color: _primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.notifications_none, color: _onSurfaceVariant),
+                icon: const Icon(
+                  Icons.notifications_none,
+                  color: _onSurfaceVariant,
+                ),
                 onPressed: () {},
               ),
             ],
@@ -129,12 +150,17 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                 children: [
                   // Search bar — taps open CommunityTopicSearchScreen
                   GestureDetector(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const CommunityTopicSearchScreen(),
-                    )),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CommunityTopicSearchScreen(),
+                      ),
+                    ),
                     child: Container(
                       margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: _surface,
                         borderRadius: BorderRadius.circular(99),
@@ -159,25 +185,34 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _stages.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (_, i) {
                         final selected = _selectedStage == i;
                         return GestureDetector(
                           onTap: () => setState(() => _selectedStage = i),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: selected ? _primary : _surface,
                               borderRadius: BorderRadius.circular(99),
-                              border: selected ? null : Border.all(color: _outlineVariant),
+                              border: selected
+                                  ? null
+                                  : Border.all(color: _outlineVariant),
                             ),
                             child: Text(
                               _stages[i],
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                                color: selected ? Colors.white : _onSurfaceVariant,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: selected
+                                    ? Colors.white
+                                    : _onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -202,7 +237,11 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
                 child: const Text(
                   'Khám phá thư viện',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
                 ),
               ),
             ),
@@ -215,35 +254,38 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
                       child: Center(
                         child: Padding(
                           padding: const EdgeInsets.all(32),
-                          child: Text('Không có chủ đề nào', style: TextStyle(color: _outline)),
+                          child: Text(
+                            'Không có chủ đề nào',
+                            style: TextStyle(color: _outline),
+                          ),
                         ),
                       ),
                     )
                   : SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.82,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) {
-                          final topic = _filteredTopics[i];
-                          return _TopicGridCard(
-                            topic: topic,
-                            icon: _topicIcon(topic.icon),
-                            followed: topic.isFollowed,
-                            onToggleFollow: () => _toggleFollow(topic.id),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => CommunityFeedScreen(initialTopicId: topic.id),
-                            )),
-                          );
-                        },
-                        childCount: _filteredTopics.length,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.82,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, i) {
+                        final topic = _filteredTopics[i];
+                        return _TopicGridCard(
+                          topic: topic,
+                          icon: _topicIcon(topic.icon),
+                          followed: topic.isFollowed,
+                          onToggleFollow: () => _toggleFollow(topic.id),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  CommunityFeedScreen(initialTopicId: topic.id),
+                            ),
+                          ),
+                        );
+                      }, childCount: _filteredTopics.length),
                     ),
             ),
-
           ],
         ],
       ),
@@ -283,7 +325,13 @@ class _TopicGridCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: _surface,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,20 +339,34 @@ class _TopicGridCard extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(color: _secondaryContainer, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: _secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Icon(icon, color: _primary, size: 22),
             ),
             const SizedBox(height: 12),
             Text(
               topic.name,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _onSurface, height: 1.2),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+                height: 1.2,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
-              topic.description.isEmpty ? 'Chủ đề cộng đồng' : topic.description,
-              style: const TextStyle(fontSize: 11, color: _onSurfaceVariant, height: 1.3),
+              topic.description.isEmpty
+                  ? 'Chủ đề cộng đồng'
+                  : topic.description,
+              style: const TextStyle(
+                fontSize: 11,
+                color: _onSurfaceVariant,
+                height: 1.3,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -342,4 +404,3 @@ class _TopicGridCard extends StatelessWidget {
     );
   }
 }
-

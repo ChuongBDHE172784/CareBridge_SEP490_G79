@@ -46,13 +46,13 @@ class ReminderService extends ChangeNotifier {
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // TODO: Replace with GET /api/v1/reminders?date=today when endpoint available (UC-45/46/47)
   Future<List<Reminder>> listTodayReminders() async {
     try {
-      final today = DateTime.now().toIso8601String().split('T').first;
-      final data = await apiGet('/api/v1/reminders?date=$today');
+      final data = await apiGet('/api/v1/reminders/today');
       final list = data['data'] as List? ?? [];
-      return list.map((e) => Reminder.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return [];
     }
@@ -86,9 +86,12 @@ class ReminderService extends ChangeNotifier {
     final body = <String, dynamic>{
       'title': title,
       'scheduledAt': scheduledAt.toUtc().toIso8601String(),
-      'recurrenceType': recurrenceType == RecurrenceType.none ? null : recurrenceType.toApiValue(),
-      if (recurrenceEndDate != null) 'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      if (journeyId != null) 'journeyId': journeyId,
+      'recurrenceType': recurrenceType == RecurrenceType.none
+          ? null
+          : recurrenceType.toApiValue(),
+      if (recurrenceEndDate != null)
+        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      'journeyId': ?journeyId,
     };
     final data = await apiPost('/api/v1/reminders/medication', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -107,18 +110,25 @@ class ReminderService extends ChangeNotifier {
       'babyId': babyId,
       'title': title,
       'scheduledAt': scheduledAt.toUtc().toIso8601String(),
-      'recurrenceType': recurrenceType == RecurrenceType.none ? null : recurrenceType.toApiValue(),
-      if (recurrenceEndDate != null) 'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      if (journeyId != null) 'journeyId': journeyId,
+      'recurrenceType': recurrenceType == RecurrenceType.none
+          ? null
+          : recurrenceType.toApiValue(),
+      if (recurrenceEndDate != null)
+        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      'journeyId': ?journeyId,
     };
     final data = await apiPost('/api/v1/reminders/vaccination', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   // UC-47: Get vaccination suggestions for baby
-  Future<List<Map<String, dynamic>>> getVaccinationSuggestions(String babyId) async {
+  Future<List<Map<String, dynamic>>> getVaccinationSuggestions(
+    String babyId,
+  ) async {
     try {
-      final data = await apiGet('/api/v1/reminders/vaccination/suggestions?babyId=$babyId');
+      final data = await apiGet(
+        '/api/v1/reminders/vaccination/suggestions?babyId=$babyId',
+      );
       final list = data['data'] as List? ?? [];
       return list.cast<Map<String, dynamic>>();
     } catch (_) {
@@ -135,17 +145,22 @@ class ReminderService extends ChangeNotifier {
     DateTime? recurrenceEndDate,
   }) async {
     final body = <String, dynamic>{
-      if (title != null) 'title': title,
-      if (scheduledAt != null) 'scheduledAt': scheduledAt.toUtc().toIso8601String(),
+      'title': ?title,
+      if (scheduledAt != null)
+        'scheduledAt': scheduledAt.toUtc().toIso8601String(),
       if (recurrenceType != null) 'recurrenceType': recurrenceType.toApiValue(),
-      if (recurrenceEndDate != null) 'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      if (recurrenceEndDate != null)
+        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
     };
     final data = await apiPatch('/api/v1/reminders/$reminderId', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   // UC-48: Snooze reminder
-  Future<Reminder> snoozeReminder(String reminderId, DateTime snoozedUntil) async {
+  Future<Reminder> snoozeReminder(
+    String reminderId,
+    DateTime snoozedUntil,
+  ) async {
     final body = {'snoozedUntil': snoozedUntil.toUtc().toIso8601String()};
     final data = await apiPatch('/api/v1/reminders/$reminderId/snooze', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);

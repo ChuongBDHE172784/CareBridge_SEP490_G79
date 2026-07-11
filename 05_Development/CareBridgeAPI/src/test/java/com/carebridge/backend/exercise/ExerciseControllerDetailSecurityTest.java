@@ -7,6 +7,9 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.exercise.controller.ExerciseController;
 import com.carebridge.backend.exercise.service.IExerciseDetailQueryService;
+import com.carebridge.backend.exercise.service.IExerciseSafetyCheckService;
+import com.carebridge.backend.exercise.service.IExerciseSessionService;
+import com.carebridge.backend.exercise.service.IPostureConfigService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -36,6 +39,15 @@ class ExerciseControllerDetailSecurityTest {
 
     @MockitoBean
     private com.carebridge.backend.exercise.service.IExerciseQueryService exerciseQueryService;
+
+    @MockitoBean
+    private IExerciseSafetyCheckService safetyCheckService;
+
+    @MockitoBean
+    private IExerciseSessionService sessionService;
+
+    @MockitoBean
+    private IPostureConfigService postureConfigService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;

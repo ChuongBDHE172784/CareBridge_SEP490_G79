@@ -14,6 +14,8 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.IJourneyService;
+import com.carebridge.backend.security.rbac.Role;
+import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,17 +31,19 @@ import java.util.UUID;
 public class JourneyServiceImpl implements IJourneyService {
 
     private final MotherJourneyRepository journeyRepository;
+    private final UserRepository userRepository;
     private final AuditService auditService;
     private final Clock clock;
 
     @Autowired
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, AuditService auditService) {
-        this(journeyRepository, auditService, Clock.systemDefaultZone());
+    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService) {
+        this(journeyRepository, userRepository, auditService, Clock.systemDefaultZone());
     }
 
     /** Test constructor — allows injecting a fixed Clock for deterministic time calculations. */
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, AuditService auditService, Clock clock) {
+    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, Clock clock) {
         this.journeyRepository = journeyRepository;
+        this.userRepository = userRepository;
         this.auditService = auditService;
         this.clock = clock;
     }
@@ -50,6 +54,17 @@ public class JourneyServiceImpl implements IJourneyService {
 
     @Override
     public CreateJourneyResponse createJourney(CreateJourneyRequest request, UUID callerId) {
+        var user = userRepository.findById(callerId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "JOURNEY-001",
+                        "User not found: " + callerId));
+        if (user.getRole() == null) {
+            user.setRole(Role.MOTHER);
+            userRepository.save(user);
+        } else if (user.getRole() != Role.MOTHER) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "JOURNEY-003",
+                    "Only mother accounts can create a mother journey");
+        }
+
         boolean exists = journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
                 callerId, request.getJourneyType(), JourneyStatus.ACTIVE);
         if (exists) {
@@ -73,7 +88,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 .status(JourneyStatus.ACTIVE)
                 .build();
 
-        MotherJourney saved = journeyRepository.save(journey);
+        MotherJourney saved = journeyRepository.saveAndFlush(journey);
 
         auditService.log(AuditAction.JOURNEY_CREATED, callerId,
                 "MotherJourney", saved.getId().toString(), "created");

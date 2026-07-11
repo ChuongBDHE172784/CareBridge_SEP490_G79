@@ -9,6 +9,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.mapper.CommunityFeedMapper;
+import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
@@ -45,6 +46,7 @@ class CommunityBookmarkServiceImplTest {
     @Mock CommunityQuestionLikeRepository likeRepository;
     @Mock CommunityFeedMapper feedMapper;
     @Mock AuditService auditService;
+    @Mock CommunitySafetyPolicy communitySafetyPolicy;
     @InjectMocks CommunityBookmarkServiceImpl bookmarkService;
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -64,7 +66,7 @@ class CommunityBookmarkServiceImplTest {
 
     @Test
     void toggleBookmark_notYetBookmarked_addsBookmark() {
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(makeApprovedQuestion()));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(makeApprovedQuestion());
         when(bookmarkRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(false);
         when(bookmarkRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -79,7 +81,7 @@ class CommunityBookmarkServiceImplTest {
     void toggleBookmark_alreadyBookmarked_removesBookmark() {
         CommunityBookmark existing = CommunityBookmark.builder()
                 .id(UUID.randomUUID()).userId(USER_ID).questionId(QUESTION_ID).build();
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(makeApprovedQuestion()));
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID)).thenReturn(makeApprovedQuestion());
         when(bookmarkRepository.existsByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(true);
         when(bookmarkRepository.findByUserIdAndQuestionId(USER_ID, QUESTION_ID)).thenReturn(Optional.of(existing));
 
@@ -91,7 +93,8 @@ class CommunityBookmarkServiceImplTest {
 
     @Test
     void toggleBookmark_questionNotFound_throws() {
-        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.empty());
+        when(communitySafetyPolicy.requireVisibleQuestion(USER_ID, QUESTION_ID))
+                .thenThrow(new QuestionNotFoundException(QUESTION_ID.toString()));
 
         assertThatThrownBy(() -> bookmarkService.toggleBookmark(USER_ID, QUESTION_ID))
                 .isInstanceOf(QuestionNotFoundException.class);

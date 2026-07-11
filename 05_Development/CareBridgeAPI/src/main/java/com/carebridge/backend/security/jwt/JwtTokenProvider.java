@@ -31,10 +31,14 @@ public class JwtTokenProvider {
 
     @PostConstruct
     void init() {
-        if (configuredSecret == null || configuredSecret.isBlank()) {
+        String secret = configuredSecret;
+    if (secret == null || secret.isBlank()) {
+        secret = System.getenv("JWT_SECRET");
+    }
+    if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("JWT_SECRET is not configured. Set the JWT_SECRET environment variable with a strong secret (at least 32 characters).");
         }
-        String trimmedSecret = configuredSecret.trim();
+        String trimmedSecret = secret.trim();
         if (trimmedSecret.length() < 32) {
             throw new IllegalStateException("JWT_SECRET is too weak. Must be at least 32 characters.");
         }
@@ -49,9 +53,12 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
         StringBuilder payload = new StringBuilder("{")
                 .append("\"sub\":\"").append(escape(user.getId().toString())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_PHONE).append("\":\"").append(escape(user.getPhone())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_ROLE).append("\":\"").append(escape(user.getRole().getAuthority())).append("\",")
-                .append("\"").append(SecurityConstants.CLAIM_TOKEN_TYPE).append("\":\"").append(SecurityConstants.ACCESS_TOKEN_TYPE).append("\",")
+                .append("\"").append(SecurityConstants.CLAIM_PHONE).append("\":\"").append(escape(user.getPhone())).append("\",");
+        if (user.getRole() != null) {
+            payload.append("\"").append(SecurityConstants.CLAIM_ROLE).append("\":\"")
+                    .append(escape(user.getRole().getAuthority())).append("\",");
+        }
+        payload.append("\"").append(SecurityConstants.CLAIM_TOKEN_TYPE).append("\":\"").append(SecurityConstants.ACCESS_TOKEN_TYPE).append("\",")
                 .append("\"iat\":").append(now.getEpochSecond()).append(",")
                 .append("\"exp\":").append(now.plusMillis(accessTokenExpirationMs).getEpochSecond());
         if (sessionId != null) {

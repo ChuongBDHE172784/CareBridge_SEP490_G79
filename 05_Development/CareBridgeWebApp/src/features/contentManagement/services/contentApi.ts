@@ -149,3 +149,10 @@ export async function updateTopic(
   );
   return res.data.data;
 }
+
+export async function unpublishContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/content/${id}/unpublish`, { reason },
+  );
+  return res.data.data;
+}

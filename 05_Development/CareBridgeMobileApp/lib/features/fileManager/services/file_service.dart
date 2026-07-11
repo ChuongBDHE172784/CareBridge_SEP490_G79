@@ -4,7 +4,6 @@ import 'dart:convert';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
-import '../models/file_model.dart';
 
 class FileService {
   String get _baseUrl {
@@ -30,42 +29,16 @@ class FileService {
     return UserFile.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  // TODO: GET /api/v1/files when list endpoint available (UC-168)
+  // UC-168: List files owned by the current user.
   Future<List<UserFile>> listMyFiles({FileCategory? filter}) async {
-    final all = [
-      UserFile(
-        fileId: 'f-1',
-        originalName: 'Siêu âm thai 4D - Tuần 24',
-        mimeType: 'image/jpeg',
-        fileSizeBytes: 2400000,
-        createdAt: DateTime(2024, 5, 12),
-        category: FileCategory.ultrasound,
-        owner: FileOwner.baby,
-        visibility: FileVisibility.private,
-      ),
-      UserFile(
-        fileId: 'f-2',
-        originalName: 'Sổ khám thai định kỳ',
-        mimeType: 'application/pdf',
-        fileSizeBytes: 800000,
-        createdAt: DateTime(2024, 5, 8),
-        category: FileCategory.medicalRecord,
-        owner: FileOwner.mother,
-        visibility: FileVisibility.shared,
-      ),
-      UserFile(
-        fileId: 'f-3',
-        originalName: 'Ảnh kỷ niệm siêu âm',
-        mimeType: 'image/jpeg',
-        fileSizeBytes: 1200000,
-        createdAt: DateTime(2024, 5, 5),
-        category: FileCategory.photo,
-        owner: FileOwner.baby,
-        visibility: FileVisibility.private,
-      ),
-    ];
-    if (filter == null) return all;
-    return all.where((f) => f.category == filter).toList();
+    final query = filter == null
+        ? ''
+        : '?category=${filter.name.toUpperCase()}';
+    final data = await apiGet('/api/v1/files$query');
+    final list = data['data'] as List? ?? [];
+    return list
+        .map((e) => UserFile.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // UC-168: Get file details and presigned URL

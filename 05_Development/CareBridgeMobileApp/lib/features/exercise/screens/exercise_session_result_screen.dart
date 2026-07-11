@@ -109,8 +109,11 @@ class ExerciseSessionResultScreen extends StatelessWidget {
               color: _primaryContainer,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle_outline,
-                color: Colors.white, size: 32),
+            child: const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 32,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -140,8 +143,9 @@ class ExerciseSessionResultScreen extends StatelessWidget {
 
   Widget _buildStatsGrid() {
     final completionInt = result.completionPercent.round();
-    final postureCorrections =
-        result.postureScore != null ? (result.postureScore! / 10).round() : 0;
+    final postureCorrections = result.postureScore != null
+        ? (result.postureScore! / 10).round()
+        : 0;
 
     return Column(
       children: [
@@ -203,7 +207,7 @@ class ExerciseSessionResultScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: _surfaceLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _outlineVariant.withOpacity(0.4)),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,7 +289,8 @@ class ExerciseSessionResultScreen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (_) => const ExerciseHistoryScreen()),
+                  builder: (_) => const ExerciseHistoryScreen(),
+                ),
               );
             },
             style: OutlinedButton.styleFrom(
