@@ -4,7 +4,7 @@
 **Document ID:** `CB-PTR-TEST-008`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Partially Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -25,6 +25,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ---------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-125 Remove Partner Content (Status=Draft)   |
+| 2026-07-11 | AI Agent — Amelia   | Functional/service/controller/security coverage passes (11/13 conditions). DB migration/atomicity integration cases remain unverified because no Docker-compatible runtime is available. |
 
 ---
 

@@ -4,7 +4,7 @@
 **Document ID:** `CB-CONTENT-TEST-007`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Partially Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -26,6 +26,7 @@
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-227 Unpublish Content (Status=Draft)    |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | **Cross-doc note (no status change):** verified this Test-Spec is internally consistent with the current codebase — no `ContentUnpublishController`/`Service`/DTOs exist yet (all TDD Phases correctly `🔴 RED — chưa implement`, matching `Status: Draft`), and `PENDING_REVIEW` is correctly attributed to UC-108. See the sibling TDS's changelog for a cross-doc note: UC-107's ADR-003 (Proposed, needs Tech Lead confirmation) suggests this UC's entire test surface may end up "satisfied by UC-107" rather than implemented separately — a decision for whoever picks up UC-227 next, not resolved by this audit. |
+| 2026-07-11 | AI Agent — Amelia | Service/controller/security and UC-107 archive regression tests pass (9/11 conditions). Two PostgreSQL visibility/persistence integration conditions remain unverified without Docker. |
 
 ---
 

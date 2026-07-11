@@ -4,6 +4,8 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.partner.dto.request.CreatePartnerProfileRequest;
 import com.carebridge.backend.partner.dto.response.CreatePartnerProfileResponse;
+import com.carebridge.backend.partner.dto.request.UpdatePartnerProfileRequest;
+import com.carebridge.backend.partner.dto.response.UpdatePartnerProfileResponse;
 import com.carebridge.backend.partner.service.PartnerProfileService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,5 +36,14 @@ public class PartnerProfileController {
         CreatePartnerProfileResponse response = partnerProfileService.createProfile(request, actorId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Partner profile created successfully"));
+    }
+
+    @PutMapping
+    public ResponseEntity<ApiResponse<UpdatePartnerProfileResponse>> updateProfile(
+            @Valid @RequestBody UpdatePartnerProfileRequest request,
+            Principal principal) {
+        java.util.UUID actorId = SecurityUtils.requireCurrentUserId(principal);
+        UpdatePartnerProfileResponse response = partnerProfileService.updateProfile(request, actorId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Partner profile updated successfully"));
     }
 }

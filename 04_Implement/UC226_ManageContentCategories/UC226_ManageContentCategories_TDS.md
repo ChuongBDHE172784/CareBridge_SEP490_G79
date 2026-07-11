@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-006`                    |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Draft`                                 |
+| **Status**         | `Partially Implemented`                 |
 | **Date**           | `2026-07-01`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -23,6 +23,7 @@
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-226 Manage Content Categories (Status=Draft)  |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | Audit: xác nhận ADR-001 (tái dùng `community_topics`/`CommunityTopicService`, không tạo bảng `content_categories` mới) khớp hoàn toàn với code hiện tại (`CommunityTopicService`/`CommunityTopicController` verified — method signatures, routes, RBAC MODERATOR đều đúng). Sửa 1 lỗi nhỏ: §16 header role `PARTNER_REP` → `PARTNER` (giá trị `Role` enum thật, verified `security.rbac.Role`). Status giữ nguyên `Draft` — không tự approve. |
+| 2026-07-11 | AI Agent — Amelia | Added the CONTENT_ADMIN thin wrapper, audit and RBAC without changing UC-109; 9/11 conditions verified. PostgreSQL cross-route integration remains blocked by unavailable container runtime. |
 
 ---
 

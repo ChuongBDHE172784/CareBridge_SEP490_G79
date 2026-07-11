@@ -2,6 +2,8 @@ package com.carebridge.backend.partner.mapper;
 
 import com.carebridge.backend.partner.dto.request.CreatePartnerProfileRequest;
 import com.carebridge.backend.partner.dto.response.CreatePartnerProfileResponse;
+import com.carebridge.backend.partner.dto.request.UpdatePartnerProfileRequest;
+import com.carebridge.backend.partner.dto.response.UpdatePartnerProfileResponse;
 import com.carebridge.backend.partner.entity.OrganizationStatus;
 import com.carebridge.backend.partner.entity.PartnerOrganization;
 import org.springframework.stereotype.Component;
@@ -33,5 +35,24 @@ public class PartnerProfileMapper {
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    public void updateEntity(UpdatePartnerProfileRequest request, PartnerOrganization entity) {
+        entity.setName(request.getName());
+        entity.setType(request.getType());
+        entity.setAddress(request.getAddress());
+        entity.setCity(request.getCity());
+        entity.setPhone(request.getPhone());
+        entity.setEmail(request.getEmail());
+        entity.setWebsite(request.getWebsite());
+        entity.setLogoUrl(request.getLogoUrl());
+        entity.setDescription(request.getDescription());
+    }
+
+    public UpdatePartnerProfileResponse toUpdateResponse(PartnerOrganization entity) {
+        return new UpdatePartnerProfileResponse(
+                entity.getId(), entity.getName(), entity.getType(), entity.getAddress(), entity.getCity(),
+                entity.getPhone(), entity.getEmail(), entity.getWebsite(), entity.getLogoUrl(),
+                entity.getDescription(), entity.getStatus(), entity.getUpdatedAt());
     }
 }

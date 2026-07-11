@@ -4,7 +4,7 @@
 **Document ID:** `CB-CONTENT-TEST-006`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Partially Implemented`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -25,6 +25,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-226 Manage Content Categories (Status=Draft) |
+| 2026-07-11 | AI Agent — Amelia | Controller, architecture, security and UC-109 regression gates pass (9/11 conditions); two Testcontainers integration conditions are not runnable without Docker. |
 
 ---
 
