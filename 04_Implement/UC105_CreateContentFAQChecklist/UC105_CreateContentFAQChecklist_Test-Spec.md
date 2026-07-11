@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-CONTENT-TDD-003`                                          |
 | **Version**        | `1.0`                                                         |
 | **Date**           | `2026-06-23`                                                  |
-| **Status**         | `Approved`                                                    |
+| **Status**         | `Implemented — 2026-07-11 (16/16 PASS)`                         |
 | **Spec gốc**       | `CB-CONTENT-IMP-003` (UC105_CreateContentFAQChecklist_TDS.md) |
 | **Author**         | `AI Agent — Amelia (Dev Agent)`                               |
 | **Reviewed by**    | `[x] HuyND — 2026-06-24`                                     |
@@ -22,6 +22,7 @@
 | ---------- | ----------------- | ---------------------------------------------------------------------------------------------------------- |
 | 2026-06-23 | AI Agent — Amelia | Khởi tạo TDD spec cho UC-105 Create Content/FAQ/Checklist                                                  |
 | 2026-06-24 | AI Agent — Amelia | Implementation hoàn thành. 16 tests (8 service + 8 controller) đều GREEN. Status → Approved. |
+| 2026-07-11 | AI Agent — Codex | Re-ran the focused create-content suite: 16/16 passing. Status synchronized to Implemented. |
 
 ---
 

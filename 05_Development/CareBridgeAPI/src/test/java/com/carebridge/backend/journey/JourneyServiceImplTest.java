@@ -70,7 +70,7 @@ class JourneyServiceImplTest {
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
                 CALLER_ID, JourneyType.PREGNANCY, JourneyStatus.ACTIVE)).thenReturn(false);
         UUID newId = UUID.randomUUID();
-        when(journeyRepository.save(any())).thenReturn(savedJourney(newId, JourneyType.PREGNANCY));
+        when(journeyRepository.saveAndFlush(any())).thenReturn(savedJourney(newId, JourneyType.PREGNANCY));
 
         CreateJourneyResponse resp = journeyService.createJourney(makeRequest(), CALLER_ID);
 
@@ -102,7 +102,7 @@ class JourneyServiceImplTest {
     void createJourney_success_auditEventEmitted() {
         givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
-        when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
+        when(journeyRepository.saveAndFlush(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
 
         journeyService.createJourney(makeRequest(), CALLER_ID);
 
@@ -115,11 +115,11 @@ class JourneyServiceImplTest {
     void createJourney_ownerUserIdSetToCallerId() {
         givenMotherUser();
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
-        when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
+        when(journeyRepository.saveAndFlush(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
 
         journeyService.createJourney(makeRequest(), CALLER_ID);
 
-        verify(journeyRepository).save(argThat(j -> j.getOwnerUserId().equals(CALLER_ID)));
+        verify(journeyRepository).saveAndFlush(argThat(j -> j.getOwnerUserId().equals(CALLER_ID)));
     }
 
     @Test
@@ -128,7 +128,7 @@ class JourneyServiceImplTest {
         when(userRepository.findById(CALLER_ID)).thenReturn(Optional.of(unassigned));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(any(), any(), any())).thenReturn(false);
-        when(journeyRepository.save(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
+        when(journeyRepository.saveAndFlush(any())).thenReturn(savedJourney(UUID.randomUUID(), JourneyType.PREGNANCY));
 
         journeyService.createJourney(makeRequest(), CALLER_ID);
 

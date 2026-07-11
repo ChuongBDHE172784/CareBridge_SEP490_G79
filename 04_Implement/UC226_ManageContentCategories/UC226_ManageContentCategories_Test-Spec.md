@@ -4,7 +4,7 @@
 **Document ID:** `CB-CONTENT-TEST-006`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Partially Implemented`
+**Status:** `Implemented — 2026-07-11 (11/11 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -26,6 +26,8 @@
 | ---------- | -------------------- | ------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-226 Manage Content Categories (Status=Draft) |
 | 2026-07-11 | AI Agent — Amelia | Controller, architecture, security and UC-109 regression gates pass (9/11 conditions); two Testcontainers integration conditions are not runnable without Docker. |
+| 2026-07-11 | AI Agent — Codex | Added and ran the two PostgreSQL Testcontainers integration tests; all 11/11 conditions pass. Integration tests are characterization tests, so no historical RED result is claimed. |
+| 2026-07-11 | AI Agent — Codex | Full backend regression PASS: 1,519 tests, 0 failures, 0 errors, 1 skipped. |
 
 ---
 
@@ -390,8 +392,8 @@ disconnected data store was created), BLOCKING.
 | `MCC-TC-1107`     | `ContentCategoryControllerSecurityTest.java`         | `[ ]`               | —                     | —                    |
 | `MCC-TC-1108`     | `ContentCategoryControllerSecurityTest.java`         | `[ ]`               | —                     | ★ dual-route RBAC    |
 | `MCC-TC-1109`     | `ContentCategoryControllerSecurityTest.java`         | `[ ]`               | —                     | —                    |
-| `MCC-TC-INT-001`  | `ContentCategoryIntegrationTest.java`                | `[ ]`               | —                     | —                    |
-| `MCC-TC-INT-002`  | `ContentCategoryIntegrationTest.java`                | `[ ]`               | —                     | ★ single-source-of-truth |
+| `MCC-TC-INT-001`  | `ContentCategoryIntegrationTest.java`                | `[ ]`               | 2026-07-11 (working tree) | PostgreSQL 16 persistence |
+| `MCC-TC-INT-002`  | `ContentCategoryIntegrationTest.java`                | `[ ]`               | 2026-07-11 (working tree) | ★ single-source-of-truth |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -427,10 +429,10 @@ public ResponseEntity<ApiResponse<CommunityTopicResponse>> createCategory(
 ### Exit Criteria (DoD)
 - [ ] `./mvnw test -Dtest=ContentCategoryControllerTest` — all PASS
 - [ ] `./mvnw test -Dtest=ContentCategoryControllerSecurityTest` — all PASS
-- [ ] `./mvnw verify -Dtest=ContentCategoryIntegrationTest` — all PASS (Testcontainers)
+- [x] `./mvnw verify -Dtest=ContentCategoryIntegrationTest` — all PASS (Testcontainers)
 - [ ] MCC-TC-1104: no schema duplication — VERIFIED (CRITICAL, ADR-001 core guarantee)
 - [ ] MCC-TC-1105: UC-109's own suite still 100% green — VERIFIED (CRITICAL regression gate)
-- [ ] MCC-TC-INT-002: cross-route consistency — VERIFIED (CRITICAL single-source-of-truth)
+- [x] MCC-TC-INT-002: cross-route consistency — VERIFIED (CRITICAL single-source-of-truth)
 - [ ] MCC-TC-1108: dual-route RBAC boundary correct — VERIFIED
 - [ ] No business logic in the new controller (pure delegation)
 

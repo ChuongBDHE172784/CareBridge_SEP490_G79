@@ -4,7 +4,7 @@
 **Document ID:** `CB-CONTENT-TEST-002`
 **Version:** `1.0`
 **Date:** `2026-06-23`
-**Status:** `Approved`
+**Status:** `Implemented — 2026-07-11 (22/22 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -30,6 +30,7 @@
 | 2026-06-23 | AI Agent — Winston (System Architect) | Khởi tạo tài liệu — TDD spec cho UC-224 Search Verified Content |
 | 2026-06-24 | AI Agent — Amelia (Dev)               | GREEN Phase hoàn thành — 22/22 tests PASS; cập nhật tracker & DoD |
 | 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: xoá claim `IAM-001` không tồn tại (401 là bare status, không body) khỏi TDS-02 và CNT224-TC-SEC-002 test snippet để khớp `ContentSearchSecurityTest.java` thực tế; sửa Entry Criteria — index `idx_content_items_title_search` đã có sẵn trong `V1__init_schema.sql` baseline, không phải "V8 migration" riêng. Status giữ nguyên `Approved` theo quy ước audit. |
+| 2026-07-11 | AI Agent — Codex | Re-ran service, controller, security and integration coverage: 22/22 passing. Status synchronized to Implemented. |
 
 ---
 

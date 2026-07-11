@@ -5,7 +5,7 @@
 | ------------------ | ---------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-007`                    |
 | **Version**        | `1.0`                                   |
-| **Status**         | `Partially Implemented`                 |
+| **Status**         | `Implemented`                           |
 | **Date**           | `2026-07-01`                            |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
@@ -24,6 +24,7 @@
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — TDS cho UC-227 Unpublish Content (Status=Draft)          |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | **Cross-doc note (no status change):** UC-107's TDS (`CB-CONTENT-IMP-006`, Implemented, dated 2026-07-02 — after this doc), §ADR-003, proposes that `POST /api/v1/admin/content/{id}/archive` (already built for UC-107) subsumes this UC's `POST /api/v1/admin/content/{id}/unpublish` for the `APPROVED→ARCHIVED` case, and recommends UC-227 be updated to "satisfied by UC-107" rather than implemented as a separate endpoint when its turn comes. UC-107's own ADR-003 is explicitly marked `Proposed — needs Tech Lead confirmation`, not a decided merge. This TDS is left as-is (still describing a standalone `/unpublish` endpoint) pending that human decision — implementers should check UC-107's ADR-003 status before starting UC-227 work. Also reconciled §10's `CNT-006/007` numbering note: those codes were claimed by UC-107, not left as an open gap. |
 | 2026-07-11 | AI Agent — Amelia | Implemented the standalone APPROVED→ARCHIVED unpublish contract, publishedAt preservation, audit and CONTENT_ADMIN RBAC. 9/11 conditions verified; DB visibility integration blocked by unavailable container runtime. |
+| 2026-07-11 | AI Agent — Codex | Completed PostgreSQL verification with Testcontainers: archived status persists, publishedAt is preserved, and public detail becomes unavailable; 11/11 conditions verified. |
 
 ---
 

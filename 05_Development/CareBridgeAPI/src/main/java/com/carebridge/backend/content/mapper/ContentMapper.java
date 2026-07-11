@@ -12,6 +12,8 @@ import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
 import java.util.List;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -56,6 +58,9 @@ public class ContentMapper {
 
     // BR-PRIVACY: authorId excluded
     public ContentDetailResponse toDetailResponse(ContentItem item) {
+        Instant updatedAt = item.getUpdatedAt();
+        boolean contentStale = updatedAt != null
+                && updatedAt.isBefore(Instant.now().minus(365, ChronoUnit.DAYS));
         return ContentDetailResponse.builder()
                 .id(item.getId())
                 .type(item.getType())
@@ -64,7 +69,10 @@ public class ContentMapper {
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
                 .version(item.getVersionNo())
+                .sourceLabel(item.getSourceLabel())
                 .publishedAt(item.getPublishedAt())
+                .updatedAt(updatedAt)
+                .contentStale(contentStale)
                 .build();
     }
 

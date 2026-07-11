@@ -4,7 +4,7 @@
 **Document ID:** `CB-CONTENT-TEST-007`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Partially Implemented`
+**Status:** `Implemented — 2026-07-11 (11/11 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -27,6 +27,8 @@
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-227 Unpublish Content (Status=Draft)    |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | **Cross-doc note (no status change):** verified this Test-Spec is internally consistent with the current codebase — no `ContentUnpublishController`/`Service`/DTOs exist yet (all TDD Phases correctly `🔴 RED — chưa implement`, matching `Status: Draft`), and `PENDING_REVIEW` is correctly attributed to UC-108. See the sibling TDS's changelog for a cross-doc note: UC-107's ADR-003 (Proposed, needs Tech Lead confirmation) suggests this UC's entire test surface may end up "satisfied by UC-107" rather than implemented separately — a decision for whoever picks up UC-227 next, not resolved by this audit. |
 | 2026-07-11 | AI Agent — Amelia | Service/controller/security and UC-107 archive regression tests pass (9/11 conditions). Two PostgreSQL visibility/persistence integration conditions remain unverified without Docker. |
+| 2026-07-11 | AI Agent — Codex | Added and ran the two PostgreSQL Testcontainers integration tests; all 11/11 conditions pass. Integration tests are characterization tests, so no historical RED result is claimed. |
+| 2026-07-11 | AI Agent — Codex | Full backend regression PASS: 1,519 tests, 0 failures, 0 errors, 1 skipped. |
 
 ---
 
@@ -385,8 +387,8 @@ a no-op from the user's perspective, BLOCKING (the exact real-world failure this
 | `UPC-TC-1207`     | `UnpublishContentServiceImplTest.java`               | `[ ]`               | —                     | —                    |
 | `UPC-TC-1208`     | `UnpublishContentControllerSecurityTest.java`        | `[ ]`               | —                     | —                    |
 | `UPC-TC-1209`     | `UnpublishContentControllerSecurityTest.java`        | `[ ]`               | —                     | —                    |
-| `UPC-TC-INT-001`  | `UnpublishContentIntegrationTest.java`               | `[ ]`               | —                     | —                    |
-| `UPC-TC-INT-002`  | `UnpublishContentIntegrationTest.java`               | `[ ]`               | —                     | ★★ visibility proof  |
+| `UPC-TC-INT-001`  | `UnpublishContentIntegrationTest.java`               | `[ ]`               | 2026-07-11 (working tree) | PostgreSQL 16 persistence |
+| `UPC-TC-INT-002`  | `UnpublishContentIntegrationTest.java`               | `[ ]`               | 2026-07-11 (working tree) | ★★ visibility proof  |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 
@@ -422,11 +424,11 @@ public UnpublishResponse unpublish(UUID id, UnpublishRequest request, Principal 
 ### Exit Criteria (DoD)
 - [ ] `./mvnw test -Dtest=UnpublishContentServiceImplTest` — all PASS
 - [ ] `./mvnw test -Dtest=UnpublishContentControllerSecurityTest` — all PASS
-- [ ] `./mvnw verify -Dtest=UnpublishContentIntegrationTest` — all PASS (Testcontainers)
+- [x] `./mvnw verify -Dtest=UnpublishContentIntegrationTest` — all PASS (Testcontainers)
 - [ ] UPC-TC-1203: publishedAt preserved — VERIFIED (CRITICAL data-integrity gate)
 - [ ] UPC-TC-1204: no invented enum value — VERIFIED (reuse-not-invent guard)
 - [ ] UPC-TC-1202: APPROVED-only transition guard — VERIFIED (CRITICAL)
-- [ ] UPC-TC-INT-002: item disappears from public path — VERIFIED (CRITICAL, the core UC guarantee)
+- [x] UPC-TC-INT-002: item disappears from public path — VERIFIED (CRITICAL, the core UC guarantee)
 - [ ] No business logic in controller
 
 **Exit Criteria bổ sung — CASE 2.0:**

@@ -23,6 +23,7 @@ import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -49,6 +50,7 @@ class PostureConfigLifecycleIntegrationTest extends AbstractPostgresIntegrationT
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private EntityManager entityManager;
 
     private User saveSystemAdmin(String email) {
         return userRepository.save(User.builder()
@@ -57,6 +59,9 @@ class PostureConfigLifecycleIntegrationTest extends AbstractPostgresIntegrationT
                 .passwordHash(passwordEncoder.encode("SecureP@ss1"))
                 .enabled(true)
                 .locked(false)
+                .emailVerified(true)
+                .phoneVerified(false)
+                .accountStatus("ACTIVE")
                 .build());
     }
 
@@ -142,6 +147,7 @@ class PostureConfigLifecycleIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private long activeCountFor(UUID exerciseId) {
+        entityManager.flush();
         Long count = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM posture_analysis_configs WHERE exercise_id = ? AND status = 'ACTIVE'",
                 Long.class, exerciseId);

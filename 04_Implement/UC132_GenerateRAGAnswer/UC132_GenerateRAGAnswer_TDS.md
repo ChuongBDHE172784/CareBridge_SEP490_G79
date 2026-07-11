@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-RAG-IMP-001`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |

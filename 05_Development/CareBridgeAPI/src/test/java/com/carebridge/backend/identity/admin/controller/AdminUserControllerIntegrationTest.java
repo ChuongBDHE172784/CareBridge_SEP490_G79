@@ -43,6 +43,9 @@ class AdminUserControllerIntegrationTest extends AbstractPostgresIntegrationTest
                 .passwordHash(passwordEncoder.encode("SecureP@ss1"))
                 .enabled(true)
                 .locked(false)
+                .emailVerified(true)
+                .phoneVerified(false)
+                .accountStatus("ACTIVE")
                 .build());
     }
 
@@ -53,6 +56,9 @@ class AdminUserControllerIntegrationTest extends AbstractPostgresIntegrationTest
                 .passwordHash(passwordEncoder.encode("SecureP@ss1"))
                 .enabled(true)
                 .locked(false)
+                .emailVerified(true)
+                .phoneVerified(false)
+                .accountStatus("ACTIVE")
                 .build());
     }
 

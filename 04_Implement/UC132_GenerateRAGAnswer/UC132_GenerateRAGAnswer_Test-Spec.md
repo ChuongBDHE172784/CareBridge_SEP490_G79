@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-RAG-TDD-001`                                  |
 | **Version**        | `1.0`                                             |
 | **Date**           | `2026-06-23`                                      |
-| **Status**         | `Approved`                                        |
+| **Status**         | `Implemented — 2026-07-11 (26/26 PASS)`             |
 | **Spec gốc**       | `CB-RAG-IMP-001` (UC132_GenerateRAGAnswer_TDS.md) |
 | **Author**         | `AI Agent — Amelia (Dev Agent)`                   |
 | **Reviewed by**    | `[ ] Pending`                                     |
