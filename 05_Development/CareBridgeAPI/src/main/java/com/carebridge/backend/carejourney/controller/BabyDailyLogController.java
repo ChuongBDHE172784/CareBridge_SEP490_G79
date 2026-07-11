@@ -46,6 +46,16 @@ public class BabyDailyLogController {
         return ApiResponse.success(response, "Baby daily log updated successfully");
     }
 
+    @GetMapping("/{logId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<BabyDailyLogResponse> getDailyLogDetail(
+            @PathVariable UUID babyId,
+            @PathVariable UUID logId,
+            Principal principal) {
+        BabyDailyLogResponse response = babyDailyLogService.getDailyLogDetail(babyId, logId, principal);
+        return ApiResponse.success(response);
+    }
+
     @DeleteMapping("/{logId}")
     @PreAuthorize("hasRole('MOTHER')")
     public ApiResponse<Void> deleteLog(

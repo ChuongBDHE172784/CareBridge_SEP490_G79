@@ -6,12 +6,12 @@
 | **Document ID** | `CB-REM-IMP-213` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
+| **Approved by** | `TV2-Bách` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -987,5 +987,11 @@ Output tuân thủ §8; tests cover §13 và Test-Spec.
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 
 ---
+
+## 21. Implementation Sync
+
+| Date | Status | Notes |
+|---|---|---|
+| 2026-07-10 | `Partially Implemented` | Backend path implemented for owner-only `PATCH /api/v1/reminders/{reminderId}/complete`, PENDING→COMPLETED terminal guard, FCM job cancel via existing `cancelFcmJob`, and `AuditAction.REMINDER_COMPLETED`. Recurrence materialization remains out of scope because ADR-REM-213-002 is Open. Targeted reminder tests pass; full regression remains red due unrelated existing family/exercise/auth integration failures. |
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft — chưa Approved, chưa implement.*

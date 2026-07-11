@@ -5,10 +5,14 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.health.dto.PostpartumLogResponse;
 import com.carebridge.backend.health.entity.PostpartumLog;
+import com.carebridge.backend.health.entity.PostpartumLogStatus;
+import com.carebridge.backend.health.event.PostpartumLogDeleted;
+import com.carebridge.backend.health.event.PostpartumLogUpdated;
 import com.carebridge.backend.health.repository.PostpartumLogRepository;
 import com.carebridge.backend.health.service.PostpartumAiAnalyzer;
 import com.carebridge.backend.health.service.impl.PostpartumLogServiceImpl;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +38,7 @@ class PostpartumLogServiceTest {
     @Mock private MotherJourneyRepository journeyRepository;
     @Mock private AuditService auditService;
     @Mock private PostpartumAiAnalyzer postpartumAiAnalyzer;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private PostpartumLogServiceImpl postpartumLogService;
 
     /** POST-TC-028-001: Happy path — valid POSTPARTUM journey, log saved + audit emitted. */
@@ -156,5 +161,106 @@ class PostpartumLogServiceTest {
         assertThat(response.getAiInsight()).isNull();
         assertThat(response.isRedFlagAlert()).isFalse();
         verify(logRepository).save(any());
+    }
+
+    @Test
+    void listLogs_ownerReturnsActiveLogs() {
+        var journey = PostpartumLogTestFactory.makeActivePostpartumJourney();
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
+        when(logRepository.findByJourneyIdAndStatusOrderByLogDateDescCreatedAtDesc(
+                PostpartumLogTestFactory.JOURNEY_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(java.util.List.of(log));
+
+        var response = postpartumLogService.listLogs(
+                PostpartumLogTestFactory.JOURNEY_ID, PostpartumLogTestFactory.MOTHER_ID);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).getPostpartumLogId()).isEqualTo(PostpartumLogTestFactory.LOG_ID);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void getLogDetail_deletedOrMissing_throwsPplog001() {
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> postpartumLogService.getLogDetail(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PPLOG-001"));
+    }
+
+    @Test
+    void getLogDetail_notOwner_throwsPplog003() {
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(PostpartumLogTestFactory.makeOtherUsersJourney()));
+
+        assertThatThrownBy(() -> postpartumLogService.getLogDetail(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getCode()).isEqualTo("PPLOG-003");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                });
+    }
+
+    @Test
+    void updateLog_partialUpdateChangesOnlyPresentFields() {
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        var request = PostpartumLogTestFactory.makeUpdateRequest();
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(PostpartumLogTestFactory.makeActivePostpartumJourney()));
+        when(logRepository.save(any(PostpartumLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PostpartumLogResponse response = postpartumLogService.updateLog(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID, request);
+
+        assertThat(response.getPainLevel()).isEqualTo((short) 4);
+        assertThat(response.getMoodLevel()).isEqualTo((short) 7);
+        assertThat(response.getSymptomNote()).isEqualTo("Pain improved");
+        verify(eventPublisher).publishEvent(any(PostpartumLogUpdated.class));
+    }
+
+    @Test
+    void deleteLog_ownerSoftDeletesAndPublishesMinimumEvent() {
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(PostpartumLogTestFactory.makeActivePostpartumJourney()));
+        when(logRepository.save(any(PostpartumLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        postpartumLogService.deleteLog(PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID);
+
+        assertThat(log.getStatus()).isEqualTo(PostpartumLogStatus.DELETED);
+        verify(logRepository).save(log);
+        verify(logRepository, never()).delete(any());
+        verify(logRepository, never()).deleteById(any());
+        verify(eventPublisher).publishEvent(any(PostpartumLogDeleted.class));
+    }
+
+    @Test
+    void deleteLog_notOwnerDoesNotMutate() {
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(PostpartumLogTestFactory.makeOtherUsersJourney()));
+
+        assertThatThrownBy(() -> postpartumLogService.deleteLog(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PPLOG-003"));
+
+        assertThat(log.getStatus()).isEqualTo(PostpartumLogStatus.ACTIVE);
+        verify(logRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

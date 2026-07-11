@@ -73,26 +73,25 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     _checkUnread();
+    JourneyDashboard? dashboard;
+    List<Reminder> tasks = [];
+
     try {
-      final results = await Future.wait([
-        _journeyService.getDashboard(),
-        _reminderService.listTodayReminders(),
-      ]);
-      if (mounted) {
-        setState(() {
-          _dashboard = results[0] as JourneyDashboard;
-          _tasks = (results[1] as List).cast<Reminder>().take(3).toList();
-          _loading = false;
-        });
-      }
+      dashboard = await _journeyService.getDashboard();
     } on ApiException {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+    } catch (_) {}
+
+    try {
+      tasks = (await _reminderService.listTodayReminders()).take(3).toList();
+    } on ApiException {
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _dashboard = dashboard;
+        _tasks = tasks;
+        _loading = false;
+      });
     }
   }
 
@@ -198,8 +197,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
 
   Widget _buildJourneyCard() {
     final d = _dashboard;
-    final week = d?.pregnancyWeek ?? 24;
-    final progress = d?.pregnancyProgress ?? 0.6;
+    final week = d?.effectivePregnancyWeek;
+    final progress = d?.pregnancyProgress ?? 0.0;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -233,7 +232,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
               ),
               const SizedBox(height: 12),
               // Week number
-              Text('Tuần $week',
+              Text(week != null ? 'Tuần $week' : 'Chưa có dữ liệu',
                   style: const TextStyle(fontFamily: 'Lexend', fontSize: 32, fontWeight: FontWeight.w700, color: _onSurface, letterSpacing: -0.5)),
               const SizedBox(height: 8),
               // Description (2/3 width to avoid fruit image)
@@ -382,7 +381,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
 
   Widget _buildContentSection() {
     if (_dashboard == null) return const SizedBox.shrink();
-    final week = _dashboard!.pregnancyWeek;
+    final week = _dashboard!.effectivePregnancyWeek;
     if (week == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),

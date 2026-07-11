@@ -115,8 +115,12 @@ Future<http.Response> _handleUnauthorized(
   }
 }
 
-Future<dynamic> apiGet(String path, {String? token}) async {
-  final uri = Uri.parse('$_baseUrl$path');
+Future<dynamic> apiGet(String path, {String? token, Map<String, dynamic>? queryParams}) async {
+  String queryString = '';
+  if (queryParams != null && queryParams.isNotEmpty) {
+    queryString = '?' + queryParams.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}').join('&');
+  }
+  final uri = Uri.parse('$_baseUrl$path$queryString');
   var response = await http.get(uri, headers: _headers(token: token));
   response = await _handleUnauthorized(
     response, token, () => http.get(uri, headers: _headers()));

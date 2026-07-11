@@ -1,14 +1,17 @@
 package com.carebridge.backend.carejourney;
 
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AddBabyDailyLogRequest;
 import com.carebridge.backend.carejourney.dto.AddBabyDailyLogResponse;
 import com.carebridge.backend.carejourney.dto.BabyDailyLogResponse;
 import com.carebridge.backend.carejourney.dto.UpdateBabyDailyLogRequest;
 import com.carebridge.backend.carejourney.entity.BabyDailyLog;
+import com.carebridge.backend.carejourney.entity.BabyDailyLogStatus;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.service.impl.BabyDailyLogServiceImpl;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
@@ -36,6 +39,7 @@ class BabyDailyLogServiceTest {
 
     @Mock private BabyDailyLogRepository babyDailyLogRepository;
     @Mock private BabyProfileRepository babyProfileRepository;
+    @Mock private BabyAccessPolicy babyAccessPolicy;
     @Mock private AuditService auditService;
     @InjectMocks private BabyDailyLogServiceImpl service;
 
@@ -279,17 +283,21 @@ class BabyDailyLogServiceTest {
         verify(auditService).log(any(), eq(MOTHER_ID), anyString(), anyString(), any());
     }
 
-    // BABY-TC-035-002: Delete log within 24h -> success
+    // BABY-TC-035-002 / UC195: Delete log -> soft-delete success
     @Test
-    void deleteLog_withinEditWindow_deletesSuccessfully() {
+    void deleteLog_softDeletesSuccessfully() {
         BabyDailyLog existing = makeRecentLog();
+        when(babyDailyLogRepository.findByBabyLogIdAndStatus(LOG_ID, BabyDailyLogStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
-        when(babyDailyLogRepository.findById(LOG_ID)).thenReturn(Optional.of(existing));
+        when(babyAccessPolicy.canManage(any(), eq(MOTHER_ID))).thenReturn(true);
 
         service.deleteLog(BABY_ID, LOG_ID, makePrincipal(MOTHER_ID));
 
-        verify(babyDailyLogRepository).deleteById(LOG_ID);
-        verify(auditService).log(any(), eq(MOTHER_ID), anyString(), anyString(), any());
+        verify(babyDailyLogRepository).save(argThat(log -> BabyDailyLogStatus.DELETED.equals(log.getStatus())));
+        verify(babyDailyLogRepository, never()).deleteById(LOG_ID);
+        verify(auditService).log(eq(AuditAction.BABY_DAILY_LOG_DELETED), eq(MOTHER_ID),
+                eq("BabyDailyLog"), eq(LOG_ID.toString()), any());
     }
 
     // BABY-TC-035-003: Edit window expired -> throws BusinessException BABY-042
@@ -385,18 +393,35 @@ class BabyDailyLogServiceTest {
         service.updateLog(BABY_ID, LOG_ID, req, makePrincipal(MOTHER_ID));
     }
 
-    // BABY-TC-035-009: Delete within 24h emits audit BEFORE delete (C5 + C7)
+    // UC194: View active daily log detail
     @Test
-    void deleteLog_emitsAuditBeforeHardDelete() {
+    void getDailyLogDetail_ownerCanView_returnsResponse() {
         BabyDailyLog existing = makeRecentLog();
+        when(babyDailyLogRepository.findByBabyLogIdAndStatus(LOG_ID, BabyDailyLogStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
-        when(babyDailyLogRepository.findById(LOG_ID)).thenReturn(Optional.of(existing));
+        when(babyAccessPolicy.canView(any(), eq(MOTHER_ID))).thenReturn(true);
 
-        var auditOrder = inOrder(auditService, babyDailyLogRepository);
+        BabyDailyLogResponse response = service.getDailyLogDetail(BABY_ID, LOG_ID, makePrincipal(MOTHER_ID));
+
+        assertThat(response.getBabyLogId()).isEqualTo(LOG_ID);
+        assertThat(response.getBabyId()).isEqualTo(BABY_ID);
+        verify(auditService, never()).log(any(), any(), anyString(), anyString(), any());
+    }
+
+    // UC195: Delete writes status and retains row
+    @Test
+    void deleteLog_savesDeletedStatusAndDoesNotHardDelete() {
+        BabyDailyLog existing = makeRecentLog();
+        when(babyDailyLogRepository.findByBabyLogIdAndStatus(LOG_ID, BabyDailyLogStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
+        when(babyAccessPolicy.canManage(any(), eq(MOTHER_ID))).thenReturn(true);
 
         service.deleteLog(BABY_ID, LOG_ID, makePrincipal(MOTHER_ID));
 
-        auditOrder.verify(auditService).log(any(), eq(MOTHER_ID), anyString(), anyString(), any());
-        auditOrder.verify(babyDailyLogRepository).deleteById(LOG_ID);
+        verify(babyDailyLogRepository).save(argThat(log -> BabyDailyLogStatus.DELETED.equals(log.getStatus())));
+        verify(babyDailyLogRepository, never()).delete(any());
+        verify(babyDailyLogRepository, never()).deleteById(any());
     }
 }

@@ -7,6 +7,9 @@ public enum MetricType {
     BLOOD_GLUCOSE,
     FETAL_MOVEMENT_COUNT,
     HEART_RATE,
+    SLEEP_DURATION,
+    STEPS_COUNT,
+    SPO2,
     TEMPERATURE,
     OTHER
 }

@@ -76,6 +76,7 @@ public class BabyServiceImpl implements IBabyService {
                         .birthWeightKg(p.getBirthWeightKg())
                         .birthLengthCm(p.getBirthLengthCm())
                         .status(p.getStatus().name())
+                        .active(Boolean.TRUE.equals(p.getActive()))
                         .createdAt(p.getCreatedAt())
                         .updatedAt(p.getUpdatedAt())
                         .build())
@@ -104,8 +105,45 @@ public class BabyServiceImpl implements IBabyService {
                 .birthWeightKg(profile.getBirthWeightKg())
                 .birthLengthCm(profile.getBirthLengthCm())
                 .status(profile.getStatus().name())
+                .active(Boolean.TRUE.equals(profile.getActive()))
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public BabyProfileDetailResponse switchActiveBabyProfile(UUID babyId, UUID callerId) {
+        BabyProfile profile = babyRepository.findById(babyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-001",
+                        "Baby profile not found: " + babyId));
+
+        if (!accessPolicy.canManage(profile, callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-003",
+                    "Access denied to baby profile");
+        }
+        if (profile.getStatus() != BabyProfileStatus.ACTIVE) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-004",
+                    "Cannot activate archived baby profile");
+        }
+
+        babyRepository.updateActiveByOwnerUserId(callerId, false);
+        profile.setActive(true);
+        BabyProfile saved = babyRepository.save(profile);
+
+        auditService.log(AuditAction.BABY_ACTIVE_PROFILE_SWITCHED, callerId,
+                "BabyProfile", saved.getId().toString(), "active");
+
+        return BabyProfileDetailResponse.builder()
+                .id(saved.getId())
+                .nickname(saved.getNickname())
+                .birthDate(saved.getBirthDate())
+                .gender(saved.getGender() != null ? saved.getGender().name() : null)
+                .birthWeightKg(saved.getBirthWeightKg())
+                .birthLengthCm(saved.getBirthLengthCm())
+                .status(saved.getStatus().name())
+                .active(Boolean.TRUE.equals(saved.getActive()))
+                .createdAt(saved.getCreatedAt())
+                .updatedAt(saved.getUpdatedAt())
                 .build();
     }
 

@@ -105,4 +105,26 @@ class JourneyServiceImplTest {
 
         verify(journeyRepository).save(argThat(j -> j.getOwnerUserId().equals(CALLER_ID)));
     }
+
+    @Test
+    void createJourney_lastMenstrualDate_derivesAndPersistsEstimatedDueDate() {
+        CreateJourneyRequest req = new CreateJourneyRequest();
+        req.setJourneyType(JourneyType.PREGNANCY);
+        req.setStartDate(LocalDate.of(2026, 2, 1));
+        req.setLastMenstrualDate(LocalDate.of(2026, 1, 10));
+
+        when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
+                CALLER_ID, JourneyType.PREGNANCY, JourneyStatus.ACTIVE)).thenReturn(false);
+        when(journeyRepository.save(any())).thenAnswer(inv -> {
+            MotherJourney journey = inv.getArgument(0);
+            journey.setId(UUID.randomUUID());
+            return journey;
+        });
+
+        journeyService.createJourney(req, CALLER_ID);
+
+        verify(journeyRepository).save(argThat(j ->
+                LocalDate.of(2026, 1, 10).equals(j.getLastMenstrualDate()) &&
+                LocalDate.of(2026, 10, 17).equals(j.getEstimatedDueDate())));
+    }
 }

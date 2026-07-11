@@ -41,6 +41,16 @@ public class DevelopmentMilestone {
     @Column(name = "recorded_by")
     private UUID recordedBy;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "milestone_status", nullable = false, length = 20)
+    private MilestoneAchievementStatus milestoneStatus = MilestoneAchievementStatus.ACHIEVED;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "record_status", nullable = false, length = 20)
+    private MilestoneRecordStatus recordStatus = MilestoneRecordStatus.ACTIVE;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

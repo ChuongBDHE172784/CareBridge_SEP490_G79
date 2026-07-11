@@ -65,6 +65,15 @@ class ReminderSecurityTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/api/v1/reminders/00000000-0000-0000-0000-000000000001"
+    })
+    void deleteReminderEndpoint_unauthenticated_returns401(String path) throws Exception {
+        mockMvc.perform(delete(path))
+                .andExpect(status().isUnauthorized());
+    }
+
     // TC-SEC-002: Non-MOTHER role → 403 on MOTHER-only endpoints
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/reminders/today"})

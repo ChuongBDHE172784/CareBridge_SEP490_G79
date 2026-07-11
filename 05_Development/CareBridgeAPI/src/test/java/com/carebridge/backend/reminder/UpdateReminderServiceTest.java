@@ -1,5 +1,6 @@
 package com.carebridge.backend.reminder;
 
+import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.reminder.dto.ReminderDetailResponse;
@@ -169,6 +170,7 @@ class UpdateReminderServiceTest {
     @Test
     void completeReminder_pendingReminder_returnsCompletedStatus() {
         var pending = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
+        pending.setFcmJobId("job-complete");
         when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
                 .thenReturn(Optional.of(pending));
         when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -177,12 +179,16 @@ class UpdateReminderServiceTest {
                 ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
+        verify(notificationService).cancelFcmJob("job-complete");
+        verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
     }
 
     // UPD-TC-010: Skip reminder happy path → status = SKIPPED
     @Test
     void skipReminder_pendingReminder_returnsSkippedStatus() {
         var pending = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
+        pending.setFcmJobId("job-skip");
         when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
                 .thenReturn(Optional.of(pending));
         when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -191,6 +197,9 @@ class UpdateReminderServiceTest {
                 ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
+        verify(notificationService).cancelFcmJob("job-skip");
+        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
     }
 
     // UPD-TC-011: Complete — COMPLETED is terminal; double-complete → 409
@@ -205,5 +214,98 @@ class UpdateReminderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex ->
                         assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void skipReminder_alreadyCancelled_throwsRem011() {
+        var cancelled = ReminderTestFactory.cancelledReminder();
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(cancelled));
+
+        assertThatThrownBy(() -> reminderService.skipReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(be.getCode()).isEqualTo("REM-011");
+                });
+    }
+
+    @Test
+    void deleteReminder_pendingReminder_softDeletesAndAudits() {
+        var pending = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
+        pending.setFcmJobId("job-delete");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(pending));
+
+        reminderService.deleteReminder(ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(pending.getStatus()).isEqualTo(ReminderStatus.CANCELLED);
+        verify(reminderRepository).save(pending);
+        verify(reminderRepository, never()).delete(any());
+        verify(notificationService).cancelFcmJob("job-delete");
+        verify(auditService).log(AuditAction.REMINDER_CANCELLED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "cancelled");
+    }
+
+    @Test
+    void deleteReminder_alreadyCancelled_isIdempotentNoOp() {
+        var cancelled = ReminderTestFactory.cancelledReminder();
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(cancelled));
+
+        reminderService.deleteReminder(ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        verify(reminderRepository, never()).save(any());
+        verify(notificationService, never()).cancelFcmJob(any());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void deleteReminder_completedReminder_throwsRem017() {
+        var completed = ReminderTestFactory.completedReminder();
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(completed));
+
+        assertThatThrownBy(() -> reminderService.deleteReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(be.getCode()).isEqualTo("REM-017");
+                });
+        verify(reminderRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteReminder_notOwner_throwsRem016() {
+        var other = ReminderTestFactory.reminderOwnedByOther(ReminderType.MEDICATION);
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> reminderService.deleteReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(be.getCode()).isEqualTo("REM-016");
+                });
+    }
+
+    @Test
+    void deleteReminder_notFound_throwsRem015() {
+        when(reminderRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reminderService.deleteReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(be.getCode()).isEqualTo("REM-015");
+                });
     }
 }

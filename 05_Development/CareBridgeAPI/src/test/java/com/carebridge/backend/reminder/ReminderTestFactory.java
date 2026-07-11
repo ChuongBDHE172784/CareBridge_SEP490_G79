@@ -158,6 +158,17 @@ public final class ReminderTestFactory {
                 .build();
     }
 
+    public static Reminder cancelledReminder() {
+        return Reminder.builder()
+                .id(REMINDER_ID)
+                .ownerUserId(OWNER_ID)
+                .reminderType(ReminderType.MEDICATION)
+                .title("Cancelled reminder")
+                .scheduledAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                .status(ReminderStatus.CANCELLED)
+                .build();
+    }
+
     public static Reminder reminderOwnedByOther(ReminderType type) {
         return Reminder.builder()
                 .id(REMINDER_ID)

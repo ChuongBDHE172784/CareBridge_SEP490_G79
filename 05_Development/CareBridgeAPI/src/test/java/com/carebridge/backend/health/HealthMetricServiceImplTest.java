@@ -6,13 +6,14 @@ import com.carebridge.backend.health.dto.MetricDetailResponse;
 import com.carebridge.backend.health.entity.MaternalHealthMetric;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
+import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
 import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
-import com.carebridge.backend.health.repository.HealthRecordRepository;
 import com.carebridge.backend.health.service.impl.HealthMetricServiceImpl;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,7 @@ class HealthMetricServiceImplTest {
     @Mock private MaternalHealthMetricRepository metricRepository;
     @Mock private MotherJourneyRepository journeyRepository;
     @Mock private AuditService auditService;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private HealthMetricServiceImpl metricService;
 
     private static final UUID CALLER_ID  = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -113,5 +115,40 @@ class HealthMetricServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getHttpStatus())
                         .isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void deleteMetric_ownerSoftDeletesMetric() {
+        MaternalHealthMetric metric = makeMetric();
+        when(metricRepository.findByIdAndStatus(METRIC_ID, MetricStatus.ACTIVE))
+                .thenReturn(Optional.of(metric));
+        when(journeyRepository.findById(JOURNEY_ID))
+                .thenReturn(Optional.of(makeJourney(CALLER_ID)));
+
+        metricService.deleteMetric(METRIC_ID, CALLER_ID);
+
+        assertThat(metric.getStatus()).isEqualTo(MetricStatus.DELETED);
+        verify(metricRepository).save(metric);
+        verify(metricRepository, never()).delete(any());
+        verify(metricRepository, never()).deleteById(any());
+        verify(eventPublisher).publishEvent(any(MaternalHealthMetricDeleted.class));
+    }
+
+    @Test
+    void deleteMetric_notOwnerDoesNotMutate() {
+        MaternalHealthMetric metric = makeMetric();
+        when(metricRepository.findByIdAndStatus(METRIC_ID, MetricStatus.ACTIVE))
+                .thenReturn(Optional.of(metric));
+        when(journeyRepository.findById(JOURNEY_ID))
+                .thenReturn(Optional.of(makeJourney(UUID.randomUUID())));
+
+        assertThatThrownBy(() -> metricService.deleteMetric(METRIC_ID, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getHttpStatus())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        assertThat(metric.getStatus()).isEqualTo(MetricStatus.ACTIVE);
+        verify(metricRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

@@ -15,6 +15,7 @@ public class MilestoneResponse {
     private UUID babyId;
     private String milestoneType;
     private LocalDate achievedDate;
+    private String status;
     private String note;
     private String sourceType;
     private UUID recordedBy;

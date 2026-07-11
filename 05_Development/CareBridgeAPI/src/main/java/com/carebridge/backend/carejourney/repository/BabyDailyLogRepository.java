@@ -1,17 +1,21 @@
 package com.carebridge.backend.carejourney.repository;
 
 import com.carebridge.backend.carejourney.entity.BabyDailyLog;
+import com.carebridge.backend.carejourney.entity.BabyDailyLogStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID> {
 
     List<BabyDailyLog> findByBabyId(UUID babyId);
+
+    Optional<BabyDailyLog> findByBabyLogIdAndStatus(UUID babyLogId, BabyDailyLogStatus status);
 
     @Query(value = """
         SELECT log_type AS logType,
@@ -23,6 +27,7 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
         WHERE baby_id = :babyId
           AND created_at >= :fromDate
           AND created_at <= :toDate
+          AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
         GROUP BY log_type
         """, nativeQuery = true)
     List<LogTypeAggregateRow> aggregateByLogType(
@@ -38,6 +43,7 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
           AND created_at >= :fromDate
           AND created_at <= :toDate
           AND note IS NOT NULL
+          AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
         ORDER BY created_at DESC
         """, nativeQuery = true)
     List<String> findNotesByLogTypeAndPeriod(

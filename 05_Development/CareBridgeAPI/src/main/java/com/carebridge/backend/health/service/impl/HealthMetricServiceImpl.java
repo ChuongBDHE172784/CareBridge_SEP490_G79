@@ -11,6 +11,7 @@ import com.carebridge.backend.health.dto.UpdateMetricRequest;
 import com.carebridge.backend.health.entity.MaternalHealthMetric;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
+import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
 import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
 import com.carebridge.backend.health.service.IHealthMetricService;
 import com.carebridge.backend.health.service.MetricAiAnalyzer;
@@ -18,6 +19,7 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     private final MotherJourneyRepository journeyRepository;
     private final AuditService auditService;
     private final MetricAiAnalyzer metricAiAnalyzer;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId) {
@@ -65,6 +68,30 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
                 .note(metric.getNote())
                 .createdAt(metric.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteMetric(UUID metricId, UUID callerId) {
+        MaternalHealthMetric metric = metricRepository.findByIdAndStatus(metricId, MetricStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-001",
+                        "Metric not found or deleted: " + metricId));
+
+        MotherJourney journey = journeyRepository.findById(metric.getJourneyId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-002",
+                        "Parent journey not found for metric: " + metricId));
+
+        if (!journey.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-003",
+                    "Access denied to health metric");
+        }
+
+        metric.setStatus(MetricStatus.DELETED);
+        metricRepository.save(metric);
+        auditService.log(AuditAction.HEALTH_METRIC_DELETED, callerId,
+                "MaternalHealthMetric", metric.getId().toString(), "deleted");
+        eventPublisher.publishEvent(new MaternalHealthMetricDeleted(
+                metric.getId(), metric.getJourneyId(), callerId, Instant.now()));
     }
 
     @Override
@@ -197,9 +224,11 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
         var dataPoints = metrics.stream()
                 .map(m -> com.carebridge.backend.health.dto.MetricDataPoint.builder()
+                        .metricId(m.getId())
                         .measuredAt(m.getMeasuredAt())
                         .valueNumeric(m.getValueNumeric())
                         .valueSecondary(m.getValueSecondary())
+                        .sourceType(m.getSourceType() != null ? m.getSourceType().name() : null)
                         .note(m.getNote())
                         .build())
                 .toList();

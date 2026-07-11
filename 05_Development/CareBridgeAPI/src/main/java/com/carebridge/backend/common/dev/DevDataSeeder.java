@@ -53,7 +53,8 @@ public class DevDataSeeder implements ApplicationRunner {
         new SeedAccount("expert@carebridge.dev", "Expert Test", Role.EXPERT),
         new SeedAccount("partner@carebridge.dev", "Partner Test", Role.PARTNER),
         new SeedAccount("mother@carebridge.dev", "Mother Test", Role.MOTHER),
-        new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY)
+        new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY),
+        new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER)
     );
 
     @Override

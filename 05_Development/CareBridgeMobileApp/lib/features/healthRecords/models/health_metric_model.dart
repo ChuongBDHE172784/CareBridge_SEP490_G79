@@ -1,4 +1,8 @@
 // UC-26 update request DTO (mirrors backend UpdateMetricRequest)
+DateTime _parseMetricDateTime(Object? value) {
+  return DateTime.parse(value as String).toLocal();
+}
+
 class UpdateMetricRequest {
   final double? valueNumeric;
   final double? valueSecondary;
@@ -23,24 +27,61 @@ class UpdateMetricRequest {
   };
 }
 
+// UC-25 add request DTO (mirrors backend AddMetricRequest)
+class AddMetricRequest {
+  final String metricType;
+  final double valueNumeric;
+  final double? valueSecondary;
+  final String unit;
+  final DateTime measuredAt;
+  final String sourceType;
+  final String? note;
+
+  const AddMetricRequest({
+    required this.metricType,
+    required this.valueNumeric,
+    this.valueSecondary,
+    required this.unit,
+    required this.measuredAt,
+    this.sourceType = 'MANUAL',
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'metricType': metricType,
+    'valueNumeric': valueNumeric,
+    if (valueSecondary != null) 'valueSecondary': valueSecondary,
+    'unit': unit,
+    'measuredAt': measuredAt.toUtc().toIso8601String(),
+    'sourceType': sourceType,
+    if (note != null) 'note': note,
+  };
+}
+
 // UC-27 trend data point (mirrors backend MetricDataPoint)
 class MetricDataPoint {
+  final String? metricId;
   final DateTime measuredAt;
   final double valueNumeric;
   final double? valueSecondary;
+  final SourceType sourceType;
   final String? note;
 
   const MetricDataPoint({
+    this.metricId,
     required this.measuredAt,
     required this.valueNumeric,
     this.valueSecondary,
+    this.sourceType = SourceType.manual,
     this.note,
   });
 
   factory MetricDataPoint.fromJson(Map<String, dynamic> json) => MetricDataPoint(
-    measuredAt: DateTime.parse(json['measuredAt'] as String),
+    metricId: (json['metricId'] ?? json['metric_id'] ?? json['id'])?.toString(),
+    measuredAt: _parseMetricDateTime(json['measuredAt']),
     valueNumeric: (json['valueNumeric'] as num).toDouble(),
     valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
+    sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
     note: json['note'] as String?,
   );
 
@@ -111,11 +152,15 @@ extension MetricTypeExtension on MetricType {
   static MetricType fromApi(String? value) {
     switch (value) {
       case 'WEIGHT': return MetricType.weight;
-      case 'BLOOD_PRESSURE': return MetricType.bloodPressure;
+      case 'BLOOD_PRESSURE':
+      case 'BLOOD_PRESSURE_SYSTOLIC':
+      case 'BLOOD_PRESSURE_DIASTOLIC': return MetricType.bloodPressure;
       case 'BLOOD_SUGAR': return MetricType.bloodSugar;
+      case 'BLOOD_GLUCOSE': return MetricType.bloodSugar;
       case 'TEMPERATURE': return MetricType.temperature;
       case 'HEART_RATE': return MetricType.heartRate;
       case 'FETAL_MOVEMENT': return MetricType.fetalMovement;
+      case 'FETAL_MOVEMENT_COUNT': return MetricType.fetalMovement;
       default: return MetricType.other;
     }
   }
@@ -135,7 +180,8 @@ extension SourceTypeExtension on SourceType {
   static SourceType fromApi(String? value) {
     switch (value) {
       case 'DEVICE': return SourceType.device;
-      case 'SYNC': return SourceType.sync;
+      case 'SYNC':
+      case 'IMPORTED': return SourceType.sync;
       default: return SourceType.manual;
     }
   }
@@ -168,16 +214,16 @@ class HealthMetricDetail {
 
   factory HealthMetricDetail.fromJson(Map<String, dynamic> json) {
     return HealthMetricDetail(
-      id: json['id'] as String,
+      id: (json['id'] ?? json['metricId']) as String,
       journeyId: json['journeyId'] as String,
       metricType: MetricTypeExtension.fromApi(json['metricType'] as String?),
       valueNumeric: (json['valueNumeric'] as num).toDouble(),
       valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
       unit: json['unit'] as String? ?? '',
-      measuredAt: DateTime.parse(json['measuredAt'] as String),
+      measuredAt: _parseMetricDateTime(json['measuredAt']),
       sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
       note: json['note'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseMetricDateTime(json['createdAt'] ?? json['updatedAt'] ?? json['measuredAt']),
     );
   }
 

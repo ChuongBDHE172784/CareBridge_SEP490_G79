@@ -29,4 +29,15 @@ public class HealthMetricController {
         var response = healthMetricService.getMetricDetail(metricId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    // UC188: Delete maternal health metric
+    @DeleteMapping("/{metricId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<Void> deleteMetric(
+            @PathVariable UUID metricId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        healthMetricService.deleteMetric(metricId, callerId);
+        return ResponseEntity.noContent().build();
+    }
 }

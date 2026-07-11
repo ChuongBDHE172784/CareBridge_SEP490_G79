@@ -6,12 +6,12 @@
 | **Document ID** | `CB-REM-IMP-005` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
+| **Approved by** | `TV2-Bách` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -1026,5 +1026,11 @@ Output tuân thủ §8. Tests cover §13.
 | UI/UX — Reminder Detail (nút "Xóa") | `03_Design/UI_UX/MobileAppScreen/CB-167 Reminder Detail/code.html` |
 
 ---
+
+## 21. Implementation Sync
+
+| Date | Status | Notes |
+|---|---|---|
+| 2026-07-10 | `Partially Implemented` | Backend path implemented for owner-only `DELETE /api/v1/reminders/{reminderId}`, soft-delete PENDING→CANCELLED, idempotent re-delete, terminal guard (`REM-017`), FCM job cancel via existing `cancelFcmJob`, and `AuditAction.REMINDER_CANCELLED`. Added audit check migration because the real DB has `audit_logs_action_check`. Targeted reminder tests pass; full regression remains red due unrelated existing family/exercise/auth integration failures. |
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft.*

@@ -5,11 +5,13 @@ import '../auth/auth_state.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
+import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
+import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
@@ -64,8 +66,10 @@ final GoRouter appRouter = GoRouter(
     // Do not redirect while restoring state
     if (isRestoring) return null;
 
+    final isAuthLanding = state.matchedLocation == '/auth-landing';
     final isAuthRoute = state.matchedLocation.startsWith('/welcome') ||
-                        state.matchedLocation.startsWith('/login');
+                        state.matchedLocation.startsWith('/login') ||
+                        isAuthLanding;
 
     if (blockedReason != null && state.matchedLocation != '/blocked') {
       return '/blocked';
@@ -75,12 +79,8 @@ final GoRouter appRouter = GoRouter(
       return '/welcome';
     }
 
-    if (isAuth && isAuthRoute) {
-      // Logic kiểm tra xem có Mother Journey chưa (mock).
-      // Thực tế bạn có thể fetch JourneyService() trong một Provider / Bloc,
-      // hoặc AuthState để biết có journey chưa.
-      // Tạm thời redirect thẳng về trang Home / Dashboard.
-      return '/'; 
+    if (isAuth && isAuthRoute && !isAuthLanding) {
+      return '/auth-landing';
     }
 
     return null;
@@ -97,6 +97,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/blocked',
       builder: (context, state) => const BlockedAccountScreen(),
+    ),
+    GoRoute(
+      path: '/auth-landing',
+      builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
       path: '/',
@@ -121,7 +125,23 @@ final GoRouter appRouter = GoRouter(
       path: '/health-metrics/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return MaternalHealthMetricScreen(metricId: id);
+        final extra = state.extra as Map<String, dynamic>?;
+        return MaternalHealthMetricScreen(
+          metricId: id,
+          initialMetric: extra?['metric'] as HealthMetricDetail?,
+        );
+      },
+    ),
+    // UC-25: Add Maternal Health Metric
+    GoRoute(
+      path: '/journeys/:journeyId/metrics/add',
+      builder: (context, state) {
+        final journeyId = state.pathParameters['journeyId'] ?? '';
+        final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+        return AddMaternalHealthMetricScreen(
+          journeyId: journeyId,
+          initialMetricType: metricType,
+        );
       },
     ),
     GoRoute(

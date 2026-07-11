@@ -2,6 +2,7 @@ package com.carebridge.backend.carejourney.controller;
 
 import com.carebridge.backend.carejourney.dto.AddMilestoneRequest;
 import com.carebridge.backend.carejourney.dto.MilestoneResponse;
+import com.carebridge.backend.carejourney.dto.UpdateDevelopmentMilestoneRequest;
 import com.carebridge.backend.carejourney.service.IMilestoneService;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
@@ -31,5 +32,28 @@ public class MilestoneController {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         MilestoneResponse response = milestoneService.addMilestone(userId, babyId, request);
         return ApiResponse.success(response);
+    }
+
+    @PatchMapping("/{milestoneId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ApiResponse<MilestoneResponse> updateMilestone(
+            @PathVariable UUID babyId,
+            @PathVariable UUID milestoneId,
+            @RequestBody UpdateDevelopmentMilestoneRequest request,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        MilestoneResponse response = milestoneService.updateMilestone(babyId, milestoneId, request, userId);
+        return ApiResponse.success(response, "Development milestone updated successfully");
+    }
+
+    @DeleteMapping("/{milestoneId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ApiResponse<Void> deleteMilestone(
+            @PathVariable UUID babyId,
+            @PathVariable UUID milestoneId,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        milestoneService.deleteMilestone(babyId, milestoneId, userId);
+        return ApiResponse.success(null, "Development milestone deleted successfully");
     }
 }

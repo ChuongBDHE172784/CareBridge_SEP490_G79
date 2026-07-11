@@ -4,12 +4,14 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AddBabyDailyLogRequest;
 import com.carebridge.backend.carejourney.dto.AddBabyDailyLogResponse;
 import com.carebridge.backend.carejourney.dto.BabyDailyLogResponse;
 import com.carebridge.backend.carejourney.dto.UpdateBabyDailyLogRequest;
 import com.carebridge.backend.carejourney.entity.BabyDailyLog;
+import com.carebridge.backend.carejourney.entity.BabyDailyLogStatus;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.service.IBabyDailyLogService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
@@ -35,6 +37,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
 
     private final BabyDailyLogRepository babyDailyLogRepository;
     private final BabyProfileRepository babyProfileRepository;
+    private final BabyAccessPolicy babyAccessPolicy;
     private final AuditService auditService;
 
     // ── UC34: Add Baby Daily Log ──────────────────────────────────
@@ -70,6 +73,21 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
     // ── UC35: Update Baby Daily Log ───────────────────────────────
 
     @Override
+    @Transactional(readOnly = true)
+    public BabyDailyLogResponse getDailyLogDetail(UUID babyId, UUID logId, Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        BabyDailyLog log = findActiveDailyLog(logId);
+        BabyProfile baby = findActualBabyForLog(log);
+
+        if (!babyAccessPolicy.canView(baby, userId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "DAILYLOG-002",
+                    "Access denied to baby daily log");
+        }
+
+        return toResponse(log);
+    }
+
+    @Override
     public BabyDailyLogResponse updateLog(UUID babyId, UUID logId,
                                           UpdateBabyDailyLogRequest request, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -78,7 +96,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
         BabyProfile baby = findBaby(babyId);
         checkOwnership(baby, userId);
 
-        BabyDailyLog log = findLog(logId);
+        BabyDailyLog log = findActiveLogForExistingUc(logId);
         validateLogBelongsToBaby(log, babyId);
         // C3: edit window uses created_at (NOT started_at) — ADR-BABY-005-001
         validateEditWindow(log);
@@ -104,22 +122,18 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
     public void deleteLog(UUID babyId, UUID logId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
 
-        // C1: verify ownership
-        BabyProfile baby = findBaby(babyId);
-        checkOwnership(baby, userId);
+        BabyDailyLog log = findActiveDailyLog(logId);
+        BabyProfile baby = findActualBabyForLog(log);
+        if (!babyAccessPolicy.canManage(baby, userId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "DAILYLOG-003",
+                    "Access denied to baby daily log");
+        }
 
-        BabyDailyLog log = findLog(logId);
-        validateLogBelongsToBaby(log, babyId);
-        // C3: edit window uses created_at — ADR-BABY-005-001
-        validateEditWindow(log);
-
-        // C5: emit BABY_LOG_DELETED BEFORE delete (with log snapshot for traceability)
         String snapshot = String.format("{logType:%s, babyId:%s}", log.getLogType(), log.getBabyId());
-        auditService.log(AuditAction.BABY_LOG_DELETED, userId,
+        log.setStatus(BabyDailyLogStatus.DELETED);
+        babyDailyLogRepository.save(log);
+        auditService.log(AuditAction.BABY_DAILY_LOG_DELETED, userId,
                 "BabyDailyLog", logId.toString(), snapshot);
-
-        // C7: hard delete — baby logs are not legal records (ADR-BABY-005-002)
-        babyDailyLogRepository.deleteById(logId);
     }
 
     // ── Private helpers ───────────────────────────────────────────
@@ -132,6 +146,26 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
     private BabyDailyLog findLog(UUID logId) {
         return babyDailyLogRepository.findById(logId)
                 .orElseThrow(() -> new ResourceNotFoundException("Baby daily log not found: " + logId));
+    }
+
+    private BabyDailyLog findActiveDailyLog(UUID logId) {
+        return babyDailyLogRepository.findByBabyLogIdAndStatus(logId, BabyDailyLogStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "DAILYLOG-001",
+                        "Baby daily log not found"));
+    }
+
+    private BabyDailyLog findActiveLogForExistingUc(UUID logId) {
+        BabyDailyLog log = findLog(logId);
+        if (BabyDailyLogStatus.DELETED.equals(log.getStatus())) {
+            throw new ResourceNotFoundException("Baby daily log not found: " + logId);
+        }
+        return log;
+    }
+
+    private BabyProfile findActualBabyForLog(BabyDailyLog log) {
+        return babyProfileRepository.findById(log.getBabyId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "DAILYLOG-001",
+                        "Baby daily log not found"));
     }
 
     private void checkOwnership(BabyProfile baby, UUID userId) {

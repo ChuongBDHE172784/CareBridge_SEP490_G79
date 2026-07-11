@@ -25,13 +25,29 @@ class JourneyDashboard {
   bool get hasActiveJourney => journeyId != null;
   bool get isPregnancy => journeyType == 'PREGNANCY';
 
-  double get pregnancyProgress =>
-      (pregnancyWeek != null && pregnancyWeek! > 0) ? (pregnancyWeek! / 40.0).clamp(0.0, 1.0) : 0.0;
+  int? get effectivePregnancyWeek =>
+      pregnancyWeek ??
+      calculatePregnancyWeek(
+        lastMenstrualDate: lastMenstrualDate,
+        estimatedDueDate: estimatedDueDate,
+      );
 
-  String get weekLabel => pregnancyWeek != null ? 'Tuần $pregnancyWeek' : '—';
+  int? get effectiveDaysUntilDue =>
+      daysUntilDue ??
+      (estimatedDueDate == null
+          ? null
+          : _dateOnly(estimatedDueDate!).difference(_dateOnly(DateTime.now())).inDays);
+
+  double get pregnancyProgress =>
+      (effectivePregnancyWeek != null && effectivePregnancyWeek! > 0)
+          ? (effectivePregnancyWeek! / 40.0).clamp(0.0, 1.0)
+          : 0.0;
+
+  String get weekLabel =>
+      effectivePregnancyWeek != null ? 'Tuần $effectivePregnancyWeek' : '—';
 
   String get fruitName {
-    final w = pregnancyWeek ?? 0;
+    final w = effectivePregnancyWeek ?? 0;
     if (w <= 8) return 'quả nho';
     if (w <= 12) return 'quả chanh';
     if (w <= 16) return 'quả bơ';
@@ -44,7 +60,7 @@ class JourneyDashboard {
   }
 
   String get fruitSizeNote {
-    final w = pregnancyWeek ?? 0;
+    final w = effectivePregnancyWeek ?? 0;
     if (w == 24) return 'dài khoảng 30cm và nặng 600g';
     if (w <= 12) return 'đang phát triển nhanh chóng';
     return 'đang lớn lên từng ngày';
@@ -57,6 +73,30 @@ class JourneyDashboard {
       default: return 'Mang thai';
     }
   }
+
+  static int? calculatePregnancyWeek({
+    DateTime? lastMenstrualDate,
+    DateTime? estimatedDueDate,
+    DateTime? today,
+  }) {
+    final currentDate = _dateOnly(today ?? DateTime.now());
+    int? daysSinceLmp;
+
+    if (lastMenstrualDate != null) {
+      daysSinceLmp = currentDate.difference(_dateOnly(lastMenstrualDate)).inDays;
+    } else if (estimatedDueDate != null) {
+      final daysUntilDue = _dateOnly(estimatedDueDate).difference(currentDate).inDays;
+      daysSinceLmp = 280 - daysUntilDue;
+    }
+
+    if (daysSinceLmp == null) return null;
+    final week = daysSinceLmp ~/ 7;
+    if (week < 0) return 0;
+    if (week > 42) return 42;
+    return week;
+  }
+
+  static DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
 
   factory JourneyDashboard.fromJson(Map<String, dynamic> json) {
     return JourneyDashboard(
@@ -96,12 +136,14 @@ enum JourneyType {
 class CreateJourneyRequest {
   final JourneyType journeyType;
   final String startDate;
+  final String? lastMenstrualDate;
   final String? estimatedDueDate;
   final String? notes;
 
   const CreateJourneyRequest({
     required this.journeyType,
     required this.startDate,
+    this.lastMenstrualDate,
     this.estimatedDueDate,
     this.notes,
   });
@@ -109,6 +151,7 @@ class CreateJourneyRequest {
   Map<String, dynamic> toJson() => {
         'journeyType': journeyType.toApiValue(),
         'startDate': startDate,
+        if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
         if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
         if (notes != null) 'notes': notes,
       };
@@ -119,6 +162,7 @@ class CreateJourneyResponse {
   final String journeyType;
   final String status;
   final String startDate;
+  final String? lastMenstrualDate;
   final String? estimatedDueDate;
   final String? notes;
   final String createdAt;
@@ -128,6 +172,7 @@ class CreateJourneyResponse {
     required this.journeyType,
     required this.status,
     required this.startDate,
+    this.lastMenstrualDate,
     this.estimatedDueDate,
     this.notes,
     required this.createdAt,
@@ -139,9 +184,36 @@ class CreateJourneyResponse {
       journeyType: json['journeyType'] as String,
       status: json['status'] as String,
       startDate: json['startDate'] as String,
+      lastMenstrualDate: json['lastMenstrualDate'] as String?,
       estimatedDueDate: json['estimatedDueDate'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] as String,
     );
+  }
+}
+
+class UpdateJourneyRequest {
+  final String? lastMenstrualDate;
+  final String? estimatedDueDate;
+  final String? deliveryDate;
+  final String? notes;
+  final String? status;
+
+  const UpdateJourneyRequest({
+    this.lastMenstrualDate,
+    this.estimatedDueDate,
+    this.deliveryDate,
+    this.notes,
+    this.status,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+    if (lastMenstrualDate != null) data['lastMenstrualDate'] = lastMenstrualDate;
+    if (estimatedDueDate != null) data['estimatedDueDate'] = estimatedDueDate;
+    if (deliveryDate != null) data['deliveryDate'] = deliveryDate;
+    if (notes != null) data['notes'] = notes;
+    if (status != null) data['status'] = status;
+    return data;
   }
 }

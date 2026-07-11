@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
 
@@ -147,7 +148,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       );
       // AuthState.setTokens() calls notifyListeners() → main.dart switches to MainShell
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      context.go('/auth-landing');
     } on ApiException catch (e) {
       String msg;
       if (e.statusCode == 400) {

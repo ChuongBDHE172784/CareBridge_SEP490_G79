@@ -129,7 +129,7 @@ public class ReminderController {
     }
 
     // UC48: Skip reminder
-    @PatchMapping("/{reminderId}/skip")
+    @RequestMapping(value = "/{reminderId}/skip", method = {RequestMethod.POST, RequestMethod.PATCH})
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<ReminderDetailResponse>> skipReminder(
             @PathVariable UUID reminderId,
@@ -137,6 +137,16 @@ public class ReminderController {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = reminderService.skipReminder(reminderId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Reminder skipped successfully"));
+    }
+
+    @DeleteMapping("/{reminderId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<Void> deleteReminder(
+            @PathVariable UUID reminderId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        reminderService.deleteReminder(reminderId, callerId);
+        return ResponseEntity.noContent().build();
     }
 
     // UC49: View today tasks

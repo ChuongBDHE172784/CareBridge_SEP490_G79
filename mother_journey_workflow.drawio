@@ -1,0 +1,86 @@
+<mxfile host="Electron" modified="2026-07-11T12:00:00.000Z" agent="Mozilla/5.0" version="24.4.13" type="device">
+  <diagram id="mother_journey" name="Mother Care Journey">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        
+        <mxCell id="setup" value="[CB-007] Mother Journey Setup&#10;(Pre-pregnancy, Pregnancy, Postpartum)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="40" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="home" value="[CB-008] Mother Home&#10;(Dashboard, Tasks, Shortcuts)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="140" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="journey" value="[CB-009] Mother Journey&#10;(Main Journey View)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="240" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="metric" value="[CB-157] Maternal Health Metric Detail&#10;(View, Edit, Soft-delete metrics)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pp_list" value="[CB-158] Postpartum Log List&#10;(Filter by symptom/type)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="360" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pp_detail" value="[CB-159] Postpartum Log Detail&#10;(View, Edit, Soft-delete log)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="480" width="220" height="60" as="geometry" />
+        </mxCell>
+        
+        
+        <mxCell id="e1" value="Initializes stage" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="setup" target="home">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="e2" value="Navigate" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="home" target="journey">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="e3" value="View/Edit Metrics" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="journey" target="metric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="e4" value="View PP Logs" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="journey" target="pp_list">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="e5" value="Select Log" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="pp_list" target="pp_detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        
+        <mxCell id="calc_service" value="&lt;b&gt;Backend Service:&lt;/b&gt;&lt;br&gt;Journey Stage Calculation Service" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="500" y="30" width="200" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="delete_service" value="&lt;b&gt;Backend Service:&lt;/b&gt;&lt;br&gt;Maternal Record Soft-Deletion Service" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="200" y="600" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        
+        <mxCell id="e_calc" value="Calls API to calculate stage" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;dashed=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="setup" target="calc_service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="e_del1" value="Trigger Soft-delete" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;dashed=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="metric" target="delete_service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="150" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="e_del2" value="Trigger Soft-delete" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;dashed=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" edge="1" parent="1" source="pp_detail" target="delete_service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

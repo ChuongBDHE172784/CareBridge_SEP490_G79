@@ -18,4 +18,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 
     List<MaternalHealthMetric> findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
             UUID journeyId, MetricType metricType, MetricStatus status, Instant from, Instant to);
+
+    List<MaternalHealthMetric> findByJourneyIdAndMetricTypeAndMeasuredAtBetweenAndStatusOrderByMeasuredAtAsc(
+            UUID journeyId, MetricType metricType, Instant from, Instant to, MetricStatus status);
 }

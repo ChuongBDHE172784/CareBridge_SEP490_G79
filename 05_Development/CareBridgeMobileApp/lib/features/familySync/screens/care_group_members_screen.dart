@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
+import '../models/care_group_model.dart';
 import '../widgets/invite_member_sheet.dart';
+import 'manage_family_permission_screen.dart';
 
 /// CB-168 — Care Group Members (UC-216, UC-71)
 /// Full member list with avatar, role badge, permission chips, invite FAB.
@@ -41,7 +43,7 @@ class CareGroupMembersScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                       itemCount: members.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _MemberCard(member: members[i]),
+                      itemBuilder: (_, i) => _MemberCard(member: members[i], groupId: groupId),
                     ),
             ),
           ],
@@ -96,8 +98,9 @@ class CareGroupMembersScreen extends StatelessWidget {
 
 class _MemberCard extends StatelessWidget {
   final CareGroupMember member;
+  final String groupId;
 
-  const _MemberCard({required this.member});
+  const _MemberCard({required this.member, required this.groupId});
 
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -176,11 +179,27 @@ class _MemberCard extends StatelessWidget {
           if (isAdmin)
             const SizedBox.shrink()
           else
-            IconButton(
+            PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
-              onPressed: () {
-                // TODO: show remove member / change role options (UC-73)
+              onSelected: (val) {
+                if (val == 'manage') {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ManageFamilyPermissionScreen(groupId: groupId, member: member),
+                  ));
+                }
               },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'manage',
+                  child: Row(
+                    children: [
+                      Icon(Icons.security, color: _primary, size: 18),
+                      SizedBox(width: 8),
+                      Text('Quản lý quyền hạn', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+                    ],
+                  ),
+                ),
+              ],
             ),
         ],
       ),

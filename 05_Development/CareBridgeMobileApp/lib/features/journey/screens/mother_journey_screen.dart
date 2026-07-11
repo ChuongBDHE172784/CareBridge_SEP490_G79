@@ -4,6 +4,8 @@ import '../models/journey_model.dart';
 import '../services/journey_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
+import '../../healthRecords/models/health_metric_model.dart';
+import '../../healthRecords/services/health_metric_service.dart';
 
 /// CB-009 — Mother Journey (UC-23, UC-25, UC-26, UC-27, UC-28, UC-51, UC-52, UC-53)
 /// Phase-based journey view: week hero card, circular progress, due date card,
@@ -30,15 +32,16 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   static const _surface = Color(0xFFFFF8F6);
 
   final _journeyService = JourneyService();
+  final _healthMetricService = HealthMetricService();
   JourneyDashboard? _dashboard;
+  MetricTrend? _weightTrend;
+  MetricTrend? _heartRateTrend;
   bool _loading = true;
-  int _selectedPhase = 0; // 0=Mang thai, 1=Sau sinh, 2=Nuôi con
+  bool _weightTrendLoading = false;
+  bool _weightTrendError = false;
+  int _selectedPhase = 0; // 0=Mang thai, 1=Nuôi con
 
-  static const _phases = ['Mang thai', 'Sau sinh', 'Nuôi con'];
-
-  // Mock weight data: 6 weekly measurements (kg)
-  static const _weightData = [64.0, 64.8, 65.2, 65.8, 66.1, 66.5];
-  static const _weightLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+  static const _phases = ['Mang thai', 'Nuôi con'];
 
   @override
   void initState() {
@@ -47,32 +50,94 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _weightTrendLoading = true;
+      _weightTrendError = false;
+    });
     try {
       final d = await _journeyService.getDashboard();
       if (mounted) {
         setState(() { _dashboard = d; _loading = false; });
       }
+      await _loadWeightTrend(d.journeyId);
     } on ApiException {
       if (mounted) {
         setState(() {
-          _dashboard = JourneyDashboard(
-            journeyId: 'mock-journey-1',
-            journeyType: 'PREGNANCY',
-            status: 'ACTIVE_PREGNANCY',
-            pregnancyWeek: 24,
-            trimester: 2,
-            daysUntilDue: 112,
-            estimatedDueDate: DateTime(2024, 10, 15),
-          );
           _loading = false;
+          _weightTrendLoading = false;
+          _weightTrendError = true;
         });
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          _loading = false;
+          _weightTrendLoading = false;
+          _weightTrendError = true;
+        });
       }
     }
+  }
+
+  Future<void> _loadWeightTrend(String? journeyId) async {
+    if (journeyId == null || journeyId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _weightTrend = null;
+          _heartRateTrend = null;
+          _weightTrendLoading = false;
+          _weightTrendError = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final now = DateTime.now();
+      final trend = await _healthMetricService.getMetricTrend(
+        journeyId: journeyId,
+        metricType: 'WEIGHT',
+        from: now.subtract(const Duration(days: 28)),
+        to: now,
+      );
+      final hrTrend = await _healthMetricService.getMetricTrend(
+        journeyId: journeyId,
+        metricType: 'HEART_RATE',
+        from: now.subtract(const Duration(days: 28)),
+        to: now,
+      );
+      if (!mounted) return;
+      setState(() {
+        _weightTrend = trend;
+        _heartRateTrend = hrTrend;
+        _weightTrendLoading = false;
+        _weightTrendError = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _weightTrend = null;
+        _weightTrendLoading = false;
+        _weightTrendError = true;
+      });
+    }
+  }
+
+  Future<void> _openMetricRoute(String metricType) async {
+    final journeyId = _dashboard?.journeyId;
+    if (journeyId == null || journeyId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có hành trình để xem biểu đồ.')),
+      );
+      return;
+    }
+
+    final route = Uri(
+      path: '/journeys/$journeyId/metrics/trend',
+      queryParameters: {'metricType': metricType},
+    ).toString();
+    await context.push(route);
   }
 
   @override
@@ -102,7 +167,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                   const SizedBox(height: 24),
                   _buildMetricButtons(),
                   const SizedBox(height: 24),
-                  _buildWeightChart(),
+                  _buildBentoSummary(),
                   const SizedBox(height: 24),
                 ],
               ]),
@@ -171,8 +236,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   Widget _buildHeroCard() {
     final d = _dashboard;
-    final week = d?.pregnancyWeek ?? 24;
-    final progress = d?.pregnancyProgress ?? 0.60;
+    final week = d?.effectivePregnancyWeek;
+    final progress = d?.pregnancyProgress ?? 0.0;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -209,7 +274,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('Tuần $week',
+                Text(week != null ? 'Tuần $week' : 'Chưa có dữ liệu',
                     style: const TextStyle(fontFamily: 'Lexend', fontSize: 36, fontWeight: FontWeight.w700, color: _onSurface, letterSpacing: -0.5)),
                 const SizedBox(height: 8),
                 const Text('Bé đang phát triển\ntốt và khỏe mạnh.',
@@ -219,7 +284,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
           ),
           const SizedBox(width: 24),
           // Right: circular progress
-          _CircularProgressWidget(progress: progress, week: week),
+          _CircularProgressWidget(progress: progress),
         ],
       ),
     );
@@ -228,9 +293,9 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   Widget _buildDueDateCard() {
     final d = _dashboard;
     final dueDate = d?.estimatedDueDate;
-    final days = d?.daysUntilDue ?? 112;
-    final monthLabel = dueDate != null ? 'THG ${dueDate.month.toString().padLeft(2, '0')}' : 'THG 10';
-    final dayLabel = dueDate != null ? '${dueDate.day}' : '15';
+    final days = d?.effectiveDaysUntilDue;
+    final monthLabel = dueDate != null ? 'THG ${dueDate.month.toString().padLeft(2, '0')}' : '--';
+    final dayLabel = dueDate != null ? '${dueDate.day}' : '--';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -265,14 +330,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                       child: Text('Ngày dự sinh',
                           style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface)),
                     ),
-                    GestureDetector(
-                      onTap: () {}, // TODO: update due date (UC-23)
-                      child: const Icon(Icons.edit_outlined, size: 18, color: _onSurfaceVariant),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text('Còn lại $days ngày',
+                Text(days != null ? 'Còn lại $days ngày' : 'Chưa có ngày dự sinh',
                     style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
               ],
             ),
@@ -331,8 +392,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   Widget _buildMetricButtons() {
     final metrics = [
-      (Icons.monitor_weight, 'Cân nặng', '/health-metrics/weight'),
-      (Icons.favorite_border, 'Huyết áp', '/health-metrics/blood_pressure'),
+      (Icons.monitor_heart, 'Chỉ số sức khỏe', '/health-metrics/weight'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
       (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
@@ -346,7 +406,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
           return Padding(
             padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
             child: GestureDetector(
-              onTap: () => context.push(m.$3),
+              onTap: () async {
+                if (m.$3 == '/health-metrics/weight') {
+                  await _openMetricRoute('WEIGHT');
+                  return;
+                }
+                context.push(m.$3);
+              },
               child: Container(
                 width: 100,
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
@@ -415,66 +481,72 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     );
   }
 
-  Widget _buildWeightChart() {
+  Widget _buildBentoSummary() {
+    final weightPoints = _weightTrend?.dataPoints ?? [];
+    final hrPoints = _heartRateTrend?.dataPoints ?? [];
+    
+    final latestWeight = weightPoints.isNotEmpty ? weightPoints.last.valueNumeric.toStringAsFixed(1) : '—';
+    final latestHr = hrPoints.isNotEmpty ? hrPoints.last.valueNumeric.toStringAsFixed(0) : '—';
+
+    return Row(
+      children: [
+        Expanded(child: _buildBentoCard(
+          icon: Icons.monitor_weight_outlined,
+          label: 'Cân nặng',
+          value: latestWeight,
+          unit: 'kg',
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: _buildBentoCard(
+          icon: Icons.show_chart_rounded,
+          label: 'Nhịp tim',
+          value: latestHr,
+          unit: 'bpm',
+        )),
+      ],
+    );
+  }
+
+  Widget _buildBentoCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String unit,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(15), blurRadius: 20, offset: const Offset(0, 4))],
+        color: const Color(0xFFF6F1EC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(color: _primary.withAlpha(12), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Biểu đồ cân nặng',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: _surfaceContainerHigh, borderRadius: BorderRadius.circular(99)),
-                child: Row(
-                  children: const [
-                    Text('4 tuần', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-                    SizedBox(width: 4),
-                    Icon(Icons.expand_more, size: 16, color: _onSurfaceVariant),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 160,
-            width: double.infinity,
-            decoration: BoxDecoration(color: _surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
-            child: CustomPaint(
-              painter: _BarChartPainter(
-                data: _weightData,
-                labels: _weightLabels,
-                primaryColor: _primary,
-                barColor: _primaryContainer,
-                labelColor: _onSurfaceVariant,
-              ),
-            ),
-          ),
+          Icon(icon, color: _primaryContainer, size: 22),
           const SizedBox(height: 8),
-          const Text('Đơn vị: kg',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+          Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+          const SizedBox(height: 4),
+          Text(
+            '$value $unit',
+            style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
+          ),
         ],
       ),
     );
   }
+
+  String _formatMetricDate(DateTime value) => '${value.day}/${value.month}';
 }
 
 // ─── Circular progress widget ─────────────────────────────────────────────────
 class _CircularProgressWidget extends StatelessWidget {
   final double progress;
-  final int week;
 
-  const _CircularProgressWidget({required this.progress, required this.week});
+  const _CircularProgressWidget({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -497,6 +569,7 @@ class _CircularProgressWidget extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class _CircleProgressPainter extends CustomPainter {
@@ -530,67 +603,3 @@ class _CircleProgressPainter extends CustomPainter {
   bool shouldRepaint(_CircleProgressPainter old) => old.progress != progress;
 }
 
-// ─── Bar chart painter ────────────────────────────────────────────────────────
-class _BarChartPainter extends CustomPainter {
-  final List<double> data;
-  final List<String> labels;
-  final Color primaryColor;
-  final Color barColor;
-  final Color labelColor;
-
-  const _BarChartPainter({
-    required this.data,
-    required this.labels,
-    required this.primaryColor,
-    required this.barColor,
-    required this.labelColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-    const labelHeight = 20.0;
-    const barGap = 8.0;
-    final chartHeight = size.height - labelHeight;
-    final barWidth = (size.width - barGap * (data.length - 1)) / data.length;
-
-    final minVal = data.reduce(min);
-    final maxVal = data.reduce(max);
-    final range = (maxVal - minVal).clamp(0.5, double.infinity);
-
-    final labelPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    for (var i = 0; i < data.length; i++) {
-      final fraction = (data[i] - minVal) / range;
-      final barH = (chartHeight * 0.2) + (chartHeight * 0.7 * fraction);
-      final x = i * (barWidth + barGap);
-      final top = chartHeight - barH;
-
-      final paint = Paint()
-        ..color = (i == data.length - 1) ? primaryColor : barColor
-        ..style = PaintingStyle.fill;
-
-      final rrect = RRect.fromRectAndCorners(
-        Rect.fromLTWH(x, top, barWidth, barH),
-        topLeft: const Radius.circular(4),
-        topRight: const Radius.circular(4),
-      );
-      canvas.drawRRect(rrect, paint);
-
-      // Label below
-      labelPainter
-        ..text = TextSpan(
-          text: labels[i],
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 10, color: labelColor),
-        )
-        ..layout(maxWidth: barWidth + barGap);
-      labelPainter.paint(
-        canvas,
-        Offset(x + (barWidth - labelPainter.width) / 2, chartHeight + 4),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BarChartPainter old) => old.data != data;
-}

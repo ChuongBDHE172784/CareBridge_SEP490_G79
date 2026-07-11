@@ -1,17 +1,17 @@
-# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
-# Technical Design Specification — UC-194 View Baby Daily Log Detail
+﻿# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
+# Technical Design Specification â€” UC-194 View Baby Daily Log Detail
 
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-BABY-IMP-003` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
-| **Document Owner** | `TV2-Bách` |
+| **Status** | `Partially Implemented` |
+| **Document Owner** | `TV2-BÃ¡ch` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
+| **Approved by** | `TV2-BÃ¡ch` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -19,123 +19,124 @@
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
+| NgÃ y | NgÆ°á»i thá»±c hiá»‡n | Ná»™i dung thay Ä‘á»•i |
 |------|-----------------|-------------------|
-| 2026-07-03 | AI Agent | Tạo tài liệu lần đầu cho UC-194 View Baby Daily Log Detail |
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented: targeted baby/carejourney backend tests PASS; full regression remains blocked by non-baby Family/Exercise/Auth/Triage failures. |
+| 2026-07-03 | AI Agent | Táº¡o tÃ i liá»‡u láº§n Ä‘áº§u cho UC-194 View Baby Daily Log Detail |
 
 ---
 
-## MỤC LỤC
+## Má»¤C Lá»¤C
 
-1. [Tổng quan Module](#1-tổng-quan-module)
-2. [Ma trận Truy vết](#2-ma-trận-truy-vết-traceability-matrix)
+1. [Tá»•ng quan Module](#1-tá»•ng-quan-module)
+2. [Ma tráº­n Truy váº¿t](#2-ma-tráº­n-truy-váº¿t-traceability-matrix)
 3. [Architecture Decision Records](#3-architecture-decision-records-adr)
 4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
-5. [Static Modeling](#5-static-modeling-mô-hình-tĩnh)
-6. [Dynamic Modeling](#6-dynamic-modeling-mô-hình-động)
+5. [Static Modeling](#5-static-modeling-mÃ´-hÃ¬nh-tÄ©nh)
+6. [Dynamic Modeling](#6-dynamic-modeling-mÃ´-hÃ¬nh-Ä‘á»™ng)
 7. [Domain Event Catalog](#7-domain-event-catalog)
-8. [Interface Specification](#8-interface-specification-đặc-tả-giao-diện)
+8. [Interface Specification](#8-interface-specification-Ä‘áº·c-táº£-giao-diá»‡n)
 9. [API Specification](#9-api-specification)
-10. [Bảng mã lỗi](#10-bảng-mã-lỗi-error-codes)
-11. [Quy trình Triển khai](#11-quy-trình-triển-khai-step-by-step)
+10. [Báº£ng mÃ£ lá»—i](#10-báº£ng-mÃ£-lá»—i-error-codes)
+11. [Quy trÃ¬nh Triá»ƒn khai](#11-quy-trÃ¬nh-triá»ƒn-khai-step-by-step)
 12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
-13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
-14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
-15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế-api-verification-samples)
-16. [Authorization Matrix](#16-bảng-tổng-hợp-phân-quyền-authorization-matrix)
+13. [Ká»‹ch báº£n Kiá»ƒm thá»­ Chi tiáº¿t](#13-ká»‹ch-báº£n-kiá»ƒm-thá»­-chi-tiáº¿t)
+14. [PhÆ°Æ¡ng phÃ¡p XÃ¡c minh](#14-phÆ°Æ¡ng-phÃ¡p-xÃ¡c-minh)
+15. [Máº«u thá»­ thá»±c táº¿](#15-máº«u-thá»­-thá»±c-táº¿-api-verification-samples)
+16. [Authorization Matrix](#16-báº£ng-tá»•ng-há»£p-phÃ¢n-quyá»n-authorization-matrix)
 17. [AI Prompt Constraints (CASE 2.0)](#17-ai-prompt-constraints-case-20)
 
 ---
 
-## 1. Tổng quan Module
+## 1. Tá»•ng quan Module
 
 | Field | Value |
 |-------|-------|
 | **Module Name** | `ViewBabyDailyLogDetail` |
-| **Bounded Context** | `baby` (reuse — same bounded context as UC192 `BabyController`/`BabyServiceImpl`, NOT the empty `babyCare` stub folder) |
+| **Bounded Context** | `baby` (reuse â€” same bounded context as UC192 `BabyController`/`BabyServiceImpl`, NOT the empty `babyCare` stub folder) |
 | **UC ID** | `UC-194` |
 | **SRS Reference** | `3.3.12.3` (`02_Requirements/SRS/3_Functional_Specification.md` lines 4175-4194) |
 | **Primary Actor** | `Mother (ROLE_MOTHER)` |
 | **Platform** | `Mobile App` |
 | **Priority** | `Medium` |
-| **Sprint** | `Sprint 4 — Device Sync And Care Edge Cases` |
-| **Owner** | `TV2-Bách` |
+| **Sprint** | `Sprint 4 â€” Device Sync And Care Edge Cases` |
+| **Owner** | `TV2-BÃ¡ch` |
 | **Data Classification** | `Sensitive-PII` (infant health/feeding/sleep data) |
 | **Compliance Scope** | `BR-RBAC, BR-PRIVACY, BR-SAFETY` |
-| **Upstream Dependencies** | `baby (BabyProfile, BabyAccessPolicy — UC192)`, `auth`, `baby_daily_logs` table |
+| **Upstream Dependencies** | `baby (BabyProfile, BabyAccessPolicy â€” UC192)`, `auth`, `baby_daily_logs` table |
 | **Downstream Consumers** | `Baby Daily Log List (future UC)`, `UC195 Delete Baby Daily Log` |
 
-**Mô tả:** Hiển thị chi tiết đầy đủ (content, timestamp, type) cho MỘT bản ghi nhật ký hằng ngày của baby (`baby_daily_logs`). Chỉ Mother là owner của baby profile liên quan mới được xem — ownership resolved qua chain `baby_daily_logs.baby_id → baby_profiles.owner_user_id`, tái sử dụng `BabyAccessPolicy` đã có từ UC192. Đây là greenfield code: KHÔNG có `BabyDailyLog` entity/controller/service nào tồn tại trong codebase hiện tại (xác nhận qua RG-3 bên dưới).
+**MÃ´ táº£:** Hiá»ƒn thá»‹ chi tiáº¿t Ä‘áº§y Ä‘á»§ (content, timestamp, type) cho Má»˜T báº£n ghi nháº­t kÃ½ háº±ng ngÃ y cá»§a baby (`baby_daily_logs`). Chá»‰ Mother lÃ  owner cá»§a baby profile liÃªn quan má»›i Ä‘Æ°á»£c xem â€” ownership resolved qua chain `baby_daily_logs.baby_id â†’ baby_profiles.owner_user_id`, tÃ¡i sá»­ dá»¥ng `BabyAccessPolicy` Ä‘Ã£ cÃ³ tá»« UC192. ÄÃ¢y lÃ  greenfield code: KHÃ”NG cÃ³ `BabyDailyLog` entity/controller/service nÃ o tá»“n táº¡i trong codebase hiá»‡n táº¡i (xÃ¡c nháº­n qua RG-3 bÃªn dÆ°á»›i).
 
 ---
 
-## 2. Ma trận Truy vết (Traceability Matrix)
+## 2. Ma tráº­n Truy váº¿t (Traceability Matrix)
 
-| Requirement ID | Loại | Mô tả | Thành phần Code | Compliance Target | ADR liên quan |
+| Requirement ID | Loáº¡i | MÃ´ táº£ | ThÃ nh pháº§n Code | Compliance Target | ADR liÃªn quan |
 |----------------|------|-------|-----------------|-------------------|---------------|
-| UC-194 | Use Case | Mother xem chi tiết 1 baby daily log | `BabyDailyLogController.getDailyLogDetail()` | BR-RBAC | ADR-BABY-004 |
-| BR-RBAC | Business Rule | Chỉ owner của baby profile mới xem được log | `BabyDailyLogServiceImpl.getDailyLogDetail()` + `BabyAccessPolicy.canView()` (reused from UC192) | BR-RBAC | ADR-BABY-004 |
-| BR-PRIVACY | Business Rule | Response chỉ trả field liên quan (content/timestamp/type) — minimum-necessary | `BabyDailyLogDetailResponse` DTO | BR-PRIVACY | ADR-BABY-004 |
-| BR-SAFETY | Business Rule | Log content là mô tả sinh hoạt (feeding/sleep/diaper), không được diễn giải thành chẩn đoán y tế | `BabyDailyLogDetailResponse` — không có trường `diagnosis`/`interpretation` | BR-SAFETY | ADR-BABY-005 |
+| UC-194 | Use Case | Mother xem chi tiáº¿t 1 baby daily log | `BabyDailyLogController.getDailyLogDetail()` | BR-RBAC | ADR-BABY-004 |
+| BR-RBAC | Business Rule | Chá»‰ owner cá»§a baby profile má»›i xem Ä‘Æ°á»£c log | `BabyDailyLogServiceImpl.getDailyLogDetail()` + `BabyAccessPolicy.canView()` (reused from UC192) | BR-RBAC | ADR-BABY-004 |
+| BR-PRIVACY | Business Rule | Response chá»‰ tráº£ field liÃªn quan (content/timestamp/type) â€” minimum-necessary | `BabyDailyLogDetailResponse` DTO | BR-PRIVACY | ADR-BABY-004 |
+| BR-SAFETY | Business Rule | Log content lÃ  mÃ´ táº£ sinh hoáº¡t (feeding/sleep/diaper), khÃ´ng Ä‘Æ°á»£c diá»…n giáº£i thÃ nh cháº©n Ä‘oÃ¡n y táº¿ | `BabyDailyLogDetailResponse` â€” khÃ´ng cÃ³ trÆ°á»ng `diagnosis`/`interpretation` | BR-SAFETY | ADR-BABY-005 |
 
 ---
 
 ## 3. Architecture Decision Records (ADR)
 
-### ADR-BABY-004 — Ownership Chain Reuse cho Baby Daily Log Access
+### ADR-BABY-004 â€” Ownership Chain Reuse cho Baby Daily Log Access
 
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` |
-| **Deciders** | `TV2-Bách, AI Agent` |
+| **Deciders** | `TV2-BÃ¡ch, AI Agent` |
 | **Date** | `2026-07-03` |
-| **Supersedes** | — |
+| **Supersedes** | â€” |
 
-#### Bối cảnh (Context)
-`baby_daily_logs` không có `owner_user_id` trực tiếp — chỉ có `baby_id` (FK → `baby_profiles.baby_id`). UC192 đã thiết lập `BabyAccessPolicy.canView(BabyProfile, callerId)` để kiểm tra ownership + care group membership (ACCEPTED). Cần quyết định: viết lại logic ownership riêng cho daily log, hay tái sử dụng policy đã có.
+#### Bá»‘i cáº£nh (Context)
+`baby_daily_logs` khÃ´ng cÃ³ `owner_user_id` trá»±c tiáº¿p â€” chá»‰ cÃ³ `baby_id` (FK â†’ `baby_profiles.baby_id`). UC192 Ä‘Ã£ thiáº¿t láº­p `BabyAccessPolicy.canView(BabyProfile, callerId)` Ä‘á»ƒ kiá»ƒm tra ownership + care group membership (ACCEPTED). Cáº§n quyáº¿t Ä‘á»‹nh: viáº¿t láº¡i logic ownership riÃªng cho daily log, hay tÃ¡i sá»­ dá»¥ng policy Ä‘Ã£ cÃ³.
 
-#### Các phương án đã xem xét (Options Considered)
+#### CÃ¡c phÆ°Æ¡ng Ã¡n Ä‘Ã£ xem xÃ©t (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
+| PhÆ°Æ¡ng Ã¡n | MÃ´ táº£ | Æ¯u Ä‘iá»ƒm | NhÆ°á»£c Ä‘iá»ƒm |
 |-----------|-------|----------|------------|
-| A | Viết `BabyDailyLogAccessPolicy` riêng, duplicate logic ownership | Isolation module | Trùng lặp code, dễ lệch pha khi UC192 policy thay đổi |
-| B | Load `BabyProfile` qua `baby_id`, tái sử dụng `BabyAccessPolicy.canView()` hiện có | Nhất quán 100% với UC192, một nguồn sự thật duy nhất cho access rule | Thêm 1 query `BabyProfileRepository.findById()` mỗi request |
+| A | Viáº¿t `BabyDailyLogAccessPolicy` riÃªng, duplicate logic ownership | Isolation module | TrÃ¹ng láº·p code, dá»… lá»‡ch pha khi UC192 policy thay Ä‘á»•i |
+| B | Load `BabyProfile` qua `baby_id`, tÃ¡i sá»­ dá»¥ng `BabyAccessPolicy.canView()` hiá»‡n cÃ³ | Nháº¥t quÃ¡n 100% vá»›i UC192, má»™t nguá»“n sá»± tháº­t duy nháº¥t cho access rule | ThÃªm 1 query `BabyProfileRepository.findById()` má»—i request |
 
-#### Quyết định (Decision)
-Chọn **Phương án B**. `BabyDailyLogServiceImpl` inject `BabyProfileRepository` và `BabyAccessPolicy` (cả hai đã tồn tại từ UC192), load `BabyProfile` bằng `dailyLog.getBabyId()`, sau đó gọi `accessPolicy.canView(profile, callerId)` y hệt UC192.
+#### Quyáº¿t Ä‘á»‹nh (Decision)
+Chá»n **PhÆ°Æ¡ng Ã¡n B**. `BabyDailyLogServiceImpl` inject `BabyProfileRepository` vÃ  `BabyAccessPolicy` (cáº£ hai Ä‘Ã£ tá»“n táº¡i tá»« UC192), load `BabyProfile` báº±ng `dailyLog.getBabyId()`, sau Ä‘Ã³ gá»i `accessPolicy.canView(profile, callerId)` y há»‡t UC192.
 
-#### Hệ quả (Consequences)
+#### Há»‡ quáº£ (Consequences)
 
-**Tích cực:**
-- Một policy duy nhất cho toàn bộ `baby` bounded context — sửa 1 nơi, áp dụng mọi UC.
-- Giảm rủi ro IDOR do logic phân mảnh.
+**TÃ­ch cá»±c:**
+- Má»™t policy duy nháº¥t cho toÃ n bá»™ `baby` bounded context â€” sá»­a 1 nÆ¡i, Ã¡p dá»¥ng má»i UC.
+- Giáº£m rá»§i ro IDOR do logic phÃ¢n máº£nh.
 
-**Tiêu cực / Trade-offs:**
-- Thêm 1 round-trip DB để load `BabyProfile` — chấp nhận được vì NFR p99 < 300ms.
+**TiÃªu cá»±c / Trade-offs:**
+- ThÃªm 1 round-trip DB Ä‘á»ƒ load `BabyProfile` â€” cháº¥p nháº­n Ä‘Æ°á»£c vÃ¬ NFR p99 < 300ms.
 
 **Compliance Impact:**
-- Củng cố BR-RBAC bằng cách tránh duplicate/divergent authorization logic (OWASP A01:2021 — Broken Access Control mitigation).
+- Cá»§ng cá»‘ BR-RBAC báº±ng cÃ¡ch trÃ¡nh duplicate/divergent authorization logic (OWASP A01:2021 â€” Broken Access Control mitigation).
 
 ---
 
-### ADR-BABY-005 — Read-Only, No New Domain Event cho View (nhưng có Audit Log tuỳ chọn)
+### ADR-BABY-005 â€” Read-Only, No New Domain Event cho View (nhÆ°ng cÃ³ Audit Log tuá»³ chá»n)
 
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` |
 | **Date** | `2026-07-03` |
 
-#### Bối cảnh (Context)
-UC192 (`getBabyProfile`) là read-only, KHÔNG emit audit event (Constraint C4 trong TDS UC192 §17.2: "Read-only endpoint — KHÔNG có side effects"). Cần quyết định UC194 có nên khác đi, vì đây là dữ liệu sức khoẻ trẻ sơ sinh (Sensitive-PII) — có cần audit trail cho việc "ai đã xem log nào" không.
+#### Bá»‘i cáº£nh (Context)
+UC192 (`getBabyProfile`) lÃ  read-only, KHÃ”NG emit audit event (Constraint C4 trong TDS UC192 Â§17.2: "Read-only endpoint â€” KHÃ”NG cÃ³ side effects"). Cáº§n quyáº¿t Ä‘á»‹nh UC194 cÃ³ nÃªn khÃ¡c Ä‘i, vÃ¬ Ä‘Ã¢y lÃ  dá»¯ liá»‡u sá»©c khoáº» tráº» sÆ¡ sinh (Sensitive-PII) â€” cÃ³ cáº§n audit trail cho viá»‡c "ai Ä‘Ã£ xem log nÃ o" khÃ´ng.
 
-#### Quyết định (Decision)
-Giữ nhất quán với UC192: **KHÔNG bắt buộc audit event cho việc xem** (view baby daily log không side-effect, không thay đổi state). Domain event `BabyDailyLogViewed` được **thiết kế nhưng KHÔNG kích hoạt mặc định** trong lần triển khai đầu — đánh dấu `Open` trong Domain Event Catalog (§7) để Tech Lead quyết định có bật audit-on-read hay không (trade-off giữa audit trail đầy đủ và write-amplification trên bảng audit_logs cho một hành động đọc tần suất cao).
+#### Quyáº¿t Ä‘á»‹nh (Decision)
+Giá»¯ nháº¥t quÃ¡n vá»›i UC192: **KHÃ”NG báº¯t buá»™c audit event cho viá»‡c xem** (view baby daily log khÃ´ng side-effect, khÃ´ng thay Ä‘á»•i state). Domain event `BabyDailyLogViewed` Ä‘Æ°á»£c **thiáº¿t káº¿ nhÆ°ng KHÃ”NG kÃ­ch hoáº¡t máº·c Ä‘á»‹nh** trong láº§n triá»ƒn khai Ä‘áº§u â€” Ä‘Ã¡nh dáº¥u `Open` trong Domain Event Catalog (Â§7) Ä‘á»ƒ Tech Lead quyáº¿t Ä‘á»‹nh cÃ³ báº­t audit-on-read hay khÃ´ng (trade-off giá»¯a audit trail Ä‘áº§y Ä‘á»§ vÃ  write-amplification trÃªn báº£ng audit_logs cho má»™t hÃ nh Ä‘á»™ng Ä‘á»c táº§n suáº¥t cao).
 
-#### Hệ quả (Consequences)
+#### Há»‡ quáº£ (Consequences)
 
-**Tích cực:** Nhất quán API pattern, không tăng tải ghi DB cho thao tác đọc tần suất cao (Frequency of Use = Frequent theo SRS).
+**TÃ­ch cá»±c:** Nháº¥t quÃ¡n API pattern, khÃ´ng tÄƒng táº£i ghi DB cho thao tÃ¡c Ä‘á»c táº§n suáº¥t cao (Frequency of Use = Frequent theo SRS).
 
-**Tiêu cực / Trade-offs:** Nếu sau này cần audit "ai xem log nào" cho compliance investigation, phải bổ sung sau — đã note `Open` item.
+**TiÃªu cá»±c / Trade-offs:** Náº¿u sau nÃ y cáº§n audit "ai xem log nÃ o" cho compliance investigation, pháº£i bá»• sung sau â€” Ä‘Ã£ note `Open` item.
 
 ---
 
@@ -145,29 +146,29 @@ Giữ nhất quán với UC192: **KHÔNG bắt buộc audit event cho việc xem
 
 | Category | Requirement | Target SLA | Measurement Method | Compliance Basis |
 |----------|-------------|------------|---------------------|------------------|
-| Latency (p99) | GET response | `< 200ms` | k6 load test | — |
-| Availability | Uptime | `99.9%` | Uptime monitor | — |
+| Latency (p99) | GET response | `< 200ms` | k6 load test | â€” |
+| Availability | Uptime | `99.9%` | Uptime monitor | â€” |
 
 ### 4.2. Data Integrity & Retention
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| Consistency | `baby_id` FK luôn resolve được `BabyProfile` | 100% | FK constraint `baby_daily_logs_baby_id_fkey` | — |
+| Consistency | `baby_id` FK luÃ´n resolve Ä‘Æ°á»£c `BabyProfile` | 100% | FK constraint `baby_daily_logs_baby_id_fkey` | â€” |
 
 ### 4.3. Security
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| Access control | IDOR guard — ownership chain qua `baby_id` | 100% requests kiểm tra | `BabyAccessPolicy.canView()` reuse | BR-RBAC |
-| Encryption in transit | TLS | TLS 1.3+ | SSL Labs scan | — |
+| Access control | IDOR guard â€” ownership chain qua `baby_id` | 100% requests kiá»ƒm tra | `BabyAccessPolicy.canView()` reuse | BR-RBAC |
+| Encryption in transit | TLS | TLS 1.3+ | SSL Labs scan | â€” |
 
 ### 4.4. Scalability & Capacity Planning
 
-Dự kiến tải: mỗi Mother xem trung bình 5-20 daily logs/ngày qua danh sách trước khi mở detail. Endpoint là single-row lookup theo PK (`baby_log_id`) — không cần pagination hay caching riêng ở giai đoạn này.
+Dá»± kiáº¿n táº£i: má»—i Mother xem trung bÃ¬nh 5-20 daily logs/ngÃ y qua danh sÃ¡ch trÆ°á»›c khi má»Ÿ detail. Endpoint lÃ  single-row lookup theo PK (`baby_log_id`) â€” khÃ´ng cáº§n pagination hay caching riÃªng á»Ÿ giai Ä‘oáº¡n nÃ y.
 
 ---
 
-## 5. Static Modeling (Mô hình Tĩnh)
+## 5. Static Modeling (MÃ´ hÃ¬nh TÄ©nh)
 
 ### 5.1. Class Diagram (PlantUML)
 
@@ -221,9 +222,9 @@ BabyDailyLog "many" --> "1" "com.carebridge.backend.baby.entity.BabyProfile" : b
 
 ### 5.2. Data Structure (Flyway SQL Migration)
 
-> **CareBridge rule:** `V1__init_schema.sql` là baseline oracle. `baby_daily_logs` đã tồn tại (xem trích dẫn dưới) nhưng KHÔNG có `status` column → UC195 cần soft-delete nên bổ sung migration mới (xem UC195 TDS §5.2 cho migration `V20260707110000`). UC194 (view) KHÔNG cần thay đổi schema — chỉ cần đọc, nhưng SERVICE của UC194 **phải lọc `status <> 'DELETED'`** sau khi migration UC195 chạy, để đảm bảo record đã soft-delete không hiển thị lại được (404) — coupling này được ghi nhận trong §3 ADR-BABY-004 companion.
+> **CareBridge rule:** `V1__init_schema.sql` lÃ  baseline oracle. `baby_daily_logs` Ä‘Ã£ tá»“n táº¡i (xem trÃ­ch dáº«n dÆ°á»›i) nhÆ°ng KHÃ”NG cÃ³ `status` column â†’ UC195 cáº§n soft-delete nÃªn bá»• sung migration má»›i (xem UC195 TDS Â§5.2 cho migration `V20260707110000`). UC194 (view) KHÃ”NG cáº§n thay Ä‘á»•i schema â€” chá»‰ cáº§n Ä‘á»c, nhÆ°ng SERVICE cá»§a UC194 **pháº£i lá»c `status <> 'DELETED'`** sau khi migration UC195 cháº¡y, Ä‘á»ƒ Ä‘áº£m báº£o record Ä‘Ã£ soft-delete khÃ´ng hiá»ƒn thá»‹ láº¡i Ä‘Æ°á»£c (404) â€” coupling nÃ y Ä‘Æ°á»£c ghi nháº­n trong Â§3 ADR-BABY-004 companion.
 
-**Existing schema (V1__init_schema.sql, dòng 621-633) — KHÔNG thay đổi bởi UC194:**
+**Existing schema (V1__init_schema.sql, dÃ²ng 621-633) â€” KHÃ”NG thay Ä‘á»•i bá»Ÿi UC194:**
 ```sql
 CREATE TABLE public.baby_daily_logs (
     baby_log_id uuid        NOT NULL DEFAULT gen_random_uuid(),
@@ -244,15 +245,15 @@ CREATE TABLE public.baby_daily_logs (
 -- INDEX: idx_baby_daily_logs_baby_id, idx_baby_daily_logs_started_at
 ```
 
-> **Gap ghi nhận (RG-6):** `log_type` là `varchar(30)` KHÔNG có DB `CHECK` constraint ràng buộc enum — giống style của `baby_profiles.status` (varchar app-level enum, không DB CHECK). Vocabulary chính xác (feeding/sleep/diaper/...) KHÔNG được định nghĩa ở bất kỳ đâu trong SRS, migration, hay code hiện có → đánh dấu **Open Item** (xem §Open Items cuối tài liệu). Đề xuất: entity dùng `String logType` (KHÔNG `@Enumerated`) cho đến khi vocabulary được Product xác nhận, tránh hard-code enum sai.
+> **Gap ghi nháº­n (RG-6):** `log_type` lÃ  `varchar(30)` KHÃ”NG cÃ³ DB `CHECK` constraint rÃ ng buá»™c enum â€” giá»‘ng style cá»§a `baby_profiles.status` (varchar app-level enum, khÃ´ng DB CHECK). Vocabulary chÃ­nh xÃ¡c (feeding/sleep/diaper/...) KHÃ”NG Ä‘Æ°á»£c Ä‘á»‹nh nghÄ©a á»Ÿ báº¥t ká»³ Ä‘Ã¢u trong SRS, migration, hay code hiá»‡n cÃ³ â†’ Ä‘Ã¡nh dáº¥u **Open Item** (xem Â§Open Items cuá»‘i tÃ i liá»‡u). Äá» xuáº¥t: entity dÃ¹ng `String logType` (KHÃ”NG `@Enumerated`) cho Ä‘áº¿n khi vocabulary Ä‘Æ°á»£c Product xÃ¡c nháº­n, trÃ¡nh hard-code enum sai.
 
-> **UC194 KHÔNG tạo migration mới** — chỉ đọc dữ liệu hiện có. Nếu UC195 được implement trước/song song, cột `status` sẽ được thêm bởi UC195's migration; UC194 service phải cộng thêm điều kiện lọc `status != DELETED` khi entity có field đó (xem Interface Specification §8.1 ghi chú `@since UC195`).
+> **UC194 KHÃ”NG táº¡o migration má»›i** â€” chá»‰ Ä‘á»c dá»¯ liá»‡u hiá»‡n cÃ³. Náº¿u UC195 Ä‘Æ°á»£c implement trÆ°á»›c/song song, cá»™t `status` sáº½ Ä‘Æ°á»£c thÃªm bá»Ÿi UC195's migration; UC194 service pháº£i cá»™ng thÃªm Ä‘iá»u kiá»‡n lá»c `status != DELETED` khi entity cÃ³ field Ä‘Ã³ (xem Interface Specification Â§8.1 ghi chÃº `@since UC195`).
 
 ---
 
-## 6. Dynamic Modeling (Mô hình Động)
+## 6. Dynamic Modeling (MÃ´ hÃ¬nh Äá»™ng)
 
-### 6.1. Sequence Diagram — Happy Path (PlantUML)
+### 6.1. Sequence Diagram â€” Happy Path (PlantUML)
 
 ```plantuml
 @startuml ViewBabyDailyLogDetail_HappyPath
@@ -292,7 +293,7 @@ deactivate Controller
 @enduml
 ```
 
-### 6.2. Sequence Diagram — Error Path (PlantUML)
+### 6.2. Sequence Diagram â€” Error Path (PlantUML)
 
 ```plantuml
 @startuml ViewBabyDailyLogDetail_ErrorPath
@@ -323,7 +324,7 @@ note over Service
   Alternative: logId not found -> BusinessException(404, "DAILYLOG-001")
   Alternative: log.status == DELETED (post-UC195) -> BusinessException(404, "DAILYLOG-001")
   (soft-deleted records behave as not-found for View, unlike ARCHIVED baby profiles
-   which stay visible — see ADR-BABY-006 in UC195 TDS for the distinction)
+   which stay visible â€” see ADR-BABY-006 in UC195 TDS for the distinction)
 end note
 @enduml
 ```
@@ -332,20 +333,20 @@ end note
 
 ## 7. Domain Event Catalog
 
-### 7.1. Events Published (Phát ra)
+### 7.1. Events Published (PhÃ¡t ra)
 
 | Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
 |------------|---------|-----------|---------------|----------------|--------|
-| `BabyDailyLogViewed` | (Open — NOT activated by default, xem ADR-BABY-005) | `BabyDailyLogServiceImpl` | `audit` (future) | `BabyDailyLogViewedEvent.java` | Yes (nếu bật) |
+| `BabyDailyLogViewed` | (Open â€” NOT activated by default, xem ADR-BABY-005) | `BabyDailyLogServiceImpl` | `audit` (future) | `BabyDailyLogViewedEvent.java` | Yes (náº¿u báº­t) |
 
-### 7.2. Events Consumed (Tiêu thụ)
+### 7.2. Events Consumed (TiÃªu thá»¥)
 
-Không có — module này không tiêu thụ event nào.
+KhÃ´ng cÃ³ â€” module nÃ y khÃ´ng tiÃªu thá»¥ event nÃ o.
 
-### 7.3. Payload Schema (dự phòng nếu ADR-BABY-005 được đảo ngược)
+### 7.3. Payload Schema (dá»± phÃ²ng náº¿u ADR-BABY-005 Ä‘Æ°á»£c Ä‘áº£o ngÆ°á»£c)
 
 ```java
-// BabyDailyLogViewedEvent.java — NOT wired by default (Open item)
+// BabyDailyLogViewedEvent.java â€” NOT wired by default (Open item)
 public record BabyDailyLogViewedEvent(
     UUID    eventId,
     String  eventType,       // "BabyDailyLogViewed"
@@ -369,12 +370,12 @@ public record BabyDailyLogViewedEvent(
 
 ---
 
-## 8. Interface Specification (Đặc tả Giao diện)
+## 8. Interface Specification (Äáº·c táº£ Giao diá»‡n)
 
 ### 8.1. Service Interface
 
 ```java
-// BabyDailyLogDetailResponse.java — Output DTO
+// BabyDailyLogDetailResponse.java â€” Output DTO
 // @version 1.0
 public class BabyDailyLogDetailResponse {
     private UUID id;
@@ -390,14 +391,14 @@ public class BabyDailyLogDetailResponse {
     private Instant updatedAt;
 }
 
-// IBabyDailyLogService.java — Service Contract
+// IBabyDailyLogService.java â€” Service Contract
 // @version 1.0
 public interface IBabyDailyLogService {
     /**
      * @throws com.carebridge.backend.common.exception.BusinessException (DAILYLOG-001/404)
-     *         khi babyLogId không tồn tại, HOẶC record đã soft-deleted (status=DELETED, @since UC195)
+     *         khi babyLogId khÃ´ng tá»“n táº¡i, HOáº¶C record Ä‘Ã£ soft-deleted (status=DELETED, @since UC195)
      * @throws com.carebridge.backend.common.exception.BusinessException (DAILYLOG-002/403)
-     *         khi caller không phải owner/accepted care group member của baby liên quan
+     *         khi caller khÃ´ng pháº£i owner/accepted care group member cá»§a baby liÃªn quan
      */
     BabyDailyLogDetailResponse getDailyLogDetail(UUID babyLogId, UUID callerId);
 }
@@ -406,7 +407,7 @@ public interface IBabyDailyLogService {
 ### 8.2. Entity & Repository Interface
 
 ```java
-// BabyDailyLog.java — new entity, package com.carebridge.backend.baby.entity
+// BabyDailyLog.java â€” new entity, package com.carebridge.backend.baby.entity
 // @version 1.0
 @Entity
 @Table(name = "baby_daily_logs")
@@ -420,7 +421,7 @@ public class BabyDailyLog {
     private UUID babyId;
 
     @Column(name = "log_type", nullable = false, length = 30)
-    private String logType;   // NOT @Enumerated — read path stays permissive (see OI-1); write-side vocabulary defined by UC34 ADR-BABY-007
+    private String logType;   // NOT @Enumerated â€” read path stays permissive (see OI-1); write-side vocabulary defined by UC34 ADR-BABY-007
 
     @Column(name = "started_at")
     private Instant startedAt;
@@ -440,7 +441,7 @@ public class BabyDailyLog {
     @Column(name = "recorded_by")
     private UUID recordedBy;
 
-    // @since UC195 migration V20260707110000 — nullable until that migration lands;
+    // @since UC195 migration V20260707110000 â€” nullable until that migration lands;
     // UC194 read path must null-check and treat legacy NULL as ACTIVE (backward compatible default).
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
@@ -472,7 +473,7 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
 |--------|------|------------|----------------|------------|-------------|
 | `GET` | `/api/v1/babies/{babyId}/daily-logs/{logId}` | JWT Bearer | `ROLE_MOTHER` | 300/min | Yes |
 
-> **Path design note:** URL nests under `/api/v1/babies/{babyId}/...` để nhất quán với `BabyController`'s `/api/v1/babies` base path (UC192 convention). `babyId` trong path được dùng CHỈ để định tuyến REST — service **KHÔNG được tin `babyId` từ path** cho authorization; ownership check luôn dựa trên `babyDailyLog.getBabyId()` đọc từ DB (Constraint C2 §17).
+> **Path design note:** URL nests under `/api/v1/babies/{babyId}/...` Ä‘á»ƒ nháº¥t quÃ¡n vá»›i `BabyController`'s `/api/v1/babies` base path (UC192 convention). `babyId` trong path Ä‘Æ°á»£c dÃ¹ng CHá»ˆ Ä‘á»ƒ Ä‘á»‹nh tuyáº¿n REST â€” service **KHÃ”NG Ä‘Æ°á»£c tin `babyId` tá»« path** cho authorization; ownership check luÃ´n dá»±a trÃªn `babyDailyLog.getBabyId()` Ä‘á»c tá»« DB (Constraint C2 Â§17).
 
 ### 9.2. Request / Response Schemas
 
@@ -483,7 +484,7 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
 Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Response — 200 OK:**
+**Response â€” 200 OK:**
 ```json
 {
   "success": true,
@@ -495,7 +496,7 @@ Authorization: Bearer <JWT_TOKEN>
     "endedAt": "2026-07-03T08:20:00.000Z",
     "quantity": 120,
     "unit": "ml",
-    "note": "Bú bình đủ 120ml, không quấy khóc.",
+    "note": "BÃº bÃ¬nh Ä‘á»§ 120ml, khÃ´ng quáº¥y khÃ³c.",
     "recordedBy": "770e8400-e29b-41d4-a716-446655440002",
     "createdAt": "2026-07-03T08:21:00.000Z",
     "updatedAt": "2026-07-03T08:21:00.000Z"
@@ -503,14 +504,14 @@ Authorization: Bearer <JWT_TOKEN>
 }
 ```
 
-**Response — 403 Forbidden:**
+**Response â€” 403 Forbidden:**
 ```json
 {
   "error": { "code": "DAILYLOG-002", "message": "Access denied to baby daily log" }
 }
 ```
 
-**Response — 404 Not Found:**
+**Response â€” 404 Not Found:**
 ```json
 {
   "error": { "code": "DAILYLOG-001", "message": "Baby daily log not found" }
@@ -519,40 +520,40 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
-## 10. Bảng mã lỗi (Error Codes)
+## 10. Báº£ng mÃ£ lá»—i (Error Codes)
 
-> Prefix `DAILYLOG-` dùng riêng cho `baby_daily_logs` module để tránh đụng với `BABY-xxx` (baby profile) đã cấp phát ở UC192 (`BABY-001` 404, `BABY-003` 403 — xác nhận từ code thực tế `BabyServiceImpl.java`). **(Cập nhật 2026-07-03):** TDS UC192 §9-10 từng ghi nhầm `BABY-002/BABY-004`; đã được sửa lại khớp code thật. Xem OI-3 (đã đóng) và Test-Spec Logic Issue L1.
+> Prefix `DAILYLOG-` dÃ¹ng riÃªng cho `baby_daily_logs` module Ä‘á»ƒ trÃ¡nh Ä‘á»¥ng vá»›i `BABY-xxx` (baby profile) Ä‘Ã£ cáº¥p phÃ¡t á»Ÿ UC192 (`BABY-001` 404, `BABY-003` 403 â€” xÃ¡c nháº­n tá»« code thá»±c táº¿ `BabyServiceImpl.java`). **(Cáº­p nháº­t 2026-07-03):** TDS UC192 Â§9-10 tá»«ng ghi nháº§m `BABY-002/BABY-004`; Ä‘Ã£ Ä‘Æ°á»£c sá»­a láº¡i khá»›p code tháº­t. Xem OI-3 (Ä‘Ã£ Ä‘Ã³ng) vÃ  Test-Spec Logic Issue L1.
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `DAILYLOG-001` | 404 | Baby daily log not found | Không tìm thấy nhật ký hằng ngày | `babyLogId` không tồn tại HOẶC record có `status=DELETED` (post-UC195) HOẶC `babyId` FK không resolve được `BabyProfile` (orphan — treat as 404, defense-in-depth) |
-| `DAILYLOG-002` | 403 | Access denied to baby daily log | Không đủ quyền truy cập nhật ký | Caller không phải owner và không phải ACCEPTED care group member của baby liên quan |
-| `DAILYLOG-005` | 500 | Internal error | Lỗi hệ thống | Unexpected DB error |
+| `DAILYLOG-001` | 404 | Baby daily log not found | KhÃ´ng tÃ¬m tháº¥y nháº­t kÃ½ háº±ng ngÃ y | `babyLogId` khÃ´ng tá»“n táº¡i HOáº¶C record cÃ³ `status=DELETED` (post-UC195) HOáº¶C `babyId` FK khÃ´ng resolve Ä‘Æ°á»£c `BabyProfile` (orphan â€” treat as 404, defense-in-depth) |
+| `DAILYLOG-002` | 403 | Access denied to baby daily log | KhÃ´ng Ä‘á»§ quyá»n truy cáº­p nháº­t kÃ½ | Caller khÃ´ng pháº£i owner vÃ  khÃ´ng pháº£i ACCEPTED care group member cá»§a baby liÃªn quan |
+| `DAILYLOG-005` | 500 | Internal error | Lá»—i há»‡ thá»‘ng | Unexpected DB error |
 
 ---
 
-## 11. Quy trình Triển khai (Step-by-Step)
+## 11. Quy trÃ¬nh Triá»ƒn khai (Step-by-Step)
 
 ### 11.1. Prerequisites
-- [ ] TDS này được Approved
-- [ ] UC195 migration (nếu triển khai song song) đã review để tránh xung đột cột `status`
-- [ ] `BabyAccessPolicy`, `BabyProfileRepository` (UC192) đã có sẵn trong `main` — xác nhận (đã có)
+- [ ] TDS nÃ y Ä‘Æ°á»£c Approved
+- [ ] UC195 migration (náº¿u triá»ƒn khai song song) Ä‘Ã£ review Ä‘á»ƒ trÃ¡nh xung Ä‘á»™t cá»™t `status`
+- [ ] `BabyAccessPolicy`, `BabyProfileRepository` (UC192) Ä‘Ã£ cÃ³ sáºµn trong `main` â€” xÃ¡c nháº­n (Ä‘Ã£ cÃ³)
 
 ### 11.2. Pre-Migration Checklist
-- Không áp dụng — UC194 không có migration riêng (đọc dữ liệu hiện có + optional `status` column từ UC195).
+- KhÃ´ng Ã¡p dá»¥ng â€” UC194 khÃ´ng cÃ³ migration riÃªng (Ä‘á»c dá»¯ liá»‡u hiá»‡n cÃ³ + optional `status` column tá»« UC195).
 
 ### 11.3. Implementation Steps
 
-#### Chặng 1 — Entity + Repository
-Tạo `BabyDailyLog.java`, `BabyDailyLogStatus.java` (enum ACTIVE/DELETED, dùng cho tương thích UC195), `BabyDailyLogRepository.java` trong `com.carebridge.backend.baby.{entity,repository}`.
+#### Cháº·ng 1 â€” Entity + Repository
+Táº¡o `BabyDailyLog.java`, `BabyDailyLogStatus.java` (enum ACTIVE/DELETED, dÃ¹ng cho tÆ°Æ¡ng thÃ­ch UC195), `BabyDailyLogRepository.java` trong `com.carebridge.backend.baby.{entity,repository}`.
 
-#### Chặng 2 — Service + DTO
-Tạo `IBabyDailyLogService.java`, `BabyDailyLogServiceImpl.java`, `BabyDailyLogDetailResponse.java` trong `com.carebridge.backend.baby.{service, service.impl, dto}`. Inject `BabyDailyLogRepository`, `BabyProfileRepository`, `BabyAccessPolicy` (2 cái sau tái sử dụng nguyên vẹn từ UC192 — KHÔNG tạo bean mới).
+#### Cháº·ng 2 â€” Service + DTO
+Táº¡o `IBabyDailyLogService.java`, `BabyDailyLogServiceImpl.java`, `BabyDailyLogDetailResponse.java` trong `com.carebridge.backend.baby.{service, service.impl, dto}`. Inject `BabyDailyLogRepository`, `BabyProfileRepository`, `BabyAccessPolicy` (2 cÃ¡i sau tÃ¡i sá»­ dá»¥ng nguyÃªn váº¹n tá»« UC192 â€” KHÃ”NG táº¡o bean má»›i).
 
-#### Chặng 3 — Controller
-Thêm `BabyDailyLogController.java` (`@RestController`, base path `/api/v1/babies/{babyId}/daily-logs`), method `getDailyLogDetail`.
+#### Cháº·ng 3 â€” Controller
+ThÃªm `BabyDailyLogController.java` (`@RestController`, base path `/api/v1/babies/{babyId}/daily-logs`), method `getDailyLogDetail`.
 
-#### Chặng 4 — Verification sau deploy
+#### Cháº·ng 4 â€” Verification sau deploy
 ```bash
 curl -X GET https://[host]/api/v1/babies/[babyId]/daily-logs/[logId] \
   -H "Authorization: Bearer [JWT_MOTHER_TOKEN]"
@@ -561,24 +562,24 @@ curl -X GET https://[host]/api/v1/babies/[babyId]/daily-logs/[logId] \
 
 ### 11.4. Deployment Checklist
 - [ ] `./mvnw test` xanh
-- [ ] Response không chứa `diagnosis`/`interpretation`/`condition` field (BR-SAFETY)
-- [ ] IDOR test (non-owner → 403) pass
+- [ ] Response khÃ´ng chá»©a `diagnosis`/`interpretation`/`condition` field (BR-SAFETY)
+- [ ] IDOR test (non-owner â†’ 403) pass
 
 ---
 
 ## 12. Rollback & Incident Runbook
 
-### 12.1. Điều kiện kích hoạt Rollback
+### 12.1. Äiá»u kiá»‡n kÃ­ch hoáº¡t Rollback
 
-| Điều kiện | Ngưỡng | Người quyết định |
+| Äiá»u kiá»‡n | NgÆ°á»¡ng | NgÆ°á»i quyáº¿t Ä‘á»‹nh |
 |-----------|--------|------------------|
-| Error rate tăng đột biến | > 5% trong 5 phút | On-call Engineer |
-| IDOR phát hiện qua pentest/report | Bất kỳ case nào | Tech Lead + DPO |
+| Error rate tÄƒng Ä‘á»™t biáº¿n | > 5% trong 5 phÃºt | On-call Engineer |
+| IDOR phÃ¡t hiá»‡n qua pentest/report | Báº¥t ká»³ case nÃ o | Tech Lead + DPO |
 
 ### 12.2. Rollback Procedure
 
 ```bash
-# Không có migration mới cho UC194 — rollback chỉ cần revert code deploy
+# KhÃ´ng cÃ³ migration má»›i cho UC194 â€” rollback chá»‰ cáº§n revert code deploy
 kubectl rollout undo deployment/carebridge-api
 kubectl rollout status deployment/carebridge-api
 curl -X GET https://[host]/api/v1/health
@@ -586,54 +587,54 @@ curl -X GET https://[host]/api/v1/health
 
 ### 12.3. Notification Protocol
 
-| Thời điểm | Người nhận | Kênh |
+| Thá»i Ä‘iá»ƒm | NgÆ°á»i nháº­n | KÃªnh |
 |-----------|------------|------|
-| Ngay khi phát hiện IDOR | On-call + DPO | Slack `#incident` + Email |
+| Ngay khi phÃ¡t hiá»‡n IDOR | On-call + DPO | Slack `#incident` + Email |
 
 ---
 
-## 13. Kịch bản Kiểm thử Chi tiết
+## 13. Ká»‹ch báº£n Kiá»ƒm thá»­ Chi tiáº¿t
 
-> **Policy (EDS v2.0):** Mọi test scenario dùng dữ liệu `SYNTHETIC`.
+> **Policy (EDS v2.0):** Má»i test scenario dÃ¹ng dá»¯ liá»‡u `SYNTHETIC`.
 
 ```gherkin
 Feature: View Baby Daily Log Detail
   Background:
     Given test data classification: SYNTHETIC
-    And MOTHER-001 là owner của BABY-001
-    And LOG-001 thuộc BABY-001 với logType=feeding, note="Bú bình 120ml"
+    And MOTHER-001 lÃ  owner cá»§a BABY-001
+    And LOG-001 thuá»™c BABY-001 vá»›i logType=feeding, note="BÃº bÃ¬nh 120ml"
 
-  Scenario: Owner xem chi tiết log → 200
+  Scenario: Owner xem chi tiáº¿t log â†’ 200
     When getDailyLogDetail(LOG-001, MOTHER-001)
-    Then response 200 với content, timestamp, type đầy đủ
+    Then response 200 vá»›i content, timestamp, type Ä‘áº§y Ä‘á»§
 
-  Scenario: Care group member (ACCEPTED) xem log → 200
-    Given MOTHER-002 là ACCEPTED member trong care group của BABY-001
+  Scenario: Care group member (ACCEPTED) xem log â†’ 200
+    Given MOTHER-002 lÃ  ACCEPTED member trong care group cá»§a BABY-001
     When getDailyLogDetail(LOG-001, MOTHER-002)
     Then response 200
 
-  Scenario: Non-owner, non-member → 403
-    Given MOTHER-003 KHÔNG liên quan BABY-001
+  Scenario: Non-owner, non-member â†’ 403
+    Given MOTHER-003 KHÃ”NG liÃªn quan BABY-001
     When getDailyLogDetail(LOG-001, MOTHER-003)
     Then throws BusinessException DAILYLOG-002 (403)
 
-  Scenario: Log không tồn tại → 404
+  Scenario: Log khÃ´ng tá»“n táº¡i â†’ 404
     When getDailyLogDetail(NONEXISTENT, MOTHER-001)
     Then throws BusinessException DAILYLOG-001 (404)
 
-  Scenario: Log đã soft-deleted (post-UC195) → 404
-    Given LOG-002 thuộc BABY-001 với status=DELETED
+  Scenario: Log Ä‘Ã£ soft-deleted (post-UC195) â†’ 404
+    Given LOG-002 thuá»™c BABY-001 vá»›i status=DELETED
     When getDailyLogDetail(LOG-002, MOTHER-001)
     Then throws BusinessException DAILYLOG-001 (404)
 
-  Scenario: Response không chứa diagnosis/medical interpretation
+  Scenario: Response khÃ´ng chá»©a diagnosis/medical interpretation
     When getDailyLogDetail(LOG-001, MOTHER-001)
-    Then response KHÔNG chứa "diagnosis", "interpretation", "condition"
+    Then response KHÃ”NG chá»©a "diagnosis", "interpretation", "condition"
 ```
 
 ---
 
-## 14. Phương pháp Xác minh
+## 14. PhÆ°Æ¡ng phÃ¡p XÃ¡c minh
 
 ### 14.1. Database Inspection
 
@@ -663,7 +664,7 @@ curl -X GET https://[host]/api/v1/babies/[babyId]/daily-logs/[logId] \
 
 ---
 
-## 15. Mẫu thử thực tế (API Verification Samples)
+## 15. Máº«u thá»­ thá»±c táº¿ (API Verification Samples)
 
 ### 15.1. Happy Path
 
@@ -690,16 +691,16 @@ curl -X GET https://[host]/api/v1/babies/[babyId]/daily-logs/[logId]
 
 ---
 
-## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
+## 16. Báº£ng tá»•ng há»£p phÃ¢n quyá»n (Authorization Matrix)
 
 | Endpoint | `GUEST` | `MOTHER (owner)` | `MOTHER (care member, ACCEPTED)` | `EXPERT` | `ADMIN` |
 |----------|---------|-------------------|-----------------------------------|----------|---------|
-| `GET /api/v1/babies/{babyId}/daily-logs/{logId}` | ❌ (401) | ✅ | ✅ | ❌ (403) | ✅ All |
+| `GET /api/v1/babies/{babyId}/daily-logs/{logId}` | âŒ (401) | âœ… | âœ… | âŒ (403) | âœ… All |
 
-**Chú thích:**
+**ChÃº thÃ­ch:**
 - Owner: `baby_profiles.owner_user_id` == JWT subject (via `baby_daily_logs.baby_id` FK)
-- Care member: `care_group_members.invite_status = ACCEPTED` cho group của owner (reuse `BabyAccessPolicy`)
-- Expert: không có quyền xem trực tiếp, chỉ qua consultation sharing (ngoài phạm vi UC194)
+- Care member: `care_group_members.invite_status = ACCEPTED` cho group cá»§a owner (reuse `BabyAccessPolicy`)
+- Expert: khÃ´ng cÃ³ quyá»n xem trá»±c tiáº¿p, chá»‰ qua consultation sharing (ngoÃ i pháº¡m vi UC194)
 
 ---
 
@@ -709,75 +710,75 @@ curl -X GET https://[host]/api/v1/babies/[babyId]/daily-logs/[logId]
 
 | # | Constraint | Source | Last Verified |
 |---|-----------|--------|---------------|
-| C1 | `BabyDailyLogServiceImpl` PHẢI load `BabyProfile` qua `dailyLog.getBabyId()` rồi gọi `BabyAccessPolicy.canView()` đã có từ UC192 — KHÔNG viết logic ownership mới | ADR-BABY-004 | 2026-07-03 |
-| C2 | `babyId` trong URL path CHỈ dùng để routing — authorization luôn dựa trên `babyDailyLog.getBabyId()` đọc từ DB, KHÔNG tin path param | ADR-BABY-004, BR-RBAC | 2026-07-03 |
-| C3 | Nếu `status=DELETED` (post-UC195), trả 404 (`DAILYLOG-001`) — KHÔNG trả 403 hay lộ thông tin đã xoá | ADR trong UC195 TDS §3 | 2026-07-03 |
-| C4 | Read-only endpoint — KHÔNG audit event mặc định (nhất quán UC192); `BabyDailyLogViewed` là Open item, chưa kích hoạt | ADR-BABY-005 | 2026-07-03 |
-| C5 | Response DTO KHÔNG chứa trường `diagnosis`/`interpretation`/`condition` — chỉ content/timestamp/type theo SRS 3.3.12.3 | BR-SAFETY | 2026-07-03 |
+| C1 | `BabyDailyLogServiceImpl` PHáº¢I load `BabyProfile` qua `dailyLog.getBabyId()` rá»“i gá»i `BabyAccessPolicy.canView()` Ä‘Ã£ cÃ³ tá»« UC192 â€” KHÃ”NG viáº¿t logic ownership má»›i | ADR-BABY-004 | 2026-07-03 |
+| C2 | `babyId` trong URL path CHá»ˆ dÃ¹ng Ä‘á»ƒ routing â€” authorization luÃ´n dá»±a trÃªn `babyDailyLog.getBabyId()` Ä‘á»c tá»« DB, KHÃ”NG tin path param | ADR-BABY-004, BR-RBAC | 2026-07-03 |
+| C3 | Náº¿u `status=DELETED` (post-UC195), tráº£ 404 (`DAILYLOG-001`) â€” KHÃ”NG tráº£ 403 hay lá»™ thÃ´ng tin Ä‘Ã£ xoÃ¡ | ADR trong UC195 TDS Â§3 | 2026-07-03 |
+| C4 | Read-only endpoint â€” KHÃ”NG audit event máº·c Ä‘á»‹nh (nháº¥t quÃ¡n UC192); `BabyDailyLogViewed` lÃ  Open item, chÆ°a kÃ­ch hoáº¡t | ADR-BABY-005 | 2026-07-03 |
+| C5 | Response DTO KHÃ”NG chá»©a trÆ°á»ng `diagnosis`/`interpretation`/`condition` â€” chá»‰ content/timestamp/type theo SRS 3.3.12.3 | BR-SAFETY | 2026-07-03 |
 
 ### 17.2 Constraint Injection Block
 
 ```
-[CONSTRAINT BLOCK — Module: ViewBabyDailyLogDetail (CB-BABY-IMP-003)]
-1. BabyDailyLogServiceImpl PHẢI: load BabyProfile qua dailyLog.getBabyId(), gọi BabyAccessPolicy.canView(profile, callerId) — TÁI SỬ DỤNG class có sẵn từ UC192, KHÔNG viết policy mới — ADR-BABY-004
-2. babyId trong URL path KHÔNG được dùng để authorization — chỉ dùng để route; ownership check luôn dựa trên dữ liệu đọc từ DB — BR-RBAC
-3. status=DELETED (nếu có, post-UC195 migration) PHẢI trả 404 DAILYLOG-001, KHÔNG lộ log đã xoá dưới bất kỳ hình thức nào
-4. Read-only — KHÔNG side effect DB write, KHÔNG audit event mặc định — nhất quán UC192 pattern
-5. Response DTO KHÔNG chứa diagnosis/interpretation/condition — chỉ id, babyId, logType, startedAt, endedAt, quantity, unit, note, recordedBy, timestamps — BR-SAFETY
+[CONSTRAINT BLOCK â€” Module: ViewBabyDailyLogDetail (CB-BABY-IMP-003)]
+1. BabyDailyLogServiceImpl PHáº¢I: load BabyProfile qua dailyLog.getBabyId(), gá»i BabyAccessPolicy.canView(profile, callerId) â€” TÃI Sá»¬ Dá»¤NG class cÃ³ sáºµn tá»« UC192, KHÃ”NG viáº¿t policy má»›i â€” ADR-BABY-004
+2. babyId trong URL path KHÃ”NG Ä‘Æ°á»£c dÃ¹ng Ä‘á»ƒ authorization â€” chá»‰ dÃ¹ng Ä‘á»ƒ route; ownership check luÃ´n dá»±a trÃªn dá»¯ liá»‡u Ä‘á»c tá»« DB â€” BR-RBAC
+3. status=DELETED (náº¿u cÃ³, post-UC195 migration) PHáº¢I tráº£ 404 DAILYLOG-001, KHÃ”NG lá»™ log Ä‘Ã£ xoÃ¡ dÆ°á»›i báº¥t ká»³ hÃ¬nh thá»©c nÃ o
+4. Read-only â€” KHÃ”NG side effect DB write, KHÃ”NG audit event máº·c Ä‘á»‹nh â€” nháº¥t quÃ¡n UC192 pattern
+5. Response DTO KHÃ”NG chá»©a diagnosis/interpretation/condition â€” chá»‰ id, babyId, logType, startedAt, endedAt, quantity, unit, note, recordedBy, timestamps â€” BR-SAFETY
 
 [CONTEXT BLOCK]
-- Bounded Context: baby (reuse UC192 package — com.carebridge.backend.baby)
+- Bounded Context: baby (reuse UC192 package â€” com.carebridge.backend.baby)
 - Data Classification: Sensitive-PII
-- Error codes: §10 Error Codes Table (prefix DAILYLOG-, KHÔNG trùng BABY-xxx)
-- Auth matrix: §16 Authorization Matrix
-- Reused classes: BabyProfileRepository, BabyAccessPolicy (từ UC192 — KHÔNG tạo bản sao)
+- Error codes: Â§10 Error Codes Table (prefix DAILYLOG-, KHÃ”NG trÃ¹ng BABY-xxx)
+- Auth matrix: Â§16 Authorization Matrix
+- Reused classes: BabyProfileRepository, BabyAccessPolicy (tá»« UC192 â€” KHÃ”NG táº¡o báº£n sao)
 ```
 
 ### 17.3 Constraint Quality Checklist
 
-- [x] Mỗi constraint traceable về ADR hoặc BR cụ thể
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 3 constraints cụ thể
+- [x] Má»—i constraint traceable vá» ADR hoáº·c BR cá»¥ thá»ƒ
+- [x] KhÃ´ng cÃ³ constraint generic
+- [x] Constraint block cÃ³ â‰¥ 3 constraints cá»¥ thá»ƒ
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
+| AP-ID | Anti-Pattern | Dáº¥u hiá»‡u | HÃ nh Ä‘á»™ng |
 |-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Code không match constraint C1-C5 | Reject — inject lại constraints |
-| AP-AI-003 | Implicit Decision | Code viết `BabyDailyLogAccessPolicy` mới thay vì tái sử dụng `BabyAccessPolicy` | Reject — vi phạm ADR-BABY-004 |
-| AP-AI-005 | Hallucinated Contract | Code import class không có trong §8 | Reject — verify contract |
+| AP-AI-001 | Unconstrained Gen | Code khÃ´ng match constraint C1-C5 | Reject â€” inject láº¡i constraints |
+| AP-AI-003 | Implicit Decision | Code viáº¿t `BabyDailyLogAccessPolicy` má»›i thay vÃ¬ tÃ¡i sá»­ dá»¥ng `BabyAccessPolicy` | Reject â€” vi pháº¡m ADR-BABY-004 |
+| AP-AI-005 | Hallucinated Contract | Code import class khÃ´ng cÃ³ trong Â§8 | Reject â€” verify contract |
 
 ---
 
-## PHỤ LỤC
+## PHá»¤ Lá»¤C
 
 ### A. Glossary
 
-| Thuật ngữ | Định nghĩa |
+| Thuáº­t ngá»¯ | Äá»‹nh nghÄ©a |
 |-----------|------------|
-| BabyDailyLog | Bản ghi nhật ký sinh hoạt hằng ngày của baby (feeding/sleep/diaper/...) |
-| Ownership Chain | Chuỗi resolve quyền sở hữu: `baby_daily_logs.baby_id → baby_profiles.owner_user_id` |
-| IDOR | Insecure Direct Object Reference — truy cập trái phép bằng cách đoán/thay đổi ID |
+| BabyDailyLog | Báº£n ghi nháº­t kÃ½ sinh hoáº¡t háº±ng ngÃ y cá»§a baby (feeding/sleep/diaper/...) |
+| Ownership Chain | Chuá»—i resolve quyá»n sá»Ÿ há»¯u: `baby_daily_logs.baby_id â†’ baby_profiles.owner_user_id` |
+| IDOR | Insecure Direct Object Reference â€” truy cáº­p trÃ¡i phÃ©p báº±ng cÃ¡ch Ä‘oÃ¡n/thay Ä‘á»•i ID |
 
-### B. Tài liệu tham chiếu
+### B. TÃ i liá»‡u tham chiáº¿u
 
 | Document | Path |
 |----------|------|
 | UC192 TDS (Approved, shipped code reference) | `04_Implement/UC192_ViewBabyProfile/UC192_ViewBabyProfile_TDS.md` |
-| UC195 TDS (companion — soft-delete migration) | `04_Implement/UC195_DeleteBabyDailyLog/UC195_DeleteBabyDailyLog_TDS.md` |
+| UC195 TDS (companion â€” soft-delete migration) | `04_Implement/UC195_DeleteBabyDailyLog/UC195_DeleteBabyDailyLog_TDS.md` |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 | Schema baseline | `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` |
 
 ---
 
-## Open Items (chưa resolve — cần Tech Lead / Product xác nhận trước khi Approve)
+## Open Items (chÆ°a resolve â€” cáº§n Tech Lead / Product xÃ¡c nháº­n trÆ°á»›c khi Approve)
 
-| # | Item | Mô tả | Đề xuất tạm thời |
+| # | Item | MÃ´ táº£ | Äá» xuáº¥t táº¡m thá»i |
 |---|------|-------|-------------------|
-| OI-1 | ~~`log_type` enum vocabulary~~ **RESOLVED (2026-07-03)** | Ban đầu tưởng không có tài liệu nào định nghĩa `log_type`. Rà soát lại phát hiện sibling spec `UC34_AddFeedingSleepDiaperLog` (ADR-BABY-007) đã định nghĩa vocabulary cho đúng cột `baby_daily_logs.log_type` này: `FEEDING, SLEEP, DIAPER, FEVER, VOMITING, MEDICINE` (validated qua `BABY-033` ở write path). Cột vẫn là `varchar(30)` không CHECK constraint ở DB. | UC194 là read-only nên vẫn giữ `String` (không `@Enumerated`) ở entity — không reject giá trị lạ khi đọc, để không vỡ nếu có dữ liệu cũ/hợp lệ khác nằm ngoài whitelist. Whitelist enforcement thuộc trách nhiệm write path (UC34), không phải UC194. |
-| OI-2 | `BabyDailyLogViewed` audit event | ADR-BABY-005 để ngỏ việc có nên audit-on-read cho dữ liệu sức khoẻ trẻ sơ sinh hay không. | Không kích hoạt mặc định; revisit nếu compliance yêu cầu. |
-| OI-3 | ~~Mismatch mã lỗi UC192 tài liệu vs code~~ **RESOLVED (2026-07-03)** | TDS UC192 §9-10 từng ghi `BABY-002/BABY-004`, code thực tế dùng `BABY-003/BABY-001`. UC194 dùng prefix `DAILYLOG-` riêng nên không bị ảnh hưởng trực tiếp. TDS UC192 đã được sửa lại khớp code thật (`BABY-001`=404, `BABY-003`=403) trong toàn bộ bảng mã lỗi, JSON examples và Gherkin scenarios. | Đã đóng — không cần hành động thêm. |
+| OI-1 | ~~`log_type` enum vocabulary~~ **RESOLVED (2026-07-03)** | Ban Ä‘áº§u tÆ°á»Ÿng khÃ´ng cÃ³ tÃ i liá»‡u nÃ o Ä‘á»‹nh nghÄ©a `log_type`. RÃ  soÃ¡t láº¡i phÃ¡t hiá»‡n sibling spec `UC34_AddFeedingSleepDiaperLog` (ADR-BABY-007) Ä‘Ã£ Ä‘á»‹nh nghÄ©a vocabulary cho Ä‘Ãºng cá»™t `baby_daily_logs.log_type` nÃ y: `FEEDING, SLEEP, DIAPER, FEVER, VOMITING, MEDICINE` (validated qua `BABY-033` á»Ÿ write path). Cá»™t váº«n lÃ  `varchar(30)` khÃ´ng CHECK constraint á»Ÿ DB. | UC194 lÃ  read-only nÃªn váº«n giá»¯ `String` (khÃ´ng `@Enumerated`) á»Ÿ entity â€” khÃ´ng reject giÃ¡ trá»‹ láº¡ khi Ä‘á»c, Ä‘á»ƒ khÃ´ng vá»¡ náº¿u cÃ³ dá»¯ liá»‡u cÅ©/há»£p lá»‡ khÃ¡c náº±m ngoÃ i whitelist. Whitelist enforcement thuá»™c trÃ¡ch nhiá»‡m write path (UC34), khÃ´ng pháº£i UC194. |
+| OI-2 | `BabyDailyLogViewed` audit event | ADR-BABY-005 Ä‘á»ƒ ngá» viá»‡c cÃ³ nÃªn audit-on-read cho dá»¯ liá»‡u sá»©c khoáº» tráº» sÆ¡ sinh hay khÃ´ng. | KhÃ´ng kÃ­ch hoáº¡t máº·c Ä‘á»‹nh; revisit náº¿u compliance yÃªu cáº§u. |
+| OI-3 | ~~Mismatch mÃ£ lá»—i UC192 tÃ i liá»‡u vs code~~ **RESOLVED (2026-07-03)** | TDS UC192 Â§9-10 tá»«ng ghi `BABY-002/BABY-004`, code thá»±c táº¿ dÃ¹ng `BABY-003/BABY-001`. UC194 dÃ¹ng prefix `DAILYLOG-` riÃªng nÃªn khÃ´ng bá»‹ áº£nh hÆ°á»Ÿng trá»±c tiáº¿p. TDS UC192 Ä‘Ã£ Ä‘Æ°á»£c sá»­a láº¡i khá»›p code tháº­t (`BABY-001`=404, `BABY-003`=403) trong toÃ n bá»™ báº£ng mÃ£ lá»—i, JSON examples vÃ  Gherkin scenarios. | ÄÃ£ Ä‘Ã³ng â€” khÃ´ng cáº§n hÃ nh Ä‘á»™ng thÃªm. |
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+*EDS v2.1 â€” TÃ­ch há»£p CASE 2.0 AI Prompt Constraints (Â§17).*

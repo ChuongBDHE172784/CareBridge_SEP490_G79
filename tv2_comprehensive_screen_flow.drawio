@@ -1,0 +1,172 @@
+<mxfile host="65bd71144e">
+    <diagram id="tv2_screens" name="TV2 Screen Flow">
+        <mxGraphModel dx="473" dy="568" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" background="#ffffff" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="login" value="[CB-004] Login / Authentication" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="40" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="setup" value="[CB-007] Mother Journey Setup" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="120" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="home" value="[CB-008] Mother Home&#10;(Dashboard chính)" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="200" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="mother_journey" value="[CB-009] Mother Journey" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="metric_detail" value="[CB-157] Maternal Health Metric Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="pp_list" value="[CB-158] Postpartum Log List" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="480" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="pp_detail" value="[CB-159] Postpartum Log Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="560" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="baby_profiles" value="[CB-010] Baby Profiles" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="switch_baby" value="[CB-160] Switch Active Baby Selector" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="baby_profile" value="[CB-011] Baby Profile" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="480" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="baby_log" value="[CB-161] Baby Daily Log Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="560" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="milestone" value="[CB-162] Development Milestone Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="640" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="health_timeline" value="[CB-012] Health Record Timeline" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="vaccine_detail" value="[CB-173] Vaccination Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="add_vaccine" value="[CB-174] Add Vaccination Record" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="480" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="growth_history" value="[CB-175] Growth Measurement History" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="560" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="growth_detail" value="[CB-176] Growth Measurement Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="640" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="file_manager" value="[CB-122] File Manager" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="upload_file" value="[CB-124] Upload File" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="file_viewer" value="[CB-123] File Viewer" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="480" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="care_groups" value="[CB-021] Care Groups" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="group_members" value="[CB-168] Care Group Members" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="invitations" value="[CB-169] Pending Invitations" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="480" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="family_task" value="[CB-170] Family Task Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="560" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="today_tasks" value="[CB-013] Today Tasks" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1240" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="reminder_detail" value="[CB-167] Reminder Detail" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1240" y="400" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="devices" value="[CB-022] Connected Devices" style="rounded=1;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1480" y="320" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_l_h" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="login" target="home" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_l_s" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="login" target="setup" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_s_h" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="setup" target="home" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="mother_journey" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="baby_profiles" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="health_timeline" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="file_manager" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh5" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="care_groups" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh6" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="today_tasks" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eh7" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="home" target="devices" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e02_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="mother_journey" target="metric_detail" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e02_2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="mother_journey" target="pp_list" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e02_3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="pp_list" target="pp_detail" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e03_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="baby_profiles" target="switch_baby" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e03_2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="baby_profiles" target="baby_profile" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e03_3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="baby_profile" target="baby_log" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e03_4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="baby_profile" target="milestone" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="health_timeline" target="vaccine_detail" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13_2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="health_timeline" target="add_vaccine" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13_3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="health_timeline" target="growth_history" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13_4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="growth_history" target="growth_detail" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e09_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="file_manager" target="upload_file" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e09_2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="file_manager" target="file_viewer" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="care_groups" target="group_members" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11_2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="care_groups" target="invitations" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11_3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="care_groups" target="family_task" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10_1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;labelBackgroundColor=#ffffff;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#000000;" parent="1" source="today_tasks" target="reminder_detail" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

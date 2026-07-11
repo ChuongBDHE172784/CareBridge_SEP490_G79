@@ -4,7 +4,7 @@
 **Document ID:** `CB-DEVICE-IMP-002-TEST`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-07-10 (targeted backend tests PASS; full regression blocked by non-device Family/Exercise failures)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Technical Architect / Test Designer`
 **Reviewed by:** `[ ] Pending`

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_screen.dart';
@@ -58,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      context.go('/auth-landing');
     } on ApiException catch (e) {
       String msg;
       if (e.statusCode == 403) {

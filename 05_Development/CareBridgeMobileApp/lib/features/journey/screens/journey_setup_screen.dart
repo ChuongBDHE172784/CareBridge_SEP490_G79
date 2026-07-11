@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/journey_model.dart';
 import '../services/journey_service.dart';
 import '../../../core/network/api_client.dart';
@@ -91,29 +92,66 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       late CreateJourneyRequest req;
       switch (_selectedStage!) {
         case _Stage.prePregnancy:
+          await JourneyService.clearOptimisticDashboard();
           req = CreateJourneyRequest(journeyType: JourneyType.prePregnancy, startDate: today);
         case _Stage.pregnancy:
           String? dueDate;
+          String? lmpDate;
+          DateTime? effectiveDueDate;
           if (_dueDate != null) {
+            effectiveDueDate = _dueDate;
             dueDate = _formatDate(_dueDate!);
           } else if (_lmpDate != null) {
-            dueDate = _formatDate(_dueDateFromLmp(_lmpDate!));
+            lmpDate = _formatDate(_lmpDate!);
+            effectiveDueDate = _dueDateFromLmp(_lmpDate!);
+            dueDate = _formatDate(effectiveDueDate);
           }
+          await JourneyService.cachePregnancyDates(
+            estimatedDueDate: effectiveDueDate,
+            lastMenstrualDate: _lmpDate,
+          );
           req = CreateJourneyRequest(
-              journeyType: JourneyType.pregnancy, startDate: today, estimatedDueDate: dueDate);
+              journeyType: JourneyType.pregnancy,
+              startDate: today,
+              lastMenstrualDate: lmpDate,
+              estimatedDueDate: dueDate);
         case _Stage.postpartum:
+          await JourneyService.clearOptimisticDashboard();
           final start = _babyBirthDate != null ? _formatDate(_babyBirthDate!) : today;
           req = CreateJourneyRequest(journeyType: JourneyType.postpartum, startDate: start);
       }
       await _service.createJourney(req);
       if (!mounted) return;
-      // TODO: Navigate to step 2/3 when that screen is available
-      Navigator.of(context).pop();
+      // Navigate to Home screen after setting up the journey
+      context.go('/');
     } on ApiException catch (e) {
+      if (e.statusCode == 409) {
+        try {
+          final d = await _service.getDashboard();
+          if (d.journeyId != null) {
+            String? dDate;
+            String? lDate;
+            if (_dueDate != null) dDate = _formatDate(_dueDate!);
+            if (_lmpDate != null) lDate = _formatDate(_lmpDate!);
+            await JourneyService.cachePregnancyDates(
+              estimatedDueDate:
+                  _dueDate ?? (_lmpDate != null ? _dueDateFromLmp(_lmpDate!) : null),
+              lastMenstrualDate: _lmpDate,
+            );
+
+            final upReq = UpdateJourneyRequest(
+              estimatedDueDate: dDate,
+              lastMenstrualDate: lDate,
+            );
+            await _service.updateJourney(d.journeyId!, upReq);
+          }
+        } catch (_) {}
+        if (!mounted) return;
+        context.go('/');
+        return;
+      }
       setState(() {
-        _error = e.statusCode == 409
-            ? 'Bạn đã có một hành trình đang hoạt động.'
-            : 'Không thể tạo hành trình. Vui lòng thử lại.';
+        _error = 'Không thể tạo hành trình. Vui lòng thử lại.';
       });
     } catch (_) {
       setState(() => _error = 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.');
