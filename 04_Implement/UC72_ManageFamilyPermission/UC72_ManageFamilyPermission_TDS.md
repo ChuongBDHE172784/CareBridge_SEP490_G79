@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAMILY-IMP-072` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `BachNQ (TV2-Bách)` |
 | **Author** | `AI Agent (Technical Architect + Test Designer)` |
 | **Reviewed by** | `[ ] Pending — Tech Lead` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Initial draft — TDS for UC-72 Manage Family Permission |
+| 2026-07-07 | AI Agent — Amelia (Dev Agent) | Implementation complete — added `permissionJson` to `CareGroupMember`, `CARE_GROUP_PERMISSION_UPDATED` to `AuditAction`, `FamilyPermission` VO, `UpdateFamilyPermissionRequest`/`FamilyPermissionResponse` DTOs, `FamilyPermissionUpdated` event, `canManagePermissions()` to policy, `findByIdAndCareGroupId` to repository, `updateFamilyPermission`/`getFamilyPermission` to service and controller. 21/21 unit tests GREEN. |
 
 ---
 

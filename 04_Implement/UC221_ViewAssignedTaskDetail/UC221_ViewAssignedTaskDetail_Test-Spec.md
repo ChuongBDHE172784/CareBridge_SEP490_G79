@@ -3,7 +3,7 @@
 **Document ID:** `CB-FAM-TDD-221`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-07-10 (20/24 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -21,7 +21,7 @@
 - PDPA (Vietnam) — minimum-necessary access; BR-RBAC, BR-PRIVACY, BR-SAFETY (SRS §3.3.17.6)
 
 > **Quy ước TDD:** Tài liệu này mô tả test cases TRƯỚC khi viết production code.
-> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL 🔴 → implement → PASS 🟢 → refactor 🔵.
+> Thứ tự bắt buộc: viết test (`.java`) → chạy → xác nhận FAIL ðŸ”´ → implement → PASS ðŸŸ¢ → refactor ðŸ”µ.
 > Không mark test là ✅ nếu `./mvnw test` chưa xanh.
 > Không dùng PII thật trong test data — chỉ dùng SYNTHETIC data.
 
@@ -33,6 +33,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 20/24 tests PASS in targeted service suite; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | `2026-07-03` | `AI Agent — Test Designer` | Khởi tạo tài liệu — TDD spec cho UC-221 View Assigned Task Detail |
 
 ---
@@ -59,7 +60,7 @@
 | **Feature / Gap ID** | `UC-221` |
 | **Module** | `ViewAssignedTaskDetail — family bounded context` |
 | **Spec gốc** | `CB-FAM-IMP-221` (companion TDS) |
-| **Priority** | 🟠 P1 (Frequency of Use: **Frequent** per SRS) |
+| **Priority** | ðŸŸ  P1 (Frequency of Use: **Frequent** per SRS) |
 | **Sprint** | `S[N] — TBD (Open, no sprint assigned yet)` |
 | **Milestone** | `M3 Alpha — 2026-07-11` |
 | **Data Classification** | `PII` — response exposes assigner/assignee display names + free-text task title/description ("notes") |
@@ -170,7 +171,7 @@ ViewAssignedTaskDetail (UC-221) bao gồm các layer:
 
 > **TC ID format:** `FAM221-TC-[NNN]`
 > **Severity:** CRITICAL / HIGH / MEDIUM / LOW
-> **Status:** 🔴 Not written / 🟡 Written-failing / 🟢 Passing
+> **Status:** ðŸ”´ Not written / ðŸŸ¡ Written-failing / ðŸŸ¢ Passing
 > **Total test cases in this spec:** 24 (20 unit/service + 1 integration + 2 E2E + already counted; see §5 tracker) — **4 CRITICAL**, 8 HIGH, 10 MEDIUM, 2 LOW-equivalent(informational, folded into HIGH above where applicable)
 
 ### Props Isolation Boilerplate (CASE 2.0 — BẮT BUỘC)
@@ -251,7 +252,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** `src/test/java/com/carebridge/backend/family/service/CareTaskServiceImplGetDetailTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS UC-221 §3.3.17.6` Normal Flow Step 5 + `CB-FAM-IMP-221` §9.2 (200 response schema)
 
@@ -270,7 +271,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** All fields populated per `CB-FAM-IMP-221` §9.2 happy-path JSON.
 **Expected Result (FAIL):** `403`/`404` thrown, or a field silently null/mismatched.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Owner is just one instance of "any ACCEPTED member" (ADR-FAM-068) — do not special-case OWNER in the service.
 
 ---
@@ -280,7 +281,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-FAM-068` Decision — "any ACCEPTED member (any memberRole)"
 
@@ -294,7 +295,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Same shape as TC-001 — role has no bearing on read outcome.
 **Expected Result (FAIL):** Exception thrown for non-owner caller (would indicate an incorrect owner-only check leaked from UC-73's write-path logic).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the regression guard against accidentally reusing `CareGroupAuthorizationPolicy.canAssignTasks()` (owner-only, ADR-FAM-032) instead of the read-visibility check (ADR-FAM-068).
 
 ---
@@ -304,7 +305,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `ADR-FAM-068` Decision
 
@@ -318,7 +319,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** `VIEWER` role is sufficient for read (ADR-FAM-068 explicitly allows any role).
 **Expected Result (FAIL):** Exception thrown — would indicate role filtering incorrectly excludes `VIEWER`.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -327,7 +328,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS UC-221 §3.3.17.6` Primary Actor "Family Member"; `FX-007` (`assignedTo = MEMBER_1`)
 
@@ -340,7 +341,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Assignee is a valid caller (subset of "any ACCEPTED member").
 **Expected Result (FAIL):** N/A — covered by TC-002 logic; kept distinct to explicitly document the assignee persona from SRS.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -349,7 +350,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `SRS UC-221 §3.3.17.6` Primary Actor "Mother"; `ADR-FAM-068` Consequences ("assigner and assignee both can view")
 
@@ -362,7 +363,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Assigner (Mother) can view her own created task.
 **Expected Result (FAIL):** N/A — distinct persona coverage of TC-001.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -373,7 +374,7 @@ class CareTaskDetailTestFactory {
 **Legal:** `BR-RBAC, PDPA minimum-necessary access`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-FAM-068` Decision; `CB-FAM-IMP-221` §10 error table (`FAM-068`, 403)
 
@@ -387,7 +388,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS — hành vi đúng):** `BusinessException(403, "FAM-068", ...)` thrown; `taskRepository.findByIdAndCareGroupId(...)` is **never invoked** (verify via `Mockito.verifyNoInteractions(taskRepository)`).
 **Expected Result (FAIL — dấu hiệu lỗi):** No exception thrown, or task data returned to a non-member, or wrong error code.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the core authorization control for the entire UC — treat as the highest-priority test.
 
 ---
@@ -398,7 +399,7 @@ class CareTaskDetailTestFactory {
 **CWE:** `CWE-862 — Missing Authorization`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-FAM-002` (reused) — PENDING is not sufficient membership; `ADR-FAM-068`
 
@@ -412,7 +413,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Same as TC-006.
 **Expected Result (FAIL):** PENDING invitee incorrectly allowed to read task detail before formally joining.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -422,7 +423,7 @@ class CareTaskDetailTestFactory {
 **CWE:** `CWE-862 — Missing Authorization`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-FAM-002` (reused); `ADR-FAM-068`
 
@@ -436,7 +437,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** A formerly-accepted-then-revoked member loses read access immediately.
 **Expected Result (FAIL):** Stale membership grants continued access post-revocation.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -445,7 +446,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `CB-FAM-IMP-221` §10 error table (`FAM-005`, reused from UC-70/216)
 
@@ -458,7 +459,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Group-existence check runs first and fails cleanly.
 **Expected Result (FAIL):** NPE, wrong status code, or wrong error code.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -467,7 +468,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-FAM-033` (UC-73, `FAM-033` reservation) + `CB-FAM-IMP-221` §10
 
@@ -480,7 +481,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Exactly `FAM-033` (the reserved code), not a newly invented code.
 **Expected Result (FAIL):** Wrong/new error code, or `500` from an unhandled `Optional.get()`.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -491,7 +492,7 @@ class CareTaskDetailTestFactory {
 **Legal:** `BR-PRIVACY — no cross-group data disclosure`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail(UUID, UUID, UUID)`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-FAM-069` Decision ("`findByIdAndCareGroupId` ... returning `FAM-033` on mismatch")
 
@@ -506,7 +507,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS = hệ thống an toàn):** `404 FAM-033`; response body contains no field from the real `TASK_3` row (no title/description/assignee from `GROUP_2`).
 **Expected Result (FAIL = lỗ hổng tồn tại):** `TASK_3`'s data (belonging to a group the caller is not a member of) is returned — a cross-group IDOR data leak.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This is the test that validates the entire rationale for `findByIdAndCareGroupId` (a group-scoped query) instead of a plain `findById(taskId)`.
 
 ---
@@ -518,7 +519,7 @@ class CareTaskDetailTestFactory {
 **Legal:** `BR-RBAC`
 **Feature Under Test:** `CareGroupController.getTaskDetail()` (Spring Security filter chain, `@PreAuthorize("isAuthenticated()")`)
 **Test File:** `src/test/java/com/carebridge/backend/family/controller/CareGroupControllerGetTaskDetailTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `CB-FAM-IMP-221` §9.2 (401 `IAM-001` response) + §16 Auth Matrix (`GUEST` row)
 
@@ -531,7 +532,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS = hệ thống an toàn):** `401 Unauthorized`, controller/service method never invoked.
 **Expected Result (FAIL = lỗ hổng tồn tại):** Request reaches the service layer without authentication.
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -540,7 +541,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskDetailResponse` mapping in `CareTaskServiceImpl.getTaskDetail()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `ADR-FAM-071` Decision — "no `priority` column ... excluded from the response"; `V1__init_schema.sql` lines 753-765 (no `priority` column)
 
@@ -553,7 +554,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** No `priority` key anywhere in the response.
 **Expected Result (FAIL):** A `priority` field is present (schema-drift regression re-introducing the CB-170 mockup's unsupported UI aspiration as a fabricated field).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -562,7 +563,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskDetailResponse` mapping
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `ADR-FAM-071` Decision — "no table/column supports sub-items"
 
@@ -573,7 +574,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Absent.
 **Expected Result (FAIL):** Present — indicates an invented/hallucinated field not backed by schema.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -582,7 +583,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskDetailResponse` mapping
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `ADR-FAM-071` Decision — "no task-history table"
 
@@ -593,7 +594,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Absent.
 **Expected Result (FAIL):** Present — would require an `AuditAction`-style table that does not exist; a fabricated/mocked field would be a hallucinated contract (AP-AI-005).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -602,7 +603,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` mapping
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `V1__init_schema.sql` (`completed_at` nullable, no default); `CB-FAM-IMP-221` §9.2 sample (`"completedAt": null` for `OPEN`)
 
@@ -615,7 +616,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** `null`, verbatim passthrough of the stored column — no fabricated timestamp.
 **Expected Result (FAIL):** A non-null value synthesized for a non-`DONE` task.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -624,7 +625,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` mapping
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `FX-008` (`status = DONE`, `completedAt = <past-instant>`)
 
@@ -637,7 +638,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Verbatim passthrough of the stored `completed_at`.
 **Expected Result (FAIL):** `null` returned despite a stored value (mapping bug), or a re-computed/current timestamp instead of the stored one.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -646,7 +647,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskStatus` enum + `CareTaskServiceImpl.getTaskDetail()` mapping
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `ADR-FAM-030` (UC-73, reused) — `{OPEN, IN_PROGRESS, DONE, CANCELLED}`; §2 L2 (this document)
 
@@ -659,7 +660,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** All four values map verbatim; enum has exactly the UC-73/ADR-FAM-030 members.
 **Expected Result (FAIL):** Enum accidentally compiled against the conflicting UC-85 variant (`COMPLETED`/`NEEDS_SUPPORT` present, `DONE`/`CANCELLED` absent) — a cross-batch reconciliation regression.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -670,7 +671,7 @@ class CareTaskDetailTestFactory {
 **Legal:** `BR-PRIVACY, PDPA minimum-necessary access`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` mapping (`assignedByName`/`assignedToName` resolution)
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `CB-FAM-IMP-221` §4.3 Security NFR ("never email/phone of assigner/assignee"); `FX-011` (`User` fixtures carry email/phone that must NOT leak)
 
@@ -683,7 +684,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS = an toàn):** Only display names present; no contact PII.
 **Expected Result (FAIL = lỗ hổng):** `CareTaskDetailResponse` (or a nested `User`/`CareGroupMember` object) leaks email/phone — e.g. via accidentally serializing the whole `User` entity instead of mapping just `.getName()`.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -692,7 +693,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` — `resolveName()` helper
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `V1__init_schema.sql` lines 753-765 — `assigned_by`/`assigned_to` are nullable columns; `FX-010`
 
@@ -706,7 +707,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS):** Graceful `null` propagation.
 **Expected Result (FAIL):** `NullPointerException`, or `userRepository.findById(null)` throws/misbehaves.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -716,7 +717,7 @@ class CareTaskDetailTestFactory {
 **CWE:** `CWE-203 — Observable Discrepancy (information exposure through response differences)`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` gate order
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-FAM-069` "Gate ordering invariant: group-exists → membership → task-fetch" (TDS §6.2 note)
 
@@ -731,7 +732,7 @@ class CareTaskDetailTestFactory {
 **Expected Result (PASS = an toàn):** Always `403` for non-members regardless of whether the requested task id is real; the task repository is never queried, so a non-member cannot use response-code differences (`403` vs `404`) to probe task existence indirectly.
 **Expected Result (FAIL = lỗ hổng):** `404 FAM-033` returned instead of `403`, implying the task-existence check ran (or was reachable) before/independent of the membership gate.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Directly enforces the TDS §6.2 gate-ordering invariant; also validated by mock-interaction verification, not just the returned status code.
 
 ---
@@ -741,7 +742,7 @@ class CareTaskDetailTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `CareTaskServiceImpl.getTaskDetail()` + `CareTaskRepository` + `CareGroupMemberRepository` + `UserRepository` (real JPA, Testcontainers)
 **Test File:** `src/test/java/com/carebridge/backend/family/service/CareTaskDetailIntegrationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-007`
 
 **Preconditions:**
@@ -768,7 +769,7 @@ assertThat(record.getStatus()).isEqualTo(CareTaskStatus.OPEN);
 assertThat(record.getCareGroupId()).isEqualTo(GROUP_1);
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -777,7 +778,7 @@ assertThat(record.getCareGroupId()).isEqualTo(GROUP_1);
 **Severity:** `HIGH`
 **Feature Under Test:** `GET /api/v1/care-groups/{groupId}/tasks/{taskId}` — full stack
 **Test File:** `src/test/java/com/carebridge/backend/family/controller/CareGroupControllerGetTaskDetailE2ETest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 **Condition Ref:** `TC-COND-007`
 
 **Preconditions:** Seed as in `FAM221-TC-INT-001`; valid JWT for `MEMBER_1` with role `FAMILY_MEMBER`
@@ -793,7 +794,7 @@ assertThat(record.getCareGroupId()).isEqualTo(GROUP_1);
 **Expected Result (PASS):** `200` with correct body shape; no `priority`/`checklist`/`activityHistory` keys.
 **Expected Result (FAIL):** Wrong status, missing fields, or leaked out-of-scope fields.
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
@@ -804,7 +805,7 @@ assertThat(record.getCareGroupId()).isEqualTo(GROUP_1);
 **CWE:** `CWE-306 — Missing Authentication for Critical Function`
 **Feature Under Test:** `GET /api/v1/care-groups/{groupId}/tasks/{taskId}` — full stack
 **Test File:** same as E2E-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** ðŸ”´ RED
 
 **Preconditions:** No `Authorization` header
 
@@ -815,35 +816,35 @@ assertThat(record.getCareGroupId()).isEqualTo(GROUP_1);
 **Expected Result (PASS = hệ thống an toàn):** `401 Unauthorized`.
 **Expected Result (FAIL = lỗ hổng tồn tại):** Task data returned without authentication.
 
-**Current Status:** 🔴 Not written
+**Current Status:** ðŸ”´ Not written
 
 ---
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
+| TC ID | Test File | ðŸ”´ RED confirmed | ðŸŸ¢ GREEN (commit) | ðŸ”µ REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `FAM221-TC-001` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-002` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-003` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-004` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-005` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-006` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-007` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-008` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-009` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-010` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-011` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
+| `FAM221-TC-001` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-002` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-003` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-004` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-005` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-006` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-007` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-008` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-009` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-010` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-011` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
 | `FAM221-TC-012` | `CareGroupControllerGetTaskDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-013` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-014` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-015` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-016` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-017` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-018` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-019` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-020` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
-| `FAM221-TC-021` | `CareTaskServiceImplGetDetailTest.java:TBD` | `[ ]` | `[ ]` | |
+| `FAM221-TC-013` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-014` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-015` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-016` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-017` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-018` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-019` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-020` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
+| `FAM221-TC-021` | `CareTaskServiceImplGetDetailTest.java` | `[ ]` | `2026-07-10 (targeted tests)` | |
 | `FAM221-TC-INT-001` | `CareTaskDetailIntegrationTest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM221-TC-E2E-001` | `CareGroupControllerGetTaskDetailE2ETest.java:TBD` | `[ ]` | `[ ]` | |
 | `FAM221-TC-E2E-002` | `CareGroupControllerGetTaskDetailE2ETest.java:TBD` | `[ ]` | `[ ]` | |
@@ -886,19 +887,19 @@ public ResponseEntity<ApiResponse<CareTaskDetailResponse>> getTaskDetail(
 
 | TC ID | Stub Result | Expected | Actual | Root Cause (nếu PASS bất thường) |
 |-------|-------------|----------|--------|----------------------------------|
-| `FAM221-TC-001..005` (happy paths) | `throw UnsupportedOperationException` | 🔴 FAIL | ☐ FAIL ☐ PASS | ☐ Tautology ☐ Shared state ☐ Hallucinated import |
-| `FAM221-TC-006..008, 021` (auth denial) | `throw UnsupportedOperationException` (masks the intended `403`) | 🔴 FAIL | ☐ FAIL ☐ PASS | Must fail because the stub throws `UnsupportedOperationException`, not `BusinessException(403,...)` — test asserting exact exception type/code must not accidentally pass on a generic `RuntimeException` catch |
-| `FAM221-TC-009..011` (not-found) | `throw UnsupportedOperationException` | 🔴 FAIL | ☐ FAIL ☐ PASS | Same as above — code must assert the specific `FAM-005`/`FAM-033` code, not merely "an exception was thrown" |
-| `FAM221-TC-012` (401) | Controller stub still requires auth (Spring Security runs first) | 🔴 FAIL *(expected 401 not reached — request never hits stub because there is no Authorization header at all, so this test should already read as intended pre-stub; verify it still fails for the RIGHT reason if service stub changes nothing)* | ☐ FAIL ☐ PASS | |
-| `FAM221-TC-013..015` (field exclusion) | `throw UnsupportedOperationException` | 🔴 FAIL | ☐ FAIL ☐ PASS | Must fail because no response object is produced to inspect |
-| `FAM221-TC-016..020` (logic/mapping) | `throw UnsupportedOperationException` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `FAM221-TC-INT-001, E2E-001` | Full stack — stub throws | 🔴 FAIL | ☐ FAIL ☐ PASS | |
-| `FAM221-TC-E2E-002` (401 unauth) | N/A — request rejected before controller | 🔴 FAIL *(must still be written as a real assertion, not vacuously true)* | ☐ FAIL ☐ PASS | |
+| `FAM221-TC-001..005` (happy paths) | `throw UnsupportedOperationException` | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | ☐ Tautology ☐ Shared state ☐ Hallucinated import |
+| `FAM221-TC-006..008, 021` (auth denial) | `throw UnsupportedOperationException` (masks the intended `403`) | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | Must fail because the stub throws `UnsupportedOperationException`, not `BusinessException(403,...)` — test asserting exact exception type/code must not accidentally pass on a generic `RuntimeException` catch |
+| `FAM221-TC-009..011` (not-found) | `throw UnsupportedOperationException` | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | Same as above — code must assert the specific `FAM-005`/`FAM-033` code, not merely "an exception was thrown" |
+| `FAM221-TC-012` (401) | Controller stub still requires auth (Spring Security runs first) | ðŸ”´ FAIL *(expected 401 not reached — request never hits stub because there is no Authorization header at all, so this test should already read as intended pre-stub; verify it still fails for the RIGHT reason if service stub changes nothing)* | ☐ FAIL ☐ PASS | |
+| `FAM221-TC-013..015` (field exclusion) | `throw UnsupportedOperationException` | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | Must fail because no response object is produced to inspect |
+| `FAM221-TC-016..020` (logic/mapping) | `throw UnsupportedOperationException` | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | |
+| `FAM221-TC-INT-001, E2E-001` | Full stack — stub throws | ðŸ”´ FAIL | ☐ FAIL ☐ PASS | |
+| `FAM221-TC-E2E-002` (401 unauth) | N/A — request rejected before controller | ðŸ”´ FAIL *(must still be written as a real assertion, not vacuously true)* | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
 
-- Stub commit hash: `___` (to be filled when stub is committed)
-- Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
+- Stub commit hash: `N/A` — Red Gate not reconstructed because production implementation already existed before this execution.
+- All FAIL? ☐ Not reconstructed — production implementation pre-existed; service-level Green evidence captured on 2026-07-10.
 - Log file: `[path to red-gate-evidence.log]` (to be filled during execution)
 
 > **Nếu bất kỳ test PASS bất thường:** Dừng lại. Đặc biệt kiểm tra `FAM221-TC-006/007/008/021` — nếu
@@ -997,3 +998,4 @@ git checkout -- src/test/java/com/carebridge/backend/family/service/CareTaskDeta
 
 *TDD Template v2.0 — Tích hợp CASE 2.0 Anti-Pattern Detection & Red Gate Protocol.*
 *Status: Draft — pending review. Do not mark Approved without explicit user/Tech Lead confirmation.*
+

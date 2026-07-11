@@ -122,7 +122,7 @@ class CommunityQuestionDetailServiceImplTest {
                 .thenReturn(List.of(answer));
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
-        when(answerMapper.toResponse(eq(answer), any(), eq(false))).thenReturn(answerResponse);
+        when(answerMapper.toResponse(eq(answer), any(), eq(false), any())).thenReturn(answerResponse);
         when(questionMapper.toDetailResponse(
                 eq(question), eq("Dinh dưỡng"), any(), any(), eq(false), eq(false), eq(CURRENT_USER_ID)))
                 .thenReturn(expectedDetail);

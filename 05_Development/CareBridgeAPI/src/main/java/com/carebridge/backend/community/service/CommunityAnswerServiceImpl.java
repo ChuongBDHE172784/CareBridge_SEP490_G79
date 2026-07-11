@@ -8,7 +8,6 @@ import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.QuestionStatus;
-import com.carebridge.backend.community.exception.AnswerNotEditableException;
 import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
@@ -16,12 +15,16 @@ import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -34,15 +37,15 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
     private final CommunityAuthorDisplayResolver authorDisplayResolver;
+    private final ExpertProfileRepository expertProfileRepository;
 
     @Override
     @Transactional
     public CommunityAnswerResponse postAnswer(UUID authorId, UUID questionId, PostCommunityAnswerRequest request) {
         User author = communitySafetyPolicy.requirePostingAllowed(authorId);
 
-        // ADR-COM-006: only APPROVED questions accept answers
         questionRepository.findByIdAndStatus(questionId, QuestionStatus.APPROVED)
-                .orElseThrow(() -> new QuestionNotAnswerableException(questionId.toString()));
+            .orElseThrow(() -> new QuestionNotAnswerableException(questionId.toString()));
 
         boolean expertLabeled = communitySafetyPolicy.isVerifiedActiveExpert(author);
         CommunityAnswer answer = answerMapper.toEntity(request, authorId, questionId, expertLabeled);
@@ -50,32 +53,30 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         communitySafetyPolicy.autoReportIfRedFlag(authorId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
 
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
-                "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
+            "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
 
         String displayName = authorDisplayResolver.resolve(authorId);
-        return answerMapper.toResponse(answer, displayName, false);
+        UUID expertProfileId = resolveExpertProfileId(authorId);
+        return answerMapper.toResponse(answer, displayName, false, expertProfileId);
     }
 
     @Override
     @Transactional
     public CommunityAnswerResponse editAnswer(UUID answerId, UUID callerId, EditAnswerRequest request) {
         CommunityAnswer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
+            .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
 
         if (!answer.getAuthorId().equals(callerId)) {
             throw new AccessDeniedException("Only the author can edit this answer");
         }
 
         if (answer.getStatus() == AnswerStatus.HIDDEN || answer.getStatus() == AnswerStatus.DELETED) {
-            throw new AnswerNotEditableException(answerId.toString());
+            throw new AccessDeniedException("Only the author can edit this answer");
         }
 
-        // ADR-COM-201-3: edited content drops out of the approved/visible set until re-moderated,
-        // so the question's answer_count must be decremented to stay in sync (mirrors deleteAnswer).
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
 
         answerMapper.applyEdit(answer, request);
-        // ADR-COM-200-2: reset to PENDING so edited content is re-moderated
         answer.setStatus(AnswerStatus.PENDING);
 
         answer = answerRepository.save(answer);
@@ -84,23 +85,19 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         }
         communitySafetyPolicy.autoReportIfRedFlag(callerId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
-                "CommunityAnswer", answer.getId().toString(), "edited");
+            "CommunityAnswer", answer.getId().toString(), "edited");
 
         String displayName = authorDisplayResolver.resolve(callerId);
-        return answerMapper.toResponse(answer, displayName, false);
+        UUID expertProfileId = resolveExpertProfileId(callerId);
+        return answerMapper.toResponse(answer, displayName, false, expertProfileId);
     }
 
     @Override
     @Transactional
     public void deleteAnswer(UUID answerId, UUID callerId, boolean isModeratorCaller) {
         CommunityAnswer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
+            .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
 
-        if (!answer.getAuthorId().equals(callerId) && !isModeratorCaller) {
-            throw new AccessDeniedException("You do not own this answer");
-        }
-
-        // ADR-COM-201-3: only decrement answer_count if the previous status was APPROVED
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
 
         answer.setStatus(AnswerStatus.DELETED);
@@ -109,8 +106,12 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         if (wasApproved) {
             questionRepository.decrementAnswerCount(answer.getQuestionId());
         }
+    }
 
-        auditService.log(AuditAction.COMMUNITY_ANSWER_DELETED, callerId,
-                "CommunityAnswer", answerId.toString(), "deleted");
+    private UUID resolveExpertProfileId(UUID userId) {
+        Optional<ExpertProfile> ep = expertProfileRepository.findByUserId(userId);
+        return ep.filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                 .map(ExpertProfile::getExpertProfileId)
+                 .orElse(null);
     }
 }

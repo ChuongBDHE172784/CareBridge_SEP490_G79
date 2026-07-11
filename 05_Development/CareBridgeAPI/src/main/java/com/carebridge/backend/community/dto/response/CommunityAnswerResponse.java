@@ -14,16 +14,17 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CommunityAnswerResponse {
 
-    private UUID id;
-    private UUID questionId;
-    private UUID authorId;
-    private String authorDisplay;
-    private String body;
-    private boolean personalExperience;
-    private boolean expertLabeled;
-    private String status;
-    private int likeCount;
-    private boolean liked;
-    private Instant createdAt;
-    private Instant updatedAt;
+ private UUID id;
+ private UUID questionId;
+ private UUID authorId;
+ private String authorDisplay;
+ private String body;
+ private boolean personalExperience;
+ private boolean expertLabeled;
+ private UUID expertProfileId;
+ private String status;
+ private int likeCount;
+ private boolean liked;
+ private Instant createdAt;
+ private Instant updatedAt;
 }

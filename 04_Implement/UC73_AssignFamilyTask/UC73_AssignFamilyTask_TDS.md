@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-073` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead — Pending]` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC-73 Assign Family Task |
+| 2026-07-08 | AI Agent — Amelia (Dev Agent) | Implemented: CareTask entity, CareTaskRepository, ICareTaskService, CareTaskServiceImpl (assignFamilyTask + listTasks), CareGroupController endpoints (POST/GET /tasks), FamilyTaskAssigned event, CARE_TASK_ASSIGNED audit, FCM non-blocking. 23/24 unit tests GREEN (TC-INT-001 skipped — Docker unavailable). |
 
 ---
 

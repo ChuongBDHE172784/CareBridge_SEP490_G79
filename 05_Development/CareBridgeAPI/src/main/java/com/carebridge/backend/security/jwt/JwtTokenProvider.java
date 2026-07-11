@@ -31,10 +31,14 @@ public class JwtTokenProvider {
 
     @PostConstruct
     void init() {
-        if (configuredSecret == null || configuredSecret.isBlank()) {
+        String secret = configuredSecret;
+    if (secret == null || secret.isBlank()) {
+        secret = System.getenv("JWT_SECRET");
+    }
+    if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("JWT_SECRET is not configured. Set the JWT_SECRET environment variable with a strong secret (at least 32 characters).");
         }
-        String trimmedSecret = configuredSecret.trim();
+        String trimmedSecret = secret.trim();
         if (trimmedSecret.length() < 32) {
             throw new IllegalStateException("JWT_SECRET is too weak. Must be at least 32 characters.");
         }

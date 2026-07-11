@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface VaccinationReferenceRepository extends JpaRepository<VaccinationReferenceSchedule, UUID> {
 
     List<VaccinationReferenceSchedule> findAllByOrderByOffsetDaysAsc();
+
+    boolean existsByVaccineNameAndDoseNumber(String vaccineName, short doseNumber);
 }

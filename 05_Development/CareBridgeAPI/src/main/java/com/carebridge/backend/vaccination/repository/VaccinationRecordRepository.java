@@ -16,4 +16,9 @@ public interface VaccinationRecordRepository extends JpaRepository<VaccinationRe
             UUID babyId, String vaccineName, short doseNumber, VaccinationRecordStatus status);
 
     List<VaccinationRecord> findByBabyIdAndStatus(UUID babyId, VaccinationRecordStatus status);
+
+    Optional<VaccinationRecord> findByIdAndBabyId(UUID id, UUID babyId);
+
+    Optional<VaccinationRecord> findByBabyIdAndVaccineNameAndDoseNumber(
+            UUID babyId, String vaccineName, short doseNumber);
 }

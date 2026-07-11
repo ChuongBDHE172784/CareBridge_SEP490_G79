@@ -4,7 +4,7 @@
 **Document ID:** `CB-VAC-TEST-003`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (13/20 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -30,6 +30,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 13/20 tests PASS in VaccinationServiceImplTest; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | `2026-07-03` | `AI Agent — Test Designer` | Khởi tạo tài liệu — Test-Spec cho UC-230 Update Vaccination Record |
 
 ---
@@ -250,7 +251,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationServiceImpl.updateVaccinationRecord()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/VaccinationServiceUpdateTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `CB-VAC-IMP-003 §8.1` (service contract) + `ADR-VAC-008` (null = no change)
 
@@ -265,7 +266,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** facilityName updated; all other fields untouched; no exception.
 **Expected Result (FAIL):** any other field mutated, or status changed, or exception thrown.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -274,7 +275,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationServiceImpl.updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `CB-VAC-IMP-003 §8.1`
 
@@ -284,7 +285,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** all four fields updated simultaneously in one write; `status` unchanged.
 **Expected Result (FAIL):** partial application (some fields updated, others not) with no thrown exception.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -293,7 +294,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationServiceImpl.validateProofRecord()` + `updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-VAC-006` (proof validation rule)
 
@@ -305,7 +306,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `healthRecordRepository.findByIdAndStatus(HR-1.id, ACTIVE)` invoked exactly once; record's `proofRecordId` set to `HR-1.id`; response reflects it.
 **Expected Result (FAIL):** proof set without validation call, or validation skipped.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -314,7 +315,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-VAC-008`
 
@@ -326,7 +327,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `proofRecordId` becomes `null`; `healthRecordRepository` is **never** invoked (validation skipped per ADR-VAC-008).
 **Expected Result (FAIL):** proof record left set, or validation attempted despite `clearProof=true`.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -354,7 +355,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `validateProofRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `CB-VAC-IMP-003 §10` error table (`VAC-010`, 404)
 
@@ -364,7 +365,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException` thrown with `httpStatus=404`, `code="VAC-010"`; no `save()` invoked.
 **Expected Result (FAIL):** silent no-op, wrong code, or record saved with a dangling proof reference.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -373,7 +374,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `validateProofRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-VAC-006` + `CB-VAC-IMP-003 §10` (`VAC-010`)
 
@@ -385,7 +386,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(404, "VAC-010")` — same code as "not found," since `findByIdAndStatus(id, ACTIVE)` returns empty for a non-active row.
 **Expected Result (FAIL):** inactive health record accepted as a valid proof link.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -396,7 +397,7 @@ class UpdateVaccinationRecordTestFactory {
 **Legal:** `BR-PRIVACY / PDPA minimum-necessary access`
 **Feature Under Test:** `validateProofRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `ADR-VAC-006` + `CB-VAC-IMP-003 §10` (`VAC-011`, 409)
 
@@ -408,7 +409,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(409, "VAC-011")`; record's `proofRecordId` remains unchanged (not linked cross-baby).
 **Expected Result (FAIL):** the cross-baby health record is linked — a PDPA-relevant data leak.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -418,7 +419,7 @@ class UpdateVaccinationRecordTestFactory {
 **Legal:** `Safety-adjacent (health data integrity) — no direct legal citation, per ADR-VAC-007 rationale`
 **Feature Under Test:** `rejectStatusField()` / `updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-009`
 **Oracle Source:** `ADR-VAC-007` + `CB-VAC-IMP-003 §10` (`VAC-012`, 400)
 
@@ -428,7 +429,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(400, "VAC-012")` thrown; entity's `status` column value is verified unchanged after the call.
 **Expected Result (FAIL):** `status` silently ignored and 200 returned (violates ADR-VAC-007's explicit-rejection decision), or `status` actually changed.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -437,7 +438,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `rejectStatusField()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-010`
 **Oracle Source:** `ADR-VAC-007` ("Request is rejected wholesale... no partial application")
 
@@ -448,7 +449,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(400, "VAC-012")`; `facilityName` is **still** the pre-call value (`"Old Clinic"`) — no partial write occurred.
 **Expected Result (FAIL):** `facilityName` updated despite the overall request being rejected (partial-apply bug).
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -459,7 +460,7 @@ class UpdateVaccinationRecordTestFactory {
 **Legal:** `BR-RBAC`
 **Feature Under Test:** `BabyAccessPolicy.isOwner()` used by `updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-011`
 **Oracle Source:** `ADR-VAC-005` (owner-only, stricter than `canView()`) — this is the L2 divergence recorded in §2
 
@@ -471,7 +472,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(403, "VAC-002")` — confirms the write path is stricter than the read path (`canView()` would have returned `true` for this same caller).
 **Expected Result (FAIL):** update succeeds for a non-owner care-group member (regression to UC-228's read-scoped permissiveness).
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -497,7 +498,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `updateVaccinationRecord()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-013`
 **Oracle Source:** `CB-VAC-IMP-003 §10` (`VAC-001`, reused from UC-228)
 
@@ -505,7 +506,7 @@ class UpdateVaccinationRecordTestFactory {
 1. Call service with a `babyId` not present in `baby_profiles`
 
 **Expected Result (PASS):** `BusinessException(404, "VAC-001")`.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -514,7 +515,7 @@ class UpdateVaccinationRecordTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationRecordRepository.findByIdAndBabyId()`
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-014`
 **Oracle Source:** `CB-VAC-IMP-003 §10` (`VAC-009`)
 
@@ -523,7 +524,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(404, "VAC-009")`.
 **Expected Result (FAIL):** a different code (e.g. reusing `VAC-001`) — the two "not found" cases must be distinguishable.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -533,7 +534,7 @@ class UpdateVaccinationRecordTestFactory {
 **CWE:** `CWE-639 — Authorization Bypass Through User-Controlled Key (IDOR)`
 **Feature Under Test:** `findByIdAndBabyId()` scoped lookup
 **Test File:** same as TC-001
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-015`
 **Oracle Source:** `ADR-VAC-004`/`ADR-VAC-005` — the record lookup is **scoped by babyId**, so a `recordId` belonging to `BABY_2` addressed via `BABY_1`'s path must appear identically to "not found," not leak a distinguishable existence signal
 
@@ -543,7 +544,7 @@ class UpdateVaccinationRecordTestFactory {
 
 **Expected Result (PASS):** `BusinessException(404, "VAC-009")` — identical to a truly nonexistent `recordId`, preventing cross-baby existence enumeration.
 **Expected Result (FAIL):** a different error code/behavior reveals that the record exists under a different baby.
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -732,7 +733,7 @@ public class VaccinationServiceImpl implements IVaccinationService {
 
 **Red Gate Evidence:**
 
-- Stub commit hash: `___` *(to be filled at implementation time)*
+- Stub commit hash: `N/A - Red Gate not reconstructed because production implementation already existed before this execution.`
 - Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
 - Log file: `[path to red-gate-evidence.log]` *(to be filled at implementation time)*
 

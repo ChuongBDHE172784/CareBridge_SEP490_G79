@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-005` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bach` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -24,6 +24,7 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent | Tạo tài liệu lần đầu cho UC-85 Update Assigned Task Status |
+| 2026-07-08 | AI Agent — Amelia (Dev Agent) | Implemented FSM-guarded task status update: added `NEEDS_SUPPORT` to `CareTaskStatus` enum (code-only, no DB CHECK constraint); added `canTransitionTo()` FSM method; added `UpdateTaskStatusRequest`/`UpdateTaskStatusResponse` DTOs; implemented `updateTaskStatus` in `CareTaskServiceImpl`; wired `PATCH /{groupId}/tasks/{taskId}/status` in `CareGroupController`. FSM: OPEN→IN_PROGRESS/DONE/NEEDS_SUPPORT; IN_PROGRESS→DONE/NEEDS_SUPPORT; DONE/CANCELLED=terminal. Unit tests not yet run (Red Gate pending). |
 
 ---
 

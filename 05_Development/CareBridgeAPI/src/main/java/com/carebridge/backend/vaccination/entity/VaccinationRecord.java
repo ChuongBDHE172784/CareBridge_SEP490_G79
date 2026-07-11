@@ -46,6 +46,12 @@ public class VaccinationRecord {
     @Column(name = "facility_name", length = 200)
     private String facilityName;
 
+    @Column(name = "proof_record_id")
+    private UUID proofRecordId;
+
+    @Column(name = "postpone_reason", columnDefinition = "text")
+    private String postponeReason;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

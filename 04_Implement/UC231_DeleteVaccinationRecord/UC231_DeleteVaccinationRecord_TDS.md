@@ -6,7 +6,7 @@
 | **Document ID** | `CB-VAC-IMP-231` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `LamVH (Vaccination & Growth Tracking feature owner)` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[ ] Tech Lead — Pending` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation - 9/14 tests PASS; service-level coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu cho UC-231 Delete Vaccination Record (soft-delete via new enum value `DELETED`). Model theo REAL CODE hiện tại của package `vaccination`, ghi nhận độ lệch với sibling TDS UC-228 (stale). |
 
 ---

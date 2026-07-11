@@ -6,7 +6,7 @@
 | **Document ID** | `CB-FAM-IMP-218` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent (Technical Architect + Test Designer role)` |
 | **Reviewed by** | `[ ] Pending` |

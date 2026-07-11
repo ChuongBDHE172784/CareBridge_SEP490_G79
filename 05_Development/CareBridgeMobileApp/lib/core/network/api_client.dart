@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 import '../auth/auth_state.dart';
 import 'account_block_parser.dart';
 
@@ -183,6 +185,55 @@ Future<dynamic> apiDelete(String path,
       await http.delete(uri, headers: _headers(token: token), body: encoded);
   response = await _handleUnauthorized(response, token,
       () => http.delete(uri, headers: _headers(), body: encoded));
+  if (response.statusCode >= 200 && response.statusCode < 300) {
+    if (response.body.isEmpty) return null;
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+  if (response.statusCode == 401) await _handle401(response);
+  throw ApiException(response.statusCode, response.body);
+}
+
+
+Future<dynamic> apiMultipart(
+  String path,
+  Map<String, String> fields, {
+  String? token,
+  String? fileFieldName,
+  String? filePath,
+  String? fileName,
+  String? mimeType,
+}) async {
+  final uri = Uri.parse('$_baseUrl\$path');
+  var request = http.MultipartRequest('POST', uri);
+  for (final entry in fields.entries) {
+    request.fields[entry.key] = entry.value;
+  }
+  if (token != null) request.headers['Authorization'] = 'Bearer \$token';
+  final effectiveToken = token ?? AuthState.instance.accessToken;
+  if (effectiveToken != null) request.headers['Authorization'] = 'Bearer \$effectiveToken';
+  if (filePath != null) {
+    final file = http.MultipartFile(
+      fileFieldName ?? 'file',
+      http.ByteStream(File(filePath).openRead()),
+      await File(filePath).length(),
+      filename: fileName,
+      contentType: MediaType.parse(mimeType ?? lookupMimeType(filePath!) ?? 'application/octet-stream'),
+    );
+    request.files.add(file);
+  }
+  final streamed = await request.send();
+  final response = await http.Response.fromStream(streamed);
+  debugPrint('Multipart \$path → \${response.statusCode}');
+  final auth = AuthState.instance;
+  String? effectiveToken2 = token ?? auth.accessToken;
+  if (response.statusCode == 401 && effectiveToken2 != null) {
+    final outcome = await _tryRefresh();
+    if (outcome == _RefreshOutcome.refreshed) {
+      return apiMultipart(path, fields, token: null, fileFieldName: fileFieldName, filePath: filePath, fileName: fileName, mimeType: mimeType);
+    }
+    await _handle401(response);
+    throw ApiException(401, response.body);
+  }
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));

@@ -6,7 +6,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
-import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -40,9 +40,12 @@ public interface IExpertProfileService {
     void rejectExpert(UUID expertProfileId, UUID adminId, String reason);
 
     // ── UC-71: Admin trust action (restrict/suspend/reinstate) ─────────
-    void setTrustStatus(UUID expertProfileId, VerificationStatus newStatus, UUID adminId);
+    void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId);
 
-    // ── Shop / customisation ───────────────────────────────────────────
+    // ── UC-71: Admin list all experts ──────────────────────────────────
+List<ExpertProfileResponse> getAllExperts();
+
+// ── Shop / customisation ───────────────────────────────────────────
     void saveCategorySelection(UUID expertProfileId, List<String> categoryIds);
 
     void saveTitleAndPrice(UUID expertProfileId, String customTitle, int customPrice);

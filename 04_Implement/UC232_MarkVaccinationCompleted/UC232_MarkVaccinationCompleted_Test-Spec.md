@@ -4,7 +4,7 @@
 **Document ID:** `CB-VAC-TDD-005`
 **Version:** `1.0`
 **Date:** `2026-07-03`
-**Status:** `Draft`
+**Status:** `Partially Implemented - 2026-07-10 (7/13 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -31,6 +31,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| `2026-07-10` | `AI Agent` | Truthful sync after implementation evidence: status set to Partially Implemented, 7/13 tests PASS in VaccinationServiceImplTest; Red Gate not reconstructed because implementation pre-existed; controller/INT/E2E remain pending |
 | `2026-07-03` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC-232 Mark Vaccination Completed |
 
 ---
@@ -258,7 +259,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED — chưa implement
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `CB-VAC-IMP-005 ADR-VAC-005 §Decision` (dual-path core decision) + `VaccinationRecord.java` entity fields (§existing) ← expected fields/status values from ADR-VAC-005 and entity definition, not AI assumption.
 
@@ -279,7 +280,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (FAIL — dấu hiệu lỗi):**
 - A new record is created instead (duplicate), OR `created=true`, OR `administeredDate` not persisted
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Lookup must be status-agnostic (`findByBabyIdAndVaccineNameAndDoseNumber`, no status filter) so SCHEDULED/POSTPONED rows are found for update.
 
 ---
@@ -289,7 +290,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()`
 **Test File:** `src/test/java/com/carebridge/backend/vaccination/service/VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `VaccinationServiceImpl.java` §65-94 (read-side merge logic — proves a "SCHEDULED"/"OVERDUE" dose on the schedule view may have NO `vaccination_records` row) + `CB-VAC-IMP-005 ADR-VAC-005 §Options Considered / Option A`.
 
@@ -310,7 +311,7 @@ class VaccinationCompletionTestFactory {
 - `BusinessException` thrown (404) treating the virtual entry as "not found" — this is the exact bug this dual-path design prevents
 - Or `created == false` (misclassified as update)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Do NOT throw 404 when lookup returns empty — that is the expected trigger for the INSERT branch, not an error.
 
 ---
@@ -320,7 +321,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()`
 **Test File:** `VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `CB-VAC-IMP-005 §6.4 State Machine — Invariant INV-2` + `CB-VAC-IMP-005 §10 Error Codes Table (VAC-018)`.
 
@@ -336,7 +337,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (PASS):** Exception `VAC-018` (409), no persistence side effect.
 **Expected Result (FAIL):** No exception thrown / record silently re-saved / wrong error code.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Guard `if (existing.getStatus() == COMPLETED) throw` must run before any mutation.
 
 ---
@@ -395,7 +396,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()` → `validateProof()`
 **Test File:** `VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `V1__init_schema.sql` §669, §1733-1734 (`proof_record_id` column + FK to `health_records`) + `CB-VAC-IMP-005 ADR-VAC-007 §Decision`.
 
@@ -411,7 +412,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (PASS):** `proofRecordId` persisted and echoed in response.
 **Expected Result (FAIL):** `proofRecordId` silently dropped/null despite valid input (entity mapping missing — see TDS L3).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** Requires the `VaccinationRecord.proofRecordId` field mapping added per ADR-VAC-007 (no migration).
 
 ---
@@ -423,7 +424,7 @@ class VaccinationCompletionTestFactory {
 **Legal:** `BR-PRIVACY`, `PDPA minimum-necessary`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()` → `validateProof()`
 **Test File:** `VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `CB-VAC-IMP-005 §10 (VAC-020)` + `CB-VAC-IMP-005 ADR-VAC-007` (proof must belong to same baby).
 
@@ -437,7 +438,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (PASS = hệ thống an toàn):** `422 VAC-020`, request rejected, no cross-baby data linkage created.
 **Expected Result (FAIL = lỗ hổng tồn tại):** Vaccination record saved with `proofRecordId` pointing to another baby's health record — cross-baby PII linkage.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -446,7 +447,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()`
 **Test File:** `VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `CB-VAC-IMP-005 §10 (VAC-019)` + `VaccinationReferenceRepository.java` (catalog source of truth) — edge case explicitly called out in TDS §6.3 E4.
 
@@ -460,7 +461,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (PASS):** `404 VAC-019`.
 **Expected Result (FAIL):** Silently creates a `VaccinationRecord` for a vaccine/dose combination that doesn't exist in the MoH reference schedule (data integrity risk — orphaned record with no corresponding schedule entry).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -520,7 +521,7 @@ class VaccinationCompletionTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `VaccinationCompletionServiceImpl.markCompleted()` — repository lookup contract
 **Test File:** `VaccinationCompletionServiceImplTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-013`
 **Oracle Source:** `CB-VAC-IMP-005 §6.4 Invariant INV-1` + `CB-VAC-IMP-005 §5.2` (no unique DB constraint exists — OPEN-1 — so the **application layer** must guarantee this).
 
@@ -533,7 +534,7 @@ class VaccinationCompletionTestFactory {
 **Expected Result (PASS):** Exactly one `VaccinationRecord` row conceptually exists for the key after both calls.
 **Expected Result (FAIL):** Two rows exist for the same `(baby_id, vaccine_name, dose_number)` — violates INV-1.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 **Implementation Note:** This test also documents residual risk OPEN-1 (no unique DB index) — a concurrent race between two requests is NOT fully closed by this test (single-threaded sequential simulation only); flagged as `Open` in TDS §Appendix C.
 
 ---
@@ -681,7 +682,7 @@ public class VaccinationCompletionServiceImpl implements IVaccinationCompletionS
 | `VAC232-TC-INT-002` | `throw('Not implemented')` | 🔴 FAIL | ☐ FAIL ☐ PASS | |
 
 **Red Gate Evidence:**
-- Stub commit hash: `___` *(to be filled at implementation time)*
+- Stub commit hash: `N/A - Red Gate not reconstructed because production implementation already existed before this execution.`
 - Tất cả FAIL? ☐ Yes → **GATE-2 PASS** (T2→T3) → tiếp tục implement
 - Log file: `[path to red-gate-evidence.log]` *(Open — chưa có, sẽ tạo khi chạy Red Gate thực tế)*
 

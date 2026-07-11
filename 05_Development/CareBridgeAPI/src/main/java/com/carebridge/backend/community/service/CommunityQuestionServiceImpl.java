@@ -24,150 +24,157 @@ import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
-    private final CommunityQuestionRepository questionRepository;
-    private final CommunityTopicRepository topicRepository;
-    private final CommunityAnswerRepository answerRepository;
-    private final CommunityBookmarkRepository bookmarkRepository;
-    private final CommunityAnswerLikeRepository answerLikeRepository;
-    private final CommunityQuestionLikeRepository questionLikeRepository;
-    private final CommunityQuestionMapper questionMapper;
-    private final CommunityAnswerMapper answerMapper;
-    private final AuditService auditService;
-    private final CommunitySafetyPolicy communitySafetyPolicy;
-    private final CommunityAuthorDisplayResolver authorDisplayResolver;
+ private final CommunityQuestionRepository questionRepository;
+ private final CommunityTopicRepository topicRepository;
+ private final CommunityAnswerRepository answerRepository;
+ private final CommunityBookmarkRepository bookmarkRepository;
+ private final CommunityAnswerLikeRepository answerLikeRepository;
+ private final CommunityQuestionLikeRepository questionLikeRepository;
+ private final CommunityQuestionMapper questionMapper;
+ private final CommunityAnswerMapper answerMapper;
+ private final AuditService auditService;
+ private final CommunitySafetyPolicy communitySafetyPolicy;
+ private final CommunityAuthorDisplayResolver authorDisplayResolver;
+ private final ExpertProfileRepository expertProfileRepository;
 
-    @Override
-    @Transactional(readOnly = true)
-    public CommunityQuestionDetailResponse getQuestionDetail(UUID questionId, UUID currentUserId) {
-        // UC-198/199 consistency fix: a PENDING question is visible in detail under the same rule
-        // as the feed (see CommunityQuestionRepository.findFeedVisible) — visible to its own author
-        // only, not to any authenticated user. Previously ANY user could open ANY PENDING question's
-        // detail directly by ID, bypassing the feed's per-author visibility rule.
-        CommunityQuestion question = questionRepository.findById(questionId)
-                .filter(q -> q.getStatus() == QuestionStatus.APPROVED
-                        || (q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(currentUserId)))
-                .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
+ @Override
+ @Transactional(readOnly = true)
+ public CommunityQuestionDetailResponse getQuestionDetail(UUID questionId, UUID currentUserId) {
+ // UC-198/199 consistency fix: a PENDING question is visible in detail under the same rule
+ // as the feed (see CommunityQuestionRepository.findFeedVisible) — visible to its own author
+ // only, not to any authenticated user. Previously ANY user could open ANY PENDING question's
+ // detail directly by ID, bypassing the feed's per-author visibility rule.
+ CommunityQuestion question = questionRepository.findById(questionId)
+ .filter(q -> q.getStatus() == QuestionStatus.APPROVED
+ || (q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(currentUserId)))
+ .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
-        String topicName = topicRepository.findById(question.getTopicId())
-                .map(t -> t.getName())
-                .orElse("");
+ String topicName = topicRepository.findById(question.getTopicId())
+ .map(t -> t.getName())
+ .orElse("");
 
-        // Fetch question author's display name
-        String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
+ // Fetch question author's display name
+ String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
 
-        List<CommunityAnswer> answerEntities = answerRepository
-                .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+ List<CommunityAnswer> answerEntities = answerRepository
+ .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
 
-        // Batch fetch display names for all answer authors to avoid N+1
-        Set<UUID> answerAuthorIds = answerEntities.stream()
-                .map(CommunityAnswer::getAuthorId)
-                .collect(Collectors.toSet());
-        Map<UUID, String> answerAuthorNames = authorDisplayResolver.resolveBatch(answerAuthorIds);
+ // Batch fetch display names for all answer authors to avoid N+1
+ Set<UUID> answerAuthorIds = answerEntities.stream()
+ .map(CommunityAnswer::getAuthorId)
+ .collect(Collectors.toSet());
+ Map<UUID, String> answerAuthorNames = authorDisplayResolver.resolveBatch(answerAuthorIds);
 
-        // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
-        List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();
-        Set<UUID> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(currentUserId, answerIds);
+ // TV4 integration: batch-resolve expertProfileId by userId for all answer authors.
+ // Only authors with an APPROVED expert profile get their ID populated; others get null.
+ Map<UUID, UUID> expertProfileIds = expertProfileRepository
+ .findByUserIdIn(answerAuthorIds).stream()
+ .filter(ep -> ep.getVerificationStatus() == com.carebridge.backend.expert.verificationstatus.VerificationStatus.APPROVED)
+ .collect(Collectors.toMap(ExpertProfile::getUserId, ExpertProfile::getExpertProfileId));
 
-        List<CommunityAnswerResponse> answers = answerEntities.stream()
-                .map(a -> answerMapper.toResponse(a, answerAuthorNames.get(a.getAuthorId()), likedAnswerIds.contains(a.getId())))
-                .toList();
+ // UC-59 hydration fix: batch-check the current viewer's likes to avoid N+1
+ List<UUID> answerIds = answerEntities.stream().map(CommunityAnswer::getId).toList();
+ Set<UUID> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(currentUserId, answerIds);
 
-        // UC-58 hydration fix: current viewer's bookmark state for this question
-        boolean isBookmarked = bookmarkRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
+ List<CommunityAnswerResponse> answers = answerEntities.stream()
+ .map(a -> answerMapper.toResponse(a,
+ answerAuthorNames.get(a.getAuthorId()),
+ likedAnswerIds.contains(a.getId()),
+ expertProfileIds.get(a.getAuthorId())))
+ .toList();
 
-        // Current viewer's like state for this question
-        boolean isLiked = questionLikeRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
+ // UC-58 hydration fix: current viewer's bookmark state for this question
+ boolean isBookmarked = bookmarkRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
 
-        return questionMapper.toDetailResponse(
-                question, topicName, questionAuthorDisplay, answers, isBookmarked, isLiked, currentUserId);
-    }
+ // Current viewer's like state for this question
+ boolean isLiked = questionLikeRepository.existsByUserIdAndQuestionId(currentUserId, questionId);
 
-    @Override
-    @Transactional
-    public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
-        communitySafetyPolicy.requirePostingAllowed(authorId);
+ return questionMapper.toDetailResponse(
+ question, topicName, questionAuthorDisplay, answers, isBookmarked, isLiked, currentUserId);
+ }
 
-        // BR-COM-002: reject hidden or non-existent topics (ADR-COM-005)
-        topicRepository.findByIdAndIsHiddenFalse(request.getTopicId())
-                .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
+ @Override
+ @Transactional
+ public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
+ communitySafetyPolicy.requirePostingAllowed(authorId);
 
-        CommunityQuestion question = questionMapper.toEntity(request, authorId);
-        question = questionRepository.save(question);
-        communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION,
-                question.getTitle() + "\n" + question.getBody());
+ // BR-COM-002: reject hidden or non-existent topics (ADR-COM-005)
+ topicRepository.findByIdAndIsHiddenFalse(request.getTopicId())
+ .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
 
-        auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId,
-                "CommunityQuestion", question.getId().toString(), "created");
+ CommunityQuestion question = questionMapper.toEntity(request, authorId);
+ question = questionRepository.save(question);
+ communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION, question.getTitle() + "\n" + question.getBody());
 
-        return questionMapper.toResponse(question);
-    }
+ auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
 
-    @Override
-    @Transactional
-    public CommunityQuestionResponse editQuestion(UUID authorId, UUID questionId, UpdateCommunityQuestionRequest request) {
-        CommunityQuestion question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
+ return questionMapper.toResponse(question);
+ }
 
-        if (!question.getAuthorId().equals(authorId)) {
-            throw new AccessDeniedException("Only the author can edit this question");
-        }
+ @Override
+ @Transactional
+ public CommunityQuestionResponse editQuestion(UUID authorId, UUID questionId, UpdateCommunityQuestionRequest request) {
+ CommunityQuestion question = questionRepository.findById(questionId)
+ .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
-        if (question.getStatus() == QuestionStatus.LOCKED
-                || question.getStatus() == QuestionStatus.HIDDEN
-                || question.getStatus() == QuestionStatus.DELETED) {
-            throw new QuestionNotEditableException(questionId.toString());
-        }
+ if (!question.getAuthorId().equals(authorId)) {
+ throw new AccessDeniedException("Only the author can edit this question");
+ }
 
-        if (request.getTitle() != null) question.setTitle(request.getTitle());
-        if (request.getBody() != null) question.setBody(request.getBody());
-        if (request.getIsAnonymous() != null) question.setAnonymous(request.getIsAnonymous());
-        if (request.getUrgency() != null) question.setUrgency(request.getUrgency());
-        question.setStatus(QuestionStatus.PENDING);
+ if (question.getStatus() == QuestionStatus.LOCKED
+ || question.getStatus() == QuestionStatus.HIDDEN
+ || question.getStatus() == QuestionStatus.DELETED) {
+ throw new QuestionNotEditableException(questionId.toString());
+ }
 
-        question = questionRepository.save(question);
-        communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION,
-                question.getTitle() + "\n" + question.getBody());
-        auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId,
-                "CommunityQuestion", question.getId().toString(), "edited");
+ if (request.getTitle() != null) question.setTitle(request.getTitle());
+ if (request.getBody() != null) question.setBody(request.getBody());
+ if (request.getIsAnonymous() != null) question.setAnonymous(request.getIsAnonymous());
+ if (request.getUrgency() != null) question.setUrgency(request.getUrgency());
+ question.setStatus(QuestionStatus.PENDING);
 
-        return questionMapper.toResponse(question);
-    }
+ question = questionRepository.save(question);
+ communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION, question.getTitle() + "\n" + question.getBody());
+ auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId, "CommunityQuestion", question.getId().toString(), "edited");
 
-    @Override
-    @Transactional
-    public void deleteQuestion(UUID questionId, UUID callerId, boolean isModeratorCaller) {
-        CommunityQuestion question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
+ return questionMapper.toResponse(question);
+ }
 
-        if (question.getStatus() == QuestionStatus.LOCKED) {
-            throw new QuestionLockedException(questionId.toString());
-        }
+ @Override
+ @Transactional
+ public void deleteQuestion(UUID questionId, UUID callerId, boolean isModeratorCaller) {
+ CommunityQuestion question = questionRepository.findById(questionId)
+ .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
-        if (!question.getAuthorId().equals(callerId) && !isModeratorCaller) {
-            throw new AccessDeniedException("You do not own this question");
-        }
+ if (question.getStatus() == QuestionStatus.LOCKED) {
+ throw new QuestionLockedException(questionId.toString());
+ }
 
-        question.setStatus(QuestionStatus.DELETED);
-        questionRepository.save(question);
+ if (!question.getAuthorId().equals(callerId) && !isModeratorCaller) {
+ throw new AccessDeniedException("You do not own this question");
+ }
 
-        auditService.log(AuditAction.COMMUNITY_QUESTION_DELETED, callerId,
-                "CommunityQuestion", questionId.toString(), "deleted");
-    }
+ question.setStatus(QuestionStatus.DELETED);
+ questionRepository.save(question);
+
+ auditService.log(AuditAction.COMMUNITY_QUESTION_DELETED, callerId, "CommunityQuestion", questionId.toString(), "deleted");
+ }
 }

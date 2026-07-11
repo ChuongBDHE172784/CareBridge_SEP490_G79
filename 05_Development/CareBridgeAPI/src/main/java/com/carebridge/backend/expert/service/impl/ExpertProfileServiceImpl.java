@@ -11,6 +11,7 @@ import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.service.IExpertProfileService;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,13 +51,11 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExpertProfileDetailResponse getMyProfile(UUID userId) {
-        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-002", "Expert profile not found"));
-        return expertProfileMapper.toDetailResponse(profile);
-    }
+ public ExpertProfileDetailResponse getMyProfile(UUID userId) {
+  return expertProfileRepository.findByUserId(userId)
+   .map(expertProfileMapper::toDetailResponse)
+   .orElseGet(() -> expertProfileMapper.toDetailResponse(new ExpertProfile()));
+ }
 
     @Override
     public ExpertProfileDetailResponse updateProfile(UUID userId, UpdateExpertProfileRequest request) {
@@ -200,20 +199,27 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
     // ── UC-71: Admin trust action ──────────────────────────────────────
 
     @Override
-    public void setTrustStatus(UUID expertProfileId, VerificationStatus newStatus, UUID adminId) {
+    public void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId) {
         ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
                 .orElseThrow(() -> new ExpertException(
                         org.springframework.http.HttpStatus.NOT_FOUND,
                         "EXPERT-003", "Expert profile not found"));
-        profile.setVerificationStatus(newStatus);
-        if (newStatus == VerificationStatus.SUSPENDED || newStatus == VerificationStatus.APPROVED) {
+        profile.setTrustStatus(newStatus);
+        if (newStatus == TrustStatus.SUSPENDED || newStatus == TrustStatus.ACTIVE) {
             profile.setVerifiedAt(LocalDateTime.now());
             profile.setVerifiedBy(adminId);
         }
         expertProfileRepository.save(profile);
     }
 
-    // ── Shop / customisation ───────────────────────────────────────────
+    @Override
+public List<ExpertProfileResponse> getAllExperts() {
+return expertProfileRepository.findAll().stream()
+.map(expertProfileMapper::toResponse)
+.toList();
+}
+
+// ── Shop / customisation ───────────────────────────────────────────
 
     @Override
     public void saveCategorySelection(UUID expertProfileId, List<String> categoryIds) {

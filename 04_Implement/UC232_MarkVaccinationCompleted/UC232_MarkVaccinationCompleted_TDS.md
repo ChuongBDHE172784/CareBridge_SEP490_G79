@@ -6,7 +6,7 @@
 | **Document ID** | `CB-VAC-IMP-005` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -23,6 +23,7 @@
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Phase 3: Implementation - 7/13 tests PASS; service-level coverage green, controller/INT/E2E pending |
 | 2026-07-03 | AI Agent (Technical Architect) | Tạo tài liệu lần đầu cho UC-232 Mark Vaccination Completed — thiết kế dual-path (update-existing / create-new) mô hình theo REAL CODE đang chạy |
 | 2026-07-04 | AI Agent (theo chỉ đạo user/product owner) | **Resolve OPEN-4** (Phụ lục C) và cập nhật ADR-VAC-007 Status `Proposed` → `Accepted`: xác nhận giữ nguyên `proofRecordId` do client cung cấp (khớp UC-229/UC-230); checkbox "Tạo hồ sơ y tế tự động" trên mockup CB-277 là tiện ích UX phía client bọc luồng hai bước sẵn có, KHÔNG phải cơ chế auto-create phía server. Không thay đổi API/Interface Spec (§8/§9). Document Status vẫn giữ `Draft`. |
 
