@@ -10,7 +10,7 @@ import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/baby/screens/baby_profiles_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
-import '../../../features/community/screens/expert_question_queue_screen.dart';
+import '../../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../../features/fileManager/screens/file_manager_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
