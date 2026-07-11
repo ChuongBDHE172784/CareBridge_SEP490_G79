@@ -57,6 +57,15 @@ import EditPostureConfigPage from '../../features/postureConfiguration/pages/Edi
 import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
+import PartnerProfilePage from '../../features/partnerGovernance/pages/PartnerProfilePage';
+import ServiceListingsPage from '../../features/partnerGovernance/pages/ServiceListingsPage';
+import SponsoredCampaignsPage from '../../features/partnerGovernance/pages/SponsoredCampaignsPage';
+import PartnerPerformancePage from '../../features/partnerGovernance/pages/PartnerPerformancePage';
+import PartnerVerificationQueuePage from '../../features/partnerGovernance/pages/PartnerVerificationQueuePage';
+import ApprovePartnerContentPage from '../../features/partnerGovernance/pages/ApprovePartnerContentPage';
+import RemovePartnerContentPage from '../../features/partnerGovernance/pages/RemovePartnerContentPage';
+import ContentCategoryListPage from '../../features/contentManagement/pages/ContentCategoryListPage';
+import UnpublishContentPage from '../../features/contentManagement/pages/UnpublishContentPage';
 
 // Moderation screens (CB-068, 069, 070, 071)
 import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
@@ -139,6 +148,8 @@ export const router = createBrowserRouter([
               { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
               { path: '/content/faq', element: <FaqListPage /> },
               { path: '/content/checklists', element: <ChecklistListPage /> },
+              { path: '/content/categories', element: <ContentCategoryListPage /> },
+              { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
               { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
               { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
               { path: '/content/exercises/:exerciseId', element: <PregnancyExerciseDetailPage /> },
@@ -178,6 +189,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/partner/dashboard', element: <AdminDashboardPage /> },
               { path: '/partner/profile-setup', element: <CreatePartnerProfilePage /> },
+              { path: '/partner/profile', element: <PartnerProfilePage /> },
+              { path: '/partner/services', element: <ServiceListingsPage /> },
+              { path: '/partner/campaigns', element: <SponsoredCampaignsPage /> },
+              { path: '/partner/performance', element: <PartnerPerformancePage /> },
             ],
           },
           {
@@ -204,6 +219,9 @@ export const router = createBrowserRouter([
               { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
               { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
               { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
+              { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
+              { path: '/admin/partner-content/:targetType/:targetId/approval', element: <ApprovePartnerContentPage /> },
+              { path: '/admin/partner-content/:targetType/:targetId/removal', element: <RemovePartnerContentPage /> },
             ],
           },
           {

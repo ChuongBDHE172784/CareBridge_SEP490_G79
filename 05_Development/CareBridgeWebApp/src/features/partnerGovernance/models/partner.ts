@@ -20,6 +20,34 @@ export interface CreatePartnerProfileResponse {
   createdAt: string;
 }
 
+export interface UpdatePartnerProfileRequest extends CreatePartnerProfileRequest {
+  logoUrl?: string;
+}
+
+export interface PartnerServiceDraft {
+  name: string;
+  category: string;
+  location: string;
+  description: string;
+  eligibility?: string;
+  routing: 'CUSTOMER_SELECTS' | 'AUTO_ASSIGN';
+}
+
+export interface SponsoredCampaignDraft {
+  name: string;
+  objective: string;
+  audience: string;
+  region: string;
+  requiresSponsorLabel: boolean;
+  requiresContentApproval: boolean;
+}
+
+export interface PartnerPerformance {
+  serviceListings: Record<string, number>;
+  sponsoredCampaigns: Record<string, number>;
+  activeExpertLinks: number;
+}
+
 export const ORG_TYPE_LABELS: Record<OrganizationType, string> = {
   CLINIC: 'Phòng khám',
   HOSPITAL: 'Bệnh viện',
