@@ -1,7 +1,7 @@
 package com.carebridge.backend.expertverification.service.impl;
 
-import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expertverification.dto.request.ReviewCredentialRequest;
 import com.carebridge.backend.expertverification.dto.request.SubmitCredentialRequest;
 import com.carebridge.backend.expertverification.dto.response.CredentialResponse;
@@ -11,11 +11,16 @@ import com.carebridge.backend.expertverification.mapper.ExpertCredentialMapper;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.service.IExpertCredentialService;
+import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.service.IFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,99 +30,118 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExpertCredentialServiceImpl implements IExpertCredentialService {
 
-    private final ExpertCredentialRepository credentialRepository;
-    private final ExpertProfileRepository expertProfileRepository;
-    private final ExpertCredentialMapper credentialMapper;
+  private final ExpertCredentialRepository credentialRepository;
+  private final ExpertProfileRepository expertProfileRepository;
+  private final ExpertCredentialMapper credentialMapper;
+  private final IFileService fileService;
 
-    @Override
-    public CredentialResponse submitCredential(UUID userId, SubmitCredentialRequest request) {
-        var profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+  @Override
+  public CredentialResponse submitCredential(UUID userId, SubmitCredentialRequest request, MultipartFile file) {
+    var profile = expertProfileRepository.findByUserId(userId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
 
-        if (credentialRepository.existsByExpertProfileIdAndCredentialType(
-                profile.getExpertProfileId(), request.getCredentialType())) {
-            throw new ExpertException(
-                    HttpStatus.CONFLICT, "EXPERT-003",
-                    "Credential of this type already exists");
-        }
-
-        var credential = credentialMapper.toEntity(profile.getExpertProfileId(), request);
-        var saved = credentialRepository.save(credential);
-        return credentialMapper.toResponse(saved);
+    if (credentialRepository.existsByExpertProfileIdAndCredentialType(
+      profile.getExpertProfileId(), request.getCredentialType())) {
+      throw new ExpertException(
+        HttpStatus.CONFLICT, "EXPERT-003", "Credential of this type already exists");
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<CredentialResponse> getMyCredentials(UUID userId) {
-        var profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
-
-        return credentialRepository.findByExpertProfileId(profile.getExpertProfileId()).stream()
-                .map(credentialMapper::toResponse)
-                .collect(Collectors.toList());
+    String fileUrl = null;
+    if (file != null && !file.isEmpty()) {
+      UploadFileResponse uploadResponse = fileService.uploadFile(file, userId);
+      fileUrl = uploadResponse.getPresignedUrl();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CredentialResponse getCredentialDetail(UUID credentialId, UUID userId) {
-        var credential = credentialRepository.findByCredentialId(credentialId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+    LocalDate issuedDate = parseDate(request.getIssuedDate());
+    LocalDate expiryDate = parseDate(request.getExpiryDate());
 
-        var profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+    var credential = credentialMapper.toEntity(profile.getExpertProfileId(), request, issuedDate, expiryDate, fileUrl);
+    var saved = credentialRepository.save(credential);
+    return credentialMapper.toResponse(saved);
+  }
 
-        if (!credential.getExpertProfileId().equals(profile.getExpertProfileId())) {
-            throw new ExpertException(
-                    HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
-        }
+  private LocalDate parseDate(String value) {
+    if (value == null || value.isBlank()) return null;
+    try {
+      return LocalDate.parse(value);
+    } catch (DateTimeParseException e) {
+      throw new ExpertException(
+        HttpStatus.BAD_REQUEST, "EXPVER-005", "Invalid date format: " + value);
+    }
+  }
 
-        return credentialMapper.toResponse(credential);
+  @Override
+  @Transactional(readOnly = true)
+  public List<CredentialResponse> getMyCredentials(UUID userId) {
+    var profile = expertProfileRepository.findByUserId(userId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+
+    return credentialRepository.findByExpertProfileId(profile.getExpertProfileId()).stream()
+      .map(credentialMapper::toResponse)
+      .collect(Collectors.toList());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public CredentialResponse getCredentialDetail(UUID credentialId, UUID userId) {
+    var credential = credentialRepository.findByCredentialId(credentialId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+
+    var profile = expertProfileRepository.findByUserId(userId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+
+    if (!credential.getExpertProfileId().equals(profile.getExpertProfileId())) {
+      throw new ExpertException(
+        HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
     }
 
-    @Override
-    public void deleteCredential(UUID credentialId, UUID userId) {
-        var credential = credentialRepository.findByCredentialId(credentialId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+    return credentialMapper.toResponse(credential);
+  }
 
-        var profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+  @Override
+  public void deleteCredential(UUID credentialId, UUID userId) {
+    var credential = credentialRepository.findByCredentialId(credentialId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
 
-        if (!credential.getExpertProfileId().equals(profile.getExpertProfileId())) {
-            throw new ExpertException(
-                    HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
-        }
+    var profile = expertProfileRepository.findByUserId(userId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
 
-        credentialRepository.delete(credential);
+    if (!credential.getExpertProfileId().equals(profile.getExpertProfileId())) {
+      throw new ExpertException(
+        HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
     }
 
-    @Override
-    public DocumentReviewResponse reviewCredential(UUID credentialId, ReviewCredentialRequest request, UUID reviewerId) {
-        var credential = credentialRepository.findByCredentialId(credentialId)
-                .orElseThrow(() -> new ExpertException(
-                        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+    credentialRepository.delete(credential);
+  }
 
-        credentialMapper.applyReview(credential, request, reviewerId);
-        var saved = credentialRepository.save(credential);
-        return credentialMapper.toDocumentReviewResponse(saved);
-    }
+  @Override
+  public DocumentReviewResponse reviewCredential(UUID credentialId, ReviewCredentialRequest request, UUID reviewerId) {
+    var credential = credentialRepository.findByCredentialId(credentialId)
+      .orElseThrow(() -> new ExpertException(
+        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<DocumentReviewResponse> getPendingReviews(String credentialType) {
-        List<ExpertCredential> credentials = credentialRepository.findByReviewStatus(ReviewStatus.PENDING);
-        if (credentialType != null && !credentialType.isBlank()) {
-            credentials = credentials.stream()
-                    .filter(c -> credentialType.equals(c.getCredentialType()))
-                    .collect(Collectors.toList());
-        }
-        return credentials.stream()
-                .map(credentialMapper::toDocumentReviewResponse)
-                .collect(Collectors.toList());
+    credentialMapper.applyReview(credential, request, reviewerId);
+    var saved = credentialRepository.save(credential);
+    return credentialMapper.toDocumentReviewResponse(saved);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<DocumentReviewResponse> getPendingReviews(String credentialType) {
+    List<ExpertCredential> credentials = credentialRepository.findByReviewStatus(ReviewStatus.PENDING);
+    if (credentialType != null && !credentialType.isBlank()) {
+      credentials = credentials.stream()
+        .filter(c -> credentialType.equals(c.getCredentialType()))
+        .collect(Collectors.toList());
     }
+    return credentials.stream()
+      .map(credentialMapper::toDocumentReviewResponse)
+      .collect(Collectors.toList());
+  }
 }

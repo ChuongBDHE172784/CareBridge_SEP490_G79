@@ -1,5 +1,6 @@
 package com.carebridge.backend.expert.entity;
 
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,47 +19,52 @@ import java.util.UUID;
 @Builder
 public class ExpertProfile {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "expert_profile_id", updatable = false, nullable = false)
-    private UUID expertProfileId;
+@Id
+@GeneratedValue(strategy = GenerationType.UUID)
+@Column(name = "expert_profile_id", updatable = false, nullable = false)
+private UUID expertProfileId;
 
-    @Column(name = "user_id", nullable = false, unique = true)
-    private UUID userId;
+@Column(name = "user_id", nullable = false, unique = true)
+private UUID userId;
 
-    @Column(name = "specialty", length = 100)
-    private String specialty;
+@Column(name = "specialty", length = 100)
+private String specialty;
 
-    @Column(name = "professional_title", length = 150)
-    private String professionalTitle;
+@Column(name = "professional_title", length = 150)
+private String professionalTitle;
 
-    @Column(name = "experience_years")
-    private Integer experienceYears;
+@Column(name = "experience_years")
+private Integer experienceYears;
 
-    @Column(name = "workplace", length = 200)
-    private String workplace;
+@Column(name = "workplace", length = 200)
+private String workplace;
 
-    @Column(name = "consultation_scope", columnDefinition = "text")
-    private String consultationScope;
+@Column(name = "consultation_scope", columnDefinition = "text")
+private String consultationScope;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "verification_status", nullable = false, length = 30)
-    private VerificationStatus verificationStatus;
+@Enumerated(EnumType.STRING)
+@Column(name = "verification_status", nullable = false, length = 30)
+private VerificationStatus verificationStatus;
 
-    @Column(name = "verified_at")
-    private LocalDateTime verifiedAt;
+@Builder.Default
+@Enumerated(EnumType.STRING)
+@Column(name = "trust_status", nullable = false, length = 20)
+private TrustStatus trustStatus = TrustStatus.ACTIVE;
 
-    @Column(name = "verified_by")
-    private UUID verifiedBy;
+@Column(name = "verified_at")
+private LocalDateTime verifiedAt;
 
-    @Column(name = "rating_avg", precision = 3, scale = 2)
-    private BigDecimal ratingAvg;
+@Column(name = "verified_by")
+private UUID verifiedBy;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+@Column(name = "rating_avg", precision = 3, scale = 2)
+private BigDecimal ratingAvg;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+@CreationTimestamp
+@Column(name = "created_at", nullable = false, updatable = false)
+private LocalDateTime createdAt;
+
+@UpdateTimestamp
+@Column(name = "updated_at", nullable = false)
+private LocalDateTime updatedAt;
 }

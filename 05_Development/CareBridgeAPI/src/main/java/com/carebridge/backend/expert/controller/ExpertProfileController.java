@@ -8,6 +8,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -121,7 +122,7 @@ public class ExpertProfileController {
     public ResponseEntity<ApiResponse<Void>> setTrustStatus(
             @PathVariable UUID expertProfileId,
             Principal principal,
-            @RequestParam com.carebridge.backend.expert.verificationstatus.VerificationStatus status) {
+            @RequestParam TrustStatus status) {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
         expertProfileService.setTrustStatus(expertProfileId, status, adminId);
         return ResponseEntity.ok(ApiResponse.success(null, "Trạng thái đã cập nhật"));
