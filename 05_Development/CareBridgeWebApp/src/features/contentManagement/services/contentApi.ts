@@ -150,6 +150,36 @@ export async function updateTopic(
   return res.data.data;
 }
 
+// UC-226 uses the Content Admin boundary. Community-topic routes are reserved
+// for the Moderator workflow (UC-109), even though both workflows share data.
+export async function fetchContentCategories(includeHidden = false): Promise<CommunityTopic[]> {
+  const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
+    `/api/v1/admin/content/categories?includeHidden=${includeHidden}`,
+  );
+  return res.data.data;
+}
+
+export async function createContentCategory(data: {
+  name: string;
+  description?: string;
+  icon?: string;
+  sortOrder?: number;
+}): Promise<CommunityTopic> {
+  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/admin/content/categories', data);
+  return res.data.data;
+}
+
+export async function updateContentCategory(
+  id: string,
+  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
+): Promise<CommunityTopic> {
+  const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
+    `/api/v1/admin/content/categories/${id}`,
+    data,
+  );
+  return res.data.data;
+}
+
 export async function unpublishContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
   const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
     `/api/v1/admin/content/${id}/unpublish`, { reason },

@@ -83,6 +83,7 @@ import PendingContentQueuePage from '../../features/moderation/pages/PendingCont
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
 import ImpactReportDashboardPage from '../../features/dashboard/pages/ImpactReportDashboardPage';
 import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
+import SystemConfigurationPage from '../../features/aiRuleManagement/pages/SystemConfigurationPage';
 
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
@@ -224,6 +225,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
               { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
+              { path: '/moderator/system-configuration', element: <SystemConfigurationPage /> },
               { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
               { path: '/admin/partner-content/:targetType/:targetId/approval', element: <ApprovePartnerContentPage /> },

@@ -30,12 +30,18 @@ class _VerifiedContentSearchScreenState
     'Phát triển',
     'Giấc ngủ',
   ];
+  static const _typeFilters = [
+    ('ARTICLE', 'Bài viết', Icons.article_outlined),
+    ('FAQ', 'Hỏi đáp', Icons.quiz_outlined),
+    ('CHECKLIST', 'Danh sách', Icons.checklist_outlined),
+  ];
 
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
   int? _selectedAge;
   int? _selectedCategory;
+  String? _selectedType;
   List<ContentListItem> _results = [];
   bool _loading = false;
 
@@ -66,8 +72,16 @@ class _VerifiedContentSearchScreenState
       // hasn't typed anything yet (e.g. on first open), browse via the plain list
       // endpoint instead so the screen never shows a false "no results" state.
       final results = keyword.isEmpty
-          ? await ContentService.instance.getContent(stage: stage, size: 20)
-          : await ContentService.instance.searchContent(keyword, stage: stage);
+          ? await ContentService.instance.getContent(
+              type: _selectedType,
+              stage: stage,
+              size: 20,
+            )
+          : await ContentService.instance.searchContent(
+              keyword,
+              type: _selectedType,
+              stage: stage,
+            );
       if (mounted) setState(() => _results = results);
     } catch (_) {
       if (mounted) setState(() => _results = []);
@@ -164,6 +178,33 @@ class _VerifiedContentSearchScreenState
                         _search();
                       },
                     ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // CB-180_2 — content-format filters are part of the same
+                // search flow, not a separate screen.
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _typeFilters.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final filter = _typeFilters[i];
+                      return _ContentTypeChip(
+                        label: filter.$2,
+                        icon: filter.$3,
+                        selected: _selectedType == filter.$1,
+                        onTap: () {
+                          setState(
+                            () => _selectedType = _selectedType == filter.$1
+                                ? null
+                                : filter.$1,
+                          );
+                          _search();
+                        },
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -274,6 +315,35 @@ class _FilterChip extends StatelessWidget {
             color: selected ? Colors.white : const Color(0xFF271812),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ContentTypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ContentTypeChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: selected ? Colors.white : const Color(0xFF524440),
+        backgroundColor: selected ? const Color(0xFF845143) : Colors.white,
+        side: const BorderSide(color: Color(0xFFD6C2BD)),
+        shape: const StadiumBorder(),
       ),
     );
   }
