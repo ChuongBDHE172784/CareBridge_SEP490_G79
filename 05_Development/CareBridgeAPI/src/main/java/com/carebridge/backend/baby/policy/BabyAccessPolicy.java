@@ -30,4 +30,8 @@ public class BabyAccessPolicy {
     public boolean isOwner(BabyProfile profile, UUID callerId) {
         return profile.getOwnerUserId().equals(callerId);
     }
+
+    public boolean canManage(BabyProfile profile, UUID callerId) {
+        return isOwner(profile, callerId);
+    }
 }

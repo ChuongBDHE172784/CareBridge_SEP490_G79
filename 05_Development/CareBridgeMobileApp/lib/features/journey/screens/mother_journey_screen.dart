@@ -102,6 +102,22 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     }
   }
 
+  Future<void> _openMetricRoute(String metricType) async {
+    final journeyId = _dashboard?.journeyId;
+    if (journeyId == null || journeyId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có hành trình để xem biểu đồ.')),
+      );
+      return;
+    }
+
+    final route = Uri(
+      path: '/journeys/$journeyId/metrics/trend',
+      queryParameters: {'metricType': metricType},
+    ).toString();
+    await context.push(route);
+  }
+
   Reminder? _nearestReminder(ReminderType type) {
     final pending =
         _reminders
@@ -646,8 +662,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   Widget _buildMetricButtons() {
     final metrics = [
-      (Icons.monitor_weight, 'Cân nặng', '/health-metrics/weight'),
-      (Icons.favorite_border, 'Huyết áp', '/health-metrics/blood_pressure'),
+      (Icons.monitor_weight, 'Cân nặng', 'WEIGHT'),
+      (Icons.favorite_border, 'Huyết áp', 'BLOOD_PRESSURE_SYSTOLIC'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
       (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
@@ -662,7 +678,14 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
           return Padding(
             padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
             child: GestureDetector(
-              onTap: () => context.push(metric.$3),
+              onTap: () async {
+                if (metric.$3 == 'WEIGHT' ||
+                    metric.$3 == 'BLOOD_PRESSURE_SYSTOLIC') {
+                  await _openMetricRoute(metric.$3);
+                  return;
+                }
+                context.push(metric.$3);
+              },
               child: Container(
                 width: 104,
                 padding: const EdgeInsets.symmetric(

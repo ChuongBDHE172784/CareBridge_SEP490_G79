@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.partner.controller.PartnerProfileController;
 import com.carebridge.backend.partner.dto.response.CreatePartnerProfileResponse;
+import com.carebridge.backend.partner.dto.response.UpdatePartnerProfileResponse;
 import com.carebridge.backend.partner.entity.OrganizationStatus;
 import com.carebridge.backend.partner.entity.OrganizationType;
 import com.carebridge.backend.partner.service.PartnerProfileService;
@@ -77,6 +79,31 @@ class PartnerProfileControllerTest {
                   "email": "test@clinic.vn"
                 }
                 """;
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
+    void getOwnProfile_asPartnerRole_shouldReturnOwnProfile() throws Exception {
+        UUID partnerId = UUID.randomUUID();
+        when(partnerProfileService.getOwnProfile(UUID.fromString("00000000-0000-0000-0000-000000000002")))
+                .thenReturn(new UpdatePartnerProfileResponse(partnerId, "Phòng khám Test", OrganizationType.CLINIC,
+                        "123 Đường Test", "Hà Nội", "0901234567", "test@clinic.vn", null, null, null,
+                        OrganizationStatus.APPROVED, Instant.now()));
+
+        mockMvc.perform(get(BASE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(partnerId.toString()))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "MOTHER")
+    void getOwnProfile_asNonPartnerRole_shouldReturn403() throws Exception {
+        mockMvc.perform(get(BASE_URL))
+                .andExpect(status().isForbidden());
+
+        verify(partnerProfileService, never()).getOwnProfile(any());
     }
 
     // PTR-TC-001: Happy path — PARTNER role creates profile → 201 (TC-COND-001)

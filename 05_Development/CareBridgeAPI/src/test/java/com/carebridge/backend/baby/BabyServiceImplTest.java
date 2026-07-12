@@ -143,4 +143,19 @@ class BabyServiceImplTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getHttpStatus())
                         .isEqualTo(HttpStatus.NOT_FOUND));
     }
+
+    @Test
+    void switchActiveBabyProfile_ownerSwitchesExactlyOneActiveProfile() {
+        BabyProfile profile = savedProfile(PROFILE_ID);
+        when(babyRepository.findById(PROFILE_ID)).thenReturn(Optional.of(profile));
+        when(accessPolicy.canManage(profile, CALLER_ID)).thenReturn(true);
+        when(babyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        BabyProfileDetailResponse response = babyService.switchActiveBabyProfile(PROFILE_ID, CALLER_ID);
+
+        assertThat(response.getActive()).isTrue();
+        verify(babyRepository).updateActiveByOwnerUserId(CALLER_ID, false);
+        verify(babyRepository).save(argThat(BabyProfile::getActive));
+        verify(auditService).log(any(), eq(CALLER_ID), eq("BabyProfile"), eq(PROFILE_ID.toString()), eq("active"));
+    }
 }

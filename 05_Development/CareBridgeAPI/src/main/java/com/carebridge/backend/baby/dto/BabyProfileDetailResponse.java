@@ -19,6 +19,7 @@ public class BabyProfileDetailResponse {
     private BigDecimal birthWeightKg;
     private BigDecimal birthLengthCm;
     private String status;
+    private Boolean active;
     private Instant createdAt;
     private Instant updatedAt;
 }

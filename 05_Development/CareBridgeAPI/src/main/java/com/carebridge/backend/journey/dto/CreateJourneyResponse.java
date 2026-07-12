@@ -15,6 +15,7 @@ public class CreateJourneyResponse {
     private String journeyType;
     private String status;
     private LocalDate startDate;
+    private LocalDate lastMenstrualDate;
     private LocalDate estimatedDueDate;
     private String notes;
     private Instant createdAt;

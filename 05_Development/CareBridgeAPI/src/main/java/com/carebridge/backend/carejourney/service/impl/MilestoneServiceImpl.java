@@ -4,10 +4,14 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AddMilestoneRequest;
 import com.carebridge.backend.carejourney.dto.MilestoneResponse;
+import com.carebridge.backend.carejourney.dto.UpdateDevelopmentMilestoneRequest;
 import com.carebridge.backend.carejourney.entity.DevelopmentMilestone;
+import com.carebridge.backend.carejourney.entity.MilestoneAchievementStatus;
+import com.carebridge.backend.carejourney.entity.MilestoneRecordStatus;
 import com.carebridge.backend.carejourney.repository.DevelopmentMilestoneRepository;
 import com.carebridge.backend.carejourney.service.IMilestoneService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
@@ -35,6 +39,7 @@ public class MilestoneServiceImpl implements IMilestoneService {
 
     private final DevelopmentMilestoneRepository milestoneRepository;
     private final BabyProfileRepository babyProfileRepository;
+    private final BabyAccessPolicy babyAccessPolicy;
     private final AuditService auditService;
 
     @Override
@@ -85,12 +90,98 @@ public class MilestoneServiceImpl implements IMilestoneService {
         return toResponse(saved);
     }
 
+    @Override
+    public MilestoneResponse updateMilestone(UUID babyId, UUID milestoneId,
+                                             UpdateDevelopmentMilestoneRequest request, UUID callerId) {
+        DevelopmentMilestone milestone = findActiveMilestone(milestoneId);
+        BabyProfile baby = findActualBabyForMilestone(milestone);
+
+        if (!babyAccessPolicy.canManage(baby, callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "MILESTONE-002",
+                    "Access denied to development milestone");
+        }
+
+        MilestoneAchievementStatus newStatus = parseUpdateStatus(request);
+        boolean hasAchievedDate = request != null && request.getAchievedDate() != null;
+        boolean hasNote = request != null && request.getNote() != null;
+        boolean hasStatus = newStatus != null;
+
+        if (!hasAchievedDate && !hasNote && !hasStatus) {
+            throw invalidUpdate();
+        }
+
+        if (hasAchievedDate) {
+            milestone.setAchievedDate(request.getAchievedDate());
+        }
+        if (hasNote) {
+            milestone.setNote(request.getNote());
+        }
+        if (hasStatus) {
+            milestone.setMilestoneStatus(newStatus);
+        }
+
+        if (MilestoneAchievementStatus.ACHIEVED.equals(milestone.getMilestoneStatus())
+                && milestone.getAchievedDate() == null) {
+            throw invalidUpdate();
+        }
+
+        DevelopmentMilestone saved = milestoneRepository.save(milestone);
+        auditService.log(AuditAction.MILESTONE_UPDATED, callerId,
+                "DevelopmentMilestone", saved.getMilestoneId().toString(), saved.getMilestoneStatus().name());
+        return toResponse(saved);
+    }
+
+    @Override
+    public void deleteMilestone(UUID babyId, UUID milestoneId, UUID callerId) {
+        DevelopmentMilestone milestone = findActiveMilestone(milestoneId);
+        BabyProfile baby = findActualBabyForMilestone(milestone);
+
+        if (!babyAccessPolicy.canManage(baby, callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "MILESTONE-002",
+                    "Access denied to development milestone");
+        }
+
+        milestone.setRecordStatus(MilestoneRecordStatus.DELETED);
+        milestoneRepository.save(milestone);
+        auditService.log(AuditAction.MILESTONE_DELETED, callerId,
+                "DevelopmentMilestone", milestoneId.toString(), "deleted");
+    }
+
+    private DevelopmentMilestone findActiveMilestone(UUID milestoneId) {
+        return milestoneRepository.findByMilestoneIdAndRecordStatus(milestoneId, MilestoneRecordStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "MILESTONE-001",
+                        "Development milestone not found"));
+    }
+
+    private BabyProfile findActualBabyForMilestone(DevelopmentMilestone milestone) {
+        return babyProfileRepository.findById(milestone.getBabyId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "MILESTONE-001",
+                        "Development milestone not found"));
+    }
+
+    private MilestoneAchievementStatus parseUpdateStatus(UpdateDevelopmentMilestoneRequest request) {
+        if (request == null || request.getStatus() == null) {
+            return null;
+        }
+        try {
+            return MilestoneAchievementStatus.valueOf(request.getStatus());
+        } catch (IllegalArgumentException ex) {
+            throw invalidUpdate();
+        }
+    }
+
+    private BusinessException invalidUpdate() {
+        return new BusinessException(HttpStatus.BAD_REQUEST, "MILESTONE-003",
+                "At least one field (achievedDate, note, status) must be provided, and status=ACHIEVED requires achievedDate");
+    }
+
     private MilestoneResponse toResponse(DevelopmentMilestone milestone) {
         return MilestoneResponse.builder()
                 .milestoneId(milestone.getMilestoneId())
                 .babyId(milestone.getBabyId())
                 .milestoneType(milestone.getMilestoneType())
                 .achievedDate(milestone.getAchievedDate())
+                .status(milestone.getMilestoneStatus() != null ? milestone.getMilestoneStatus().name() : null)
                 .note(milestone.getNote())
                 .sourceType(milestone.getSourceType())
                 .recordedBy(milestone.getRecordedBy())

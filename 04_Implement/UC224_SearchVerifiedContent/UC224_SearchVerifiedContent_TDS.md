@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-CONTENT-IMP-002`                    |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -25,6 +25,7 @@
 | 2026-06-24 | AI Agent — Amelia (Dev)               | Implementation hoàn thành — GREEN Phase 22/22 PASS; V8 migration tạo 3 indexes; topicName=null (MVP deferred) |
 | 2026-07-03 | AI Agent — Claude (Audit Pass) | Fixed two mobile UI bugs (backend unchanged): (1) `VerifiedContentSearchScreen.initState()` called `_search()` unconditionally with an empty keyword; the backend correctly rejects a blank keyword (`ContentException.validationFailed`), so the screen always showed a false "no results" empty state on first open. Now falls back to the plain `getContent()` list endpoint when the keyword is blank. (2) Result cards had no `onTap` — bookmark icon was purely decorative and there was no way to open a result. Added navigation to the new `VerifiedContentDetailScreen` (UC-225). |
 | 2026-07-02 | AI Agent — Claude (Audit Pass)         | Sửa sai lệch thực tế: §9.1/§16 role không đúng (endpoint không có `@PreAuthorize`, mọi role authenticated đều qua được, `USER` không phải Role hợp lệ); §10/§9.2/§13.3/§11.4 xoá mã lỗi `IAM-001`/`CNT-004` không tồn tại (401 là bare status, không body); §11.3 sửa claim migration `V002`/"V8 tạo index" — index đã có sẵn trong `V1__init_schema.sql`, không phải migration riêng; C5 cập nhật khớp với ghi chú topicName=null đã có trong changelog trước. Status giữ nguyên `Approved` theo quy ước audit. |
+| 2026-07-11 | AI Agent — Codex | Re-verified service, controller, security and integration coverage; 22/22 focused tests pass. Status synchronized to Implemented. |
 
 ---
 

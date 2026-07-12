@@ -59,6 +59,7 @@ class JourneyUpdateServiceImplTest {
         assertThat(response.getJourneyId()).isEqualTo(JourneyUpdateTestFactory.JOURNEY_ID);
         assertThat(response.getNotes()).isEqualTo("Updated notes");
         assertThat(response.getEstimatedDueDate()).isEqualTo(LocalDate.of(2026, 9, 14));
+        assertThat(response.getLastMenstrualDate()).isNull();
         assertThat(response.getStatus()).isEqualTo(JourneyStatus.ACTIVE.name());
         verify(auditService).log(
                 eq(AuditAction.JOURNEY_UPDATED),
@@ -66,6 +67,37 @@ class JourneyUpdateServiceImplTest {
                 eq("MotherJourney"),
                 any(),
                 any());
+    }
+
+    @Test
+    void updateJourney_estimatedDueDate_clearsOldLastMenstrualDate() {
+        var journey = JourneyUpdateTestFactory.makeActiveJourney();
+        var req = JourneyUpdateTestFactory.makeUpdateRequest();
+        when(journeyRepository.findById(JourneyUpdateTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(journey));
+        when(journeyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        JourneyResponse response = journeyService.updateJourney(
+                JourneyUpdateTestFactory.MOTHER_ID, JourneyUpdateTestFactory.JOURNEY_ID, req);
+
+        assertThat(response.getEstimatedDueDate()).isEqualTo(LocalDate.of(2026, 9, 14));
+        assertThat(response.getLastMenstrualDate()).isNull();
+    }
+
+    @Test
+    void updateJourney_lastMenstrualDate_derivesEstimatedDueDate() {
+        var journey = JourneyUpdateTestFactory.makeActiveJourney();
+        var req = new com.carebridge.backend.journey.dto.UpdateJourneyRequest();
+        req.setLastMenstrualDate(LocalDate.of(2026, 1, 10));
+        when(journeyRepository.findById(JourneyUpdateTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(journey));
+        when(journeyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        JourneyResponse response = journeyService.updateJourney(
+                JourneyUpdateTestFactory.MOTHER_ID, JourneyUpdateTestFactory.JOURNEY_ID, req);
+
+        assertThat(response.getLastMenstrualDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+        assertThat(response.getEstimatedDueDate()).isEqualTo(LocalDate.of(2026, 10, 17));
     }
 
     /** TC-023-002: Transition to COMPLETED with required deliveryDate. */

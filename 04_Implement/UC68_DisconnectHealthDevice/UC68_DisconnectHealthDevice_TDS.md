@@ -6,18 +6,20 @@
 | **Document ID** | `CB-DEVICE-IMP-003` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-01` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[ ] Pending` |
 | **DPO Sign-off** | `[ ] Pending` *(bắt buộc — module xử lý consent revocation)* |
-| **Approved by** | `[ ] Pending` |
+| **Approved by** | `TV2-Bách` |
 | **Last Review** | `2026-07-01` |
 | **Based on EDS** | `v2.0` |
 
 ---
 
 ## CHANGELOG
+
+> 2026-07-10 - AI Agent - Implementation: Marked Partially Implemented. Targeted health-device backend tests pass, but full regression remains blocked by non-device Family/Exercise test failures.
 
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|

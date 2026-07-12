@@ -6,7 +6,7 @@
 | **Document ID** | `CB-HEALTH-IMP-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Approved` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -19,8 +19,10 @@
 
 ## CHANGELOG
 
+
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented: targeted health backend tests PASS; full regression remains blocked by non-health Family/Exercise failures. |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | Implementation completed — service, controller, tests 🟢 GREEN (45/45) |
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-187 View Maternal Health Metric Detail |
 

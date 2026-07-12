@@ -51,6 +51,10 @@ public class BabyProfile {
     @Column(name = "status", nullable = false, length = 20)
     private BabyProfileStatus status = BabyProfileStatus.ACTIVE;
 
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

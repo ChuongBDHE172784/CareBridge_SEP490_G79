@@ -14,6 +14,19 @@ class HealthMetricService {
     await apiDelete('/api/v1/health-metrics/$metricId');
   }
 
+  // UC-25: Add maternal health metric
+  Future<HealthMetricDetail> addMetric(
+    String journeyId,
+    AddMetricRequest request,
+  ) async {
+    final data = await apiPost(
+      '/api/v1/journeys/$journeyId/metrics',
+      request.toJson(),
+    );
+    final body = data['data'] as Map<String, dynamic>;
+    return HealthMetricDetail.fromJson(body);
+  }
+
   // UC-26: Update maternal health metric (BR-METRIC-012: 24-hour window from createdAt)
   Future<HealthMetricDetail> updateMetric(
     String journeyId,
@@ -47,8 +60,8 @@ class HealthMetricService {
     DateTime? to,
   }) async {
     final now = DateTime.now().toUtc();
-    final resolvedFrom = from ?? now.subtract(const Duration(days: 7));
-    final resolvedTo = to ?? now;
+    final resolvedFrom = (from ?? now.subtract(const Duration(days: 90))).toUtc();
+    final resolvedTo = (to ?? now).toUtc();
     final query = [
       'metricType=$metricType',
       'from=${resolvedFrom.toIso8601String()}',

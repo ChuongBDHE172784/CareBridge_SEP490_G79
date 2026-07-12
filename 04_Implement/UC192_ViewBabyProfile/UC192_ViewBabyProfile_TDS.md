@@ -1,12 +1,12 @@
-# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
-# Technical Design Specification — UC-192 View Baby Profile
+﻿# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
+# Technical Design Specification â€” UC-192 View Baby Profile
 
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-BABY-IMP-002` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Approved` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -19,17 +19,18 @@
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
+| NgÃ y | NgÆ°á»i thá»±c hiá»‡n | Ná»™i dung thay Ä‘á»•i |
 |------|-----------------|-------------------|
-| 2026-06-27 | AI Agent — Amelia (Dev Agent) | Implementation completed — service, controller, tests 🟢 GREEN (45/45) |
-| 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-192 View Baby Profile |
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented: targeted baby/carejourney backend tests PASS; full regression remains blocked by non-baby Family/Exercise/Auth/Triage failures. |
+| 2026-06-27 | AI Agent â€” Amelia (Dev Agent) | Implementation completed â€” service, controller, tests ðŸŸ¢ GREEN (45/45) |
+| 2026-06-26 | AI Agent | Táº¡o tÃ i liá»‡u láº§n Ä‘áº§u cho UC-192 View Baby Profile |
 
 ---
 
-## MỤC LỤC
+## Má»¤C Lá»¤C
 
-1. [Tổng quan Module](#1-tổng-quan-module)
-2. [Ma trận Truy vết](#2-ma-trận-truy-vết)
+1. [Tá»•ng quan Module](#1-tá»•ng-quan-module)
+2. [Ma tráº­n Truy váº¿t](#2-ma-tráº­n-truy-váº¿t)
 3. [Architecture Decision Records](#3-architecture-decision-records)
 4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
 5. [Static Modeling](#5-static-modeling)
@@ -37,18 +38,18 @@
 7. [Interface Specification](#7-interface-specification)
 8. [API Specification](#8-api-specification)
 9. [API Specification (Detail)](#9-api-specification-detail)
-10. [Bảng mã lỗi](#9-10-bảng-mã-lỗi)
-11. [Kịch bản Kiểm thử](#11-kịch-bản-kiểm-thử)
+10. [Báº£ng mÃ£ lá»—i](#9-10-báº£ng-mÃ£-lá»—i)
+11. [Ká»‹ch báº£n Kiá»ƒm thá»­](#11-ká»‹ch-báº£n-kiá»ƒm-thá»­)
 12. [Authorization Matrix](#12-authorization-matrix)
 13. [AI Prompt Constraints](#13-ai-prompt-constraints-case-20)
-14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
-15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế)
+14. [PhÆ°Æ¡ng phÃ¡p XÃ¡c minh](#14-phÆ°Æ¡ng-phÃ¡p-xÃ¡c-minh)
+15. [Máº«u thá»­ thá»±c táº¿](#15-máº«u-thá»­-thá»±c-táº¿)
 16. [Authorization Matrix (Detail)](#16-authorization-matrix-detail)
 17. [AI Prompt Constraints (Full)](#17-ai-prompt-constraints-case-20-full)
 
 ---
 
-## 1. Tổng quan Module
+## 1. Tá»•ng quan Module
 
 | Field | Value |
 |-------|-------|
@@ -63,31 +64,31 @@
 | **Upstream Dependencies** | `auth, baby_profiles table` |
 | **Downstream Consumers** | `baby daily log, vaccination, growth tracking` |
 
-**Mô tả:** Hiển thị thông tin cơ bản và trạng thái theo dõi của một baby profile: nickname, ngày sinh, giới tính, cân nặng và chiều dài khi sinh, trạng thái (ACTIVE/ARCHIVED). Chỉ owner hoặc care group member có quyền xem.
+**MÃ´ táº£:** Hiá»ƒn thá»‹ thÃ´ng tin cÆ¡ báº£n vÃ  tráº¡ng thÃ¡i theo dÃµi cá»§a má»™t baby profile: nickname, ngÃ y sinh, giá»›i tÃ­nh, cÃ¢n náº·ng vÃ  chiá»u dÃ i khi sinh, tráº¡ng thÃ¡i (ACTIVE/ARCHIVED). Chá»‰ owner hoáº·c care group member cÃ³ quyá»n xem.
 
 ---
 
-## 2. Ma trận Truy vết
+## 2. Ma tráº­n Truy váº¿t
 
-| Requirement ID | Loại | Mô tả | Thành phần Code | Compliance Target | ADR liên quan |
+| Requirement ID | Loáº¡i | MÃ´ táº£ | ThÃ nh pháº§n Code | Compliance Target | ADR liÃªn quan |
 |----------------|------|-------|-----------------|-------------------|---------------|
 | UC-192 | Use Case | Mother xem baby profile | `BabyController.getBabyProfile()` | BR-RBAC | ADR-BABY-003 |
-| BR-BABY-010 | Business Rule | Chỉ account owner và care group members xem được | `BabyAccessPolicy.canView()` | BR-PRIVACY | ADR-BABY-003 |
-| BR-BABY-011 | Business Rule | Archived profiles vẫn viewable nhưng có watermark | `status` trong response | Data Integrity | — |
+| BR-BABY-010 | Business Rule | Chá»‰ account owner vÃ  care group members xem Ä‘Æ°á»£c | `BabyAccessPolicy.canView()` | BR-PRIVACY | ADR-BABY-003 |
+| BR-BABY-011 | Business Rule | Archived profiles váº«n viewable nhÆ°ng cÃ³ watermark | `status` trong response | Data Integrity | â€” |
 
 ---
 
 ## 3. Architecture Decision Records
 
-### ADR-BABY-003 — Access Policy cho Baby Profile View
+### ADR-BABY-003 â€” Access Policy cho Baby Profile View
 
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` |
 | **Date** | `2026-06-26` |
 
-#### Quyết định
-Baby profile có thể được xem bởi: (1) account owner, (2) care group members với invite_status=ACCEPTED. Expert không được xem trừ khi Mother chia sẻ qua consultation.
+#### Quyáº¿t Ä‘á»‹nh
+Baby profile cÃ³ thá»ƒ Ä‘Æ°á»£c xem bá»Ÿi: (1) account owner, (2) care group members vá»›i invite_status=ACCEPTED. Expert khÃ´ng Ä‘Æ°á»£c xem trá»« khi Mother chia sáº» qua consultation.
 
 ---
 
@@ -145,7 +146,7 @@ BabyService --> BabyAccessPolicy
 
 ## 6. Dynamic Modeling
 
-### 6.1. Sequence Diagram — Happy Path
+### 6.1. Sequence Diagram â€” Happy Path
 
 ```plantuml
 @startuml ViewBabyProfile_HappyPath
@@ -219,9 +220,9 @@ BabyProfileDetailResponse getBabyProfile(UUID profileId, UUID accountId);
 
 ---
 
-## 9-10. Bảng mã lỗi
+## 9-10. Báº£ng mÃ£ lá»—i
 
-> **(Corrected 2026-07-03):** Bảng này ban đầu ghi `BABY-002`(403)/`BABY-004`(404) — không khớp code thật đã ship (`BabyServiceImpl.java` dùng `BABY-001` cho 404 và `BABY-003` cho 403). Đã sửa lại khớp thực tế; phát hiện trong batch UC194 (Logic Issue L1/OI-3).
+> **(Corrected 2026-07-03):** Báº£ng nÃ y ban Ä‘áº§u ghi `BABY-002`(403)/`BABY-004`(404) â€” khÃ´ng khá»›p code tháº­t Ä‘Ã£ ship (`BabyServiceImpl.java` dÃ¹ng `BABY-001` cho 404 vÃ  `BABY-003` cho 403). ÄÃ£ sá»­a láº¡i khá»›p thá»±c táº¿; phÃ¡t hiá»‡n trong batch UC194 (Logic Issue L1/OI-3).
 
 | Code | HTTP | Message (EN) | Trigger Condition |
 |------|------|--------------|-------------------|
@@ -231,15 +232,15 @@ BabyProfileDetailResponse getBabyProfile(UUID profileId, UUID accountId);
 
 ---
 
-## 11. Kịch bản Kiểm thử
+## 11. Ká»‹ch báº£n Kiá»ƒm thá»­
 
 ```gherkin
 Feature: View Baby Profile
-  Scenario: Owner views own profile → 200
-  Scenario: Care group member views profile → 200
-  Scenario: Unrelated user views profile → 403
-  Scenario: Non-existent profile → 404
-  Scenario: Archived profile still viewable → 200 with status ARCHIVED
+  Scenario: Owner views own profile â†’ 200
+  Scenario: Care group member views profile â†’ 200
+  Scenario: Unrelated user views profile â†’ 403
+  Scenario: Non-existent profile â†’ 404
+  Scenario: Archived profile still viewable â†’ 200 with status ARCHIVED
 ```
 
 ---
@@ -248,7 +249,7 @@ Feature: View Baby Profile
 
 | Endpoint | `GUEST` | `MOTHER (owner)` | `MOTHER (care member)` | `EXPERT` | `ADMIN` |
 |----------|---------|------------------|------------------------|----------|---------|
-| `GET /api/v1/baby-profiles/:id` | ❌ | ✅ | ✅ | ❌ | ✅ All |
+| `GET /api/v1/baby-profiles/:id` | âŒ | âœ… | âœ… | âŒ | âœ… All |
 
 ---
 
@@ -306,47 +307,47 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
-## 10. Bảng mã lỗi (Error Codes)
+## 10. Báº£ng mÃ£ lá»—i (Error Codes)
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `BABY-003` | 403 | Insufficient permissions | Không đủ quyền truy cập | Caller is not owner and not care group member |
-| `BABY-001` | 404 | Baby profile not found | Hồ sơ em bé không tồn tại | profileId not found in DB |
-| `BABY-005` | 500 | Internal error | Lỗi hệ thống | Unexpected DB error |
+| `BABY-003` | 403 | Insufficient permissions | KhÃ´ng Ä‘á»§ quyá»n truy cáº­p | Caller is not owner and not care group member |
+| `BABY-001` | 404 | Baby profile not found | Há»“ sÆ¡ em bÃ© khÃ´ng tá»“n táº¡i | profileId not found in DB |
+| `BABY-005` | 500 | Internal error | Lá»—i há»‡ thá»‘ng | Unexpected DB error |
 
 ---
 
-## 13. Kịch bản Kiểm thử Chi tiết
+## 13. Ká»‹ch báº£n Kiá»ƒm thá»­ Chi tiáº¿t
 
-> **Policy (EDS v2.0):** Mọi test scenario dùng dữ liệu `SYNTHETIC`.
+> **Policy (EDS v2.0):** Má»i test scenario dÃ¹ng dá»¯ liá»‡u `SYNTHETIC`.
 
 ```gherkin
 Feature: View Baby Profile
   Background:
     Given test data classification: SYNTHETIC
-    And MOTHER-001 là owner của BABY-001
+    And MOTHER-001 lÃ  owner cá»§a BABY-001
 
-  Scenario: Owner xem profile → 200
+  Scenario: Owner xem profile â†’ 200
     When getBabyProfile(BABY-001, MOTHER-001)
-    Then response 200 với nickname, birthDate, gender
+    Then response 200 vá»›i nickname, birthDate, gender
 
-  Scenario: Non-owner → 403
-    Given MOTHER-002 KHÔNG phải owner
+  Scenario: Non-owner â†’ 403
+    Given MOTHER-002 KHÃ”NG pháº£i owner
     When getBabyProfile(BABY-001, MOTHER-002)
     Then throws ForbiddenException BABY-003
 
-  Scenario: Not found → 404
+  Scenario: Not found â†’ 404
     When getBabyProfile(NONEXISTENT, MOTHER-001)
     Then throws NotFoundException BABY-001
 
-  Scenario: Response không chứa diagnosis
+  Scenario: Response khÃ´ng chá»©a diagnosis
     When getBabyProfile(BABY-001, MOTHER-001)
-    Then response KHÔNG chứa "diagnosis", "prescription"
+    Then response KHÃ”NG chá»©a "diagnosis", "prescription"
 ```
 
 ---
 
-## 14. Phương pháp Xác minh
+## 14. PhÆ°Æ¡ng phÃ¡p XÃ¡c minh
 
 ### 14.1. Database Inspection
 
@@ -380,7 +381,7 @@ curl -X GET https://[host]/api/v1/baby-profiles/[profileId] \
 
 ---
 
-## 15. Mẫu thử thực tế (API Verification Samples)
+## 15. Máº«u thá»­ thá»±c táº¿ (API Verification Samples)
 
 ### 15.1. Happy Path -- Owner
 
@@ -415,11 +416,11 @@ curl -X GET https://[host]/api/v1/baby-profiles/[profileId]
 
 ---
 
-## 16. Bảng tổng hợp phân quyền (Authorization Matrix Detail)
+## 16. Báº£ng tá»•ng há»£p phÃ¢n quyá»n (Authorization Matrix Detail)
 
 | Endpoint | `GUEST` | `MOTHER (owner)` | `MOTHER (care member)` | `EXPERT` | `ADMIN` |
 |----------|---------|------------------|------------------------|----------|---------|
-| `GET /api/v1/baby-profiles/{id}` | ❌ (401) | ✅ | ✅ (ACCEPTED only) | ❌ (403) | ✅ All |
+| `GET /api/v1/baby-profiles/{id}` | âŒ (401) | âœ… | âœ… (ACCEPTED only) | âŒ (403) | âœ… All |
 
 **Chu thich:**
 - Owner: account_id trong baby_profiles match JWT subject
@@ -434,56 +435,56 @@ curl -X GET https://[host]/api/v1/baby-profiles/[profileId]
 
 | # | Constraint | Source | Last Verified |
 |---|-----------|--------|---------------|
-| C1 | BabyAccessPolicy.canView() PHẢI check ownership AND care group membership | ADR-BABY-003 | 2026-06-26 |
-| C2 | Archived profiles (status=ARCHIVED) vẫn trả về 200, không 404 | BR-BABY-011 | 2026-06-26 |
-| C3 | accountId từ JWT — không từ URL | BR-RBAC | 2026-06-26 |
-| C4 | Read-only endpoint — không side effects | — | 2026-06-26 |
-| C5 | Response không chứa sensitive birth data ngoài scope | BR-PRIVACY | 2026-06-26 |
+| C1 | BabyAccessPolicy.canView() PHáº¢I check ownership AND care group membership | ADR-BABY-003 | 2026-06-26 |
+| C2 | Archived profiles (status=ARCHIVED) váº«n tráº£ vá» 200, khÃ´ng 404 | BR-BABY-011 | 2026-06-26 |
+| C3 | accountId tá»« JWT â€” khÃ´ng tá»« URL | BR-RBAC | 2026-06-26 |
+| C4 | Read-only endpoint â€” khÃ´ng side effects | â€” | 2026-06-26 |
+| C5 | Response khÃ´ng chá»©a sensitive birth data ngoÃ i scope | BR-PRIVACY | 2026-06-26 |
 
 ### 17.2 Constraint Injection Block
 
 ```
-[CONSTRAINT BLOCK — Module: ViewBabyProfile (CB-BABY-IMP-002)]
-1. BabyAccessPolicy.canView() PHẢI check: (a) account owner, HOẶC (b) care group member với invite_status=ACCEPTED — ADR-BABY-003
-2. Archived profiles (status=ARCHIVED) vẫn trả về 200 với data — KHÔNG trả 404 — BR-BABY-011
-3. accountId từ JWT SecurityContext, KHÔNG từ URL path parameter — BR-RBAC
-4. Read-only endpoint — KHÔNG có side effects (no DB write, no audit event) — Design
-5. Response KHÔNG chứa sensitive birth data ngoài scope (e.g., medical records, diagnosis) — BR-PRIVACY
+[CONSTRAINT BLOCK â€” Module: ViewBabyProfile (CB-BABY-IMP-002)]
+1. BabyAccessPolicy.canView() PHáº¢I check: (a) account owner, HOáº¶C (b) care group member vá»›i invite_status=ACCEPTED â€” ADR-BABY-003
+2. Archived profiles (status=ARCHIVED) váº«n tráº£ vá» 200 vá»›i data â€” KHÃ”NG tráº£ 404 â€” BR-BABY-011
+3. accountId tá»« JWT SecurityContext, KHÃ”NG tá»« URL path parameter â€” BR-RBAC
+4. Read-only endpoint â€” KHÃ”NG cÃ³ side effects (no DB write, no audit event) â€” Design
+5. Response KHÃ”NG chá»©a sensitive birth data ngoÃ i scope (e.g., medical records, diagnosis) â€” BR-PRIVACY
 
 [CONTEXT BLOCK]
 - Bounded Context: baby
 - Data Classification: Sensitive-PII
-- Error codes: §10 Error Codes Table
-- Auth matrix: §16 Authorization Matrix
+- Error codes: Â§10 Error Codes Table
+- Auth matrix: Â§16 Authorization Matrix
 ```
 
 ### 17.3 Constraint Quality Checklist
 
-- [x] Mỗi constraint traceable về ADR hoặc BR cụ thể
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 3 constraints cụ thể
+- [x] Má»—i constraint traceable vá» ADR hoáº·c BR cá»¥ thá»ƒ
+- [x] KhÃ´ng cÃ³ constraint generic
+- [x] Constraint block cÃ³ â‰¥ 3 constraints cá»¥ thá»ƒ
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
+| AP-ID | Anti-Pattern | Dáº¥u hiá»‡u | HÃ nh Ä‘á»™ng |
 |-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Code không match constraint C1-C5 | Reject — inject lại constraints |
-| AP-AI-003 | Implicit Decision | Code assume architecture không có ADR | Reject — viết ADR trước |
-| AP-AI-005 | Hallucinated Contract | Code import không có trong §7 | Reject — verify contract |
+| AP-AI-001 | Unconstrained Gen | Code khÃ´ng match constraint C1-C5 | Reject â€” inject láº¡i constraints |
+| AP-AI-003 | Implicit Decision | Code assume architecture khÃ´ng cÃ³ ADR | Reject â€” viáº¿t ADR trÆ°á»›c |
+| AP-AI-005 | Hallucinated Contract | Code import khÃ´ng cÃ³ trong Â§7 | Reject â€” verify contract |
 
 ---
 
-## PHỤ LỤC
+## PHá»¤ Lá»¤C
 
-### A. Glossary (Thuật ngữ)
+### A. Glossary (Thuáº­t ngá»¯)
 
-| Thuật ngữ | Định nghĩa |
+| Thuáº­t ngá»¯ | Äá»‹nh nghÄ©a |
 |-----------|------------|
-| BabyAccessPolicy | Policy class kiểm tra quyền xem baby profile — check ownership và care group membership |
-| CareGroupMember | Thành viên nhóm chăm sóc — có invite_status (PENDING, ACCEPTED, REJECTED) |
-| PII Masking | Ẩn thông tin nhận dạng cá nhân trong API responses — áp dụng cho sensitive birth data |
+| BabyAccessPolicy | Policy class kiá»ƒm tra quyá»n xem baby profile â€” check ownership vÃ  care group membership |
+| CareGroupMember | ThÃ nh viÃªn nhÃ³m chÄƒm sÃ³c â€” cÃ³ invite_status (PENDING, ACCEPTED, REJECTED) |
+| PII Masking | áº¨n thÃ´ng tin nháº­n dáº¡ng cÃ¡ nhÃ¢n trong API responses â€” Ã¡p dá»¥ng cho sensitive birth data |
 
-### B. Tài liệu tham chiếu
+### B. TÃ i liá»‡u tham chiáº¿u
 
 | Document | Path |
 |----------|------|
@@ -491,4 +492,4 @@ curl -X GET https://[host]/api/v1/baby-profiles/[profileId]
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+*EDS v2.1 â€” TÃ­ch há»£p CASE 2.0 AI Prompt Constraints (Â§17).*

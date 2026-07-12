@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-RAG-IMP-001`                        |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[ ] Pending`                           |
@@ -24,6 +24,7 @@
 | 2026-06-23 | AI Agent — Winston           | Tạo tài liệu lần đầu — TDS cho UC-132 Generate RAG Answer                                                                                                                                            |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent) | Implement UC-132: RagService interface, MockRagServiceImpl (@Profile test), GeminiRagServiceImpl (@Profile prod/dev), ContentItemContextRetriever, RagController, TriageRedFlagPolicy, GeminiPromptBuilder, RagException, GlobalExceptionHandler handler. 18/18 tests PASS. RED Gate: 12 FAIL verified. |
 | 2026-07-02 | AI Agent — Claude (Audit Pass) | Corrected discrepancies vs. actual source: (1) §16/§9.1/§2/§1 — RAG endpoint excludes `PARTNER` (403), roles renamed `FAMILY`/`PARTNER` not `FAMILY_MEMBER`/`PARTNER_REP`; (2) §3 ADR-002/§5.1/§6.4 class diagrams — documented 3rd `RagService` impl `FallbackRagServiceImpl` (was only 2 documented) and fixed stale `<<@Profile("prod","dev")>>` stereotype on `GeminiRagServiceImpl` (actual: `@Primary`, no profile); (3) §5.2 — DTOs are Lombok `@Getter/@Builder` classes with manual controller-side validation, not Java records with Bean Validation annotations; (4) `UserStage` enum value is `PREGNANCY`, not `PREGNANT` (fixed throughout doc); (5) JSON wire field is `"fallback"`, not `"isFallback"` (fixed in §5.2/§9.2/§15 concrete examples; Gherkin/prose getter references left as-is); (6) §2 BR-RAG-001 code component corrected to `ContentItemContextRetriever.retrieveContext()`; (7) §4.1 max context chunks corrected to 10 (default 5), matching §10 RAG-002. |
+| 2026-07-11 | AI Agent — Amelia (Verification) | Re-audited current implementation against safety, retrieval, fallback and RBAC constraints. Focused suite passes 26/26 (8 service, 4 retriever, 9 controller, 5 no-Gemini startup/RBAC); no production changes required. |
 
 ---
 

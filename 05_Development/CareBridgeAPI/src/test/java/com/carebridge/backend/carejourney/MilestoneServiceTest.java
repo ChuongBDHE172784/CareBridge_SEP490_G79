@@ -3,10 +3,14 @@ package com.carebridge.backend.carejourney;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AddMilestoneRequest;
 import com.carebridge.backend.carejourney.dto.MilestoneResponse;
+import com.carebridge.backend.carejourney.dto.UpdateDevelopmentMilestoneRequest;
 import com.carebridge.backend.carejourney.entity.DevelopmentMilestone;
+import com.carebridge.backend.carejourney.entity.MilestoneAchievementStatus;
+import com.carebridge.backend.carejourney.entity.MilestoneRecordStatus;
 import com.carebridge.backend.carejourney.repository.DevelopmentMilestoneRepository;
 import com.carebridge.backend.carejourney.service.impl.MilestoneServiceImpl;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
@@ -32,6 +36,7 @@ class MilestoneServiceTest {
 
     @Mock private DevelopmentMilestoneRepository milestoneRepository;
     @Mock private BabyProfileRepository babyProfileRepository;
+    @Mock private BabyAccessPolicy babyAccessPolicy;
     @Mock private AuditService auditService;
     @InjectMocks private MilestoneServiceImpl service;
 
@@ -198,5 +203,71 @@ class MilestoneServiceTest {
         assertThat(resp.getMilestoneId()).isNotNull();
         assertThat(resp.getBabyId()).isNotNull();
         assertThat(resp.getMilestoneType()).isNotNull();
+    }
+
+    @Test
+    void updateMilestone_ownerUpdatesStatusAndDate_preservesRecordStatus() {
+        DevelopmentMilestone existing = makeSavedMilestone("WALKING");
+        existing.setMilestoneStatus(MilestoneAchievementStatus.PENDING);
+        existing.setRecordStatus(MilestoneRecordStatus.ACTIVE);
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
+        when(babyAccessPolicy.canManage(any(), eq(MOTHER_ID))).thenReturn(true);
+        when(milestoneRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateDevelopmentMilestoneRequest request = new UpdateDevelopmentMilestoneRequest();
+        request.setStatus("ACHIEVED");
+        request.setAchievedDate(LocalDate.now().minusDays(1));
+
+        MilestoneResponse response = service.updateMilestone(BABY_ID, MILESTONE_ID, request, MOTHER_ID);
+
+        assertThat(response.getStatus()).isEqualTo("ACHIEVED");
+        verify(milestoneRepository).save(argThat(milestone ->
+                MilestoneAchievementStatus.ACHIEVED.equals(milestone.getMilestoneStatus())
+                        && MilestoneRecordStatus.ACTIVE.equals(milestone.getRecordStatus())));
+    }
+
+    @Test
+    void updateMilestone_emptyRequest_throwsMilestone003() {
+        DevelopmentMilestone existing = makeSavedMilestone("WALKING");
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
+        when(babyAccessPolicy.canManage(any(), eq(MOTHER_ID))).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateMilestone(
+                BABY_ID, MILESTONE_ID, new UpdateDevelopmentMilestoneRequest(), MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("MILESTONE-003"));
+    }
+
+    @Test
+    void deleteMilestone_ownerSoftDeletesWithoutChangingMilestoneStatus() {
+        DevelopmentMilestone existing = makeSavedMilestone("WALKING");
+        existing.setMilestoneStatus(MilestoneAchievementStatus.ACHIEVED);
+        existing.setRecordStatus(MilestoneRecordStatus.ACTIVE);
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
+        when(babyAccessPolicy.canManage(any(), eq(MOTHER_ID))).thenReturn(true);
+
+        service.deleteMilestone(BABY_ID, MILESTONE_ID, MOTHER_ID);
+
+        verify(milestoneRepository).save(argThat(milestone ->
+                MilestoneRecordStatus.DELETED.equals(milestone.getRecordStatus())
+                        && MilestoneAchievementStatus.ACHIEVED.equals(milestone.getMilestoneStatus())));
+        verify(milestoneRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteMilestone_alreadyDeleted_returnsNotFound() {
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteMilestone(BABY_ID, MILESTONE_ID, MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("MILESTONE-001"));
+        verify(milestoneRepository, never()).save(any());
     }
 }

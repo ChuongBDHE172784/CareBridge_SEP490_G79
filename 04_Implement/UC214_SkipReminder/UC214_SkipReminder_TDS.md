@@ -6,12 +6,12 @@
 | **Document ID** | `CB-REM-IMP-004` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
+| **Approved by** | `TV2-Bách` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -1114,5 +1114,11 @@ thỏa mãn C1–C7. Output tuân thủ §8. Tests cover §13.
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 
 ---
+
+## 21. Implementation Sync
+
+| Date | Status | Notes |
+|---|---|---|
+| 2026-07-10 | `Partially Implemented` | Backend path implemented for owner-only skip via `POST` and retained `PATCH` compatibility at `/api/v1/reminders/{reminderId}/skip`, PENDING→SKIPPED terminal guard (`REM-011`), FCM job cancel via existing `cancelFcmJob`, and `AuditAction.REMINDER_SKIPPED`. Recurrence materialization and skipReason persistence/audit payload remain out of scope because related ADR items are Open. Targeted reminder tests pass; full regression remains red due unrelated existing family/exercise/auth integration failures. |
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17). Status: Draft — không được implement khi các ADR còn `Proposed` và Open item chưa chốt.*

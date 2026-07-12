@@ -4,7 +4,7 @@
 **Document ID:** `CB-PTR-TEST-006`
 **Version:** `1.0`
 **Date:** `2026-07-01`
-**Status:** `Draft`
+**Status:** `Partially Implemented — 2026-07-11 (11/12 PASS)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Winston (System Architect)`
 **Reviewed by:** `[ ] Pending`
@@ -25,6 +25,7 @@
 | Ngày       | Người thực hiện    | Nội dung thay đổi                                                              |
 | ---------- | -------------------- | ---------------------------------------------------------------------------------- |
 | 2026-07-01 | AI Agent — Winston  | Tạo tài liệu lần đầu — Test-Spec cho UC-123 Approve Partner Profile (Status=Draft)  |
+| 2026-07-11 | AI Agent — Amelia   | RED 12/12 confirmed; 11/12 GREEN; PostgreSQL transaction rollback pending           |
 
 ---
 

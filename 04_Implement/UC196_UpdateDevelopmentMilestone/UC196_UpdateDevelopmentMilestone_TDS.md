@@ -1,17 +1,17 @@
-# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
-# Technical Design Specification — UC-196 Update Development Milestone
+﻿# ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
+# Technical Design Specification â€” UC-196 Update Development Milestone
 
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-BABY-IMP-004` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
-| **Document Owner** | `TV2-Bách` |
+| **Status** | `Partially Implemented` |
+| **Document Owner** | `TV2-BÃ¡ch` |
 | **Author** | `AI Agent` |
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
-| **Approved by** | `[Principal Architect]` |
+| **Approved by** | `TV2-BÃ¡ch` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -19,89 +19,90 @@
 
 ## CHANGELOG
 
-| Ngày | Người thực hiện | Nội dung thay đổi |
+| NgÃ y | NgÆ°á»i thá»±c hiá»‡n | Ná»™i dung thay Ä‘á»•i |
 |------|-----------------|-------------------|
-| 2026-07-03 | AI Agent | Tạo tài liệu lần đầu cho UC-196 Update Development Milestone |
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented: targeted baby/carejourney backend tests PASS; full regression remains blocked by non-baby Family/Exercise/Auth/Triage failures. |
+| 2026-07-03 | AI Agent | Táº¡o tÃ i liá»‡u láº§n Ä‘áº§u cho UC-196 Update Development Milestone |
 
 ---
 
-## MỤC LỤC
+## Má»¤C Lá»¤C
 
-1. [Tổng quan Module](#1-tổng-quan-module)
-2. [Ma trận Truy vết](#2-ma-trận-truy-vết-traceability-matrix)
+1. [Tá»•ng quan Module](#1-tá»•ng-quan-module)
+2. [Ma tráº­n Truy váº¿t](#2-ma-tráº­n-truy-váº¿t-traceability-matrix)
 3. [Architecture Decision Records](#3-architecture-decision-records-adr)
 4. [Non-Functional Requirements & SLA](#4-non-functional-requirements--sla)
-5. [Static Modeling](#5-static-modeling-mô-hình-tĩnh)
-6. [Dynamic Modeling](#6-dynamic-modeling-mô-hình-động)
+5. [Static Modeling](#5-static-modeling-mÃ´-hÃ¬nh-tÄ©nh)
+6. [Dynamic Modeling](#6-dynamic-modeling-mÃ´-hÃ¬nh-Ä‘á»™ng)
 7. [Domain Event Catalog](#7-domain-event-catalog)
-8. [Interface Specification](#8-interface-specification-đặc-tả-giao-diện)
+8. [Interface Specification](#8-interface-specification-Ä‘áº·c-táº£-giao-diá»‡n)
 9. [API Specification](#9-api-specification)
-10. [Bảng mã lỗi](#10-bảng-mã-lỗi-error-codes)
-11. [Quy trình Triển khai](#11-quy-trình-triển-khai-step-by-step)
+10. [Báº£ng mÃ£ lá»—i](#10-báº£ng-mÃ£-lá»—i-error-codes)
+11. [Quy trÃ¬nh Triá»ƒn khai](#11-quy-trÃ¬nh-triá»ƒn-khai-step-by-step)
 12. [Rollback & Incident Runbook](#12-rollback--incident-runbook)
-13. [Kịch bản Kiểm thử Chi tiết](#13-kịch-bản-kiểm-thử-chi-tiết)
-14. [Phương pháp Xác minh](#14-phương-pháp-xác-minh)
-15. [Mẫu thử thực tế](#15-mẫu-thử-thực-tế-api-verification-samples)
-16. [Bảng tổng hợp phân quyền](#16-bảng-tổng-hợp-phân-quyền-authorization-matrix)
+13. [Ká»‹ch báº£n Kiá»ƒm thá»­ Chi tiáº¿t](#13-ká»‹ch-báº£n-kiá»ƒm-thá»­-chi-tiáº¿t)
+14. [PhÆ°Æ¡ng phÃ¡p XÃ¡c minh](#14-phÆ°Æ¡ng-phÃ¡p-xÃ¡c-minh)
+15. [Máº«u thá»­ thá»±c táº¿](#15-máº«u-thá»­-thá»±c-táº¿-api-verification-samples)
+16. [Báº£ng tá»•ng há»£p phÃ¢n quyá»n](#16-báº£ng-tá»•ng-há»£p-phÃ¢n-quyá»n-authorization-matrix)
 17. [AI Prompt Constraints (CASE 2.0)](#17-ai-prompt-constraints-case-20)
 
 ---
 
-## 1. Tổng quan Module
+## 1. Tá»•ng quan Module
 
 | Field | Value |
 |-------|-------|
 | **Module Name** | `UpdateDevelopmentMilestone` |
-| **Bounded Context** | `baby` (reuse — same bounded context as UC192 `BabyController`/`BabyServiceImpl`/`BabyAccessPolicy`, and UC194's `BabyDailyLog` sibling classes) |
+| **Bounded Context** | `baby` (reuse â€” same bounded context as UC192 `BabyController`/`BabyServiceImpl`/`BabyAccessPolicy`, and UC194's `BabyDailyLog` sibling classes) |
 | **UC ID** | `UC-196` |
 | **SRS Reference** | `3.3.12.5` (`02_Requirements/SRS/3_Functional_Specification.md` lines 4217-4236) |
 | **Primary Actor** | `Mother (ROLE_MOTHER)` |
 | **Platform** | `Mobile App` |
 | **Priority** | `Medium` |
-| **Sprint** | `Sprint 4 — Device Sync And Care Edge Cases` |
-| **Owner** | `TV2-Bách` |
+| **Sprint** | `Sprint 4 â€” Device Sync And Care Edge Cases` |
+| **Owner** | `TV2-BÃ¡ch` |
 | **Data Classification** | `Sensitive-PII` (infant developmental/health data) |
 | **Compliance Scope** | `BR-RBAC, BR-PRIVACY` |
-| **Upstream Dependencies** | `baby (BabyProfile, BabyAccessPolicy — UC192)`, `auth`, `development_milestones` table |
+| **Upstream Dependencies** | `baby (BabyProfile, BabyAccessPolicy â€” UC192)`, `auth`, `development_milestones` table |
 | **Downstream Consumers** | `UC197 Delete Development Milestone`, `Development Milestone Timeline (future UC)` |
 
-**Mô tả:** Cho phép Mother cập nhật `achieved_date`, `note`, hoặc trạng thái tiến triển (achievement status) của MỘT development milestone (`development_milestones`) đã ghi nhận cho baby của mình. Ownership resolved qua chain `development_milestones.baby_id → baby_profiles.owner_user_id`. Đây là greenfield code: KHÔNG có `DevelopmentMilestone` entity/controller/service nào tồn tại trong codebase hiện tại (xác nhận qua RG-3 §3 ADR-BABY-006 bên dưới). Bảng `development_milestones` hiện tại **KHÔNG có cột `status` nào cả** — cần migration mới, và quyết định thiết kế quan trọng nhất của tài liệu này là phân biệt rõ hai khái niệm "status" khác nhau (xem ADR-BABY-006).
+**MÃ´ táº£:** Cho phÃ©p Mother cáº­p nháº­t `achieved_date`, `note`, hoáº·c tráº¡ng thÃ¡i tiáº¿n triá»ƒn (achievement status) cá»§a Má»˜T development milestone (`development_milestones`) Ä‘Ã£ ghi nháº­n cho baby cá»§a mÃ¬nh. Ownership resolved qua chain `development_milestones.baby_id â†’ baby_profiles.owner_user_id`. ÄÃ¢y lÃ  greenfield code: KHÃ”NG cÃ³ `DevelopmentMilestone` entity/controller/service nÃ o tá»“n táº¡i trong codebase hiá»‡n táº¡i (xÃ¡c nháº­n qua RG-3 Â§3 ADR-BABY-006 bÃªn dÆ°á»›i). Báº£ng `development_milestones` hiá»‡n táº¡i **KHÃ”NG cÃ³ cá»™t `status` nÃ o cáº£** â€” cáº§n migration má»›i, vÃ  quyáº¿t Ä‘á»‹nh thiáº¿t káº¿ quan trá»ng nháº¥t cá»§a tÃ i liá»‡u nÃ y lÃ  phÃ¢n biá»‡t rÃµ hai khÃ¡i niá»‡m "status" khÃ¡c nhau (xem ADR-BABY-006).
 
 ---
 
-## 2. Ma trận Truy vết (Traceability Matrix)
+## 2. Ma tráº­n Truy váº¿t (Traceability Matrix)
 
-| Requirement ID | Loại | Mô tả | Thành phần Code | Compliance Target | ADR liên quan |
+| Requirement ID | Loáº¡i | MÃ´ táº£ | ThÃ nh pháº§n Code | Compliance Target | ADR liÃªn quan |
 |----------------|------|-------|-----------------|-------------------|---------------|
-| UC-196 | Use Case | Mother cập nhật date/notes/status của 1 development milestone | `DevelopmentMilestoneController.updateMilestone()` | BR-RBAC | ADR-BABY-007 |
-| BR-RBAC | Business Rule | Chỉ owner của baby profile (strict — không care group member) mới update được | `DevelopmentMilestoneServiceImpl.updateMilestone()` + `BabyAccessPolicy.canManage()` (new method) | BR-RBAC | ADR-BABY-007 |
-| BR-PRIVACY | Business Rule | Response chỉ trả field liên quan — minimum-necessary | `DevelopmentMilestoneDetailResponse` DTO | BR-PRIVACY | ADR-BABY-006 |
-| — | Design Decision | `milestone_status` (achievement) và `record_status` (soft-delete) PHẢI là 2 cột độc lập | `DevelopmentMilestone` entity — 2 enum fields riêng biệt | Data Integrity | ADR-BABY-006 |
+| UC-196 | Use Case | Mother cáº­p nháº­t date/notes/status cá»§a 1 development milestone | `DevelopmentMilestoneController.updateMilestone()` | BR-RBAC | ADR-BABY-007 |
+| BR-RBAC | Business Rule | Chá»‰ owner cá»§a baby profile (strict â€” khÃ´ng care group member) má»›i update Ä‘Æ°á»£c | `DevelopmentMilestoneServiceImpl.updateMilestone()` + `BabyAccessPolicy.canManage()` (new method) | BR-RBAC | ADR-BABY-007 |
+| BR-PRIVACY | Business Rule | Response chá»‰ tráº£ field liÃªn quan â€” minimum-necessary | `DevelopmentMilestoneDetailResponse` DTO | BR-PRIVACY | ADR-BABY-006 |
+| â€” | Design Decision | `milestone_status` (achievement) vÃ  `record_status` (soft-delete) PHáº¢I lÃ  2 cá»™t Ä‘á»™c láº­p | `DevelopmentMilestone` entity â€” 2 enum fields riÃªng biá»‡t | Data Integrity | ADR-BABY-006 |
 
 ---
 
 ## 3. Architecture Decision Records (ADR)
 
-### ADR-BABY-006 — Achievement-Status vs Soft-Delete-Status Disambiguation ⭐ MANDATORY
+### ADR-BABY-006 â€” Achievement-Status vs Soft-Delete-Status Disambiguation â­ MANDATORY
 
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` |
-| **Deciders** | `TV2-Bách, AI Agent` |
+| **Deciders** | `TV2-BÃ¡ch, AI Agent` |
 | **Date** | `2026-07-03` |
-| **Supersedes** | — |
+| **Supersedes** | â€” |
 
-#### Bối cảnh (Context)
+#### Bá»‘i cáº£nh (Context)
 
-SRS §3.3.12.5 mô tả UC-196: "Updates date, notes, **or status** for a development milestone." SRS §3.3.12.6 mô tả UC-197: "**Soft-deletes** a Mother-recorded development milestone." Đọc lướt qua, cả hai UC đều động đến khái niệm "status" của cùng một bảng `development_milestones`, dẫn đến rủi ro nhầm lẫn nghiêm trọng: nếu implement bằng **một cột `status` duy nhất** (giống pattern UC194/UC195 dùng cho `baby_daily_logs.status` ACTIVE/DELETED), thì UC-196 update "status" (vd: đổi milestone từ "chưa đạt" sang "đã đạt") sẽ **vô tình ghi đè** giá trị soft-delete marker, hoặc ngược lại UC-197 xoá mềm sẽ phá huỷ thông tin tiến triển milestone mà Mother đã ghi nhận.
+SRS Â§3.3.12.5 mÃ´ táº£ UC-196: "Updates date, notes, **or status** for a development milestone." SRS Â§3.3.12.6 mÃ´ táº£ UC-197: "**Soft-deletes** a Mother-recorded development milestone." Äá»c lÆ°á»›t qua, cáº£ hai UC Ä‘á»u Ä‘á»™ng Ä‘áº¿n khÃ¡i niá»‡m "status" cá»§a cÃ¹ng má»™t báº£ng `development_milestones`, dáº«n Ä‘áº¿n rá»§i ro nháº§m láº«n nghiÃªm trá»ng: náº¿u implement báº±ng **má»™t cá»™t `status` duy nháº¥t** (giá»‘ng pattern UC194/UC195 dÃ¹ng cho `baby_daily_logs.status` ACTIVE/DELETED), thÃ¬ UC-196 update "status" (vd: Ä‘á»•i milestone tá»« "chÆ°a Ä‘áº¡t" sang "Ä‘Ã£ Ä‘áº¡t") sáº½ **vÃ´ tÃ¬nh ghi Ä‘Ã¨** giÃ¡ trá»‹ soft-delete marker, hoáº·c ngÆ°á»£c láº¡i UC-197 xoÃ¡ má»m sáº½ phÃ¡ huá»· thÃ´ng tin tiáº¿n triá»ƒn milestone mÃ  Mother Ä‘Ã£ ghi nháº­n.
 
-**RG-3 xác nhận (Research Gate):**
+**RG-3 xÃ¡c nháº­n (Research Gate):**
 ```bash
 grep -rn "development_milestones\|DevelopmentMilestone" 05_Development/CareBridgeAPI/src/main/java
-# 0 kết quả — KHÔNG có Java mapping nào tồn tại. Entity/Repository/Service/Controller là greenfield.
+# 0 káº¿t quáº£ â€” KHÃ”NG cÃ³ Java mapping nÃ o tá»“n táº¡i. Entity/Repository/Service/Controller lÃ  greenfield.
 ```
 
-**Schema thực tế (`V1__init_schema.sql` dòng 635-645) — KHÔNG có cột `status`:**
+**Schema thá»±c táº¿ (`V1__init_schema.sql` dÃ²ng 635-645) â€” KHÃ”NG cÃ³ cá»™t `status`:**
 ```sql
 CREATE TABLE public.development_milestones (
     milestone_id   uuid        NOT NULL DEFAULT gen_random_uuid(),
@@ -118,25 +119,25 @@ CREATE TABLE public.development_milestones (
 -- FK: baby_id -> baby_profiles(baby_id); recorded_by -> users(user_id)
 -- INDEX: idx_development_milestones_baby_id
 ```
-Không có bất kỳ cột `status` nào — cả achievement-status lẫn soft-delete marker đều **thiếu hoàn toàn**. Đây là gap thật sự (không phải tài liệu sai), cần một migration mới bổ sung **HAI cột độc lập**.
+KhÃ´ng cÃ³ báº¥t ká»³ cá»™t `status` nÃ o â€” cáº£ achievement-status láº«n soft-delete marker Ä‘á»u **thiáº¿u hoÃ n toÃ n**. ÄÃ¢y lÃ  gap tháº­t sá»± (khÃ´ng pháº£i tÃ i liá»‡u sai), cáº§n má»™t migration má»›i bá»• sung **HAI cá»™t Ä‘á»™c láº­p**.
 
-#### Các phương án đã xem xét (Options Considered)
+#### CÃ¡c phÆ°Æ¡ng Ã¡n Ä‘Ã£ xem xÃ©t (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
+| PhÆ°Æ¡ng Ã¡n | MÃ´ táº£ | Æ¯u Ä‘iá»ƒm | NhÆ°á»£c Ä‘iá»ƒm |
 |-----------|-------|----------|------------|
-| A | Một cột `status` duy nhất, dùng chung giá trị enum mở rộng (vd: `PENDING`, `ACHIEVED`, `DELAYED`, `DELETED`) — giống style `baby_daily_logs` (UC194/195) | Ít cột hơn, đơn giản schema | **Conflict nghiêm trọng**: UC-196 set status=`ACHIEVED` và UC-197 set status=`DELETED` ghi đè lẫn nhau — không thể vừa biết milestone đã đạt hay chưa, vừa biết record có bị xoá hay không, cùng lúc. Vi phạm nguyên tắc Single Responsibility per column. |
-| B | Hai cột độc lập: `milestone_status` (achievement progress: `PENDING`/`ACHIEVED`/`DELAYED`) và `record_status` (lifecycle: `ACTIVE`/`DELETED`) | Tách biệt hoàn toàn 2 khái niệm nghiệp vụ khác nhau — UC-196 CHỈ được ghi vào `milestone_status`, UC-197 CHỈ được ghi vào `record_status`. Dễ audit, dễ test độc lập, không có write-conflict giữa 2 UC. | Thêm 1 cột so với phương án A; cần migration mới rõ ràng hơn. |
+| A | Má»™t cá»™t `status` duy nháº¥t, dÃ¹ng chung giÃ¡ trá»‹ enum má»Ÿ rá»™ng (vd: `PENDING`, `ACHIEVED`, `DELAYED`, `DELETED`) â€” giá»‘ng style `baby_daily_logs` (UC194/195) | Ãt cá»™t hÆ¡n, Ä‘Æ¡n giáº£n schema | **Conflict nghiÃªm trá»ng**: UC-196 set status=`ACHIEVED` vÃ  UC-197 set status=`DELETED` ghi Ä‘Ã¨ láº«n nhau â€” khÃ´ng thá»ƒ vá»«a biáº¿t milestone Ä‘Ã£ Ä‘áº¡t hay chÆ°a, vá»«a biáº¿t record cÃ³ bá»‹ xoÃ¡ hay khÃ´ng, cÃ¹ng lÃºc. Vi pháº¡m nguyÃªn táº¯c Single Responsibility per column. |
+| B | Hai cá»™t Ä‘á»™c láº­p: `milestone_status` (achievement progress: `PENDING`/`ACHIEVED`/`DELAYED`) vÃ  `record_status` (lifecycle: `ACTIVE`/`DELETED`) | TÃ¡ch biá»‡t hoÃ n toÃ n 2 khÃ¡i niá»‡m nghiá»‡p vá»¥ khÃ¡c nhau â€” UC-196 CHá»ˆ Ä‘Æ°á»£c ghi vÃ o `milestone_status`, UC-197 CHá»ˆ Ä‘Æ°á»£c ghi vÃ o `record_status`. Dá»… audit, dá»… test Ä‘á»™c láº­p, khÃ´ng cÃ³ write-conflict giá»¯a 2 UC. | ThÃªm 1 cá»™t so vá»›i phÆ°Æ¡ng Ã¡n A; cáº§n migration má»›i rÃµ rÃ ng hÆ¡n. |
 
-#### Quyết định (Decision)
+#### Quyáº¿t Ä‘á»‹nh (Decision)
 
-Chọn **Phương án B**. Bổ sung migration `V20260707120000__add_development_milestone_status_columns.sql` thêm HAI cột độc lập vào `development_milestones`:
+Chá»n **PhÆ°Æ¡ng Ã¡n B**. Bá»• sung migration `V20260707120000__add_development_milestone_status_columns.sql` thÃªm HAI cá»™t Ä‘á»™c láº­p vÃ o `development_milestones`:
 
 ```sql
 -- UC-196 Update Development Milestone / UC-197 Delete Development Milestone
--- Tách biệt 2 khái niệm "status" khác nhau hoàn toàn trên development_milestones:
---   milestone_status = achievement progress (PENDING/ACHIEVED/DELAYED) — CHỈ mutate bởi UC-196
---   record_status    = soft-delete lifecycle (ACTIVE/DELETED)          — CHỈ mutate bởi UC-197
--- Hai cột này PHẢI độc lập tuyệt đối — xem ADR-BABY-006, UC196 TDS §3.
+-- TÃ¡ch biá»‡t 2 khÃ¡i niá»‡m "status" khÃ¡c nhau hoÃ n toÃ n trÃªn development_milestones:
+--   milestone_status = achievement progress (PENDING/ACHIEVED/DELAYED) â€” CHá»ˆ mutate bá»Ÿi UC-196
+--   record_status    = soft-delete lifecycle (ACTIVE/DELETED)          â€” CHá»ˆ mutate bá»Ÿi UC-197
+-- Hai cá»™t nÃ y PHáº¢I Ä‘á»™c láº­p tuyá»‡t Ä‘á»‘i â€” xem ADR-BABY-006, UC196 TDS Â§3.
 
 ALTER TABLE public.development_milestones
     ADD COLUMN IF NOT EXISTS milestone_status VARCHAR(20) NOT NULL DEFAULT 'ACHIEVED';
@@ -148,81 +149,81 @@ CREATE INDEX IF NOT EXISTS idx_development_milestones_record_status
     ON public.development_milestones USING btree (record_status);
 ```
 
-**Backfill rationale cho DEFAULT:** Các record hiện có trong DB đều được ghi nhận kèm `achieved_date` (theo mô tả nghiệp vụ hiện tại — Mother ghi milestone sau khi xảy ra), nên default `milestone_status = 'ACHIEVED'` là an toàn cho backfill. `record_status = 'ACTIVE'` là default chuẩn cho mọi soft-delete pattern trong CareBridge (xem `V20260627100200__add_maternal_metric_status.sql` — cùng convention `DEFAULT 'ACTIVE'`).
+**Backfill rationale cho DEFAULT:** CÃ¡c record hiá»‡n cÃ³ trong DB Ä‘á»u Ä‘Æ°á»£c ghi nháº­n kÃ¨m `achieved_date` (theo mÃ´ táº£ nghiá»‡p vá»¥ hiá»‡n táº¡i â€” Mother ghi milestone sau khi xáº£y ra), nÃªn default `milestone_status = 'ACHIEVED'` lÃ  an toÃ n cho backfill. `record_status = 'ACTIVE'` lÃ  default chuáº©n cho má»i soft-delete pattern trong CareBridge (xem `V20260627100200__add_maternal_metric_status.sql` â€” cÃ¹ng convention `DEFAULT 'ACTIVE'`).
 
-**Quy tắc code bắt buộc (enforced ở Service layer, KHÔNG chỉ ở DB):**
-1. `DevelopmentMilestoneServiceImpl.updateMilestone()` (UC-196) chỉ được phép ghi vào field `milestoneStatus` của entity — **KHÔNG BAO GIỜ** được set `recordStatus`.
-2. `DevelopmentMilestoneServiceImpl.deleteMilestone()` (UC-197, xem TDS riêng) chỉ được phép ghi vào field `recordStatus` (set `DELETED`) — **KHÔNG BAO GIỜ** được đổi `milestoneStatus`.
-3. Cả hai method PHẢI kiểm tra `recordStatus == ACTIVE` trước khi cho phép thao tác — nếu `recordStatus == DELETED`, trả `404 MILESTONE-001` (record coi như không tồn tại), **không phân biệt** đó là do đã bị UC-197 xoá trước đó hay do input sai.
+**Quy táº¯c code báº¯t buá»™c (enforced á»Ÿ Service layer, KHÃ”NG chá»‰ á»Ÿ DB):**
+1. `DevelopmentMilestoneServiceImpl.updateMilestone()` (UC-196) chá»‰ Ä‘Æ°á»£c phÃ©p ghi vÃ o field `milestoneStatus` cá»§a entity â€” **KHÃ”NG BAO GIá»œ** Ä‘Æ°á»£c set `recordStatus`.
+2. `DevelopmentMilestoneServiceImpl.deleteMilestone()` (UC-197, xem TDS riÃªng) chá»‰ Ä‘Æ°á»£c phÃ©p ghi vÃ o field `recordStatus` (set `DELETED`) â€” **KHÃ”NG BAO GIá»œ** Ä‘Æ°á»£c Ä‘á»•i `milestoneStatus`.
+3. Cáº£ hai method PHáº¢I kiá»ƒm tra `recordStatus == ACTIVE` trÆ°á»›c khi cho phÃ©p thao tÃ¡c â€” náº¿u `recordStatus == DELETED`, tráº£ `404 MILESTONE-001` (record coi nhÆ° khÃ´ng tá»“n táº¡i), **khÃ´ng phÃ¢n biá»‡t** Ä‘Ã³ lÃ  do Ä‘Ã£ bá»‹ UC-197 xoÃ¡ trÆ°á»›c Ä‘Ã³ hay do input sai.
 
-#### Hệ quả (Consequences)
+#### Há»‡ quáº£ (Consequences)
 
-**Tích cực:**
-- Loại bỏ hoàn toàn khả năng UC-196 vô tình "hồi sinh" một record đã bị soft-delete, hoặc UC-197 vô tình xoá mất lịch sử tiến triển milestone.
-- Hai UC có thể được test, deploy, và audit độc lập mà không sợ side-effect chéo.
-- Nhất quán với nguyên tắc Single Responsibility áp dụng ở cấp độ column.
+**TÃ­ch cá»±c:**
+- Loáº¡i bá» hoÃ n toÃ n kháº£ nÄƒng UC-196 vÃ´ tÃ¬nh "há»“i sinh" má»™t record Ä‘Ã£ bá»‹ soft-delete, hoáº·c UC-197 vÃ´ tÃ¬nh xoÃ¡ máº¥t lá»‹ch sá»­ tiáº¿n triá»ƒn milestone.
+- Hai UC cÃ³ thá»ƒ Ä‘Æ°á»£c test, deploy, vÃ  audit Ä‘á»™c láº­p mÃ  khÃ´ng sá»£ side-effect chÃ©o.
+- Nháº¥t quÃ¡n vá»›i nguyÃªn táº¯c Single Responsibility Ã¡p dá»¥ng á»Ÿ cáº¥p Ä‘á»™ column.
 
-**Tiêu cực / Trade-offs:**
-- Thêm 1 cột so với phương án tối giản — chấp nhận được, chi phí storage không đáng kể.
-- Developer PHẢI nhớ dùng đúng field — giảm thiểu rủi ro bằng cách đặt tên rõ ràng (`milestoneStatus` vs `recordStatus`, không dùng tên chung `status`) và bằng unit test disambiguation bắt buộc (xem Test-Spec §MILESTONE-UPD-TC-DISAMB).
+**TiÃªu cá»±c / Trade-offs:**
+- ThÃªm 1 cá»™t so vá»›i phÆ°Æ¡ng Ã¡n tá»‘i giáº£n â€” cháº¥p nháº­n Ä‘Æ°á»£c, chi phÃ­ storage khÃ´ng Ä‘Ã¡ng ká»ƒ.
+- Developer PHáº¢I nhá»› dÃ¹ng Ä‘Ãºng field â€” giáº£m thiá»ƒu rá»§i ro báº±ng cÃ¡ch Ä‘áº·t tÃªn rÃµ rÃ ng (`milestoneStatus` vs `recordStatus`, khÃ´ng dÃ¹ng tÃªn chung `status`) vÃ  báº±ng unit test disambiguation báº¯t buá»™c (xem Test-Spec Â§MILESTONE-UPD-TC-DISAMB).
 
 **Compliance Impact:**
-- Củng cố BR-PRIVACY: dữ liệu sức khoẻ phát triển của trẻ không bị mất hoặc sai lệch do nhầm lẫn logic — giảm rủi ro data integrity incident cần báo cáo.
+- Cá»§ng cá»‘ BR-PRIVACY: dá»¯ liá»‡u sá»©c khoáº» phÃ¡t triá»ƒn cá»§a tráº» khÃ´ng bá»‹ máº¥t hoáº·c sai lá»‡ch do nháº§m láº«n logic â€” giáº£m rá»§i ro data integrity incident cáº§n bÃ¡o cÃ¡o.
 
 ---
 
-### ADR-BABY-007 — Strict Ownership (KHÔNG Care-Group) cho Milestone Mutation
+### ADR-BABY-007 â€” Strict Ownership (KHÃ”NG Care-Group) cho Milestone Mutation
 
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` |
-| **Deciders** | `TV2-Bách, AI Agent` |
+| **Deciders** | `TV2-BÃ¡ch, AI Agent` |
 | **Date** | `2026-07-03` |
-| **Supersedes** | — |
+| **Supersedes** | â€” |
 
-#### Bối cảnh (Context)
+#### Bá»‘i cáº£nh (Context)
 
-`BabyAccessPolicy.canView()` (UC192, đã ship) cho phép **cả owner LẪN care group member (ACCEPTED)** xem baby profile — và UC194 đã tái sử dụng y hệt cho việc xem `baby_daily_logs`. Tuy nhiên, SRS §3.3.12.5/3.3.12.6 xác định rõ **Primary Actor = Mother** (không có Secondary Actor), và mô tả "Mother-recorded development milestone" — ngụ ý quyền **sửa/xoá** nên hẹp hơn quyền **xem**. Nếu tái sử dụng nguyên `canView()` cho UC-196/UC-197, một Family member chỉ được mời xem (ACCEPTED nhưng không phải owner) sẽ có thể sửa/xoá dữ liệu milestone của Mother khác — vi phạm nguyên tắc least-privilege và tạo lỗ hổng IDOR-adjacent (Broken Access Control — quyền ghi bị cấp quá rộng).
+`BabyAccessPolicy.canView()` (UC192, Ä‘Ã£ ship) cho phÃ©p **cáº£ owner LáºªN care group member (ACCEPTED)** xem baby profile â€” vÃ  UC194 Ä‘Ã£ tÃ¡i sá»­ dá»¥ng y há»‡t cho viá»‡c xem `baby_daily_logs`. Tuy nhiÃªn, SRS Â§3.3.12.5/3.3.12.6 xÃ¡c Ä‘á»‹nh rÃµ **Primary Actor = Mother** (khÃ´ng cÃ³ Secondary Actor), vÃ  mÃ´ táº£ "Mother-recorded development milestone" â€” ngá»¥ Ã½ quyá»n **sá»­a/xoÃ¡** nÃªn háº¹p hÆ¡n quyá»n **xem**. Náº¿u tÃ¡i sá»­ dá»¥ng nguyÃªn `canView()` cho UC-196/UC-197, má»™t Family member chá»‰ Ä‘Æ°á»£c má»i xem (ACCEPTED nhÆ°ng khÃ´ng pháº£i owner) sáº½ cÃ³ thá»ƒ sá»­a/xoÃ¡ dá»¯ liá»‡u milestone cá»§a Mother khÃ¡c â€” vi pháº¡m nguyÃªn táº¯c least-privilege vÃ  táº¡o lá»— há»•ng IDOR-adjacent (Broken Access Control â€” quyá»n ghi bá»‹ cáº¥p quÃ¡ rá»™ng).
 
-#### Các phương án đã xem xét (Options Considered)
+#### CÃ¡c phÆ°Æ¡ng Ã¡n Ä‘Ã£ xem xÃ©t (Options Considered)
 
-| Phương án | Mô tả | Ưu điểm | Nhược điểm |
+| PhÆ°Æ¡ng Ã¡n | MÃ´ táº£ | Æ¯u Ä‘iá»ƒm | NhÆ°á»£c Ä‘iá»ƒm |
 |-----------|-------|----------|------------|
-| A | Tái sử dụng nguyên `BabyAccessPolicy.canView()` cho cả UC-196/UC-197 | Tối giản, không sửa code UC192 | Cấp quyền ghi quá rộng cho care group member — vi phạm least-privilege, không khớp SRS Primary Actor |
-| B | Viết `DevelopmentMilestoneAccessPolicy` riêng, duplicate ownership check | Isolation module | Trùng lặp logic ownership đã có trong `BabyAccessPolicy`, dễ lệch pha |
-| C | Bổ sung method mới `canManage(BabyProfile, callerId)` vào `BabyAccessPolicy` hiện có — strict ownership only (không check care group) | Một class duy nhất cho toàn bộ authorization logic của bounded context `baby`; thay đổi additive, KHÔNG sửa `canView()` hiện có (không breaking UC192/UC194); rõ ràng phân biệt "quyền xem" vs "quyền sửa" | Thêm 1 method vào class đã Approved — cần review kỹ để không phá vỡ hợp đồng cũ |
+| A | TÃ¡i sá»­ dá»¥ng nguyÃªn `BabyAccessPolicy.canView()` cho cáº£ UC-196/UC-197 | Tá»‘i giáº£n, khÃ´ng sá»­a code UC192 | Cáº¥p quyá»n ghi quÃ¡ rá»™ng cho care group member â€” vi pháº¡m least-privilege, khÃ´ng khá»›p SRS Primary Actor |
+| B | Viáº¿t `DevelopmentMilestoneAccessPolicy` riÃªng, duplicate ownership check | Isolation module | TrÃ¹ng láº·p logic ownership Ä‘Ã£ cÃ³ trong `BabyAccessPolicy`, dá»… lá»‡ch pha |
+| C | Bá»• sung method má»›i `canManage(BabyProfile, callerId)` vÃ o `BabyAccessPolicy` hiá»‡n cÃ³ â€” strict ownership only (khÃ´ng check care group) | Má»™t class duy nháº¥t cho toÃ n bá»™ authorization logic cá»§a bounded context `baby`; thay Ä‘á»•i additive, KHÃ”NG sá»­a `canView()` hiá»‡n cÃ³ (khÃ´ng breaking UC192/UC194); rÃµ rÃ ng phÃ¢n biá»‡t "quyá»n xem" vs "quyá»n sá»­a" | ThÃªm 1 method vÃ o class Ä‘Ã£ Approved â€” cáº§n review ká»¹ Ä‘á»ƒ khÃ´ng phÃ¡ vá»¡ há»£p Ä‘á»“ng cÅ© |
 
-#### Quyết định (Decision)
+#### Quyáº¿t Ä‘á»‹nh (Decision)
 
-Chọn **Phương án C**. Bổ sung method mới vào `BabyAccessPolicy` (additive, không sửa `canView()` hiện có):
+Chá»n **PhÆ°Æ¡ng Ã¡n C**. Bá»• sung method má»›i vÃ o `BabyAccessPolicy` (additive, khÃ´ng sá»­a `canView()` hiá»‡n cÃ³):
 
 ```java
-// Bổ sung vào com.carebridge.backend.baby.policy.BabyAccessPolicy (file đã tồn tại từ UC192)
+// Bá»• sung vÃ o com.carebridge.backend.baby.policy.BabyAccessPolicy (file Ä‘Ã£ tá»“n táº¡i tá»« UC192)
 /**
- * Returns true CHỈ KHI caller là account owner của baby profile — strict ownership,
- * KHÔNG chấp nhận care group member dù ACCEPTED. Dùng cho các thao tác MUTATION
- * (update/delete) trên dữ liệu do Mother tự ghi nhận — khác với canView() vốn cho phép
- * cả care group member xem. ADR-BABY-007.
+ * Returns true CHá»ˆ KHI caller lÃ  account owner cá»§a baby profile â€” strict ownership,
+ * KHÃ”NG cháº¥p nháº­n care group member dÃ¹ ACCEPTED. DÃ¹ng cho cÃ¡c thao tÃ¡c MUTATION
+ * (update/delete) trÃªn dá»¯ liá»‡u do Mother tá»± ghi nháº­n â€” khÃ¡c vá»›i canView() vá»‘n cho phÃ©p
+ * cáº£ care group member xem. ADR-BABY-007.
  */
 public boolean canManage(BabyProfile profile, UUID callerId) {
     return profile.getOwnerUserId().equals(callerId);
 }
 ```
 
-`DevelopmentMilestoneServiceImpl` gọi `babyAccessPolicy.canManage(profile, callerId)` (KHÔNG gọi `canView()`) cho cả `updateMilestone()` và `deleteMilestone()`.
+`DevelopmentMilestoneServiceImpl` gá»i `babyAccessPolicy.canManage(profile, callerId)` (KHÃ”NG gá»i `canView()`) cho cáº£ `updateMilestone()` vÃ  `deleteMilestone()`.
 
-#### Hệ quả (Consequences)
+#### Há»‡ quáº£ (Consequences)
 
-**Tích cực:**
-- Care group member (kể cả ACCEPTED) không thể sửa/xoá milestone của Mother khác — đúng nguyên tắc least-privilege.
-- Một class `BabyAccessPolicy` duy nhất chứa toàn bộ authorization logic — không phân mảnh.
-- Không breaking change cho UC192/UC194 (chỉ thêm method mới).
+**TÃ­ch cá»±c:**
+- Care group member (ká»ƒ cáº£ ACCEPTED) khÃ´ng thá»ƒ sá»­a/xoÃ¡ milestone cá»§a Mother khÃ¡c â€” Ä‘Ãºng nguyÃªn táº¯c least-privilege.
+- Má»™t class `BabyAccessPolicy` duy nháº¥t chá»©a toÃ n bá»™ authorization logic â€” khÃ´ng phÃ¢n máº£nh.
+- KhÃ´ng breaking change cho UC192/UC194 (chá»‰ thÃªm method má»›i).
 
-**Tiêu cực / Trade-offs:**
-- UC194's `ADR-BABY-004` pattern (reuse `canView()`) KHÔNG áp dụng trực tiếp cho UC196/UC197 — cần lưu ý khi review để tránh nhầm lẫn giữa 2 pattern (view vs manage) trong cùng bounded context. Ghi chú rõ trong Constraint Block §17.
+**TiÃªu cá»±c / Trade-offs:**
+- UC194's `ADR-BABY-004` pattern (reuse `canView()`) KHÃ”NG Ã¡p dá»¥ng trá»±c tiáº¿p cho UC196/UC197 â€” cáº§n lÆ°u Ã½ khi review Ä‘á»ƒ trÃ¡nh nháº§m láº«n giá»¯a 2 pattern (view vs manage) trong cÃ¹ng bounded context. Ghi chÃº rÃµ trong Constraint Block Â§17.
 
 **Compliance Impact:**
-- Củng cố BR-RBAC (OWASP A01:2021 — Broken Access Control mitigation) bằng cách thu hẹp đúng phạm vi quyền ghi theo SRS Primary Actor.
+- Cá»§ng cá»‘ BR-RBAC (OWASP A01:2021 â€” Broken Access Control mitigation) báº±ng cÃ¡ch thu háº¹p Ä‘Ãºng pháº¡m vi quyá»n ghi theo SRS Primary Actor.
 
 ---
 
@@ -232,30 +233,30 @@ public boolean canManage(BabyProfile profile, UUID callerId) {
 
 | Category | Requirement | Target SLA | Measurement Method | Compliance Basis |
 |----------|-------------|------------|---------------------|------------------|
-| Latency (p99) | PATCH response | `< 300ms` | k6 load test | — |
-| Availability | Uptime | `99.9%` | Uptime monitor | — |
+| Latency (p99) | PATCH response | `< 300ms` | k6 load test | â€” |
+| Availability | Uptime | `99.9%` | Uptime monitor | â€” |
 
 ### 4.2. Data Integrity & Retention
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| Consistency | `milestone_status` và `record_status` độc lập tuyệt đối | 100% — không lần update nào ghi chéo cột | Unit test disambiguation (§13) | ADR-BABY-006 |
-| Consistency | `baby_id` FK luôn resolve được `BabyProfile` | 100% | FK constraint `development_milestones_baby_id_fkey` | — |
+| Consistency | `milestone_status` vÃ  `record_status` Ä‘á»™c láº­p tuyá»‡t Ä‘á»‘i | 100% â€” khÃ´ng láº§n update nÃ o ghi chÃ©o cá»™t | Unit test disambiguation (Â§13) | ADR-BABY-006 |
+| Consistency | `baby_id` FK luÃ´n resolve Ä‘Æ°á»£c `BabyProfile` | 100% | FK constraint `development_milestones_baby_id_fkey` | â€” |
 
 ### 4.3. Security
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| Access control | Strict ownership guard (không care group) | 100% requests kiểm tra qua `canManage()` | Unit + security test | BR-RBAC, ADR-BABY-007 |
-| Encryption in transit | TLS | TLS 1.3+ | SSL Labs scan | — |
+| Access control | Strict ownership guard (khÃ´ng care group) | 100% requests kiá»ƒm tra qua `canManage()` | Unit + security test | BR-RBAC, ADR-BABY-007 |
+| Encryption in transit | TLS | TLS 1.3+ | SSL Labs scan | â€” |
 
 ### 4.4. Scalability & Capacity Planning
 
-Tải dự kiến thấp: mỗi baby thường có < 50 milestone record trong 2 năm đầu đời, update tần suất "Regular" theo SRS (không phải "Frequent"). Endpoint single-row PATCH theo PK — không cần pagination/caching riêng.
+Táº£i dá»± kiáº¿n tháº¥p: má»—i baby thÆ°á»ng cÃ³ < 50 milestone record trong 2 nÄƒm Ä‘áº§u Ä‘á»i, update táº§n suáº¥t "Regular" theo SRS (khÃ´ng pháº£i "Frequent"). Endpoint single-row PATCH theo PK â€” khÃ´ng cáº§n pagination/caching riÃªng.
 
 ---
 
-## 5. Static Modeling (Mô hình Tĩnh)
+## 5. Static Modeling (MÃ´ hÃ¬nh TÄ©nh)
 
 ### 5.1. Class Diagram (PlantUML)
 
@@ -323,13 +324,13 @@ DevelopmentMilestone *-- MilestoneRecordStatus
 
 ### 5.2. Data Structure (Flyway SQL Migration)
 
-> **CareBridge rule:** `V1__init_schema.sql` là baseline oracle. `development_milestones` đã tồn tại (dòng 635-645) nhưng KHÔNG có bất kỳ cột status nào → migration mới bắt buộc.
+> **CareBridge rule:** `V1__init_schema.sql` lÃ  baseline oracle. `development_milestones` Ä‘Ã£ tá»“n táº¡i (dÃ²ng 635-645) nhÆ°ng KHÃ”NG cÃ³ báº¥t ká»³ cá»™t status nÃ o â†’ migration má»›i báº¯t buá»™c.
 
-Tạo file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260707120000__add_development_milestone_status_columns.sql`
+Táº¡o file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260707120000__add_development_milestone_status_columns.sql`
 
 ```sql
 -- UC-196 Update Development Milestone / UC-197 Delete Development Milestone
--- Xem ADR-BABY-006 (UC196 TDS §3) cho lý do tách 2 cột độc lập.
+-- Xem ADR-BABY-006 (UC196 TDS Â§3) cho lÃ½ do tÃ¡ch 2 cá»™t Ä‘á»™c láº­p.
 ALTER TABLE public.development_milestones
     ADD COLUMN IF NOT EXISTS milestone_status VARCHAR(20) NOT NULL DEFAULT 'ACHIEVED';
 
@@ -340,14 +341,14 @@ CREATE INDEX IF NOT EXISTS idx_development_milestones_record_status
     ON public.development_milestones USING btree (record_status);
 ```
 
-> **Quy tắc đặt tên:** snake_case cho SQL DDL — nhất quán với toàn bộ `V1__init_schema.sql`.
-> **Migration version:** `V20260707120000` — theo dải version được chỉ định cho batch này (`V20260707120000`+, tránh dải `090000/100000/110000/130000` đã dùng cho batch khác).
+> **Quy táº¯c Ä‘áº·t tÃªn:** snake_case cho SQL DDL â€” nháº¥t quÃ¡n vá»›i toÃ n bá»™ `V1__init_schema.sql`.
+> **Migration version:** `V20260707120000` â€” theo dáº£i version Ä‘Æ°á»£c chá»‰ Ä‘á»‹nh cho batch nÃ y (`V20260707120000`+, trÃ¡nh dáº£i `090000/100000/110000/130000` Ä‘Ã£ dÃ¹ng cho batch khÃ¡c).
 
 ---
 
-## 6. Dynamic Modeling (Mô hình Động)
+## 6. Dynamic Modeling (MÃ´ hÃ¬nh Äá»™ng)
 
-### 6.1. Sequence Diagram — Happy Path (PlantUML)
+### 6.1. Sequence Diagram â€” Happy Path (PlantUML)
 
 ```plantuml
 @startuml UpdateDevelopmentMilestone_HappyPath
@@ -372,7 +373,7 @@ MRepo -> DB : SELECT * FROM development_milestones WHERE milestone_id=?
 DB --> MRepo : DevelopmentMilestone row
 MRepo --> Service : Optional<DevelopmentMilestone>
 
-Service -> Service : verify recordStatus == ACTIVE (nếu DELETED -> 404 MILESTONE-001)
+Service -> Service : verify recordStatus == ACTIVE (náº¿u DELETED -> 404 MILESTONE-001)
 
 Service -> PRepo : findById(milestone.getBabyId())
 PRepo -> DB : SELECT * FROM baby_profiles WHERE baby_id=?
@@ -383,7 +384,7 @@ Service -> Policy : canManage(profile, callerId)
 Policy --> Service : true
 
 Service -> Service : validate request (>=1 field present;\nif status=ACHIEVED requires achievedDate)
-Service -> Service : apply partial update ONLY to\nachievedDate/note/milestoneStatus\n(recordStatus untouched — ADR-BABY-006)
+Service -> Service : apply partial update ONLY to\nachievedDate/note/milestoneStatus\n(recordStatus untouched â€” ADR-BABY-006)
 Service -> MRepo : save(milestone)
 MRepo -> DB : UPDATE development_milestones SET ... updated_at=now()
 DB --> MRepo : updated row
@@ -397,7 +398,7 @@ deactivate Controller
 @enduml
 ```
 
-### 6.2. Sequence Diagram — Error Path (PlantUML)
+### 6.2. Sequence Diagram â€” Error Path (PlantUML)
 
 ```plantuml
 @startuml UpdateDevelopmentMilestone_ErrorPath
@@ -429,13 +430,13 @@ note over Service
   Alternative: recordStatus == DELETED (post-UC197) -> BusinessException(404, "MILESTONE-001")
   Alternative: empty request body -> BusinessException(400, "MILESTONE-003")
   Alternative: status=ACHIEVED but achievedDate null (existing AND new) -> BusinessException(400, "MILESTONE-003")
-  IMPORTANT: canManage() dùng strict ownership — care group member ACCEPTED
-  vẫn bị 403 ở đây, khác với canView() ở UC192/UC194 (ADR-BABY-007)
+  IMPORTANT: canManage() dÃ¹ng strict ownership â€” care group member ACCEPTED
+  váº«n bá»‹ 403 á»Ÿ Ä‘Ã¢y, khÃ¡c vá»›i canView() á»Ÿ UC192/UC194 (ADR-BABY-007)
 end note
 @enduml
 ```
 
-### 6.3. State Machine — `milestoneStatus` (achievement progress)
+### 6.3. State Machine â€” `milestoneStatus` (achievement progress)
 
 ```plantuml
 @startuml UpdateDevelopmentMilestone_StateMachine
@@ -443,37 +444,37 @@ skinparam backgroundColor #FAFAFA
 skinparam StateBackgroundColor #D5E8F0
 skinparam StateBorderColor #2E75B6
 
-[*] --> PENDING : milestone tạo mới, chưa có achievedDate
+[*] --> PENDING : milestone táº¡o má»›i, chÆ°a cÃ³ achievedDate
 
 PENDING --> ACHIEVED : Mother set achievedDate + status=ACHIEVED (UC-196)
 PENDING --> DELAYED  : Mother set status=DELAYED (UC-196)
 DELAYED --> ACHIEVED : Mother set achievedDate + status=ACHIEVED (UC-196)
-ACHIEVED --> PENDING : Mother sửa lại nếu ghi nhầm (UC-196, edge case)
+ACHIEVED --> PENDING : Mother sá»­a láº¡i náº¿u ghi nháº§m (UC-196, edge case)
 
 note right of ACHIEVED
-  Invariant: milestoneStatus KHÔNG BAO GIỜ được set
-  bởi UC-197 (Delete) — chỉ UC-196 được ghi field này.
+  Invariant: milestoneStatus KHÃ”NG BAO GIá»œ Ä‘Æ°á»£c set
+  bá»Ÿi UC-197 (Delete) â€” chá»‰ UC-196 Ä‘Æ°á»£c ghi field nÃ y.
   ADR-BABY-006.
 end note
 
 @enduml
 ```
 
-> **⚠️ Invariant bất biến:** `recordStatus` (ACTIVE/DELETED) là một FSM hoàn toàn tách biệt, chỉ chuyển `ACTIVE → DELETED` một chiều, và chỉ được thao tác bởi UC-197 (xem UC197 TDS §6.3). Không có transition nào giữa `milestoneStatus` và `recordStatus`.
+> **âš ï¸ Invariant báº¥t biáº¿n:** `recordStatus` (ACTIVE/DELETED) lÃ  má»™t FSM hoÃ n toÃ n tÃ¡ch biá»‡t, chá»‰ chuyá»ƒn `ACTIVE â†’ DELETED` má»™t chiá»u, vÃ  chá»‰ Ä‘Æ°á»£c thao tÃ¡c bá»Ÿi UC-197 (xem UC197 TDS Â§6.3). KhÃ´ng cÃ³ transition nÃ o giá»¯a `milestoneStatus` vÃ  `recordStatus`.
 
 ---
 
 ## 7. Domain Event Catalog
 
-### 7.1. Events Published (Phát ra)
+### 7.1. Events Published (PhÃ¡t ra)
 
 | Event Name | Trigger | Publisher | Subscriber(s) | Payload Schema | Async? |
 |------------|---------|-----------|---------------|----------------|--------|
-| `DevelopmentMilestoneUpdated` | Sau khi `updateMilestone()` commit thành công | `DevelopmentMilestoneServiceImpl` | `audit` | `DevelopmentMilestoneUpdatedEvent.java` | No (đồng bộ, nhất quán với `AuditService.log()` pattern hiện có trong `BabyServiceImpl`) |
+| `DevelopmentMilestoneUpdated` | Sau khi `updateMilestone()` commit thÃ nh cÃ´ng | `DevelopmentMilestoneServiceImpl` | `audit` | `DevelopmentMilestoneUpdatedEvent.java` | No (Ä‘á»“ng bá»™, nháº¥t quÃ¡n vá»›i `AuditService.log()` pattern hiá»‡n cÃ³ trong `BabyServiceImpl`) |
 
-### 7.2. Events Consumed (Tiêu thụ)
+### 7.2. Events Consumed (TiÃªu thá»¥)
 
-Không có — module này không tiêu thụ event nào.
+KhÃ´ng cÃ³ â€” module nÃ y khÃ´ng tiÃªu thá»¥ event nÃ o.
 
 ### 7.3. Payload Schema
 
@@ -490,8 +491,8 @@ public record DevelopmentMilestoneUpdatedEvent(
     public record Payload(
         UUID   milestoneId,
         UUID   babyId,
-        String oldMilestoneStatus,  // nullable nếu status không đổi
-        String newMilestoneStatus,  // nullable nếu status không đổi
+        String oldMilestoneStatus,  // nullable náº¿u status khÃ´ng Ä‘á»•i
+        String newMilestoneStatus,  // nullable náº¿u status khÃ´ng Ä‘á»•i
         UUID   updatedByUserId
     ) {}
 
@@ -502,27 +503,27 @@ public record DevelopmentMilestoneUpdatedEvent(
 }
 ```
 
-> **Ghi chú triển khai:** Ở lần triển khai đầu, event này được emit thông qua `AuditService.log(AuditAction.DEVELOPMENT_MILESTONE_UPDATED, ...)` (cần bổ sung giá trị enum mới `DEVELOPMENT_MILESTONE_UPDATED` vào `AuditAction.java` hiện có — additive change, không sửa giá trị cũ). Việc phát Spring `ApplicationEvent` riêng là **Open item** — xem Open Items cuối tài liệu.
+> **Ghi chÃº triá»ƒn khai:** á»ž láº§n triá»ƒn khai Ä‘áº§u, event nÃ y Ä‘Æ°á»£c emit thÃ´ng qua `AuditService.log(AuditAction.DEVELOPMENT_MILESTONE_UPDATED, ...)` (cáº§n bá»• sung giÃ¡ trá»‹ enum má»›i `DEVELOPMENT_MILESTONE_UPDATED` vÃ o `AuditAction.java` hiá»‡n cÃ³ â€” additive change, khÃ´ng sá»­a giÃ¡ trá»‹ cÅ©). Viá»‡c phÃ¡t Spring `ApplicationEvent` riÃªng lÃ  **Open item** â€” xem Open Items cuá»‘i tÃ i liá»‡u.
 
 ---
 
-## 8. Interface Specification (Đặc tả Giao diện)
+## 8. Interface Specification (Äáº·c táº£ Giao diá»‡n)
 
 ### 8.1. Service Interface
 
 ```java
-// UpdateDevelopmentMilestoneRequest.java — Input DTO
+// UpdateDevelopmentMilestoneRequest.java â€” Input DTO
 // @version 1.0
 public class UpdateDevelopmentMilestoneRequest {
     @PastOrPresent
-    private LocalDate achievedDate;    // optional — null nếu không đổi
+    private LocalDate achievedDate;    // optional â€” null náº¿u khÃ´ng Ä‘á»•i
     @Size(max = 2000)
-    private String note;               // optional — null nếu không đổi
-    private MilestoneAchievementStatus status; // optional — PENDING/ACHIEVED/DELAYED, null nếu không đổi
+    private String note;               // optional â€” null náº¿u khÃ´ng Ä‘á»•i
+    private MilestoneAchievementStatus status; // optional â€” PENDING/ACHIEVED/DELAYED, null náº¿u khÃ´ng Ä‘á»•i
     // getters/setters; @AssertTrue custom validator: at-least-one-field-present
 }
 
-// DevelopmentMilestoneDetailResponse.java — Output DTO
+// DevelopmentMilestoneDetailResponse.java â€” Output DTO
 public class DevelopmentMilestoneDetailResponse {
     private UUID id;
     private UUID babyId;
@@ -531,21 +532,21 @@ public class DevelopmentMilestoneDetailResponse {
     private String note;
     private String sourceType;
     private UUID recordedBy;
-    private String status;       // maps to entity.milestoneStatus — KHÔNG lộ recordStatus ra response
+    private String status;       // maps to entity.milestoneStatus â€” KHÃ”NG lá»™ recordStatus ra response
     private Instant createdAt;
     private Instant updatedAt;
 }
 
-// IDevelopmentMilestoneService.java — Service Contract
+// IDevelopmentMilestoneService.java â€” Service Contract
 // @version 1.0
 public interface IDevelopmentMilestoneService {
     /**
-     * @throws BusinessException (MILESTONE-001/404) khi milestoneId không tồn tại,
-     *         HOẶC recordStatus == DELETED (post-UC197, treat as not-found — ADR-BABY-006)
-     * @throws BusinessException (MILESTONE-002/403) khi caller không phải account owner
-     *         (canManage() strict ownership — ADR-BABY-007)
-     * @throws BusinessException (MILESTONE-003/400) khi request rỗng (0 field) HOẶC
-     *         status=ACHIEVED mà achievedDate (cũ lẫn mới) đều null
+     * @throws BusinessException (MILESTONE-001/404) khi milestoneId khÃ´ng tá»“n táº¡i,
+     *         HOáº¶C recordStatus == DELETED (post-UC197, treat as not-found â€” ADR-BABY-006)
+     * @throws BusinessException (MILESTONE-002/403) khi caller khÃ´ng pháº£i account owner
+     *         (canManage() strict ownership â€” ADR-BABY-007)
+     * @throws BusinessException (MILESTONE-003/400) khi request rá»—ng (0 field) HOáº¶C
+     *         status=ACHIEVED mÃ  achievedDate (cÅ© láº«n má»›i) Ä‘á»u null
      */
     DevelopmentMilestoneDetailResponse updateMilestone(
             UUID milestoneId, UpdateDevelopmentMilestoneRequest request, UUID callerId);
@@ -555,7 +556,7 @@ public interface IDevelopmentMilestoneService {
 ### 8.2. Entity & Repository Interface
 
 ```java
-// DevelopmentMilestone.java — new entity, package com.carebridge.backend.baby.entity
+// DevelopmentMilestone.java â€” new entity, package com.carebridge.backend.baby.entity
 // @version 1.0
 @Entity
 @Table(name = "development_milestones")
@@ -569,7 +570,7 @@ public class DevelopmentMilestone {
     private UUID babyId;
 
     @Column(name = "milestone_type", nullable = false, length = 80)
-    private String milestoneType;   // known values per UC37 ADR-BABY-007-001: ROLLING, CRAWLING, WALKING, SPEAKING, TEETHING, WEANING, FIRST_SMILE, SITTING, STANDING (validated BABY-063 on write); String, NOT @Enumerated — update path stays permissive, same rationale as UC194 OI-1
+    private String milestoneType;   // known values per UC37 ADR-BABY-007-001: ROLLING, CRAWLING, WALKING, SPEAKING, TEETHING, WEANING, FIRST_SMILE, SITTING, STANDING (validated BABY-063 on write); String, NOT @Enumerated â€” update path stays permissive, same rationale as UC194 OI-1
 
     @Column(name = "achieved_date")
     private LocalDate achievedDate;
@@ -583,12 +584,12 @@ public class DevelopmentMilestone {
     @Column(name = "recorded_by")
     private UUID recordedBy;
 
-    // ADR-BABY-006: achievement progress — CHỈ mutate bởi UC-196
+    // ADR-BABY-006: achievement progress â€” CHá»ˆ mutate bá»Ÿi UC-196
     @Enumerated(EnumType.STRING)
     @Column(name = "milestone_status", nullable = false, length = 20)
     private MilestoneAchievementStatus milestoneStatus;
 
-    // ADR-BABY-006: soft-delete lifecycle — CHỈ mutate bởi UC-197
+    // ADR-BABY-006: soft-delete lifecycle â€” CHá»ˆ mutate bá»Ÿi UC-197
     @Enumerated(EnumType.STRING)
     @Column(name = "record_status", nullable = false, length = 20)
     private MilestoneRecordStatus recordStatus;
@@ -611,7 +612,7 @@ public enum MilestoneRecordStatus { ACTIVE, DELETED }
 // DevelopmentMilestoneRepository.java
 // @version 1.0
 public interface DevelopmentMilestoneRepository extends JpaRepository<DevelopmentMilestone, UUID> {
-    // findById() kế thừa từ JpaRepository là đủ cho UC196/UC197 (single-row lookup theo PK).
+    // findById() káº¿ thá»«a tá»« JpaRepository lÃ  Ä‘á»§ cho UC196/UC197 (single-row lookup theo PK).
 }
 ```
 
@@ -625,7 +626,7 @@ public interface DevelopmentMilestoneRepository extends JpaRepository<Developmen
 |--------|------|------------|----------------|------------|-------------|
 | `PATCH` | `/api/v1/babies/{babyId}/milestones/{milestoneId}` | JWT Bearer | `ROLE_MOTHER` | 60/min | Yes |
 
-> **Path design note:** Nhất quán với `BabyController`'s `/api/v1/babies` base path (UC192) và `BabyDailyLogController`'s nested pattern (UC194). `babyId` trong path CHỈ dùng để routing — service KHÔNG tin `babyId` từ path cho authorization; ownership check luôn dựa trên `milestone.getBabyId()` đọc từ DB.
+> **Path design note:** Nháº¥t quÃ¡n vá»›i `BabyController`'s `/api/v1/babies` base path (UC192) vÃ  `BabyDailyLogController`'s nested pattern (UC194). `babyId` trong path CHá»ˆ dÃ¹ng Ä‘á»ƒ routing â€” service KHÃ”NG tin `babyId` tá»« path cho authorization; ownership check luÃ´n dá»±a trÃªn `milestone.getBabyId()` Ä‘á»c tá»« DB.
 
 ### 9.2. Request / Response Schemas
 
@@ -637,16 +638,16 @@ Authorization: Bearer <JWT_TOKEN>
 Content-Type: application/json
 ```
 
-**Request Body (partial — mọi field optional, tối thiểu 1 field):**
+**Request Body (partial â€” má»i field optional, tá»‘i thiá»ƒu 1 field):**
 ```json
 {
   "achievedDate": "2026-07-01",
-  "note": "Bé đã biết bò thành thạo",
+  "note": "BÃ© Ä‘Ã£ biáº¿t bÃ² thÃ nh tháº¡o",
   "status": "ACHIEVED"
 }
 ```
 
-**Response — 200 OK:**
+**Response â€” 200 OK:**
 ```json
 {
   "success": true,
@@ -655,7 +656,7 @@ Content-Type: application/json
     "babyId": "660e8400-e29b-41d4-a716-446655440001",
     "milestoneType": "crawling",
     "achievedDate": "2026-07-01",
-    "note": "Bé đã biết bò thành thạo",
+    "note": "BÃ© Ä‘Ã£ biáº¿t bÃ² thÃ nh tháº¡o",
     "sourceType": "manual",
     "recordedBy": "770e8400-e29b-41d4-a716-446655440002",
     "status": "ACHIEVED",
@@ -665,21 +666,21 @@ Content-Type: application/json
 }
 ```
 
-**Response — 400 Bad Request:**
+**Response â€” 400 Bad Request:**
 ```json
 {
   "error": { "code": "MILESTONE-003", "message": "At least one field (achievedDate, note, status) must be provided, and status=ACHIEVED requires achievedDate" }
 }
 ```
 
-**Response — 403 Forbidden:**
+**Response â€” 403 Forbidden:**
 ```json
 {
   "error": { "code": "MILESTONE-002", "message": "Access denied to update this development milestone" }
 }
 ```
 
-**Response — 404 Not Found:**
+**Response â€” 404 Not Found:**
 ```json
 {
   "error": { "code": "MILESTONE-001", "message": "Development milestone not found" }
@@ -688,50 +689,50 @@ Content-Type: application/json
 
 ---
 
-## 10. Bảng mã lỗi (Error Codes)
+## 10. Báº£ng mÃ£ lá»—i (Error Codes)
 
-> Prefix `MILESTONE-` dùng riêng cho `development_milestones` module — tránh đụng `BABY-xxx` (UC192) và `DAILYLOG-xxx` (UC194).
+> Prefix `MILESTONE-` dÃ¹ng riÃªng cho `development_milestones` module â€” trÃ¡nh Ä‘á»¥ng `BABY-xxx` (UC192) vÃ  `DAILYLOG-xxx` (UC194).
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `MILESTONE-001` | 404 | Development milestone not found | Không tìm thấy mốc phát triển | `milestoneId` không tồn tại HOẶC `recordStatus = DELETED` (post-UC197) HOẶC `baby_id` FK không resolve được `BabyProfile` (orphan, defense-in-depth) |
-| `MILESTONE-002` | 403 | Access denied to update this development milestone | Không đủ quyền cập nhật mốc phát triển | Caller KHÔNG phải account owner (`canManage()` false — strict, kể cả care group ACCEPTED member) |
-| `MILESTONE-003` | 400 | Invalid update request | Yêu cầu cập nhật không hợp lệ | Request rỗng (0 field) HOẶC `status=ACHIEVED` mà `achievedDate` (cũ và mới) đều null HOẶC `status` không thuộc enum hợp lệ |
-| `MILESTONE-004` | 500 | Internal error | Lỗi hệ thống | Unexpected DB error |
+| `MILESTONE-001` | 404 | Development milestone not found | KhÃ´ng tÃ¬m tháº¥y má»‘c phÃ¡t triá»ƒn | `milestoneId` khÃ´ng tá»“n táº¡i HOáº¶C `recordStatus = DELETED` (post-UC197) HOáº¶C `baby_id` FK khÃ´ng resolve Ä‘Æ°á»£c `BabyProfile` (orphan, defense-in-depth) |
+| `MILESTONE-002` | 403 | Access denied to update this development milestone | KhÃ´ng Ä‘á»§ quyá»n cáº­p nháº­t má»‘c phÃ¡t triá»ƒn | Caller KHÃ”NG pháº£i account owner (`canManage()` false â€” strict, ká»ƒ cáº£ care group ACCEPTED member) |
+| `MILESTONE-003` | 400 | Invalid update request | YÃªu cáº§u cáº­p nháº­t khÃ´ng há»£p lá»‡ | Request rá»—ng (0 field) HOáº¶C `status=ACHIEVED` mÃ  `achievedDate` (cÅ© vÃ  má»›i) Ä‘á»u null HOáº¶C `status` khÃ´ng thuá»™c enum há»£p lá»‡ |
+| `MILESTONE-004` | 500 | Internal error | Lá»—i há»‡ thá»‘ng | Unexpected DB error |
 
 ---
 
-## 11. Quy trình Triển khai (Step-by-Step)
+## 11. Quy trÃ¬nh Triá»ƒn khai (Step-by-Step)
 
 ### 11.1. Prerequisites
-- [ ] TDS này (UC196) và TDS UC197 (companion) đều Approved
-- [ ] `BabyProfileRepository`, `BabyAccessPolicy` (UC192) đã có sẵn trong `main`
+- [ ] TDS nÃ y (UC196) vÃ  TDS UC197 (companion) Ä‘á»u Approved
+- [ ] `BabyProfileRepository`, `BabyAccessPolicy` (UC192) Ä‘Ã£ cÃ³ sáºµn trong `main`
 
 ### 11.2. Pre-Migration Checklist
-- [ ] Backup DB dev/staging trước khi chạy `V20260707120000`
-- [ ] Xác nhận UC197 KHÔNG chạy migration riêng trùng cột (UC197 tái sử dụng chung migration này — xem UC197 TDS §5.2)
+- [ ] Backup DB dev/staging trÆ°á»›c khi cháº¡y `V20260707120000`
+- [ ] XÃ¡c nháº­n UC197 KHÃ”NG cháº¡y migration riÃªng trÃ¹ng cá»™t (UC197 tÃ¡i sá»­ dá»¥ng chung migration nÃ y â€” xem UC197 TDS Â§5.2)
 
 ### 11.3. Implementation Steps
 
-#### Chặng 1 — Migration
-Tạo `V20260707120000__add_development_milestone_status_columns.sql` (§5.2). Chạy `./mvnw flyway:migrate`.
+#### Cháº·ng 1 â€” Migration
+Táº¡o `V20260707120000__add_development_milestone_status_columns.sql` (Â§5.2). Cháº¡y `./mvnw flyway:migrate`.
 
-#### Chặng 2 — Entity + Enums + Repository
-Tạo `DevelopmentMilestone.java`, `MilestoneAchievementStatus.java`, `MilestoneRecordStatus.java`, `DevelopmentMilestoneRepository.java` trong `com.carebridge.backend.baby.{entity,repository}`.
+#### Cháº·ng 2 â€” Entity + Enums + Repository
+Táº¡o `DevelopmentMilestone.java`, `MilestoneAchievementStatus.java`, `MilestoneRecordStatus.java`, `DevelopmentMilestoneRepository.java` trong `com.carebridge.backend.baby.{entity,repository}`.
 
-#### Chặng 3 — Policy extension
-Bổ sung method `canManage(BabyProfile, UUID)` vào `BabyAccessPolicy.java` hiện có (KHÔNG sửa `canView()`).
+#### Cháº·ng 3 â€” Policy extension
+Bá»• sung method `canManage(BabyProfile, UUID)` vÃ o `BabyAccessPolicy.java` hiá»‡n cÃ³ (KHÃ”NG sá»­a `canView()`).
 
-#### Chặng 4 — Service + DTO
-Tạo `IDevelopmentMilestoneService.java`, `DevelopmentMilestoneServiceImpl.java`, `UpdateDevelopmentMilestoneRequest.java`, `DevelopmentMilestoneDetailResponse.java` trong `com.carebridge.backend.baby.{service, service.impl, dto}`.
+#### Cháº·ng 4 â€” Service + DTO
+Táº¡o `IDevelopmentMilestoneService.java`, `DevelopmentMilestoneServiceImpl.java`, `UpdateDevelopmentMilestoneRequest.java`, `DevelopmentMilestoneDetailResponse.java` trong `com.carebridge.backend.baby.{service, service.impl, dto}`.
 
-#### Chặng 5 — Controller
-Tạo `DevelopmentMilestoneController.java` (`@RestController`, base path `/api/v1/babies/{babyId}/milestones`), method `updateMilestone` (`@PatchMapping("/{milestoneId}")`).
+#### Cháº·ng 5 â€” Controller
+Táº¡o `DevelopmentMilestoneController.java` (`@RestController`, base path `/api/v1/babies/{babyId}/milestones`), method `updateMilestone` (`@PatchMapping("/{milestoneId}")`).
 
-#### Chặng 6 — Audit
-Bổ sung `DEVELOPMENT_MILESTONE_UPDATED` vào `AuditAction.java` (additive).
+#### Cháº·ng 6 â€” Audit
+Bá»• sung `DEVELOPMENT_MILESTONE_UPDATED` vÃ o `AuditAction.java` (additive).
 
-#### Chặng 7 — Verification sau deploy
+#### Cháº·ng 7 â€” Verification sau deploy
 ```bash
 curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId] \
   -H "Authorization: Bearer [JWT_MOTHER_TOKEN]" \
@@ -742,19 +743,19 @@ curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId] \
 
 ### 11.4. Deployment Checklist
 - [ ] `./mvnw test` xanh
-- [ ] Disambiguation test PASS: update status KHÔNG đổi `record_status` trong DB
-- [ ] IDOR test (non-owner, kể cả care group ACCEPTED → 403) pass
+- [ ] Disambiguation test PASS: update status KHÃ”NG Ä‘á»•i `record_status` trong DB
+- [ ] IDOR test (non-owner, ká»ƒ cáº£ care group ACCEPTED â†’ 403) pass
 
 ---
 
 ## 12. Rollback & Incident Runbook
 
-### 12.1. Điều kiện kích hoạt Rollback
+### 12.1. Äiá»u kiá»‡n kÃ­ch hoáº¡t Rollback
 
-| Điều kiện | Ngưỡng | Người quyết định |
+| Äiá»u kiá»‡n | NgÆ°á»¡ng | NgÆ°á»i quyáº¿t Ä‘á»‹nh |
 |-----------|--------|------------------|
-| Error rate tăng đột biến | > 5% trong 5 phút | On-call Engineer |
-| Phát hiện `milestone_status` và `record_status` bị ghi chéo (data corruption) | Bất kỳ case nào | Tech Lead + DPO |
+| Error rate tÄƒng Ä‘á»™t biáº¿n | > 5% trong 5 phÃºt | On-call Engineer |
+| PhÃ¡t hiá»‡n `milestone_status` vÃ  `record_status` bá»‹ ghi chÃ©o (data corruption) | Báº¥t ká»³ case nÃ o | Tech Lead + DPO |
 
 ### 12.2. Rollback Procedure
 
@@ -772,71 +773,71 @@ kubectl rollout status deployment/carebridge-api
 curl -X GET https://[host]/api/v1/health
 ```
 
-> ⚠️ **Cảnh báo:** KHÔNG chạy `DROP COLUMN` trên production nếu UC197 đã deploy song song và có dữ liệu `record_status = DELETED` — sẽ mất thông tin xoá mềm. Coordinate rollback giữa UC196/UC197 trước khi thực thi.
+> âš ï¸ **Cáº£nh bÃ¡o:** KHÃ”NG cháº¡y `DROP COLUMN` trÃªn production náº¿u UC197 Ä‘Ã£ deploy song song vÃ  cÃ³ dá»¯ liá»‡u `record_status = DELETED` â€” sáº½ máº¥t thÃ´ng tin xoÃ¡ má»m. Coordinate rollback giá»¯a UC196/UC197 trÆ°á»›c khi thá»±c thi.
 
 ### 12.3. Notification Protocol
 
-| Thời điểm | Người nhận | Kênh |
+| Thá»i Ä‘iá»ƒm | NgÆ°á»i nháº­n | KÃªnh |
 |-----------|------------|------|
-| Ngay khi phát hiện data corruption giữa 2 cột status | Tech Lead + DPO | Slack `#incident` + Email |
+| Ngay khi phÃ¡t hiá»‡n data corruption giá»¯a 2 cá»™t status | Tech Lead + DPO | Slack `#incident` + Email |
 
 ---
 
-## 13. Kịch bản Kiểm thử Chi tiết
+## 13. Ká»‹ch báº£n Kiá»ƒm thá»­ Chi tiáº¿t
 
-> **Policy (EDS v2.0):** Mọi test scenario dùng dữ liệu `SYNTHETIC`.
+> **Policy (EDS v2.0):** Má»i test scenario dÃ¹ng dá»¯ liá»‡u `SYNTHETIC`.
 
 ```gherkin
 Feature: Update Development Milestone
   Background:
     Given test data classification: SYNTHETIC
-    And MOTHER-001 là owner của BABY-001
-    And MILESTONE-001 thuộc BABY-001 với milestoneStatus=PENDING, recordStatus=ACTIVE
+    And MOTHER-001 lÃ  owner cá»§a BABY-001
+    And MILESTONE-001 thuá»™c BABY-001 vá»›i milestoneStatus=PENDING, recordStatus=ACTIVE
 
-  Scenario: Owner cập nhật status → ACHIEVED (kèm achievedDate) → 200
+  Scenario: Owner cáº­p nháº­t status â†’ ACHIEVED (kÃ¨m achievedDate) â†’ 200
     When updateMilestone(MILESTONE-001, {status: ACHIEVED, achievedDate: 2026-07-01}, MOTHER-001)
-    Then response 200 với status=ACHIEVED, achievedDate=2026-07-01
+    Then response 200 vá»›i status=ACHIEVED, achievedDate=2026-07-01
 
-  Scenario: Owner cập nhật chỉ note → 200
-    When updateMilestone(MILESTONE-001, {note: "cập nhật ghi chú"}, MOTHER-001)
-    Then response 200, milestoneStatus không đổi
+  Scenario: Owner cáº­p nháº­t chá»‰ note â†’ 200
+    When updateMilestone(MILESTONE-001, {note: "cáº­p nháº­t ghi chÃº"}, MOTHER-001)
+    Then response 200, milestoneStatus khÃ´ng Ä‘á»•i
 
-  Scenario: Care group member (ACCEPTED, non-owner) → 403
-    Given MOTHER-002 là ACCEPTED member trong care group của BABY-001 (không phải owner)
+  Scenario: Care group member (ACCEPTED, non-owner) â†’ 403
+    Given MOTHER-002 lÃ  ACCEPTED member trong care group cá»§a BABY-001 (khÃ´ng pháº£i owner)
     When updateMilestone(MILESTONE-001, {note: "x"}, MOTHER-002)
     Then throws BusinessException MILESTONE-002 (403)
 
-  Scenario: Non-owner, non-member → 403
-    Given MOTHER-003 KHÔNG liên quan BABY-001
+  Scenario: Non-owner, non-member â†’ 403
+    Given MOTHER-003 KHÃ”NG liÃªn quan BABY-001
     When updateMilestone(MILESTONE-001, {note: "x"}, MOTHER-003)
     Then throws BusinessException MILESTONE-002 (403)
 
-  Scenario: Milestone không tồn tại → 404
+  Scenario: Milestone khÃ´ng tá»“n táº¡i â†’ 404
     When updateMilestone(NONEXISTENT, {note: "x"}, MOTHER-001)
     Then throws BusinessException MILESTONE-001 (404)
 
-  Scenario: Milestone đã soft-deleted (post-UC197) → 404
-    Given MILESTONE-002 thuộc BABY-001 với recordStatus=DELETED
+  Scenario: Milestone Ä‘Ã£ soft-deleted (post-UC197) â†’ 404
+    Given MILESTONE-002 thuá»™c BABY-001 vá»›i recordStatus=DELETED
     When updateMilestone(MILESTONE-002, {note: "x"}, MOTHER-001)
     Then throws BusinessException MILESTONE-001 (404)
 
-  Scenario: Request rỗng → 400
+  Scenario: Request rá»—ng â†’ 400
     When updateMilestone(MILESTONE-001, {}, MOTHER-001)
     Then throws BusinessException MILESTONE-003 (400)
 
-  Scenario: status=ACHIEVED không có achievedDate (cũ lẫn mới đều null) → 400
-    Given MILESTONE-003 thuộc BABY-001 với achievedDate=null, milestoneStatus=PENDING
+  Scenario: status=ACHIEVED khÃ´ng cÃ³ achievedDate (cÅ© láº«n má»›i Ä‘á»u null) â†’ 400
+    Given MILESTONE-003 thuá»™c BABY-001 vá»›i achievedDate=null, milestoneStatus=PENDING
     When updateMilestone(MILESTONE-003, {status: ACHIEVED}, MOTHER-001)
     Then throws BusinessException MILESTONE-003 (400)
 
-  Scenario: [DISAMBIGUATION — CRITICAL] Update status KHÔNG đụng đến recordStatus
+  Scenario: [DISAMBIGUATION â€” CRITICAL] Update status KHÃ”NG Ä‘á»¥ng Ä‘áº¿n recordStatus
     When updateMilestone(MILESTONE-001, {status: DELAYED}, MOTHER-001)
-    Then DB row có milestone_status=DELAYED VÀ record_status vẫn=ACTIVE (không đổi)
+    Then DB row cÃ³ milestone_status=DELAYED VÃ€ record_status váº«n=ACTIVE (khÃ´ng Ä‘á»•i)
 ```
 
 ---
 
-## 14. Phương pháp Xác minh
+## 14. PhÆ°Æ¡ng phÃ¡p XÃ¡c minh
 
 ### 14.1. Database Inspection
 
@@ -868,19 +869,19 @@ curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId] \
 curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId] \
   -H "Authorization: Bearer [CARE_GROUP_MEMBER_JWT]" -H "Content-Type: application/json" \
   -d '{"note":"x"}'
-# Expected: 403 (strict ownership — different from UC192/UC194 canView() behavior)
+# Expected: 403 (strict ownership â€” different from UC192/UC194 canView() behavior)
 ```
 
 ---
 
-## 15. Mẫu thử thực tế (API Verification Samples)
+## 15. Máº«u thá»­ thá»±c táº¿ (API Verification Samples)
 
 ### 15.1. Happy Path
 
 ```bash
 curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId] \
   -H "Authorization: Bearer [JWT_MOTHER_TOKEN]" -H "Content-Type: application/json" \
-  -d '{"status":"ACHIEVED","achievedDate":"2026-07-01","note":"Bé đã biết bò"}'
+  -d '{"status":"ACHIEVED","achievedDate":"2026-07-01","note":"BÃ© Ä‘Ã£ biáº¿t bÃ²"}'
 # Expected: 200 {id, babyId, milestoneType, achievedDate, status: "ACHIEVED", ...}
 ```
 
@@ -905,16 +906,16 @@ curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId]
 
 ---
 
-## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
+## 16. Báº£ng tá»•ng há»£p phÃ¢n quyá»n (Authorization Matrix)
 
 | Endpoint | `GUEST` | `MOTHER (owner)` | `MOTHER (care member, ACCEPTED)` | `EXPERT` | `ADMIN` |
 |----------|---------|-------------------|-----------------------------------|----------|---------|
-| `PATCH /api/v1/babies/{babyId}/milestones/{milestoneId}` | ❌ (401) | ✅ | ❌ (403) | ❌ (403) | ✅ All |
+| `PATCH /api/v1/babies/{babyId}/milestones/{milestoneId}` | âŒ (401) | âœ… | âŒ (403) | âŒ (403) | âœ… All |
 
-**Chú thích:**
-- Owner: `baby_profiles.owner_user_id` == JWT subject (via `development_milestones.baby_id` FK) — kiểm tra bằng `canManage()` **strict** (ADR-BABY-007).
-- Care member (kể cả ACCEPTED): **KHÔNG** được sửa — khác với UC192/UC194 vốn cho phép xem. Đây là khác biệt cố ý, có ADR.
-- Expert: không có quyền, ngoài phạm vi UC.
+**ChÃº thÃ­ch:**
+- Owner: `baby_profiles.owner_user_id` == JWT subject (via `development_milestones.baby_id` FK) â€” kiá»ƒm tra báº±ng `canManage()` **strict** (ADR-BABY-007).
+- Care member (ká»ƒ cáº£ ACCEPTED): **KHÃ”NG** Ä‘Æ°á»£c sá»­a â€” khÃ¡c vá»›i UC192/UC194 vá»‘n cho phÃ©p xem. ÄÃ¢y lÃ  khÃ¡c biá»‡t cá»‘ Ã½, cÃ³ ADR.
+- Expert: khÃ´ng cÃ³ quyá»n, ngoÃ i pháº¡m vi UC.
 
 ---
 
@@ -924,78 +925,78 @@ curl -X PATCH https://[host]/api/v1/babies/[babyId]/milestones/[milestoneId]
 
 | # | Constraint | Source | Last Verified |
 |---|-----------|--------|---------------|
-| C1 | `DevelopmentMilestoneServiceImpl.updateMilestone()` CHỈ được ghi vào field `milestoneStatus` — TUYỆT ĐỐI KHÔNG được set `recordStatus` | ADR-BABY-006 | 2026-07-03 |
-| C2 | Authorization PHẢI dùng `BabyAccessPolicy.canManage()` (strict ownership) — KHÔNG dùng `canView()` (vốn cho phép care group member) | ADR-BABY-007 | 2026-07-03 |
-| C3 | Nếu `recordStatus == DELETED`, trả 404 `MILESTONE-001` — KHÔNG trả 403, KHÔNG cho phép "hồi sinh" record đã xoá mềm qua update | ADR-BABY-006 | 2026-07-03 |
-| C4 | `babyId` trong URL path CHỈ dùng để routing — authorization luôn dựa trên `milestone.getBabyId()` đọc từ DB | BR-RBAC | 2026-07-03 |
-| C5 | Request rỗng (0 field) hoặc `status=ACHIEVED` thiếu `achievedDate` (cả cũ và mới) PHẢI reject 400 `MILESTONE-003` | SRS §3.3.12.5 | 2026-07-03 |
+| C1 | `DevelopmentMilestoneServiceImpl.updateMilestone()` CHá»ˆ Ä‘Æ°á»£c ghi vÃ o field `milestoneStatus` â€” TUYá»†T Äá»I KHÃ”NG Ä‘Æ°á»£c set `recordStatus` | ADR-BABY-006 | 2026-07-03 |
+| C2 | Authorization PHáº¢I dÃ¹ng `BabyAccessPolicy.canManage()` (strict ownership) â€” KHÃ”NG dÃ¹ng `canView()` (vá»‘n cho phÃ©p care group member) | ADR-BABY-007 | 2026-07-03 |
+| C3 | Náº¿u `recordStatus == DELETED`, tráº£ 404 `MILESTONE-001` â€” KHÃ”NG tráº£ 403, KHÃ”NG cho phÃ©p "há»“i sinh" record Ä‘Ã£ xoÃ¡ má»m qua update | ADR-BABY-006 | 2026-07-03 |
+| C4 | `babyId` trong URL path CHá»ˆ dÃ¹ng Ä‘á»ƒ routing â€” authorization luÃ´n dá»±a trÃªn `milestone.getBabyId()` Ä‘á»c tá»« DB | BR-RBAC | 2026-07-03 |
+| C5 | Request rá»—ng (0 field) hoáº·c `status=ACHIEVED` thiáº¿u `achievedDate` (cáº£ cÅ© vÃ  má»›i) PHáº¢I reject 400 `MILESTONE-003` | SRS Â§3.3.12.5 | 2026-07-03 |
 
 ### 17.2 Constraint Injection Block
 
 ```
-[CONSTRAINT BLOCK — Module: UpdateDevelopmentMilestone (CB-BABY-IMP-004)]
-1. updateMilestone() CHỈ ghi vào entity field milestoneStatus — KHÔNG BAO GIỜ set recordStatus — ADR-BABY-006
-2. Authorization dùng babyAccessPolicy.canManage(profile, callerId) — strict ownership, KHÔNG dùng canView() — ADR-BABY-007
-3. recordStatus == DELETED -> 404 MILESTONE-001 (record coi như không tồn tại, không "hồi sinh" được qua update)
-4. babyId trong URL path KHÔNG dùng cho authorization — chỉ dùng để route; ownership dựa trên dữ liệu đọc từ DB
-5. Request rỗng hoặc status=ACHIEVED thiếu achievedDate -> 400 MILESTONE-003
+[CONSTRAINT BLOCK â€” Module: UpdateDevelopmentMilestone (CB-BABY-IMP-004)]
+1. updateMilestone() CHá»ˆ ghi vÃ o entity field milestoneStatus â€” KHÃ”NG BAO GIá»œ set recordStatus â€” ADR-BABY-006
+2. Authorization dÃ¹ng babyAccessPolicy.canManage(profile, callerId) â€” strict ownership, KHÃ”NG dÃ¹ng canView() â€” ADR-BABY-007
+3. recordStatus == DELETED -> 404 MILESTONE-001 (record coi nhÆ° khÃ´ng tá»“n táº¡i, khÃ´ng "há»“i sinh" Ä‘Æ°á»£c qua update)
+4. babyId trong URL path KHÃ”NG dÃ¹ng cho authorization â€” chá»‰ dÃ¹ng Ä‘á»ƒ route; ownership dá»±a trÃªn dá»¯ liá»‡u Ä‘á»c tá»« DB
+5. Request rá»—ng hoáº·c status=ACHIEVED thiáº¿u achievedDate -> 400 MILESTONE-003
 
 [CONTEXT BLOCK]
-- Bounded Context: baby (reuse UC192/UC194 package — com.carebridge.backend.baby)
+- Bounded Context: baby (reuse UC192/UC194 package â€” com.carebridge.backend.baby)
 - Data Classification: Sensitive-PII
-- Error codes: §10 Error Codes Table (prefix MILESTONE-, KHÔNG trùng BABY-xxx/DAILYLOG-xxx)
-- Auth matrix: §16 Authorization Matrix
-- Reused classes: BabyProfileRepository (UC192); BabyAccessPolicy.canView() giữ nguyên, CHỈ thêm method canManage() mới
-- Companion: UC197 Delete Development Milestone dùng chung entity/migration, xem UC197 TDS
+- Error codes: Â§10 Error Codes Table (prefix MILESTONE-, KHÃ”NG trÃ¹ng BABY-xxx/DAILYLOG-xxx)
+- Auth matrix: Â§16 Authorization Matrix
+- Reused classes: BabyProfileRepository (UC192); BabyAccessPolicy.canView() giá»¯ nguyÃªn, CHá»ˆ thÃªm method canManage() má»›i
+- Companion: UC197 Delete Development Milestone dÃ¹ng chung entity/migration, xem UC197 TDS
 ```
 
 ### 17.3 Constraint Quality Checklist
 
-- [x] Mỗi constraint traceable về ADR hoặc BR cụ thể
-- [x] Không có constraint generic
-- [x] Constraint block có ≥ 3 constraints cụ thể
+- [x] Má»—i constraint traceable vá» ADR hoáº·c BR cá»¥ thá»ƒ
+- [x] KhÃ´ng cÃ³ constraint generic
+- [x] Constraint block cÃ³ â‰¥ 3 constraints cá»¥ thá»ƒ
 
 ### 17.4 Anti-Pattern Detection
 
-| AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
+| AP-ID | Anti-Pattern | Dáº¥u hiá»‡u | HÃ nh Ä‘á»™ng |
 |-------|-------------|-----------|----------|
-| AP-AI-001 | Unconstrained Gen | Code không match constraint C1-C5 | Reject — inject lại constraints |
-| AP-AI-003 | Implicit Decision | Code dùng 1 cột `status` chung thay vì 2 cột tách biệt | Reject — vi phạm ADR-BABY-006 |
-| AP-AI-005 | Hallucinated Contract | Code import class không có trong §8 | Reject — verify contract |
+| AP-AI-001 | Unconstrained Gen | Code khÃ´ng match constraint C1-C5 | Reject â€” inject láº¡i constraints |
+| AP-AI-003 | Implicit Decision | Code dÃ¹ng 1 cá»™t `status` chung thay vÃ¬ 2 cá»™t tÃ¡ch biá»‡t | Reject â€” vi pháº¡m ADR-BABY-006 |
+| AP-AI-005 | Hallucinated Contract | Code import class khÃ´ng cÃ³ trong Â§8 | Reject â€” verify contract |
 
 ---
 
-## PHỤ LỤC
+## PHá»¤ Lá»¤C
 
-### A. Glossary (Thuật ngữ)
+### A. Glossary (Thuáº­t ngá»¯)
 
-| Thuật ngữ | Định nghĩa |
+| Thuáº­t ngá»¯ | Äá»‹nh nghÄ©a |
 |-----------|------------|
-| DevelopmentMilestone | Bản ghi mốc phát triển của baby (vd: biết bò, biết đi, mọc răng) |
-| `milestoneStatus` (achievement) | Trạng thái tiến triển của milestone: PENDING/ACHIEVED/DELAYED — mutate bởi UC-196 |
-| `recordStatus` (lifecycle) | Trạng thái vòng đời record: ACTIVE/DELETED (soft-delete) — mutate CHỈ bởi UC-197 |
-| `canManage()` | Method mới trong `BabyAccessPolicy` — strict ownership check cho mutation, khác `canView()` |
+| DevelopmentMilestone | Báº£n ghi má»‘c phÃ¡t triá»ƒn cá»§a baby (vd: biáº¿t bÃ², biáº¿t Ä‘i, má»c rÄƒng) |
+| `milestoneStatus` (achievement) | Tráº¡ng thÃ¡i tiáº¿n triá»ƒn cá»§a milestone: PENDING/ACHIEVED/DELAYED â€” mutate bá»Ÿi UC-196 |
+| `recordStatus` (lifecycle) | Tráº¡ng thÃ¡i vÃ²ng Ä‘á»i record: ACTIVE/DELETED (soft-delete) â€” mutate CHá»ˆ bá»Ÿi UC-197 |
+| `canManage()` | Method má»›i trong `BabyAccessPolicy` â€” strict ownership check cho mutation, khÃ¡c `canView()` |
 
-### B. Tài liệu tham chiếu
+### B. TÃ i liá»‡u tham chiáº¿u
 
 | Document | Path |
 |----------|------|
 | UC192 TDS (Approved, shipped code reference) | `04_Implement/UC192_ViewBabyProfile/UC192_ViewBabyProfile_TDS.md` |
-| UC194 TDS (companion pattern reference — ownership chain, soft-delete precedent) | `04_Implement/UC194_ViewBabyDailyLogDetail/UC194_ViewBabyDailyLogDetail_TDS.md` |
-| UC197 TDS (companion — soft-delete, cùng migration) | `04_Implement/UC197_DeleteDevelopmentMilestone/UC197_DeleteDevelopmentMilestone_TDS.md` |
+| UC194 TDS (companion pattern reference â€” ownership chain, soft-delete precedent) | `04_Implement/UC194_ViewBabyDailyLogDetail/UC194_ViewBabyDailyLogDetail_TDS.md` |
+| UC197 TDS (companion â€” soft-delete, cÃ¹ng migration) | `04_Implement/UC197_DeleteDevelopmentMilestone/UC197_DeleteDevelopmentMilestone_TDS.md` |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 | Schema baseline | `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` |
 
 ---
 
-## Open Items (chưa resolve — cần Tech Lead / Product xác nhận trước khi Approve)
+## Open Items (chÆ°a resolve â€” cáº§n Tech Lead / Product xÃ¡c nháº­n trÆ°á»›c khi Approve)
 
-| # | Item | Mô tả | Đề xuất tạm thời |
+| # | Item | MÃ´ táº£ | Äá» xuáº¥t táº¡m thá»i |
 |---|------|-------|-------------------|
-| OI-1 | ~~`milestone_type` enum vocabulary~~ **RESOLVED (2026-07-03)** | Ban đầu tưởng không có tài liệu nào định nghĩa vocabulary. Rà soát lại phát hiện sibling spec `UC37_RecordDevelopmentMilestone` (ADR-BABY-007-001) đã định nghĩa cho đúng cột `development_milestones.milestone_type` này: `ROLLING, CRAWLING, WALKING, SPEAKING, TEETHING, WEANING, FIRST_SMILE, SITTING, STANDING` (validated qua `BABY-063` ở write path). Cột vẫn là `varchar(80)` không CHECK constraint ở DB. | Dùng `String` (không `@Enumerated`) ở entity cho update path — nhất quán với UC194 OI-1 (permissive read/update, whitelist enforcement thuộc UC37). |
-| OI-2 | `DevelopmentMilestoneUpdated` Spring `ApplicationEvent` riêng | Hiện chỉ emit qua `AuditService.log()`, chưa có event bus riêng cho consumer khác (vd: timeline aggregator). | Không kích hoạt mặc định; revisit nếu có downstream consumer cụ thể. |
-| OI-3 | `milestoneStatus` default cho record MỚI (không phải backfill) | DTO validation có nên bắt buộc `status` khi tạo mới milestone (ngoài phạm vi UC196, thuộc UC "Create Development Milestone" chưa có trong batch này)? | Ngoài phạm vi UC196/UC197 — ghi nhận cho future UC "CreateDevelopmentMilestone". |
+| OI-1 | ~~`milestone_type` enum vocabulary~~ **RESOLVED (2026-07-03)** | Ban Ä‘áº§u tÆ°á»Ÿng khÃ´ng cÃ³ tÃ i liá»‡u nÃ o Ä‘á»‹nh nghÄ©a vocabulary. RÃ  soÃ¡t láº¡i phÃ¡t hiá»‡n sibling spec `UC37_RecordDevelopmentMilestone` (ADR-BABY-007-001) Ä‘Ã£ Ä‘á»‹nh nghÄ©a cho Ä‘Ãºng cá»™t `development_milestones.milestone_type` nÃ y: `ROLLING, CRAWLING, WALKING, SPEAKING, TEETHING, WEANING, FIRST_SMILE, SITTING, STANDING` (validated qua `BABY-063` á»Ÿ write path). Cá»™t váº«n lÃ  `varchar(80)` khÃ´ng CHECK constraint á»Ÿ DB. | DÃ¹ng `String` (khÃ´ng `@Enumerated`) á»Ÿ entity cho update path â€” nháº¥t quÃ¡n vá»›i UC194 OI-1 (permissive read/update, whitelist enforcement thuá»™c UC37). |
+| OI-2 | `DevelopmentMilestoneUpdated` Spring `ApplicationEvent` riÃªng | Hiá»‡n chá»‰ emit qua `AuditService.log()`, chÆ°a cÃ³ event bus riÃªng cho consumer khÃ¡c (vd: timeline aggregator). | KhÃ´ng kÃ­ch hoáº¡t máº·c Ä‘á»‹nh; revisit náº¿u cÃ³ downstream consumer cá»¥ thá»ƒ. |
+| OI-3 | `milestoneStatus` default cho record Má»šI (khÃ´ng pháº£i backfill) | DTO validation cÃ³ nÃªn báº¯t buá»™c `status` khi táº¡o má»›i milestone (ngoÃ i pháº¡m vi UC196, thuá»™c UC "Create Development Milestone" chÆ°a cÃ³ trong batch nÃ y)? | NgoÃ i pháº¡m vi UC196/UC197 â€” ghi nháº­n cho future UC "CreateDevelopmentMilestone". |
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+*EDS v2.1 â€” TÃ­ch há»£p CASE 2.0 AI Prompt Constraints (Â§17).*

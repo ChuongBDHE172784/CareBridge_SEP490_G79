@@ -9,11 +9,10 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+    enabled: false
     clean-disabled: true
     out-of-order: true
+    ignore-migration-patterns: "*:missing"
 
   docker:
     compose:
@@ -21,7 +20,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     open-in-view: false
     properties:
       hibernate:

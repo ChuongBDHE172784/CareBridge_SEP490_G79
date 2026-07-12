@@ -24,4 +24,9 @@ class VaccinationService {
   Future<void> deleteVaccination(String vaccinationId) async {
     await apiDelete('/api/v1/vaccinations/$vaccinationId');
   }
+
+  // UC-229: Add vaccination record
+  Future<void> addVaccinationRecord(String babyId, Map<String, dynamic> payload) async {
+    await apiPost('/api/v1/vaccination/babies/$babyId/records', payload);
+  }
 }

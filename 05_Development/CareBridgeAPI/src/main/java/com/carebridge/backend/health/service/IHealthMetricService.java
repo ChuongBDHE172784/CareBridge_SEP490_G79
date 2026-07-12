@@ -15,6 +15,11 @@ public interface IHealthMetricService {
     /** @throws com.carebridge.backend.common.exception.BusinessException (METRIC-003/403) if not owner */
     MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId);
 
+    /** UC188: Soft-deletes an ACTIVE metric owned by the caller.
+     * @throws com.carebridge.backend.common.exception.BusinessException (METRIC-001/404, METRIC-002/404, METRIC-003/403)
+     */
+    void deleteMetric(UUID metricId, UUID callerId);
+
     /** UC25: Add a new metric to an ACTIVE journey. Async AI insight (fail-open).
      * @throws com.carebridge.backend.common.exception.BusinessException (METRIC-001/404, METRIC-002/403, METRIC-003/400, METRIC-004/400, METRIC-005/400)
      */

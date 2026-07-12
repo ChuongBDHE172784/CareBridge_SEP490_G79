@@ -25,5 +25,8 @@ public class ContentDetailResponse {
     private ContentStage stage;
     private UUID topicId;
     private Integer version;
+    private String sourceLabel;
     private Instant publishedAt;
+    private Instant updatedAt;
+    private boolean contentStale;
 }

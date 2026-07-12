@@ -3,6 +3,8 @@ import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import 'notification_detail_screen.dart';
+import '../../familySync/screens/care_group_invitation_screen.dart';
+import '../../familySync/models/care_group_model.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -289,12 +291,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  NotificationDetailScreen(notification: notification),
-            ),
-          );
+          if (notification.type == 'GROUP_INVITE' && notification.referenceId != null) {
+            final pendingInvite = PendingInvitation(
+              groupId: notification.referenceId!,
+              groupName: 'Nhóm gia đình', // Default fallback
+              memberRole: 'MEMBER',
+            );
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CareGroupInvitationScreen(invitation: pendingInvite),
+              ),
+            );
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    NotificationDetailScreen(notification: notification),
+              ),
+            );
+          }
         },
         child: Container(
           padding: const EdgeInsets.all(20),
@@ -409,6 +424,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         bgColor = isUnread ? _errorContainer : _surfaceVariant;
         iconColor = isUnread ? _onErrorContainer : _onSurfaceVariant;
         break;
+      case 'GROUP_INVITE':
+        icon = Icons.group_add;
+        bgColor = isUnread ? _primaryFixed : _surfaceVariant;
+        iconColor = isUnread ? _onPrimaryFixed : _onSurfaceVariant;
+        break;
       case 'APPOINTMENT':
       case 'REMINDER':
         icon = Icons.event_rounded;
@@ -440,6 +460,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'HEALTH':
       case 'HEALTH_ALERT':
         return 'Cảnh báo sức khỏe';
+      case 'GROUP_INVITE':
+        return 'Lời mời vào nhóm';
       case 'APPOINTMENT':
       case 'REMINDER':
         return 'Nhắc lịch';

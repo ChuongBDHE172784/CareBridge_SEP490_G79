@@ -44,6 +44,8 @@ class JourneyDashboard {
     return normalizedDueDate.difference(_today).inDays;
   }
 
+  int? get effectiveDaysUntilDue => calculatedDaysUntilDue;
+
   int? get displayPregnancyWeek {
     if (pregnancyWeek != null) return pregnancyWeek;
     if (!isPregnancy) return null;
@@ -61,6 +63,8 @@ class JourneyDashboard {
     if (daysLeft == null) return null;
     return ((280 - daysLeft) / 7).floor().clamp(0, 42);
   }
+
+  int? get effectivePregnancyWeek => displayPregnancyWeek;
 
   int? get displayTrimester {
     if (trimester != null) return trimester;
@@ -185,6 +189,7 @@ class CreateJourneyResponse {
   final String journeyType;
   final String status;
   final String startDate;
+  final String? lastMenstrualDate;
   final String? estimatedDueDate;
   final String? notes;
   final String createdAt;
@@ -194,6 +199,7 @@ class CreateJourneyResponse {
     required this.journeyType,
     required this.status,
     required this.startDate,
+    this.lastMenstrualDate,
     this.estimatedDueDate,
     this.notes,
     required this.createdAt,
@@ -205,6 +211,7 @@ class CreateJourneyResponse {
       journeyType: json['journeyType'] as String,
       status: json['status'] as String,
       startDate: json['startDate'] as String,
+      lastMenstrualDate: json['lastMenstrualDate'] as String?,
       estimatedDueDate: json['estimatedDueDate'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] as String? ?? '',

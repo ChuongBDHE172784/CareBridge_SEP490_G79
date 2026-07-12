@@ -20,6 +20,9 @@ public interface IBabyService {
     /** @throws com.carebridge.backend.common.exception.BusinessException (BABY-003/403) if no access */
     BabyProfileDetailResponse getBabyProfile(UUID profileId, UUID callerId);
 
+    /** UC193: Switch the caller's active baby profile. */
+    BabyProfileDetailResponse switchActiveBabyProfile(UUID babyId, UUID callerId);
+
     /** UC32: Update mutable fields of an ACTIVE baby profile.
      * @throws com.carebridge.backend.common.exception.BusinessException (BABY-010/404, BABY-011/403, BABY-012/400)
      */

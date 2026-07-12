@@ -46,6 +46,9 @@ public class MaternalHealthMetric {
     @Column(name = "source_type", length = 30)
     private DataSource sourceType;
 
+    @Column(name = "source_reference_id")
+    private UUID sourceReferenceId;
+
     @Column(name = "note", columnDefinition = "text")
     private String note;
 

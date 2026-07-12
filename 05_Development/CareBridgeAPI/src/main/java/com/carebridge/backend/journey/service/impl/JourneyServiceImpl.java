@@ -72,12 +72,18 @@ public class JourneyServiceImpl implements IJourneyService {
                     "An active journey of type " + request.getJourneyType() + " already exists");
         }
 
+        LocalDate lastMenstrualDate = request.getLastMenstrualDate();
+        LocalDate estimatedDueDate = request.getEstimatedDueDate();
+        if (lastMenstrualDate != null && estimatedDueDate == null) {
+            estimatedDueDate = lastMenstrualDate.plusDays(280);
+        }
+
         MotherJourney journey = MotherJourney.builder()
                 .ownerUserId(callerId)
                 .journeyType(request.getJourneyType())
                 .startDate(request.getStartDate())
-                .lastMenstrualDate(request.getLastMenstrualDate())
-                .estimatedDueDate(request.getEstimatedDueDate())
+                .lastMenstrualDate(lastMenstrualDate)
+                .estimatedDueDate(estimatedDueDate)
                 .notes(request.getNotes())
                 .status(JourneyStatus.ACTIVE)
                 .build();
@@ -92,6 +98,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 .journeyType(saved.getJourneyType().name())
                 .status(saved.getStatus().name())
                 .startDate(saved.getStartDate())
+                .lastMenstrualDate(saved.getLastMenstrualDate())
                 .estimatedDueDate(saved.getEstimatedDueDate())
                 .notes(saved.getNotes())
                 .createdAt(saved.getCreatedAt())
@@ -138,11 +145,12 @@ public class JourneyServiceImpl implements IJourneyService {
         if (request.getNotes() != null) {
             builder.notes(request.getNotes());
         }
-        if (request.getEstimatedDueDate() != null) {
-            builder.estimatedDueDate(request.getEstimatedDueDate());
-        }
         if (request.getLastMenstrualDate() != null) {
             builder.lastMenstrualDate(request.getLastMenstrualDate());
+            builder.estimatedDueDate(request.getLastMenstrualDate().plusDays(280));
+        } else if (request.getEstimatedDueDate() != null) {
+            builder.estimatedDueDate(request.getEstimatedDueDate());
+            builder.lastMenstrualDate(null);
         }
         if (request.getDeliveryDate() != null) {
             builder.deliveryDate(request.getDeliveryDate());
@@ -166,7 +174,8 @@ public class JourneyServiceImpl implements IJourneyService {
     @Override
     @Transactional(readOnly = true)
     public JourneyDashboardResponse getDashboard(UUID userId) {
-        var activeJourney = journeyRepository.findByOwnerUserIdAndStatus(userId, JourneyStatus.ACTIVE);
+        var activeJourney = journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                userId, JourneyStatus.ACTIVE);
 
         // No active journey → 200 OK with NO_JOURNEY (never 404 — mobile onboarding rule)
         if (activeJourney.isEmpty()) {
@@ -184,14 +193,20 @@ public class JourneyServiceImpl implements IJourneyService {
         Integer trimester = null;
         Long daysUntilDue = null;
 
-        if (journey.getJourneyType() == JourneyType.PREGNANCY && journey.getLastMenstrualDate() != null) {
-            long daysSinceLmp = ChronoUnit.DAYS.between(journey.getLastMenstrualDate(), today);
-            pregnancyWeek = (int) (daysSinceLmp / 7);
-            trimester = calculateTrimester(pregnancyWeek);
-        }
-
         if (journey.getEstimatedDueDate() != null) {
             daysUntilDue = ChronoUnit.DAYS.between(today, journey.getEstimatedDueDate());
+        }
+
+        if (journey.getJourneyType() == JourneyType.PREGNANCY) {
+            if (journey.getLastMenstrualDate() != null) {
+                long daysSinceLmp = ChronoUnit.DAYS.between(journey.getLastMenstrualDate(), today);
+                pregnancyWeek = (int) (daysSinceLmp / 7);
+                trimester = calculateTrimester(pregnancyWeek);
+            } else if (daysUntilDue != null) {
+                long daysSinceLmp = 280 - daysUntilDue;
+                pregnancyWeek = (int) (daysSinceLmp / 7);
+                trimester = calculateTrimester(pregnancyWeek);
+            }
         }
 
         return JourneyDashboardResponse.builder()

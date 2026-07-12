@@ -40,4 +40,6 @@ public interface IReminderService {
 
     /** UC48 — mark reminder SKIPPED; COMPLETED/SKIPPED are terminal and immutable */
     ReminderDetailResponse skipReminder(UUID reminderId, UUID callerId);
+
+    void deleteReminder(UUID reminderId, UUID callerId);
 }

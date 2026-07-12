@@ -48,7 +48,7 @@ class JourneyDashboardServiceImplTest {
     @Test
     void getDashboard_activePregnancy_returnsCalculatedWeekAndTrimester() {
         var journey = JourneyDashboardTestFactory.makePregnancyJourney(20); // 20 weeks pregnant
-        when(journeyRepository.findByOwnerUserIdAndStatus(
+        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
                 JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
                 .thenReturn(Optional.of(journey));
 
@@ -66,7 +66,7 @@ class JourneyDashboardServiceImplTest {
     @Test
     void getDashboard_activePostpartum_returnsPostpartumStatus() {
         var journey = JourneyDashboardTestFactory.makePostpartumJourney();
-        when(journeyRepository.findByOwnerUserIdAndStatus(
+        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
                 JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
                 .thenReturn(Optional.of(journey));
 
@@ -83,7 +83,7 @@ class JourneyDashboardServiceImplTest {
      */
     @Test
     void getDashboard_noActiveJourney_returnsNoJourneyStatus_never404() {
-        when(journeyRepository.findByOwnerUserIdAndStatus(
+        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
                 JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
@@ -113,7 +113,7 @@ class JourneyDashboardServiceImplTest {
     })
     void getDashboard_pregnancyWeekTrimesterBoundaries(int weeksPregnant, int expectedTrimester) {
         var journey = JourneyDashboardTestFactory.makePregnancyJourney(weeksPregnant);
-        when(journeyRepository.findByOwnerUserIdAndStatus(
+        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
                 JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
                 .thenReturn(Optional.of(journey));
 

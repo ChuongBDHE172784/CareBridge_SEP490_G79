@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 import '../../../core/network/api_client.dart';
@@ -9,8 +10,13 @@ import '../../../core/network/api_client.dart';
 /// Calls GET /api/v1/health-metrics/{metricId} and DELETE /api/v1/health-metrics/{metricId}.
 class MaternalHealthMetricScreen extends StatefulWidget {
   final String metricId;
+  final HealthMetricDetail? initialMetric;
 
-  const MaternalHealthMetricScreen({super.key, required this.metricId});
+  const MaternalHealthMetricScreen({
+    super.key,
+    required this.metricId,
+    this.initialMetric,
+  });
 
   @override
   State<MaternalHealthMetricScreen> createState() =>
@@ -41,6 +47,11 @@ class _MaternalHealthMetricScreenState
   @override
   void initState() {
     super.initState();
+    if (widget.initialMetric != null) {
+      _metric = widget.initialMetric;
+      _loading = false;
+      return;
+    }
     _load();
   }
 
@@ -130,6 +141,19 @@ class _MaternalHealthMetricScreenState
     }
   }
 
+  Future<void> _openEdit(HealthMetricDetail metric) async {
+    final updated = await context.push<bool>(
+      '/health-metrics/${Uri.encodeComponent(metric.id)}/edit',
+      extra: {
+        'journeyId': metric.journeyId,
+        'metric': metric,
+      },
+    );
+    if (updated == true && mounted) {
+      await _load();
+    }
+  }
+
   String _formatDate(DateTime dt) {
     final d = dt.day.toString().padLeft(2, '0');
     final mo = dt.month.toString().padLeft(2, '0');
@@ -194,6 +218,7 @@ class _MaternalHealthMetricScreenState
   }
 
   Widget _buildContent(HealthMetricDetail m) {
+    final readOnly = widget.initialMetric != null;
     return Column(
       children: [
         _buildAppBar(),
@@ -207,8 +232,10 @@ class _MaternalHealthMetricScreenState
                 _buildDetailsCard(m),
                 const SizedBox(height: 8),
                 _buildTrendCard(),
-                const SizedBox(height: 24),
-                _buildActionButtons(),
+                if (!readOnly) ...[
+                  const SizedBox(height: 24),
+                  _buildActionButtons(m),
+                ],
               ],
             ),
           ),
@@ -404,16 +431,14 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(HealthMetricDetail metric) {
     return Row(
       children: [
         Expanded(
           child: SizedBox(
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: () {
-                // TODO: navigate to edit metric screen (UC-187)
-              },
+              onPressed: () => _openEdit(metric),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primary,
                 side: const BorderSide(color: _primary, width: 2),

@@ -2,6 +2,7 @@ package com.carebridge.backend.carejourney.service;
 
 import com.carebridge.backend.carejourney.dto.AddMilestoneRequest;
 import com.carebridge.backend.carejourney.dto.MilestoneResponse;
+import com.carebridge.backend.carejourney.dto.UpdateDevelopmentMilestoneRequest;
 
 import java.util.UUID;
 
@@ -20,4 +21,9 @@ public interface IMilestoneService {
      * @throws com.carebridge.backend.common.exception.BusinessException (BABY-064) when achieved date is in future
      */
     MilestoneResponse addMilestone(UUID userId, UUID babyId, AddMilestoneRequest request);
+
+    MilestoneResponse updateMilestone(UUID babyId, UUID milestoneId,
+                                      UpdateDevelopmentMilestoneRequest request, UUID callerId);
+
+    void deleteMilestone(UUID babyId, UUID milestoneId, UUID callerId);
 }

@@ -4,7 +4,7 @@
 **Document ID:** `CB-HEALTH-TDD-002`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Approved`
+**Status:** `Partially Implemented — 2026-07-10 (targeted health backend tests PASS; full regression blocked by non-health Family/Exercise failures)`
 **Author:** `AI Agent`
 **Classification:** `Internal — Confidential`
 
@@ -16,8 +16,10 @@
 
 ## CHANGELOG
 
+
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented after targeted health backend test pass; full regression remains blocked outside health scope. |
 | 2026-06-27 | AI Agent — Amelia (Dev Agent) | RED Gate verified, GREEN Gate PASS (45/45 unit tests) |
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-187 |
 

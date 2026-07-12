@@ -49,6 +49,11 @@ public class PostpartumLog {
     @Column(name = "symptom_note", columnDefinition = "text")
     private String symptomNote;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private PostpartumLogStatus status = PostpartumLogStatus.ACTIVE;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

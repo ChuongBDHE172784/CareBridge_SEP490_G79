@@ -5,12 +5,14 @@ import '../auth/auth_state.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
+import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
+import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
@@ -78,7 +80,8 @@ redirect: (context, state) {
 
   final isAuthRoute =
       state.matchedLocation.startsWith('/welcome') ||
-      state.matchedLocation.startsWith('/login');
+      state.matchedLocation.startsWith('/login') ||
+      state.matchedLocation == '/auth-landing';
 
   if (blockedReason != null && state.matchedLocation != '/blocked') {
     return '/blocked';
@@ -115,6 +118,10 @@ GoRoute(
   builder: (context, state) => const RoleSelectionScreen(),
 ),
 GoRoute(
+  path: '/auth-landing',
+  builder: (context, state) => const AuthLandingScreen(),
+),
+GoRoute(
   path: '/',
   builder: (context, state) {
     final tabParam = state.uri.queryParameters['tab'];
@@ -137,7 +144,22 @@ GoRoute(
   path: '/health-metrics/:id',
   builder: (context, state) {
     final id = state.pathParameters['id'] ?? '';
-    return MaternalHealthMetricScreen(metricId: id);
+    final extra = state.extra as Map<String, dynamic>?;
+    return MaternalHealthMetricScreen(
+      metricId: id,
+      initialMetric: extra?['metric'] as HealthMetricDetail?,
+    );
+  },
+),
+GoRoute(
+  path: '/journeys/:journeyId/metrics/add',
+  builder: (context, state) {
+    final journeyId = state.pathParameters['journeyId'] ?? '';
+    final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+    return AddMaternalHealthMetricScreen(
+      journeyId: journeyId,
+      initialMetricType: metricType,
+    );
   },
 ),
 GoRoute(
@@ -266,6 +288,7 @@ GoRoute(
     final extra = state.extra as Map<String, dynamic>?;
     return SharedFileViewerScreen(
       fileId: fileId,
+      expertName: extra?['expertName'] as String?,
       expertAvatarUrl: extra?['expertAvatarUrl'] as String?,
       patientName: extra?['patientName'] as String?,
       consultationLink: extra?['consultationLink'] as String?,

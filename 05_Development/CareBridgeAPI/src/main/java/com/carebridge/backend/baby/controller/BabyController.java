@@ -60,6 +60,17 @@ public class BabyController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // UC193: Switch active baby profile
+    @PatchMapping("/{babyId}/active")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<BabyProfileDetailResponse>> switchActiveBabyProfile(
+            @PathVariable UUID babyId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = babyService.switchActiveBabyProfile(babyId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Active baby profile switched successfully"));
+    }
+
     // UC32: Update baby profile
     @PutMapping("/{babyId}")
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")

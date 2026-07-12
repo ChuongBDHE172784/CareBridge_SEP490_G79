@@ -239,18 +239,19 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse completeReminder(UUID reminderId, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requireMutableState(reminder);
+        requirePendingState(reminder, "REM-007",
+                "Reminder is already in a terminal state and cannot be completed");
 
         if (reminder.getFcmJobId() != null) {
             notificationService.cancelFcmJob(reminder.getFcmJobId());
         }
 
         reminder.setStatus(ReminderStatus.COMPLETED);
+        Reminder saved = reminderRepository.save(reminder);
 
-        auditService.log(AuditAction.REMINDER_CREATED, callerId,
+        auditService.log(AuditAction.REMINDER_COMPLETED, callerId,
                 "Reminder", reminderId.toString(), "completed");
 
-        Reminder saved = reminderRepository.save(reminder);
         return toDetailResponse(saved);
     }
 
@@ -260,7 +261,8 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse skipReminder(UUID reminderId, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requireMutableState(reminder);
+        requirePendingState(reminder, "REM-011",
+                "Reminder is not in a skippable state");
 
         if (reminder.getFcmJobId() != null) {
             notificationService.cancelFcmJob(reminder.getFcmJobId());
@@ -269,7 +271,42 @@ public class ReminderServiceImpl implements IReminderService {
         reminder.setStatus(ReminderStatus.SKIPPED);
 
         Reminder saved = reminderRepository.save(reminder);
+
+        auditService.log(AuditAction.REMINDER_SKIPPED, callerId,
+                "Reminder", reminderId.toString(), "skipped");
+
         return toDetailResponse(saved);
+    }
+
+    @Override
+    public void deleteReminder(UUID reminderId, UUID callerId) {
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "REM-015",
+                        "Reminder not found"));
+
+        if (!reminder.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "REM-016",
+                    "Access denied to reminder");
+        }
+
+        if (reminder.getStatus() == ReminderStatus.CANCELLED) {
+            return;
+        }
+
+        if (reminder.getStatus() == ReminderStatus.COMPLETED || reminder.getStatus() == ReminderStatus.SKIPPED) {
+            throw new BusinessException(HttpStatus.CONFLICT, "REM-017",
+                    "Reminder is in a terminal state and cannot be deleted");
+        }
+
+        if (reminder.getFcmJobId() != null) {
+            notificationService.cancelFcmJob(reminder.getFcmJobId());
+        }
+
+        reminder.setStatus(ReminderStatus.CANCELLED);
+        reminderRepository.save(reminder);
+
+        auditService.log(AuditAction.REMINDER_CANCELLED, callerId,
+                "Reminder", reminderId.toString(), "cancelled");
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
@@ -300,12 +337,20 @@ public class ReminderServiceImpl implements IReminderService {
                         "Baby profile not found or not owned by caller"));
     }
 
-    /** ADR-REM-STATE-001: COMPLETED and SKIPPED are immutable terminal states. */
+    /** ADR-REM-STATE-001: completed, skipped, and cancelled reminders are immutable terminal states. */
     private void requireMutableState(Reminder reminder) {
         ReminderStatus status = reminder.getStatus();
-        if (status == ReminderStatus.COMPLETED || status == ReminderStatus.SKIPPED) {
+        if (status == ReminderStatus.COMPLETED
+                || status == ReminderStatus.SKIPPED
+                || status == ReminderStatus.CANCELLED) {
             throw new BusinessException(HttpStatus.CONFLICT, "REM-007",
                     "Reminder in terminal state " + status + " cannot be modified");
+        }
+    }
+
+    private void requirePendingState(Reminder reminder, String code, String message) {
+        if (reminder.getStatus() != ReminderStatus.PENDING) {
+            throw new BusinessException(HttpStatus.CONFLICT, code, message);
         }
     }
 

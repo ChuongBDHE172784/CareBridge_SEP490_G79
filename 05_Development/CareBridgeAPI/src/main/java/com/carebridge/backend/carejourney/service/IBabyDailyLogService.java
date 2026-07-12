@@ -20,6 +20,8 @@ public interface IBabyDailyLogService {
      */
     AddBabyDailyLogResponse addDailyLog(UUID babyId, AddBabyDailyLogRequest request, UUID userId);
 
+    BabyDailyLogResponse getDailyLogDetail(UUID babyId, UUID logId, Principal principal);
+
     /**
      * Updates a baby daily log within the 24-hour edit window.
      * log_type is immutable and silently ignored if sent.
@@ -32,13 +34,10 @@ public interface IBabyDailyLogService {
     BabyDailyLogResponse updateLog(UUID babyId, UUID logId, UpdateBabyDailyLogRequest request, Principal principal);
 
     /**
-     * Hard-deletes a baby daily log within the 24-hour edit window.
-     * Emits BABY_LOG_DELETED audit event with log snapshot before deletion.
+     * Soft-deletes a baby daily log. Deleted logs are treated as not-found.
      *
-     * @throws com.carebridge.backend.common.exception.ResourceNotFoundException (BABY-040) when log not found
-     * @throws com.carebridge.backend.common.exception.ResourceNotFoundException (BABY-041) when log not in baby
-     * @throws com.carebridge.backend.common.exception.BusinessException (BABY-042) when edit window expired
-     * @throws com.carebridge.backend.common.exception.AccessDeniedBusinessException (BABY-043) when baby not owned
+     * @throws com.carebridge.backend.common.exception.BusinessException (DAILYLOG-001/404) when log not found/deleted
+     * @throws com.carebridge.backend.common.exception.BusinessException (DAILYLOG-003/403) when baby not owned
      */
     void deleteLog(UUID babyId, UUID logId, Principal principal);
 }

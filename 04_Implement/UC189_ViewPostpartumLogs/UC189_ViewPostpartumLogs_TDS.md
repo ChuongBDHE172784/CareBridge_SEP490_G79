@@ -6,12 +6,12 @@
 | **Document ID** | `CB-HEALTH-IMP-005` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-03` |
-| **Status** | `Draft` |
+| **Status** | `Partially Implemented` |
 | **Document Owner** | `TV2-Bách` |
 | **Author** | `AI Agent — Technical Architect` |
 | **Reviewed by** | `[ ] Pending` |
 | **DPO Sign-off** | `[ ] Pending` *(bắt buộc — module xử lý PII sức khỏe hậu sản)* |
-| **Approved by** | `[ ] Pending` |
+| **Approved by** | `TV2-Bách` |
 | **Last Review** | `2026-07-03` |
 | **Based on EDS** | `v2.0` |
 
@@ -19,8 +19,10 @@
 
 ## CHANGELOG
 
+
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
+| 2026-07-10 | AI Agent | Implementation status updated to Partially Implemented: targeted health backend tests PASS; full regression remains blocked by non-health Family/Exercise failures. |
 | 2026-07-03 | AI Agent — Technical Architect | Tạo tài liệu lần đầu — TDS cho UC189 View Postpartum Logs (Draft) |
 
 ---

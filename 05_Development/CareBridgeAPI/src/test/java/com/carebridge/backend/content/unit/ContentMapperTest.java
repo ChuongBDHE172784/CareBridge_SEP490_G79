@@ -13,6 +13,7 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.mapper.ContentMapper;
+import com.carebridge.backend.content.ViewContentDetailTestFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -93,6 +94,41 @@ class ContentMapperTest {
         ContentDetailResponse response = contentMapper.toDetailResponse(item);
 
         assertThat(response.getVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void toDetailResponse_uc225_mapsSourceUpdateDateAndFreshness() {
+        ContentDetailResponse response = contentMapper.toDetailResponse(
+                ViewContentDetailTestFactory.makeApprovedContent());
+
+        assertThat(response.getSourceLabel()).isEqualTo("WHO Guidelines 2024");
+        assertThat(response.getUpdatedAt()).isNotNull();
+        assertThat(response.isContentStale()).isFalse();
+    }
+
+    @Test
+    void toDetailResponse_uc225_marksContentOlderThan365DaysStale() {
+        ContentDetailResponse response = contentMapper.toDetailResponse(
+                ViewContentDetailTestFactory.makeStaleContent());
+
+        assertThat(response.isContentStale()).isTrue();
+    }
+
+    @Test
+    void toDetailResponse_uc225_preservesNullSourceLabel() {
+        ContentDetailResponse response = contentMapper.toDetailResponse(
+                ViewContentDetailTestFactory.makeContentWithNullSourceLabel());
+
+        assertThat(response.getSourceLabel()).isNull();
+    }
+
+    @Test
+    void toDetailResponse_uc225_nullUpdatedAtIsNotStale() {
+        ContentDetailResponse response = contentMapper.toDetailResponse(
+                ViewContentDetailTestFactory.makeContentWithNullUpdatedAt());
+
+        assertThat(response.getUpdatedAt()).isNull();
+        assertThat(response.isContentStale()).isFalse();
     }
 
     // ── toChecklistTemplateResponse — items mapped correctly ──────────────────

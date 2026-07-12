@@ -6,7 +6,7 @@
 | **Document ID**    | `CB-CONTENT-IMP-003`                    |
 | **Version**        | `1.0`                                   |
 | **Date**           | `2026-06-23`                            |
-| **Status**         | `Approved`                              |
+| **Status**         | `Implemented`                           |
 | **Document Owner** | `HuyND`                                 |
 | **Author**         | `AI Agent — Winston (System Architect)` |
 | **Reviewed by**    | `[x] HuyND — 2026-06-24`               |
@@ -24,6 +24,7 @@
 | 2026-06-23 | AI Agent — Winston (System Architect) | Tạo tài liệu lần đầu cho UC-105 Create Content/FAQ/Checklist                                                                       |
 | 2026-06-24 | AI Agent — Amelia (Dev Agent)         | Implementation hoàn thành. Tạo V3 migration (stage column), content module (entity/repo/dto/mapper/service/controller), 16 tests GREEN. Status → Approved. |
 | 2026-07-02 | AI Agent — Claude (Audit Pass)        | **Corrections (Status kept as `Approved`):** (1) §10 was missing `CNT-003` entirely — `AdminContentServiceImpl.createContent()` actually validates `topicId` via `CommunityTopicRepository.existsById()` and throws `ContentException.topicNotFound()` (`CNT-003`, 400) when invalid, covered by the existing `CNT-TC-008`/`createContent_topicIdNotFound_throwsContentExceptionCnt003` test — added the missing row. (2) §5.1/§5.2's `CreateContentResponse.createdAt: LocalDateTime` corrected to `Instant` (actual field type). (3) §7.3's `ContentCreatedEvent` record does not exist in the codebase — the real implementation calls `auditService.log(...)` directly; annotated as illustrative design intent, not an implemented contract. Cross-doc: this table's new `CNT-003` row also corrects UC-106's TDS, which incorrectly assumed `CNT-003` was unused before UC-106 (see UC-106 TDS §10, fixed in the same audit pass). |
+| 2026-07-11 | AI Agent — Codex | Re-verified service/controller implementation; 16/16 focused tests pass. Status synchronized to Implemented. |
 
 ---
 

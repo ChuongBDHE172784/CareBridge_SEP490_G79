@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_members_screen.dart';
+import 'invite_family_member_screen.dart';
+import 'sent_pending_invitations_screen.dart';
+import 'leave_care_group_confirmation_screen.dart';
+import 'assigned_tasks_screen.dart';
 
 /// CB-027 — Shared Care Group Detail (UC-83, UC-84, UC-71, UC-73, UC-216)
 /// Shows group info, member circles (64x64 with star for owner),
@@ -107,10 +111,23 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
             icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
             onSelected: (v) {
               if (v == 'leave') {
-                // TODO: leave group (UC-72)
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => LeaveCareGroupConfirmationScreen(groupId: widget.groupId, groupName: widget.groupName),
+                ));
+              } else if (v == 'pending_invites') {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => SentPendingInvitationsScreen(groupId: widget.groupId),
+                ));
               }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'pending_invites', child: Row(
+                children: [
+                  Icon(Icons.hourglass_empty, color: _primary, size: 18),
+                  SizedBox(width: 8),
+                  Text('Lời mời chờ xử lý', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+                ],
+              )),
               const PopupMenuItem(value: 'leave', child: Row(
                 children: [
                   Icon(Icons.logout, color: Color(0xFFBA1A1A), size: 18),
@@ -156,9 +173,12 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                   padding: const EdgeInsets.only(right: 16),
                   child: _MemberCircle(member: m),
                 )),
-                // Invite button
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => InviteFamilyMemberScreen(groupId: widget.groupId),
+                    ));
+                  },
                   child: Column(
                     children: [
                       Container(
@@ -189,7 +209,11 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
           children: [
             Expanded(child: _BentoCard(icon: Icons.calendar_month, label: 'Lịch chung', value: '3 lịch tới', onTap: () {})),
             const SizedBox(width: 12),
-            Expanded(child: _BentoCard(icon: Icons.task_alt, label: 'Việc nhóm', value: '2 cần làm', onTap: () {})),
+            Expanded(child: _BentoCard(icon: Icons.task_alt, label: 'Việc nhóm', value: '2 cần làm', onTap: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => AssignedTasksScreen(groupId: widget.groupId, groupName: widget.groupName),
+              ));
+            })),
           ],
         ),
         const SizedBox(height: 12),

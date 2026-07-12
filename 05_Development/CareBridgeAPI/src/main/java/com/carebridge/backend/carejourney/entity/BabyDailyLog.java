@@ -47,6 +47,11 @@ public class BabyDailyLog {
     @Column(name = "recorded_by")
     private UUID recordedBy;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private BabyDailyLogStatus status = BabyDailyLogStatus.ACTIVE;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
