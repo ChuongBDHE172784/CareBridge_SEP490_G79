@@ -12,7 +12,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UpdatePostureConfigRequest {
+public class    UpdatePostureConfigRequest {
 
     @NotNull
     private AnalysisMode analysisMode;
