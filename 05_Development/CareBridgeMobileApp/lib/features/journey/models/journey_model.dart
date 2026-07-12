@@ -218,3 +218,24 @@ class CreateJourneyResponse {
     );
   }
 }
+
+class UpdateJourneyRequest {
+  final String? startDate;
+  final String? lastMenstrualDate;
+  final String? estimatedDueDate;
+  final String? notes;
+
+  const UpdateJourneyRequest({
+    this.startDate,
+    this.lastMenstrualDate,
+    this.estimatedDueDate,
+    this.notes,
+  });
+
+  Map<String, dynamic> toJson() => {
+    if (startDate != null) 'startDate': startDate,
+    if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
+    if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
+    if (notes != null) 'notes': notes,
+  };
+}
