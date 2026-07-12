@@ -7,12 +7,10 @@ class CreateAppointmentReminderScreen extends StatefulWidget {
   const CreateAppointmentReminderScreen({super.key});
 
   @override
-  State<CreateAppointmentReminderScreen> createState() =>
-      _CreateAppointmentReminderScreenState();
+  State<CreateAppointmentReminderScreen> createState() => _CreateAppointmentReminderScreenState();
 }
 
-class _CreateAppointmentReminderScreenState
-    extends State<CreateAppointmentReminderScreen> {
+class _CreateAppointmentReminderScreenState extends State<CreateAppointmentReminderScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -24,10 +22,18 @@ class _CreateAppointmentReminderScreenState
   final _service = ReminderService.instance;
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
-  DateTime _date = DateTime.now().add(const Duration(minutes: 10));
-  TimeOfDay _time = TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 10)));
+  final List<TimeOfDay> _times = [];
+  DateTime _startDate = DateTime.now();
+  DateTime? _endDate;
   RecurrenceType _recurrence = RecurrenceType.none;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final defaultTime = DateTime.now().add(const Duration(minutes: 10));
+    _times.add(TimeOfDay.fromDateTime(defaultTime));
+  }
 
   @override
   void dispose() {
@@ -36,22 +42,37 @@ class _CreateAppointmentReminderScreenState
     super.dispose();
   }
 
-  Future<void> _pickDateTime() async {
-    final pickedDate = await showDatePicker(
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _startDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
     );
-    if (pickedDate == null || !mounted) return;
-    final pickedTime = await showTimePicker(
+    if (picked != null) setState(() => _startDate = picked);
+  }
+
+  Future<void> _pickEndDate() async {
+    final picked = await showDatePicker(
       context: context,
-      initialTime: _time,
+      initialDate: _endDate ?? _startDate.add(const Duration(days: 7)),
+      firstDate: _startDate,
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
     );
-    if (pickedTime == null) return;
+    if (picked != null) setState(() => _endDate = picked);
+  }
+
+  Future<void> _addTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 8, minute: 0),
+    );
+    if (picked == null) return;
     setState(() {
-      _date = pickedDate;
-      _time = pickedTime;
+      if (!_times.any((t) => t.hour == picked.hour && t.minute == picked.minute)) {
+        _times.add(picked);
+        _times.sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+      }
     });
   }
 
@@ -61,35 +82,50 @@ class _CreateAppointmentReminderScreenState
       _showError('Vui lòng nhập nội dung lịch hẹn, khám định kỳ hoặc tái khám.');
       return;
     }
-    final scheduledAt = DateTime(
-      _date.year,
-      _date.month,
-      _date.day,
-      _time.hour,
-      _time.minute,
-    );
-    if (scheduledAt.isBefore(DateTime.now().add(const Duration(minutes: 5)))) {
+    if (_times.isEmpty) {
+      _showError('Vui lòng thêm ít nhất một giờ nhắc.');
+      return;
+    }
+
+    final scheduledTimes = _times
+        .map((time) => DateTime(
+              _startDate.year,
+              _startDate.month,
+              _startDate.day,
+              time.hour,
+              time.minute,
+            ))
+        .toList()
+      ..sort();
+
+    final minimum = DateTime.now().add(const Duration(minutes: 5));
+    if (scheduledTimes.any((time) => time.isBefore(minimum))) {
       _showError('Giờ nhắc phải sau hiện tại ít nhất 5 phút.');
       return;
     }
 
-    final location = _locationController.text.trim();
-    final reminderTitle = location.isEmpty ? title : '$title - $location';
     setState(() => _saving = true);
     try {
-      await _service.createAppointmentReminder(
-        title: reminderTitle,
-        scheduledAt: scheduledAt,
-        recurrenceType: _recurrence,
-      );
+      final location = _locationController.text.trim();
+      final reminderTitle = location.isEmpty ? title : '$title - $location';
+      var createdCount = 0;
+      for (final scheduledAt in scheduledTimes) {
+        await _service.createAppointmentReminder(
+          title: reminderTitle,
+          scheduledAt: scheduledAt,
+          recurrenceType: _recurrence,
+          recurrenceEndDate: _endDate,
+        );
+        createdCount++;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã tạo nhắc lịch hẹn.')),
+        SnackBar(content: Text('Đã tạo $createdCount nhắc lịch hẹn.')),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      _showError('Không thể tạo nhắc lịch: $e');
+      _showError('Không thể tạo nhắc lịch. Hãy kiểm tra Việc hôm nay rồi thử lại.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -130,12 +166,35 @@ class _CreateAppointmentReminderScreenState
                   decoration: _inputDecoration('Lịch hẹn, khám định kỳ hoặc tái khám *'),
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: _locationController,
-                  maxLength: 120,
-                  decoration: _inputDecoration('Địa điểm hoặc phòng khám'),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8F6),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 18, color: _primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Nhắc nhở này sẽ giúp bạn không quên lịch hẹn quan trọng với bác sĩ.',
+                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _Section(
+            child: TextField(
+              controller: _locationController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: _inputDecoration('Địa điểm hoặc phòng khám'),
             ),
           ),
           const SizedBox(height: 14),
@@ -143,12 +202,6 @@ class _CreateAppointmentReminderScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _DateButton(
-                  label: 'Giờ nhắc',
-                  value: _formatDateTime(_scheduledAt),
-                  onTap: _pickDateTime,
-                ),
-                const SizedBox(height: 10),
                 DropdownButtonFormField<RecurrenceType>(
                   value: _recurrence,
                   decoration: _inputDecoration('Lặp lại'),
@@ -161,6 +214,54 @@ class _CreateAppointmentReminderScreenState
                   onChanged: _saving
                       ? null
                       : (value) => setState(() => _recurrence = value ?? RecurrenceType.none),
+                ),
+                const SizedBox(height: 10),
+                _DateButton(label: 'Ngày bắt đầu', value: _formatDate(_startDate), onTap: _pickStartDate),
+                const SizedBox(height: 10),
+                _DateButton(
+                  label: 'Ngày kết thúc',
+                  value: _endDate == null ? 'Không có ngày kết thúc' : _formatDate(_endDate!),
+                  onTap: _pickEndDate,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _Section(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Giờ nhắc',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w800,
+                          color: _onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _saving ? null : _addTime,
+                      icon: const Icon(Icons.add_alarm_rounded, color: _primary),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _times
+                      .map(
+                        (time) => InputChip(
+                          label: Text(time.format(context)),
+                          onDeleted: _times.length == 1 || _saving
+                              ? null
+                              : () => setState(() => _times.remove(time)),
+                        ),
+                      )
+                      .toList(),
                 ),
               ],
             ),
@@ -190,14 +291,6 @@ class _CreateAppointmentReminderScreenState
     );
   }
 
-  DateTime get _scheduledAt => DateTime(
-        _date.year,
-        _date.month,
-        _date.day,
-        _time.hour,
-        _time.minute,
-      );
-
   InputDecoration _inputDecoration(String label) => InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
@@ -214,12 +307,8 @@ class _CreateAppointmentReminderScreenState
         ),
       );
 
-  static String _formatDateTime(DateTime value) {
-    final d = value.day.toString().padLeft(2, '0');
-    final m = value.month.toString().padLeft(2, '0');
-    final h = value.hour.toString().padLeft(2, '0');
-    final min = value.minute.toString().padLeft(2, '0');
-    return '$d/$m/${value.year} $h:$min';
+  String _formatDate(DateTime value) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   }
 }
 
@@ -234,7 +323,7 @@ class _Section extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6)),
         ],
