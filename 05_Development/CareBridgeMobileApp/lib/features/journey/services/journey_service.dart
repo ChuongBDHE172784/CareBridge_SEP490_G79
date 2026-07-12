@@ -79,14 +79,21 @@ class JourneyService {
 
   // UC-23: Update Journey
   Future<void> updateJourney(String journeyId, UpdateJourneyRequest request) async {
-    await apiPut('/api/v1/journeys/$journeyId', request.toJson());
-    final estimatedDueDate = _parseDate(request.estimatedDueDate);
-    final lastMenstrualDate = _parseDate(request.lastMenstrualDate);
+    final data = await apiPut('/api/v1/journeys/$journeyId', request.toJson());
+    final body = data?['data'] as Map<String, dynamic>?;
+    final journeyType =
+        body?['journeyType'] as String? ?? request.journeyType?.toApiValue();
+    final estimatedDueDate =
+        _parseDate(body?['estimatedDueDate'] as String?) ??
+        _parseDate(request.estimatedDueDate);
+    final lastMenstrualDate =
+        _parseDate(body?['lastMenstrualDate'] as String?) ??
+        _parseDate(request.lastMenstrualDate);
     if (estimatedDueDate != null || lastMenstrualDate != null) {
       await _saveOptimisticDashboard(JourneyDashboard(
-        journeyId: journeyId,
-        journeyType: 'PREGNANCY',
-        status: 'ACTIVE_PREGNANCY',
+        journeyId: body?['journeyId'] as String? ?? journeyId,
+        journeyType: journeyType ?? 'PREGNANCY',
+        status: _dashboardStatusForJourneyType(journeyType, 'ACTIVE_PREGNANCY'),
         estimatedDueDate:
             estimatedDueDate ?? _optimisticDashboard?.estimatedDueDate,
         lastMenstrualDate: lastMenstrualDate ?? _optimisticDashboard?.lastMenstrualDate,
@@ -100,19 +107,48 @@ class JourneyService {
   ) {
     if (fallback == null) return false;
     if (!dashboard.hasActiveJourney) return true;
+    if (dashboard.journeyId == fallback.journeyId &&
+        fallback.isPregnancy &&
+        !dashboard.isPregnancy) {
+      return true;
+    }
     return dashboard.isPregnancy &&
         dashboard.effectivePregnancyWeek == null &&
         fallback.effectivePregnancyWeek != null;
+  }
+
+  static String _dashboardStatusForJourneyType(
+    String? journeyType,
+    String fallback,
+  ) {
+    switch (journeyType) {
+      case 'PREGNANCY':
+        return 'ACTIVE_PREGNANCY';
+      case 'POSTPARTUM':
+        return 'ACTIVE_POSTPARTUM';
+      case 'BABY_CARE':
+        return 'BABY_CARE';
+      case 'PRE_PREGNANCY':
+        return 'PRE_PREGNANCY';
+      default:
+        return fallback;
+    }
   }
 
   static JourneyDashboard _mergeDashboard(
     JourneyDashboard dashboard,
     JourneyDashboard fallback,
   ) {
+    final useFallbackPregnancyStage =
+        fallback.isPregnancy && !dashboard.isPregnancy;
     return JourneyDashboard(
       journeyId: dashboard.journeyId ?? fallback.journeyId,
-      journeyType: dashboard.journeyType ?? fallback.journeyType,
-      status: dashboard.status ?? fallback.status,
+      journeyType: useFallbackPregnancyStage
+          ? fallback.journeyType
+          : dashboard.journeyType ?? fallback.journeyType,
+      status: useFallbackPregnancyStage
+          ? fallback.status
+          : dashboard.status ?? fallback.status,
       pregnancyWeek: dashboard.pregnancyWeek ?? fallback.pregnancyWeek,
       trimester: dashboard.trimester ?? fallback.trimester,
       daysUntilDue: dashboard.daysUntilDue ?? fallback.daysUntilDue,

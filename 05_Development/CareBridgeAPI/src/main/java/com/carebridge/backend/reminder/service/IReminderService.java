@@ -20,6 +20,9 @@ public interface IReminderService {
     /** @throws com.carebridge.backend.common.exception.BusinessException (REM-004/403) if not owner */
     ReminderDetailResponse getReminderDetail(UUID reminderId, UUID callerId);
 
+    /** Get all reminders for a user */
+    List<ReminderDetailResponse> getAllReminders(UUID callerId);
+
     /** UC46 — reminderType hardcoded MEDICATION */
     CreateReminderResponse createMedicationReminder(CreateMedicationReminderRequest request, UUID callerId);
 

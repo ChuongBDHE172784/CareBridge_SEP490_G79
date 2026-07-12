@@ -35,6 +35,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   JourneyDashboard? _dashboard;
   List<Reminder> _reminders = [];
   MetricTrend? _weightTrend;
+  MetricTrend? _heartRateTrend;
   bool _loading = true;
   String? _error;
 
@@ -57,11 +58,16 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
           dashboard.hasActiveJourney && dashboard.journeyId != null
           ? await _loadWeightTrend(dashboard.journeyId!)
           : null;
+      final heartRateTrend =
+          dashboard.hasActiveJourney && dashboard.journeyId != null
+          ? await _loadHeartRateTrend(dashboard.journeyId!)
+          : null;
       if (!mounted) return;
       setState(() {
         _dashboard = dashboard;
         _reminders = reminders;
         _weightTrend = weightTrend;
+        _heartRateTrend = heartRateTrend;
         _loading = false;
       });
     } on ApiException catch (_) {
@@ -94,6 +100,19 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
       return await _healthMetricService.getMetricTrend(
         journeyId: journeyId,
         metricType: 'WEIGHT',
+        from: DateTime.now().subtract(const Duration(days: 28)),
+        to: DateTime.now(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<MetricTrend?> _loadHeartRateTrend(String journeyId) async {
+    try {
+      return await _healthMetricService.getMetricTrend(
+        journeyId: journeyId,
+        metricType: 'HEART_RATE',
         from: DateTime.now().subtract(const Duration(days: 28)),
         to: DateTime.now(),
       );
@@ -192,7 +211,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                   const SizedBox(height: 24),
                   _buildMetricButtons(),
                   const SizedBox(height: 24),
-                  _buildWeightChart(),
+                  _buildBentoSummary(),
                   const SizedBox(height: 24),
                 ],
               ]),
@@ -454,8 +473,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
             ),
           ),
           IconButton(
-            onPressed: () =>
-                context.push('/journey-setup').then((_) => _load()),
+            onPressed: dashboard.journeyId == null
+                ? null
+                : () => context
+                    .push(
+                      '/journey-setup?mode=edit&journeyId=${Uri.encodeComponent(dashboard.journeyId!)}',
+                    )
+                    .then((_) => _load()),
             icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
             tooltip: 'Cập nhật ngày dự sinh',
           ),
@@ -662,8 +686,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   Widget _buildMetricButtons() {
     final metrics = [
-      (Icons.monitor_weight, 'Cân nặng', 'WEIGHT'),
-      (Icons.favorite_border, 'Huyết áp', 'BLOOD_PRESSURE_SYSTOLIC'),
+      (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'WEIGHT'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
       (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
@@ -679,8 +702,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
             padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
             child: GestureDetector(
               onTap: () async {
-                if (metric.$3 == 'WEIGHT' ||
-                    metric.$3 == 'BLOOD_PRESSURE_SYSTOLIC') {
+                if (metric.$3 == 'WEIGHT') {
                   await _openMetricRoute(metric.$3);
                   return;
                 }
@@ -731,99 +753,84 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     );
   }
 
-  Widget _buildWeightChart() {
-    final points =
-        (_weightTrend?.dataPoints ?? [])
-            .where((p) => p.valueNumeric.isFinite)
-            .toList()
-          ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-    final chartPoints = points.length > 6
-        ? points.sublist(points.length - 6)
-        : points;
-    final values = chartPoints.map((p) => p.valueNumeric).toList();
-    final labels = chartPoints
-        .map((p) => '${p.measuredAt.day}/${p.measuredAt.month}')
-        .toList();
-    final unit = _weightTrend?.unit?.isNotEmpty == true
-        ? _weightTrend!.unit!
-        : 'kg';
+  Widget _buildBentoSummary() {
+    final weightPoint = _weightTrend?.dataPoints.isNotEmpty == true ? _weightTrend!.dataPoints.last : null;
+    final hrPoint = _heartRateTrend?.dataPoints.isNotEmpty == true ? _heartRateTrend!.dataPoints.last : null;
 
+    final weightValue = weightPoint?.valueDisplay ?? '—';
+    final weightTrendPct = _weightTrend?.trend;
+
+    final hrValue = hrPoint?.valueDisplay ?? '—';
+    final hrTrendPct = _heartRateTrend?.trend;
+
+    return Row(
+      children: [
+        Expanded(child: _buildBentoCard(
+          icon: Icons.monitor_weight_outlined,
+          label: 'Cân nặng',
+          value: weightValue,
+          unit: 'kg',
+          trend: weightTrendPct,
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: _buildBentoCard(
+          icon: Icons.show_chart_rounded,
+          label: 'Nhịp tim',
+          value: hrValue,
+          unit: 'bpm',
+          trend: hrTrendPct,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildBentoCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String unit,
+    double? trend,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: _cardDecoration(),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F1EC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(color: _primary.withAlpha(12), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Biểu đồ cân nặng',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
+              Icon(icon, color: _primaryContainer, size: 22),
+              if (trend != null)
+                Row(
+                  children: [
+                    Icon(
+                      trend >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                      color: _primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${trend.abs().toStringAsFixed(1)}%',
+                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                    ),
+                  ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: const Text(
-                  '4 tuần',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            height: 160,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: _surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
-            child: values.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Chưa có dữ liệu cân nặng',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 14,
-                        color: _onSurfaceVariant,
-                      ),
-                    ),
-                  )
-                : CustomPaint(
-                    painter: _BarChartPainter(
-                      data: values,
-                      labels: labels,
-                      primaryColor: _primary,
-                      barColor: _primaryContainer,
-                      labelColor: _onSurfaceVariant,
-                    ),
-                  ),
-          ),
           const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+          const SizedBox(height: 4),
           Text(
-            'Đơn vị: $unit',
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 11,
-              color: _onSurfaceVariant,
-            ),
+            '$value $unit',
+            style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
           ),
         ],
       ),
@@ -937,96 +944,6 @@ class _CircularProgressWidget extends StatelessWidget {
   }
 }
 
-class _BarChartPainter extends CustomPainter {
-  const _BarChartPainter({
-    required this.data,
-    required this.labels,
-    required this.primaryColor,
-    required this.barColor,
-    required this.labelColor,
-  });
-
-  final List<double> data;
-  final List<String> labels;
-  final Color primaryColor;
-  final Color barColor;
-  final Color labelColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    const bottomLabelHeight = 24.0;
-    final chartHeight = size.height - bottomLabelHeight;
-    final maxValue = data.reduce(max);
-    final minValue = data.reduce(min);
-    final range = (maxValue - minValue).abs() < 0.1 ? 1.0 : maxValue - minValue;
-    final slotWidth = size.width / data.length;
-    final barWidth = min(28.0, slotWidth * 0.46);
-
-    final gridPaint = Paint()
-      ..color = const Color(0xFFF2EAE4)
-      ..strokeWidth = 1;
-    final barPaint = Paint()
-      ..color = barColor
-      ..style = PaintingStyle.fill;
-    final capPaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill;
-
-    for (var i = 0; i < 4; i++) {
-      final y = chartHeight * i / 3;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    for (var i = 0; i < data.length; i++) {
-      final normalized = ((data[i] - minValue) / range).clamp(0.0, 1.0);
-      final barHeight = 28 + normalized * max(0, chartHeight - 40);
-      final left = i * slotWidth + (slotWidth - barWidth) / 2;
-      final top = chartHeight - barHeight;
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, top, barWidth, barHeight),
-        const Radius.circular(10),
-      );
-
-      canvas.drawRRect(rect, barPaint);
-      canvas.drawCircle(Offset(left + barWidth / 2, top), 4, capPaint);
-
-      final label = i < labels.length ? labels[i] : '';
-      if (label.isNotEmpty) {
-        final textPainter = TextPainter(
-          text: TextSpan(
-            text: label,
-            style: TextStyle(
-              color: labelColor,
-              fontFamily: 'Lexend',
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.center,
-        )..layout(maxWidth: slotWidth);
-        textPainter.paint(
-          canvas,
-          Offset(
-            i * slotWidth + (slotWidth - textPainter.width) / 2,
-            chartHeight + 8,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BarChartPainter oldDelegate) {
-    return oldDelegate.data != data ||
-        oldDelegate.labels != labels ||
-        oldDelegate.primaryColor != primaryColor ||
-        oldDelegate.barColor != barColor ||
-        oldDelegate.labelColor != labelColor;
-  }
-}
 
 class _CircleProgressPainter extends CustomPainter {
   const _CircleProgressPainter({required this.progress});

@@ -27,6 +27,7 @@ import '../../features/healthRecords/screens/edit_health_record_screen.dart';
 import '../../features/reminder/screens/create_medication_reminder_screen.dart';
 import '../../features/reminder/screens/create_vaccination_reminder_screen.dart';
 import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
+import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/reminder/models/reminder_model.dart';
 
 import '../../features/fileManager/screens/file_viewer_screen.dart';
@@ -165,6 +166,10 @@ GoRoute(
 GoRoute(
   path: '/health-records',
   builder: (context, state) => const HealthRecordTimelineScreen(),
+),
+GoRoute(
+  path: '/reminders/all',
+  builder: (context, state) => const AllRemindersScreen(),
 ),
 GoRoute(
   path: '/health-records/add',

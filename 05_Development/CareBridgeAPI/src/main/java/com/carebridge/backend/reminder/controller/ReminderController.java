@@ -47,6 +47,15 @@ public class ReminderController {
                 .body(ApiResponse.success(response, "Reminder created successfully"));
     }
 
+    // View all reminders
+    @GetMapping
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<List<ReminderDetailResponse>>> getAllReminders(Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = reminderService.getAllReminders(callerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // UC212: View reminder detail
     @GetMapping("/{reminderId}")
     @PreAuthorize("hasRole('MOTHER')")

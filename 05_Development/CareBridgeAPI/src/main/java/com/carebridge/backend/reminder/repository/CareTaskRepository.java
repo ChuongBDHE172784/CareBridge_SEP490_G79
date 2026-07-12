@@ -15,4 +15,7 @@ public interface CareTaskRepository extends JpaRepository<CareTask, UUID> {
 
     List<CareTask> findByAssignedToAndStatusAndDueAtBetween(
             UUID assignedTo, CareTaskStatus status, Instant start, Instant end);
+
+    List<CareTask> findByAssignedToAndStatusInAndDueAtBetween(
+            UUID assignedTo, List<CareTaskStatus> statuses, Instant start, Instant end);
 }

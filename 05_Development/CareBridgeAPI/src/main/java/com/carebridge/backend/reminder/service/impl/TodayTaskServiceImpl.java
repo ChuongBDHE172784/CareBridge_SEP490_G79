@@ -37,23 +37,29 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
 
         // ADR-TODAY-001: two separate DB queries, merged in service
         List<Reminder> reminders = reminderRepository
-                .findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+                .findDueTodayByOwnerAndStatusIn(
                         callerId, startOfDay, endOfDay,
-                        List.of(ReminderStatus.PENDING, ReminderStatus.SNOOZED));
+                        List.of(ReminderStatus.PENDING, ReminderStatus.SNOOZED, ReminderStatus.COMPLETED));
 
         List<CareTask> careTasks = careTaskRepository
-                .findByAssignedToAndStatusAndDueAtBetween(
-                        callerId, CareTaskStatus.OPEN, startOfDay, endOfDay);
+                .findByAssignedToAndStatusInAndDueAtBetween(
+                        callerId, List.of(CareTaskStatus.OPEN, CareTaskStatus.COMPLETED), startOfDay, endOfDay);
 
         List<TodayTaskItem> items = new ArrayList<>();
 
         for (Reminder r : reminders) {
             String type = r.getReminderType().name();
+            Instant dueAt = r.getStatus() == ReminderStatus.SNOOZED && r.getSnoozedUntil() != null
+                    ? r.getSnoozedUntil()
+                    : r.getScheduledAt();
             items.add(TodayTaskItem.builder()
                     .id(r.getId())
+                    .sourceType("REMINDER")
                     .type(type)
                     .title(r.getTitle())
                     .scheduledAt(r.getScheduledAt())
+                    .dueAt(dueAt)
+                    .snoozedUntil(r.getSnoozedUntil())
                     .status(r.getStatus().name())
                     .priority(reminderPriority(type))
                     .build());
@@ -62,15 +68,19 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
         for (CareTask t : careTasks) {
             items.add(TodayTaskItem.builder()
                     .id(t.getId())
+                    .sourceType("CARE_TASK")
                     .type("CARE_TASK")
                     .title(t.getTitle())
                     .scheduledAt(t.getDueAt())
+                    .dueAt(t.getDueAt())
                     .status(t.getStatus().name())
                     .priority(4)
                     .build());
         }
 
-        items.sort(Comparator.comparingInt(TodayTaskItem::getPriority));
+        items.sort(Comparator
+                .comparingInt(TodayTaskItem::getPriority)
+                .thenComparing(TodayTaskItem::getDueAt, Comparator.nullsLast(Comparator.naturalOrder())));
         return items;
     }
 

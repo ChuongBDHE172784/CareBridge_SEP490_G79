@@ -5,6 +5,7 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.journey.dto.JourneyResponse;
 import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -98,6 +99,23 @@ class JourneyUpdateServiceImplTest {
 
         assertThat(response.getLastMenstrualDate()).isEqualTo(LocalDate.of(2026, 1, 10));
         assertThat(response.getEstimatedDueDate()).isEqualTo(LocalDate.of(2026, 10, 17));
+    }
+
+    @Test
+    void updateJourney_journeyType_updatesPrePregnancyToPregnancy() {
+        var journey = JourneyUpdateTestFactory.makePrePregnancyJourney();
+        var req = new com.carebridge.backend.journey.dto.UpdateJourneyRequest();
+        req.setJourneyType(JourneyType.PREGNANCY);
+        req.setEstimatedDueDate(LocalDate.of(2026, 9, 14));
+        when(journeyRepository.findById(JourneyUpdateTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(journey));
+        when(journeyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        JourneyResponse response = journeyService.updateJourney(
+                JourneyUpdateTestFactory.MOTHER_ID, JourneyUpdateTestFactory.JOURNEY_ID, req);
+
+        assertThat(response.getJourneyType()).isEqualTo(JourneyType.PREGNANCY.name());
+        assertThat(response.getEstimatedDueDate()).isEqualTo(LocalDate.of(2026, 9, 14));
     }
 
     /** TC-023-002: Transition to COMPLETED with required deliveryDate. */

@@ -82,6 +82,17 @@ public class ReminderServiceImpl implements IReminderService {
         return toDetailResponse(reminder);
     }
 
+    // ─── View All Reminders ───────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReminderDetailResponse> getAllReminders(UUID callerId) {
+        return reminderRepository.findByOwnerUserIdOrderByScheduledAtDesc(callerId)
+                .stream()
+                .map(this::toDetailResponse)
+                .toList();
+    }
+
     // ─── UC46: Create Medication Reminder ─────────────────────────────────────
 
     @Override

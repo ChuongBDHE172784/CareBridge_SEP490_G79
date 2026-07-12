@@ -12,7 +12,14 @@ import '../services/journey_service.dart';
 /// CB-007 - Mother Journey Setup (UC-22)
 /// Pregnancy dating wizard based on the setup mother journey screenflow.
 class JourneySetupScreen extends StatefulWidget {
-  const JourneySetupScreen({super.key});
+  const JourneySetupScreen({
+    super.key,
+    this.journeyId,
+    this.isEditMode = false,
+  });
+
+  final String? journeyId;
+  final bool isEditMode;
 
   @override
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
@@ -25,8 +32,6 @@ enum _SetupStep {
   gestationalAge,
   dueDate,
   cycleLength,
-  obstetricResult,
-  fetalAgeResult,
   dueDateResult,
   loading,
 }
@@ -113,8 +118,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         return _enteredGestationalAgeDays > 0 &&
             _enteredGestationalAgeDays <= 294;
       case _SetupStep.cycleLength:
-      case _SetupStep.obstetricResult:
-      case _SetupStep.fetalAgeResult:
       case _SetupStep.dueDateResult:
         return true;
       case _SetupStep.loading:
@@ -122,27 +125,27 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     }
   }
 
+  int get _totalProgressSteps => _selectedMethod == _DatingMethod.lmp ? 4 : 3;
+
   int get _progressIndex {
-    const order = [
-      _SetupStep.method,
-      _SetupStep.lmpDate,
-      _SetupStep.cycleLength,
-      _SetupStep.obstetricResult,
-      _SetupStep.fetalAgeResult,
-      _SetupStep.dueDateResult,
-      _SetupStep.loading,
-    ];
     switch (_step) {
+      case _SetupStep.method:
+        return 1;
+      case _SetupStep.lmpDate:
       case _SetupStep.conceptionDate:
       case _SetupStep.gestationalAge:
       case _SetupStep.dueDate:
         return 2;
-      default:
-        return order.indexOf(_step) + 1;
+      case _SetupStep.cycleLength:
+        return 3;
+      case _SetupStep.dueDateResult:
+      case _SetupStep.loading:
+        return _totalProgressSteps;
     }
   }
 
-  double get _progress => (_progressIndex / 7).clamp(0.12, 1.0);
+  double get _progress =>
+      (_progressIndex / _totalProgressSteps).clamp(0.12, 1.0);
 
   String _formatApiDate(DateTime date) {
     final y = date.year.toString().padLeft(4, '0');
@@ -172,8 +175,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   String _notes() {
     final parts = <String>[
       'Setup source: ${_selectedMethod?.name ?? 'unknown'}',
-      'Cycle length: ${_cycleUnknown ? 'unknown' : _cycleLength}',
     ];
+    if (_selectedMethod == _DatingMethod.lmp) {
+      parts.add('Cycle length: ${_cycleUnknown ? 'unknown' : _cycleLength}');
+    }
     if (_lmpDate != null) parts.add('LMP: ${_formatApiDate(_lmpDate!)}');
     if (_conceptionDate != null) {
       parts.add('Conception: ${_formatApiDate(_conceptionDate!)}');
@@ -222,15 +227,12 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             break;
         }
       case _SetupStep.lmpDate:
+        _goTo(_SetupStep.cycleLength);
       case _SetupStep.conceptionDate:
       case _SetupStep.gestationalAge:
       case _SetupStep.dueDate:
-        _goTo(_SetupStep.cycleLength);
+        _goTo(_SetupStep.dueDateResult);
       case _SetupStep.cycleLength:
-        _goTo(_SetupStep.obstetricResult);
-      case _SetupStep.obstetricResult:
-        _goTo(_SetupStep.fetalAgeResult);
-      case _SetupStep.fetalAgeResult:
         _goTo(_SetupStep.dueDateResult);
       case _SetupStep.dueDateResult:
         unawaited(_submitJourney());
@@ -242,6 +244,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   Future<void> _submitJourney() async {
     final dueDate = _calculatedDueDate;
     if (dueDate == null) return;
+    final journeyId = widget.journeyId;
+    final isUpdate = widget.isEditMode && journeyId != null;
     setState(() {
       _history.add(_step);
       _step = _SetupStep.loading;
@@ -251,26 +255,46 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
     try {
       await Future<void>.delayed(const Duration(milliseconds: 650));
-      await _service.createJourney(
-        CreateJourneyRequest(
-          journeyType: JourneyType.pregnancy,
-          startDate: _formatApiDate(_today),
-          lastMenstrualDate: _lmpDate != null
-              ? _formatApiDate(_lmpDate!)
-              : null,
-          estimatedDueDate: _formatApiDate(dueDate),
-          notes: _notes(),
-        ),
-      );
+      if (isUpdate) {
+        await _service.updateJourney(
+          journeyId,
+          UpdateJourneyRequest(
+            journeyType: JourneyType.pregnancy,
+            lastMenstrualDate: _lmpDate != null
+                ? _formatApiDate(_lmpDate!)
+                : null,
+            estimatedDueDate: _formatApiDate(dueDate),
+            notes: _notes(),
+          ),
+        );
+      } else {
+        await _service.createJourney(
+          CreateJourneyRequest(
+            journeyType: JourneyType.pregnancy,
+            startDate: _formatApiDate(_today),
+            lastMenstrualDate: _lmpDate != null
+                ? _formatApiDate(_lmpDate!)
+                : null,
+            estimatedDueDate: _formatApiDate(dueDate),
+            notes: _notes(),
+          ),
+        );
+      }
       await AuthService.instance.refreshSession();
       if (!mounted) return;
-      context.go('/');
+      if (isUpdate) {
+        context.pop();
+      } else {
+        context.go('/');
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _step = _SetupStep.dueDateResult;
         _loading = false;
-        _error = e.statusCode == 409
+        _error = isUpdate
+            ? 'Không thể cập nhật hành trình. Vui lòng thử lại.'
+            : e.statusCode == 409
             ? 'Bạn đã có một hành trình đang hoạt động.'
             : 'Không thể tạo hành trình. Vui lòng thử lại.';
       });
@@ -279,7 +303,9 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       setState(() {
         _step = _SetupStep.dueDateResult;
         _loading = false;
-        _error = 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.';
+        _error = isUpdate
+            ? 'Lỗi kết nối. Không thể cập nhật hành trình.'
+            : 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.';
       });
     }
   }
@@ -342,7 +368,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             child: Text(
               _step == _SetupStep.loading
                   ? 'ĐANG THIẾT LẬP'
-                  : 'BƯỚC $_progressIndex / 7',
+                  : 'BƯỚC $_progressIndex / $_totalProgressSteps',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: 'Lexend',
@@ -409,20 +435,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         );
       case _SetupStep.cycleLength:
         return _buildCycleLengthStep();
-      case _SetupStep.obstetricResult:
-        return _buildAgeResultStep(
-          title: 'Thời hạn sản khoa của thai kỳ bạn',
-          ageDays: _obstetricAgeDays,
-          highlightWord: 'tuần',
-          notePrefix: 'Thời hạn sản khoa',
-        );
-      case _SetupStep.fetalAgeResult:
-        return _buildAgeResultStep(
-          title: 'Tuổi thai của bạn',
-          ageDays: _fetalAgeDays,
-          highlightWord: 'tuần',
-          notePrefix: 'Tuổi thai của thai nhi',
-        );
       case _SetupStep.dueDateResult:
         return _buildDueDateResultStep();
       case _SetupStep.loading:
@@ -658,7 +670,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         TextButton(
           onPressed: () {
             setState(() => _cycleUnknown = true);
-            _goTo(_SetupStep.obstetricResult);
+            _goTo(_SetupStep.dueDateResult);
           },
           child: const Text(
             'KHÔNG BIẾT',
@@ -682,93 +694,18 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     );
   }
 
-  Widget _buildAgeResultStep({
-    required String title,
-    required int ageDays,
-    required String highlightWord,
-    required String notePrefix,
-  }) {
-    final weeks = ageDays ~/ 7;
-    final weekRange = List<int>.generate(
-      5,
-      (index) => (weeks - 2 + index).clamp(1, 42).toInt(),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: _primaryDark,
-            height: 1.22,
-          ),
-        ),
-        const SizedBox(height: 76),
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              color: _text,
-              height: 1.15,
-            ),
-            children: [
-              TextSpan(
-                text: '$weeks $highlightWord ',
-                style: const TextStyle(color: _primary),
-              ),
-              TextSpan(text: 'và ${ageDays % 7} ngày'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'đây là tuần thai thứ ${weeks + 1} của bạn',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 15,
-            color: _muted,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 28),
-        SizedBox(
-          height: 86,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            itemBuilder: (context, index) {
-              final week = weekRange[index];
-              final selected = week == weeks;
-              return _WeekBubble(week: week, selected: selected);
-            },
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemCount: weekRange.length,
-          ),
-        ),
-        const SizedBox(height: 28),
-        _InsightCard(
-          icon: Icons.lightbulb_rounded,
-          text: '$notePrefix ${_sourceDescription()}.',
-        ),
-      ],
-    );
-  }
-
   Widget _buildDueDateResultStep() {
     final dueDate = _calculatedDueDate;
+    final obstetricWeeks = _obstetricAgeDays ~/ 7;
+    final obstetricDays = _obstetricAgeDays % 7;
+    final fetalWeeks = _fetalAgeDays ~/ 7;
+    final fetalDays = _fetalAgeDays % 7;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Ngày dự kiến sinh của bạn',
+          'Kết quả',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
@@ -778,38 +715,39 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             height: 1.22,
           ),
         ),
-        const SizedBox(height: 44),
-        Container(
-          height: 210,
-          decoration: BoxDecoration(
-            color: _surfaceLow,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: _border.withAlpha(160)),
+        const SizedBox(height: 16),
+        const Text(
+          'Bạn đang mang thai',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: _muted,
+            height: 1.4,
           ),
-          child: Stack(
-            alignment: Alignment.center,
+        ),
+        const SizedBox(height: 32),
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _border.withAlpha(180)),
+            boxShadow: [
+              BoxShadow(
+                color: _text.withAlpha(16),
+                blurRadius: 32,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Positioned(
-                left: 30,
-                top: 46,
-                child: _Cloud(
-                  width: 92,
-                  height: 38,
-                  color: const Color(0xFF7EA6A0),
-                ),
-              ),
-              Positioned(
-                right: 26,
-                bottom: 44,
-                child: _Cloud(
-                  width: 104,
-                  height: 42,
-                  color: const Color(0xFF7EA6A0),
-                ),
-              ),
               Container(
-                width: 112,
-                height: 112,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   color: _primary.withAlpha(30),
                   shape: BoxShape.circle,
@@ -817,27 +755,51 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                 child: const Icon(
                   Icons.child_care_rounded,
                   color: _primary,
-                  size: 58,
+                  size: 38,
                 ),
+              ),
+              const SizedBox(height: 22),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: _text,
+                    height: 1.25,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '$obstetricWeeks tuần ',
+                      style: const TextStyle(
+                        color: _primary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    TextSpan(text: '$obstetricDays ngày'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 26),
+              _ResultMetric(
+                icon: Icons.timeline_rounded,
+                label: 'Tuổi thai nhi',
+                value: '$fetalWeeks tuần $fetalDays ngày',
+              ),
+              const SizedBox(height: 12),
+              _ResultMetric(
+                icon: Icons.event_available_rounded,
+                label: 'Ngày dự sinh',
+                value: dueDate == null
+                    ? 'Chưa có ngày dự sinh'
+                    : _formatDisplayDate(dueDate),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 34),
-        Text(
-          dueDate == null
-              ? 'Chưa có ngày dự sinh'
-              : _formatDisplayDate(dueDate),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 34,
-            fontWeight: FontWeight.w900,
-            color: _primary,
-            height: 1.15,
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         _InsightCard(
           icon: Icons.verified_rounded,
           text:
@@ -937,9 +899,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
               ),
             ),
           ],
-          if (_step == _SetupStep.obstetricResult ||
-              _step == _SetupStep.fetalAgeResult ||
-              _step == _SetupStep.dueDateResult) ...[
+          if (_step == _SetupStep.dueDateResult) ...[
             TextButton(
               onPressed: () => _goTo(_SetupStep.method),
               child: const Text(
@@ -1213,6 +1173,75 @@ class _InfoPill extends StatelessWidget {
   }
 }
 
+class _ResultMetric extends StatelessWidget {
+  const _ResultMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  static const _primary = Color(0xFFC98C7B);
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _text = Color(0xFF5A463F);
+  static const _muted = Color(0xFF9C857C);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: _primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _muted,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: _text,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InsightCard extends StatelessWidget {
   const _InsightCard({required this.icon, required this.text});
 
@@ -1263,116 +1292,6 @@ class _InsightCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: _text,
               height: 1.55,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WeekBubble extends StatelessWidget {
-  const _WeekBubble({required this.week, required this.selected});
-
-  final int week;
-  final bool selected;
-
-  static const _primary = Color(0xFFC98C7B);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 76,
-      height: 76,
-      decoration: BoxDecoration(
-        color: selected ? _primary : Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: selected ? _primary : _border, width: 2),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '$week',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: selected ? Colors.white : _text,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            'TUẦN',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              color: selected ? Colors.white : _muted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Cloud extends StatelessWidget {
-  const _Cloud({
-    required this.width,
-    required this.height,
-    required this.color,
-  });
-
-  final double width;
-  final double height;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            bottom: 0,
-            child: Container(
-              width: width,
-              height: height * 0.58,
-              decoration: BoxDecoration(
-                color: color.withAlpha(70),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-          Positioned(
-            left: width * 0.12,
-            bottom: height * 0.18,
-            child: Container(
-              width: height * 0.85,
-              height: height * 0.85,
-              decoration: BoxDecoration(
-                color: color.withAlpha(70),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            left: width * 0.42,
-            bottom: height * 0.12,
-            child: Container(
-              width: height * 0.72,
-              height: height * 0.72,
-              decoration: BoxDecoration(
-                color: color.withAlpha(70),
-                shape: BoxShape.circle,
-              ),
             ),
           ),
         ],
