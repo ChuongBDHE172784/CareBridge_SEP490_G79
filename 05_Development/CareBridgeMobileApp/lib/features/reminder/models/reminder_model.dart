@@ -51,10 +51,7 @@ extension ReminderStatusExtension on ReminderStatus {
     }
   }
 
-  bool get isTerminal =>
-      this == ReminderStatus.done ||
-      this == ReminderStatus.skipped ||
-      this == ReminderStatus.cancelled;
+  bool get isTerminal => this == ReminderStatus.cancelled;
 
   static ReminderStatus fromApi(String? value) {
     switch (value) {

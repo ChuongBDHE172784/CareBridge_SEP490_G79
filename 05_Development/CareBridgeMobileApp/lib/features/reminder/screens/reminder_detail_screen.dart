@@ -402,8 +402,6 @@ class _ReminderContent extends StatelessWidget {
         const SizedBox(height: 18),
         Row(
           children: [
-            Expanded(child: _SmallAction(icon: Icons.edit_rounded, label: 'Sửa', onTap: processing ? null : onEdit)),
-            const SizedBox(width: 10),
             Expanded(child: _SmallAction(icon: Icons.block_rounded, label: 'Bỏ qua', onTap: processing ? null : onSkip)),
             const SizedBox(width: 10),
             Expanded(
