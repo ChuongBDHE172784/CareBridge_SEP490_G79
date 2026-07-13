@@ -8,6 +8,8 @@ import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
+import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.service.AdminContentService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -22,16 +24,36 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @RestController
 @RequestMapping("/api/v1/admin/content")
-@PreAuthorize("hasRole('CONTENT_ADMIN')")
+@PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN')")
 @RequiredArgsConstructor
 public class AdminContentController {
 
     private final AdminContentService adminContentService;
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ContentDetailResponse>>> getContents(
+            @RequestParam(required = false) ContentStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adminContentService.getStaffContents(status, PageRequest.of(page, Math.min(size, 100))),
+                "Content workspace loaded"));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ContentDetailResponse>> getContent(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(adminContentService.getStaffContent(id), "Content loaded"));
+    }
+
     @PostMapping
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<CreateContentResponse>> createContent(
             @Valid @RequestBody CreateContentRequest request,
             Principal principal) {
@@ -42,6 +64,7 @@ public class AdminContentController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<UpdateContentResponse>> updateContent(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateContentRequest request,
@@ -51,6 +74,7 @@ public class AdminContentController {
     }
 
     @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<HideContentResponse>> hideContent(
             @PathVariable UUID id,
             @Valid @RequestBody HideContentRequest request,

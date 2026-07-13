@@ -10,6 +10,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.JoinColumn;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,6 +66,10 @@ public class ContentItem {
 
     @Column(name = "source_label", length = 255)
     private String sourceLabel;
+
+    @ElementCollection
+    @CollectionTable(name = "content_sources", joinColumns = @JoinColumn(name = "content_item_id"))
+    private List<ContentSource> sources = new ArrayList<>();
 
     @Column(name = "published_at")
     private Instant publishedAt;

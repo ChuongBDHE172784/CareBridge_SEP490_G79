@@ -2,8 +2,10 @@ package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentType;
+import com.carebridge.backend.content.entity.ContentStatus;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,8 +27,11 @@ public class ContentDetailResponse {
     private ContentStage stage;
     private UUID topicId;
     private Integer version;
+    private ContentStatus status;
     private String sourceLabel;
     private Instant publishedAt;
     private Instant updatedAt;
+    private Instant createdAt;
+    private List<ContentSourceResponse> sources;
     private boolean contentStale;
 }

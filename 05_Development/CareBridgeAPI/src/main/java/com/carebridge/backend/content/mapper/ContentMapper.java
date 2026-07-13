@@ -11,6 +11,7 @@ import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ContentSource;
 import java.util.List;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -29,6 +30,8 @@ public class ContentMapper {
                 .status(ContentStatus.DRAFT)
                 .versionNo(1)
                 .authorUserId(authorUserId)
+                .sources(request.getSources() == null ? java.util.List.of() : request.getSources().stream()
+                        .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList())
                 .build();
     }
 
@@ -69,9 +72,12 @@ public class ContentMapper {
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
                 .version(item.getVersionNo())
+                .status(item.getStatus())
                 .sourceLabel(item.getSourceLabel())
                 .publishedAt(item.getPublishedAt())
                 .updatedAt(updatedAt)
+                .createdAt(item.getCreatedAt())
+                .sources(item.getSources().stream().map(s -> new com.carebridge.backend.content.dto.response.ContentSourceResponse(s.getTitle(), s.getUrl(), s.getPublisher())).toList())
                 .contentStale(contentStale)
                 .build();
     }

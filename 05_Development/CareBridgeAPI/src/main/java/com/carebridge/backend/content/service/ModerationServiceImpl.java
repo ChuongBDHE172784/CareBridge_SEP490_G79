@@ -222,7 +222,8 @@ public class ModerationServiceImpl implements ModerationService {
 
     // C6: reason required for HIDE/LOCK/REQUEST_REVISION, optional for APPROVE (ADR-006)
     private static final Set<ModerationActionType> REASON_REQUIRED_ACTION_TYPES =
-            Set.of(ModerationActionType.HIDE, ModerationActionType.LOCK, ModerationActionType.REQUEST_REVISION);
+            Set.of(ModerationActionType.HIDE, ModerationActionType.LOCK,
+                    ModerationActionType.REQUEST_REVISION, ModerationActionType.LABEL);
 
     @Override
     @Transactional
@@ -304,6 +305,8 @@ public class ModerationServiceImpl implements ModerationService {
             case HIDE -> QuestionStatus.HIDDEN;
             case LOCK -> QuestionStatus.LOCKED;
             case REQUEST_REVISION -> QuestionStatus.PENDING;
+            // A label records a safety warning without changing visibility or discussion state.
+            case LABEL -> question.getStatus();
             default -> throw ModerationException.actionNotSupportedForTargetType(
                     actionType, ReportTargetType.QUESTION);
         };
@@ -327,6 +330,7 @@ public class ModerationServiceImpl implements ModerationService {
             case APPROVE -> AnswerStatus.APPROVED;
             case HIDE -> AnswerStatus.HIDDEN;
             case REQUEST_REVISION -> AnswerStatus.PENDING;
+            case LABEL -> answer.getStatus();
             default -> throw ModerationException.actionNotSupportedForTargetType(actionType, ReportTargetType.ANSWER);
         };
 

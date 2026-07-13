@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchContentDetail, updateContent } from '../services/contentApi';
+import { fetchStaffContentDetail, updateContent } from '../services/contentApi';
 import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS } from '../models/content';
 
@@ -22,14 +22,13 @@ export default function EditContentPage() {
     setIsLoading(true);
     setLoadError('');
     try {
-      const data = await fetchContentDetail(id);
+      const data = await fetchStaffContentDetail(id);
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
     } catch {
       setLoadError(
-        'Không thể tải nội dung để chỉnh sửa. Backend hiện chỉ cho phép xem nội dung đã ở trạng thái ' +
-        '"Đã xuất bản" (APPROVED) — nội dung đang ở dạng nháp hoặc chờ duyệt sẽ không tải được qua API này.',
+        'Không thể tải nội dung để chỉnh sửa. Vui lòng thử lại hoặc kiểm tra quyền Content Admin.',
       );
     } finally {
       setIsLoading(false);

@@ -5,6 +5,8 @@ public enum ModerationActionType {
     HIDE,
     LOCK,
     REQUEST_REVISION,
+    /** A non-visibility-changing safety marker for moderator and admin review. */
+    LABEL,
     WARN,
     SUSPEND,
     RESTRICT,

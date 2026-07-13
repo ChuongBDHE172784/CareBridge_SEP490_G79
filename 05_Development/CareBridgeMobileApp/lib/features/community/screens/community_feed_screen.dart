@@ -6,6 +6,7 @@ import 'create_question_screen.dart';
 import 'question_detail_screen.dart';
 import 'topic_directory_screen.dart';
 import 'verified_content_search_screen.dart';
+import 'bookmarked_questions_screen.dart';
 
 /// CB-014 — Community Feed (UC-54..UC-59, UC-198..UC-201)
 /// Displays topic filter chips and a scrollable list of community posts.
@@ -285,6 +286,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const TopicDirectoryScreen()),
               ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.bookmark_outline, color: _onSurfaceVariant, size: 22),
+              tooltip: 'Bài viết đã lưu',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookmarkedQuestionsScreen())),
             ),
           ),
           const SizedBox(width: 8),

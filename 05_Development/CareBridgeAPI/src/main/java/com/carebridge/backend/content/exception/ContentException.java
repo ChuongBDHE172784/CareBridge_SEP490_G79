@@ -86,4 +86,11 @@ public class ContentException extends RuntimeException {
     public static ContentException unpublishReasonRequired() {
         return new ContentException("CNT-011", "Reason required for unpublish", HttpStatus.BAD_REQUEST);
     }
+
+    public static ContentException invalidContentStatusTransition() {
+        return new ContentException(
+                "CNT-012",
+                "Content Admin may only save a draft or submit it for review",
+                HttpStatus.CONFLICT);
+    }
 }

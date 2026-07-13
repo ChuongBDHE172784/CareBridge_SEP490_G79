@@ -33,6 +33,8 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     Optional<ContentItem> findByIdAndStatus(UUID id, ContentStatus status);
 
+    Page<ContentItem> findByStatus(ContentStatus status, Pageable pageable);
+
     // UC-113: impact report — published content reach (count only, no view/impression column exists)
     long countByPublishedAtIsNotNull();
 

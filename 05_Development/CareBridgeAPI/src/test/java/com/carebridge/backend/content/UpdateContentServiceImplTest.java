@@ -59,13 +59,13 @@ class UpdateContentServiceImplTest {
     private ContentItem makeItem(UUID id, String title, ContentStage stage, ContentType type, Integer versionNo) {
         return ContentItem.builder()
                 .id(id).title(title).body("original body").stage(stage).type(type)
-                .status(ContentStatus.APPROVED).versionNo(versionNo).authorUserId(UUID.randomUUID())
+                .status(ContentStatus.DRAFT).versionNo(versionNo).authorUserId(UUID.randomUUID())
                 .sourceLabel("original source")
                 .build();
     }
 
     private UpdateContentRequest makeRequest(String title, ContentStage stage, ContentStatus status) {
-        return new UpdateContentRequest(title, "updated body", stage, null, status, "updated source");
+        return new UpdateContentRequest(title, "updated body", stage, null, status, "updated source", java.util.List.of());
     }
 
     // UCT-TC-901
@@ -76,7 +76,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any())).thenReturn(Optional.empty());
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateContentRequest request = makeRequest("A updated", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A updated", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         UpdateContentResponse response = adminContentService.updateContent(C1, request, principal);
 
         assertEquals("A updated", response.title());
@@ -90,7 +90,7 @@ class UpdateContentServiceImplTest {
     void updateContent_notFound_throwsCnt003() {
         when(contentRepository.findById(C1)).thenReturn(Optional.empty());
 
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         ContentException ex = assertThrows(ContentException.class,
                 () -> adminContentService.updateContent(C1, request, principal));
 
@@ -105,7 +105,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         UpdateContentResponse first = adminContentService.updateContent(C1, request, principal);
         assertEquals(3, first.versionNo());
 
@@ -120,11 +120,11 @@ class UpdateContentServiceImplTest {
         UUID originalAuthor = UUID.randomUUID();
         ContentItem existing = ContentItem.builder()
                 .id(C1).title("A").body("b").stage(ContentStage.PREGNANCY).type(ContentType.ARTICLE)
-                .status(ContentStatus.APPROVED).versionNo(2).authorUserId(originalAuthor).build();
+                .status(ContentStatus.DRAFT).versionNo(2).authorUserId(originalAuthor).build();
         when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         ArgumentCaptor<ContentItem> captor = ArgumentCaptor.forClass(ContentItem.class);
 
         adminContentService.updateContent(C1, request, principal);
@@ -143,7 +143,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.findByTitleIgnoreCaseAndStageAndType("B", ContentStage.PREGNANCY, ContentType.ARTICLE))
                 .thenReturn(Optional.of(c2));
 
-        UpdateContentRequest request = makeRequest("B", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("B", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         ContentException ex = assertThrows(ContentException.class,
                 () -> adminContentService.updateContent(C1, request, principal));
 
@@ -159,7 +159,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // same title/stage as existing — only body/sourceLabel effectively change
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         adminContentService.updateContent(C1, request, principal);
 
         verify(contentRepository, never()).findByTitleIgnoreCaseAndStageAndType(any(), any(), any());
@@ -172,7 +172,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         UpdateContentResponse response = adminContentService.updateContent(C1, request, principal);
 
         assertEquals(2, response.versionNo());
@@ -185,7 +185,7 @@ class UpdateContentServiceImplTest {
         when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        UpdateContentRequest request = makeRequest("A", ContentStage.PREGNANCY, ContentStatus.DRAFT);
         adminContentService.updateContent(C1, request, principal);
 
         verify(auditService).log(
@@ -194,5 +194,17 @@ class UpdateContentServiceImplTest {
                 org.mockito.ArgumentMatchers.eq("ContentItem"),
                 org.mockito.ArgumentMatchers.eq(C1.toString()),
                 any());
+    }
+
+    @Test
+    void updateContent_rejectsApprovedStatusFromContentAdmin() {
+        ContentItem existing = makeItem(C1, "A", ContentStage.PREGNANCY, ContentType.ARTICLE, 1);
+        when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
+
+        ContentException ex = assertThrows(ContentException.class, () -> adminContentService.updateContent(
+                C1, makeRequest("A", ContentStage.PREGNANCY, ContentStatus.APPROVED), principal));
+
+        assertEquals("CNT-012", ex.getCode());
+        verify(contentRepository, never()).save(any());
     }
 }

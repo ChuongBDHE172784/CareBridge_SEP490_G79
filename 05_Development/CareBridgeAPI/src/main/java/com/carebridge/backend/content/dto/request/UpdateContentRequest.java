@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import java.util.List;
 
 public record UpdateContentRequest(
         @NotBlank @Size(max = 500) String title,
@@ -13,5 +14,6 @@ public record UpdateContentRequest(
         @NotNull ContentStage stage,
         UUID topicId,
         @NotNull ContentStatus status,
-        String sourceLabel
+        String sourceLabel,
+        List<@jakarta.validation.Valid ContentSourceRequest> sources
 ) {}

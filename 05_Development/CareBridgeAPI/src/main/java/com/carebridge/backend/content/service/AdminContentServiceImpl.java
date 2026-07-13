@@ -12,6 +12,7 @@ import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ContentSource;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ContentRepository;
@@ -21,6 +22,9 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +34,21 @@ public class AdminContentServiceImpl implements AdminContentService {
     private final CommunityTopicRepository communityTopicRepository;
     private final ContentMapper contentMapper;
     private final AuditService auditService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ContentDetailResponse> getStaffContents(ContentStatus status, Pageable pageable) {
+        Page<ContentItem> items = status == null ? contentRepository.findAll(pageable)
+                : contentRepository.findByStatus(status, pageable);
+        return items.map(contentMapper::toDetailResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContentDetailResponse getStaffContent(UUID id) {
+        return contentMapper.toDetailResponse(contentRepository.findById(id)
+                .orElseThrow(ContentException::contentNotFound));
+    }
 
     @Override
     @Transactional
@@ -62,6 +81,20 @@ public class AdminContentServiceImpl implements AdminContentService {
         ContentItem item = contentRepository.findById(id)
                 .orElseThrow(ContentException::contentNotFound);
 
+        // Publication is a System Admin review decision.  Content authors may only work on
+        // an unpublished draft or submit that draft for review; accepting APPROVED here
+        // would let a Content Admin bypass the separation-of-duties gate.
+        if (item.getStatus() != ContentStatus.DRAFT && item.getStatus() != ContentStatus.PENDING_REVIEW) {
+            throw ContentException.invalidContentStatusTransition();
+        }
+        if (request.status() != ContentStatus.DRAFT && request.status() != ContentStatus.PENDING_REVIEW) {
+            throw ContentException.invalidContentStatusTransition();
+        }
+
+        if (request.topicId() != null && !communityTopicRepository.existsById(request.topicId())) {
+            throw ContentException.topicNotFound(request.topicId().toString());
+        }
+
         // ADR-004: duplicate check (CNT-002) only re-applied when title/stage actually changed —
         // type is immutable via this endpoint, so it is always the existing entity's type
         boolean titleOrStageChanged = !request.title().equalsIgnoreCase(item.getTitle())
@@ -81,6 +114,8 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setTopicId(request.topicId());
         item.setStatus(request.status());
         item.setSourceLabel(request.sourceLabel());
+        item.setSources(request.sources() == null ? java.util.List.of() : request.sources().stream()
+                .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList());
 
         // ADR-002: versionNo += 1 on every successful update; null (legacy row) treated as starting at 1
         int currentVersion = item.getVersionNo() == null ? 1 : item.getVersionNo();

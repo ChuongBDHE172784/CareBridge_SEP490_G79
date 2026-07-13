@@ -44,6 +44,19 @@ export async function fetchContentDetail(id: string): Promise<ContentDetail> {
   return res.data.data;
 }
 
+/** Staff route intentionally includes drafts/pending items; public content routes never do. */
+export async function fetchStaffContentDetail(id: string): Promise<ContentDetail> {
+  const res = await apiClient.get<ApiResponse<ContentDetail>>(`/api/v1/admin/content/${id}`);
+  return res.data.data;
+}
+
+export async function fetchStaffContentList(status?: ContentStatus): Promise<PaginatedResponse<ContentDetail>> {
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<ContentDetail>>>('/api/v1/admin/content', {
+    params: { status, page: 0, size: 100 },
+  });
+  return res.data.data;
+}
+
 export async function searchContent(params: {
   keyword: string;
   type?: ContentType;

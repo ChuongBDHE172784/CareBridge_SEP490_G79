@@ -8,8 +8,16 @@ import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import java.security.Principal;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.entity.ContentStatus;
 
 public interface AdminContentService {
+
+    Page<ContentDetailResponse> getStaffContents(ContentStatus status, Pageable pageable);
+
+    ContentDetailResponse getStaffContent(UUID id);
 
     CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId);
 
