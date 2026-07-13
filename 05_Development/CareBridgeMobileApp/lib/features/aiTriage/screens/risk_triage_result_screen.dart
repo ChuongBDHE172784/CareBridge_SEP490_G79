@@ -647,7 +647,9 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          ...citations.map((citation) {
+          ...citations.indexed.map((entry) {
+            final index = entry.$1;
+            final citation = entry.$2;
             final uri = Uri.tryParse(citation.url);
             final canOpen = uri != null && _isAllowedOfficialUri(uri);
             return Padding(
@@ -687,7 +689,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                     const SizedBox(height: 6),
                     Container(
                       key: Key(
-                        'risk-citation-pending-${citation.id ?? citation.url}',
+                        'risk-citation-pending-${citation.id ?? citation.url}-$index',
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -714,7 +716,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                     const SizedBox(height: 4),
                     InkWell(
                       key: Key(
-                        'risk-citation-link-${citation.id ?? citation.url}',
+                        'risk-citation-link-${citation.id ?? citation.url}-$index',
                       ),
                       onTap: canOpen
                           ? () => _openSourceUrl(citation.url)

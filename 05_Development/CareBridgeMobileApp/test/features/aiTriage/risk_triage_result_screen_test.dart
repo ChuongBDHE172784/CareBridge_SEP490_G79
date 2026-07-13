@@ -212,12 +212,47 @@ void main() {
     );
 
     expect(
-      find.byKey(const Key('risk-citation-pending-pending-risk')),
+      find.byKey(const Key('risk-citation-pending-pending-risk-0')),
       findsOneWidget,
     );
     final link = tester.widget<InkWell>(
-      find.byKey(const Key('risk-citation-link-pending-risk')),
+      find.byKey(const Key('risk-citation-link-pending-risk-0')),
     );
     expect(link.onTap, isNull);
+  });
+
+  testWidgets('duplicate result citation URLs use unique link keys', (
+    tester,
+  ) async {
+    const first = TriageCitation(
+      title: 'WHO source one',
+      source: 'WHO',
+      url: 'https://who.int/evidence',
+      excerpt: 'Evidence one',
+      retrievedAt: '2026-07-13',
+    );
+    const second = TriageCitation(
+      title: 'WHO source two',
+      source: 'WHO',
+      url: 'https://who.int/evidence',
+      excerpt: 'Evidence two',
+      retrievedAt: '2026-07-13',
+    );
+    await _pumpScreen(
+      tester,
+      triage: _StaticResultService(
+        _result('YELLOW', citations: const [first, second]),
+      ),
+    );
+
+    final firstLink = tester.widget<InkWell>(
+      find.byKey(const Key('risk-citation-link-https://who.int/evidence-0')),
+    );
+    final secondLink = tester.widget<InkWell>(
+      find.byKey(const Key('risk-citation-link-https://who.int/evidence-1')),
+    );
+    expect(firstLink.onTap, isNotNull);
+    expect(secondLink.onTap, isNotNull);
+    expect(tester.takeException(), isNull);
   });
 }

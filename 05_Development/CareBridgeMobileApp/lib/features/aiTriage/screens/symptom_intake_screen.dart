@@ -479,7 +479,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            ...result.citations.map(_buildCitation),
+            ...result.citations.indexed.map(
+              (entry) => _buildCitation(entry.$2, entry.$1),
+            ),
           ],
           if ((result.disclaimer ?? '').isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -493,11 +495,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     );
   }
 
-  Widget _buildCitation(TriageCitation citation) {
+  Widget _buildCitation(TriageCitation citation, int index) {
     final uri = Uri.tryParse(citation.url);
     final canOpen = uri != null && _isAllowedOfficialUri(uri);
     return InkWell(
-      key: Key('triage-citation-${citation.id ?? citation.url}'),
+      key: Key('triage-citation-${citation.id ?? citation.url}-$index'),
       onTap: canOpen ? () => _openUrl(citation.url) : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),

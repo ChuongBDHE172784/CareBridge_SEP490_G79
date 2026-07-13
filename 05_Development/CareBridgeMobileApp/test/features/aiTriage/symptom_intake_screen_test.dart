@@ -281,17 +281,54 @@ void main() {
     await _submitInitial(tester);
 
     final allowedInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-allowed')),
+      find.byKey(const Key('triage-citation-allowed-0')),
     );
     final insecureInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-insecure')),
+      find.byKey(const Key('triage-citation-insecure-1')),
     );
     final lookalikeInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-lookalike')),
+      find.byKey(const Key('triage-citation-lookalike-2')),
     );
     expect(allowedInk.onTap, isNotNull);
     expect(insecureInk.onTap, isNull);
     expect(lookalikeInk.onTap, isNull);
+  });
+
+  testWidgets('duplicate citation URLs render with unique widget keys', (
+    tester,
+  ) async {
+    const first = TriageCitation(
+      title: 'MOH guidance one',
+      source: 'MOH',
+      url: 'https://moh.gov.vn/',
+      excerpt: 'Evidence one',
+      retrievedAt: '2026-07-13',
+    );
+    const second = TriageCitation(
+      title: 'MOH guidance two',
+      source: 'MOH',
+      url: 'https://moh.gov.vn/',
+      excerpt: 'Evidence two',
+      retrievedAt: '2026-07-13',
+    );
+    await _pumpScreen(
+      tester,
+      triage: _StaticTriageService(
+        _complete(_result('YELLOW', citations: const [first, second])),
+      ),
+    );
+
+    await _submitInitial(tester);
+
+    expect(
+      find.byKey(const Key('triage-citation-https://moh.gov.vn/-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('triage-citation-https://moh.gov.vn/-1')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('PENDING_REVIEW citation displays governance label', (
