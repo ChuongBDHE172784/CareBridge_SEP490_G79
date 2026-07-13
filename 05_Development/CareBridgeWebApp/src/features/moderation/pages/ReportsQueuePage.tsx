@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import { fetchModerationQueue } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
-import { TARGET_TYPE_LABELS } from '../models/moderation';
+import { formatReportReason, TARGET_TYPE_LABELS } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -72,7 +72,7 @@ export default function ReportsQueuePage() {
                   >
                     <td className="py-3.5 px-4">
                       <span className="py-1 px-3 rounded-full bg-error-container text-error text-xs font-semibold">
-                        {item.reportReason}
+                        {formatReportReason(item.reportReason)}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>

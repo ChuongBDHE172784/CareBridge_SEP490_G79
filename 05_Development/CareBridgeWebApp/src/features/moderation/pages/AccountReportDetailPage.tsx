@@ -4,6 +4,7 @@ import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
+import { formatReportReason } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -141,7 +142,7 @@ export default function AccountReportDetailPage() {
                   </div>
                   <p className="text-sm font-semibold text-on-surface mb-1">Lý do báo cáo:</p>
                   <div className="bg-surface-container-low rounded-2xl p-4 mb-4">
-                    <p className="text-sm text-on-surface-variant">{item.reportReason}</p>
+                    <p className="text-sm text-on-surface-variant">{formatReportReason(item.reportReason)}</p>
                   </div>
                   <p className="text-sm font-semibold text-on-surface mb-2">Nội dung liên quan:</p>
                   <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant">

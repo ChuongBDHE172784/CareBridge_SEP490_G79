@@ -1,5 +1,6 @@
 export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | 'EXPERT' | 'USER';
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
+export type ReportCategory = 'INACCURATE_INFORMATION' | 'DISGUISED_ADVERTISING' | 'HARASSMENT' | 'UNSAFE_ADVICE' | 'SPAM' | 'OTHER';
 export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
 export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'UNDO';
 
@@ -137,6 +138,19 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   RESOLVED: 'Đã xử lý',
   DISMISSED: 'Đã bỏ qua',
 };
+
+export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
+  INACCURATE_INFORMATION: 'Thông tin không chính xác',
+  DISGUISED_ADVERTISING: 'Quảng cáo trá hình',
+  HARASSMENT: 'Quấy rối hoặc bắt nạt',
+  UNSAFE_ADVICE: 'Lời khuyên không an toàn',
+  SPAM: 'Nội dung rác',
+  OTHER: 'Lý do khác',
+};
+
+export function formatReportReason(reason: string): string {
+  return REPORT_CATEGORY_LABELS[reason as ReportCategory] ?? reason;
+}
 
 export function canHideTarget(targetType: ReportTargetType): boolean {
   return targetType === 'QUESTION' || targetType === 'ANSWER';

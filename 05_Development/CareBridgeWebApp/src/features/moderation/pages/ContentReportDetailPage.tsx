@@ -4,7 +4,7 @@ import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
-import { TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
+import { formatReportReason, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
 import type { ResolutionOutcome } from '../models/moderation';
 
 function formatDateTime(iso: string): string {
@@ -112,7 +112,7 @@ export default function ContentReportDetailPage() {
           <>
             <div className="flex items-center gap-3 mb-1">
               <span className="py-1 px-3 rounded-full bg-error-container text-error text-xs font-semibold">
-                {item.reportReason}
+                {formatReportReason(item.reportReason)}
               </span>
               <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
             </div>
@@ -125,12 +125,12 @@ export default function ContentReportDetailPage() {
                     <span className="material-symbols-outlined text-primary text-xl">flag</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Lý do báo cáo</h2>
                   </div>
-                  <p className="text-sm text-on-surface-variant mb-4">{item.reportReason}</p>
+                  <p className="text-sm text-on-surface-variant mb-4">{formatReportReason(item.reportReason)}</p>
                   <div className="bg-surface-container-low rounded-2xl p-4">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">
                       Chi tiết từ người dùng
                     </p>
-                    <p className="text-sm text-on-surface italic">"{item.reportReason}"</p>
+                    <p className="text-sm text-on-surface italic">"{formatReportReason(item.reportReason)}"</p>
                   </div>
                   <div className="flex justify-between items-center mt-4 text-xs text-outline">
                     <span>Người báo cáo: Ẩn danh</span>

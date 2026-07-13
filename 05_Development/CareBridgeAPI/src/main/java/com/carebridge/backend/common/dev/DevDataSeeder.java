@@ -506,7 +506,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
     private CommunityAnswer seedAnswer(UUID questionId, UUID authorId, String body,
             boolean expertLabeled, boolean personalExperience, AnswerStatus status, int likeCount) {
-        return communityAnswerRepository.findByQuestionIdAndAuthorId(questionId, authorId)
+        return communityAnswerRepository.findFirstByQuestionIdAndAuthorIdOrderByCreatedAtAsc(questionId, authorId)
             .orElseGet(() -> {
                 CommunityAnswer saved = communityAnswerRepository.save(CommunityAnswer.builder()
                     .questionId(questionId)

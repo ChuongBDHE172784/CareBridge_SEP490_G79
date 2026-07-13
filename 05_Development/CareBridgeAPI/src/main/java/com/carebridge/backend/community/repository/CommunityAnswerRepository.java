@@ -21,8 +21,9 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
     @Query("SELECT DISTINCT a.questionId FROM CommunityAnswer a WHERE a.questionId IN :questionIds AND a.expertLabeled = true")
     Set<UUID> findQuestionIdsWithExpertAnswer(java.util.Collection<UUID> questionIds);
 
-    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded answer by question+author
-    Optional<CommunityAnswer> findByQuestionIdAndAuthorId(UUID questionId, UUID authorId);
+    // Dev seed idempotency (DevDataSeeder) — tolerate legacy duplicate answers
+    // so development startup is not blocked by existing sample data.
+    Optional<CommunityAnswer> findFirstByQuestionIdAndAuthorIdOrderByCreatedAtAsc(UUID questionId, UUID authorId);
 
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING answers directly,
     // independent of ContentReport — for first-time moderation discovery
