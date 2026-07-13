@@ -13,10 +13,12 @@ class PreExerciseSafetyCheckScreen extends StatefulWidget {
   });
 
   @override
-  State<PreExerciseSafetyCheckScreen> createState() => _PreExerciseSafetyCheckScreenState();
+  State<PreExerciseSafetyCheckScreen> createState() =>
+      _PreExerciseSafetyCheckScreenState();
 }
 
-class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScreen> {
+class _PreExerciseSafetyCheckScreenState
+    extends State<PreExerciseSafetyCheckScreen> {
   static const _bgColor = Color(0xFFFFF8F6);
   static const _primaryColor = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -40,7 +42,10 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
   bool get _allChecked => _checks.every((c) => c);
 
   @override
-  void dispose() { _noteController.dispose(); super.dispose(); }
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +84,26 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
         height: 48,
         child: Row(
           children: [
-            IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back, color: _primaryColor)),
-            const Expanded(child: Text('Kiểm tra an toàn', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _primaryColor))),
-            IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close, color: _onSurface)),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, color: _primaryColor),
+            ),
+            const Expanded(
+              child: Text(
+                'Kiểm tra an toàn',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _primaryColor,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: _onSurface),
+            ),
           ],
         ),
       ),
@@ -91,21 +113,50 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
   Widget _buildExerciseInfo() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
           Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: _surfaceContainerLowest, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.self_improvement, color: _primaryColor, size: 24),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.self_improvement,
+              color: _primaryColor,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.exerciseName, style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface)),
-              const SizedBox(height: 2),
-              Text('${widget.trimester} • ${widget.durationMinutes} phút', style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.exerciseName,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${widget.trimester} • ${widget.durationMinutes} phút',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -115,15 +166,25 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
   Widget _buildSafetyBanner() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _errorContainer.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _errorContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline, color: _primaryColor, size: 20),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text('Để đảm bảo an toàn cho mẹ và bé, vui lòng trả lời trung thực các câu hỏi dưới đây trước khi bắt đầu bài tập.',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5)),
+            child: Text(
+              'Để đảm bảo an toàn cho mẹ và bé, vui lòng trả lời trung thực các câu hỏi dưới đây trước khi bắt đầu bài tập.',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
       ),
@@ -136,37 +197,79 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color.fromRGBO(90, 70, 63, 0.06), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tình trạng sức khỏe hiện tại', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Tình trạng sức khỏe hiện tại',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 4),
           Container(height: 1, color: _outlineVariant),
           const SizedBox(height: 16),
-          ...List.generate(_checkLabels.length, (i) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () => setState(() => _checks[i] = !_checks[i]),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 24, height: 24, margin: const EdgeInsets.only(top: 2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _checks[i] ? _primaryContainer : _outlineVariant, width: 2),
-                      color: _checks[i] ? _primaryContainer : Colors.transparent,
+          ...List.generate(
+            _checkLabels.length,
+            (i) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: () => setState(() => _checks[i] = !_checks[i]),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _checks[i]
+                              ? _primaryContainer
+                              : _outlineVariant,
+                          width: 2,
+                        ),
+                        color: _checks[i]
+                            ? _primaryContainer
+                            : Colors.transparent,
+                      ),
+                      child: _checks[i]
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
+                          : null,
                     ),
-                    child: _checks[i] ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(_checkLabels[i], style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface, height: 1.5))),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checkLabels[i],
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          color: _onSurface,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -178,24 +281,64 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color.fromRGBO(90, 70, 63, 0.06), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ghi chú khác (Không bắt buộc)', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Ghi chú khác (Không bắt buộc)',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 4),
-          const Text('Có triệu chứng nào khác khiến bạn lo lắng không?', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          const Text(
+            'Có triệu chứng nào khác khiến bạn lo lắng không?',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 12),
           TextField(
-            controller: _noteController, maxLines: 3,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+            controller: _noteController,
+            maxLines: 3,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurface,
+            ),
             decoration: InputDecoration(
-              hintText: 'Ví dụ: Hơi đau lưng nhẹ...', hintStyle: TextStyle(fontFamily: 'Lexend', color: _outlineVariant),
-              filled: true, fillColor: _surfaceContainerLowest,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _outlineVariant)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _outlineVariant)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _primaryContainer, width: 2)),
+              hintText: 'Ví dụ: Hơi đau lưng nhẹ...',
+              hintStyle: TextStyle(
+                fontFamily: 'Lexend',
+                color: _outlineVariant,
+              ),
+              filled: true,
+              fillColor: _surfaceContainerLowest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _primaryContainer, width: 2),
+              ),
             ),
           ),
         ],
@@ -213,8 +356,19 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
               height: 48,
               child: OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
-                style: OutlinedButton.styleFrom(foregroundColor: _primaryColor, side: const BorderSide(color: _outlineVariant), shape: const StadiumBorder()),
-                child: const Text('Quay lại', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primaryColor,
+                  side: const BorderSide(color: _outlineVariant),
+                  shape: const StadiumBorder(),
+                ),
+                child: const Text(
+                  'Quay lại',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
@@ -224,12 +378,28 @@ class _PreExerciseSafetyCheckScreenState extends State<PreExerciseSafetyCheckScr
             child: SizedBox(
               height: 48,
               child: FilledButton(
-                onPressed: _allChecked ? () {
-                  // TODO: navigate to exercise session (CB-153)
-                  Navigator.of(context).pop(true);
-                } : null,
-                style: FilledButton.styleFrom(backgroundColor: _primaryContainer, disabledBackgroundColor: _primaryContainer.withValues(alpha: 0.4), shape: const StadiumBorder()),
-                child: const Text('Bắt đầu buổi tập', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                onPressed: _allChecked
+                    ? () {
+                        // TODO: navigate to exercise session (CB-153)
+                        Navigator.of(context).pop(true);
+                      }
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _primaryContainer,
+                  disabledBackgroundColor: _primaryContainer.withValues(
+                    alpha: 0.4,
+                  ),
+                  shape: const StadiumBorder(),
+                ),
+                child: const Text(
+                  'Bắt đầu buổi tập',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),

@@ -12,7 +12,9 @@ class PrivacyService {
 
   Future<PrivacySettings> updateSettings(PrivacySettings settings) async {
     final res = await apiPut(
-        '/api/v1/privacy-settings/me', settings.toUpdateJson());
+      '/api/v1/privacy-settings/me',
+      settings.toUpdateJson(),
+    );
     return PrivacySettings.fromJson(res['data'] as Map<String, dynamic>);
   }
 

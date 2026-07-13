@@ -6,11 +6,19 @@ class FamilyTaskService {
   Future<List<FamilyTask>> listTasks(String groupId) async {
     final data = await apiGet('/api/v1/care-groups/$groupId/tasks');
     final tasksList = data['data']['tasks'] as List<dynamic>? ?? [];
-    return tasksList.map((e) => FamilyTask.fromJson(e as Map<String, dynamic>)).toList();
+    return tasksList
+        .map((e) => FamilyTask.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // UC73: Assign a care task
-  Future<FamilyTask> assignTask(String groupId, String assigneeMemberId, String title, String description, DateTime dueAt) async {
+  Future<FamilyTask> assignTask(
+    String groupId,
+    String assigneeMemberId,
+    String title,
+    String description,
+    DateTime dueAt,
+  ) async {
     final data = await apiPost('/api/v1/care-groups/$groupId/tasks', {
       'assigneeMemberId': assigneeMemberId,
       'title': title,
@@ -27,7 +35,13 @@ class FamilyTaskService {
   }
 
   // UC222: Update task content
-  Future<FamilyTask> updateTask(String groupId, String taskId, String title, String description, DateTime dueAt) async {
+  Future<FamilyTask> updateTask(
+    String groupId,
+    String taskId,
+    String title,
+    String description,
+    DateTime dueAt,
+  ) async {
     final data = await apiPatch('/api/v1/care-groups/$groupId/tasks/$taskId', {
       'title': title,
       'description': description,
@@ -38,14 +52,22 @@ class FamilyTaskService {
 
   // UC223: Cancel an incomplete task
   Future<void> cancelTask(String groupId, String taskId) async {
-    await apiPost('/api/v1/care-groups/$groupId/tasks/$taskId/cancel', const {});
+    await apiPost(
+      '/api/v1/care-groups/$groupId/tasks/$taskId/cancel',
+      const {},
+    );
   }
 
   // UC85: Update assigned task status
-  Future<FamilyTask> updateTaskStatus(String groupId, String taskId, String status) async {
-    final data = await apiPatch('/api/v1/care-groups/$groupId/tasks/$taskId/status', {
-      'status': status,
-    });
+  Future<FamilyTask> updateTaskStatus(
+    String groupId,
+    String taskId,
+    String status,
+  ) async {
+    final data = await apiPatch(
+      '/api/v1/care-groups/$groupId/tasks/$taskId/status',
+      {'status': status},
+    );
     return FamilyTask.fromJson(data['data'] as Map<String, dynamic>);
   }
 }

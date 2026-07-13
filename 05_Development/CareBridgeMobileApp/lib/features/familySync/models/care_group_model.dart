@@ -74,7 +74,8 @@ class CareGroup {
       isActive: json['isActive'] as bool? ?? true,
       memberCount: json['totalMembers'] as int? ?? 0,
       myRole: json['myRole'] as String?,
-      members: (json['members'] as List<dynamic>?)
+      members:
+          (json['members'] as List<dynamic>?)
               ?.map((m) => CareGroupMember.fromJson(m as Map<String, dynamic>))
               .toList() ??
           [],

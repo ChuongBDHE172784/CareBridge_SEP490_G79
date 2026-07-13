@@ -76,20 +76,24 @@ class MetricDataPoint {
     this.note,
   });
 
-  factory MetricDataPoint.fromJson(Map<String, dynamic> json) => MetricDataPoint(
-    metricId: (json['metricId'] ?? json['metric_id'] ?? json['id'])?.toString(),
-    measuredAt: _parseMetricDateTime(json['measuredAt']),
-    valueNumeric: (json['valueNumeric'] as num).toDouble(),
-    valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
-    sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
-    note: json['note'] as String?,
-  );
+  factory MetricDataPoint.fromJson(Map<String, dynamic> json) =>
+      MetricDataPoint(
+        metricId: (json['metricId'] ?? json['metric_id'] ?? json['id'])
+            ?.toString(),
+        measuredAt: _parseMetricDateTime(json['measuredAt']),
+        valueNumeric: (json['valueNumeric'] as num).toDouble(),
+        valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
+        sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
+        note: json['note'] as String?,
+      );
 
   String get valueDisplay {
     if (valueSecondary != null) {
       return '${valueNumeric.toStringAsFixed(0)}/${valueSecondary!.toStringAsFixed(0)}';
     }
-    return valueNumeric % 1 == 0 ? valueNumeric.toStringAsFixed(0) : valueNumeric.toStringAsFixed(1);
+    return valueNumeric % 1 == 0
+        ? valueNumeric.toStringAsFixed(0)
+        : valueNumeric.toStringAsFixed(1);
   }
 }
 
@@ -115,7 +119,8 @@ class MetricTrend {
 
   double get average {
     if (dataPoints.isEmpty) return 0;
-    return dataPoints.map((p) => p.valueNumeric).reduce((a, b) => a + b) / dataPoints.length;
+    return dataPoints.map((p) => p.valueNumeric).reduce((a, b) => a + b) /
+        dataPoints.length;
   }
 
   double? get trend {
@@ -139,29 +144,45 @@ enum MetricType {
 extension MetricTypeExtension on MetricType {
   String get displayLabel {
     switch (this) {
-      case MetricType.weight: return 'Cân nặng';
-      case MetricType.bloodPressure: return 'Huyết áp';
-      case MetricType.bloodSugar: return 'Đường huyết';
-      case MetricType.temperature: return 'Nhiệt độ';
-      case MetricType.heartRate: return 'Nhịp tim';
-      case MetricType.fetalMovement: return 'Cử động thai';
-      case MetricType.other: return 'Khác';
+      case MetricType.weight:
+        return 'Cân nặng';
+      case MetricType.bloodPressure:
+        return 'Huyết áp';
+      case MetricType.bloodSugar:
+        return 'Đường huyết';
+      case MetricType.temperature:
+        return 'Nhiệt độ';
+      case MetricType.heartRate:
+        return 'Nhịp tim';
+      case MetricType.fetalMovement:
+        return 'Cử động thai';
+      case MetricType.other:
+        return 'Khác';
     }
   }
 
   static MetricType fromApi(String? value) {
     switch (value) {
-      case 'WEIGHT': return MetricType.weight;
+      case 'WEIGHT':
+        return MetricType.weight;
       case 'BLOOD_PRESSURE':
       case 'BLOOD_PRESSURE_SYSTOLIC':
-      case 'BLOOD_PRESSURE_DIASTOLIC': return MetricType.bloodPressure;
-      case 'BLOOD_SUGAR': return MetricType.bloodSugar;
-      case 'BLOOD_GLUCOSE': return MetricType.bloodSugar;
-      case 'TEMPERATURE': return MetricType.temperature;
-      case 'HEART_RATE': return MetricType.heartRate;
-      case 'FETAL_MOVEMENT': return MetricType.fetalMovement;
-      case 'FETAL_MOVEMENT_COUNT': return MetricType.fetalMovement;
-      default: return MetricType.other;
+      case 'BLOOD_PRESSURE_DIASTOLIC':
+        return MetricType.bloodPressure;
+      case 'BLOOD_SUGAR':
+        return MetricType.bloodSugar;
+      case 'BLOOD_GLUCOSE':
+        return MetricType.bloodSugar;
+      case 'TEMPERATURE':
+        return MetricType.temperature;
+      case 'HEART_RATE':
+        return MetricType.heartRate;
+      case 'FETAL_MOVEMENT':
+        return MetricType.fetalMovement;
+      case 'FETAL_MOVEMENT_COUNT':
+        return MetricType.fetalMovement;
+      default:
+        return MetricType.other;
     }
   }
 }
@@ -171,18 +192,24 @@ enum SourceType { manual, device, sync }
 extension SourceTypeExtension on SourceType {
   String get displayLabel {
     switch (this) {
-      case SourceType.manual: return 'Nhập thủ công';
-      case SourceType.device: return 'Thiết bị đo';
-      case SourceType.sync: return 'Đồng bộ tự động';
+      case SourceType.manual:
+        return 'Nhập thủ công';
+      case SourceType.device:
+        return 'Thiết bị đo';
+      case SourceType.sync:
+        return 'Đồng bộ tự động';
     }
   }
 
   static SourceType fromApi(String? value) {
     switch (value) {
-      case 'DEVICE': return SourceType.device;
+      case 'DEVICE':
+        return SourceType.device;
       case 'SYNC':
-      case 'IMPORTED': return SourceType.sync;
-      default: return SourceType.manual;
+      case 'IMPORTED':
+        return SourceType.sync;
+      default:
+        return SourceType.manual;
     }
   }
 }
@@ -223,7 +250,9 @@ class HealthMetricDetail {
       measuredAt: _parseMetricDateTime(json['measuredAt']),
       sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
       note: json['note'] as String?,
-      createdAt: _parseMetricDateTime(json['createdAt'] ?? json['updatedAt'] ?? json['measuredAt']),
+      createdAt: _parseMetricDateTime(
+        json['createdAt'] ?? json['updatedAt'] ?? json['measuredAt'],
+      ),
     );
   }
 

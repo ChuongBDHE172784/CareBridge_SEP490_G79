@@ -18,13 +18,8 @@ class TopicDirectoryScreen extends StatefulWidget {
 
 class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
@@ -309,7 +304,6 @@ class _TopicGridCard extends StatelessWidget {
   });
 
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Colors.white;
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSurface = Color(0xFF271812);

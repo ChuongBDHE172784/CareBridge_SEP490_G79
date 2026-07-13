@@ -3,19 +3,27 @@ enum FileCategory { ultrasound, medicalRecord, photo, other }
 extension FileCategoryExtension on FileCategory {
   String get displayLabel {
     switch (this) {
-      case FileCategory.ultrasound: return 'Siêu âm';
-      case FileCategory.medicalRecord: return 'Hồ sơ bệnh án';
-      case FileCategory.photo: return 'Hình ảnh';
-      case FileCategory.other: return 'Khác';
+      case FileCategory.ultrasound:
+        return 'Siêu âm';
+      case FileCategory.medicalRecord:
+        return 'Hồ sơ bệnh án';
+      case FileCategory.photo:
+        return 'Hình ảnh';
+      case FileCategory.other:
+        return 'Khác';
     }
   }
 
   static FileCategory fromLabel(String? v) {
     switch (v) {
-      case 'Siêu âm': return FileCategory.ultrasound;
-      case 'Hồ sơ bệnh án': return FileCategory.medicalRecord;
-      case 'Hình ảnh': return FileCategory.photo;
-      default: return FileCategory.other;
+      case 'Siêu âm':
+        return FileCategory.ultrasound;
+      case 'Hồ sơ bệnh án':
+        return FileCategory.medicalRecord;
+      case 'Hình ảnh':
+        return FileCategory.photo;
+      default:
+        return FileCategory.other;
     }
   }
 }
@@ -24,13 +32,15 @@ enum FileOwner { mother, baby }
 
 extension FileOwnerExtension on FileOwner {
   String get displayLabel => this == FileOwner.mother ? 'Mẹ' : 'Bé';
-  static FileOwner fromLabel(String? v) => v == 'Mẹ' ? FileOwner.mother : FileOwner.baby;
+  static FileOwner fromLabel(String? v) =>
+      v == 'Mẹ' ? FileOwner.mother : FileOwner.baby;
 }
 
 enum FileVisibility { private, shared }
 
 extension FileVisibilityExtension on FileVisibility {
-  String get displayLabel => this == FileVisibility.private ? 'Riêng tư' : 'Đã chia sẻ';
+  String get displayLabel =>
+      this == FileVisibility.private ? 'Riêng tư' : 'Đã chia sẻ';
 }
 
 class UserFile {
@@ -107,11 +117,15 @@ class ViewFileResponse {
       fileSizeBytes: json['fileSizeBytes'] as int?,
       presignedUrl: json['presignedUrl'] as String?,
       status: json['status'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
     );
   }
 
-  bool get isPdf => mimeType == 'application/pdf' || originalName.toLowerCase().endsWith('.pdf');
+  bool get isPdf =>
+      mimeType == 'application/pdf' ||
+      originalName.toLowerCase().endsWith('.pdf');
   bool get isImage => mimeType?.startsWith('image/') == true;
 
   String get sizeLabel {

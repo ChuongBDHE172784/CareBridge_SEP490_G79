@@ -7,14 +7,15 @@ class CreateAppointmentReminderScreen extends StatefulWidget {
   const CreateAppointmentReminderScreen({super.key});
 
   @override
-  State<CreateAppointmentReminderScreen> createState() => _CreateAppointmentReminderScreenState();
+  State<CreateAppointmentReminderScreen> createState() =>
+      _CreateAppointmentReminderScreenState();
 }
 
-class _CreateAppointmentReminderScreenState extends State<CreateAppointmentReminderScreen> {
+class _CreateAppointmentReminderScreenState
+    extends State<CreateAppointmentReminderScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
@@ -69,9 +70,13 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
     );
     if (picked == null) return;
     setState(() {
-      if (!_times.any((t) => t.hour == picked.hour && t.minute == picked.minute)) {
+      if (!_times.any(
+        (t) => t.hour == picked.hour && t.minute == picked.minute,
+      )) {
         _times.add(picked);
-        _times.sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+        _times.sort(
+          (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
+        );
       }
     });
   }
@@ -79,7 +84,9 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      _showError('Vui lòng nhập nội dung lịch hẹn, khám định kỳ hoặc tái khám.');
+      _showError(
+        'Vui lòng nhập nội dung lịch hẹn, khám định kỳ hoặc tái khám.',
+      );
       return;
     }
     if (_times.isEmpty) {
@@ -87,16 +94,19 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
       return;
     }
 
-    final scheduledTimes = _times
-        .map((time) => DateTime(
-              _startDate.year,
-              _startDate.month,
-              _startDate.day,
-              time.hour,
-              time.minute,
-            ))
-        .toList()
-      ..sort();
+    final scheduledTimes =
+        _times
+            .map(
+              (time) => DateTime(
+                _startDate.year,
+                _startDate.month,
+                _startDate.day,
+                time.hour,
+                time.minute,
+              ),
+            )
+            .toList()
+          ..sort();
 
     final minimum = DateTime.now().add(const Duration(minutes: 5));
     if (scheduledTimes.any((time) => time.isBefore(minimum))) {
@@ -125,16 +135,18 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      _showError('Không thể tạo nhắc lịch. Hãy kiểm tra Việc hôm nay rồi thử lại.');
+      _showError(
+        'Không thể tạo nhắc lịch. Hãy kiểm tra Việc hôm nay rồi thử lại.',
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: _error),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _error));
   }
 
   @override
@@ -150,7 +162,11 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
         ),
         title: const Text(
           'Nhắc lịch hẹn',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
       body: ListView(
@@ -163,7 +179,9 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
                 TextField(
                   controller: _titleController,
                   maxLength: 255,
-                  decoration: _inputDecoration('Lịch hẹn, khám định kỳ hoặc tái khám *'),
+                  decoration: _inputDecoration(
+                    'Lịch hẹn, khám định kỳ hoặc tái khám *',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -174,12 +192,20 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 18, color: _primary),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: _primary,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Nhắc nhở này sẽ giúp bạn không quên lịch hẹn quan trọng với bác sĩ.',
-                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
@@ -203,24 +229,34 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 DropdownButtonFormField<RecurrenceType>(
-                  value: _recurrence,
+                  initialValue: _recurrence,
                   decoration: _inputDecoration('Lặp lại'),
                   items: RecurrenceType.values
-                      .map((value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value.displayLabel),
-                          ))
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.displayLabel),
+                        ),
+                      )
                       .toList(),
                   onChanged: _saving
                       ? null
-                      : (value) => setState(() => _recurrence = value ?? RecurrenceType.none),
+                      : (value) => setState(
+                          () => _recurrence = value ?? RecurrenceType.none,
+                        ),
                 ),
                 const SizedBox(height: 10),
-                _DateButton(label: 'Ngày bắt đầu', value: _formatDate(_startDate), onTap: _pickStartDate),
+                _DateButton(
+                  label: 'Ngày bắt đầu',
+                  value: _formatDate(_startDate),
+                  onTap: _pickStartDate,
+                ),
                 const SizedBox(height: 10),
                 _DateButton(
                   label: 'Ngày kết thúc',
-                  value: _endDate == null ? 'Không có ngày kết thúc' : _formatDate(_endDate!),
+                  value: _endDate == null
+                      ? 'Không có ngày kết thúc'
+                      : _formatDate(_endDate!),
                   onTap: _pickEndDate,
                 ),
               ],
@@ -245,7 +281,10 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
                     ),
                     IconButton(
                       onPressed: _saving ? null : _addTime,
-                      icon: const Icon(Icons.add_alarm_rounded, color: _primary),
+                      icon: const Icon(
+                        Icons.add_alarm_rounded,
+                        color: _primary,
+                      ),
                     ),
                   ],
                 ),
@@ -273,17 +312,25 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Icon(Icons.save_rounded),
             label: const Text(
               'Lưu nhắc lịch',
-              style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w800,
+              ),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: _primary,
               minimumSize: const Size.fromHeight(54),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],
@@ -292,20 +339,20 @@ class _CreateAppointmentReminderScreenState extends State<CreateAppointmentRemin
   }
 
   InputDecoration _inputDecoration(String label) => InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primary, width: 1.5),
-        ),
-      );
+    labelText: label,
+    labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _primary, width: 1.5),
+    ),
+  );
 
   String _formatDate(DateTime value) {
     return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
@@ -325,7 +372,11 @@ class _Section extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: child,
@@ -353,7 +404,13 @@ class _DateButton extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(fontFamily: 'Lexend')),
           const Spacer(),
-          Text(value, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
       style: OutlinedButton.styleFrom(

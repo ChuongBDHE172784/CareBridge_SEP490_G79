@@ -55,8 +55,11 @@ class EnablePostureCameraSheet extends StatelessWidget {
               color: Color(0xFFFFE2D9),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.camera_alt_outlined,
-                color: _primaryContainer, size: 32),
+            child: const Icon(
+              Icons.camera_alt_outlined,
+              color: _primaryContainer,
+              size: 32,
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -96,7 +99,8 @@ class EnablePostureCameraSheet extends StatelessWidget {
           _infoCard(
             icon: Icons.cloud_off_outlined,
             title: 'Không lưu trữ',
-            body: 'Chúng tôi cam kết không quay video hay lưu trữ bất kỳ hình ảnh nào.',
+            body:
+                'Chúng tôi cam kết không quay video hay lưu trữ bất kỳ hình ảnh nào.',
           ),
           const SizedBox(height: 28),
 

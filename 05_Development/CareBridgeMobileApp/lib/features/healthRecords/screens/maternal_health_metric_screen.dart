@@ -29,11 +29,6 @@ class _MaternalHealthMetricScreenState
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondary = Color(0xFF6E5A52);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _errorContainer = Color(0xFFFFDAD6);
@@ -144,10 +139,7 @@ class _MaternalHealthMetricScreenState
   Future<void> _openEdit(HealthMetricDetail metric) async {
     final updated = await context.push<bool>(
       '/health-metrics/${Uri.encodeComponent(metric.id)}/edit',
-      extra: {
-        'journeyId': metric.journeyId,
-        'metric': metric,
-      },
+      extra: {'journeyId': metric.journeyId, 'metric': metric},
     );
     if (updated == true && mounted) {
       await _load();
@@ -162,7 +154,6 @@ class _MaternalHealthMetricScreenState
   }
 
   String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
     final mi = dt.minute.toString().padLeft(2, '0');
     final ampm = dt.hour < 12 ? 'AM' : 'PM';
     final hour12 = dt.hour == 0
@@ -310,7 +301,6 @@ class _MaternalHealthMetricScreenState
                       color: _onSurface,
                     ),
                   ),
-
                 ],
               ),
             ],
@@ -343,7 +333,6 @@ class _MaternalHealthMetricScreenState
               ),
             ],
           ),
-
         ],
       ),
     );
@@ -387,8 +376,6 @@ class _MaternalHealthMetricScreenState
       ),
     );
   }
-
-
 
   Widget _buildActionButtons(HealthMetricDetail metric) {
     return Row(
@@ -470,8 +457,6 @@ class _Card extends StatelessWidget {
     );
   }
 }
-
-
 
 class _DetailRow extends StatelessWidget {
   final IconData icon;
@@ -576,5 +561,3 @@ class _NoteRow extends StatelessWidget {
     );
   }
 }
-
-

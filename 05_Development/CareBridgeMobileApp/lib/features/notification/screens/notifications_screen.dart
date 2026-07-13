@@ -26,7 +26,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   static const _onErrorContainer = Color(0xFF93000A);
   static const _primaryFixed = Color(0xFFFFDBD1);
   static const _onPrimaryFixed = Color(0xFF341006);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
 
   final _filters = ['Tất cả', 'Chưa đọc', 'Sức khỏe', 'Lịch hẹn'];
   final _filterTypeMap = {
@@ -291,7 +290,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () {
-          if (notification.type == 'GROUP_INVITE' && notification.referenceId != null) {
+          if (notification.type == 'GROUP_INVITE' &&
+              notification.referenceId != null) {
             final pendingInvite = PendingInvitation(
               groupId: notification.referenceId!,
               groupName: 'Nhóm gia đình', // Default fallback
@@ -299,7 +299,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             );
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => CareGroupInvitationScreen(invitation: pendingInvite),
+                builder: (_) =>
+                    CareGroupInvitationScreen(invitation: pendingInvite),
               ),
             );
           } else {

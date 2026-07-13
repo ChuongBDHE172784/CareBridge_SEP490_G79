@@ -25,7 +25,9 @@ class FamilyPermission {
       logs: json['logs'] ?? false,
       alerts: json['alerts'] ?? false,
       records: json['records'] ?? false,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
     );
   }
 }

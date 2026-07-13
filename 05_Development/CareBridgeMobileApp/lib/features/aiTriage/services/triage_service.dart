@@ -1,11 +1,21 @@
+import 'dart:async';
+import 'dart:math';
+
 import '../../../core/network/api_client.dart';
 import '../models/triage_intake_flow_model.dart';
 import '../models/triage_result_model.dart';
 
 class TriageService {
-  // UC-61: Owner-only read of a completed intake session's risk result.
+  static const _requestTimeout = Duration(
+    seconds: int.fromEnvironment('AI_TRIAGE_TIMEOUT_SECONDS', defaultValue: 8),
+  );
+
+  final String _clientRequestId = _newClientRequestId();
+
   Future<TriageResult> getResult(String sessionId) async {
-    final data = await apiGet('/api/v1/triage/intake/$sessionId');
+    final data = await apiGet(
+      '/api/v1/triage/intake/$sessionId',
+    ).timeout(_requestTimeout);
     return TriageResult.fromJson(data['data'] as Map<String, dynamic>);
   }
 
@@ -16,7 +26,8 @@ class TriageService {
     final data = await apiPost('/api/v1/triage/intake/conversation/start', {
       'initialText': initialText,
       'currentIntake': currentIntake,
-    });
+      'clientRequestId': _clientRequestId,
+    }).timeout(_requestTimeout);
     return IntakeFlowResponse.fromJson(data['data'] as Map<String, dynamic>);
   }
 
@@ -32,7 +43,12 @@ class TriageService {
       'messages': const [],
       'newAnswers': newAnswers,
       'round': round,
-    });
+    }).timeout(_requestTimeout);
     return IntakeFlowResponse.fromJson(data['data'] as Map<String, dynamic>);
   }
+}
+
+String _newClientRequestId() {
+  final random = Random.secure();
+  return List.generate(32, (_) => random.nextInt(16).toRadixString(16)).join();
 }

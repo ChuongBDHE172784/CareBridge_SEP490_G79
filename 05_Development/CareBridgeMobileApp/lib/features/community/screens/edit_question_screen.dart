@@ -197,28 +197,36 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _outlineVariant),
               ),
-              child: Column(
-                children: _urgencyOptions.map((opt) {
-                  final selected = _urgency == opt['value'];
-                  return RadioListTile<String>(
-                    value: opt['value']!,
-                    groupValue: _urgency,
-                    onChanged: (v) => setState(() => _urgency = v!),
-                    title: Text(
-                      opt['label']!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: selected ? _primary : _onSurface,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+              child: RadioGroup<String>(
+                groupValue: _urgency,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _urgency = value);
+                  }
+                },
+                child: Column(
+                  children: _urgencyOptions.map((opt) {
+                    final selected = _urgency == opt['value'];
+                    return RadioListTile<String>(
+                      value: opt['value']!,
+                      title: Text(
+                        opt['label']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: selected ? _primary : _onSurface,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
                       ),
-                    ),
-                    activeColor: _primary,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    dense: true,
-                  );
-                }).toList(),
+                      activeColor: _primary,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      dense: true,
+                    );
+                  }).toList(),
+                ),
               ),
             ),
             const SizedBox(height: 16),

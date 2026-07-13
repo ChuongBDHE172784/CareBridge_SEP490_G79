@@ -29,7 +29,10 @@ class EmergencyService {
   }
 
   Future<EmergencySession> resolve(String sessionId) async {
-    final data = await apiPatch('/api/v1/emergency/sessions/$sessionId/resolve', const {});
+    final data = await apiPatch(
+      '/api/v1/emergency/sessions/$sessionId/resolve',
+      const {},
+    );
     return EmergencySession.fromJson(data['data'] as Map<String, dynamic>);
   }
 

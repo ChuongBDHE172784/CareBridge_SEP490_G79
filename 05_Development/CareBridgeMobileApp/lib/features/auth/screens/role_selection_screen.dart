@@ -16,11 +16,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   static const _primary = Color(0xFFC98C7B);
   static const _primaryDark = Color(0xFF845143);
   static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
   static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 

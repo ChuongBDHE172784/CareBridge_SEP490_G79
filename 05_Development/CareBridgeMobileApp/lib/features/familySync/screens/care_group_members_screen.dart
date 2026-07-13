@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
-import '../models/care_group_model.dart';
 import '../widgets/invite_member_sheet.dart';
 import 'manage_family_permission_screen.dart';
 
@@ -19,12 +18,10 @@ class CareGroupMembersScreen extends StatelessWidget {
     required this.members,
   });
 
-  static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +34,20 @@ class CareGroupMembersScreen extends StatelessWidget {
             Expanded(
               child: members.isEmpty
                   ? const Center(
-                      child: Text('Chưa có thành viên.', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
+                      child: Text(
+                        'Chưa có thành viên.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                       itemCount: members.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _MemberCard(member: members[i], groupId: groupId),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) =>
+                          _MemberCard(member: members[i], groupId: groupId),
                     ),
             ),
           ],
@@ -56,12 +60,16 @@ class CareGroupMembersScreen extends StatelessWidget {
         onPressed: () async {
           final sent = await showInviteMemberSheet(context, groupId: groupId);
           if (sent == true && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã gửi lời mời.')));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Đã gửi lời mời.')));
           }
         },
         icon: const Icon(Icons.person_add),
-        label: const Text('Mời thành viên', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+        label: const Text(
+          'Mời thành viên',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -78,11 +86,24 @@ class CareGroupMembersScreen extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                const Text('Nhóm chăm sóc',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-                Text(groupName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+                const Text(
+                  'Nhóm chăm sóc',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  groupName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -106,7 +127,6 @@ class _MemberCard extends StatelessWidget {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -119,8 +139,16 @@ class _MemberCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: isAdmin ? Border.all(color: _primaryContainer.withAlpha(102)) : null,
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
+        border: isAdmin
+            ? Border.all(color: _primaryContainer.withAlpha(102))
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withAlpha(13),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -128,29 +156,46 @@ class _MemberCard extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 52, height: 52,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFFFFE9E3),
                   border: Border.all(
-                    color: isAdmin ? _primaryContainer : const Color(0xFFFFE2D9),
+                    color: isAdmin
+                        ? _primaryContainer
+                        : const Color(0xFFFFE2D9),
                     width: isAdmin ? 3 : 2,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     member.displayName.isNotEmpty ? member.displayName[0] : '?',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w700, color: _primary),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                    ),
                   ),
                 ),
               ),
               if (isAdmin)
                 Positioned(
-                  top: -4, right: -4,
+                  top: -4,
+                  right: -4,
                   child: Container(
-                    width: 18, height: 18,
-                    decoration: const BoxDecoration(color: _primaryContainer, shape: BoxShape.circle),
-                    child: const Icon(Icons.star, size: 10, color: Colors.white),
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(
+                      color: _primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.star,
+                      size: 10,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
             ],
@@ -160,17 +205,35 @@ class _MemberCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(member.displayName,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w600, color: _onSurface)),
+                Text(
+                  member.displayName,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
                 if (member.joinedAt != null)
-                  Text('Tham gia: ${_formatDate(member.joinedAt!)}',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                  Text(
+                    'Tham gia: ${_formatDate(member.joinedAt!)}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     _PermChip(label: member.roleLabel, isPrimary: isAdmin),
                     const SizedBox(width: 6),
-                    _PermChip(label: member.inviteStatus == 'ACCEPTED' ? 'Đã xác nhận' : 'Chờ xác nhận', isPrimary: false),
+                    _PermChip(
+                      label: member.inviteStatus == 'ACCEPTED'
+                          ? 'Đã xác nhận'
+                          : 'Chờ xác nhận',
+                      isPrimary: false,
+                    ),
                   ],
                 ),
               ],
@@ -183,9 +246,15 @@ class _MemberCard extends StatelessWidget {
               icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
               onSelected: (val) {
                 if (val == 'manage') {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => ManageFamilyPermissionScreen(groupId: groupId, member: member),
-                  ));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ManageFamilyPermissionScreen(
+                        groupId: groupId,
+                        member: member,
+                      ),
+                    ),
+                  );
                 }
               },
               itemBuilder: (_) => [
@@ -195,7 +264,10 @@ class _MemberCard extends StatelessWidget {
                     children: [
                       Icon(Icons.security, color: _primary, size: 18),
                       SizedBox(width: 8),
-                      Text('Quản lý quyền hạn', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+                      Text(
+                        'Quản lý quyền hạn',
+                        style: TextStyle(fontFamily: 'Lexend', color: _primary),
+                      ),
                     ],
                   ),
                 ),
@@ -218,14 +290,19 @@ class _PermChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isPrimary ? const Color(0xFFC98C7B).withAlpha(26) : const Color(0xFFFFF1EC),
+        color: isPrimary
+            ? const Color(0xFFC98C7B).withAlpha(26)
+            : const Color(0xFFFFF1EC),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label,
-          style: TextStyle(
-            fontFamily: 'Lexend', fontSize: 11,
-            color: isPrimary ? const Color(0xFF845143) : const Color(0xFF524440),
-          )),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11,
+          color: isPrimary ? const Color(0xFF845143) : const Color(0xFF524440),
+        ),
+      ),
     );
   }
 }

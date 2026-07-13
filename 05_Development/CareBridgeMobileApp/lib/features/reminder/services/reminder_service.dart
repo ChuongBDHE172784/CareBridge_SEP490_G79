@@ -31,7 +31,8 @@ class ReminderService extends ChangeNotifier {
       return list
           .where((e) {
             final item = e as Map<String, dynamic>;
-            return item['sourceType'] == null || item['sourceType'] == 'REMINDER';
+            return item['sourceType'] == null ||
+                item['sourceType'] == 'REMINDER';
           })
           .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -90,7 +91,7 @@ class ReminderService extends ChangeNotifier {
           : recurrenceType.toApiValue(),
       if (recurrenceEndDate != null)
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      if (journeyId != null) 'journeyId': journeyId,
+      'journeyId': ?journeyId,
     };
     final data = await apiPost('/api/v1/reminders/medication', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -114,7 +115,7 @@ class ReminderService extends ChangeNotifier {
           : recurrenceType.toApiValue(),
       if (recurrenceEndDate != null)
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      if (journeyId != null) 'journeyId': journeyId,
+      'journeyId': ?journeyId,
     };
     final data = await apiPost('/api/v1/reminders/vaccination', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -138,8 +139,8 @@ class ReminderService extends ChangeNotifier {
           : recurrenceType.toApiValue(),
       if (recurrenceEndDate != null)
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      if (journeyId != null) 'journeyId': journeyId,
-      if (babyId != null) 'babyId': babyId,
+      'journeyId': ?journeyId,
+      'babyId': ?babyId,
     };
     final data = await apiPost('/api/v1/reminders', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -169,7 +170,7 @@ class ReminderService extends ChangeNotifier {
     DateTime? recurrenceEndDate,
   }) async {
     final body = <String, dynamic>{
-      if (title != null) 'title': title,
+      'title': ?title,
       if (scheduledAt != null)
         'scheduledAt': scheduledAt.toUtc().toIso8601String(),
       if (recurrenceType != null) 'recurrenceType': recurrenceType.toApiValue(),

@@ -5,7 +5,7 @@ import '../services/family_task_service.dart';
 class UpdateFamilyTaskScreen extends StatefulWidget {
   final FamilyTask task;
 
-  const UpdateFamilyTaskScreen({Key? key, required this.task}) : super(key: key);
+  const UpdateFamilyTaskScreen({super.key, required this.task});
 
   @override
   State<UpdateFamilyTaskScreen> createState() => _UpdateFamilyTaskScreenState();
@@ -14,18 +14,20 @@ class UpdateFamilyTaskScreen extends StatefulWidget {
 class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
   final _service = FamilyTaskService();
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late DateTime _dueAt;
-  
+
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task.title);
-    _descriptionController = TextEditingController(text: widget.task.description);
+    _descriptionController = TextEditingController(
+      text: widget.task.description,
+    );
     _dueAt = widget.task.dueAt;
   }
 
@@ -74,7 +76,13 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
       );
       if (time != null && mounted) {
         setState(() {
-          _dueAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+          _dueAt = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
         });
       }
     }
@@ -82,23 +90,27 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
 
   Future<void> _updateTask() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
     try {
       await _service.updateTask(
-        widget.task.groupId, 
-        widget.task.taskId, 
-        _titleController.text.trim(), 
-        _descriptionController.text.trim(), 
-        _dueAt
+        widget.task.groupId,
+        widget.task.taskId,
+        _titleController.text.trim(),
+        _descriptionController.text.trim(),
+        _dueAt,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã cập nhật nhiệm vụ')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã cập nhật nhiệm vụ')));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
         setState(() => _isLoading = false);
       }
     }
@@ -116,7 +128,15 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF845143)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Cập nhật nhiệm vụ', style: TextStyle(color: Color(0xFF845143), fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+        title: const Text(
+          'Cập nhật nhiệm vụ',
+          style: TextStyle(
+            color: Color(0xFF845143),
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Quicksand',
+          ),
+        ),
       ),
       body: Stack(
         children: [
@@ -127,22 +147,49 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Tiêu đề nhiệm vụ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+                  const Text(
+                    'Tiêu đề nhiệm vụ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF524440),
+                      fontFamily: 'Quicksand',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _titleController,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFC98C7B), width: 2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
+                      ),
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Vui lòng nhập tiêu đề' : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Vui lòng nhập tiêu đề'
+                        : null,
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
-                  const Text('Ngày giờ hết hạn', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+
+                  const Text(
+                    'Ngày giờ hết hạn',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF524440),
+                      fontFamily: 'Quicksand',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: _pickDateTime,
@@ -154,19 +201,35 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today, color: Color(0xFF845143)),
+                          const Icon(
+                            Icons.calendar_today,
+                            color: Color(0xFF845143),
+                          ),
                           const SizedBox(width: 12),
-                          Text('${_dueAt.day}/${_dueAt.month}/${_dueAt.year} ${_dueAt.hour.toString().padLeft(2, '0')}:${_dueAt.minute.toString().padLeft(2, '0')}', 
-                            style: const TextStyle(fontSize: 16, color: Color(0xFF271812), fontFamily: 'Quicksand'),
+                          Text(
+                            '${_dueAt.day}/${_dueAt.month}/${_dueAt.year} ${_dueAt.hour.toString().padLeft(2, '0')}:${_dueAt.minute.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF271812),
+                              fontFamily: 'Quicksand',
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
-                  const Text('Ghi chú chi tiết', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+
+                  const Text(
+                    'Ghi chú chi tiết',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF524440),
+                      fontFamily: 'Quicksand',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _descriptionController,
@@ -174,26 +237,46 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFC98C7B), width: 2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
+                      ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 100), // Space for bottom actions
                 ],
               ),
             ),
           ),
-          
+
           if (_isLoading)
-            Container(color: Colors.black26, child: const Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B)))),
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+              ),
+            ),
         ],
       ),
       bottomSheet: Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Color(0xCCFEF8F4), // Slightly transparent background
-          boxShadow: [BoxShadow(color: Color(0x145A463F), blurRadius: 24, offset: Offset(0, -8))],
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x145A463F),
+              blurRadius: 24,
+              offset: Offset(0, -8),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -204,9 +287,18 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
                   foregroundColor: const Color(0xFF6E5A52),
                   side: const BorderSide(color: Color(0xFFD6C2BD), width: 2),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                child: const Text('Hủy bỏ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                child: const Text(
+                  'Hủy bỏ',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Quicksand',
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -218,11 +310,20 @@ class _UpdateFamilyTaskScreenState extends State<UpdateFamilyTaskScreen> {
                   backgroundColor: const Color(0xFF845143),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                   elevation: 4,
                   shadowColor: const Color(0x4D845143),
                 ),
-                child: const Text('Lưu thay đổi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                child: const Text(
+                  'Lưu thay đổi',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Quicksand',
+                  ),
+                ),
               ),
             ),
           ],

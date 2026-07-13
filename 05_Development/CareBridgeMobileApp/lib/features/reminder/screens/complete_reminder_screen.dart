@@ -6,10 +6,7 @@ import '../services/reminder_service.dart';
 class CompleteReminderScreen extends StatefulWidget {
   final String reminderId;
 
-  const CompleteReminderScreen({
-    super.key,
-    required this.reminderId,
-  });
+  const CompleteReminderScreen({super.key, required this.reminderId});
 
   @override
   State<CompleteReminderScreen> createState() => _CompleteReminderScreenState();
@@ -17,11 +14,8 @@ class CompleteReminderScreen extends StatefulWidget {
 
 class _CompleteReminderScreenState extends State<CompleteReminderScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
   static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
@@ -62,14 +56,17 @@ class _CompleteReminderScreenState extends State<CompleteReminderScreen> {
     try {
       await _service.completeReminder(widget.reminderId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reminder completed.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reminder completed.')));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to complete reminder: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Unable to complete reminder: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -89,18 +86,22 @@ class _CompleteReminderScreenState extends State<CompleteReminderScreen> {
         ),
         title: const Text(
           'Complete reminder',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _errorText != null
-              ? _ErrorState(message: _errorText!, onRetry: _load)
-              : _CompleteContent(
-                  reminder: _reminder!,
-                  processing: _processing,
-                  onComplete: _complete,
-                ),
+          ? _ErrorState(message: _errorText!, onRetry: _load)
+          : _CompleteContent(
+              reminder: _reminder!,
+              processing: _processing,
+              onComplete: _complete,
+            ),
     );
   }
 }
@@ -134,14 +135,21 @@ class _CompleteContent extends StatelessWidget {
             color: _surface,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
-              BoxShadow(color: _primary.withAlpha(18), blurRadius: 16, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: _primary.withAlpha(18),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
           child: Row(
             children: [
               CircleAvatar(
                 backgroundColor: _primaryContainer.withAlpha(40),
-                child: const Icon(Icons.check_circle_outline_rounded, color: _primary),
+                child: const Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: _primary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -160,7 +168,10 @@ class _CompleteContent extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Due ${_formatDateTime(reminder.scheduledAt)}',
-                      style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -173,7 +184,11 @@ class _CompleteContent extends StatelessWidget {
           isTerminal
               ? 'This reminder is already ${reminder.status.displayLabel.toLowerCase()}.'
               : 'Complete only this reminder occurrence.',
-          style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, height: 1.45),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurfaceVariant,
+            height: 1.45,
+          ),
         ),
         const SizedBox(height: 20),
         FilledButton.icon(
@@ -182,14 +197,22 @@ class _CompleteContent extends StatelessWidget {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
                 )
               : const Icon(Icons.task_alt_rounded),
-          label: const Text('Complete', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800)),
+          label: const Text(
+            'Complete',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800),
+          ),
           style: FilledButton.styleFrom(
             backgroundColor: _primary,
             minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       ],
@@ -218,7 +241,11 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFBA1A1A),
+            size: 44,
+          ),
           const SizedBox(height: 10),
           Text(message, style: const TextStyle(fontFamily: 'Lexend')),
           const SizedBox(height: 10),

@@ -476,10 +476,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
             onPressed: dashboard.journeyId == null
                 ? null
                 : () => context
-                    .push(
-                      '/journey-setup?mode=edit&journeyId=${Uri.encodeComponent(dashboard.journeyId!)}',
-                    )
-                    .then((_) => _load()),
+                      .push(
+                        '/journey-setup?mode=edit&journeyId=${Uri.encodeComponent(dashboard.journeyId!)}',
+                      )
+                      .then((_) => _load()),
             icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
             tooltip: 'Cập nhật ngày dự sinh',
           ),
@@ -754,8 +754,12 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   }
 
   Widget _buildBentoSummary() {
-    final weightPoint = _weightTrend?.dataPoints.isNotEmpty == true ? _weightTrend!.dataPoints.last : null;
-    final hrPoint = _heartRateTrend?.dataPoints.isNotEmpty == true ? _heartRateTrend!.dataPoints.last : null;
+    final weightPoint = _weightTrend?.dataPoints.isNotEmpty == true
+        ? _weightTrend!.dataPoints.last
+        : null;
+    final hrPoint = _heartRateTrend?.dataPoints.isNotEmpty == true
+        ? _heartRateTrend!.dataPoints.last
+        : null;
 
     final weightValue = weightPoint?.valueDisplay ?? '—';
     final weightTrendPct = _weightTrend?.trend;
@@ -765,21 +769,25 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
     return Row(
       children: [
-        Expanded(child: _buildBentoCard(
-          icon: Icons.monitor_weight_outlined,
-          label: 'Cân nặng',
-          value: weightValue,
-          unit: 'kg',
-          trend: weightTrendPct,
-        )),
+        Expanded(
+          child: _buildBentoCard(
+            icon: Icons.monitor_weight_outlined,
+            label: 'Cân nặng',
+            value: weightValue,
+            unit: 'kg',
+            trend: weightTrendPct,
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _buildBentoCard(
-          icon: Icons.show_chart_rounded,
-          label: 'Nhịp tim',
-          value: hrValue,
-          unit: 'bpm',
-          trend: hrTrendPct,
-        )),
+        Expanded(
+          child: _buildBentoCard(
+            icon: Icons.show_chart_rounded,
+            label: 'Nhịp tim',
+            value: hrValue,
+            unit: 'bpm',
+            trend: hrTrendPct,
+          ),
+        ),
       ],
     );
   }
@@ -798,7 +806,11 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(12), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -812,25 +824,44 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                 Row(
                   children: [
                     Icon(
-                      trend >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                      trend >= 0
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded,
                       color: _primary,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${trend.abs().toStringAsFixed(1)}%',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
                     ),
                   ],
                 ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             '$value $unit',
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
           ),
         ],
       ),
@@ -943,7 +974,6 @@ class _CircularProgressWidget extends StatelessWidget {
     );
   }
 }
-
 
 class _CircleProgressPainter extends CustomPainter {
   const _CircleProgressPainter({required this.progress});

@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../emergency/services/emergency_service.dart';
 import '../models/triage_intake_flow_model.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
 
 class SymptomIntakeScreen extends StatefulWidget {
-  const SymptomIntakeScreen({super.key});
+  final TriageService? triageService;
+  final EmergencyService? emergencyService;
+
+  const SymptomIntakeScreen({
+    super.key,
+    this.triageService,
+    this.emergencyService,
+  });
 
   @override
   State<SymptomIntakeScreen> createState() => _SymptomIntakeScreenState();
@@ -19,13 +28,15 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   static const _onVariant = Color(0xFF524440);
   static const _outline = Color(0xFFD6C2BD);
 
-  final _service = TriageService();
+  late final TriageService _service;
+  late final EmergencyService _emergencyService;
   final _initialController = TextEditingController();
   final Map<String, TextEditingController> _answerControllers = {};
   final List<_ChatMessage> _messages = [
     const _ChatMessage(
       role: _ChatRole.assistant,
-      text: 'Hay mo ta trieu chung cua be. CareBridge se hoi them neu can va chi phan loai rui ro ban dau.',
+      text:
+          'Hay mo ta trieu chung cua be. CareBridge se hoi them neu can va chi phan loai rui ro ban dau.',
     ),
   ];
 
@@ -35,24 +46,33 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   String? _sessionId;
   int _round = 1;
   bool _loading = false;
+  bool _openingEmergency = false;
+  bool _emergencyFailed = false;
   TriageResult? _result;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    _service = widget.triageService ?? TriageService();
+    _emergencyService = widget.emergencyService ?? EmergencyService();
+  }
+
   static Map<String, dynamic> _blankIntake() => {
-        'childAgeMonths': null,
-        'symptomList': <String>[],
-        'duration': null,
-        'temperatureC': null,
-        'feedingStatus': null,
-        'breathingStatus': null,
-        'consciousnessStatus': null,
-        'vomiting': null,
-        'diarrhea': null,
-        'rash': null,
-        'seizure': null,
-        'dehydrationSigns': <String>[],
-        'parentFreeText': null,
-      };
+    'childAgeMonths': null,
+    'symptomList': <String>[],
+    'duration': null,
+    'temperatureC': null,
+    'feedingStatus': null,
+    'breathingStatus': null,
+    'consciousnessStatus': null,
+    'vomiting': null,
+    'diarrhea': null,
+    'rash': null,
+    'seizure': null,
+    'dehydrationSigns': <String>[],
+    'parentFreeText': null,
+  };
 
   @override
   void dispose() {
@@ -64,12 +84,12 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   }
 
   Future<void> _start() async {
+    if (_loading) return;
     final text = _initialController.text.trim();
     if (text.isEmpty) return;
     setState(() {
       _loading = true;
       _error = null;
-      _messages.add(_ChatMessage(role: _ChatRole.user, text: text));
       _currentIntake = {
         ..._blankIntake(),
         'symptomList': <String>[text],
@@ -81,15 +101,18 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         initialText: text,
         currentIntake: _currentIntake,
       );
-      _applyResponse(response);
-    } catch (e) {
-      if (mounted) setState(() => _error = 'Khong the gui trieu chung: $e');
+      if (mounted) _applyResponse(response, userMessage: text);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Khong the gui trieu chung. Vui long thu lai.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _sendAnswers() async {
+    if (_loading) return;
     if (_sessionId == null || _questions.isEmpty) return;
     final newAnswers = <String, dynamic>{};
     for (final question in _questions) {
@@ -105,7 +128,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _messages.add(_ChatMessage(role: _ChatRole.user, text: _answersText(newAnswers)));
     });
     try {
       final response = await _service.continueConversation(
@@ -114,37 +136,59 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         newAnswers: newAnswers,
         round: _round,
       );
-      _applyResponse(response);
-    } catch (e) {
-      if (mounted) setState(() => _error = 'Khong the gui cau tra loi: $e');
+      if (mounted) {
+        _applyResponse(response, userMessage: _answersText(newAnswers));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Khong the gui cau tra loi. Vui long thu lai.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _applyResponse(IntakeFlowResponse response) {
+  void _applyResponse(IntakeFlowResponse response, {String? userMessage}) {
     setState(() {
+      if (userMessage != null) {
+        _messages.add(_ChatMessage(role: _ChatRole.user, text: userMessage));
+      }
       _sessionId = response.intakeSessionId;
       _currentIntake = response.mergedIntake;
       _questions = response.questions;
       _round = response.round;
       _result = response.triageResult;
       _answers.clear();
+      for (final controller in _answerControllers.values) {
+        controller.dispose();
+      }
       _answerControllers.clear();
       if ((response.assistantMessage ?? '').isNotEmpty) {
-        _messages.add(_ChatMessage(role: _ChatRole.assistant, text: response.assistantMessage!));
+        _messages.add(
+          _ChatMessage(
+            role: _ChatRole.assistant,
+            text: response.assistantMessage!,
+          ),
+        );
       }
       if (response.questions.isNotEmpty) {
-        _messages.add(_ChatMessage(
-          role: _ChatRole.assistant,
-          text: response.questions.map((q) => q.text).join('\n'),
-        ));
+        _messages.add(
+          _ChatMessage(
+            role: _ChatRole.assistant,
+            text: response.questions.map((q) => q.text).join('\n'),
+          ),
+        );
       }
-      if (response.status == 'TRIAGE_COMPLETE' && response.triageResult != null) {
-        _messages.add(_ChatMessage(
-          role: _ChatRole.assistant,
-          text: response.triageResult!.summary ?? 'Da co ket qua phan loai rui ro.',
-        ));
+      if (response.status == 'TRIAGE_COMPLETE' &&
+          response.triageResult != null) {
+        _messages.add(
+          _ChatMessage(
+            role: _ChatRole.assistant,
+            text:
+                response.triageResult!.summary ??
+                'Da co ket qua phan loai rui ro.',
+          ),
+        );
       }
     });
   }
@@ -170,8 +214,50 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
+    if (uri != null && _isAllowedOfficialUri(uri) && await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  bool _isAllowedOfficialUri(Uri uri) {
+    const allowed = {
+      'who.int',
+      'moh.gov.vn',
+      'mch.moh.gov.vn',
+      'cdc.gov',
+      'unicef.org',
+      'benhviennhitrunguong.gov.vn',
+      'nhidong.org.vn',
+      'bvndtp.org.vn',
+    };
+    final host = uri.host.toLowerCase();
+    return uri.scheme == 'https' &&
+        allowed.any((domain) => host == domain || host.endsWith('.$domain'));
+  }
+
+  Future<void> _openEmergencyFlow() async {
+    if (_openingEmergency) return;
+    setState(() {
+      _openingEmergency = true;
+      _emergencyFailed = false;
+      _error = null;
+    });
+    try {
+      await _emergencyService
+          .openFlow(triggerSource: 'AI_TRIAGE')
+          .timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      context.push('/emergency/map');
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _emergencyFailed = true;
+          _error =
+              'Khong the kich hoat ho tro khan cap. Vui long goi cap cuu hoac thu lai.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _openingEmergency = false);
     }
   }
 
@@ -194,7 +280,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 children: [
                   ..._messages.map(_buildBubble),
                   if (_result != null) _buildResult(_result!),
-                  if (_questions.isNotEmpty && _result == null) _buildQuestions(),
+                  if (_questions.isNotEmpty && _result == null)
+                    _buildQuestions(),
                   if (_error != null) _buildError(),
                 ],
               ),
@@ -275,7 +362,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           ),
         );
       case 'MULTI_CHOICE':
-        final selected = (_answers[question.questionKey] as Set<String>?) ?? <String>{};
+        final selected =
+            (_answers[question.questionKey] as Set<String>?) ?? <String>{};
         return Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: _ChoiceGroup(
@@ -300,7 +388,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             question: question,
             selected: {_answers[question.questionKey]?.toString() ?? ''},
             multi: false,
-            onSelected: (value) => setState(() => _answers[question.questionKey] = value),
+            onSelected: (value) =>
+                setState(() => _answers[question.questionKey] = value),
           ),
         );
     }
@@ -321,19 +410,47 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         children: [
           Text(
             'Risk: ${result.riskLevel ?? 'UNKNOWN'}',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
           if ((result.summary ?? '').isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(result.summary!, style: const TextStyle(color: _onSurface, height: 1.35)),
+            Text(
+              result.summary!,
+              style: const TextStyle(color: _onSurface, height: 1.35),
+            ),
           ],
           if ((result.recommendedAction ?? '').isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(result.recommendedAction!, style: const TextStyle(color: _onVariant, height: 1.35)),
+            Text(
+              result.recommendedAction!,
+              style: const TextStyle(color: _onVariant, height: 1.35),
+            ),
           ],
           if (result.redFlags.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text('Red flags: ${result.redFlags.join(', ')}'),
+          ],
+          if (result.riskLevel == 'RED' || result.emergencyActionRequired) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                key: const Key('triage-emergency-cta'),
+                onPressed: _openingEmergency ? null : _openEmergencyFlow,
+                icon: _openingEmergency
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.emergency),
+                label: const Text('Kich hoat ho tro khan cap'),
+              ),
+            ),
           ],
           if ((result.warning ?? '').isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -341,13 +458,19 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           ],
           if (result.citations.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Nguon tham khao chinh thong', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text(
+              'Nguon tham khao chinh thong',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             ...result.citations.map(_buildCitation),
           ],
           if ((result.disclaimer ?? '').isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text(result.disclaimer!, style: const TextStyle(fontSize: 12, color: _onVariant)),
+            Text(
+              result.disclaimer!,
+              style: const TextStyle(fontSize: 12, color: _onVariant),
+            ),
           ],
         ],
       ),
@@ -355,8 +478,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   }
 
   Widget _buildCitation(TriageCitation citation) {
+    final uri = Uri.tryParse(citation.url);
+    final canOpen = uri != null && _isAllowedOfficialUri(uri);
     return InkWell(
-      onTap: citation.url.isEmpty ? null : () => _openUrl(citation.url),
+      key: Key('triage-citation-${citation.id ?? citation.url}'),
+      onTap: canOpen ? () => _openUrl(citation.url) : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
@@ -367,16 +493,26 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${citation.organization ?? citation.source} - ${citation.title}',
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              '${citation.organization ?? citation.source} - ${citation.title}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
             if (citation.url.isNotEmpty)
-              Text(citation.url, style: const TextStyle(color: _primary, decoration: TextDecoration.underline)),
+              Text(
+                citation.url,
+                style: const TextStyle(
+                  color: _primary,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
             if (citation.matchedSymptoms.isNotEmpty)
               Text('Matched symptoms: ${citation.matchedSymptoms.join(', ')}'),
             Text('Status: ${citation.sourceStatus}'),
             if (citation.sourceStatus == 'PENDING_REVIEW')
-              const Text('Nguon chinh thong duoc truy xuat tu dong, dang cho kiem duyet noi bo.',
-                  style: TextStyle(fontSize: 12, color: _onVariant)),
+              const Text(
+                'Nguon chinh thong duoc truy xuat tu dong, dang cho kiem duyet noi bo.',
+                style: TextStyle(fontSize: 12, color: _onVariant),
+              ),
           ],
         ),
       ),
@@ -408,7 +544,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 IconButton.filled(
                   onPressed: _loading ? null : _start,
                   icon: _loading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.send),
                 ),
               ],
@@ -418,7 +558,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               child: ElevatedButton.icon(
                 onPressed: _loading ? null : _sendAnswers,
                 icon: _loading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.send),
                 label: const Text('Gui cau tra loi'),
               ),
@@ -429,7 +573,19 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   Widget _buildError() {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Text(_error!, style: const TextStyle(color: Colors.red)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_error!, style: const TextStyle(color: Colors.red)),
+          if (_emergencyFailed)
+            TextButton.icon(
+              key: const Key('triage-emergency-fallback-map'),
+              onPressed: () => context.push('/emergency/map'),
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Van mo ban do khan cap'),
+            ),
+        ],
+      ),
     );
   }
 
@@ -465,7 +621,10 @@ class _ChoiceGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(question.text, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          question.text,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,

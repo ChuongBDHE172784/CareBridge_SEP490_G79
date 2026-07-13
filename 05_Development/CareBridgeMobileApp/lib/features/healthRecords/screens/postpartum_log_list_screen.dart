@@ -3,19 +3,23 @@ import 'package:flutter/material.dart';
 class PostpartumLogListScreen extends StatefulWidget {
   final String journeyId;
 
-  const PostpartumLogListScreen({
-    Key? key,
-    required this.journeyId,
-  }) : super(key: key);
+  const PostpartumLogListScreen({super.key, required this.journeyId});
 
   @override
-  State<PostpartumLogListScreen> createState() => _PostpartumLogListScreenState();
+  State<PostpartumLogListScreen> createState() =>
+      _PostpartumLogListScreenState();
 }
 
 class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
   bool _isLoading = true;
   String _selectedFilter = 'Tất cả';
-  final List<String> _filters = ['Tất cả', 'Giấc ngủ', 'Tâm trạng', 'Triệu chứng', 'Cho bú'];
+  final List<String> _filters = [
+    'Tất cả',
+    'Giấc ngủ',
+    'Tâm trạng',
+    'Triệu chứng',
+    'Cho bú',
+  ];
 
   List<Map<String, dynamic>> _logs = [];
 
@@ -38,17 +42,20 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
           'category': 'Giấc ngủ',
           'icon': Icons.bedtime,
           'color': const Color(0xFFC98C7B), // primary-container
-          'note': 'Ngủ được khoảng 4 tiếng liên tục. Cảm thấy đỡ mệt hơn hôm qua một chút.',
+          'note':
+              'Ngủ được khoảng 4 tiếng liên tục. Cảm thấy đỡ mệt hơn hôm qua một chút.',
           'tags': ['Ngủ ngon', '4h'],
         },
         {
           'id': 'log_2',
-          'dateLabel': '', // Same date group implicitly in UI or handled via logic
+          'dateLabel':
+              '', // Same date group implicitly in UI or handled via logic
           'time': '14:15',
           'category': 'Tâm trạng',
           'icon': Icons.mood,
           'color': const Color(0xFF6E5A52), // secondary
-          'note': 'Hơi lo lắng về việc bé bú không đủ. Đã gọi cho bác sĩ tư vấn, thấy yên tâm hơn.',
+          'note':
+              'Hơi lo lắng về việc bé bú không đủ. Đã gọi cho bác sĩ tư vấn, thấy yên tâm hơn.',
           'tags': ['Lo âu nhẹ'],
         },
         {
@@ -58,12 +65,14 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
           'category': 'Triệu chứng',
           'icon': Icons.water_drop,
           'color': const Color(0xFFC98C7B),
-          'note': 'Vết mổ hơi nhói khi di chuyển nhiều. Đã uống thuốc giảm đau theo đơn.',
+          'note':
+              'Vết mổ hơi nhói khi di chuyển nhiều. Đã uống thuốc giảm đau theo đơn.',
           'tags': ['Đau nhẹ'],
           'isErrorTag': true,
         },
       ];
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lỗi tải danh sách nhật ký')),
       );
@@ -76,7 +85,6 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF845143);
     const bgColor = Color(0xFFFFF8F6);
-    const textColor = Color(0xFF271812);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -112,10 +120,13 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                 SizedBox(
                   height: 50,
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     scrollDirection: Axis.horizontal,
                     itemCount: _filters.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final filter = _filters[index];
                       final isSelected = filter == _selectedFilter;
@@ -124,12 +135,19 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                           setState(() => _selectedFilter = filter);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFC98C7B) : Colors.white,
+                            color: isSelected
+                                ? const Color(0xFFC98C7B)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isSelected ? Colors.transparent : const Color(0xFFD6C2BD),
+                              color: isSelected
+                                  ? Colors.transparent
+                                  : const Color(0xFFD6C2BD),
                             ),
                           ),
                           child: Center(
@@ -138,7 +156,9 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : const Color(0xFF524440),
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF524440),
                                 fontFamily: 'Quicksand',
                               ),
                             ),
@@ -151,11 +171,19 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                 // Timeline
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.only(left: 36, right: 20, top: 16, bottom: 100),
+                    padding: const EdgeInsets.only(
+                      left: 36,
+                      right: 20,
+                      top: 16,
+                      bottom: 100,
+                    ),
                     itemCount: _logs.length,
                     itemBuilder: (context, index) {
                       final log = _logs[index];
-                      return _buildTimelineItem(log, isLast: index == _logs.length - 1);
+                      return _buildTimelineItem(
+                        log,
+                        isLast: index == _logs.length - 1,
+                      );
                     },
                   ),
                 ),
@@ -181,7 +209,8 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
   }
 
   Widget _buildTimelineItem(Map<String, dynamic> log, {required bool isLast}) {
-    final bool hasDateLabel = log['dateLabel'] != null && log['dateLabel'].isNotEmpty;
+    final bool hasDateLabel =
+        log['dateLabel'] != null && log['dateLabel'].isNotEmpty;
 
     return IntrinsicHeight(
       child: Row(
@@ -212,7 +241,10 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFE2D9),
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFFF8F6), width: 2),
+                      border: Border.all(
+                        color: const Color(0xFFFFF8F6),
+                        width: 2,
+                      ),
                     ),
                     child: Center(
                       child: Container(
@@ -258,10 +290,12 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFADCD3)), // surface-variant
+                      border: Border.all(
+                        color: const Color(0xFFFADCD3),
+                      ), // surface-variant
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -275,7 +309,11 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(log['icon'], color: log['color'], size: 24),
+                                Icon(
+                                  log['icon'],
+                                  color: log['color'],
+                                  size: 24,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   log['category'],
@@ -313,9 +351,14 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                           children: (log['tags'] as List<String>).map((tag) {
                             final isError = log['isErrorTag'] == true;
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: isError ? const Color(0xFFFFDAD6) : const Color(0xFFFFF1EC),
+                                color: isError
+                                    ? const Color(0xFFFFDAD6)
+                                    : const Color(0xFFFFF1EC),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -323,7 +366,9 @@ class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: isError ? const Color(0xFF93000A) : const Color(0xFF524440),
+                                  color: isError
+                                      ? const Color(0xFF93000A)
+                                      : const Color(0xFF524440),
                                   fontFamily: 'Quicksand',
                                 ),
                               ),

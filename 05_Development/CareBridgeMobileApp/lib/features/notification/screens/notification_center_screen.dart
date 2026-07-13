@@ -93,35 +93,40 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer))
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : RefreshIndicator(
-                          color: _primaryContainer,
-                          onRefresh: _load,
-                          child: CustomScrollView(
-                            slivers: [
-                              SliverToBoxAdapter(child: _buildHeader()),
-                              SliverToBoxAdapter(child: _buildFilters()),
-                              if (_displayed.isEmpty)
-                                SliverFillRemaining(
-                                    child: _buildEmpty())
-                              else
-                                SliverList(
-                                  delegate: SliverChildBuilderDelegate(
-                                    (_, i) => Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          16, 0, 16, 8),
-                                      child: _buildCard(_displayed[i]),
-                                    ),
-                                    childCount: _displayed.length,
+                  ? _buildError()
+                  : RefreshIndicator(
+                      color: _primaryContainer,
+                      onRefresh: _load,
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(child: _buildHeader()),
+                          SliverToBoxAdapter(child: _buildFilters()),
+                          if (_displayed.isEmpty)
+                            SliverFillRemaining(child: _buildEmpty())
+                          else
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (_, i) => Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
                                   ),
+                                  child: _buildCard(_displayed[i]),
                                 ),
-                              const SliverToBoxAdapter(
-                                  child: SizedBox(height: 24)),
-                            ],
-                          ),
-                        ),
+                                childCount: _displayed.length,
+                              ),
+                            ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -175,9 +180,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           ),
           const SizedBox(width: 8),
           _chip(
-            label: _unreadCount > 0
-                ? 'Chưa đọc ($_unreadCount)'
-                : 'Chưa đọc',
+            label: _unreadCount > 0 ? 'Chưa đọc ($_unreadCount)' : 'Chưa đọc',
             active: _showUnreadOnly,
             onTap: () => setState(() => _showUnreadOnly = true),
           ),
@@ -229,7 +232,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute(
-              builder: (_) => NotificationDetailScreen(notification: n)),
+            builder: (_) => NotificationDetailScreen(notification: n),
+          ),
         );
         _load();
       },
@@ -241,8 +245,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             color: _surfaceLowest,
             borderRadius: BorderRadius.circular(24),
             border: isUnread
-                ? Border(
-                    left: BorderSide(color: _primaryContainer, width: 4))
+                ? Border(left: BorderSide(color: _primaryContainer, width: 4))
                 : null,
             boxShadow: [
               BoxShadow(
@@ -379,8 +382,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_rounded,
-              color: _outlineVariant, size: 64),
+          Icon(
+            Icons.notifications_none_rounded,
+            color: _outlineVariant,
+            size: 64,
+          ),
           const SizedBox(height: 16),
           Text(
             _showUnreadOnly
@@ -406,23 +412,30 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           children: [
             const Icon(Icons.error_outline, color: _primary, size: 48),
             const SizedBox(height: 16),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _onSurfaceVariant)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _load,
               style: FilledButton.styleFrom(
-                  backgroundColor: _primaryContainer,
-                  shape: const StadiumBorder()),
-              child: const Text('Thử lại',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),

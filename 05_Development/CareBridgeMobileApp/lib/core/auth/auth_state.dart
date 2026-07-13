@@ -34,19 +34,25 @@ class AuthState extends ChangeNotifier {
       final tokens = await _storage.load();
       final access = tokens['accessToken'];
       final refresh = tokens['refreshToken'];
-      debugPrint('[AuthState] init: storage loaded. access=${access != null ? 'present' : 'null'} refresh=${refresh != null ? 'present' : 'null'}');
+      debugPrint(
+        '[AuthState] init: storage loaded. access=${access != null ? 'present' : 'null'} refresh=${refresh != null ? 'present' : 'null'}',
+      );
       if (access != null && !_isJwtExpired(access)) {
         _accessToken = access;
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
-        debugPrint('[AuthState] init: access token valid → authenticated userId=$_userId role=$_role');
+        debugPrint(
+          '[AuthState] init: access token valid → authenticated userId=$_userId role=$_role',
+        );
       } else if (refresh != null) {
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
         _accessToken = 'expired';
-        debugPrint('[AuthState] init: access expired, refresh present → sentinel set userId=$_userId role=$_role');
+        debugPrint(
+          '[AuthState] init: access expired, refresh present → sentinel set userId=$_userId role=$_role',
+        );
       } else {
         debugPrint('[AuthState] init: no tokens → clearing, redirect to login');
         unawaited(_storage.clear());
@@ -67,13 +73,17 @@ class AuthState extends ChangeNotifier {
     required String userId,
     required String role,
   }) async {
-    debugPrint('[AuthState] setTokens: accessLen=${accessToken.length} tokenStart=${accessToken.substring(0, accessToken.length > 20 ? 20 : accessToken.length)}... userId=$userId role=$role');
+    debugPrint(
+      '[AuthState] setTokens: accessLen=${accessToken.length} tokenStart=${accessToken.substring(0, accessToken.length > 20 ? 20 : accessToken.length)}... userId=$userId role=$role',
+    );
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     _userId = userId;
     _role = role;
     notifyListeners();
-    debugPrint('[AuthState] setTokens: notifyListeners done, about to save to storage');
+    debugPrint(
+      '[AuthState] setTokens: notifyListeners done, about to save to storage',
+    );
     await _storage.save(
       accessToken: accessToken,
       refreshToken: refreshToken,

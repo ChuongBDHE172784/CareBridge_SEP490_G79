@@ -56,7 +56,10 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   }
 
   Future<void> _loadRecord() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final record = await _service.getHealthRecord(widget.recordId);
       setState(() {
@@ -75,11 +78,16 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
 
   String _typeToApiValue(RecordType t) {
     switch (t) {
-      case RecordType.vaccination: return 'VACCINATION_FORM';
-      case RecordType.metric: return 'LAB_RESULT';
-      case RecordType.prescription: return 'PRESCRIPTION';
-      case RecordType.checkup: return 'EXAMINATION_RESULT';
-      default: return 'NOTE';
+      case RecordType.vaccination:
+        return 'VACCINATION_FORM';
+      case RecordType.metric:
+        return 'LAB_RESULT';
+      case RecordType.prescription:
+        return 'PRESCRIPTION';
+      case RecordType.checkup:
+        return 'EXAMINATION_RESULT';
+      default:
+        return 'NOTE';
     }
   }
 
@@ -91,7 +99,11 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: _primary, onPrimary: Colors.white, surface: _canvas),
+          colorScheme: const ColorScheme.light(
+            primary: _primary,
+            onPrimary: Colors.white,
+            surface: _canvas,
+          ),
         ),
         child: child!,
       ),
@@ -102,7 +114,10 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   Future<void> _save() async {
     if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tiêu đề hồ sơ.'), backgroundColor: _primary),
+        const SnackBar(
+          content: Text('Vui lòng nhập tiêu đề hồ sơ.'),
+          backgroundColor: _primary,
+        ),
       );
       return;
     }
@@ -114,7 +129,9 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
           title: _titleCtrl.text.trim(),
           recordType: _recordType,
           recordDate: _recordDate,
-          sourceName: _sourceNameCtrl.text.trim().isEmpty ? null : _sourceNameCtrl.text.trim(),
+          sourceName: _sourceNameCtrl.text.trim().isEmpty
+              ? null
+              : _sourceNameCtrl.text.trim(),
           sourceType: _subjectIsMother ? 'MOTHER_SELF' : 'BABY',
         ),
       );
@@ -124,7 +141,10 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu. Vui lòng thử lại.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể lưu. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -145,23 +165,47 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
         ),
         title: const Text(
           'Chỉnh sửa hồ sơ',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
         ),
       ),
       body: Stack(
         children: [
           if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            const Center(
+              child: CircularProgressIndicator(color: _primaryContainer),
+            )
           else if (_error != null)
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: _primaryContainer, size: 48),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: _primaryContainer,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+                  Text(
+                    _error!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  TextButton(onPressed: _loadRecord, child: const Text('Thử lại', style: TextStyle(color: _primary))),
+                  TextButton(
+                    onPressed: _loadRecord,
+                    child: const Text(
+                      'Thử lại',
+                      style: TextStyle(color: _primary),
+                    ),
+                  ),
                 ],
               ),
             )
@@ -199,12 +243,26 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tệp đính kèm', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Tệp đính kèm',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           if (attachments.isEmpty)
             Container(
@@ -212,15 +270,30 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
               decoration: BoxDecoration(
                 color: _surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _surface, width: 2, style: BorderStyle.solid),
+                border: Border.all(
+                  color: _surface,
+                  width: 2,
+                  style: BorderStyle.solid,
+                ),
               ),
               child: const Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.attach_file_rounded, color: _onSurfaceVariant, size: 18),
+                    Icon(
+                      Icons.attach_file_rounded,
+                      color: _onSurfaceVariant,
+                      size: 18,
+                    ),
                     SizedBox(width: 8),
-                    Text('Chưa có tệp đính kèm', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                    Text(
+                      'Chưa có tệp đính kèm',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -231,7 +304,10 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
           OutlinedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.upload_file_rounded, size: 18),
-            label: Text(attachments.isEmpty ? 'Tải lên tệp' : 'Thay thế tệp', style: const TextStyle(fontFamily: 'Lexend', fontSize: 13)),
+            label: Text(
+              attachments.isEmpty ? 'Tải lên tệp' : 'Thay thế tệp',
+              style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: _primary,
               side: const BorderSide(color: _primaryContainer, width: 1.5),
@@ -257,14 +333,25 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-            child: Icon(a.isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded, color: _primaryContainer, size: 22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              a.isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
+              color: _primaryContainer,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               a.originalName,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurface),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurface,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -280,7 +367,13 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -298,8 +391,23 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-        Text(value, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _onSurface)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            color: _onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _onSurface,
+          ),
+        ),
       ],
     );
   }
@@ -310,17 +418,35 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Thông tin hồ sơ', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Thông tin hồ sơ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _titleCtrl,
             maxLength: 255,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurface,
+            ),
             decoration: _inputDeco('Tiêu đề hồ sơ *'),
           ),
           const SizedBox(height: 14),
@@ -332,8 +458,15 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
           const SizedBox(height: 14),
           TextFormField(
             controller: _sourceNameCtrl,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
-            decoration: _inputDeco('Cơ sở y tế / Nguồn', hint: 'Bệnh viện Từ Dũ...'),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurface,
+            ),
+            decoration: _inputDeco(
+              'Cơ sở y tế / Nguồn',
+              hint: 'Bệnh viện Từ Dũ...',
+            ),
           ),
         ],
       ),
@@ -351,19 +484,34 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Loại hồ sơ', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+          const Text(
+            'Loại hồ sơ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11,
+              color: _onSurfaceVariant,
+            ),
+          ),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _recordType,
               isExpanded: true,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurface,
+              ),
               dropdownColor: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              items: _recordTypes.map((pair) => DropdownMenuItem(
-                value: pair.$1,
-                child: Text(pair.$2),
-              )).toList(),
-              onChanged: (v) { if (v != null) setState(() => _recordType = v); },
+              items: _recordTypes
+                  .map(
+                    (pair) =>
+                        DropdownMenuItem(value: pair.$1, child: Text(pair.$2)),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _recordType = v);
+              },
             ),
           ),
         ],
@@ -383,21 +531,41 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, color: _primaryContainer, size: 18),
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: _primaryContainer,
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Ngày', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                  const Text(
+                    'Ngày',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                   Text(
                     '${_recordDate.day.toString().padLeft(2, '0')}/${_recordDate.month.toString().padLeft(2, '0')}/${_recordDate.year}',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant, size: 18),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: _onSurfaceVariant,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -407,7 +575,10 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   Widget _buildSubjectToggle() {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(50)),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(50),
+      ),
       child: Row(
         children: [
           Expanded(child: _buildSubjectOption('Mẹ', true)),
@@ -448,10 +619,21 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       right: 0,
       bottom: 0,
       child: Container(
-        padding: EdgeInsets.only(left: 16, right: 16, bottom: MediaQuery.of(context).padding.bottom + 16, top: 12),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 16,
+          top: 12,
+        ),
         decoration: BoxDecoration(
           color: _canvas,
-          boxShadow: [BoxShadow(color: _primary.withAlpha(20), blurRadius: 12, offset: const Offset(0, -4))],
+          boxShadow: [
+            BoxShadow(
+              color: _primary.withAlpha(20),
+              blurRadius: 12,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -465,7 +647,14 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: const StadiumBorder(),
                 ),
-                child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Hủy',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -481,8 +670,22 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
                   elevation: 0,
                 ),
                 child: _isSaving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                    : const Text('Lưu hồ sơ', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w700)),
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Lưu hồ sơ',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -501,14 +704,24 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20),
+              ],
             ),
             child: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.check_circle_rounded, color: _primary, size: 48),
                 SizedBox(height: 12),
-                Text('Đã cập nhật hồ sơ!', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: _onSurface)),
+                Text(
+                  'Đã cập nhật hồ sơ!',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -520,14 +733,31 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
     labelText: label,
     hintText: hint,
-    labelStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
-    hintStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBBA9A4)),
+    labelStyle: const TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 12,
+      color: _onSurfaceVariant,
+    ),
+    hintStyle: const TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 13,
+      color: Color(0xFFBBA9A4),
+    ),
     filled: true,
     fillColor: Colors.white,
     counterText: '',
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _primaryContainer, width: 2)),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _surface, width: 2),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _surface, width: 2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+    ),
   );
 }

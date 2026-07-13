@@ -15,14 +15,15 @@ class ContentListItem {
     this.publishedAt,
   });
 
-  factory ContentListItem.fromJson(Map<String, dynamic> json) => ContentListItem(
-    id: json['id'] as String,
-    type: json['type'] as String? ?? 'ARTICLE',
-    title: json['title'] as String,
-    stage: json['stage'] as String? ?? '',
-    topicId: json['topicId'] as String? ?? '',
-    publishedAt: json['publishedAt'] as String?,
-  );
+  factory ContentListItem.fromJson(Map<String, dynamic> json) =>
+      ContentListItem(
+        id: json['id'] as String,
+        type: json['type'] as String? ?? 'ARTICLE',
+        title: json['title'] as String,
+        stage: json['stage'] as String? ?? '',
+        topicId: json['topicId'] as String? ?? '',
+        publishedAt: json['publishedAt'] as String?,
+      );
 }
 
 class ContentDetail {
@@ -73,15 +74,16 @@ class ChecklistTemplate {
     required this.items,
   });
 
-  factory ChecklistTemplate.fromJson(Map<String, dynamic> json) => ChecklistTemplate(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    stage: json['stage'] as String? ?? '',
-    description: json['description'] as String? ?? '',
-    items: (json['items'] as List? ?? [])
-        .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
+  factory ChecklistTemplate.fromJson(Map<String, dynamic> json) =>
+      ChecklistTemplate(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        stage: json['stage'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
 class ChecklistItem {

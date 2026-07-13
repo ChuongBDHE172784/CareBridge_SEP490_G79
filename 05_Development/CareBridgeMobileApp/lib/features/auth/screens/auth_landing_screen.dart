@@ -50,9 +50,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Color(0xFFF6F1EC),
-      body: Center(
-        child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B))),
     );
   }
 }

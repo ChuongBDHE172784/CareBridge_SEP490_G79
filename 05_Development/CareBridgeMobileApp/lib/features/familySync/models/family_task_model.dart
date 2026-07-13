@@ -39,7 +39,9 @@ class FamilyTask {
       assignedToName: json['assignedToName'] ?? '',
       assignedBy: json['assignedBy'] ?? '',
       assignedByName: json['assignedByName'] ?? '',
-      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.parse(json['completedAt'])
+          : null,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }

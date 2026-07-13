@@ -41,7 +41,11 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
       lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: _primary, onPrimary: Colors.white, surface: _canvas),
+          colorScheme: const ColorScheme.light(
+            primary: _primary,
+            onPrimary: Colors.white,
+            surface: _canvas,
+          ),
         ),
         child: child!,
       ),
@@ -52,7 +56,10 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
   Future<void> _save() async {
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn loại mốc phát triển.'), backgroundColor: _primary),
+        const SnackBar(
+          content: Text('Vui lòng chọn loại mốc phát triển.'),
+          backgroundColor: _primary,
+        ),
       );
       return;
     }
@@ -72,7 +79,10 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu. Vui lòng thử lại.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể lưu. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -94,8 +104,23 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mẹ ghi nhận', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-            Text('Mốc phát triển mới', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface)),
+            Text(
+              'Mẹ ghi nhận',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurfaceVariant,
+              ),
+            ),
+            Text(
+              'Mốc phát triển mới',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
           ],
         ),
       ),
@@ -130,14 +155,25 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Bé đã đạt được mốc gì?',
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w700, color: _onSurface),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
           ),
           const SizedBox(height: 16),
           _buildChipRow([MilestoneType.roll, MilestoneType.crawl]),
@@ -154,12 +190,16 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
 
   Widget _buildChipRow(List<MilestoneType> types) {
     return Row(
-      children: types.map((t) => Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(right: t == types.last ? 0 : 8),
-          child: _buildMilestoneChip(t),
-        ),
-      )).toList(),
+      children: types
+          .map(
+            (t) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: t == types.last ? 0 : 8),
+                child: _buildMilestoneChip(t),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -178,16 +218,19 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
         decoration: BoxDecoration(
           color: selected ? _primary : _surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? _primary : _surface,
-            width: 1.5,
-          ),
+          border: Border.all(color: selected ? _primary : _surface, width: 1.5),
         ),
         child: Row(
-          mainAxisAlignment: fullWidth ? MainAxisAlignment.center : MainAxisAlignment.center,
+          mainAxisAlignment: fullWidth
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.center,
           children: [
             if (selected) ...[
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 16),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
               const SizedBox(width: 6),
             ],
             Text(
@@ -211,7 +254,13 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: GestureDetector(
         onTap: _pickDate,
@@ -220,19 +269,38 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.calendar_today_rounded, color: _primary, size: 22),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.calendar_today_rounded,
+                color: _primary,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Ngày đạt được', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                  const Text(
+                    'Ngày đạt được',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     '${_achievedDate.day.toString().padLeft(2, '0')}/${_achievedDate.month.toString().padLeft(2, '0')}/${_achievedDate.year}',
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: _onSurface),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
                   ),
                 ],
               ),
@@ -250,16 +318,34 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.favorite_border_rounded, size: 16, color: _primaryContainer),
+              Icon(
+                Icons.favorite_border_rounded,
+                size: 16,
+                color: _primaryContainer,
+              ),
               SizedBox(width: 8),
-              Text('Cảm xúc của Mẹ', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+              Text(
+                'Cảm xúc của Mẹ',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -267,17 +353,37 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
             controller: _noteCtrl,
             maxLines: 4,
             maxLength: 1000,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurface,
+            ),
             decoration: InputDecoration(
               hintText: 'Chia sẻ cảm xúc của mẹ khi bé đạt được mốc này...',
-              hintStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBBA9A4)),
+              hintStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: Color(0xFFBBA9A4),
+              ),
               filled: true,
               fillColor: const Color(0xFFFFF8F6),
               contentPadding: const EdgeInsets.all(14),
               counterText: '',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _surface, width: 2)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _primaryContainer, width: 2)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _surface, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _surface, width: 2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: _primaryContainer,
+                  width: 2,
+                ),
+              ),
             ),
           ),
         ],
@@ -290,7 +396,10 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_primaryContainer.withAlpha(40), _primaryContainer.withAlpha(15)],
+          colors: [
+            _primaryContainer.withAlpha(40),
+            _primaryContainer.withAlpha(15),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -302,17 +411,39 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: const Icon(Icons.support_agent_rounded, color: _primaryContainer, size: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.support_agent_rounded,
+              color: _primaryContainer,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mẹ có lo lắng gì không?', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w700, color: _onSurface)),
+                Text(
+                  'Mẹ có lo lắng gì không?',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
                 SizedBox(height: 4),
-                Text('Tư vấn chuyên gia về sự phát triển của bé', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                Text(
+                  'Tư vấn chuyên gia về sự phát triển của bé',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -336,8 +467,22 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
             elevation: 0,
           ),
           child: _isSaving
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-              : const Text('Lưu mốc phát triển', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700)),
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text(
+                  'Lưu mốc phát triển',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
@@ -349,7 +494,14 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: const StadiumBorder(),
           ),
-          child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Hủy bỏ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
@@ -365,7 +517,9 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -374,7 +528,12 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
                 const SizedBox(height: 12),
                 Text(
                   '${_selectedType?.displayLabel ?? 'Mốc'} đã được lưu! 🎉',
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: _onSurface),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
                 ),
               ],
             ),

@@ -9,7 +9,8 @@ class ExpertProfileSetupScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ExpertPlaceholderScreen(
       title: 'Thiết lập hồ sơ chuyên gia',
-      subtitle: 'Màn hình hồ sơ chuyên gia sẽ được hoàn thiện trong luồng expert.',
+      subtitle:
+          'Màn hình hồ sơ chuyên gia sẽ được hoàn thiện trong luồng expert.',
       icon: Icons.badge_outlined,
     );
   }

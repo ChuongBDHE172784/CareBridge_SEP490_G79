@@ -16,7 +16,6 @@ class UploadFileScreen extends StatefulWidget {
 }
 
 class _UploadFileScreenState extends State<UploadFileScreen> {
-  static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _onSurface = Color(0xFF271812);

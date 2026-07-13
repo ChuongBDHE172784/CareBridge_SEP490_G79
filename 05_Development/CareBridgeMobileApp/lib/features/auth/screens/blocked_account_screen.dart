@@ -11,19 +11,11 @@ class BlockedAccountScreen extends StatelessWidget {
   String _humanReadableReason(String code) {
     return switch (code) {
       'ACCOUNT_DISABLED' =>
-        'TÃƒÂ i khoÃ¡ÂºÂ£n cÃ¡Â»Â§a bÃ¡ÂºÂ¡n Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ vÃƒÂ´ hiÃ¡Â»â€¡u hÃƒÂ³a. Vui lÃƒÂ²ng liÃƒÂªn hÃ¡Â»â€¡ Ã„â€˜Ã¡Â»â„¢i hÃ¡Â»â€” trÃ¡Â»Â£ Ã„â€˜Ã¡Â»Æ’ Ã„â€˜Ã†Â°Ã¡Â»Â£c giÃ¡ÂºÂ£i quyÃ¡ÂºÂ¿t.',
+        'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ đội hỗ trợ để được giải quyết.',
       'ACCOUNT_LOCKED' =>
-        'TÃƒÂ i khoÃ¡ÂºÂ£n cÃ¡Â»Â§a bÃ¡ÂºÂ¡n tÃ¡ÂºÂ¡m thÃ¡Â»Âi bÃ¡Â»â€¹ khÃƒÂ³a do nhiÃ¡Â»Âu lÃ¡ÂºÂ§n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i. Vui lÃƒÂ²ng thÃ¡Â»Â­ lÃ¡ÂºÂ¡i sau 15 phÃƒÂºt.',
+        'Tài khoản của bạn tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.',
       _ =>
-        'TÃƒÂ i khoÃ¡ÂºÂ£n cÃ¡Â»Â§a bÃ¡ÂºÂ¡n hiÃ¡Â»â€¡n khÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p. Vui lÃƒÂ²ng liÃƒÂªn hÃ¡Â»â€¡ Ã„â€˜Ã¡Â»â„¢i hÃ¡Â»â€” trÃ¡Â»Â£.',
-    };
-  }
-
-  String _titleForReason(String code) {
-    return switch (code) {
-      'ACCOUNT_DISABLED' => 'Tài khoản bị vô hiệu hoá',
-      'ACCOUNT_LOCKED' => 'Tài khoản bị khoá tạm thời',
-      _ => 'Tài khoản bị hạn chế',
+        'Tài khoản của bạn hiện không thể đăng nhập. Vui lòng liên hệ đội hỗ trợ.',
     };
   }
 
@@ -95,7 +87,7 @@ class BlockedAccountScreen extends StatelessWidget {
                     shape: const StadiumBorder(),
                   ),
                   child: const Text(
-                    'Quay lại đăng nhập',
+                    'Quay lại màn hình đăng nhập',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -110,7 +102,7 @@ class BlockedAccountScreen extends StatelessWidget {
                   minimumSize: const Size.fromHeight(52),
                 ),
                 child: const Text(
-                  'LiÃƒÂªn hÃ¡Â»â€¡ hÃ¡Â»â€” trÃ¡Â»Â£',
+                  'Liên hệ hỗ trợ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),

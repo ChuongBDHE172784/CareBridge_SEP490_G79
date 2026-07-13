@@ -38,7 +38,10 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _babyService.listBabyProfiles(),
@@ -48,7 +51,10 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       final summary = results[1] as BabyLogSummaryResponse;
       setState(() {
         _babies = babies;
-        _selectedBaby = babies.firstWhere((b) => b.id == widget.babyId, orElse: () => babies.first);
+        _selectedBaby = babies.firstWhere(
+          (b) => b.id == widget.babyId,
+          orElse: () => babies.first,
+        );
         _summary = summary;
       });
     } catch (_) {
@@ -59,7 +65,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Future<void> _switchBaby(BabyProfile baby) async {
-    setState(() { _selectedBaby = baby; _isLoading = true; _error = null; });
+    setState(() {
+      _selectedBaby = baby;
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final summary = await _logService.getLogSummary(baby.id, period: _period);
       setState(() => _summary = summary);
@@ -72,7 +82,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Future<void> _switchPeriod(String p) async {
     if (_period == p) return;
-    setState(() { _period = p; _isLoading = true; _error = null; });
+    setState(() {
+      _period = p;
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final id = _selectedBaby?.id ?? widget.babyId;
       final summary = await _logService.getLogSummary(id, period: p);
@@ -128,9 +142,16 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                     decoration: BoxDecoration(
                       color: _surface,
                       shape: BoxShape.circle,
-                      border: Border.all(color: _primaryContainer.withAlpha(80), width: 2),
+                      border: Border.all(
+                        color: _primaryContainer.withAlpha(80),
+                        width: 2,
+                      ),
                     ),
-                    child: const Icon(Icons.child_care_rounded, color: _primaryContainer, size: 26),
+                    child: const Icon(
+                      Icons.child_care_rounded,
+                      color: _primaryContainer,
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -139,29 +160,57 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                       children: [
                         Text(
                           _selectedBaby?.nickname ?? 'Bé yêu',
-                          style: const TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                          ),
                         ),
                         Text(
                           _selectedBaby?.ageLabel ?? '',
-                          style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   if (_babies.length > 1)
                     PopupMenuButton<BabyProfile>(
-                      icon: const Icon(Icons.expand_more_rounded, color: _primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      icon: const Icon(
+                        Icons.expand_more_rounded,
+                        color: _primary,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       color: Colors.white,
                       onSelected: _switchBaby,
-                      itemBuilder: (_) => _babies.map((b) => PopupMenuItem(
-                        value: b,
-                        child: Text(b.nickname, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface)),
-                      )).toList(),
+                      itemBuilder: (_) => _babies
+                          .map(
+                            (b) => PopupMenuItem(
+                              value: b,
+                              child: Text(
+                                b.nickname,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 14,
+                                  color: _onSurface,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.calendar_month_rounded, color: _primary),
+                    icon: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: _primary,
+                    ),
                     onPressed: () {},
                   ),
                 ],
@@ -178,7 +227,10 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   Widget _buildPeriodToggle() {
     return Container(
       height: 40,
-      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(50)),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(50),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: ['24h', '7 ngày'].map((p) {
@@ -213,7 +265,9 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     if (_isLoading) {
       return const SizedBox(
         height: 300,
-        child: Center(child: CircularProgressIndicator(color: _primaryContainer)),
+        child: Center(
+          child: CircularProgressIndicator(color: _primaryContainer),
+        ),
       );
     }
     if (_error != null) {
@@ -223,11 +277,25 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: _primaryContainer, size: 48),
+              const Icon(
+                Icons.error_outline_rounded,
+                color: _primaryContainer,
+                size: 48,
+              ),
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+              Text(
+                _error!,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 12),
-              TextButton(onPressed: _loadData, child: const Text('Thử lại', style: TextStyle(color: _primary))),
+              TextButton(
+                onPressed: _loadData,
+                child: const Text('Thử lại', style: TextStyle(color: _primary)),
+              ),
             ],
           ),
         ),
@@ -306,7 +374,13 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(12), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,14 +388,32 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: item.color, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: item.color,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Icon(item.icon, color: item.iconColor, size: 20),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.value, style: const TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface)),
-              Text(item.label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+              Text(
+                item.value,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              Text(
+                item.label,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ],
@@ -335,12 +427,26 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(12), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Biểu đồ 24 giờ', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Biểu đồ 24 giờ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             height: 80,
@@ -354,10 +460,18 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ['0h', '6h', '12h', '18h', '24h'].map((t) => Text(
-              t,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 10, color: _onSurfaceVariant),
-            )).toList(),
+            children: ['0h', '6h', '12h', '18h', '24h']
+                .map(
+                  (t) => Text(
+                    t,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 10,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -370,22 +484,45 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: _primary.withAlpha(12), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Sự kiện gần đây', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
+          const Text(
+            'Sự kiện gần đây',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           if (_summary?.summaries.isEmpty ?? true)
             const Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
-                child: Text('Chưa có nhật ký nào.', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+                child: Text(
+                  'Chưa có nhật ký nào.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ),
             )
           else
-            ..._summary!.summaries.entries.map((e) => _buildEventTile(e.key, e.value)),
+            ..._summary!.summaries.entries.map(
+              (e) => _buildEventTile(e.key, e.value),
+            ),
         ],
       ),
     );
@@ -400,7 +537,10 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(_logTypeIcon(type), color: _primaryContainer, size: 18),
           ),
           const SizedBox(width: 12),
@@ -408,13 +548,38 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(type.displayLabel, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _onSurface)),
+                Text(
+                  type.displayLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
                 if (summary.latestNote != null)
-                  Text(summary.latestNote!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    summary.latestNote!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: _onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
           ),
-          Text('${summary.count} lần', style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary)),
+          Text(
+            '${summary.count} lần',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _primary,
+            ),
+          ),
         ],
       ),
     );
@@ -422,10 +587,14 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   IconData _logTypeIcon(LogType type) {
     switch (type) {
-      case LogType.feeding: return Icons.local_drink_rounded;
-      case LogType.sleep: return Icons.bedtime_rounded;
-      case LogType.diaper: return Icons.baby_changing_station_rounded;
-      case LogType.symptom: return Icons.thermostat_rounded;
+      case LogType.feeding:
+        return Icons.local_drink_rounded;
+      case LogType.sleep:
+        return Icons.bedtime_rounded;
+      case LogType.diaper:
+        return Icons.baby_changing_station_rounded;
+      case LogType.symptom:
+        return Icons.thermostat_rounded;
     }
   }
 
@@ -443,7 +612,12 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           Expanded(
             child: Text(
               'Dữ liệu được tổng hợp từ nhật ký của mẹ. AI cung cấp gợi ý, không thay thế tư vấn y tế.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant, height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -458,7 +632,13 @@ class _BentoItem {
   final String value;
   final Color color;
   final Color iconColor;
-  const _BentoItem({required this.icon, required this.label, required this.value, required this.color, required this.iconColor});
+  const _BentoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.iconColor,
+  });
 }
 
 class _SimpleBarChart extends StatelessWidget {
@@ -482,7 +662,9 @@ class _SimpleBarChart extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 0.5),
               decoration: BoxDecoration(
                 color: _primary.withAlpha((h * 200).toInt()),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(3),
+                ),
               ),
             );
           }).toList(),

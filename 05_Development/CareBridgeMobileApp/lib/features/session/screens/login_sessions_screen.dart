@@ -18,7 +18,6 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
-  static const _outlineVariant = Color(0xFFD6C2BD);
   static const _surfaceColor = Color(0xFFFFF8F6);
   static const _surfaceVariant = Color(0xFFFADCD3);
   static const _errorColor = Color(0xFFBA1A1A);
@@ -88,12 +87,13 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child:
-                          CircularProgressIndicator(color: _primaryContainer),
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
                     )
                   : _error != null
-                      ? _buildErrorState()
-                      : _buildContent(),
+                  ? _buildErrorState()
+                  : _buildContent(),
             ),
           ],
         ),
@@ -295,8 +295,11 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
                     color: _primaryContainer.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.smartphone,
-                      color: _primaryColor, size: 24),
+                  child: const Icon(
+                    Icons.smartphone,
+                    color: _primaryColor,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -318,7 +321,9 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: _primaryContainer.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(9999),
@@ -326,8 +331,11 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.check_circle,
-                                    color: _primaryColor, size: 14),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: _primaryColor,
+                                  size: 14,
+                                ),
                                 const SizedBox(width: 4),
                                 const Text(
                                   'Đang hoạt động',
@@ -348,8 +356,11 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
                       if (session.location != null)
                         Row(
                           children: [
-                            const Icon(Icons.location_on,
-                                color: _onSurfaceVariant, size: 16),
+                            const Icon(
+                              Icons.location_on,
+                              color: _onSurfaceVariant,
+                              size: 16,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               session.location!,
@@ -436,8 +447,11 @@ class _LoginSessionsScreenState extends State<LoginSessionsScreen> {
                       if (session.location != null)
                         Row(
                           children: [
-                            const Icon(Icons.location_on,
-                                color: _onSurfaceVariant, size: 16),
+                            const Icon(
+                              Icons.location_on,
+                              color: _onSurfaceVariant,
+                              size: 16,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               session.location!,

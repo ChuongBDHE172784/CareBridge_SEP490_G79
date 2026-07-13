@@ -15,15 +15,10 @@ class CareGroupsScreen extends StatefulWidget {
 }
 
 class _CareGroupsScreenState extends State<CareGroupsScreen> {
-  static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondary = Color(0xFF6E5A52);
-  static const _outlineVariant = Color(0xFF84736F);
 
   final _service = CareGroupService();
   List<CareGroup> _groups = [];
@@ -39,7 +34,12 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyGroups();
-      if (mounted) setState(() { _groups = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _groups = list;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -51,7 +51,10 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Tạo nhóm mới', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Tạo nhóm mới',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
         content: TextField(
           controller: nameCtrl,
           decoration: const InputDecoration(
@@ -61,8 +64,10 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
           style: const TextStyle(fontFamily: 'Lexend'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
@@ -77,8 +82,9 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       _load();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tạo nhóm.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể tạo nhóm.')));
     }
   }
 
@@ -88,7 +94,9 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       backgroundColor: _canvas,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : RefreshIndicator(
                 color: _primaryContainer,
                 onRefresh: _load,
@@ -114,7 +122,10 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
         shape: const StadiumBorder(),
         onPressed: _createGroup,
         icon: const Icon(Icons.group_add),
-        label: const Text('Tạo nhóm', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+        label: const Text(
+          'Tạo nhóm',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -133,10 +144,23 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
               ),
             ],
           ),
-          const Text('Nhóm chăm sóc',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w700, color: _onSurface)),
-          const Text('Quản lý và chia sẻ chăm sóc',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          const Text(
+            'Nhóm chăm sóc',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
+          const Text(
+            'Quản lý và chia sẻ chăm sóc',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
@@ -156,9 +180,13 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
   }
 
   void _openDetail(CareGroup g) {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => CareGroupDetailScreen(groupId: g.id, groupName: g.groupName),
-    ));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            CareGroupDetailScreen(groupId: g.id, groupName: g.groupName),
+      ),
+    );
   }
 }
 
@@ -182,7 +210,13 @@ class _ActiveGroupCard extends StatelessWidget {
             colors: [Color(0xFFC98C7B), Color(0xFF845143)],
           ),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: const Color(0xFFC98C7B).withAlpha(77), blurRadius: 24, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFC98C7B).withAlpha(77),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,23 +225,45 @@ class _ActiveGroupCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(51),
                     borderRadius: BorderRadius.circular(99),
                   ),
-                  child: const Text('Đang hoạt động',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Colors.white)),
+                  child: const Text(
+                    'Đang hoạt động',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 const Icon(Icons.more_vert, color: Colors.white),
               ],
             ),
             const SizedBox(height: 12),
-            Text(group.groupName,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
+            Text(
+              group.groupName,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('${group.memberCount} thành viên',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: Colors.white.withAlpha(204))),
+            Text(
+              '${group.memberCount} thành viên',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: Colors.white.withAlpha(204),
+              ),
+            ),
             const SizedBox(height: 16),
             // Stacked member avatars
             _StackedAvatars(members: group.members),
@@ -223,8 +279,14 @@ class _ActiveGroupCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.event, size: 18, color: Colors.white),
                   const SizedBox(width: 8),
-                  const Text('Khám thai tuần 28 - Hôm nay 9:00',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Colors.white)),
+                  const Text(
+                    'Khám thai tuần 28 - Hôm nay 9:00',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -240,7 +302,10 @@ class _ActiveGroupCard extends StatelessWidget {
                       shape: const StadiumBorder(),
                     ),
                     icon: const Icon(Icons.person_add, size: 18),
-                    label: const Text('Mời', style: TextStyle(fontFamily: 'Lexend')),
+                    label: const Text(
+                      'Mời',
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -253,7 +318,10 @@ class _ActiveGroupCard extends StatelessWidget {
                       shape: const StadiumBorder(),
                     ),
                     icon: const Icon(Icons.settings, size: 18),
-                    label: const Text('Quản lý', style: TextStyle(fontFamily: 'Lexend')),
+                    label: const Text(
+                      'Quản lý',
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ),
               ],
@@ -281,15 +349,25 @@ class _StackedAvatars extends StatelessWidget {
             return Positioned(
               left: e.key * 24.0,
               child: Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFFC98C7B).withAlpha(128),
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Center(
-                  child: Text(e.value.displayName.isNotEmpty ? e.value.displayName[0] : '?',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                  child: Text(
+                    e.value.displayName.isNotEmpty
+                        ? e.value.displayName[0]
+                        : '?',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -298,15 +376,22 @@ class _StackedAvatars extends StatelessWidget {
             Positioned(
               left: 4 * 24.0,
               child: Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withAlpha(51),
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Center(
-                  child: Text('+${members.length - 4}',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Colors.white)),
+                  child: Text(
+                    '+${members.length - 4}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -332,13 +417,23 @@ class _SecondaryGroupCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withAlpha(13),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 48, height: 48,
-              decoration: const BoxDecoration(color: Color(0xFFFFE9E3), shape: BoxShape.circle),
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFE9E3),
+                shape: BoxShape.circle,
+              ),
               child: const Icon(Icons.group, color: Color(0xFF845143)),
             ),
             const SizedBox(width: 12),
@@ -346,10 +441,23 @@ class _SecondaryGroupCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(group.groupName,
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
-                  Text('${group.memberCount} thành viên',
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF524440))),
+                  Text(
+                    group.groupName,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF271812),
+                    ),
+                  ),
+                  Text(
+                    '${group.memberCount} thành viên',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: Color(0xFF524440),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -359,8 +467,14 @@ class _SecondaryGroupCard extends StatelessWidget {
                 color: const Color(0xFFE9E1DB).withAlpha(128),
                 borderRadius: BorderRadius.circular(99),
               ),
-              child: const Text('Tạm ngưng',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF524440))),
+              child: const Text(
+                'Tạm ngưng',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: Color(0xFF524440),
+                ),
+              ),
             ),
           ],
         ),

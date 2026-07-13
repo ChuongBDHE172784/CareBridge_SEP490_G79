@@ -60,7 +60,8 @@ class HealthMetricService {
     DateTime? to,
   }) async {
     final now = DateTime.now().toUtc();
-    final resolvedFrom = (from ?? now.subtract(const Duration(days: 90))).toUtc();
+    final resolvedFrom = (from ?? now.subtract(const Duration(days: 90)))
+        .toUtc();
     final resolvedTo = (to ?? now).toUtc();
     final query = [
       'metricType=$metricType',

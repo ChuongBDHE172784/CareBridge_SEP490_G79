@@ -1,4 +1,3 @@
-
 enum BabyGender { male, female, unknown }
 
 extension BabyGenderExtension on BabyGender {
@@ -57,7 +56,8 @@ class BabyProfile {
 
   String get ageLabel {
     final now = DateTime.now();
-    final months = (now.year - birthDate.year) * 12 + now.month - birthDate.month;
+    final months =
+        (now.year - birthDate.year) * 12 + now.month - birthDate.month;
     if (months < 1) {
       final days = now.difference(birthDate).inDays;
       return '$days ngày tuổi';
@@ -73,7 +73,9 @@ class BabyProfile {
     return BabyProfile(
       id: json['id'] as String,
       nickname: json['nickname'] as String,
-      birthDate: json['birthDate'] != null ? DateTime.parse(json['birthDate'] as String) : DateTime(2000),
+      birthDate: json['birthDate'] != null
+          ? DateTime.parse(json['birthDate'] as String)
+          : DateTime(2000),
       gender: BabyGenderExtension.fromApi(json['gender'] as String?),
       birthWeightKg: (json['birthWeightKg'] as num?)?.toDouble(),
       birthLengthCm: (json['birthLengthCm'] as num?)?.toDouble(),
@@ -100,7 +102,8 @@ class UpdateBabyProfileRequest {
 
   Map<String, dynamic> toJson() => {
     if (nickname != null) 'nickname': nickname,
-    if (birthDate != null) 'birthDate': birthDate!.toIso8601String().split('T')[0],
+    if (birthDate != null)
+      'birthDate': birthDate!.toIso8601String().split('T')[0],
     if (gender != null) 'gender': gender!.toApiValue(),
     if (birthWeightKg != null) 'birthWeightKg': birthWeightKg,
     if (birthLengthCm != null) 'birthLengthCm': birthLengthCm,
@@ -125,11 +128,11 @@ class CreateBabyRequest {
   });
 
   Map<String, dynamic> toJson() => {
-        'nickname': nickname,
-        'birthDate': birthDate,
-        'gender': gender.toApiValue(),
-        if (birthWeightKg != null) 'birthWeightKg': birthWeightKg,
-        if (birthLengthCm != null) 'birthLengthCm': birthLengthCm,
-        if (relatedJourneyId != null) 'relatedJourneyId': relatedJourneyId,
-      };
+    'nickname': nickname,
+    'birthDate': birthDate,
+    'gender': gender.toApiValue(),
+    if (birthWeightKg != null) 'birthWeightKg': birthWeightKg,
+    if (birthLengthCm != null) 'birthLengthCm': birthLengthCm,
+    if (relatedJourneyId != null) 'relatedJourneyId': relatedJourneyId,
+  };
 }

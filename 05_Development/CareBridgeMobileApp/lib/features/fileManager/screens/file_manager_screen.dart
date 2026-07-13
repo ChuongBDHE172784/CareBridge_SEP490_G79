@@ -15,13 +15,10 @@ class FileManagerScreen extends StatefulWidget {
 }
 
 class _FileManagerScreenState extends State<FileManagerScreen> {
-  static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceVariant = Color(0xFFFADCD3);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = FileService();

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../services/care_group_service.dart';
 
-Future<bool?> showInviteMemberSheet(BuildContext context, {required String groupId}) {
+Future<bool?> showInviteMemberSheet(
+  BuildContext context, {
+  required String groupId,
+}) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -42,14 +45,24 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
 
   bool get _emailValid {
     final v = _emailCtrl.text.trim();
-    return v.contains('@') && v.contains('.') && !v.contains(' ') && v.length > 4;
+    return v.contains('@') &&
+        v.contains('.') &&
+        !v.contains(' ') &&
+        v.length > 4;
   }
 
   Future<void> _submit() async {
     if (!_emailValid || _submitting) return;
-    setState(() { _submitting = true; _errorText = null; });
+    setState(() {
+      _submitting = true;
+      _errorText = null;
+    });
     try {
-      await _service.inviteMember(widget.groupId, _emailCtrl.text.trim(), memberRole: _role);
+      await _service.inviteMember(
+        widget.groupId,
+        _emailCtrl.text.trim(),
+        memberRole: _role,
+      );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       String message;
@@ -66,16 +79,28 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
         default:
           message = 'Không thể gửi lời mời. Vui lòng thử lại.';
       }
-      if (mounted) setState(() { _errorText = message; _submitting = false; });
+      if (mounted) {
+        setState(() {
+          _errorText = message;
+          _submitting = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _errorText = 'Không thể kết nối. Vui lòng thử lại.'; _submitting = false; });
+      if (mounted) {
+        setState(() {
+          _errorText = 'Không thể kết nối. Vui lòng thử lại.';
+          _submitting = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         child: Container(
           decoration: const BoxDecoration(
@@ -89,14 +114,33 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
             children: [
               Center(
                 child: Container(
-                  width: 48, height: 6, margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: const Color(0xFFD6C2BD), borderRadius: BorderRadius.circular(99)),
+                  width: 48,
+                  height: 6,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6C2BD),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
-              const Text('Mời thành viên', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurface)),
+              const Text(
+                'Mời thành viên',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
               const SizedBox(height: 4),
-              const Text('Nhập email tài khoản CareBridge của người bạn muốn mời.',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant)),
+              const Text(
+                'Nhập email tài khoản CareBridge của người bạn muốn mời.',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 20),
               TextField(
                 controller: _emailCtrl,
@@ -108,22 +152,52 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
                   hintText: 'ten@vidu.com',
                   filled: true,
                   fillColor: _surfaceContainerLow,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('VAI TRO', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant, letterSpacing: 0.5)),
+              const Text(
+                'VAI TRO',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: _onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _RoleChip(label: 'Thành viên', selected: _role == 'MEMBER', onTap: () => setState(() => _role = 'MEMBER'))),
+                  Expanded(
+                    child: _RoleChip(
+                      label: 'Thành viên',
+                      selected: _role == 'MEMBER',
+                      onTap: () => setState(() => _role = 'MEMBER'),
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _RoleChip(label: 'Người xem', selected: _role == 'VIEWER', onTap: () => setState(() => _role = 'VIEWER'))),
+                  Expanded(
+                    child: _RoleChip(
+                      label: 'Người xem',
+                      selected: _role == 'VIEWER',
+                      onTap: () => setState(() => _role = 'VIEWER'),
+                    ),
+                  ),
                 ],
               ),
               if (_errorText != null) ...[
                 const SizedBox(height: 12),
-                Text(_errorText!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _errorColor)),
+                Text(
+                  _errorText!,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: _errorColor,
+                  ),
+                ),
               ],
               const SizedBox(height: 20),
               SizedBox(
@@ -137,8 +211,21 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
                     shape: const StadiumBorder(),
                   ),
                   child: _submitting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Gửi lời mời', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Gửi lời mời',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -146,9 +233,17 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
                 width: double.infinity,
                 height: 48,
                 child: TextButton(
-                  onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).pop(false),
                   style: TextButton.styleFrom(foregroundColor: _primary),
-                  child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Hủy',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -163,7 +258,11 @@ class _RoleChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _RoleChip({required this.label, required this.selected, required this.onTap});
+  const _RoleChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -176,13 +275,19 @@ class _RoleChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? const Color(0x26C98C7B) : const Color(0xFFFFF1EC),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: selected ? const Color(0xFFC98C7B) : Colors.transparent),
+          border: Border.all(
+            color: selected ? const Color(0xFFC98C7B) : Colors.transparent,
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600,
-              color: selected ? const Color(0xFF845143) : const Color(0xFF524440),
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? const Color(0xFF845143) : const Color(0xFF524440),
+          ),
+        ),
       ),
     );
   }

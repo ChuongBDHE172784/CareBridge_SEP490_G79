@@ -43,7 +43,8 @@ class PrivacySettings {
       id: id,
       userId: userId,
       profileVisibility: profileVisibility ?? this.profileVisibility,
-      locationSharingEnabled: locationSharingEnabled ?? this.locationSharingEnabled,
+      locationSharingEnabled:
+          locationSharingEnabled ?? this.locationSharingEnabled,
       analyticsConsent: analyticsConsent ?? this.analyticsConsent,
       dataExportOptOut: dataExportOptOut ?? this.dataExportOptOut,
     );

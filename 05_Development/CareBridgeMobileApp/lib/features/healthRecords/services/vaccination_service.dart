@@ -9,12 +9,18 @@ class VaccinationService {
   }
 
   // UC-230/231: Update vaccination info
-  Future<void> updateVaccination(String vaccinationId, Map<String, dynamic> payload) async {
+  Future<void> updateVaccination(
+    String vaccinationId,
+    Map<String, dynamic> payload,
+  ) async {
     await apiPost('/api/v1/vaccinations/$vaccinationId', payload);
   }
 
   // UC-232: Reschedule vaccination
-  Future<void> rescheduleVaccination(String vaccinationId, DateTime newDate) async {
+  Future<void> rescheduleVaccination(
+    String vaccinationId,
+    DateTime newDate,
+  ) async {
     await apiPost('/api/v1/vaccinations/$vaccinationId/reschedule', {
       'newPlannedDate': newDate.toIso8601String(),
     });
@@ -26,7 +32,10 @@ class VaccinationService {
   }
 
   // UC-229: Add vaccination record
-  Future<void> addVaccinationRecord(String babyId, Map<String, dynamic> payload) async {
+  Future<void> addVaccinationRecord(
+    String babyId,
+    Map<String, dynamic> payload,
+  ) async {
     await apiPost('/api/v1/vaccination/babies/$babyId/records', payload);
   }
 }

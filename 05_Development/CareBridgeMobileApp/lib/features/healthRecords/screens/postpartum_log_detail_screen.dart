@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 class PostpartumLogDetailScreen extends StatefulWidget {
   final String logId;
 
-  const PostpartumLogDetailScreen({
-    Key? key,
-    required this.logId,
-  }) : super(key: key);
+  const PostpartumLogDetailScreen({super.key, required this.logId});
 
   @override
-  State<PostpartumLogDetailScreen> createState() => _PostpartumLogDetailScreenState();
+  State<PostpartumLogDetailScreen> createState() =>
+      _PostpartumLogDetailScreenState();
 }
 
 class _PostpartumLogDetailScreenState extends State<PostpartumLogDetailScreen> {
@@ -34,9 +32,11 @@ class _PostpartumLogDetailScreenState extends State<PostpartumLogDetailScreen> {
         'mood': 'Khá tốt, có chút mệt mỏi vào buổi sáng.',
         'food': 'Ăn ngon miệng, đã uống đủ 2 lít nước.',
         'pain': ['Đau lưng nhẹ', 'Căng tức ngực'],
-        'note': 'Bé ngủ ngoan hơn đêm qua nên mẹ được nghỉ ngơi nhiều hơn. Vết mổ đã khô và bớt đau rát.',
+        'note':
+            'Bé ngủ ngoan hơn đêm qua nên mẹ được nghỉ ngơi nhiều hơn. Vết mổ đã khô và bớt đau rát.',
       };
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lỗi tải thông tin chi tiết')),
       );
@@ -99,9 +99,16 @@ class _PostpartumLogDetailScreenState extends State<PostpartumLogDetailScreen> {
             },
           ),
           IconButton(
-            icon: _isDeleting 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: errorColor))
-              : const Icon(Icons.delete, color: errorColor),
+            icon: _isDeleting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: errorColor,
+                    ),
+                  )
+                : const Icon(Icons.delete, color: errorColor),
             onPressed: _isDeleting ? null : _deleteLog,
           ),
         ],
@@ -109,157 +116,185 @@ class _PostpartumLogDetailScreenState extends State<PostpartumLogDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : _detail == null
-              ? const Center(child: Text('Không có dữ liệu'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: Column(
+          ? const Center(child: Text('Không có dữ liệu'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                children: [
+                  // Header Info
+                  Column(
                     children: [
-                      // Header Info
-                      Column(
-                        children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFC98C7B), // primary-container
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.favorite, color: Color(0xFF51271B), size: 32),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _detail!['title'],
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                              fontFamily: 'Quicksand',
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _detail!['timeLabel'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: secondaryColor,
-                              fontFamily: 'Quicksand',
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 24),
-
-                      // Details Card
                       Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFC98C7B), // primary-container
+                          shape: BoxShape.circle,
                         ),
-                        child: Column(
-                          children: [
-                            _buildDetailRow(
-                              icon: Icons.mood,
-                              iconBgColor: const Color(0xFFF6DACF),
-                              iconColor: const Color(0xFF735E56),
-                              title: 'Tâm trạng',
-                              content: Text(_detail!['mood'], style: const TextStyle(fontSize: 16, color: textColor)),
-                              showBorder: true,
-                            ),
-                            _buildDetailRow(
-                              icon: Icons.restaurant,
-                              iconBgColor: const Color(0xFFA09A95), // tertiary-container mock
-                              iconColor: const Color(0xFF36322E),
-                              title: 'Ăn uống',
-                              content: Text(_detail!['food'], style: const TextStyle(fontSize: 16, color: textColor)),
-                              showBorder: true,
-                            ),
-                            _buildDetailRow(
-                              icon: Icons.local_hospital,
-                              iconBgColor: const Color(0xFFFFDAD6),
-                              iconColor: const Color(0xFF93000A),
-                              title: 'Cơn đau/Khó chịu',
-                              content: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: (_detail!['pain'] as List<String>).map((pain) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: primaryColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      pain,
-                                      style: const TextStyle(
-                                        color: primaryColor,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              showBorder: true,
-                            ),
-                            _buildDetailRow(
-                              icon: Icons.notes,
-                              iconBgColor: const Color(0xFFFADCD3), // surface-variant
-                              iconColor: const Color(0xFF524440),
-                              title: 'Ghi chú thêm',
-                              content: Text(_detail!['note'], style: const TextStyle(fontSize: 16, color: textColor)),
-                              showBorder: false,
-                            ),
-                          ],
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Color(0xFF51271B),
+                          size: 32,
                         ),
                       ),
-                      
-                      const SizedBox(height: 32),
-
-                      // Action Area
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          // Medical support action
-                        },
-                        icon: const Icon(Icons.support_agent, color: primaryColor),
-                        label: const Text(
-                          'Cần hỗ trợ y tế?',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: primaryColor, width: 2),
-                          minimumSize: const Size(double.infinity, 56),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                          elevation: 2,
-                          shadowColor: Colors.black.withOpacity(0.05),
+                      const SizedBox(height: 8),
+                      Text(
+                        _detail!['title'],
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                          fontFamily: 'Quicksand',
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Nếu bạn cảm thấy đau bất thường, hãy liên hệ bác sĩ ngay.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        _detail!['timeLabel'],
+                        style: const TextStyle(
+                          fontSize: 16,
                           color: secondaryColor,
+                          fontFamily: 'Quicksand',
                         ),
                       ),
                     ],
                   ),
-                ),
+
+                  const SizedBox(height: 24),
+
+                  // Details Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        _buildDetailRow(
+                          icon: Icons.mood,
+                          iconBgColor: const Color(0xFFF6DACF),
+                          iconColor: const Color(0xFF735E56),
+                          title: 'Tâm trạng',
+                          content: Text(
+                            _detail!['mood'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: textColor,
+                            ),
+                          ),
+                          showBorder: true,
+                        ),
+                        _buildDetailRow(
+                          icon: Icons.restaurant,
+                          iconBgColor: const Color(
+                            0xFFA09A95,
+                          ), // tertiary-container mock
+                          iconColor: const Color(0xFF36322E),
+                          title: 'Ăn uống',
+                          content: Text(
+                            _detail!['food'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: textColor,
+                            ),
+                          ),
+                          showBorder: true,
+                        ),
+                        _buildDetailRow(
+                          icon: Icons.local_hospital,
+                          iconBgColor: const Color(0xFFFFDAD6),
+                          iconColor: const Color(0xFF93000A),
+                          title: 'Cơn đau/Khó chịu',
+                          content: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: (_detail!['pain'] as List<String>).map((
+                              pain,
+                            ) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  pain,
+                                  style: const TextStyle(
+                                    color: primaryColor,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          showBorder: true,
+                        ),
+                        _buildDetailRow(
+                          icon: Icons.notes,
+                          iconBgColor: const Color(
+                            0xFFFADCD3,
+                          ), // surface-variant
+                          iconColor: const Color(0xFF524440),
+                          title: 'Ghi chú thêm',
+                          content: Text(
+                            _detail!['note'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: textColor,
+                            ),
+                          ),
+                          showBorder: false,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Action Area
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // Medical support action
+                    },
+                    icon: const Icon(Icons.support_agent, color: primaryColor),
+                    label: const Text(
+                      'Cần hỗ trợ y tế?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: primaryColor, width: 2),
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      elevation: 2,
+                      shadowColor: Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Nếu bạn cảm thấy đau bất thường, hãy liên hệ bác sĩ ngay.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: secondaryColor),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 

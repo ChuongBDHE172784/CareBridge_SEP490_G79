@@ -6,10 +6,7 @@ import '../services/reminder_service.dart';
 class SkipReminderScreen extends StatefulWidget {
   final String reminderId;
 
-  const SkipReminderScreen({
-    super.key,
-    required this.reminderId,
-  });
+  const SkipReminderScreen({super.key, required this.reminderId});
 
   @override
   State<SkipReminderScreen> createState() => _SkipReminderScreenState();
@@ -17,11 +14,8 @@ class SkipReminderScreen extends StatefulWidget {
 
 class _SkipReminderScreenState extends State<SkipReminderScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
   static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
@@ -62,14 +56,17 @@ class _SkipReminderScreenState extends State<SkipReminderScreen> {
     try {
       await _service.skipReminder(widget.reminderId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reminder skipped.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reminder skipped.')));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to skip reminder: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Unable to skip reminder: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -89,18 +86,22 @@ class _SkipReminderScreenState extends State<SkipReminderScreen> {
         ),
         title: const Text(
           'Skip reminder',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _errorText != null
-              ? _ErrorState(message: _errorText!, onRetry: _load)
-              : _SkipContent(
-                  reminder: _reminder!,
-                  processing: _processing,
-                  onSkip: _skip,
-                ),
+          ? _ErrorState(message: _errorText!, onRetry: _load)
+          : _SkipContent(
+              reminder: _reminder!,
+              processing: _processing,
+              onSkip: _skip,
+            ),
     );
   }
 }
@@ -134,7 +135,11 @@ class _SkipContent extends StatelessWidget {
             color: _surface,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
-              BoxShadow(color: _primary.withAlpha(18), blurRadius: 16, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: _primary.withAlpha(18),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
           child: Row(
@@ -160,7 +165,10 @@ class _SkipContent extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Due ${_formatDateTime(reminder.scheduledAt)}',
-                      style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -173,7 +181,11 @@ class _SkipContent extends StatelessWidget {
           isTerminal
               ? 'This reminder is already ${reminder.status.displayLabel.toLowerCase()}.'
               : 'Skip only this reminder occurrence. Future reminders are not changed.',
-          style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, height: 1.45),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurfaceVariant,
+            height: 1.45,
+          ),
         ),
         const SizedBox(height: 20),
         OutlinedButton.icon(
@@ -185,12 +197,17 @@ class _SkipContent extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.skip_next_rounded),
-          label: const Text('Skip this reminder', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800)),
+          label: const Text(
+            'Skip this reminder',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800),
+          ),
           style: OutlinedButton.styleFrom(
             foregroundColor: _primary,
             side: const BorderSide(color: _primaryContainer),
             minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       ],
@@ -219,7 +236,11 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFBA1A1A),
+            size: 44,
+          ),
           const SizedBox(height: 10),
           Text(message, style: const TextStyle(fontFamily: 'Lexend')),
           const SizedBox(height: 10),
