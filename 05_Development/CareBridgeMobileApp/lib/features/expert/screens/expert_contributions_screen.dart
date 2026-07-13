@@ -9,7 +9,8 @@ class ExpertContributionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ExpertPlaceholderScreen(
       title: 'Đóng góp chuyên gia',
-      subtitle: 'Danh sách câu trả lời và nội dung chuyên gia sẽ hiển thị tại đây.',
+      subtitle:
+          'Danh sách câu trả lời và nội dung chuyên gia sẽ hiển thị tại đây.',
       icon: Icons.workspace_premium_outlined,
     );
   }

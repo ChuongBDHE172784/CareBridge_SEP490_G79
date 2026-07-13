@@ -19,12 +19,14 @@ class JourneyService {
     DateTime? lastMenstrualDate,
   }) async {
     if (estimatedDueDate == null && lastMenstrualDate == null) return;
-    await _saveOptimisticDashboard(JourneyDashboard(
-      journeyType: 'PREGNANCY',
-      status: 'ACTIVE_PREGNANCY',
-      estimatedDueDate: estimatedDueDate,
-      lastMenstrualDate: lastMenstrualDate,
-    ));
+    await _saveOptimisticDashboard(
+      JourneyDashboard(
+        journeyType: 'PREGNANCY',
+        status: 'ACTIVE_PREGNANCY',
+        estimatedDueDate: estimatedDueDate,
+        lastMenstrualDate: lastMenstrualDate,
+      ),
+    );
   }
 
   static Future<void> clearOptimisticDashboard() async {
@@ -32,23 +34,28 @@ class JourneyService {
     await _storage.delete(key: _optimisticDashboardKey);
   }
 
-  Future<CreateJourneyResponse> createJourney(CreateJourneyRequest request) async {
+  Future<CreateJourneyResponse> createJourney(
+    CreateJourneyRequest request,
+  ) async {
     final data = await apiPost('/api/v1/journeys', request.toJson());
     final body = data['data'] as Map<String, dynamic>;
     final response = CreateJourneyResponse.fromJson(body);
     if (request.journeyType == JourneyType.pregnancy) {
       final fallback = _optimisticDashboard;
-      await _saveOptimisticDashboard(JourneyDashboard(
-        journeyId: response.id,
-        journeyType: response.journeyType,
-        status: response.status,
-        estimatedDueDate:
-            _parseDate(response.estimatedDueDate) ?? _parseDate(request.estimatedDueDate),
-        lastMenstrualDate:
-            _parseDate(response.lastMenstrualDate) ??
-            _parseDate(request.lastMenstrualDate) ??
-            fallback?.lastMenstrualDate,
-      ));
+      await _saveOptimisticDashboard(
+        JourneyDashboard(
+          journeyId: response.id,
+          journeyType: response.journeyType,
+          status: response.status,
+          estimatedDueDate:
+              _parseDate(response.estimatedDueDate) ??
+              _parseDate(request.estimatedDueDate),
+          lastMenstrualDate:
+              _parseDate(response.lastMenstrualDate) ??
+              _parseDate(request.lastMenstrualDate) ??
+              fallback?.lastMenstrualDate,
+        ),
+      );
     } else {
       await clearOptimisticDashboard();
     }
@@ -59,7 +66,9 @@ class JourneyService {
   Future<JourneyDashboard> getDashboard() async {
     try {
       final data = await apiGet('/api/v1/journeys/me/dashboard');
-      final dashboard = JourneyDashboard.fromJson(data['data'] as Map<String, dynamic>);
+      final dashboard = JourneyDashboard.fromJson(
+        data['data'] as Map<String, dynamic>,
+      );
       final fallback = _optimisticDashboard ?? await _readOptimisticDashboard();
 
       if (_shouldUseOptimisticDashboard(dashboard, fallback)) {
@@ -78,7 +87,10 @@ class JourneyService {
   }
 
   // UC-23: Update Journey
-  Future<void> updateJourney(String journeyId, UpdateJourneyRequest request) async {
+  Future<void> updateJourney(
+    String journeyId,
+    UpdateJourneyRequest request,
+  ) async {
     final data = await apiPut('/api/v1/journeys/$journeyId', request.toJson());
     final body = data?['data'] as Map<String, dynamic>?;
     final journeyType =
@@ -90,14 +102,20 @@ class JourneyService {
         _parseDate(body?['lastMenstrualDate'] as String?) ??
         _parseDate(request.lastMenstrualDate);
     if (estimatedDueDate != null || lastMenstrualDate != null) {
-      await _saveOptimisticDashboard(JourneyDashboard(
-        journeyId: body?['journeyId'] as String? ?? journeyId,
-        journeyType: journeyType ?? 'PREGNANCY',
-        status: _dashboardStatusForJourneyType(journeyType, 'ACTIVE_PREGNANCY'),
-        estimatedDueDate:
-            estimatedDueDate ?? _optimisticDashboard?.estimatedDueDate,
-        lastMenstrualDate: lastMenstrualDate ?? _optimisticDashboard?.lastMenstrualDate,
-      ));
+      await _saveOptimisticDashboard(
+        JourneyDashboard(
+          journeyId: body?['journeyId'] as String? ?? journeyId,
+          journeyType: journeyType ?? 'PREGNANCY',
+          status: _dashboardStatusForJourneyType(
+            journeyType,
+            'ACTIVE_PREGNANCY',
+          ),
+          estimatedDueDate:
+              estimatedDueDate ?? _optimisticDashboard?.estimatedDueDate,
+          lastMenstrualDate:
+              lastMenstrualDate ?? _optimisticDashboard?.lastMenstrualDate,
+        ),
+      );
     }
   }
 
@@ -153,7 +171,8 @@ class JourneyService {
       trimester: dashboard.trimester ?? fallback.trimester,
       daysUntilDue: dashboard.daysUntilDue ?? fallback.daysUntilDue,
       estimatedDueDate: dashboard.estimatedDueDate ?? fallback.estimatedDueDate,
-      lastMenstrualDate: dashboard.lastMenstrualDate ?? fallback.lastMenstrualDate,
+      lastMenstrualDate:
+          dashboard.lastMenstrualDate ?? fallback.lastMenstrualDate,
       startDate: dashboard.startDate ?? fallback.startDate,
     );
   }
@@ -163,7 +182,9 @@ class JourneyService {
     return DateTime.tryParse(value);
   }
 
-  static Future<void> _saveOptimisticDashboard(JourneyDashboard dashboard) async {
+  static Future<void> _saveOptimisticDashboard(
+    JourneyDashboard dashboard,
+  ) async {
     _optimisticDashboard = dashboard;
     final userId = AuthState.instance.userId;
     if (userId == null) return;

@@ -34,13 +34,21 @@ def load_sources() -> list[SourceDocument]:
                 riskLevels=list(post.metadata.get("riskLevels", [])),
                 symptoms=list(post.metadata.get("symptoms", [])),
                 sourceType=post.metadata.get("sourceType", "official_guideline"),
-                sourceStatus=post.metadata.get("sourceStatus", "REVIEWED"),
+                sourceStatus=post.metadata.get("sourceStatus", "DRAFT"),
+                sourceVersion=str(post.metadata.get("sourceVersion", "1.0")),
+                approvedAt=str(post.metadata.get("approvedAt", post.metadata.get("lastReviewed", ""))) or None,
+                approvedBy=post.metadata.get("approvedBy", "CareBridge clinical review"),
+                deprecatedAt=str(post.metadata.get("deprecatedAt", "")) or None,
+                section=post.metadata.get("section", post.metadata.get("topic")),
                 retrievedAt=str(post.metadata.get("retrievedAt", "")) or None,
                 retrievedBy=post.metadata.get("retrievedBy"),
                 body=post.content.strip(),
             )
         )
-    return [source for source in sources if is_whitelisted_source(source)]
+    return [
+        source for source in sources
+        if is_whitelisted_source(source) and source.sourceStatus == "APPROVED"
+    ]
 
 
 def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str]) -> list[SourceDocument]:
@@ -84,27 +92,32 @@ def attach_citations(
     retrieved_at = datetime.now(timezone.utc).isoformat()
     citations: list[Citation] = []
     for source in sources:
-        if not is_whitelisted_source(source):
+        if not is_whitelisted_source(source) or source.sourceStatus in {"DRAFT", "DEPRECATED", "ARCHIVED"}:
             continue
         excerpt = " ".join(source.body.split())[:240]
+        source_matched_symptoms = _matched_symptoms(source, normalized_symptoms)
+        source_matched_rules = [
+            rule for rule in matched_rules
+            if rule.split("_", 1)[0] in source.riskLevels and source_matched_symptoms
+        ]
         citations.append(
             Citation(
                 id=source.id,
+                sourceId=source.id,
                 title=source.title,
                 source=source.organization,
                 organization=source.organization,
                 url=source.url,
                 domain=source.domain,
-                section=source.topic,
+                section=source.section or source.topic,
+                heading=source.section or source.topic,
                 excerpt=excerpt,
                 retrievedAt=source.retrievedAt or retrieved_at,
-                matchedSymptoms=_matched_symptoms(source, normalized_symptoms),
-                matchedRules=[
-                    rule for rule in matched_rules
-                    if rule.split("_", 1)[0] in source.riskLevels or set(source.symptoms) & set(normalized_symptoms)
-                ],
-                confidence=0.95 if source.sourceStatus == "REVIEWED" else 0.75,
+                matchedSymptoms=source_matched_symptoms,
+                matchedRules=source_matched_rules,
+                sourceVersion=source.sourceVersion,
                 sourceStatus=source.sourceStatus,
+                retrievalMode="REALTIME" if source.sourceStatus == "PENDING_REVIEW" else "LOCAL",
                 lastReviewed=source.lastReviewed,
             )
         )
@@ -161,12 +174,18 @@ def _matches(source: SourceDocument, symptoms: list[str], rules: list[str]) -> b
     topic = source.topic.lower()
     if "fever" in symptoms and topic == "fever":
         return True
-    if {"cough", "runny_nose", "breathing_difficulty", "cyanosis"} & set(symptoms) and topic == "respiratory":
+    if {"difficulty_breathing", "chest_indrawing", "cyanosis"} & set(symptoms) and topic == "respiratory":
         return True
-    if {"diarrhea", "dehydration"} & set(symptoms) and "diarrhea" in topic:
+    if {"diarrhea", "mild_dehydration", "severe_dehydration"} & set(symptoms) and "diarrhea" in topic:
         return True
     return any(rule.startswith("RED_") and topic == "danger_signs" for rule in rules)
 
 
 def _matched_symptoms(source: SourceDocument, normalized_symptoms: list[str]) -> list[str]:
-    return sorted(set(source.symptoms) & set(normalized_symptoms))
+    aliases = {
+        "breathing_difficulty": "difficulty_breathing",
+        "dehydration": "mild_dehydration",
+        "convulsion": "seizure",
+    }
+    source_codes = {aliases.get(code, code) for code in source.symptoms}
+    return sorted(source_codes & set(normalized_symptoms))

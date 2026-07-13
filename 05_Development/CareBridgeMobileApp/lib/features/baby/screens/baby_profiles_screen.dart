@@ -19,11 +19,7 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _surfaceContainerLowest = Colors.white;
-  static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSecondaryContainer = Color(0xFF735E56);
-  static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _onBackground = Color(0xFF271812);
 
@@ -39,13 +35,26 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
   }
 
   Future<void> _loadProfiles() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await _service.listBabyProfiles();
-      if (mounted) setState(() { _profiles = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _profiles = list;
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('[BabyProfilesScreen] _loadProfiles error: $e');
-      if (mounted) setState(() { _error = 'Không thể tải danh sách hồ sơ.\n$e'; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = 'Không thể tải danh sách hồ sơ.\n$e';
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -59,21 +68,27 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
   void _openBabyDetail(BabyProfile profile) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => BabyProfileDetailScreen(babyId: profile.id)),
+      MaterialPageRoute(
+        builder: (_) => BabyProfileDetailScreen(babyId: profile.id),
+      ),
     );
   }
 
   void _switchActiveBaby(BabyProfile profile) {
     setState(() {
-      _profiles = _profiles.map((p) => BabyProfile(
-        id: p.id,
-        nickname: p.nickname,
-        birthDate: p.birthDate,
-        gender: p.gender,
-        birthWeightKg: p.birthWeightKg,
-        birthLengthCm: p.birthLengthCm,
-        isActive: p.id == profile.id,
-      )).toList();
+      _profiles = _profiles
+          .map(
+            (p) => BabyProfile(
+              id: p.id,
+              nickname: p.nickname,
+              birthDate: p.birthDate,
+              gender: p.gender,
+              birthWeightKg: p.birthWeightKg,
+              birthLengthCm: p.birthLengthCm,
+              isActive: p.id == profile.id,
+            ),
+          )
+          .toList();
     });
     // TODO: call PATCH /api/v1/babies/{id}/activate when endpoint is available (UC-193)
   }
@@ -89,10 +104,14 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
             _buildHeader(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildErrorState()
-                      : _buildContent(),
+                  ? _buildErrorState()
+                  : _buildContent(),
             ),
           ],
         ),
@@ -153,15 +172,20 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...List.generate(_profiles.length, (i) => Padding(
-                padding: EdgeInsets.only(bottom: i < _profiles.length - 1 ? 16 : 0),
-                child: _BabyCard(
-                  profile: _profiles[i],
-                  onTap: () => _openBabyDetail(_profiles[i]),
-                  onSwitch: () => _switchActiveBaby(_profiles[i]),
-                  onMore: () => _showMoreMenu(_profiles[i]),
+              ...List.generate(
+                _profiles.length,
+                (i) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: i < _profiles.length - 1 ? 16 : 0,
+                  ),
+                  child: _BabyCard(
+                    profile: _profiles[i],
+                    onTap: () => _openBabyDetail(_profiles[i]),
+                    onSwitch: () => _switchActiveBaby(_profiles[i]),
+                    onMore: () => _showMoreMenu(_profiles[i]),
+                  ),
                 ),
-              )),
+              ),
             ],
           ],
         ),
@@ -201,7 +225,10 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
       decoration: BoxDecoration(
         color: _surfaceContainerLowest,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD6C2BD), style: BorderStyle.solid),
+        border: Border.all(
+          color: const Color(0xFFD6C2BD),
+          style: BorderStyle.solid,
+        ),
       ),
       child: Column(
         children: [
@@ -249,7 +276,11 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
           const SizedBox(height: 12),
           Text(
             _error!,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           TextButton(
@@ -276,7 +307,8 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(top: 12, bottom: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFD6C2BD),
@@ -285,17 +317,27 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.edit_outlined, color: _primary),
-              title: Text('Chỉnh sửa ${profile.nickname}',
-                  style: const TextStyle(fontFamily: 'Lexend')),
+              title: Text(
+                'Chỉnh sửa ${profile.nickname}',
+                style: const TextStyle(fontFamily: 'Lexend'),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 // TODO: navigate to EditBabyScreen (UC-34/35)
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
-              title: const Text('Xóa hồ sơ',
-                  style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A))),
+              leading: const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFBA1A1A),
+              ),
+              title: const Text(
+                'Xóa hồ sơ',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: Color(0xFFBA1A1A),
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 // TODO: call DELETE /api/v1/babies/{id} (UC-33)
@@ -417,10 +459,7 @@ class _BabyCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        if (profile.isActive)
-          _buildVaccineBadge()
-        else
-          _buildSwitchButton(),
+        if (profile.isActive) _buildVaccineBadge() else _buildSwitchButton(),
       ],
     );
   }

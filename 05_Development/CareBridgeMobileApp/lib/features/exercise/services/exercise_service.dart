@@ -5,11 +5,13 @@ class ExerciseService {
   static final ExerciseService instance = ExerciseService._();
   ExerciseService._();
 
-  Future<ExerciseSession> startSession(String exerciseId, String safetyCheckId) async {
-    final res = await apiPost(
-      '/api/v1/exercises/$exerciseId/sessions',
-      {'safetyCheckId': safetyCheckId},
-    );
+  Future<ExerciseSession> startSession(
+    String exerciseId,
+    String safetyCheckId,
+  ) async {
+    final res = await apiPost('/api/v1/exercises/$exerciseId/sessions', {
+      'safetyCheckId': safetyCheckId,
+    });
     return ExerciseSession.fromJson(res['data'] as Map<String, dynamic>);
   }
 
@@ -22,7 +24,10 @@ class ExerciseService {
   }
 
   Future<SessionResult> completeSession(String sessionId) async {
-    final res = await apiPatch('/api/v1/exercises/sessions/$sessionId/complete', {});
+    final res = await apiPatch(
+      '/api/v1/exercises/sessions/$sessionId/complete',
+      {},
+    );
     return SessionResult.fromJson(res['data'] as Map<String, dynamic>);
   }
 

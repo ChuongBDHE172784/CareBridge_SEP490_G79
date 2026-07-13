@@ -71,7 +71,10 @@ class CareGroupService {
 
   // UC217: Revoke pending invitation
   Future<void> revokeInvitation(String groupId, String targetUserId) async {
-    await apiPost('/api/v1/care-groups/$groupId/invitations/$targetUserId/revoke', const {});
+    await apiPost(
+      '/api/v1/care-groups/$groupId/invitations/$targetUserId/revoke',
+      const {},
+    );
   }
 
   // UC219: Owner removes an accepted non-owner member
@@ -80,44 +83,66 @@ class CareGroupService {
   }
 
   // UC72: Get family permission
-  Future<FamilyPermission> getFamilyPermission(String groupId, String memberId) async {
-    final data = await apiGet('/api/v1/care-groups/$groupId/members/$memberId/permissions');
+  Future<FamilyPermission> getFamilyPermission(
+    String groupId,
+    String memberId,
+  ) async {
+    final data = await apiGet(
+      '/api/v1/care-groups/$groupId/members/$memberId/permissions',
+    );
     return FamilyPermission.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   // UC72: Update family permission
   Future<FamilyPermission> updateFamilyPermission(
-    String groupId, 
-    String memberId, 
-    {bool? calendar, bool? logs, bool? alerts, bool? records}
-  ) async {
+    String groupId,
+    String memberId, {
+    bool? calendar,
+    bool? logs,
+    bool? alerts,
+    bool? records,
+  }) async {
     final body = <String, dynamic>{};
     if (calendar != null) body['calendar'] = calendar;
     if (logs != null) body['logs'] = logs;
     if (alerts != null) body['alerts'] = alerts;
     if (records != null) body['records'] = records;
 
-    final data = await apiPatch('/api/v1/care-groups/$groupId/members/$memberId/permissions', body);
+    final data = await apiPatch(
+      '/api/v1/care-groups/$groupId/members/$memberId/permissions',
+      body,
+    );
     return FamilyPermission.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   // UC74: View Shared Care Calendar
-  Future<List<Map<String, dynamic>>> getSharedCalendar(String groupId, DateTime start, DateTime end) async {
-    final data = await apiGet('/api/v1/care-groups/$groupId/calendar', queryParams: {
-      'rangeStart': start.toUtc().toIso8601String(),
-      'rangeEnd': end.toUtc().toIso8601String(),
-    });
+  Future<List<Map<String, dynamic>>> getSharedCalendar(
+    String groupId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final data = await apiGet(
+      '/api/v1/care-groups/$groupId/calendar',
+      queryParams: {
+        'rangeStart': start.toUtc().toIso8601String(),
+        'rangeEnd': end.toUtc().toIso8601String(),
+      },
+    );
     final items = data['data']['items'] as List<dynamic>? ?? [];
     return items.cast<Map<String, dynamic>>();
   }
 
   // UC86: View Family Alerts
-  Future<List<Map<String, dynamic>>> getFamilyAlerts(String groupId, {int page = 0, int size = 20}) async {
+  Future<List<Map<String, dynamic>>> getFamilyAlerts(
+    String groupId, {
+    int page = 0,
+    int size = 20,
+  }) async {
     try {
-      final data = await apiGet('/api/v1/family-alerts', queryParams: {
-        'page': page.toString(),
-        'size': size.toString(),
-      });
+      final data = await apiGet(
+        '/api/v1/family-alerts',
+        queryParams: {'page': page.toString(), 'size': size.toString()},
+      );
       final alerts = data['data']['alerts'] as List<dynamic>? ?? [];
       return alerts.cast<Map<String, dynamic>>();
     } catch (e) {
@@ -128,15 +153,19 @@ class CareGroupService {
           'title': 'Bé Mỡ đã ngủ ngon',
           'body': 'Nhiệt độ phòng ổn định',
           'isRead': false,
-          'createdAt': DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String(),
+          'createdAt': DateTime.now()
+              .subtract(const Duration(minutes: 5))
+              .toIso8601String(),
         },
         {
           'alertId': 'mock-2',
           'title': 'Nhiệt độ phòng bé hơi lạnh',
           'body': 'Dưới 24 độ C',
           'isRead': true,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
-        }
+          'createdAt': DateTime.now()
+              .subtract(const Duration(hours: 1))
+              .toIso8601String(),
+        },
       ];
     }
   }

@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
-import 'create_appointment_reminder_screen.dart';
-import 'create_medication_reminder_screen.dart';
-import 'create_vaccination_reminder_screen.dart';
-import 'reminder_detail_screen.dart';
 
 class AllRemindersScreen extends StatefulWidget {
   const AllRemindersScreen({super.key});
@@ -20,8 +16,6 @@ class _AllRemindersScreenState extends State<AllRemindersScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceVariant = Color(0xFFFADCD3);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
 
@@ -71,7 +65,10 @@ class _AllRemindersScreenState extends State<AllRemindersScreen> {
   }
 
   Future<void> _openTask(Reminder task) async {
-    final result = await context.push('/reminders/${task.id}/manage', extra: task);
+    final result = await context.push(
+      '/reminders/${task.id}/manage',
+      extra: task,
+    );
     if (result == true) {
       _load();
     }
@@ -102,12 +99,19 @@ class _AllRemindersScreenState extends State<AllRemindersScreen> {
                           : _filteredAndSortedReminders.isEmpty
                           ? _buildEmpty()
                           : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                0,
+                                24,
+                                100,
+                              ),
                               itemCount: _filteredAndSortedReminders.length,
-                              separatorBuilder: (_, _) => const SizedBox(height: 12),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
                               itemBuilder: (_, i) => _TaskCard(
                                 task: _filteredAndSortedReminders[i],
-                                onTap: () => _openTask(_filteredAndSortedReminders[i]),
+                                onTap: () =>
+                                    _openTask(_filteredAndSortedReminders[i]),
                               ),
                             ),
                     ),
@@ -192,14 +196,14 @@ class _AllRemindersScreenState extends State<AllRemindersScreen> {
         Center(
           child: Text(
             _errorText!,
-            style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              color: _onSurfaceVariant,
+            ),
           ),
         ),
         Center(
-          child: TextButton(
-            onPressed: _load,
-            child: const Text('Thử lại'),
-          ),
+          child: TextButton(onPressed: _load, child: const Text('Thử lại')),
         ),
       ],
     );
@@ -254,10 +258,7 @@ class _TaskCard extends StatelessWidget {
   final Reminder task;
   final VoidCallback onTap;
 
-  const _TaskCard({
-    required this.task,
-    required this.onTap,
-  });
+  const _TaskCard({required this.task, required this.onTap});
 
   IconData get _typeIcon {
     switch (task.reminderType) {
@@ -299,11 +300,12 @@ class _TaskCard extends StatelessWidget {
   }
 
   String get _sourceLabel {
-    return task.reminderType?.displayLabel ?? 'Khác';
+    return task.reminderType.displayLabel;
   }
 
   String _formatTime(DateTime dt) {
-    final date = '${dt.toLocal().day.toString().padLeft(2, '0')}/${dt.toLocal().month.toString().padLeft(2, '0')}';
+    final date =
+        '${dt.toLocal().day.toString().padLeft(2, '0')}/${dt.toLocal().month.toString().padLeft(2, '0')}';
     final h = dt.toLocal().hour.toString().padLeft(2, '0');
     final m = dt.toLocal().minute.toString().padLeft(2, '0');
     return '$date - $h:$m';
@@ -408,7 +410,9 @@ class _TaskCard extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    task.status.isTerminal ? Icons.visibility_rounded : Icons.edit_rounded,
+                    task.status.isTerminal
+                        ? Icons.visibility_rounded
+                        : Icons.edit_rounded,
                     color: const Color(0xFF845143),
                     size: 16,
                   ),

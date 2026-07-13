@@ -6,10 +6,11 @@ import 'reject_invitation_confirmation_screen.dart';
 class CareGroupInvitationScreen extends StatefulWidget {
   final PendingInvitation invitation;
 
-  const CareGroupInvitationScreen({Key? key, required this.invitation}) : super(key: key);
+  const CareGroupInvitationScreen({super.key, required this.invitation});
 
   @override
-  State<CareGroupInvitationScreen> createState() => _CareGroupInvitationScreenState();
+  State<CareGroupInvitationScreen> createState() =>
+      _CareGroupInvitationScreenState();
 }
 
 class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
@@ -25,7 +26,9 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -74,7 +77,13 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: const Color(0xFFFFE2D9)),
-                    boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x0F5A463F),
+                        blurRadius: 20,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -82,33 +91,77 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                       Container(
                         width: 80,
                         height: 80,
-                        decoration: const BoxDecoration(color: Color(0xFFFFDBD1), shape: BoxShape.circle),
-                        child: const Icon(Icons.group_add, color: Color(0xFF845143), size: 36),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFDBD1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.group_add,
+                          color: Color(0xFF845143),
+                          size: 36,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Lời mời tham gia nhóm chăm sóc', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF845143)), textAlign: TextAlign.center),
+                      const Text(
+                        'Lời mời tham gia nhóm chăm sóc',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF845143),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 16),
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                          style: const TextStyle(fontSize: 16, color: Color(0xFF524440), fontFamily: 'Lexend'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF524440),
+                            fontFamily: 'Lexend',
+                          ),
                           children: [
-                            const TextSpan(text: 'Bạn đã được mời tham gia nhóm chăm sóc '),
-                            TextSpan(text: widget.invitation.groupName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF271812))),
+                            const TextSpan(
+                              text: 'Bạn đã được mời tham gia nhóm chăm sóc ',
+                            ),
+                            TextSpan(
+                              text: widget.invitation.groupName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF271812),
+                              ),
+                            ),
                             const TextSpan(text: '.'),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(color: const Color(0xFFF8DDD2), borderRadius: BorderRadius.circular(999)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8DDD2),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.escalator_warning, size: 20, color: Color(0xFF271812)),
+                            const Icon(
+                              Icons.escalator_warning,
+                              size: 20,
+                              color: Color(0xFF271812),
+                            ),
                             const SizedBox(width: 8),
-                            Text('Vai trò: ${widget.invitation.memberRole ?? 'Thành viên'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+                            Text(
+                              'Vai trò: ${widget.invitation.memberRole}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF271812),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -116,11 +169,21 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: const Color(0xFFFFF1EC), borderRadius: BorderRadius.circular(16)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1EC),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('QUYỀN HẠN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF524440))),
+                            const Text(
+                              'QUYỀN HẠN',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF524440),
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             _buildRightRow('Xem lịch tiêm chủng'),
                             const SizedBox(height: 8),
@@ -128,9 +191,22 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                             const SizedBox(height: 8),
                             _buildRightRow('Nhận thông báo khẩn cấp'),
                             const SizedBox(height: 16),
-                            const Text('MỤC ĐÍCH', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF524440))),
+                            const Text(
+                              'MỤC ĐÍCH',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF524440),
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            const Text('Hỗ trợ chăm sóc bé', style: TextStyle(fontSize: 14, color: Color(0xFF271812))),
+                            const Text(
+                              'Hỗ trợ chăm sóc bé',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF271812),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -138,9 +214,20 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                       const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.schedule, size: 16, color: Color(0xFF524440)),
+                          Icon(
+                            Icons.schedule,
+                            size: 16,
+                            color: Color(0xFF524440),
+                          ),
                           SizedBox(width: 8),
-                          Text('Hết hạn sau 48 giờ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF524440))),
+                          Text(
+                            'Hết hạn sau 48 giờ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF524440),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -154,11 +241,26 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                   backgroundColor: const Color(0xFFC98C7B),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
                 child: _isLoading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Chấp nhận', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Chấp nhận',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
@@ -168,9 +270,14 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                   foregroundColor: const Color(0xFF524440),
                   minimumSize: const Size(double.infinity, 52),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                child: const Text('Từ chối', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Từ chối',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -184,7 +291,10 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
       children: [
         const Icon(Icons.check_circle, color: Color(0xFF845143), size: 20),
         const SizedBox(width: 8),
-        Text(text, style: const TextStyle(fontSize: 14, color: Color(0xFF271812))),
+        Text(
+          text,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF271812)),
+        ),
       ],
     );
   }

@@ -16,7 +16,6 @@ class FileViewerScreen extends StatefulWidget {
 class _FileViewerScreenState extends State<FileViewerScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
   static const _surface = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
@@ -435,7 +434,6 @@ class _DeleteFileConfirmationPage extends StatelessWidget {
   final String fileSize;
   final FileService service;
 
-  static const _primary = Color(0xFF845143);
   static const _surface = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);

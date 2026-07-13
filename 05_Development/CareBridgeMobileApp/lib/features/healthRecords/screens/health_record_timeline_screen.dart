@@ -19,15 +19,7 @@ class _HealthRecordTimelineScreenState
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondary = Color(0xFF6E5A52);
-  static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
 
   final _service = HealthRecordService();
   List<HealthRecord> _records = [];
@@ -42,12 +34,25 @@ class _HealthRecordTimelineScreenState
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await _service.listHealthRecords(filter: _activeFilter);
-      if (mounted) setState(() { _records = list; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _records = list;
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _error = 'Không thể tải dữ liệu.'; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = 'Không thể tải dữ liệu.';
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -76,10 +81,14 @@ class _HealthRecordTimelineScreenState
             _buildFilterChips(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : _buildTimeline(),
+                  ? _buildError()
+                  : _buildTimeline(),
             ),
           ],
         ),
@@ -168,7 +177,10 @@ class _HealthRecordTimelineScreenState
       return Center(
         child: Text(
           'Chưa có hồ sơ nào.',
-          style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurfaceVariant,
+          ),
         ),
       );
     }
@@ -197,10 +209,21 @@ class _HealthRecordTimelineScreenState
         children: [
           const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
+          Text(
+            _error!,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
-          TextButton(onPressed: _load,
-            child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary))),
+          TextButton(
+            onPressed: _load,
+            child: const Text(
+              'Thử lại',
+              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            ),
+          ),
         ],
       ),
     );
@@ -214,7 +237,12 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.icon, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,16 +258,21 @@ class _FilterChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18,
-                color: selected ? Colors.white : const Color(0xFF524440)),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? Colors.white : const Color(0xFF524440),
+            ),
             const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: selected ? Colors.white : const Color(0xFF524440),
-                )),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: selected ? Colors.white : const Color(0xFF524440),
+              ),
+            ),
           ],
         ),
       ),
@@ -253,17 +286,21 @@ class _MonthGroup extends StatelessWidget {
   final List<HealthRecord> records;
   final void Function(HealthRecord) onTap;
 
-  const _MonthGroup({required this.month, required this.records, required this.onTap});
+  const _MonthGroup({
+    required this.month,
+    required this.records,
+    required this.onTap,
+  });
 
   Widget _dot(bool isFirst) => Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          color: isFirst ? const Color(0xFFC98C7B) : const Color(0xFFFADCD3),
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFFFF8F6), width: 3),
-        ),
-      );
+    width: 20,
+    height: 20,
+    decoration: BoxDecoration(
+      color: isFirst ? const Color(0xFFC98C7B) : const Color(0xFFFADCD3),
+      shape: BoxShape.circle,
+      border: Border.all(color: const Color(0xFFFFF8F6), width: 3),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -271,28 +308,38 @@ class _MonthGroup extends StatelessWidget {
     for (int i = 0; i < records.length; i++) {
       final r = records[i];
       // Record row: dot on the left, card on the right.
-      items.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 40,
-            child: Align(alignment: Alignment.topCenter, child: _dot(i == 0)),
-          ),
-          Expanded(child: _RecordCard(record: r, onTap: () => onTap(r))),
-        ],
-      ));
-      // Connector between records: fixed-height 2px line centred under the dot column.
-      if (i < records.length - 1) {
-        items.add(SizedBox(
-          height: 16,
-          child: Row(children: [
+      items.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             SizedBox(
               width: 40,
-              child: Center(child: Container(width: 2, color: const Color(0xFFFFE2D9))),
+              child: Align(alignment: Alignment.topCenter, child: _dot(i == 0)),
             ),
-            const Expanded(child: SizedBox.shrink()),
-          ]),
-        ));
+            Expanded(
+              child: _RecordCard(record: r, onTap: () => onTap(r)),
+            ),
+          ],
+        ),
+      );
+      // Connector between records: fixed-height 2px line centred under the dot column.
+      if (i < records.length - 1) {
+        items.add(
+          SizedBox(
+            height: 16,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 40,
+                  child: Center(
+                    child: Container(width: 2, color: const Color(0xFFFFE2D9)),
+                  ),
+                ),
+                const Expanded(child: SizedBox.shrink()),
+              ],
+            ),
+          ),
+        );
       }
     }
 
@@ -301,11 +348,15 @@ class _MonthGroup extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 12, top: 8),
-          child: Text(month,
-              style: const TextStyle(
-                fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600,
-                color: Color(0xFF271812),
-              )),
+          child: Text(
+            month,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF271812),
+            ),
+          ),
         ),
         ...items,
         const SizedBox(height: 24),
@@ -348,15 +399,28 @@ class _RecordCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 16, color: Color(0xFF524440)),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: Color(0xFF524440),
+                    ),
                     const SizedBox(width: 4),
-                    Text(_formatDate(record.recordDate),
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF524440))),
+                    Text(
+                      _formatDate(record.recordDate),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF524440),
+                      ),
+                    ),
                   ],
                 ),
                 if (record.isShared)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFE2D9),
                       borderRadius: BorderRadius.circular(8),
@@ -366,16 +430,29 @@ class _RecordCard extends StatelessWidget {
                       children: const [
                         Icon(Icons.share, size: 14, color: Color(0xFF845143)),
                         SizedBox(width: 4),
-                        Text('Đã chia sẻ', style: TextStyle(fontFamily: 'Lexend', fontSize: 10, color: Color(0xFF845143))),
+                        Text(
+                          'Đã chia sẻ',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 10,
+                            color: Color(0xFF845143),
+                          ),
+                        ),
                       ],
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 6),
-            Text(record.title,
-                style: const TextStyle(
-                    fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF271812))),
+            Text(
+              record.title,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF271812),
+              ),
+            ),
             if (record.facilityName != null) ...[
               const SizedBox(height: 8),
               Container(
@@ -387,10 +464,20 @@ class _RecordCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.local_hospital, size: 14, color: Color(0xFF6E5A52)),
+                    const Icon(
+                      Icons.local_hospital,
+                      size: 14,
+                      color: Color(0xFF6E5A52),
+                    ),
                     const SizedBox(width: 4),
-                    Text(record.facilityName!,
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF6E5A52))),
+                    Text(
+                      record.facilityName!,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: Color(0xFF6E5A52),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -13,17 +13,16 @@ class VaccinationDetailScreen extends StatefulWidget {
   const VaccinationDetailScreen({super.key, required this.vaccinationId});
 
   @override
-  State<VaccinationDetailScreen> createState() => _VaccinationDetailScreenState();
+  State<VaccinationDetailScreen> createState() =>
+      _VaccinationDetailScreenState();
 }
 
 class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFEF8F4);
-  static const _onSurface = Color(0xFF1D1B19);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _textHeading = Color(0xFF2D2A28);
-  static const _surface = Color(0xFFFFFFFF);
   static const _surfaceContainerLow = Color(0xFFF9F2EE);
   static const _surfaceVariant = Color(0xFFE7E1DD);
   static const _errorContainer = Color(0xFFFFDAD6);
@@ -42,11 +41,17 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error2 = null; });
+    setState(() {
+      _loading = true;
+      _error2 = null;
+    });
     try {
       final r = await _service.getVaccination(widget.vaccinationId);
       if (mounted) {
-        setState(() { _record = r; _loading = false; });
+        setState(() {
+          _record = r;
+          _loading = false;
+        });
       }
     } on ApiException {
       // Fallback mock for development
@@ -59,18 +64,23 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
             plannedDate: DateTime(2023, 10, 15),
             actualDate: DateTime(2023, 10, 16),
             facilityName: 'Bệnh viện Nhi Đồng 1',
-            facilityAddress: '341 Sư Vạn Hạnh, Phường 10, Quận 10, TP. Hồ Chí Minh',
+            facilityAddress:
+                '341 Sư Vạn Hạnh, Phường 10, Quận 10, TP. Hồ Chí Minh',
             childId: 'child-1',
             childName: 'Nguyễn Văn A',
             childBirthDate: DateTime(2023, 4, 12),
-            note: 'Trẻ có biểu hiện sốt nhẹ sau khi tiêm. Đã dùng thuốc hạ sốt theo chỉ định của bác sĩ. Cần theo dõi thêm trong 24h.',
+            note:
+                'Trẻ có biểu hiện sốt nhẹ sau khi tiêm. Đã dùng thuốc hạ sốt theo chỉ định của bác sĩ. Cần theo dõi thêm trong 24h.',
           );
           _loading = false;
         });
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _error2 = 'Không thể tải dữ liệu.'; _loading = false; });
+        setState(() {
+          _error2 = 'Không thể tải dữ liệu.';
+          _loading = false;
+        });
       }
     }
   }
@@ -93,13 +103,15 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     try {
       await _service.rescheduleVaccination(widget.vaccinationId, picked);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã dời lịch thành công!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã dời lịch thành công!')));
       _load();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể dời lịch. Vui lòng thử lại.')));
+        const SnackBar(content: Text('Không thể dời lịch. Vui lòng thử lại.')),
+      );
     }
   }
 
@@ -108,11 +120,19 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa hồ sơ?', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: const Text('Hành động này không thể khôi phục.', style: TextStyle(fontFamily: 'Lexend')),
+        title: const Text(
+          'Xóa hồ sơ?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Hành động này không thể khôi phục.',
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: _error),
@@ -129,7 +149,8 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể xóa. Vui lòng thử lại.')));
+        const SnackBar(content: Text('Không thể xóa. Vui lòng thử lại.')),
+      );
     }
   }
 
@@ -139,10 +160,12 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       backgroundColor: _canvas,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : _error2 != null
-                ? _buildError()
-                : _buildContent(_record!),
+            ? _buildError()
+            : _buildContent(_record!),
       ),
     );
   }
@@ -154,9 +177,20 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: _error),
           const SizedBox(height: 12),
-          Text(_error2!, style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
-          TextButton(onPressed: _load,
-              child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary))),
+          Text(
+            _error2!,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              color: _onSurfaceVariant,
+            ),
+          ),
+          TextButton(
+            onPressed: _load,
+            child: const Text(
+              'Thử lại',
+              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            ),
+          ),
         ],
       ),
     );
@@ -204,13 +238,24 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
             icon: const Icon(Icons.arrow_back, color: _primary),
           ),
           const Expanded(
-            child: Text('CareBridge',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w700, color: _primary)),
+            child: Text(
+              'CareBridge',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+              ),
+            ),
           ),
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: _surfaceVariant),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _surfaceVariant,
+            ),
             child: const Icon(Icons.person, size: 20, color: _onSurfaceVariant),
           ),
           const SizedBox(width: 8),
@@ -223,14 +268,25 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     return Column(
       children: [
         Container(
-          width: 64, height: 64,
-          decoration: const BoxDecoration(shape: BoxShape.circle, color: _primaryContainer),
+          width: 64,
+          height: 64,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: _primaryContainer,
+          ),
           child: const Icon(Icons.vaccines, size: 32, color: Colors.white),
         ),
         const SizedBox(height: 16),
-        Text(r.vaccineName,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _textHeading)),
+        Text(
+          r.vaccineName,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: _textHeading,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -243,8 +299,15 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
             children: [
               const Icon(Icons.check_circle, size: 16, color: _primary),
               const SizedBox(width: 6),
-              Text(r.status.displayLabel,
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _primary)),
+              Text(
+                r.status.displayLabel,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _primary,
+                ),
+              ),
             ],
           ),
         ),
@@ -262,11 +325,25 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ngày dự kiến',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: _onSurfaceVariant)),
+                const Text(
+                  'Ngày dự kiến',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(r.plannedDateLabel,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _textHeading)),
+                Text(
+                  r.plannedDateLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _textHeading,
+                  ),
+                ),
               ],
             ),
           ),
@@ -274,11 +351,25 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ngày tiêm thực tế',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: _onSurfaceVariant)),
+                const Text(
+                  'Ngày tiêm thực tế',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(r.actualDateLabel,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _textHeading)),
+                Text(
+                  r.actualDateLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _textHeading,
+                  ),
+                ),
               ],
             ),
           ),
@@ -294,18 +385,35 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(r.facilityName ?? '—',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _textHeading)),
+          Text(
+            r.facilityName ?? '—',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _textHeading,
+            ),
+          ),
           if (r.facilityAddress != null) ...[
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on, size: 18, color: _onSurfaceVariant),
+                const Icon(
+                  Icons.location_on,
+                  size: 18,
+                  color: _onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(r.facilityAddress!,
-                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+                  child: Text(
+                    r.facilityAddress!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -322,7 +430,8 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       child: Row(
         children: [
           Container(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _surfaceVariant,
@@ -333,11 +442,24 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(r.childName ?? '—',
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _textHeading)),
+              Text(
+                r.childName ?? '—',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _textHeading,
+                ),
+              ),
               if (r.childBirthLabel.isNotEmpty)
-                Text(r.childBirthLabel,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                Text(
+                  r.childBirthLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
             ],
           ),
         ],
@@ -356,8 +478,15 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
           color: _surfaceContainerLow,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(note,
-            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.5)),
+        child: Text(
+          note,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            color: _onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
       ),
     );
   }
@@ -380,7 +509,14 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
               elevation: 2,
             ),
             icon: const Icon(Icons.edit, size: 20),
-            label: const Text('Cập nhật thông tin', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Cập nhật thông tin',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -397,7 +533,14 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
                     side: BorderSide(color: _surfaceVariant, width: 2),
                     shape: const StadiumBorder(),
                   ),
-                  child: const Text('Dời lịch', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Dời lịch',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -412,7 +555,14 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
                     foregroundColor: _onErrorContainer,
                     shape: const StadiumBorder(),
                   ),
-                  child: const Text('Xóa hồ sơ', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Xóa hồ sơ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -429,7 +579,11 @@ class _InfoCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _InfoCard({required this.icon, required this.title, required this.child});
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +593,13 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: const Color(0xFFC98C7B).withAlpha(20), blurRadius: 20, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFC98C7B).withAlpha(20),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,8 +608,15 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: const Color(0xFF845143)),
               const SizedBox(width: 8),
-              Text(title,
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF2D2A28))),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D2A28),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),

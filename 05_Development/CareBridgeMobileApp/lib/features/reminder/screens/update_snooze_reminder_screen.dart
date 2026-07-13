@@ -14,10 +14,12 @@ class UpdateSnoozeReminderScreen extends StatefulWidget {
   });
 
   @override
-  State<UpdateSnoozeReminderScreen> createState() => _UpdateSnoozeReminderScreenState();
+  State<UpdateSnoozeReminderScreen> createState() =>
+      _UpdateSnoozeReminderScreenState();
 }
 
-class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen> {
+class _UpdateSnoozeReminderScreenState
+    extends State<UpdateSnoozeReminderScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -82,13 +84,16 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
       final updated = await action();
       if (!mounted) return;
       setState(() => _reminder = updated);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật nhắc lịch')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã cập nhật nhắc lịch')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Thao tác thất bại: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Thao tác thất bại: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -110,7 +115,13 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
     );
     if (time == null) return;
     setState(() {
-      _startDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _startDate = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
@@ -132,7 +143,10 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
     if (_startDate == null || _reminder == null) return;
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tên nhắc nhở không được để trống'), backgroundColor: _error),
+        const SnackBar(
+          content: Text('Tên nhắc nhở không được để trống'),
+          backgroundColor: _error,
+        ),
       );
       return;
     }
@@ -140,21 +154,29 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
     final titleChanged = _reminder!.title != _titleController.text.trim();
     final dateChanged = !_reminder!.scheduledAt.isAtSameMomentAs(_startDate!);
     final recurrenceChanged = _reminder!.recurrenceType != _recurrence;
-    
+
     bool endDateChanged = false;
-    if (_reminder!.recurrenceEndDate == null && _endDate != null) endDateChanged = true;
-    if (_reminder!.recurrenceEndDate != null && _endDate == null) endDateChanged = true;
+    if (_reminder!.recurrenceEndDate == null && _endDate != null) {
+      endDateChanged = true;
+    }
+    if (_reminder!.recurrenceEndDate != null && _endDate == null) {
+      endDateChanged = true;
+    }
     if (_reminder!.recurrenceEndDate != null && _endDate != null) {
-      endDateChanged = !_reminder!.recurrenceEndDate!.isAtSameMomentAs(_endDate!);
+      endDateChanged = !_reminder!.recurrenceEndDate!.isAtSameMomentAs(
+        _endDate!,
+      );
     }
 
-    await _run(() => _service.updateReminder(
-      widget.reminderId,
-      title: titleChanged ? _titleController.text.trim() : null,
-      scheduledAt: dateChanged ? _startDate!.toUtc() : null,
-      recurrenceType: recurrenceChanged ? _recurrence : null,
-      recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
-    ));
+    await _run(
+      () => _service.updateReminder(
+        widget.reminderId,
+        title: titleChanged ? _titleController.text.trim() : null,
+        scheduledAt: dateChanged ? _startDate!.toUtc() : null,
+        recurrenceType: recurrenceChanged ? _recurrence : null,
+        recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
+      ),
+    );
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -171,14 +193,18 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
         ),
         title: const Text(
           'Chỉnh sửa nhắc nhở',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _errorText != null && _reminder == null
-              ? _ErrorState(message: _errorText!, onRetry: _load)
-              : _buildContent(_reminder!),
+          ? _ErrorState(message: _errorText!, onRetry: _load)
+          : _buildContent(_reminder!),
     );
   }
 
@@ -217,27 +243,50 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
             color: _surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: _primary.withAlpha(18), blurRadius: 18, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: _primary.withAlpha(18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Nội dung / Tên', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, fontSize: 13)),
+              const Text(
+                'Nội dung / Tên',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 4),
               TextFormField(
                 controller: _titleController,
                 enabled: canEdit,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: _onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: _primaryContainer.withAlpha(80)),
+                    borderSide: BorderSide(
+                      color: _primaryContainer.withAlpha(80),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: _primaryContainer.withAlpha(80)),
+                    borderSide: BorderSide(
+                      color: _primaryContainer.withAlpha(80),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -246,8 +295,15 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              
-              const Text('Ngày bắt đầu', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, fontSize: 13)),
+
+              const Text(
+                'Ngày bắt đầu',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 4),
               InkWell(
                 onTap: canEdit ? _pickStartDate : null,
@@ -264,15 +320,26 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
                       const SizedBox(width: 12),
                       Text(
                         _startDate != null ? _formatDateTime(_startDate!) : '',
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          color: _onSurface,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              const Text('Ngày kết thúc', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, fontSize: 13)),
+              const Text(
+                'Ngày kết thúc',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -283,16 +350,27 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: _primaryContainer.withAlpha(80)),
+                          border: Border.all(
+                            color: _primaryContainer.withAlpha(80),
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.event_available_rounded, color: _primary),
+                            const Icon(
+                              Icons.event_available_rounded,
+                              color: _primary,
+                            ),
                             const SizedBox(width: 12),
                             Text(
-                              _endDate != null ? _formatDateOnly(_endDate!) : 'Không giới hạn',
-                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _onSurface),
+                              _endDate != null
+                                  ? _formatDateOnly(_endDate!)
+                                  : 'Không giới hạn',
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                color: _onSurface,
+                              ),
                             ),
                           ],
                         ),
@@ -306,12 +384,22 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
-              const Text('Lặp lại', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, fontSize: 13)),
+              const Text(
+                'Lặp lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: _primaryContainer.withAlpha(80)),
                   borderRadius: BorderRadius.circular(12),
@@ -320,12 +408,29 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
                   child: DropdownButton<RecurrenceType>(
                     isExpanded: true,
                     value: _recurrence,
-                    icon: const Icon(Icons.expand_more_rounded, color: _primary),
-                    onChanged: canEdit ? (v) => setState(() => _recurrence = v ?? RecurrenceType.none) : null,
-                    items: RecurrenceType.values.map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(_recurrenceLabel(r), style: const TextStyle(fontFamily: 'Lexend', fontSize: 16)),
-                    )).toList(),
+                    icon: const Icon(
+                      Icons.expand_more_rounded,
+                      color: _primary,
+                    ),
+                    onChanged: canEdit
+                        ? (v) => setState(
+                            () => _recurrence = v ?? RecurrenceType.none,
+                          )
+                        : null,
+                    items: RecurrenceType.values
+                        .map(
+                          (r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(
+                              _recurrenceLabel(r),
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
@@ -338,10 +443,28 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
           style: FilledButton.styleFrom(
             backgroundColor: _primaryContainer,
             minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
-          icon: _processing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save_rounded),
-          label: const Text('Lưu thay đổi', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 16)),
+          icon: _processing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.save_rounded),
+          label: const Text(
+            'Lưu thay đổi',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
         ),
       ],
     );
@@ -391,74 +514,6 @@ class _UpdateSnoozeReminderScreenState extends State<UpdateSnoozeReminderScreen>
   }
 }
 
-class _InfoLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoLine({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(
-              label,
-              style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440)),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                color: Color(0xFF271812),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool disabled;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: OutlinedButton.icon(
-        onPressed: disabled ? null : onTap,
-        icon: Icon(icon),
-        label: Text(label, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF845143),
-          side: const BorderSide(color: Color(0xFFC98C7B)),
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          alignment: Alignment.centerLeft,
-        ),
-      ),
-    );
-  }
-}
-
 class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -471,7 +526,11 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFBA1A1A),
+            size: 44,
+          ),
           const SizedBox(height: 10),
           Text(message, style: const TextStyle(fontFamily: 'Lexend')),
           const SizedBox(height: 10),

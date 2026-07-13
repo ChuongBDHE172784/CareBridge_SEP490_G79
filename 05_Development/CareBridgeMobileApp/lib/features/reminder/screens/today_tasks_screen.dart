@@ -55,7 +55,7 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-          _errorText = 'Không thể tải công việc hôm nay.';
+        _errorText = 'Không thể tải công việc hôm nay.';
         _loading = false;
       });
     }
@@ -99,7 +99,9 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Chi tiết công việc gia đình chưa được kết nối từ Today Tasks.'),
+        content: Text(
+          'Chi tiết công việc gia đình chưa được kết nối từ Today Tasks.',
+        ),
       ),
     );
   }
@@ -264,14 +266,14 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         Center(
           child: Text(
             _errorText!,
-            style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              color: _onSurfaceVariant,
+            ),
           ),
         ),
         Center(
-          child: TextButton(
-            onPressed: _load,
-            child: const Text('Thử lại'),
-          ),
+          child: TextButton(onPressed: _load, child: const Text('Thử lại')),
         ),
       ],
     );
@@ -313,9 +315,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 bgColor: const Color(0xFFF6DACF),
                 title: 'Thuốc hoặc vitamin',
                 subtitle: 'Chỉ tạo từ hướng dẫn bạn đã có',
-                onTap: () => _openCreateScreen(
-                  const CreateMedicationReminderScreen(),
-                ),
+                onTap: () =>
+                    _openCreateScreen(const CreateMedicationReminderScreen()),
               ),
               const SizedBox(height: 16),
               _buildTypeOption(
@@ -324,9 +325,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 bgColor: const Color(0xFFE9E1DB),
                 title: 'Tiêm chủng',
                 subtitle: 'Dùng gợi ý từ lịch tiêm đã ghi nhận',
-                onTap: () => _openCreateScreen(
-                  const CreateVaccinationReminderScreen(),
-                ),
+                onTap: () =>
+                    _openCreateScreen(const CreateVaccinationReminderScreen()),
               ),
               const SizedBox(height: 16),
               _buildTypeOption(
@@ -335,9 +335,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 bgColor: const Color(0xFFFFE2D9),
                 title: 'Lịch hẹn hoặc khám định kỳ',
                 subtitle: 'Tạo nhắc lịch chăm sóc chung',
-                onTap: () => _openCreateScreen(
-                  const CreateAppointmentReminderScreen(),
-                ),
+                onTap: () =>
+                    _openCreateScreen(const CreateAppointmentReminderScreen()),
               ),
             ],
           ),
@@ -468,10 +467,7 @@ class _TaskCard extends StatelessWidget {
   final TodayTask task;
   final VoidCallback onTap;
 
-  const _TaskCard({
-    required this.task,
-    required this.onTap,
-  });
+  const _TaskCard({required this.task, required this.onTap});
 
   IconData get _typeIcon {
     if (task.isCareTask) return Icons.groups;

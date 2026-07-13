@@ -4,13 +4,15 @@ import '../services/growth_measurement_service.dart';
 
 class GrowthMeasurementHistoryScreen extends StatefulWidget {
   final String babyId;
-  const GrowthMeasurementHistoryScreen({Key? key, required this.babyId}) : super(key: key);
+  const GrowthMeasurementHistoryScreen({super.key, required this.babyId});
 
   @override
-  State<GrowthMeasurementHistoryScreen> createState() => _GrowthMeasurementHistoryScreenState();
+  State<GrowthMeasurementHistoryScreen> createState() =>
+      _GrowthMeasurementHistoryScreenState();
 }
 
-class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistoryScreen> {
+class _GrowthMeasurementHistoryScreenState
+    extends State<GrowthMeasurementHistoryScreen> {
   final _service = GrowthMeasurementService();
   bool _isLoading = true;
   List<GrowthMeasurement> _records = [];
@@ -35,7 +37,9 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }
@@ -53,20 +57,28 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
         ),
         title: const Text(
           'Lịch sử đo lường',
-          style: TextStyle(color: Color(0xFF845143), fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFF845143),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               backgroundColor: Colors.grey[200],
-              backgroundImage: const NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuAfIClE2XrhchB2YXUkxFhAgxyNB_KbnEEMYJ4bx0o5HUbpNys1-ji6CyZ5aWHqhu3JGN8u8GaSCe4rVuqhYMcKH51eLp5ldXo3u0DNdTmslCM9E-ZiehGW0INPsFz2BdM8cC49wt0bMy2Hd2l4efLVevsxb0e1Ap5dLZGaDMteb5V9Yk4GZQJeHW4XmmFXFCVckYCNM2wvz4UG2ZZRm4O2rSlUNHGNBCptOBaXxWOlpnTZc5DV2faJg_uuFgv71Y2vkyhfxvgahQ0'),
+              backgroundImage: const NetworkImage(
+                'https://lh3.googleusercontent.com/aida-public/AB6AXuAfIClE2XrhchB2YXUkxFhAgxyNB_KbnEEMYJ4bx0o5HUbpNys1-ji6CyZ5aWHqhu3JGN8u8GaSCe4rVuqhYMcKH51eLp5ldXo3u0DNdTmslCM9E-ZiehGW0INPsFz2BdM8cC49wt0bMy2Hd2l4efLVevsxb0e1Ap5dLZGaDMteb5V9Yk4GZQJeHW4XmmFXFCVckYCNM2wvz4UG2ZZRm4O2rSlUNHGNBCptOBaXxWOlpnTZc5DV2faJg_uuFgv71Y2vkyhfxvgahQ0',
+              ),
             ),
-          )
+          ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+            )
           : RefreshIndicator(
               color: const Color(0xFFC98C7B),
               onRefresh: _loadData,
@@ -82,11 +94,21 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
                     children: [
                       const Text(
                         'Lịch sử ghi nhận',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D2A28)),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D2A28),
+                        ),
                       ),
                       TextButton(
                         onPressed: () {},
-                        child: const Text('Sắp xếp', style: TextStyle(color: Color(0xFF845143), fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Sắp xếp',
+                          style: TextStyle(
+                            color: Color(0xFF845143),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -94,10 +116,15 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
                   if (_records.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(24.0),
-                      child: Center(child: Text('Chưa có dữ liệu', style: TextStyle(color: Colors.grey))),
+                      child: Center(
+                        child: Text(
+                          'Chưa có dữ liệu',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
                     )
                   else
-                    ..._records.map((r) => _buildRecordCard(r)).toList(),
+                    ..._records.map((r) => _buildRecordCard(r)),
                 ],
               ),
             ),
@@ -105,7 +132,9 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
         backgroundColor: const Color(0xFFC98C7B),
         onPressed: () {
           // TODO: Navigate to Add Growth Measurement Screen (not yet created but we can use detail screen as edit, wait we need an add form)
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng đang phát triển')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tính năng đang phát triển')),
+          );
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -132,7 +161,11 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
-                side: BorderSide(color: isSelected ? Colors.transparent : const Color(0xFFE7E1DD)),
+                side: BorderSide(
+                  color: isSelected
+                      ? Colors.transparent
+                      : const Color(0xFFE7E1DD),
+                ),
               ),
               onSelected: (val) {
                 if (val) setState(() => _selectedTab = t);
@@ -150,15 +183,31 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Color(0x14C98C7B), blurRadius: 20, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14C98C7B),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Biểu đồ tăng trưởng', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D2A28))),
-              IconButton(icon: const Icon(Icons.fullscreen, color: Color(0xFF524F4C)), onPressed: () {}),
+              const Text(
+                'Biểu đồ tăng trưởng',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D2A28),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.fullscreen, color: Color(0xFF524F4C)),
+                onPressed: () {},
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -171,7 +220,10 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
               border: Border.all(color: const Color(0xFFE7E1DD)),
             ),
             child: const Center(
-              child: Text('Chart Visualization Area', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Chart Visualization Area',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -182,7 +234,7 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
               const SizedBox(width: 24),
               _buildLegend(const Color(0xFFCCC5C0), 'Tiêu chuẩn WHO'),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -191,16 +243,30 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
   Widget _buildLegend(Color color, String label) {
     return Row(
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF524F4C))),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF524F4C),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildRecordCard(GrowthMeasurement record) {
-    final dateStr = '${record.measuredAt.day.toString().padLeft(2, '0')} Th${record.measuredAt.month}, ${record.measuredAt.year}';
-    final ageStr = record.ageInMonths != null ? '${record.ageInMonths} tháng tuổi' : '';
+    final dateStr =
+        '${record.measuredAt.day.toString().padLeft(2, '0')} Th${record.measuredAt.month}, ${record.measuredAt.year}';
+    final ageStr = record.ageInMonths != null
+        ? '${record.ageInMonths} tháng tuổi'
+        : '';
 
     return GestureDetector(
       onTap: () {
@@ -212,7 +278,13 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: const [BoxShadow(color: Color(0x14C98C7B), blurRadius: 20, offset: Offset(0, 4))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14C98C7B),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -224,16 +296,36 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
                     Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(color: Color(0xFFF2EAE4), shape: BoxShape.circle),
-                      child: const Icon(Icons.calendar_month, color: Color(0xFF845143)),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF2EAE4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.calendar_month,
+                        color: Color(0xFF845143),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(dateStr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2D2A28))),
+                        Text(
+                          dateStr,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D2A28),
+                          ),
+                        ),
                         if (ageStr.isNotEmpty)
-                          Text(ageStr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF524F4C))),
+                          Text(
+                            ageStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF524F4C),
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -244,11 +336,29 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildStatBox(Icons.scale, record.weightKg?.toStringAsFixed(1) ?? '--', 'kg')),
+                Expanded(
+                  child: _buildStatBox(
+                    Icons.scale,
+                    record.weightKg?.toStringAsFixed(1) ?? '--',
+                    'kg',
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildStatBox(Icons.height, record.heightCm?.toStringAsFixed(1) ?? '--', 'cm')),
+                Expanded(
+                  child: _buildStatBox(
+                    Icons.height,
+                    record.heightCm?.toStringAsFixed(1) ?? '--',
+                    'cm',
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildStatBox(Icons.face, record.headCircumferenceCm?.toStringAsFixed(1) ?? '--', 'cm')),
+                Expanded(
+                  child: _buildStatBox(
+                    Icons.face,
+                    record.headCircumferenceCm?.toStringAsFixed(1) ?? '--',
+                    'cm',
+                  ),
+                ),
               ],
             ),
           ],
@@ -268,8 +378,22 @@ class _GrowthMeasurementHistoryScreenState extends State<GrowthMeasurementHistor
         children: [
           Icon(icon, color: const Color(0xFF605E5A), size: 20),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D2A28))),
-          Text(unit, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF524F4C))),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D2A28),
+            ),
+          ),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF524F4C),
+            ),
+          ),
         ],
       ),
     );

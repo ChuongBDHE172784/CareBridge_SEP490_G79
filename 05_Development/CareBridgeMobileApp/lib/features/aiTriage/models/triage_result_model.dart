@@ -41,16 +41,27 @@ class TriageResult {
   });
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
+    final sessionId = json['sessionId']?.toString() ?? '';
+    final status = json['status']?.toString() ?? '';
+    final riskLevel = json['riskLevel']?.toString();
+    if (sessionId.isEmpty || status.isEmpty) {
+      throw const FormatException('Invalid triage result identity');
+    }
+    if (status == 'COMPLETED' &&
+        !{'GREEN', 'YELLOW', 'RED'}.contains(riskLevel)) {
+      throw const FormatException('Invalid completed triage result');
+    }
     return TriageResult(
-      sessionId: json['sessionId'] as String,
-      status: json['status'] as String,
+      sessionId: sessionId,
+      status: status,
       triageStatus: json['triageStatus'] as String?,
-      riskLevel: json['riskLevel'] as String?,
+      riskLevel: riskLevel,
       riskColor: json['riskColor'] as String?,
       summary: json['summary'] as String?,
       possibleConcern: json['possibleConcern'] as String?,
       recommendedAction: json['recommendedAction'] as String?,
-      emergencyActionRequired: json['emergencyActionRequired'] as bool? ?? false,
+      emergencyActionRequired:
+          json['emergencyActionRequired'] as bool? ?? false,
       redFlags: (json['redFlags'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
@@ -90,6 +101,9 @@ class TriageCitation {
   final String retrievedAt;
   final List<String> matchedSymptoms;
   final String sourceStatus;
+  final String? sourceVersion;
+  final String retrievalMode;
+  final List<String> matchedRules;
 
   const TriageCitation({
     this.id,
@@ -102,11 +116,14 @@ class TriageCitation {
     required this.retrievedAt,
     this.matchedSymptoms = const [],
     this.sourceStatus = 'REVIEWED',
+    this.sourceVersion,
+    this.retrievalMode = 'LOCAL',
+    this.matchedRules = const [],
   });
 
   factory TriageCitation.fromJson(Map<String, dynamic> json) {
     return TriageCitation(
-      id: json['id']?.toString(),
+      id: (json['sourceId'] ?? json['id'])?.toString(),
       title: json['title']?.toString() ?? '',
       source: json['source']?.toString() ?? '',
       organization: json['organization']?.toString(),
@@ -118,6 +135,11 @@ class TriageCitation {
           .map((item) => item.toString())
           .toList(),
       sourceStatus: json['sourceStatus']?.toString() ?? 'REVIEWED',
+      sourceVersion: json['sourceVersion']?.toString(),
+      retrievalMode: json['retrievalMode']?.toString() ?? 'LOCAL',
+      matchedRules: (json['matchedRules'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
     );
   }
 }

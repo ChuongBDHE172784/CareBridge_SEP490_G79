@@ -29,7 +29,9 @@ class BabyLogService {
     final data = await apiGet(
       '/api/v1/babies/$babyId/daily-logs/summary?period=$period',
     );
-    return BabyLogSummaryResponse.fromJson(data['data'] as Map<String, dynamic>);
+    return BabyLogSummaryResponse.fromJson(
+      data['data'] as Map<String, dynamic>,
+    );
   }
 
   // UC-37: Record a development milestone

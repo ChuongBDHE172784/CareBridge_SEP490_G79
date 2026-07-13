@@ -17,15 +17,18 @@ class UserChecklistService {
       '/api/v1/user-checklist-items',
       queryParams: query.isEmpty ? null : query,
     );
-    final items = (data['data'] as List? ?? [])
-        .cast<Map<String, dynamic>>()
-        .map(UserChecklistItem.fromJson)
-        .toList()
-      ..sort((a, b) {
-        final categoryCompare = a.category.apiValue.compareTo(b.category.apiValue);
-        if (categoryCompare != 0) return categoryCompare;
-        return a.itemOrder.compareTo(b.itemOrder);
-      });
+    final items =
+        (data['data'] as List? ?? [])
+            .cast<Map<String, dynamic>>()
+            .map(UserChecklistItem.fromJson)
+            .toList()
+          ..sort((a, b) {
+            final categoryCompare = a.category.apiValue.compareTo(
+              b.category.apiValue,
+            );
+            if (categoryCompare != 0) return categoryCompare;
+            return a.itemOrder.compareTo(b.itemOrder);
+          });
     return items;
   }
 
@@ -41,13 +44,16 @@ class UserChecklistService {
       'category': category.apiValue,
       if (journeyId != null && journeyId.isNotEmpty) 'journeyId': journeyId,
       if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
-      if (itemOrder != null) 'itemOrder': itemOrder,
+      'itemOrder': ?itemOrder,
     });
     return UserChecklistItem.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   Future<UserChecklistItem> toggleComplete(String itemId) async {
-    final data = await apiPatch('/api/v1/user-checklist-items/$itemId/toggle', {});
+    final data = await apiPatch(
+      '/api/v1/user-checklist-items/$itemId/toggle',
+      {},
+    );
     return UserChecklistItem.fromJson(data['data'] as Map<String, dynamic>);
   }
 }

@@ -6,16 +6,18 @@ class LeaveCareGroupConfirmationScreen extends StatefulWidget {
   final String groupName;
 
   const LeaveCareGroupConfirmationScreen({
-    Key? key,
+    super.key,
     required this.groupId,
     required this.groupName,
-  }) : super(key: key);
+  });
 
   @override
-  State<LeaveCareGroupConfirmationScreen> createState() => _LeaveCareGroupConfirmationScreenState();
+  State<LeaveCareGroupConfirmationScreen> createState() =>
+      _LeaveCareGroupConfirmationScreenState();
 }
 
-class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirmationScreen> {
+class _LeaveCareGroupConfirmationScreenState
+    extends State<LeaveCareGroupConfirmationScreen> {
   final _service = CareGroupService();
   bool _isLoading = false;
 
@@ -28,7 +30,9 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -49,7 +53,15 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
           icon: const Icon(Icons.arrow_back, color: Color(0xFF524440)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('CareBridge', style: TextStyle(color: Color(0xFF845143), fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+        title: const Text(
+          'CareBridge',
+          style: TextStyle(
+            color: Color(0xFF845143),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Quicksand',
+          ),
+        ),
       ),
       body: SafeArea(
         child: Padding(
@@ -63,39 +75,63 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Color(0x265A463F), blurRadius: 20, offset: Offset(0, 4))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x265A463F),
+                      blurRadius: 20,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: const BoxDecoration(color: Color(0xFFFFDAD6), shape: BoxShape.circle),
-                      child: const Icon(Icons.warning, color: Color(0xFF93000A), size: 36),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFDAD6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.warning,
+                        color: Color(0xFF93000A),
+                        size: 36,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'Rời nhóm "${widget.groupName}"?',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF271812), fontFamily: 'Quicksand'),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF271812),
+                        fontFamily: 'Quicksand',
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Bạn đang chuẩn bị rời khỏi nhóm chăm sóc. Hành động này không thể hoàn tác.',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF524440), fontFamily: 'Quicksand'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF524440),
+                        fontFamily: 'Quicksand',
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     _buildWarningItem(
                       icon: Icons.no_accounts,
                       title: 'Mất quyền truy cập',
-                      desc: 'Bạn sẽ không thể xem hồ sơ sức khỏe, lịch biểu và các công việc chung của gia đình nữa.',
+                      desc:
+                          'Bạn sẽ không thể xem hồ sơ sức khỏe, lịch biểu và các công việc chung của gia đình nữa.',
                     ),
                     const SizedBox(height: 16),
                     _buildWarningItem(
                       icon: Icons.assignment_late,
                       title: 'Công việc chưa hoàn thành',
-                      desc: 'Các công việc đang được giao cho bạn sẽ được chuyển lại cho trưởng nhóm.',
+                      desc:
+                          'Các công việc đang được giao cho bạn sẽ được chuyển lại cho trưởng nhóm.',
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(
@@ -104,24 +140,54 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
                         backgroundColor: const Color(0xFFC98C7B),
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         shadowColor: const Color(0x4DC98C7B),
                         elevation: 4,
                       ),
                       child: _isLoading
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Rời nhóm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Rời nhóm',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Quicksand',
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                      onPressed: _isLoading ? null : () => Navigator.pop(context),
+                      onPressed: _isLoading
+                          ? null
+                          : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFFC98C7B),
-                        side: const BorderSide(color: Color(0xFFC98C7B), width: 2),
+                        side: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                       ),
-                      child: const Text('Quay lại', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                      child: const Text(
+                        'Quay lại',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Quicksand',
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -133,7 +199,11 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
     );
   }
 
-  Widget _buildWarningItem({required IconData icon, required String title, required String desc}) {
+  Widget _buildWarningItem({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -143,8 +213,23 @@ class _LeaveCareGroupConfirmationScreenState extends State<LeaveCareGroupConfirm
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF271812), fontSize: 16, fontFamily: 'Quicksand')),
-              Text(desc, style: const TextStyle(fontSize: 14, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF271812),
+                  fontSize: 16,
+                  fontFamily: 'Quicksand',
+                ),
+              ),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF524440),
+                  fontFamily: 'Quicksand',
+                ),
+              ),
             ],
           ),
         ),

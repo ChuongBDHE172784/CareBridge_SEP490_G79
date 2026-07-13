@@ -10,7 +10,10 @@ riskLevels: [RED]
 symptoms: [breathing_difficulty, chest_indrawing, cyanosis, convulsion, seizure, lethargy, unable_to_drink, poor_feeding, severe_dehydration]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
-sourceStatus: REVIEWED
+sourceStatus: APPROVED
+sourceVersion: '1.0'
+approvedAt: 2026-07-10
+approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
 Internal evidence seed based on WHO IMCI official materials. General danger

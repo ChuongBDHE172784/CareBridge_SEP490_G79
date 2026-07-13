@@ -51,7 +51,9 @@ class IntakeFlowResponse {
     if (resultJson is Map<String, dynamic>) {
       final patched = <String, dynamic>{
         'sessionId': sessionId,
-        'status': json['status'] == 'TRIAGE_COMPLETE' ? 'COMPLETED' : json['status'],
+        'status': json['status'] == 'TRIAGE_COMPLETE'
+            ? 'COMPLETED'
+            : json['status'],
         'triageStatus': json['status'],
         ...resultJson,
       };
@@ -61,7 +63,9 @@ class IntakeFlowResponse {
       status: json['status']?.toString() ?? '',
       intakeSessionId: sessionId,
       mergedIntake: json['mergedIntake'] is Map<String, dynamic>
-          ? Map<String, dynamic>.from(json['mergedIntake'] as Map<String, dynamic>)
+          ? Map<String, dynamic>.from(
+              json['mergedIntake'] as Map<String, dynamic>,
+            )
           : <String, dynamic>{},
       assistantMessage: json['assistantMessage']?.toString(),
       questions: (json['questions'] as List<dynamic>? ?? const [])

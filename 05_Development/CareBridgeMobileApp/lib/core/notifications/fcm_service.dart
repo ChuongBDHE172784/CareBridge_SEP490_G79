@@ -47,7 +47,9 @@ class FcmService {
     final sessionId = message.data['sessionId'];
     if (message.data['type'] == 'EMERGENCY_ALERT' && sessionId != null) {
       final context = rootNavigatorKey.currentContext;
-      if (context != null) GoRouter.of(context).push('/emergency/alert/$sessionId');
+      if (context != null) {
+        GoRouter.of(context).push('/emergency/alert/$sessionId');
+      }
     }
   }
 
@@ -55,7 +57,9 @@ class FcmService {
     try {
       await apiPost('/api/v1/notifications/device-token', {
         'token': token,
-        'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'IOS' : 'ANDROID',
+        'platform': defaultTargetPlatform == TargetPlatform.iOS
+            ? 'IOS'
+            : 'ANDROID',
       });
       debugPrint('[FcmService] device token registered');
     } catch (e) {

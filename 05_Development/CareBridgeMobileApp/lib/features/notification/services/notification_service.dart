@@ -40,9 +40,11 @@ class NotificationService {
   }
 
   Future<List<NotificationPreference>> updatePreferences(
-      List<NotificationPreference> prefs) async {
-    final res = await apiPut('/api/v1/users/me/notification-preferences',
-        {'preferences': prefs.map((p) => p.toJson()).toList()});
+    List<NotificationPreference> prefs,
+  ) async {
+    final res = await apiPut('/api/v1/users/me/notification-preferences', {
+      'preferences': prefs.map((p) => p.toJson()).toList(),
+    });
     final data = res['data'] as Map<String, dynamic>;
     final list = data['preferences'] as List<dynamic>;
     return list

@@ -24,7 +24,9 @@ class GrowthMeasurement {
   factory GrowthMeasurement.fromJson(Map<String, dynamic> json) {
     return GrowthMeasurement(
       id: json['id'] ?? json['measurementId'] ?? '',
-      measuredAt: DateTime.tryParse(json['measuredAt']?.toString() ?? '') ?? DateTime.now(),
+      measuredAt:
+          DateTime.tryParse(json['measuredAt']?.toString() ?? '') ??
+          DateTime.now(),
       weightKg: (json['weightKg'] as num?)?.toDouble(),
       heightCm: (json['heightCm'] as num?)?.toDouble(),
       headCircumferenceCm: (json['headCircumferenceCm'] as num?)?.toDouble(),

@@ -24,6 +24,39 @@ class JourneyDashboard {
     this.startDate,
   });
 
+  static int? calculatePregnancyWeek({
+    DateTime? lastMenstrualDate,
+    DateTime? estimatedDueDate,
+    DateTime? today,
+  }) {
+    final referenceDate = today ?? DateTime.now();
+    final normalizedToday = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      referenceDate.day,
+    );
+    if (lastMenstrualDate != null) {
+      final normalizedLmp = DateTime(
+        lastMenstrualDate.year,
+        lastMenstrualDate.month,
+        lastMenstrualDate.day,
+      );
+      return (normalizedToday.difference(normalizedLmp).inDays / 7)
+          .floor()
+          .clamp(0, 42);
+    }
+    if (estimatedDueDate != null) {
+      final normalizedDueDate = DateTime(
+        estimatedDueDate.year,
+        estimatedDueDate.month,
+        estimatedDueDate.day,
+      );
+      final daysUntilDue = normalizedDueDate.difference(normalizedToday).inDays;
+      return ((280 - daysUntilDue) / 7).floor().clamp(0, 42);
+    }
+    return null;
+  }
+
   bool get hasActiveJourney => journeyId != null && status != 'NO_JOURNEY';
   bool get isPregnancy => journeyType == 'PREGNANCY';
 

@@ -3,19 +3,27 @@ enum VaccinationStatus { scheduled, completed, missed, rescheduled }
 extension VaccinationStatusExtension on VaccinationStatus {
   String get displayLabel {
     switch (this) {
-      case VaccinationStatus.scheduled: return 'Đã lên lịch';
-      case VaccinationStatus.completed: return 'Đã hoàn thành';
-      case VaccinationStatus.missed: return 'Bỏ lỡ';
-      case VaccinationStatus.rescheduled: return 'Đã dời lịch';
+      case VaccinationStatus.scheduled:
+        return 'Đã lên lịch';
+      case VaccinationStatus.completed:
+        return 'Đã hoàn thành';
+      case VaccinationStatus.missed:
+        return 'Bỏ lỡ';
+      case VaccinationStatus.rescheduled:
+        return 'Đã dời lịch';
     }
   }
 
   static VaccinationStatus fromApi(String? v) {
     switch (v) {
-      case 'COMPLETED': return VaccinationStatus.completed;
-      case 'MISSED': return VaccinationStatus.missed;
-      case 'RESCHEDULED': return VaccinationStatus.rescheduled;
-      default: return VaccinationStatus.scheduled;
+      case 'COMPLETED':
+        return VaccinationStatus.completed;
+      case 'MISSED':
+        return VaccinationStatus.missed;
+      case 'RESCHEDULED':
+        return VaccinationStatus.rescheduled;
+      default:
+        return VaccinationStatus.scheduled;
     }
   }
 }
@@ -53,12 +61,16 @@ class VaccinationRecord {
       vaccineName: json['vaccineName'] as String,
       status: VaccinationStatusExtension.fromApi(json['status'] as String?),
       plannedDate: DateTime.parse(json['plannedDate'] as String),
-      actualDate: json['actualDate'] != null ? DateTime.parse(json['actualDate'] as String) : null,
+      actualDate: json['actualDate'] != null
+          ? DateTime.parse(json['actualDate'] as String)
+          : null,
       facilityName: json['facilityName'] as String?,
       facilityAddress: json['facilityAddress'] as String?,
       childId: json['childId'] as String?,
       childName: json['childName'] as String?,
-      childBirthDate: json['childBirthDate'] != null ? DateTime.parse(json['childBirthDate'] as String) : null,
+      childBirthDate: json['childBirthDate'] != null
+          ? DateTime.parse(json['childBirthDate'] as String)
+          : null,
       note: json['note'] as String?,
     );
   }
@@ -67,12 +79,15 @@ class VaccinationRecord {
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   String get plannedDateLabel => _formatDate(plannedDate);
-  String get actualDateLabel => actualDate != null ? _formatDate(actualDate!) : '—';
+  String get actualDateLabel =>
+      actualDate != null ? _formatDate(actualDate!) : '—';
 
   String get childAgeLabel {
     if (childBirthDate == null) return '';
     final now = DateTime.now();
-    final months = (now.year - childBirthDate!.year) * 12 + (now.month - childBirthDate!.month);
+    final months =
+        (now.year - childBirthDate!.year) * 12 +
+        (now.month - childBirthDate!.month);
     if (months < 24) return '$months tháng tuổi';
     final years = months ~/ 12;
     return '$years tuổi';

@@ -3,7 +3,9 @@ import '../models/baby_model.dart';
 
 class BabyService {
   // UC31: Create a new baby profile
-  Future<Map<String, dynamic>> createBabyProfile(CreateBabyRequest request) async {
+  Future<Map<String, dynamic>> createBabyProfile(
+    CreateBabyRequest request,
+  ) async {
     final data = await apiPost('/api/v1/babies', request.toJson());
     return data['data'] as Map<String, dynamic>;
   }

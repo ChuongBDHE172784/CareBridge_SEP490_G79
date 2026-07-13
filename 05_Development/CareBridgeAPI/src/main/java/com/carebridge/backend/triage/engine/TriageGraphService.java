@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,15 @@ public class TriageGraphService {
         PediatricRiskRules.RuleOutcome outcome = applyRules(request, symptoms);
         List<TriageCitation> citations = attachCitations(sources);
 
-        if (!questions.isEmpty()) {
+        if (symptoms.isEmpty() && !"RED".equals(outcome.riskLevel())) {
+            questions = new ArrayList<>(questions);
+            questions.add("Vui lòng mô tả lại bằng dấu hiệu cụ thể mà bạn quan sát được ở trẻ.");
+            questions = questions.stream().distinct().limit(3).toList();
+        }
+
+        // RED precedence: missing demographic/context fields never downgrade an
+        // immediately dangerous structured symptom.
+        if (!questions.isEmpty() && !"RED".equals(outcome.riskLevel())) {
             return ChildTriageResult.builder()
                     .status("NEED_MORE_INFO")
                     .summary("CareBridge cần thêm thông tin quan trọng trước khi phân loại rủi ro chắc chắn.")
@@ -33,6 +42,7 @@ public class TriageGraphService {
                     .emergencyActionRequired(false)
                     .redFlags(List.of())
                     .matchedRules(List.of())
+                    .normalizedSymptoms(symptoms)
                     .citations(citations)
                     .disclaimer(DISCLAIMER)
                     .questions(questions)
@@ -51,6 +61,7 @@ public class TriageGraphService {
                 .emergencyActionRequired("RED".equals(riskLevel))
                 .redFlags(outcome.redFlags())
                 .matchedRules(outcome.matchedRules())
+                .normalizedSymptoms(symptoms)
                 .citations(citations)
                 .disclaimer(DISCLAIMER)
                 .questions(List.of())

@@ -23,6 +23,16 @@ public class TriageResultResponse {
     private String disclaimer;
     private List<String> questions;
     private String warning;
+    private List<String> normalizedSymptoms;
+    private List<Map<String, Object>> normalizedSymptomDetails;
+    private List<String> evidenceIds;
+    private String recommendationCode;
+    private Map<String, Object> explainabilityMetrics;
+    private String graphVersion;
+    private String ruleSetVersion;
+    private String ontologyVersion;
+    private String responseSchemaVersion;
+    private Boolean fallbackUsed;
     private String status;
     private Instant createdAt;
     private Instant completedAt;

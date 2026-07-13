@@ -96,7 +96,10 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_birthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ngày sinh.'), backgroundColor: _primary),
+        const SnackBar(
+          content: Text('Vui lòng chọn ngày sinh.'),
+          backgroundColor: _primary,
+        ),
       );
       return;
     }
@@ -122,7 +125,10 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu. Vui lòng thử lại.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể lưu. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -143,7 +149,12 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
         ),
         title: const Text(
           'CareBridge',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _primary),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _primary,
+          ),
         ),
         actions: [
           IconButton(
@@ -155,17 +166,36 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
       body: Stack(
         children: [
           if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            const Center(
+              child: CircularProgressIndicator(color: _primaryContainer),
+            )
           else if (_errorMsg != null)
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: _primaryContainer, size: 48),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: _primaryContainer,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
-                  Text(_errorMsg!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+                  Text(
+                    _errorMsg!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  TextButton(onPressed: _loadProfile, child: const Text('Thử lại', style: TextStyle(color: _primary))),
+                  TextButton(
+                    onPressed: _loadProfile,
+                    child: const Text(
+                      'Thử lại',
+                      style: TextStyle(color: _primary),
+                    ),
+                  ),
                 ],
               ),
             )
@@ -197,8 +227,16 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(20), blurRadius: 20, offset: const Offset(0, 6)),
-          const BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(
+            color: _primary.withAlpha(20),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+          const BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
         ],
       ),
       child: Column(
@@ -231,21 +269,25 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildNumberField(
-                controller: _weightCtrl,
-                label: 'Cân nặng lúc sinh (kg)',
-                hint: '3.5',
-                min: 0.5,
-                max: 10.0,
-              )),
+              Expanded(
+                child: _buildNumberField(
+                  controller: _weightCtrl,
+                  label: 'Cân nặng lúc sinh (kg)',
+                  hint: '3.5',
+                  min: 0.5,
+                  max: 10.0,
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _buildNumberField(
-                controller: _lengthCtrl,
-                label: 'Chiều dài lúc sinh (cm)',
-                hint: '50',
-                min: 20.0,
-                max: 100.0,
-              )),
+              Expanded(
+                child: _buildNumberField(
+                  controller: _lengthCtrl,
+                  label: 'Chiều dài lúc sinh (cm)',
+                  hint: '50',
+                  min: 20.0,
+                  max: 100.0,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -267,10 +309,18 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
               color: _surfaceContainer,
               border: Border.all(color: Colors.white, width: 4),
               boxShadow: [
-                BoxShadow(color: _primary.withAlpha(30), blurRadius: 12, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: _primary.withAlpha(30),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            child: const Icon(Icons.child_care_rounded, color: _primaryContainer, size: 56),
+            child: const Icon(
+              Icons.child_care_rounded,
+              color: _primaryContainer,
+              size: 56,
+            ),
           ),
           Positioned(
             bottom: 0,
@@ -282,7 +332,11 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
                 color: _primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.photo_camera_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -294,8 +348,13 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
     return TextFormField(
       controller: _nicknameCtrl,
       maxLength: 100,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập biệt danh' : null,
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, color: _onSurface),
+      validator: (v) =>
+          (v == null || v.trim().isEmpty) ? 'Vui lòng nhập biệt danh' : null,
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 15,
+        color: _onSurface,
+      ),
       decoration: _inputDeco('Biệt danh (Nickname)'),
     );
   }
@@ -317,15 +376,34 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
               color: _primaryContainer.withAlpha(30),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.child_care_rounded, color: _primaryContainer, size: 22),
+            child: const Icon(
+              Icons.child_care_rounded,
+              color: _primaryContainer,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text('Đang hoạt động', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
-                Text('Đặt làm hồ sơ chính', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                Text(
+                  'Đang hoạt động',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                Text(
+                  'Đặt làm hồ sơ chính',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -353,7 +431,14 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ngày sinh', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+            const Text(
+              'Ngày sinh',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
               _birthDate != null
@@ -383,18 +468,40 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Giới tính', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+          const Text(
+            'Giới tính',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11,
+              color: _onSurfaceVariant,
+            ),
+          ),
           DropdownButtonHideUnderline(
             child: DropdownButton<BabyGender>(
               value: _gender,
               isExpanded: true,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurface,
+              ),
               items: const [
-                DropdownMenuItem(value: BabyGender.male, child: Text('Bé Trai')),
-                DropdownMenuItem(value: BabyGender.female, child: Text('Bé Gái')),
-                DropdownMenuItem(value: BabyGender.unknown, child: Text('Khác')),
+                DropdownMenuItem(
+                  value: BabyGender.male,
+                  child: Text('Bé Trai'),
+                ),
+                DropdownMenuItem(
+                  value: BabyGender.female,
+                  child: Text('Bé Gái'),
+                ),
+                DropdownMenuItem(
+                  value: BabyGender.unknown,
+                  child: Text('Khác'),
+                ),
               ],
-              onChanged: (v) { if (v != null) setState(() => _gender = v); },
+              onChanged: (v) {
+                if (v != null) setState(() => _gender = v);
+              },
               dropdownColor: _canvas,
               borderRadius: BorderRadius.circular(16),
             ),
@@ -421,7 +528,11 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
         if (n == null || n < min || n > max) return 'Không hợp lệ';
         return null;
       },
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 14,
+        color: _onSurface,
+      ),
       decoration: _inputDeco(label, hint: hint),
     );
   }
@@ -430,8 +541,16 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
-      hintStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFFBBA9A4)),
+      labelStyle: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 12,
+        color: _onSurfaceVariant,
+      ),
+      hintStyle: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 13,
+        color: Color(0xFFBBA9A4),
+      ),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -466,12 +585,21 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified_user_outlined, color: _primaryContainer, size: 18),
+          Icon(
+            Icons.verified_user_outlined,
+            color: _primaryContainer,
+            size: 18,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Thông tin hồ sơ bé được bảo mật và chỉ được chia sẻ với các thành viên trong nhóm chăm sóc của bạn.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant, height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -497,9 +625,19 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
                 )
-              : const Text('Lưu hồ sơ', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700)),
+              : const Text(
+                  'Lưu hồ sơ',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
@@ -511,7 +649,14 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
             side: BorderSide.none,
             shape: const StadiumBorder(),
           ),
-          child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Hủy bỏ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
@@ -527,16 +672,27 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20),
+              ],
             ),
             child: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle_rounded, color: Color(0xFF845143), size: 48),
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF845143),
+                  size: 48,
+                ),
                 SizedBox(height: 12),
                 Text(
                   'Đã cập nhật hồ sơ thành công!',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF271812)),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF271812),
+                  ),
                 ),
               ],
             ),

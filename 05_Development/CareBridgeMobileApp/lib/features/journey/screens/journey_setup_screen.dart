@@ -43,7 +43,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   static const _primaryDark = Color(0xFF845143);
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
   static const _text = Color(0xFF5A463F);
   static const _muted = Color(0xFF9C857C);
   static const _border = Color(0xFFE8DDD6);
@@ -156,21 +155,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   String _formatDisplayDate(DateTime date) =>
       '${date.day} tháng ${date.month}, ${date.year}';
-
-  String _sourceDescription() {
-    switch (_selectedMethod) {
-      case _DatingMethod.lmp:
-        return 'được tính từ ngày bắt đầu kỳ kinh cuối cùng';
-      case _DatingMethod.conception:
-        return 'được xác định từ ngày thụ tinh';
-      case _DatingMethod.gestationalAge:
-        return 'được tính từ tuổi thai bạn đã nhập';
-      case _DatingMethod.dueDate:
-        return 'được tính từ ngày dự sinh bác sĩ đã cung cấp';
-      case null:
-        return 'được CareBridge ước tính cho hành trình của bạn';
-    }
-  }
 
   String _notes() {
     final parts = <String>[

@@ -3,13 +3,15 @@ import '../services/vaccination_service.dart';
 
 class AddVaccinationRecordScreen extends StatefulWidget {
   final String babyId;
-  const AddVaccinationRecordScreen({Key? key, required this.babyId}) : super(key: key);
+  const AddVaccinationRecordScreen({super.key, required this.babyId});
 
   @override
-  State<AddVaccinationRecordScreen> createState() => _AddVaccinationRecordScreenState();
+  State<AddVaccinationRecordScreen> createState() =>
+      _AddVaccinationRecordScreenState();
 }
 
-class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen> {
+class _AddVaccinationRecordScreenState
+    extends State<AddVaccinationRecordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _vaccinationService = VaccinationService();
 
@@ -35,9 +37,9 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_vaccineDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ngày tiêm')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Vui lòng chọn ngày tiêm')));
       return;
     }
 
@@ -45,24 +47,21 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
     setState(() => _isLoading = true);
 
     try {
-      await _vaccinationService.addVaccinationRecord(
-        widget.babyId,
-        {
-          'vaccineName': _vaccineName,
-          'doseNumber': _doseNumber,
-          'actualDate': _vaccineDate!.toIso8601String(),
-          'facilityName': _facility,
-          'remindNext': _remindNext,
-        },
-      );
+      await _vaccinationService.addVaccinationRecord(widget.babyId, {
+        'vaccineName': _vaccineName,
+        'doseNumber': _doseNumber,
+        'actualDate': _vaccineDate!.toIso8601String(),
+        'facilityName': _facility,
+        'remindNext': _remindNext,
+      });
       if (mounted) {
         Navigator.pop(context, true); // Return true to indicate success
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Có lỗi xảy ra: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Có lỗi xảy ra: $e')));
       }
     } finally {
       if (mounted) {
@@ -94,7 +93,12 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 100,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -120,7 +124,9 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                         icon: Icons.vaccines_outlined,
                         hint: 'Vd: 6 trong 1 (Hexaxim)',
                       ),
-                      validator: (val) => val == null || val.isEmpty ? 'Vui lòng nhập tên vaccine' : null,
+                      validator: (val) => val == null || val.isEmpty
+                          ? 'Vui lòng nhập tên vaccine'
+                          : null,
                       onSaved: (val) => _vaccineName = val,
                     ),
                     const SizedBox(height: 20),
@@ -128,16 +134,22 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                     _buildLabel('Mũi tiêm thứ', required: true),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      decoration: _inputDecoration(icon: Icons.format_list_numbered),
+                      decoration: _inputDecoration(
+                        icon: Icons.format_list_numbered,
+                      ),
                       hint: const Text('Chọn mũi tiêm'),
                       items: const [
                         DropdownMenuItem(value: '1', child: Text('Mũi 1')),
                         DropdownMenuItem(value: '2', child: Text('Mũi 2')),
                         DropdownMenuItem(value: '3', child: Text('Mũi 3')),
                         DropdownMenuItem(value: '4', child: Text('Mũi 4')),
-                        DropdownMenuItem(value: 'booster', child: Text('Mũi nhắc lại')),
+                        DropdownMenuItem(
+                          value: 'booster',
+                          child: Text('Mũi nhắc lại'),
+                        ),
                       ],
-                      validator: (val) => val == null ? 'Vui lòng chọn mũi tiêm' : null,
+                      validator: (val) =>
+                          val == null ? 'Vui lòng chọn mũi tiêm' : null,
                       onChanged: (val) => setState(() => _doseNumber = val),
                     ),
                     const SizedBox(height: 20),
@@ -156,7 +168,9 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                             icon: Icons.calendar_month_outlined,
                             hint: 'dd/mm/yyyy',
                           ),
-                          validator: (val) => _vaccineDate == null ? 'Vui lòng chọn ngày tiêm' : null,
+                          validator: (val) => _vaccineDate == null
+                              ? 'Vui lòng chọn ngày tiêm'
+                              : null,
                         ),
                       ),
                     ),
@@ -178,11 +192,18 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                       children: [
                         const Text(
                           'Ảnh sổ tiêm / Giấy chứng nhận',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF524F4C)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF524F4C),
+                          ),
                         ),
                         Text(
                           '(Tùy chọn)',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
                         ),
                       ],
                     ),
@@ -193,14 +214,31 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                       decoration: BoxDecoration(
                         color: const Color(0xFFF9F2EE),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFF2EAE4), width: 2, style: BorderStyle.solid), // Dashed not supported natively without package
+                        border: Border.all(
+                          color: const Color(0xFFF2EAE4),
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ), // Dashed not supported natively without package
                       ),
                       child: const Column(
                         children: [
-                          Icon(Icons.add_photo_alternate_outlined, color: Color(0xFFC98C7B), size: 32),
+                          Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: Color(0xFFC98C7B),
+                            size: 32,
+                          ),
                           SizedBox(height: 8),
-                          Text('Tải ảnh lên', style: TextStyle(color: Color(0xFF845143), fontWeight: FontWeight.bold)),
-                          Text('PNG, JPG tối đa 5MB', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(
+                            'Tải ảnh lên',
+                            style: TextStyle(
+                              color: Color(0xFF845143),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'PNG, JPG tối đa 5MB',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
                         ],
                       ),
                     ),
@@ -210,9 +248,18 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
 
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      activeColor: const Color(0xFFC98C7B),
-                      title: const Text('Nhắc lịch mũi tiếp theo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      subtitle: const Text('Hệ thống sẽ gửi thông báo trước 3 ngày', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      activeThumbColor: const Color(0xFFC98C7B),
+                      title: const Text(
+                        'Nhắc lịch mũi tiếp theo',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Hệ thống sẽ gửi thông báo trước 3 ngày',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                       value: _remindNext,
                       onChanged: (val) => setState(() => _remindNext = val),
                     ),
@@ -221,16 +268,21 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
               ),
             ),
           ),
-          
+
           // Sticky Bottom Action Area
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 32),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 32,
+              ),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF8F4).withOpacity(0.95),
+                color: const Color(0xFFFEF8F4).withValues(alpha: 0.95),
                 border: const Border(top: BorderSide(color: Color(0xFFF2EAE4))),
               ),
               child: ElevatedButton.icon(
@@ -239,12 +291,29 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
                   backgroundColor: const Color(0xFFC98C7B),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                icon: _isLoading ? const SizedBox.shrink() : const Icon(Icons.save),
+                icon: _isLoading
+                    ? const SizedBox.shrink()
+                    : const Icon(Icons.save),
                 label: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Lưu thông tin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Lưu thông tin',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -264,7 +333,11 @@ class _AddVaccinationRecordScreenState extends State<AddVaccinationRecordScreen>
           fontFamily: 'Quicksand',
         ),
         children: [
-          if (required) const TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+          if (required)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(color: Colors.red),
+            ),
         ],
       ),
     );

@@ -50,7 +50,8 @@ class _AddMaternalHealthMetricScreenState
         : 'WEIGHT';
   }
 
-  String get _title => _isBloodPressure ? 'Thêm huyết áp' : 'Thêm $_metricLabel';
+  String get _title =>
+      _isBloodPressure ? 'Thêm huyết áp' : 'Thêm $_metricLabel';
   String get _primaryLabel =>
       _isBloodPressure ? 'Tâm thu (mmHg)' : '$_metricLabel ($_unit)';
   String get _unit {
@@ -91,12 +92,12 @@ class _AddMaternalHealthMetricScreenState
   };
 
   DateTime get _resolvedMeasuredAt => DateTime(
-        _measuredDate.year,
-        _measuredDate.month,
-        _measuredDate.day,
-        _measuredTime.hour,
-        _measuredTime.minute,
-      );
+    _measuredDate.year,
+    _measuredDate.month,
+    _measuredDate.day,
+    _measuredTime.hour,
+    _measuredTime.minute,
+  );
 
   @override
   void dispose() {
@@ -191,9 +192,9 @@ class _AddMaternalHealthMetricScreenState
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: _error),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _error));
   }
 
   @override
@@ -223,8 +224,9 @@ class _AddMaternalHealthMetricScreenState
               children: [
                 TextFormField(
                   controller: _primaryCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
@@ -235,8 +237,9 @@ class _AddMaternalHealthMetricScreenState
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _secondaryCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
@@ -354,7 +357,9 @@ class _PickerTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: _AddMaternalHealthMetricScreenState._surfaceContainer,
-          border: Border.all(color: _AddMaternalHealthMetricScreenState._outline),
+          border: Border.all(
+            color: _AddMaternalHealthMetricScreenState._outline,
+          ),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(

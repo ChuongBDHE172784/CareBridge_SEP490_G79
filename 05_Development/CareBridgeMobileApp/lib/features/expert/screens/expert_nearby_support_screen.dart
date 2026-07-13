@@ -9,7 +9,8 @@ class ExpertNearbySupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ExpertPlaceholderScreen(
       title: 'Hỗ trợ gần bạn',
-      subtitle: 'Tính năng gợi ý chuyên gia gần vị trí người dùng đang được hoàn thiện.',
+      subtitle:
+          'Tính năng gợi ý chuyên gia gần vị trí người dùng đang được hoàn thiện.',
       icon: Icons.location_on_outlined,
     );
   }

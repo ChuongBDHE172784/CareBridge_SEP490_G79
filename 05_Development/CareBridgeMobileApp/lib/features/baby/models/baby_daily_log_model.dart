@@ -3,29 +3,42 @@ enum LogType { feeding, sleep, diaper, symptom }
 extension LogTypeExtension on LogType {
   String get displayLabel {
     switch (this) {
-      case LogType.feeding: return 'Cho bé ăn';
-      case LogType.sleep: return 'Ngủ nghỉ';
-      case LogType.diaper: return 'Thay tã';
-      case LogType.symptom: return 'Sức khỏe';
+      case LogType.feeding:
+        return 'Cho bé ăn';
+      case LogType.sleep:
+        return 'Ngủ nghỉ';
+      case LogType.diaper:
+        return 'Thay tã';
+      case LogType.symptom:
+        return 'Sức khỏe';
     }
   }
 
   String toApiValue() {
     switch (this) {
-      case LogType.feeding: return 'FEEDING';
-      case LogType.sleep: return 'SLEEP';
-      case LogType.diaper: return 'DIAPER';
-      case LogType.symptom: return 'SYMPTOM';
+      case LogType.feeding:
+        return 'FEEDING';
+      case LogType.sleep:
+        return 'SLEEP';
+      case LogType.diaper:
+        return 'DIAPER';
+      case LogType.symptom:
+        return 'SYMPTOM';
     }
   }
 
   static LogType fromApi(String? v) {
     switch (v) {
-      case 'FEEDING': return LogType.feeding;
-      case 'SLEEP': return LogType.sleep;
-      case 'DIAPER': return LogType.diaper;
-      case 'SYMPTOM': return LogType.symptom;
-      default: return LogType.feeding;
+      case 'FEEDING':
+        return LogType.feeding;
+      case 'SLEEP':
+        return LogType.sleep;
+      case 'DIAPER':
+        return LogType.diaper;
+      case 'SYMPTOM':
+        return LogType.symptom;
+      default:
+        return LogType.feeding;
     }
   }
 }
@@ -56,8 +69,12 @@ class BabyDailyLog {
       id: json['babyLogId']?.toString() ?? json['id']?.toString() ?? '',
       babyId: json['babyId']?.toString() ?? '',
       logType: LogTypeExtension.fromApi(json['logType'] as String?),
-      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null,
-      endedAt: json['endedAt'] != null ? DateTime.parse(json['endedAt'] as String) : null,
+      startedAt: json['startedAt'] != null
+          ? DateTime.parse(json['startedAt'] as String)
+          : null,
+      endedAt: json['endedAt'] != null
+          ? DateTime.parse(json['endedAt'] as String)
+          : null,
       quantity: (json['quantity'] as num?)?.toDouble(),
       unit: json['unit'] as String?,
       note: json['note'] as String?,
@@ -140,8 +157,12 @@ class BabyLogSummaryResponse {
     return BabyLogSummaryResponse(
       babyId: json['babyId']?.toString() ?? '',
       period: json['period'] as String? ?? '24h',
-      fromDate: json['fromDate'] != null ? DateTime.parse(json['fromDate'] as String) : null,
-      toDate: json['toDate'] != null ? DateTime.parse(json['toDate'] as String) : null,
+      fromDate: json['fromDate'] != null
+          ? DateTime.parse(json['fromDate'] as String)
+          : null,
+      toDate: json['toDate'] != null
+          ? DateTime.parse(json['toDate'] as String)
+          : null,
       summaries: summaries,
       aiInsight: json['aiInsight'] as String?,
     );

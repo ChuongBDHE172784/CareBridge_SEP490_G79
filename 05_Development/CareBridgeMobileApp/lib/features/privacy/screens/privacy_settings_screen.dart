@@ -16,7 +16,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
   static const _surfaceLowest = Color(0xFFFFFFFF);
   static const _errorContainer = Color(0xFFFFDAD6);
   static const _onErrorContainer = Color(0xFF93000A);
@@ -79,10 +78,14 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Thu hồi quyền truy cập',
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: Text('Bạn có chắc muốn thu hồi quyền của ${grant.recipient}?',
-            style: const TextStyle(fontFamily: 'Lexend')),
+        title: const Text(
+          'Thu hồi quyền truy cập',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Bạn có chắc muốn thu hồi quyền của ${grant.recipient}?',
+          style: const TextStyle(fontFamily: 'Lexend'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -91,8 +94,10 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: _primary),
-            child: const Text('Thu hồi',
-                style: TextStyle(color: Colors.white, fontFamily: 'Lexend')),
+            child: const Text(
+              'Thu hồi',
+              style: TextStyle(color: Colors.white, fontFamily: 'Lexend'),
+            ),
           ),
         ],
       ),
@@ -100,7 +105,9 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     if (confirmed != true) return;
     try {
       await PrivacyService.instance.revokeConsent(grant.id);
-      if (mounted) setState(() => _consents.removeWhere((c) => c.id == grant.id));
+      if (mounted) {
+        setState(() => _consents.removeWhere((c) => c.id == grant.id));
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,10 +127,13 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer))
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : _buildBody(),
+                  ? _buildError()
+                  : _buildBody(),
             ),
           ],
         ),
@@ -197,7 +207,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                         ),
                       ),
                     ),
-                  )
+                  ),
                 ]
               : _buildConsentItems(),
         ),
@@ -221,8 +231,9 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
               subtitle:
                   'Cho phép các cha mẹ khác tìm thấy bạn qua tên hoặc email.',
               value: s.profileVisibility == 'PUBLIC',
-              onChanged: (v) =>
-                  _patch(s.copyWith(profileVisibility: v ? 'PUBLIC' : 'PRIVATE')),
+              onChanged: (v) => _patch(
+                s.copyWith(profileVisibility: v ? 'PUBLIC' : 'PRIVATE'),
+              ),
             ),
           ],
         ),
@@ -408,23 +419,30 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           children: [
             const Icon(Icons.error_outline, color: _primary, size: 48),
             const SizedBox(height: 16),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _onSurfaceVariant)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _load,
               style: FilledButton.styleFrom(
-                  backgroundColor: _primaryContainer,
-                  shape: const StadiumBorder()),
-              child: const Text('Thử lại',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),

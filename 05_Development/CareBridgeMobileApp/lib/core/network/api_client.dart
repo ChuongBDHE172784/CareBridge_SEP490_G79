@@ -65,17 +65,22 @@ Future<_RefreshOutcome> _tryRefresh() async {
       return _RefreshOutcome.refreshed;
     }
     // 400/401/403 from refresh endpoint = token is invalid/revoked
-    final outcome = (response.statusCode == 400 ||
+    final outcome =
+        (response.statusCode == 400 ||
             response.statusCode == 401 ||
             response.statusCode == 403)
         ? _RefreshOutcome.tokenInvalid
         : _RefreshOutcome.networkError;
-    debugPrint('[ApiClient] _tryRefresh: FAILED → outcome=$outcome body=${response.body}');
+    debugPrint(
+      '[ApiClient] _tryRefresh: FAILED → outcome=$outcome body=${response.body}',
+    );
     _refreshLock!.complete(outcome);
     return outcome;
   } catch (e) {
     // Network/IO exception = don't clear session, user may be offline
-    debugPrint('[ApiClient] _tryRefresh: EXCEPTION → $e → networkError (session kept)');
+    debugPrint(
+      '[ApiClient] _tryRefresh: EXCEPTION → $e → networkError (session kept)',
+    );
     _refreshLock!.complete(_RefreshOutcome.networkError);
     return _RefreshOutcome.networkError;
   } finally {
@@ -89,7 +94,9 @@ Future<void> _handle401(http.Response response) async {
     debugPrint('[ApiClient] _handle401: account blocked → reason=$code');
     unawaited(AuthState.instance.clearWithReason(code));
   } else {
-    debugPrint('[ApiClient] _handle401: clearing session (real 401 with valid token)');
+    debugPrint(
+      '[ApiClient] _handle401: clearing session (real 401 with valid token)',
+    );
     unawaited(AuthState.instance.clear());
   }
 }
@@ -117,15 +124,23 @@ Future<http.Response> _handleUnauthorized(
   }
 }
 
-Future<dynamic> apiGet(String path, {String? token, Map<String, dynamic>? queryParams}) async {
+Future<dynamic> apiGet(
+  String path, {
+  String? token,
+  Map<String, dynamic>? queryParams,
+}) async {
   String queryString = '';
   if (queryParams != null && queryParams.isNotEmpty) {
-    queryString = '?' + queryParams.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}').join('&');
+    queryString =
+        '?${queryParams.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}').join('&')}';
   }
   final uri = Uri.parse('$_baseUrl$path$queryString');
   var response = await http.get(uri, headers: _headers(token: token));
   response = await _handleUnauthorized(
-    response, token, () => http.get(uri, headers: _headers()));
+    response,
+    token,
+    () => http.get(uri, headers: _headers()),
+  );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
@@ -140,9 +155,16 @@ Future<dynamic> apiPost(
 }) async {
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
-  var response = await http.post(uri, headers: _headers(token: token), body: encoded);
+  var response = await http.post(
+    uri,
+    headers: _headers(token: token),
+    body: encoded,
+  );
   response = await _handleUnauthorized(
-    response, token, () => http.post(uri, headers: _headers(), body: encoded));
+    response,
+    token,
+    () => http.post(uri, headers: _headers(), body: encoded),
+  );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -151,13 +173,23 @@ Future<dynamic> apiPost(
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiPut(String path, Map<String, dynamic> body,
-    {String? token}) async {
+Future<dynamic> apiPut(
+  String path,
+  Map<String, dynamic> body, {
+  String? token,
+}) async {
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
-  var response = await http.put(uri, headers: _headers(token: token), body: encoded);
+  var response = await http.put(
+    uri,
+    headers: _headers(token: token),
+    body: encoded,
+  );
   response = await _handleUnauthorized(
-    response, token, () => http.put(uri, headers: _headers(), body: encoded));
+    response,
+    token,
+    () => http.put(uri, headers: _headers(), body: encoded),
+  );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -166,13 +198,23 @@ Future<dynamic> apiPut(String path, Map<String, dynamic> body,
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiPatch(String path, Map<String, dynamic> body,
-    {String? token}) async {
+Future<dynamic> apiPatch(
+  String path,
+  Map<String, dynamic> body, {
+  String? token,
+}) async {
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
-  var response = await http.patch(uri, headers: _headers(token: token), body: encoded);
+  var response = await http.patch(
+    uri,
+    headers: _headers(token: token),
+    body: encoded,
+  );
   response = await _handleUnauthorized(
-    response, token, () => http.patch(uri, headers: _headers(), body: encoded));
+    response,
+    token,
+    () => http.patch(uri, headers: _headers(), body: encoded),
+  );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -181,14 +223,23 @@ Future<dynamic> apiPatch(String path, Map<String, dynamic> body,
   throw ApiException(response.statusCode, response.body);
 }
 
-Future<dynamic> apiDelete(String path,
-    {String? token, Map<String, dynamic>? body}) async {
+Future<dynamic> apiDelete(
+  String path, {
+  String? token,
+  Map<String, dynamic>? body,
+}) async {
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = body != null ? jsonEncode(body) : null;
-  var response =
-      await http.delete(uri, headers: _headers(token: token), body: encoded);
-  response = await _handleUnauthorized(response, token,
-      () => http.delete(uri, headers: _headers(), body: encoded));
+  var response = await http.delete(
+    uri,
+    headers: _headers(token: token),
+    body: encoded,
+  );
+  response = await _handleUnauthorized(
+    response,
+    token,
+    () => http.delete(uri, headers: _headers(), body: encoded),
+  );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -196,7 +247,6 @@ Future<dynamic> apiDelete(String path,
   if (response.statusCode == 401) await _handle401(response);
   throw ApiException(response.statusCode, response.body);
 }
-
 
 Future<dynamic> apiMultipart(
   String path,
@@ -214,14 +264,18 @@ Future<dynamic> apiMultipart(
   }
   if (token != null) request.headers['Authorization'] = 'Bearer \$token';
   final effectiveToken = token ?? AuthState.instance.accessToken;
-  if (effectiveToken != null) request.headers['Authorization'] = 'Bearer \$effectiveToken';
+  if (effectiveToken != null) {
+    request.headers['Authorization'] = 'Bearer \$effectiveToken';
+  }
   if (filePath != null) {
     final file = http.MultipartFile(
       fileFieldName ?? 'file',
       http.ByteStream(File(filePath).openRead()),
       await File(filePath).length(),
       filename: fileName,
-      contentType: MediaType.parse(mimeType ?? lookupMimeType(filePath!) ?? 'application/octet-stream'),
+      contentType: MediaType.parse(
+        mimeType ?? lookupMimeType(filePath) ?? 'application/octet-stream',
+      ),
     );
     request.files.add(file);
   }
@@ -233,7 +287,15 @@ Future<dynamic> apiMultipart(
   if (response.statusCode == 401 && effectiveToken2 != null) {
     final outcome = await _tryRefresh();
     if (outcome == _RefreshOutcome.refreshed) {
-      return apiMultipart(path, fields, token: null, fileFieldName: fileFieldName, filePath: filePath, fileName: fileName, mimeType: mimeType);
+      return apiMultipart(
+        path,
+        fields,
+        token: null,
+        fileFieldName: fileFieldName,
+        filePath: filePath,
+        fileName: fileName,
+        mimeType: mimeType,
+      );
     }
     await _handle401(response);
     throw ApiException(401, response.body);

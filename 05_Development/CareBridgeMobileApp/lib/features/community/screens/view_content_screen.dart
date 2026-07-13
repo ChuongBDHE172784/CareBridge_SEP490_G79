@@ -49,7 +49,12 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   static const _typeLabels = ['Tất cả', 'Bài viết', 'FAQ', 'Checklist'];
   static const _stageLabels = ['Chuẩn bị', 'Thai kỳ', 'Sau sinh', 'Chăm bé'];
-  static const _stageValues = ['PREPARATION', 'PREGNANCY', 'POSTPARTUM', 'BABY_CARE'];
+  static const _stageValues = [
+    'PREPARATION',
+    'PREGNANCY',
+    'POSTPARTUM',
+    'BABY_CARE',
+  ];
 
   static const _topicIcons = <String, IconData>{
     'restaurant': Icons.restaurant,
@@ -59,7 +64,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     'health_and_safety': Icons.health_and_safety,
     'topic': Icons.topic,
   };
-
 
   @override
   void initState() {
@@ -74,9 +78,11 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   void _openContentDetail(String contentId) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => VerifiedContentDetailScreen(contentId: contentId),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VerifiedContentDetailScreen(contentId: contentId),
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -129,7 +135,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SliverToBoxAdapter(child: _buildTopicRow()),
               if (_loading)
                 const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(color: _primaryContainer)),
+                  child: Center(
+                    child: CircularProgressIndicator(color: _primaryContainer),
+                  ),
                 )
               else ...[
                 // Show sections based on selected type
@@ -160,12 +168,22 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           const Expanded(
-            child: Text('Nội dung dành cho bạn',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w600, color: _primary)),
+            child: Text(
+              'Nội dung dành cho bạn',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+              ),
+            ),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: _onSurfaceVariant),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _onSurfaceVariant,
+            ),
             onPressed: () {
               // TODO: navigate to notification center
             },
@@ -189,25 +207,47 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           children: [
             // Pregnant icon
             Container(
-              width: 48, height: 48,
-              decoration: const BoxDecoration(color: _primaryContainer, shape: BoxShape.circle),
-              child: const Icon(Icons.pregnant_woman, color: Colors.white, size: 26),
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: _primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.pregnant_woman,
+                color: Colors.white,
+                size: 26,
+              ),
             ),
             const SizedBox(width: 14),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Trạng thái hiện tại',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+                  Text(
+                    'Trạng thái hiện tại',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                   SizedBox(height: 2),
-                  Text('Thai kỳ · Tuần 24',
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface)),
+                  Text(
+                    'Thai kỳ · Tuần 24',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                    ),
+                  ),
                 ],
               ),
             ),
             Container(
-              width: 40, height: 40,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: _surface,
                 borderRadius: BorderRadius.circular(10),
@@ -278,12 +318,21 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                 _load();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isActive ? _primaryContainer : _surfaceContainer,
                   borderRadius: BorderRadius.circular(99),
                   boxShadow: isActive
-                      ? [BoxShadow(color: _primaryContainer.withAlpha(77), blurRadius: 8, offset: const Offset(0, 2))]
+                      ? [
+                          BoxShadow(
+                            color: _primaryContainer.withAlpha(77),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
                       : null,
                 ),
                 child: Text(
@@ -322,10 +371,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             Expanded(
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: _onSurface,
+                ),
                 decoration: const InputDecoration(
                   hintText: 'Tìm kiếm bài viết, chủ đề...',
-                  hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant),
+                  hintStyle: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _onSurfaceVariant,
+                  ),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
@@ -360,7 +417,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             child: Column(
               children: [
                 Container(
-                  width: 56, height: 56,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: _surfaceContainerLow,
                     borderRadius: BorderRadius.circular(16),
@@ -368,8 +426,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   child: Icon(icon, color: _primary, size: 26),
                 ),
                 const SizedBox(height: 6),
-                Text(t.name,
-                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+                Text(
+                  t.name,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           );
@@ -390,14 +454,28 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Gợi ý hôm nay',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface)),
+              const Text(
+                'Gợi ý hôm nay',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
               GestureDetector(
                 onTap: () {
                   // TODO: navigate to full article list
                 },
-                child: const Text('Xem tất cả',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w500, color: _primary)),
+                child: const Text(
+                  'Xem tất cả',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -406,7 +484,13 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: const Color(0x0F5A463F), blurRadius: 20, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x0F5A463F),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,22 +502,35 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                       height: 176,
                       decoration: BoxDecoration(
                         color: _surfaceContainerHigh,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [_primaryContainer.withAlpha(51), _surfaceContainerHigh],
+                          colors: [
+                            _primaryContainer.withAlpha(51),
+                            _surfaceContainerHigh,
+                          ],
                         ),
                       ),
                       child: const Center(
-                        child: Icon(Icons.image, size: 48, color: _primaryContainer),
+                        child: Icon(
+                          Icons.image,
+                          size: 48,
+                          color: _primaryContainer,
+                        ),
                       ),
                     ),
                     // "Đã kiểm duyệt" badge
                     Positioned(
-                      top: 12, left: 12,
+                      top: 12,
+                      left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withAlpha(204),
                           borderRadius: BorderRadius.circular(99),
@@ -443,8 +540,15 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           children: [
                             Icon(Icons.verified, size: 14, color: _primary),
                             SizedBox(width: 4),
-                            Text('Đã kiểm duyệt',
-                                style: TextStyle(fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.w500, color: _primary)),
+                            Text(
+                              'Đã kiểm duyệt',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: _primary,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -460,28 +564,47 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: _surfaceContainerLow,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               _stageLabels[_selectedStageIndex].toUpperCase(),
-                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 10, fontWeight: FontWeight.w600, color: _primary, letterSpacing: 0.5),
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _primary,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           if (article.publishedAt != null)
                             Text(
                               article.publishedAt!,
-                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 12,
+                                color: _onSurfaceVariant,
+                              ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Text(
                         article.title,
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w700, color: _onSurface, height: 1.3),
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                          height: 1.3,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       // CTA button
@@ -493,11 +616,19 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(99),
+                            ),
                             elevation: 0,
                           ),
-                          child: const Text('Xem chi tiết',
-                              style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Xem chi tiết',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -518,8 +649,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Center(
-          child: Text('Không có câu hỏi nào cho giai đoạn này.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          child: Text(
+            'Không có câu hỏi nào cho giai đoạn này.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
         ),
       );
     }
@@ -530,14 +667,27 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Câu hỏi thường gặp',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface)),
+          const Text(
+            'Câu hỏi thường gặp',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: const Color(0x0F5A463F), blurRadius: 20, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x0F5A463F),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: List.generate(_faqs.length.clamp(0, 5), (i) {
@@ -547,27 +697,51 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   children: [
                     InkWell(
                       borderRadius: i == 0
-                          ? const BorderRadius.vertical(top: Radius.circular(16))
+                          ? const BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            )
                           : isLast
-                              ? const BorderRadius.vertical(bottom: Radius.circular(16))
-                              : BorderRadius.zero,
+                          ? const BorderRadius.vertical(
+                              bottom: Radius.circular(16),
+                            )
+                          : BorderRadius.zero,
                       onTap: () => _openContentDetail(faq.id),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(faq.title,
-                                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface, height: 1.3)),
+                              child: Text(
+                                faq.title,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 14,
+                                  color: _onSurface,
+                                  height: 1.3,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.chevron_right, color: _onSurfaceVariant, size: 22),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: _onSurfaceVariant,
+                              size: 22,
+                            ),
                           ],
                         ),
                       ),
                     ),
                     if (!isLast)
-                      const Divider(height: 1, thickness: 1, indent: 20, endIndent: 20, color: Color(0xFFF2EAE4)),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 20,
+                        endIndent: 20,
+                        color: Color(0xFFF2EAE4),
+                      ),
                   ],
                 );
               }),
@@ -585,8 +759,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Center(
-          child: Text('Không có checklist nào cho giai đoạn này.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          child: Text(
+            'Không có checklist nào cho giai đoạn này.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
         ),
       );
     }
@@ -597,76 +777,133 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Checklist theo giai đoạn',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface)),
+          const Text(
+            'Checklist theo giai đoạn',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
-          ..._checklists.map((cl) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: const Border(left: BorderSide(color: _primaryContainer, width: 4)),
-                boxShadow: [BoxShadow(color: const Color(0x0F5A463F), blurRadius: 20, offset: const Offset(0, 4))],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  _stageLabelFromValue(cl.stage),
-                                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 10, fontWeight: FontWeight.w600, color: _primary, letterSpacing: 0.5),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('${cl.items.length} mục cần chuẩn bị',
-                                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(cl.name,
-                              style: const TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w600, color: _onSurface)),
-                          if (cl.description.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.verified_user, size: 14, color: _onSurfaceVariant),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(cl.description,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 44, height: 44,
-                      decoration: const BoxDecoration(color: _secondaryContainer, shape: BoxShape.circle),
-                      child: const Icon(Icons.checklist, size: 22, color: _primary),
+          ..._checklists.map(
+            (cl) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: const Border(
+                    left: BorderSide(color: _primaryContainer, width: 4),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x0F5A463F),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _stageLabelFromValue(cl.stage),
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: _primary,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${cl.items.length} mục cần chuẩn bị',
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 12,
+                                    color: _onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              cl.name,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: _onSurface,
+                              ),
+                            ),
+                            if (cl.description.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.verified_user,
+                                    size: 14,
+                                    color: _onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      cl.description,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 12,
+                                        color: _onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: _secondaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.checklist,
+                          size: 22,
+                          color: _primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          )),
+          ),
           const SizedBox(height: 16),
         ],
       ),

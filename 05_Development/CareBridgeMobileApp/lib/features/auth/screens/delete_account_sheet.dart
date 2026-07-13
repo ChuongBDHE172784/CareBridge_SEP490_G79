@@ -66,20 +66,24 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Xác nhận mật khẩu',
-              style: TextStyle(
-                  fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          title: const Text(
+            'Xác nhận mật khẩu',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
           content: TextField(
             controller: controller,
             obscureText: obscure,
             decoration: InputDecoration(
               hintText: 'Nhập mật khẩu của bạn',
-              hintStyle:
-                  const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+              hintStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
-                    obscure ? Icons.visibility_off : Icons.visibility,
-                    color: _onSurfaceVariant),
+                  obscure ? Icons.visibility_off : Icons.visibility,
+                  color: _onSurfaceVariant,
+                ),
                 onPressed: () => setDialogState(() => obscure = !obscure),
               ),
             ),
@@ -88,17 +92,22 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy',
-                  style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+              child: const Text(
+                'Hủy',
+                style: TextStyle(fontFamily: 'Lexend', color: _primary),
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, controller.text),
               style: FilledButton.styleFrom(backgroundColor: _onError),
-              child: const Text('Xóa',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+              child: const Text(
+                'Xóa',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
@@ -141,8 +150,11 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
               color: Color(0xFFFFEDE9),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_amber_rounded,
-                color: _onError, size: 32),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: _onError,
+              size: 32,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -185,12 +197,10 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
                 _warningItem(
                   icon: Icons.broken_image_outlined,
                   title: 'Mất dữ liệu vĩnh viễn',
-                  body: 'Toàn bộ hồ sơ của bé, nhật ký phát triển và hình ảnh sẽ bị xóa.',
+                  body:
+                      'Toàn bộ hồ sơ của bé, nhật ký phát triển và hình ảnh sẽ bị xóa.',
                 ),
-                const Divider(
-                  color: Color(0xFFFFB4AB),
-                  height: 24,
-                ),
+                const Divider(color: Color(0xFFFFB4AB), height: 24),
                 _warningItem(
                   icon: Icons.group_remove_outlined,
                   title: 'Rời khỏi nhóm chăm sóc',
@@ -244,7 +254,9 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
             child: FilledButton(
               onPressed: (_understood && !_isLoading) ? _confirmDelete : null,
               style: FilledButton.styleFrom(
-                backgroundColor: _understood ? _onError : const Color(0xFFF5E6E3),
+                backgroundColor: _understood
+                    ? _onError
+                    : const Color(0xFFF5E6E3),
                 disabledBackgroundColor: const Color(0xFFF5E6E3),
                 shape: const StadiumBorder(),
               ),
@@ -253,7 +265,10 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Text(
                       'Xóa tài khoản',
                       style: TextStyle(

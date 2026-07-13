@@ -16,6 +16,7 @@ public class ChildTriageResult {
     boolean emergencyActionRequired;
     List<String> redFlags;
     List<String> matchedRules;
+    List<String> normalizedSymptoms;
     List<TriageCitation> citations;
     String disclaimer;
     List<String> questions;

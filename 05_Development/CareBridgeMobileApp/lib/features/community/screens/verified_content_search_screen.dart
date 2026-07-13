@@ -18,7 +18,6 @@ class _VerifiedContentSearchScreenState
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
 

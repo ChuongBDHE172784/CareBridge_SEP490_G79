@@ -25,12 +25,9 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
   static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
   static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _tertiaryFixed = Color(0xFFE9E1DB);
 
   static const _filters = [
     'Tất cả',

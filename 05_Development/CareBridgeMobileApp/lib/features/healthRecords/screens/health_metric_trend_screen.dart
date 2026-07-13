@@ -362,8 +362,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
               ),
               if (trendPct != null)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _primary.withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
@@ -429,8 +431,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: bars.map((bar) {
-          final ratio =
-              ((bar.value ?? 0) / effectiveMax).clamp(0.0, 1.0).toDouble();
+          final ratio = ((bar.value ?? 0) / effectiveMax)
+              .clamp(0.0, 1.0)
+              .toDouble();
           final barHeight = 120.0 * ratio;
           return Expanded(
             child: Padding(
@@ -490,8 +493,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   List<_ChartBar> _buildSevenDayBars(List<MetricDataPoint> points) {
     final now = DateTime.now();
     final days = List.generate(7, (i) {
-      final date = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: 6 - i));
+      final date = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: 6 - i));
       return date;
     });
     return days.map((date) {
@@ -563,10 +569,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                       onTap: () => _openMetricDetail(points[index]),
                     );
                   },
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    color: _surfaceContainer,
-                  ),
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, color: _surfaceContainer),
                 ),
               ),
             ),
@@ -581,10 +585,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
       label: const Text(
         'Thêm chỉ số',
-        style: TextStyle(
-          fontFamily: 'Lexend',
-          fontWeight: FontWeight.w700,
-        ),
+        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: _primary,
@@ -646,10 +647,7 @@ class _Card extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
 
-  const _Card({
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
+  const _Card({required this.child, this.padding = const EdgeInsets.all(20)});
 
   @override
   Widget build(BuildContext context) {

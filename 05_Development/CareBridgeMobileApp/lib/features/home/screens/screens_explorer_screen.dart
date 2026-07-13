@@ -101,17 +101,24 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
     final categories = _getScreenCategories(context);
 
     // Filter categories based on search query
-    final filteredCategories = categories.map((category) {
-      final filteredScreens = category.screens.where((screen) {
-        return screen.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               screen.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
-      return _ScreenCategory(
-        name: category.name,
-        icon: category.icon,
-        screens: filteredScreens,
-      );
-    }).where((category) => category.screens.isNotEmpty).toList();
+    final filteredCategories = categories
+        .map((category) {
+          final filteredScreens = category.screens.where((screen) {
+            return screen.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                screen.description.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                );
+          }).toList();
+          return _ScreenCategory(
+            name: category.name,
+            icon: category.icon,
+            screens: filteredScreens,
+          );
+        })
+        .where((category) => category.screens.isNotEmpty)
+        .toList();
 
     return Scaffold(
       backgroundColor: _canvas,
@@ -204,7 +211,10 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
         style: const TextStyle(fontFamily: 'Lexend', color: _onSurface),
       ),
@@ -216,7 +226,11 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off_outlined, size: 64, color: _primaryContainer.withValues(alpha: 0.5)),
+          Icon(
+            Icons.search_off_outlined,
+            size: 64,
+            color: _primaryContainer.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           const Text(
             'Không tìm thấy màn hình nào phù hợp',
@@ -293,9 +307,7 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
   Widget _buildScreenCard(_ScreenItem item) {
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: item.builder),
-        );
+        Navigator.of(context).push(MaterialPageRoute(builder: item.builder));
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -310,10 +322,7 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
               offset: const Offset(0, 3),
             ),
           ],
-          border: Border.all(
-            color: const Color(0xFFFFEAE4),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFFFFEAE4), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +364,10 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
               children: [
                 if (item.code != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF1EC),
                       borderRadius: BorderRadius.circular(6),
@@ -425,7 +437,10 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
             name: 'Xác thực OTP',
             description: 'Xác minh OTP gửi qua email',
             code: 'CB-005',
-            builder: (_) => const OtpVerificationScreen(identifier: 'test@example.com', isEmail: true),
+            builder: (_) => const OtpVerificationScreen(
+              identifier: 'test@example.com',
+              isEmail: true,
+            ),
           ),
           _ScreenItem(
             name: 'Đổi mật khẩu',
@@ -545,7 +560,9 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
             name: 'Chi tiết Câu hỏi',
             description: 'Chi tiết câu hỏi và các câu trả lời',
             code: 'CB-016',
-            builder: (_) => const QuestionDetailScreen(questionId: '00000000-0000-0000-0000-000000000000'),
+            builder: (_) => const QuestionDetailScreen(
+              questionId: '00000000-0000-0000-0000-000000000000',
+            ),
           ),
           _ScreenItem(
             name: 'Đăng câu trả lời',
@@ -563,7 +580,8 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
             name: 'Hàng chờ chuyên gia',
             description: 'Danh sách câu hỏi chờ chuyên gia trả lời',
             code: 'CB-149',
-            builder: (_) => const ExpertQuestionQueueScreen(expertName: 'Bác sĩ Mai Anh'),
+            builder: (_) =>
+                const ExpertQuestionQueueScreen(expertName: 'Bác sĩ Mai Anh'),
           ),
         ],
       ),
@@ -599,7 +617,8 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
             name: 'Chỉ số Sức khỏe Mẹ',
             description: 'Theo dõi cân nặng, huyết áp...',
             code: 'CB-025',
-            builder: (_) => const MaternalHealthMetricScreen(metricId: 'weight'),
+            builder: (_) =>
+                const MaternalHealthMetricScreen(metricId: 'weight'),
           ),
           _ScreenItem(
             name: 'Tìm kiếm Kiến thức',
@@ -659,7 +678,10 @@ class _ScreensExplorerScreenState extends State<ScreensExplorerScreen> {
             name: 'Chi tiết Nhóm',
             description: 'Thông tin nhóm và bảng điều khiển chung',
             code: 'CB-027',
-            builder: (_) => const CareGroupDetailScreen(groupId: 'group-1', groupName: 'Gia đình nhỏ'),
+            builder: (_) => const CareGroupDetailScreen(
+              groupId: 'group-1',
+              groupName: 'Gia đình nhỏ',
+            ),
           ),
           _ScreenItem(
             name: 'Thành viên Nhóm',
@@ -829,9 +851,7 @@ class LogoutConfirmationScreenWrapper extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: const Center(
-        child: LogoutConfirmationSheet(),
-      ),
+      body: const Center(child: LogoutConfirmationSheet()),
     );
   }
 }

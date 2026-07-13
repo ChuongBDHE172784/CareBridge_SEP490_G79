@@ -17,9 +17,7 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
   static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
@@ -67,7 +65,10 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           title,
-          style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Text(message, style: const TextStyle(fontFamily: 'Lexend')),
         actions: [
@@ -78,7 +79,10 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: confirmColor),
-            child: Text(confirmLabel, style: const TextStyle(fontFamily: 'Lexend')),
+            child: Text(
+              confirmLabel,
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
           ),
         ],
       ),
@@ -95,7 +99,10 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Thao tác thất bại: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Thao tác thất bại: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -171,22 +178,22 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _errorText != null
-              ? _ErrorState(message: _errorText!, onRetry: _load)
-              : _ReminderContent(
-                  reminder: _reminder!,
-                  processing: _processing,
-                  onComplete: _complete,
-                  onSnooze: _snooze,
-                  onEdit: () async {
-                    final changed = await context.push(
-                      '/reminders/${_reminder!.id}/manage',
-                      extra: _reminder,
-                    );
-                    if (changed == true && mounted) _load();
-                  },
-                  onDelete: _delete,
-                  onSkip: _skip,
-                ),
+          ? _ErrorState(message: _errorText!, onRetry: _load)
+          : _ReminderContent(
+              reminder: _reminder!,
+              processing: _processing,
+              onComplete: _complete,
+              onSnooze: _snooze,
+              onEdit: () async {
+                final changed = await context.push(
+                  '/reminders/${_reminder!.id}/manage',
+                  extra: _reminder,
+                );
+                if (changed == true && mounted) _load();
+              },
+              onDelete: _delete,
+              onSkip: _skip,
+            ),
     );
   }
 }
@@ -243,7 +250,10 @@ class _ReminderContent extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     backgroundColor: _primaryContainer.withAlpha(35),
-                    child: Icon(_iconFor(reminder.reminderType), color: _primary),
+                    child: Icon(
+                      _iconFor(reminder.reminderType),
+                      color: _primary,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -274,17 +284,37 @@ class _ReminderContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              _InfoRow(icon: Icons.schedule_rounded, label: 'Bắt đầu', value: _formatDateTime(reminder.scheduledAt)),
+              _InfoRow(
+                icon: Icons.schedule_rounded,
+                label: 'Bắt đầu',
+                value: _formatDateTime(reminder.scheduledAt),
+              ),
               _InfoRow(
                 icon: Icons.event_available_rounded,
                 label: 'Kết thúc',
-                value: reminder.recurrenceEndDate != null ? _formatDateTime(reminder.recurrenceEndDate!) : 'Không giới hạn',
+                value: reminder.recurrenceEndDate != null
+                    ? _formatDateTime(reminder.recurrenceEndDate!)
+                    : 'Không giới hạn',
               ),
-              _InfoRow(icon: Icons.repeat_rounded, label: 'Lặp lại', value: _recurrenceLabel(reminder.recurrenceType)),
-              _InfoRow(icon: Icons.flag_rounded, label: 'Trạng thái', value: _statusLabel(reminder.status)),
-              if (reminder.location != null && reminder.location!.trim().isNotEmpty)
-                _InfoRow(icon: Icons.place_rounded, label: 'Địa điểm', value: reminder.location!),
-              if (reminder.note != null && reminder.note!.trim().isNotEmpty) ...[
+              _InfoRow(
+                icon: Icons.repeat_rounded,
+                label: 'Lặp lại',
+                value: _recurrenceLabel(reminder.recurrenceType),
+              ),
+              _InfoRow(
+                icon: Icons.flag_rounded,
+                label: 'Trạng thái',
+                value: _statusLabel(reminder.status),
+              ),
+              if (reminder.location != null &&
+                  reminder.location!.trim().isNotEmpty)
+                _InfoRow(
+                  icon: Icons.place_rounded,
+                  label: 'Địa điểm',
+                  value: reminder.location!,
+                ),
+              if (reminder.note != null &&
+                  reminder.note!.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Text(
                   'Hướng dẫn',
@@ -377,43 +407,65 @@ class _ReminderContent extends StatelessWidget {
             ),
           )
         else ...[
-        FilledButton.icon(
-          onPressed: processing ? null : onComplete,
-          style: FilledButton.styleFrom(
-            backgroundColor: _primaryContainer,
-            minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          icon: const Icon(Icons.check_circle_outline_rounded),
-          label: const Text('Hoàn thành', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: processing ? null : onSnooze,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _primary,
-            side: const BorderSide(color: _primaryContainer),
-            minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          icon: const Icon(Icons.snooze_rounded),
-          label: const Text('Hoãn 1 giờ', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(child: _SmallAction(icon: Icons.block_rounded, label: 'Bỏ qua', onTap: processing ? null : onSkip)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _SmallAction(
-                icon: Icons.delete_outline_rounded,
-                label: 'Tắt',
-                color: _error,
-                onTap: processing ? null : onDelete,
+          FilledButton.icon(
+            onPressed: processing ? null : onComplete,
+            style: FilledButton.styleFrom(
+              backgroundColor: _primaryContainer,
+              minimumSize: const Size.fromHeight(54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
-          ],
-        ),
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: const Text(
+              'Hoàn thành',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: processing ? null : onSnooze,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _primaryContainer),
+              minimumSize: const Size.fromHeight(54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: const Icon(Icons.snooze_rounded),
+            label: const Text(
+              'Hoãn 1 giờ',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _SmallAction(
+                  icon: Icons.block_rounded,
+                  label: 'Bỏ qua',
+                  onTap: processing ? null : onSkip,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SmallAction(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Tắt',
+                  color: _error,
+                  onTap: processing ? null : onDelete,
+                ),
+              ),
+            ],
+          ),
         ],
       ],
     );
@@ -591,7 +643,11 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFBA1A1A),
+            size: 44,
+          ),
           const SizedBox(height: 10),
           Text(message, style: const TextStyle(fontFamily: 'Lexend')),
           const SizedBox(height: 10),

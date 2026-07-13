@@ -40,8 +40,8 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
             e.statusCode == 400
                 ? 'Mật khẩu không đúng. Vui lòng thử lại.'
                 : e.statusCode == 403
-                    ? 'Tài khoản quản trị không thể tự vô hiệu hóa.'
-                    : 'Đã xảy ra lỗi (${e.statusCode}). Vui lòng thử lại.',
+                ? 'Tài khoản quản trị không thể tự vô hiệu hóa.'
+                : 'Đã xảy ra lỗi (${e.statusCode}). Vui lòng thử lại.',
           ),
         ),
       );
@@ -57,20 +57,24 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Xác nhận mật khẩu',
-              style: TextStyle(
-                  fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          title: const Text(
+            'Xác nhận mật khẩu',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
           content: TextField(
             controller: controller,
             obscureText: obscure,
             decoration: InputDecoration(
               hintText: 'Nhập mật khẩu của bạn',
               hintStyle: const TextStyle(
-                  fontFamily: 'Lexend', color: _onSurfaceVariant),
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
-                    obscure ? Icons.visibility_off : Icons.visibility,
-                    color: _onSurfaceVariant),
+                  obscure ? Icons.visibility_off : Icons.visibility,
+                  color: _onSurfaceVariant,
+                ),
                 onPressed: () => setDialogState(() => obscure = !obscure),
               ),
             ),
@@ -79,17 +83,22 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy',
-                  style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+              child: const Text(
+                'Hủy',
+                style: TextStyle(fontFamily: 'Lexend', color: _primary),
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, controller.text),
               style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
-              child: const Text('Xác nhận',
-                  style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+              child: const Text(
+                'Xác nhận',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
@@ -118,8 +127,11 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
                         color: Color(0xFFFFE2D9),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.pause_circle_outline_rounded,
-                          color: _primaryContainer, size: 36),
+                      child: const Icon(
+                        Icons.pause_circle_outline_rounded,
+                        color: _primaryContainer,
+                        size: 36,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -154,19 +166,22 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
                     _infoCard(
                       icon: Icons.visibility_off_outlined,
                       title: 'Hồ sơ của bạn sẽ bị ẩn',
-                      body: 'Cộng đồng và người thân sẽ không thể xem thông tin hoặc tương tác với bạn.',
+                      body:
+                          'Cộng đồng và người thân sẽ không thể xem thông tin hoặc tương tác với bạn.',
                     ),
                     const SizedBox(height: 12),
                     _infoCard(
                       icon: Icons.notifications_paused_outlined,
                       title: 'Tạm dừng thông báo',
-                      body: 'Bạn sẽ không nhận được thông báo nhắc nhở lịch tiêm hay nhật ký mới.',
+                      body:
+                          'Bạn sẽ không nhận được thông báo nhắc nhở lịch tiêm hay nhật ký mới.',
                     ),
                     const SizedBox(height: 12),
                     _infoCard(
                       icon: Icons.restore_rounded,
                       title: 'Dễ dàng khôi phục',
-                      body: 'Chỉ cần đăng nhập lại, mọi dữ liệu của bạn sẽ được giữ nguyên vẹn.',
+                      body:
+                          'Chỉ cần đăng nhập lại, mọi dữ liệu của bạn sẽ được giữ nguyên vẹn.',
                     ),
                     const SizedBox(height: 40),
 
@@ -208,7 +223,10 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Text(
                                 'Tạm ngưng tài khoản',
                                 style: TextStyle(

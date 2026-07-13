@@ -68,7 +68,9 @@ class _CreateVaccinationReminderScreenState
   Future<void> _loadSuggestions(String babyId) async {
     setState(() => _loadingSuggestions = true);
     try {
-      final suggestions = await _reminderService.getVaccinationSuggestions(babyId);
+      final suggestions = await _reminderService.getVaccinationSuggestions(
+        babyId,
+      );
       if (!mounted) return;
       setState(() => _suggestions = suggestions);
     } catch (_) {
@@ -123,9 +125,9 @@ class _CreateVaccinationReminderScreenState
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: _error),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _error));
   }
 
   @override
@@ -205,17 +207,25 @@ class _CreateVaccinationReminderScreenState
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Icon(Icons.save_rounded),
             label: const Text(
               'Lưu nhắc lịch',
-              style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w800,
+              ),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: _primary,
               minimumSize: const Size.fromHeight(54),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],
@@ -363,20 +373,20 @@ class _CreateVaccinationReminderScreenState
   }
 
   InputDecoration _inputDecoration(String label) => InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primary, width: 1.5),
-        ),
-      );
+    labelText: label,
+    labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _primary, width: 1.5),
+    ),
+  );
 
   static String _formatDate(DateTime value) {
     return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
@@ -396,7 +406,11 @@ class _Section extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
-          BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: child,
@@ -424,7 +438,13 @@ class _DateButton extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(fontFamily: 'Lexend')),
           const Spacer(),
-          Text(value, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
       style: OutlinedButton.styleFrom(

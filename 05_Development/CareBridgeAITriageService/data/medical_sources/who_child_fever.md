@@ -10,6 +10,10 @@ riskLevels: [YELLOW, RED]
 symptoms: [fever, poor_feeding, breathing_difficulty, seizure, lethargy]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
+sourceStatus: APPROVED
+sourceVersion: '1.0'
+approvedAt: 2026-07-10
+approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
 Internal evidence seed based on WHO child hospital care guidance. Fever should

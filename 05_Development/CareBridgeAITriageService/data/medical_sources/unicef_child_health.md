@@ -10,7 +10,10 @@ riskLevels: [GREEN, YELLOW, RED]
 symptoms: [fever, cough, diarrhea, dehydration, breathing_difficulty, poor_feeding]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
-sourceStatus: REVIEWED
+sourceStatus: APPROVED
+sourceVersion: '1.0'
+approvedAt: 2026-07-10
+approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
 Internal evidence seed based on UNICEF child health information. Child health

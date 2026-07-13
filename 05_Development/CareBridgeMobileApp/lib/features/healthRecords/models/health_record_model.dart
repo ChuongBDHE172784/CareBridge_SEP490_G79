@@ -3,21 +3,31 @@ enum RecordType { vaccination, metric, prescription, checkup, other }
 extension RecordTypeExtension on RecordType {
   String get displayLabel {
     switch (this) {
-      case RecordType.vaccination: return 'Tiêm chủng';
-      case RecordType.metric: return 'Chỉ số';
-      case RecordType.prescription: return 'Đơn thuốc';
-      case RecordType.checkup: return 'Khám bệnh';
-      case RecordType.other: return 'Khác';
+      case RecordType.vaccination:
+        return 'Tiêm chủng';
+      case RecordType.metric:
+        return 'Chỉ số';
+      case RecordType.prescription:
+        return 'Đơn thuốc';
+      case RecordType.checkup:
+        return 'Khám bệnh';
+      case RecordType.other:
+        return 'Khác';
     }
   }
 
   static RecordType fromApi(String? v) {
     switch (v) {
-      case 'VACCINATION': return RecordType.vaccination;
-      case 'METRIC': return RecordType.metric;
-      case 'PRESCRIPTION': return RecordType.prescription;
-      case 'CHECKUP': return RecordType.checkup;
-      default: return RecordType.other;
+      case 'VACCINATION':
+        return RecordType.vaccination;
+      case 'METRIC':
+        return RecordType.metric;
+      case 'PRESCRIPTION':
+        return RecordType.prescription;
+      case 'CHECKUP':
+        return RecordType.checkup;
+      default:
+        return RecordType.other;
     }
   }
 }
@@ -76,7 +86,9 @@ class FileAttachment {
     );
   }
 
-  bool get isPdf => mimeType == 'application/pdf' || originalName.toLowerCase().endsWith('.pdf');
+  bool get isPdf =>
+      mimeType == 'application/pdf' ||
+      originalName.toLowerCase().endsWith('.pdf');
 }
 
 class HealthRecordDetail extends HealthRecord {
@@ -112,8 +124,12 @@ class HealthRecordDetail extends HealthRecord {
       attachments: rawAttachments
           .map((e) => FileAttachment.fromJson(e as Map<String, dynamic>))
           .toList(),
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
     );
   }
 }

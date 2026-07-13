@@ -30,6 +30,9 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
     @Value("${ai.triage-service.url}")
     private String aiTriageServiceUrl;
 
+    @Value("${ai.triage-service.request-timeout-ms:8000}")
+    private long requestTimeoutMs;
+
     @Override
     public String triageChild(RunIntakeRequest request) {
         try {
@@ -79,7 +82,7 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
         String body = objectMapper.writeValueAsString(payload);
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(aiTriageServiceUrl + path))
-                .timeout(Duration.ofSeconds(8))
+                .timeout(Duration.ofMillis(requestTimeoutMs))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();

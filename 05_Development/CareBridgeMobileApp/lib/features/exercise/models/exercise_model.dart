@@ -21,7 +21,8 @@ class ExerciseSession {
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
           : DateTime.now(),
-      supportsPostureAnalysis: json['supportsPostureAnalysis'] as bool? ?? false,
+      supportsPostureAnalysis:
+          json['supportsPostureAnalysis'] as bool? ?? false,
     );
   }
 }
@@ -64,8 +65,7 @@ class SessionResult {
           ? DateTime.parse(json['endedAt'] as String)
           : null,
       actualDurationSeconds: (json['actualDurationSeconds'] as int?) ?? 0,
-      completionPercent:
-          (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
+      completionPercent: (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
       postureScore: (json['postureScore'] as num?)?.toDouble(),
       warningCount: (json['warningCount'] as int?) ?? 0,
     );
@@ -107,8 +107,7 @@ class ExerciseHistoryItem {
           ? DateTime.parse(json['startedAt'] as String)
           : null,
       actualDurationSeconds: (json['actualDurationSeconds'] as int?) ?? 0,
-      completionPercent:
-          (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
+      completionPercent: (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
       warningCount: (json['warningCount'] as int?) ?? 0,
     );
   }

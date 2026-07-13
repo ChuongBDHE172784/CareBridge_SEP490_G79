@@ -179,12 +179,21 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _canvas,
-        title: const Text('Xóa bản ghi?', style: TextStyle(color: _onSurface, fontFamily: 'Lexend')),
-        content: const Text('Hành động này không thể hoàn tác.', style: TextStyle(color: _onSurfaceVariant)),
+        title: const Text(
+          'Xóa bản ghi?',
+          style: TextStyle(color: _onSurface, fontFamily: 'Lexend'),
+        ),
+        content: const Text(
+          'Hành động này không thể hoàn tác.',
+          style: TextStyle(color: _onSurfaceVariant),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy', style: TextStyle(color: _onSurfaceVariant)),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: _onSurfaceVariant),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -209,9 +218,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: _error),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: _error));
   }
 
   @override
@@ -283,7 +292,11 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(20), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: _primary.withAlpha(20),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Row(
@@ -351,7 +364,11 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
           Expanded(
             child: Text(
               'Đã quá 24 giờ kể từ khi tạo. Chỉ số này không còn được chỉnh sửa.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _error),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _error,
+              ),
             ),
           ),
         ],
@@ -368,7 +385,11 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _surfaceContainer, width: 1.5),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(15), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: _primary.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Stack(
@@ -392,21 +413,25 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
               if (_isDualValue) ...[
                 Row(
                   children: [
-                    Expanded(child: _buildInput(
-                      controller: _valuePrimaryCtrl,
-                      label: 'Tâm thu',
-                      suffix: _unit.split('/').first,
-                      enabled: enabled,
-                      keyboardType: TextInputType.number,
-                    )),
+                    Expanded(
+                      child: _buildInput(
+                        controller: _valuePrimaryCtrl,
+                        label: 'Tâm thu',
+                        suffix: _unit.split('/').first,
+                        enabled: enabled,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildInput(
-                      controller: _valueSecondaryCtrl,
-                      label: 'Tâm trương',
-                      suffix: _unit.split('/').last,
-                      enabled: enabled,
-                      keyboardType: TextInputType.number,
-                    )),
+                    Expanded(
+                      child: _buildInput(
+                        controller: _valueSecondaryCtrl,
+                        label: 'Tâm trương',
+                        suffix: _unit.split('/').last,
+                        enabled: enabled,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
                   ],
                 ),
               ] else ...[
@@ -415,13 +440,18 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   label: 'Chỉ số đo được',
                   suffix: _unit,
                   enabled: enabled,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
               ],
               const SizedBox(height: 14),
               // Source readonly
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: _surfaceContainer.withAlpha(80),
                   borderRadius: BorderRadius.circular(20),
@@ -429,15 +459,31 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.edit_note_rounded, color: _onSurfaceVariant, size: 20),
+                    const Icon(
+                      Icons.edit_note_rounded,
+                      color: _onSurfaceVariant,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Nguồn dữ liệu',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
-                        Text(widget.metric.sourceType.displayLabel,
-                            style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface)),
+                        const Text(
+                          'Nguồn dữ liệu',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          widget.metric.sourceType.displayLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 14,
+                            color: _onSurface,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -472,16 +518,33 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       enabled: enabled,
       keyboardType: keyboardType,
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      validator: (v) => (v == null || v.isEmpty) ? 'Vui lòng nhập giá trị' : null,
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, fontWeight: FontWeight.w600, color: _onSurface),
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Vui lòng nhập giá trị' : null,
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: _onSurface,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant),
+        labelStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _onSurfaceVariant,
+        ),
         suffixText: suffix,
-        suffixStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant),
+        suffixStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _onSurfaceVariant,
+        ),
         filled: true,
         fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: _surfaceContainer, width: 2),
@@ -515,13 +578,25 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ngày đo', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+            const Text(
+              'Ngày đo',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(
               '${_measuredDate.day.toString().padLeft(2, '0')}/'
               '${_measuredDate.month.toString().padLeft(2, '0')}/'
               '${_measuredDate.year}',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
             ),
           ],
         ),
@@ -542,11 +617,23 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Giờ đo', style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant)),
+            const Text(
+              'Giờ đo',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: _onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(
               '${_measuredTime.hour.toString().padLeft(2, '0')}:${_measuredTime.minute.toString().padLeft(2, '0')}',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
             ),
           ],
         ),
@@ -560,13 +647,24 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       enabled: enabled,
       maxLines: 3,
       maxLength: 2000,
-      style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurface),
+      style: const TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 14,
+        color: _onSurface,
+      ),
       decoration: InputDecoration(
         labelText: 'Ghi chú (tùy chọn)',
-        labelStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant),
+        labelStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _onSurfaceVariant,
+        ),
         filled: true,
         fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: _surfaceContainer, width: 2),
@@ -606,12 +704,22 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
               children: [
                 Text(
                   'Lời khuyên từ chuyên gia',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: _primary),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
                 ),
                 SizedBox(height: 4),
                 Text(
                   'Chỉ số có thể được chỉnh sửa trong vòng 24 giờ sau khi tạo. Vui lòng đo đúng thời điểm và ghi chú bối cảnh để có kết quả chính xác.',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant, height: 1.5),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
@@ -629,9 +737,19 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         ElevatedButton.icon(
           onPressed: enabled && !_isSaving ? _save : null,
           icon: _isSaving
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Icon(Icons.save_rounded),
-          label: const Text('Lưu thay đổi', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          label: const Text(
+            'Lưu thay đổi',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: _primaryContainer,
             foregroundColor: Colors.white,
@@ -650,15 +768,28 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             side: const BorderSide(color: _surfaceContainer, width: 1.5),
             shape: const StadiumBorder(),
           ),
-          child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Hủy bỏ',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: enabled && !_isDeleting ? _delete : null,
           icon: _isDeleting
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _error))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _error,
+                  ),
+                )
               : const Icon(Icons.delete_forever_rounded),
-          label: const Text('Xóa bản ghi', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          label: const Text(
+            'Xóa bản ghi',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: _errorContainer,
             foregroundColor: _error,
@@ -673,8 +804,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   }
 
   String _formatDateTime(DateTime dt) {
-    final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    final date = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    final time =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final date =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     return '$time, $date';
   }
 }

@@ -24,23 +24,23 @@ def apply_red_flag_rules(
         matched_rules.append(rule)
         red_flags.append(flag)
 
-    if {"breathing_difficulty", "cyanosis"} & symptoms:
+    if {"difficulty_breathing", "chest_indrawing", "cyanosis"} & symptoms:
         add("RED_BREATHING_DISTRESS", "Khó thở, thở rút lõm hoặc tím tái")
     if "seizure" in symptoms:
         add("RED_SEIZURE", "Co giật")
-    if "lethargy" in symptoms:
+    if {"lethargy", "difficult_to_wake"} & symptoms:
         add("RED_LETHARGY", "Lơ mơ, li bì hoặc khó đánh thức")
-    if "poor_feeding" in symptoms:
+    if {"unable_to_drink", "poor_feeding"} & symptoms:
         add("RED_POOR_FEEDING", "Bỏ bú hoặc không uống được")
-    if "dehydration" in symptoms and ("diarrhea" in symptoms or intake.diarrhea):
+    if {"mild_dehydration", "severe_dehydration"} & symptoms and ("diarrhea" in symptoms or intake.diarrhea):
         add("RED_DIARRHEA_DEHYDRATION", "Tiêu chảy kèm dấu hiệu mất nước")
-    elif "dehydration" in symptoms:
+    elif "severe_dehydration" in symptoms:
         add("RED_SEVERE_DEHYDRATION", "Dấu hiệu mất nước nặng")
-    if "vomiting" in symptoms and _contains_any(intake.vomiting, ["lien tuc", "nhieu", "everything"]):
+    if "persistent_vomiting" in symptoms:
         add("RED_PERSISTENT_VOMITING", "Nôn liên tục")
     if intake.childAgeMonths is not None and intake.childAgeMonths < 3 and _has_fever(intake):
         add("RED_INFANT_FEVER_UNDER_3_MONTHS", "Trẻ dưới 3 tháng có sốt")
-    elif _has_high_fever(intake):
+    elif "high_fever" in symptoms or _has_high_fever(intake):
         add("RED_HIGH_FEVER", "Sốt cao")
 
     return red_flags, matched_rules
@@ -58,11 +58,11 @@ def score_risk(
     symptoms = set(normalized_symptoms)
     if "fever" in symptoms and _has_fever(intake):
         matched_rules.append("YELLOW_FEVER_MONITOR")
-    if {"cough", "runny_nose"} & symptoms:
+    if "difficulty_breathing" not in symptoms and "cough" in symptoms:
         matched_rules.append("YELLOW_RESPIRATORY_NO_DISTRESS")
     if "diarrhea" in symptoms:
         matched_rules.append("YELLOW_MILD_MODERATE_DIARRHEA")
-    if "vomiting" in symptoms:
+    if "vomiting" in symptoms and "persistent_vomiting" not in symptoms:
         matched_rules.append("YELLOW_LIMITED_VOMITING")
     if "rash" in symptoms:
         matched_rules.append("YELLOW_MILD_RASH")

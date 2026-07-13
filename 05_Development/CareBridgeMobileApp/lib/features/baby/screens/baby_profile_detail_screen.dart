@@ -12,7 +12,8 @@ class BabyProfileDetailScreen extends StatefulWidget {
   const BabyProfileDetailScreen({super.key, required this.babyId});
 
   @override
-  State<BabyProfileDetailScreen> createState() => _BabyProfileDetailScreenState();
+  State<BabyProfileDetailScreen> createState() =>
+      _BabyProfileDetailScreenState();
 }
 
 enum _Tab { growth, milestones, vaccination }
@@ -21,14 +22,11 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
   static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _secondary = Color(0xFF6E5A52);
-  static const _tertiary = Color(0xFF625D59);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
 
   final _service = BabyService();
   BabyProfile? _profile;
@@ -43,23 +41,33 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final p = await _service.getBabyProfile(widget.babyId);
       if (mounted) {
-        setState(() { _profile = p; _loading = false; });
+        setState(() {
+          _profile = p;
+          _loading = false;
+        });
       }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.statusCode == 403 ? 'Bạn không có quyền xem hồ sơ này.'
+          _error = e.statusCode == 403
+              ? 'Bạn không có quyền xem hồ sơ này.'
               : 'Không thể tải hồ sơ. Vui lòng thử lại.';
           _loading = false;
         });
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _error = 'Lỗi kết nối.'; _loading = false; });
+        setState(() {
+          _error = 'Lỗi kết nối.';
+          _loading = false;
+        });
       }
     }
   }
@@ -70,10 +78,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       backgroundColor: _canvas,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
+            ? const Center(
+                child: CircularProgressIndicator(color: _primaryContainer),
+              )
             : _error != null
-                ? _buildErrorState()
-                : _buildContent(),
+            ? _buildErrorState()
+            : _buildContent(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -94,11 +104,21 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+          Text(
+            _error!,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: _loadProfile,
-            child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary)),
+            child: const Text(
+              'Thử lại',
+              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            ),
           ),
         ],
       ),
@@ -189,7 +209,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (p.birthWeightKg != null) ...[
-                _StatChip(icon: Icons.monitor_weight, label: '${p.birthWeightKg} kg'),
+                _StatChip(
+                  icon: Icons.monitor_weight,
+                  label: '${p.birthWeightKg} kg',
+                ),
                 const SizedBox(width: 8),
               ],
               if (p.birthLengthCm != null)
@@ -227,11 +250,29 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           // TODO: wire to GET /api/v1/babies/{id}/daily-summary (UC-194/195)
           Row(
             children: const [
-              Expanded(child: _SummaryCard(icon: Icons.water_drop_outlined, value: '6', label: 'Cữ bú')),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.water_drop_outlined,
+                  value: '6',
+                  label: 'Cữ bú',
+                ),
+              ),
               SizedBox(width: 12),
-              Expanded(child: _SummaryCard(icon: Icons.bed_outlined, value: '13h', label: 'Giấc ngủ')),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.bed_outlined,
+                  value: '13h',
+                  label: 'Giấc ngủ',
+                ),
+              ),
               SizedBox(width: 12),
-              Expanded(child: _SummaryCard(icon: Icons.cleaning_services_outlined, value: '4', label: 'Thay tã')),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.cleaning_services_outlined,
+                  value: '4',
+                  label: 'Thay tã',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -349,10 +390,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   Widget _buildTrendChart() {
     return SizedBox(
       height: 160,
-      child: CustomPaint(
-        painter: _TrendChartPainter(),
-        size: Size.infinite,
-      ),
+      child: CustomPaint(painter: _TrendChartPainter(), size: Size.infinite),
     );
   }
 
@@ -373,7 +411,11 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.construction_outlined, size: 40, color: _primaryContainer),
+          const Icon(
+            Icons.construction_outlined,
+            size: 40,
+            color: _primaryContainer,
+          ),
           const SizedBox(height: 12),
           Text(
             '$label sẽ sớm ra mắt.',
@@ -430,7 +472,11 @@ class _SummaryCard extends StatelessWidget {
   final String value;
   final String label;
 
-  const _SummaryCard({required this.icon, required this.value, required this.label});
+  const _SummaryCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +535,11 @@ class _TabChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _TabChip({required this.label, required this.selected, required this.onTap});
+  const _TabChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -551,8 +601,18 @@ class _TrendChartPainter extends CustomPainter {
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (int i = 0; i < points.length - 1; i++) {
       final cp1 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i].dy);
-      final cp2 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i + 1].dy);
-      path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, points[i + 1].dx, points[i + 1].dy);
+      final cp2 = Offset(
+        (points[i].dx + points[i + 1].dx) / 2,
+        points[i + 1].dy,
+      );
+      path.cubicTo(
+        cp1.dx,
+        cp1.dy,
+        cp2.dx,
+        cp2.dy,
+        points[i + 1].dx,
+        points[i + 1].dy,
+      );
     }
 
     // Fill under curve
@@ -566,7 +626,9 @@ class _TrendChartPainter extends CustomPainter {
     canvas.drawPath(path, linePaint);
 
     // Draw dots
-    final dotPaint = Paint()..color = const Color(0xFF845143)..style = PaintingStyle.fill;
+    final dotPaint = Paint()
+      ..color = const Color(0xFF845143)
+      ..style = PaintingStyle.fill;
     for (final p in points) {
       canvas.drawCircle(p, p == points.last ? 5 : 3, dotPaint);
     }

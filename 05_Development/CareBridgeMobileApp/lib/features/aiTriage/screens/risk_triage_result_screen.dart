@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
@@ -9,8 +10,15 @@ import '../../emergency/services/emergency_service.dart';
 /// intake session. Data: GET /api/v1/triage/intake/{sessionId}.
 class RiskTriageResultScreen extends StatefulWidget {
   final String sessionId;
+  final TriageService? triageService;
+  final EmergencyService? emergencyService;
 
-  const RiskTriageResultScreen({super.key, required this.sessionId});
+  const RiskTriageResultScreen({
+    super.key,
+    required this.sessionId,
+    this.triageService,
+    this.emergencyService,
+  });
 
   @override
   State<RiskTriageResultScreen> createState() => _RiskTriageResultScreenState();
@@ -29,8 +37,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   static const _secondaryContainerAlt = Color(0xFFF2EAE4);
   static const _secondary = Color(0xFF6E5A52);
 
-  final _triageService = TriageService();
-  final _emergencyService = EmergencyService();
+  late final TriageService _triageService;
+  late final EmergencyService _emergencyService;
   TriageResult? _result;
   bool _loading = true;
   bool _openingEmergency = false;
@@ -39,6 +47,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   @override
   void initState() {
     super.initState();
+    _triageService = widget.triageService ?? TriageService();
+    _emergencyService = widget.emergencyService ?? EmergencyService();
     _load();
   }
 
@@ -50,8 +60,10 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     try {
       final result = await _triageService.getResult(widget.sessionId);
       if (mounted) setState(() => _result = result);
-    } catch (e) {
-      if (mounted) setState(() => _error = 'Không thể tải kết quả: $e');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Không thể tải kết quả. Vui lòng thử lại.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -61,10 +73,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
       _RiskPresentation.forLevel(_result?.riskLevel);
 
   Future<void> _openEmergencyFlow() async {
+    if (_openingEmergency) return;
     setState(() => _openingEmergency = true);
     try {
-      await _emergencyService.openFlow(triggerSource: 'AI_TRIAGE');
+      await _emergencyService
+          .openFlow(triggerSource: 'AI_TRIAGE')
+          .timeout(const Duration(seconds: 8));
       if (mounted) {
+        context.push('/emergency/map');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -73,10 +89,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể kích hoạt hỗ trợ khẩn cấp: $e')),
+          const SnackBar(
+            content: Text(
+              'Không thể kích hoạt hỗ trợ khẩn cấp. Vui lòng gọi cấp cứu hoặc thử lại.',
+            ),
+          ),
         );
       }
     } finally {
@@ -86,10 +106,26 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
 
   Future<void> _openSourceUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme) return;
+    if (uri == null || !_isAllowedOfficialUri(uri)) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  bool _isAllowedOfficialUri(Uri uri) {
+    const allowed = {
+      'who.int',
+      'moh.gov.vn',
+      'mch.moh.gov.vn',
+      'cdc.gov',
+      'unicef.org',
+      'benhviennhitrunguong.gov.vn',
+      'nhidong.org.vn',
+      'bvndtp.org.vn',
+    };
+    final host = uri.host.toLowerCase();
+    return uri.scheme == 'https' &&
+        allowed.any((domain) => host == domain || host.endsWith('.$domain'));
   }
 
   @override
@@ -178,7 +214,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     final p = _presentation;
     final result = _result;
     final needsMoreInfo =
-        result?.triageStatus == 'NEED_MORE_INFO' || result?.status == 'NEED_MORE_INFO';
+        result?.triageStatus == 'NEED_MORE_INFO' ||
+        result?.status == 'NEED_MORE_INFO';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -237,7 +274,9 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             icon: Icons.help_outline,
             items: result?.questions.isNotEmpty == true
                 ? result!.questions
-                : const ['Vui lòng bổ sung tuổi, tình trạng thở, tỉnh táo và bú/uống của trẻ.'],
+                : const [
+                    'Vui lòng bổ sung tuổi, tình trạng thở, tỉnh táo và bú/uống của trẻ.',
+                  ],
           ),
           const SizedBox(height: 24),
         ],
@@ -336,6 +375,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
+            key: const Key('risk-result-doctor-cta'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryContainer,
               foregroundColor: Colors.white,
@@ -369,6 +409,11 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
+            key:
+                (_result?.emergencyActionRequired == true ||
+                    _result?.riskLevel == 'RED')
+                ? const Key('risk-result-emergency-cta')
+                : const Key('risk-result-clinic-cta'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _secondaryContainerAlt,
               foregroundColor: _secondary,
@@ -377,7 +422,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             ),
             onPressed: _openingEmergency
                 ? null
-                : (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
+                : (_result?.emergencyActionRequired == true ||
+                      _result?.riskLevel == 'RED')
                 ? _openEmergencyFlow
                 : () => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -390,14 +436,16 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
+                  (_result?.emergencyActionRequired == true ||
+                          _result?.riskLevel == 'RED')
                       ? Icons.emergency_outlined
                       : Icons.local_hospital_outlined,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
+                  (_result?.emergencyActionRequired == true ||
+                          _result?.riskLevel == 'RED')
                       ? 'Kích hoạt hỗ trợ khẩn cấp'
                       : 'Tìm phòng khám gần nhất',
                   style: const TextStyle(
@@ -599,8 +647,12 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          ...citations.map(
-            (citation) => Padding(
+          ...citations.indexed.map((entry) {
+            final index = entry.$1;
+            final citation = entry.$2;
+            final uri = Uri.tryParse(citation.url);
+            final canOpen = uri != null && _isAllowedOfficialUri(uri);
+            return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,44 +674,61 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                       height: 1.35,
                     ),
                   ),
-                      if (citation.matchedSymptoms.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Triệu chứng khớp: ${citation.matchedSymptoms.join(', ')}',
+                  if (citation.matchedSymptoms.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Triệu chứng khớp: ${citation.matchedSymptoms.join(', ')}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: _onSurfaceVariant,
                         height: 1.35,
-                          ),
+                      ),
+                    ),
+                  ],
+                  if (citation.sourceStatus == 'PENDING_REVIEW') ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      key: Key(
+                        'risk-citation-pending-${citation.id ?? citation.url}-$index',
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _outlineVariant.withValues(alpha: 0.5),
                         ),
-                      ],
-                      if (citation.sourceStatus == 'PENDING_REVIEW') ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
-                          ),
-                          child: const Text(
-                            'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _onSurfaceVariant,
-                              height: 1.3,
-                            ),
-                          ),
+                      ),
+                      child: const Text(
+                        'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _onSurfaceVariant,
+                          height: 1.3,
                         ),
-                      ],
-                      if (citation.url.isNotEmpty) ...[
+                      ),
+                    ),
+                  ],
+                  if (citation.url.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     InkWell(
-                      onTap: () => _openSourceUrl(citation.url),
+                      key: Key(
+                        'risk-citation-link-${citation.id ?? citation.url}-$index',
+                      ),
+                      onTap: canOpen
+                          ? () => _openSourceUrl(citation.url)
+                          : null,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.open_in_new, size: 16, color: _primary),
+                          const Icon(
+                            Icons.open_in_new,
+                            size: 16,
+                            color: _primary,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
@@ -677,8 +746,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                   ],
                 ],
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );

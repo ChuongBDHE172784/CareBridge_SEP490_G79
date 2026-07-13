@@ -32,7 +32,10 @@ class DeleteFileConfirmationSheet extends StatefulWidget {
     );
   }
 
-  static Future<bool?> showFromFile(BuildContext context, ViewFileResponse file) {
+  static Future<bool?> showFromFile(
+    BuildContext context,
+    ViewFileResponse file,
+  ) {
     return show(
       context,
       fileId: file.fileId,
@@ -42,11 +45,12 @@ class DeleteFileConfirmationSheet extends StatefulWidget {
   }
 
   @override
-  State<DeleteFileConfirmationSheet> createState() => _DeleteFileConfirmationSheetState();
+  State<DeleteFileConfirmationSheet> createState() =>
+      _DeleteFileConfirmationSheetState();
 }
 
-class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationSheet> {
-  static const _primary = Color(0xFF845143);
+class _DeleteFileConfirmationSheetState
+    extends State<DeleteFileConfirmationSheet> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
@@ -90,7 +94,10 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
             Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(color: const Color(0xFFE0D8D5), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0D8D5),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Expanded(
               child: ListView(
@@ -124,19 +131,35 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
         Container(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(20)),
-          child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 32),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFEBEE),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(
+            Icons.delete_forever_rounded,
+            color: Colors.red,
+            size: 32,
+          ),
         ),
         const SizedBox(height: 14),
         const Text(
           'Xóa tệp tin?',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w700, color: _onSurface),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
         const Text(
           'Tệp sẽ được chuyển vào thùng rác.',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _onSurfaceVariant,
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -159,10 +182,14 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 6)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 6),
+              ],
             ),
             child: Icon(
-              isPdf ? Icons.picture_as_pdf_rounded : Icons.insert_drive_file_rounded,
+              isPdf
+                  ? Icons.picture_as_pdf_rounded
+                  : Icons.insert_drive_file_rounded,
               color: isPdf ? Colors.red : _primaryContainer,
               size: 28,
             ),
@@ -174,14 +201,23 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
               children: [
                 Text(
                   widget.fileName,
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   widget.fileSize,
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -202,12 +238,21 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.restore_from_trash_rounded, color: Color(0xFFFF8F00), size: 20),
+          Icon(
+            Icons.restore_from_trash_rounded,
+            color: Color(0xFFFF8F00),
+            size: 20,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Tệp sẽ được lưu trong thùng rác 30 ngày. Bạn có thể khôi phục trong thời gian này.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurface, height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurface,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -230,7 +275,12 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
           Expanded(
             child: Text(
               'Tệp đã được chia sẻ với chuyên gia sẽ bị thu hồi quyền truy cập sau khi xóa.',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant, height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -249,15 +299,36 @@ class _DeleteFileConfirmationSheetState extends State<DeleteFileConfirmationShee
         elevation: 0,
       ),
       child: _isDeleting
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-          : const Text('Xóa tệp tin', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w700)),
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Xóa tệp tin',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
     );
   }
 
   Widget _buildCancelButton() {
     return TextButton(
       onPressed: () => Navigator.of(context).pop(false),
-      child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+      child: const Text(
+        'Hủy bỏ',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          color: _onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

@@ -76,6 +76,19 @@ class TriageGraphServiceTest {
     }
 
     @Test
+    void difficultToWake_shouldUseCanonicalSymptomAndReturnRed() {
+        ChildTriageResult result = graph.run(base()
+                .symptomList(List.of("kho danh thuc"))
+                .consciousnessStatus("kho danh thuc")
+                .build());
+
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.isEmergencyActionRequired()).isTrue();
+        assertThat(result.getMatchedRules()).contains("RED_LETHARGY");
+        assertThat(result.getNormalizedSymptoms()).contains("difficult_to_wake");
+    }
+
+    @Test
     void diarrheaWithDehydration_shouldReturnRed() {
         ChildTriageResult result = graph.run(base()
                 .symptomList(List.of("tiêu chảy"))
@@ -96,6 +109,19 @@ class TriageGraphServiceTest {
         assertThat(result.getStatus()).isEqualTo("NEED_MORE_INFO");
         assertThat(result.getRiskLevel()).isNull();
         assertThat(result.getQuestions()).anyMatch(q -> q.contains("bao nhiêu tháng"));
+    }
+
+    @Test
+    void immediateRedFlagWithMissingAge_shouldStillReturnRed() {
+        ChildTriageResult result = graph.run(base()
+                .childAgeMonths(null)
+                .symptomList(List.of("kho tho"))
+                .breathingStatus("kho tho")
+                .build());
+
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.isEmergencyActionRequired()).isTrue();
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
     }
 
     @Test

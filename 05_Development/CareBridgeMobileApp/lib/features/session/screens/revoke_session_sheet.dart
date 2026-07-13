@@ -4,7 +4,9 @@ import '../models/session_model.dart';
 import '../services/session_service.dart';
 
 Future<bool?> showRevokeSessionSheet(
-    BuildContext context, SessionInfo session) {
+  BuildContext context,
+  SessionInfo session,
+) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -206,8 +208,7 @@ class _RevokeSessionSheetState extends State<RevokeSessionSheet> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline,
-              color: Color(0xFF93000A), size: 20),
+          const Icon(Icons.error_outline, color: Color(0xFF93000A), size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

@@ -123,7 +123,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           'Bạn có chắc muốn xóa câu hỏi này? Hành động này không thể hoàn tác.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
@@ -137,7 +140,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể xóa câu hỏi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể xóa câu hỏi: $e')));
       }
     }
   }
@@ -174,8 +179,14 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Lưu')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Lưu'),
+            ),
           ],
         ),
       ),
@@ -206,7 +217,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         title: const Text('Xóa câu trả lời'),
         content: const Text('Bạn có chắc muốn xóa câu trả lời này?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
@@ -306,8 +320,14 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Gửi báo cáo')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Gửi báo cáo'),
+            ),
           ],
         ),
       ),
@@ -322,12 +342,16 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã gửi báo cáo đến đội ngũ kiểm duyệt')),
+          const SnackBar(
+            content: Text('Đã gửi báo cáo đến đội ngũ kiểm duyệt'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể gửi báo cáo: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể gửi báo cáo: $e')));
       }
     }
   }
@@ -373,11 +397,18 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         ),
         title: const Text(
           'Chi tiết câu hỏi',
-          style: TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 17),
+          style: TextStyle(
+            color: _primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.smart_toy_outlined, color: _onSurfaceVariant),
+            icon: const Icon(
+              Icons.smart_toy_outlined,
+              color: _onSurfaceVariant,
+            ),
             onPressed: () => context.push('/rag-chat'),
             tooltip: 'Hỏi AI CareBridge (UC-132)',
           ),
@@ -391,7 +422,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
           if (_question?.authorId != null && !_isMyQuestion)
             IconButton(
-              icon: const Icon(Icons.person_off_outlined, color: _onSurfaceVariant),
+              icon: const Icon(
+                Icons.person_off_outlined,
+                color: _onSurfaceVariant,
+              ),
               onPressed: () => _reportTarget(
                 targetType: 'USER',
                 targetId: _question!.authorId!,
@@ -452,7 +486,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 );
                 if (answered == true) _loadDetail();
               },
-        label: const Text('Trả lời', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: const Text(
+          'Trả lời',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         icon: const Icon(Icons.edit_note),
       ),
       body: _loading
@@ -487,11 +524,6 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       ),
     );
   }
-
-  bool _hasExpertProfileTap(CommunityAnswer a) =>
-      a.expertLabeled &&
-      a.expertProfileId != null &&
-      a.expertProfileId!.isNotEmpty;
 
   Widget _buildContent() {
     final q = _question!;
@@ -580,7 +612,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: _surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(4),
@@ -633,7 +668,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                             size: 16,
-                            color: _questionLiked ? _primary : _onSurfaceVariant,
+                            color: _questionLiked
+                                ? _primary
+                                : _onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -725,7 +762,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     targetId: q.answers[i].id,
                   ),
                   onReportAuthor:
-                      q.answers[i].authorId != null && !_isOwnAnswer(q.answers[i])
+                      q.answers[i].authorId != null &&
+                          !_isOwnAnswer(q.answers[i])
                       ? () => _reportTarget(
                           targetType: 'USER',
                           targetId: q.answers[i].authorId!,
@@ -799,7 +837,8 @@ class _AnswerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasExpertProfileId = answer.expertLabeled &&
+    final hasExpertProfileId =
+        answer.expertLabeled &&
         answer.expertProfileId != null &&
         answer.expertProfileId!.isNotEmpty;
 
@@ -836,7 +875,9 @@ class _AnswerCard extends StatelessWidget {
                 child: Icon(
                   answer.expertLabeled ? Icons.verified : Icons.person,
                   size: 16,
-                  color: answer.expertLabeled ? Colors.white : const Color(0xFF845143),
+                  color: answer.expertLabeled
+                      ? Colors.white
+                      : const Color(0xFF845143),
                 ),
               ),
               const SizedBox(width: 8),
@@ -846,12 +887,16 @@ class _AnswerCard extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: hasExpertProfileId
-                          ? () => context.push('/expert/public/${answer.expertProfileId}')
+                          ? () => context.push(
+                              '/expert/public/${answer.expertProfileId}',
+                            )
                           : null,
                       child: Row(
                         children: [
                           Text(
-                            answer.expertLabeled ? 'Chuyên gia' : (answer.authorDisplay ?? 'Thành viên'),
+                            answer.expertLabeled
+                                ? 'Chuyên gia'
+                                : (answer.authorDisplay ?? 'Thành viên'),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -885,7 +930,10 @@ class _AnswerCard extends StatelessWidget {
               ),
               if (answer.personalExperience)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFE2D9),
                     borderRadius: BorderRadius.circular(4),
@@ -933,22 +981,31 @@ class _AnswerCard extends StatelessWidget {
                 onTap: onLike,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         liked ? Icons.favorite : Icons.favorite_border,
                         size: 18,
-                        color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
+                        color: liked
+                            ? const Color(0xFF845143)
+                            : const Color(0xFF524440),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '$likeCount',
                         style: TextStyle(
                           fontSize: 12,
-                          color: liked ? const Color(0xFF845143) : const Color(0xFF524440),
-                          fontWeight: liked ? FontWeight.w600 : FontWeight.normal,
+                          color: liked
+                              ? const Color(0xFF845143)
+                              : const Color(0xFF524440),
+                          fontWeight: liked
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -987,16 +1044,4 @@ class _AnswerCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AnswerCardColors {
-  static const primary = Color(0xFF845143);
-  static const primaryContainer = Color(0xFFC98C7B);
-  static const surface = Color(0xFFFFFFFF);
-  static const secondaryContainer = Color(0xFFF6DACF);
-  static const onSurface = Color(0xFF271812);
-  static const onSurfaceVariant = Color(0xFF524440);
-  static const outlineVariant = Color(0xFFD6C2BD);
-  static const surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const surfaceContainerLow = Color(0xFFFFF1EC);
 }

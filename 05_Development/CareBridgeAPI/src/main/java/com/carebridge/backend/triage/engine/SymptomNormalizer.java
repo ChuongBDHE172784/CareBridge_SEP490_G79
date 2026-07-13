@@ -21,15 +21,20 @@ public class SymptomNormalizer {
             Map.entry("fever", List.of("sot", "nong", "temperature", "fever")),
             Map.entry("cough", List.of(" ho ", "cough")),
             Map.entry("runny_nose", List.of("so mui", "chay mui", "runny")),
-            Map.entry("breathing_difficulty", List.of("kho tho", "tho gap", "rut lom", "tim tai", "wheeze")),
+            Map.entry("difficulty_breathing", List.of("kho tho", "tho gap", "wheeze")),
+            Map.entry("chest_indrawing", List.of("rut lom")),
             Map.entry("cyanosis", List.of("tim tai", "moi tim", "da tim")),
             Map.entry("seizure", List.of("co giat", "seizure", "convulsion")),
-            Map.entry("lethargy", List.of("li bi", "lo mo", "kho danh thuc", "ngu ga")),
-            Map.entry("poor_feeding", List.of("bo bu", "khong uong", "khong bu", "uống kém", "an kem")),
-            Map.entry("vomiting", List.of("non", "oi", "vomit")),
+            Map.entry("lethargy", List.of("li bi", "lo mo", "ngu ga")),
+            Map.entry("difficult_to_wake", List.of("kho danh thuc")),
+            Map.entry("unable_to_drink", List.of("khong uong", "khong bu")),
+            Map.entry("poor_feeding", List.of("bo bu", "uong kem", "an kem")),
+            Map.entry("vomiting", List.of("non", "oi", "vomit", "vomiting")),
+            Map.entry("persistent_vomiting", List.of("non lien tuc", "non nhieu", "vomiting everything")),
             Map.entry("diarrhea", List.of("tieu chay", "diarrhea")),
             Map.entry("rash", List.of("phat ban", "noi ban", "rash")),
-            Map.entry("dehydration", List.of("mat nuoc", "khoc khong co nuoc mat", "moi kho", "tieu it", "mat trung"))
+            Map.entry("mild_dehydration", List.of("mat nuoc", "moi kho", "tieu it")),
+            Map.entry("severe_dehydration", List.of("mat nuoc nang", "khoc khong co nuoc mat", "mat trung"))
     );
 
     public List<String> normalize(RunIntakeRequest request) {
@@ -43,11 +48,18 @@ public class SymptomNormalizer {
         if (request.getTemperatureC() != null && request.getTemperatureC() >= 37.5) {
             normalized.add("fever");
         }
+        if (request.getTemperatureC() != null && request.getTemperatureC() >= 39.0) {
+            normalized.add("high_fever");
+        }
         if (Boolean.TRUE.equals(request.getSeizure())) {
             normalized.add("seizure");
         }
         if (request.getDehydrationSigns() != null && !request.getDehydrationSigns().isEmpty()) {
-            normalized.add("dehydration");
+            boolean severe = request.getDehydrationSigns().stream()
+                    .map(this::stripAccents)
+                    .anyMatch(sign -> sign.contains("mat nuoc nang") || sign.contains("mat trung")
+                            || sign.contains("khoc khong co nuoc mat"));
+            normalized.add(severe ? "severe_dehydration" : "mild_dehydration");
         }
         return new ArrayList<>(normalized);
     }

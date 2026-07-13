@@ -8,7 +8,11 @@ class AssignedTasksScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
 
-  const AssignedTasksScreen({Key? key, required this.groupId, required this.groupName}) : super(key: key);
+  const AssignedTasksScreen({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+  });
 
   @override
   State<AssignedTasksScreen> createState() => _AssignedTasksScreenState();
@@ -39,7 +43,9 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }
@@ -50,7 +56,9 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
       _loadData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }
@@ -59,9 +67,12 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   Widget build(BuildContext context) {
     List<FamilyTask> filteredTasks = _allTasks.where((t) {
       if (_currentFilter == 'OVERDUE') {
-        return t.status != 'COMPLETED' && t.status != 'CANCELLED' && t.dueAt.isBefore(DateTime.now());
+        return t.status != 'COMPLETED' &&
+            t.status != 'CANCELLED' &&
+            t.dueAt.isBefore(DateTime.now());
       }
-      return t.status == _currentFilter && !(_currentFilter == 'TODO' && t.dueAt.isBefore(DateTime.now()));
+      return t.status == _currentFilter &&
+          !(_currentFilter == 'TODO' && t.dueAt.isBefore(DateTime.now()));
     }).toList();
 
     return Scaffold(
@@ -74,27 +85,56 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF845143)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Việc cần làm', style: TextStyle(color: Color(0xFF845143), fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+        title: const Text(
+          'Việc cần làm',
+          style: TextStyle(
+            color: Color(0xFF845143),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Quicksand',
+          ),
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 8.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Nhiệm vụ của bạn', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF271812), fontFamily: 'Quicksand')),
+                const Text(
+                  'Nhiệm vụ của bạn',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF271812),
+                    fontFamily: 'Quicksand',
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('Hôm nay, ${DateTime.now().day} tháng ${DateTime.now().month}', style: const TextStyle(fontSize: 14, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+                Text(
+                  'Hôm nay, ${DateTime.now().day} tháng ${DateTime.now().month}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF524440),
+                    fontFamily: 'Quicksand',
+                  ),
+                ),
               ],
             ),
           ),
-          
+
           // Filter Tabs
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 8.0,
+            ),
             child: Row(
               children: [
                 _buildFilterTab('TODO', 'Cần làm'),
@@ -107,10 +147,12 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               ],
             ),
           ),
-          
+
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B)))
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+                  )
                 : RefreshIndicator(
                     color: const Color(0xFFC98C7B),
                     onRefresh: _loadData,
@@ -118,16 +160,28 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                         ? ListView(
                             padding: const EdgeInsets.all(24),
                             children: const [
-                              Center(child: Padding(
-                                padding: EdgeInsets.all(32.0),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.task_alt, size: 48, color: Color(0xFFA09A95)),
-                                    SizedBox(height: 16),
-                                    Text('Không có nhiệm vụ nào', style: TextStyle(color: Color(0xFF524440), fontFamily: 'Quicksand')),
-                                  ],
+                              Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(32.0),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.task_alt,
+                                        size: 48,
+                                        color: Color(0xFFA09A95),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Không có nhiệm vụ nào',
+                                        style: TextStyle(
+                                          color: Color(0xFF524440),
+                                          fontFamily: 'Quicksand',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ))
+                              ),
                             ],
                           )
                         : ListView.builder(
@@ -160,7 +214,13 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
           }
         },
         icon: const Icon(Icons.add_task),
-        label: const Text('Giao việc mới', style: TextStyle(fontFamily: 'Quicksand', fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Giao việc mới',
+          style: TextStyle(
+            fontFamily: 'Quicksand',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -175,7 +235,15 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
           color: isActive ? const Color(0xFFC98C7B) : Colors.white,
           borderRadius: BorderRadius.circular(999),
           border: isActive ? null : Border.all(color: const Color(0xFFD6C2BD)),
-          boxShadow: isActive ? const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))] : null,
+          boxShadow: isActive
+              ? const [
+                  BoxShadow(
+                    color: Color(0x0F5A463F),
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -191,10 +259,15 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
 
   Widget _buildTaskCard(FamilyTask task) {
     Color indicatorColor;
-    if (task.status == 'COMPLETED') indicatorColor = Colors.green;
-    else if (task.status == 'IN_PROGRESS') indicatorColor = const Color(0xFF845143);
-    else if (task.dueAt.isBefore(DateTime.now())) indicatorColor = const Color(0xFFBA1A1A);
-    else indicatorColor = const Color(0xFFA09A95);
+    if (task.status == 'COMPLETED') {
+      indicatorColor = Colors.green;
+    } else if (task.status == 'IN_PROGRESS') {
+      indicatorColor = const Color(0xFF845143);
+    } else if (task.dueAt.isBefore(DateTime.now())) {
+      indicatorColor = const Color(0xFFBA1A1A);
+    } else {
+      indicatorColor = const Color(0xFFA09A95);
+    }
 
     return GestureDetector(
       onTap: () async {
@@ -211,13 +284,21 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: const [BoxShadow(color: Color(0x0F5A463F), blurRadius: 20, offset: Offset(0, 4))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
             Positioned(
-              left: 0, top: 0, bottom: 0,
+              left: 0,
+              top: 0,
+              bottom: 0,
               width: 4,
               child: Container(color: indicatorColor),
             ),
@@ -230,27 +311,62 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFFFE9E3), borderRadius: BorderRadius.circular(6)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE9E3),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Row(
                           children: [
-                            const Icon(Icons.info, size: 14, color: Color(0xFF524440)),
+                            const Icon(
+                              Icons.info,
+                              size: 14,
+                              color: Color(0xFF524440),
+                            ),
                             const SizedBox(width: 4),
-                            Text(task.status, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF524440), fontFamily: 'Quicksand')),
+                            Text(
+                              task.status,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF524440),
+                                fontFamily: 'Quicksand',
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(task.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF271812), fontFamily: 'Quicksand')),
+                  Text(
+                    task.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF271812),
+                      fontFamily: 'Quicksand',
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.schedule, size: 16, color: Color(0xFF524440)),
+                      const Icon(
+                        Icons.schedule,
+                        size: 16,
+                        color: Color(0xFF524440),
+                      ),
                       const SizedBox(width: 4),
-                      Text('${task.dueAt.hour.toString().padLeft(2, '0')}:${task.dueAt.minute.toString().padLeft(2, '0')} - ${task.dueAt.day}/${task.dueAt.month}', 
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF524440), fontFamily: 'Quicksand'),
+                      Text(
+                        '${task.dueAt.hour.toString().padLeft(2, '0')}:${task.dueAt.minute.toString().padLeft(2, '0')} - ${task.dueAt.day}/${task.dueAt.month}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF524440),
+                          fontFamily: 'Quicksand',
+                        ),
                       ),
                     ],
                   ),
@@ -268,10 +384,18 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                               foregroundColor: const Color(0xFF524440),
                               minimumSize: const Size(0, 48),
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
                             ),
                             icon: const Icon(Icons.play_arrow),
-                            label: const Text('Bắt đầu làm', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                            label: const Text(
+                              'Bắt đầu làm',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Quicksand',
+                              ),
+                            ),
                           ),
                         ),
                       if (task.status == 'IN_PROGRESS')
@@ -282,10 +406,18 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                               backgroundColor: const Color(0xFFC98C7B),
                               foregroundColor: Colors.white,
                               minimumSize: const Size(0, 48),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
                             ),
                             icon: const Icon(Icons.check_circle),
-                            label: const Text('Đã xong', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Quicksand')),
+                            label: const Text(
+                              'Đã xong',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Quicksand',
+                              ),
+                            ),
                           ),
                         ),
                     ],

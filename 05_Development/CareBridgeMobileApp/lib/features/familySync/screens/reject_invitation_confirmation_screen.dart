@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 
 class RejectInvitationConfirmationScreen extends StatefulWidget {
@@ -7,16 +6,18 @@ class RejectInvitationConfirmationScreen extends StatefulWidget {
   final String groupName;
 
   const RejectInvitationConfirmationScreen({
-    Key? key,
+    super.key,
     required this.groupId,
     required this.groupName,
-  }) : super(key: key);
+  });
 
   @override
-  State<RejectInvitationConfirmationScreen> createState() => _RejectInvitationConfirmationScreenState();
+  State<RejectInvitationConfirmationScreen> createState() =>
+      _RejectInvitationConfirmationScreenState();
 }
 
-class _RejectInvitationConfirmationScreenState extends State<RejectInvitationConfirmationScreen> {
+class _RejectInvitationConfirmationScreenState
+    extends State<RejectInvitationConfirmationScreen> {
   final _service = CareGroupService();
   bool _isLoading = false;
 
@@ -29,7 +30,9 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -66,9 +69,17 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 4),
-                      boxShadow: const [BoxShadow(color: Color(0x26C98C7B), blurRadius: 20, offset: Offset(0, 4))],
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x26C98C7B),
+                          blurRadius: 20,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                       image: const DecorationImage(
-                        image: NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuDRh8M169EA9xdx-_TI9YHGEj_WRRsBtKv0dpxmVjZ9RAXECGNG9rxTEkhywVkfxNV1jW-08v1HZ27bMgtLppMwHi-m3RTNV_hF7gbKAgSx8HPkKbz00mdKitmaJuDc88hChxFFyjYovB9KeLVFzPhKtx9ryL7lpZ8IeOVJLaTyrANHoJl0It6XF8YfXIDGu85mg-sG3Bk0d_jbatqYU0J1G4qQ83zM0hOZTzAvfUwr1L69rRfVSMm1hReaTvbZcdDys091R2xzVNM'),
+                        image: NetworkImage(
+                          'https://lh3.googleusercontent.com/aida-public/AB6AXuDRh8M169EA9xdx-_TI9YHGEj_WRRsBtKv0dpxmVjZ9RAXECGNG9rxTEkhywVkfxNV1jW-08v1HZ27bMgtLppMwHi-m3RTNV_hF7gbKAgSx8HPkKbz00mdKitmaJuDc88hChxFFyjYovB9KeLVFzPhKtx9ryL7lpZ8IeOVJLaTyrANHoJl0It6XF8YfXIDGu85mg-sG3Bk0d_jbatqYU0J1G4qQ83zM0hOZTzAvfUwr1L69rRfVSMm1hReaTvbZcdDys091R2xzVNM',
+                        ),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -78,18 +89,36 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
                     child: Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
                       padding: const EdgeInsets.all(4),
                       child: Container(
-                        decoration: const BoxDecoration(color: Color(0xFFFFDAD6), shape: BoxShape.circle),
-                        child: const Icon(Icons.person_remove, color: Color(0xFF93000A), size: 24),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFDAD6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person_remove,
+                          color: Color(0xFF93000A),
+                          size: 24,
+                        ),
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
               const SizedBox(height: 48),
-              const Text('Từ chối lời mời?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D2A28)), textAlign: TextAlign.center),
+              const Text(
+                'Từ chối lời mời?',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D2A28),
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(20),
@@ -97,17 +126,36 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE7E1DD)),
-                  boxShadow: const [BoxShadow(color: Color(0x0DC98C7B), blurRadius: 20, offset: Offset(0, 4))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0DC98C7B),
+                      blurRadius: 20,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
                     RichText(
                       textAlign: TextAlign.center,
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF524F4C), fontFamily: 'Quicksand', fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF524F4C),
+                          fontFamily: 'Quicksand',
+                          fontWeight: FontWeight.w500,
+                        ),
                         children: [
-                          const TextSpan(text: 'Bạn đang từ chối tham gia nhóm chăm sóc '),
-                          TextSpan(text: widget.groupName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D2A28))),
+                          const TextSpan(
+                            text: 'Bạn đang từ chối tham gia nhóm chăm sóc ',
+                          ),
+                          TextSpan(
+                            text: widget.groupName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2D2A28),
+                            ),
+                          ),
                           const TextSpan(text: '.'),
                         ],
                       ),
@@ -131,12 +179,30 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
                   backgroundColor: const Color(0xFFBA1A1A),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                icon: _isLoading ? const SizedBox.shrink() : const Icon(Icons.block, size: 20),
+                icon: _isLoading
+                    ? const SizedBox.shrink()
+                    : const Icon(Icons.block, size: 20),
                 label: _isLoading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('XÁC NHẬN TỪ CHỐI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'XÁC NHẬN TỪ CHỐI',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -146,9 +212,18 @@ class _RejectInvitationConfirmationScreenState extends State<RejectInvitationCon
                   foregroundColor: const Color(0xFF524440),
                   minimumSize: const Size(double.infinity, 56),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                child: const Text('QUAY LẠI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                child: const Text(
+                  'QUAY LẠI',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ],
           ),

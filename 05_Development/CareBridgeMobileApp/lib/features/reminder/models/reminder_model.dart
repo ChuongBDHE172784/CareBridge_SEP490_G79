@@ -166,8 +166,8 @@ class Reminder {
       recurrenceType: RecurrenceTypeExtension.fromApi(
         json['recurrenceType'] as String?,
       ),
-      recurrenceEndDate: json['recurrenceEndDate'] == null 
-          ? null 
+      recurrenceEndDate: json['recurrenceEndDate'] == null
+          ? null
           : DateTime.parse(json['recurrenceEndDate'] as String),
       status: ReminderStatusExtension.fromApi(json['status'] as String?),
       location: json['location'] as String?,

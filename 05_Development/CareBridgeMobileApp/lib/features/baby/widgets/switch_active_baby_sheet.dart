@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
 
 class SwitchActiveBabySheet extends StatefulWidget {
   final VoidCallback onActiveBabyChanged;
 
-  const SwitchActiveBabySheet({
-    Key? key,
-    required this.onActiveBabyChanged,
-  }) : super(key: key);
+  const SwitchActiveBabySheet({super.key, required this.onActiveBabyChanged});
 
   @override
   State<SwitchActiveBabySheet> createState() => _SwitchActiveBabySheetState();
@@ -15,7 +11,7 @@ class SwitchActiveBabySheet extends StatefulWidget {
 
 class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
   bool _isLoading = false;
-  
+
   // Mock data for profiles - in real app, fetch from GET /api/v1/babies
   final List<Map<String, dynamic>> _profiles = [
     {
@@ -23,7 +19,8 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
       'name': 'Bé Na',
       'age': '8 tháng tuổi',
       'isActive': true,
-      'avatarUrl': 'https://ui-avatars.com/api/?name=Na&background=c98c7b&color=fff',
+      'avatarUrl':
+          'https://ui-avatars.com/api/?name=Na&background=c98c7b&color=fff',
       'updatedAt': '2 giờ trước',
     },
     {
@@ -31,7 +28,8 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
       'name': 'Bé Bo',
       'age': '2 tuổi 3 tháng',
       'isActive': false,
-      'avatarUrl': 'https://ui-avatars.com/api/?name=Bo&background=dbc1b7&color=fff',
+      'avatarUrl':
+          'https://ui-avatars.com/api/?name=Bo&background=dbc1b7&color=fff',
       'updatedAt': '2 ngày trước',
     },
   ];
@@ -41,10 +39,10 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
     try {
       // API call: PATCH /api/v1/babies/{babyId}/active
       // await apiPatch('/api/v1/babies/$babyId/active', body: {});
-      
+
       // MOCK: simulate network delay
       await Future.delayed(const Duration(milliseconds: 600));
-      
+
       if (mounted) {
         widget.onActiveBabyChanged();
         Navigator.pop(context);
@@ -67,7 +65,7 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
     const primaryColor = Color(0xFFC98C7B);
     const textColor = Color(0xFF5A463F);
     const secondaryTextColor = Color(0xFF9C857C);
-    
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -97,17 +95,26 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(32.0),
-              child: Center(child: CircularProgressIndicator(color: primaryColor)),
+              child: Center(
+                child: CircularProgressIndicator(color: primaryColor),
+              ),
             )
           else
             Column(
               children: [
-                ..._profiles.map((profile) => _buildProfileItem(profile, primaryColor, textColor, secondaryTextColor)),
-                
+                ..._profiles.map(
+                  (profile) => _buildProfileItem(
+                    profile,
+                    primaryColor,
+                    textColor,
+                    secondaryTextColor,
+                  ),
+                ),
+
                 // Add new profile action
                 InkWell(
                   onTap: () {
@@ -153,9 +160,9 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
                 ),
               ],
             ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Manage action
           OutlinedButton.icon(
             onPressed: () {
@@ -181,9 +188,14 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
     );
   }
 
-  Widget _buildProfileItem(Map<String, dynamic> profile, Color primaryColor, Color textColor, Color secondaryColor) {
+  Widget _buildProfileItem(
+    Map<String, dynamic> profile,
+    Color primaryColor,
+    Color textColor,
+    Color secondaryColor,
+  ) {
     final bool isActive = profile['isActive'];
-    
+
     return InkWell(
       onTap: () {
         if (!isActive) {
@@ -195,7 +207,7 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? primaryColor.withOpacity(0.1) : Colors.white,
+          color: isActive ? primaryColor.withValues(alpha: 0.1) : Colors.white,
           border: Border.all(
             color: isActive ? primaryColor : Colors.grey[200]!,
             width: 2,
@@ -203,7 +215,7 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -240,7 +252,11 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: const Icon(Icons.check, color: Colors.white, size: 12),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 12,
+                      ),
                     ),
                   ),
               ],
@@ -264,7 +280,10 @@ class _SwitchActiveBabySheetState extends State<SwitchActiveBabySheet> {
                       ),
                       if (isActive)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: primaryColor,
                             borderRadius: BorderRadius.circular(12),

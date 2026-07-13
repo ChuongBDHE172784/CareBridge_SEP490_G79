@@ -1,21 +1,41 @@
 from __future__ import annotations
 
 import re
+import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import frontmatter
 
-from app.config import MEDICAL_SOURCES_PENDING_DIR
+from app.config import EVIDENCE_CACHE_TTL_DAYS, MEDICAL_SOURCES_PENDING_DIR
 from app.schemas import SourceDocument
 
 
+_CACHE_WRITE_LOCK = threading.Lock()
+
+
 def cache_pending_source(source: SourceDocument, cache_dir: Path | None = None) -> Path:
+    with _CACHE_WRITE_LOCK:
+        return _cache_pending_source_locked(source, cache_dir)
+
+
+def _cache_pending_source_locked(source: SourceDocument, cache_dir: Path | None = None) -> Path:
     target_dir = cache_dir or MEDICAL_SOURCES_PENDING_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{_safe_slug(source.domain)}_{_safe_slug(source.id)}.md"
     path = target_dir / filename
     if path.exists():
-        return path
+        post = frontmatter.load(path)
+        retrieved = post.metadata.get("retrievedAt")
+        if retrieved:
+            try:
+                timestamp = datetime.fromisoformat(str(retrieved).replace("Z", "+00:00"))
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) - timestamp < timedelta(days=EVIDENCE_CACHE_TTL_DAYS):
+                    return path
+            except (TypeError, ValueError):
+                pass
 
     post = frontmatter.Post(
         source.body,
@@ -31,12 +51,18 @@ def cache_pending_source(source: SourceDocument, cache_dir: Path | None = None) 
         lastReviewed=source.lastReviewed,
         sourceType=source.sourceType,
         sourceStatus="PENDING_REVIEW",
+        sourceVersion=source.sourceVersion,
         retrievedAt=source.retrievedAt,
         retrievedBy="realtime_official_search",
         matchedSymptoms=source.symptoms,
         adminReviewed=False,
+        etag=source.etag,
+        lastModified=source.lastModified,
+        ttlDays=EVIDENCE_CACHE_TTL_DAYS,
     )
-    path.write_text(frontmatter.dumps(post), encoding="utf-8")
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(frontmatter.dumps(post), encoding="utf-8")
+    temporary.replace(path)
     return path
 
 

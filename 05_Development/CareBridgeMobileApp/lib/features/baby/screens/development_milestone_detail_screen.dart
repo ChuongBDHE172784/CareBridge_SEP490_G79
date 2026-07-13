@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
 
 class DevelopmentMilestoneDetailScreen extends StatefulWidget {
   final String babyId;
   final String milestoneId;
 
   const DevelopmentMilestoneDetailScreen({
-    Key? key,
+    super.key,
     required this.babyId,
     required this.milestoneId,
-  }) : super(key: key);
+  });
 
   @override
-  State<DevelopmentMilestoneDetailScreen> createState() => _DevelopmentMilestoneDetailScreenState();
+  State<DevelopmentMilestoneDetailScreen> createState() =>
+      _DevelopmentMilestoneDetailScreenState();
 }
 
-class _DevelopmentMilestoneDetailScreenState extends State<DevelopmentMilestoneDetailScreen> {
+class _DevelopmentMilestoneDetailScreenState
+    extends State<DevelopmentMilestoneDetailScreen> {
   bool _isLoading = true;
   bool _isDeleting = false;
   Map<String, dynamic>? _milestoneDetail;
@@ -31,20 +32,24 @@ class _DevelopmentMilestoneDetailScreenState extends State<DevelopmentMilestoneD
     try {
       // API call: GET /api/v1/babies/{babyId}/milestones/{milestoneId}
       // final response = await apiGet('/api/v1/babies/${widget.babyId}/milestones/${widget.milestoneId}');
-      
+
       // MOCK data for UI representation
       await Future.delayed(const Duration(milliseconds: 700));
       _milestoneDetail = {
         'title': 'Lần đầu tiên ngồi vững',
         'category': 'Vận động',
-        'description': 'Bé đã tự ngồi được không cần đỡ, một cột mốc tuyệt vời!',
+        'description':
+            'Bé đã tự ngồi được không cần đỡ, một cột mốc tuyệt vời!',
         'dateAchieved': '15 Tháng 10, 2023',
         'ageAtMilestone': '6 Tháng 2 Tuần',
-        'motherNote': 'Hôm nay lúc đang chơi trên thảm, bé tự dưng buông tay khỏi đồ chơi và ngồi vững được một lúc lâu. Nhìn con lớn lên từng ngày thật sự rất hạnh phúc.',
-        'imageUrl': 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=800',
+        'motherNote':
+            'Hôm nay lúc đang chơi trên thảm, bé tự dưng buông tay khỏi đồ chơi và ngồi vững được một lúc lâu. Nhìn con lớn lên từng ngày thật sự rất hạnh phúc.',
+        'imageUrl':
+            'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=800',
         'mediaCount': 3,
       };
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lỗi tải thông tin cột mốc')),
       );
@@ -58,9 +63,9 @@ class _DevelopmentMilestoneDetailScreenState extends State<DevelopmentMilestoneD
     try {
       // API call: DELETE /api/v1/babies/{babyId}/milestones/{milestoneId}
       // await apiDelete('/api/v1/babies/${widget.babyId}/milestones/${widget.milestoneId}');
-      
+
       await Future.delayed(const Duration(milliseconds: 600));
-      
+
       if (mounted) {
         Navigator.pop(context, true); // true indicates deleted
       }
@@ -111,227 +116,262 @@ class _DevelopmentMilestoneDetailScreenState extends State<DevelopmentMilestoneD
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : _milestoneDetail == null
-              ? const Center(child: Text('Không tìm thấy dữ liệu'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Column(
-                    children: [
-                      // Hero Card
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
+          ? const Center(child: Text('Không tìm thấy dữ liệu'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                children: [
+                  // Hero Card
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image Section
+                        Stack(
+                          children: [
+                            Image.network(
+                              _milestoneDetail!['imageUrl'],
+                              height: 240,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                            Positioned(
+                              bottom: 16,
+                              right: 16,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.photo_library,
+                                      color: primaryColor,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${_milestoneDetail!['mediaCount']} Ảnh',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        margin: const EdgeInsets.bottom(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Image Section
-                            Stack(
-                              children: [
-                                Image.network(
-                                  _milestoneDetail!['imageUrl'],
-                                  height: 240,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                                Positioned(
-                                  bottom: 16,
-                                  right: 16,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.85),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.photo_library, color: primaryColor, size: 18),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${_milestoneDetail!['mediaCount']} Ảnh',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // Content Section
-                            Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        // Content Section
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: primaryColor,
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Text(
-                                          (_milestoneDetail!['category'] as String).toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      (_milestoneDetail!['category'] as String)
+                                          .toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
                                       ),
-                                      InkWell(
-                                        onTap: () {
-                                          // Call PATCH API in edit screen
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFFE9E3),
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: const Icon(Icons.edit, color: primaryColor, size: 20),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    _milestoneDetail!['title'],
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor,
-                                      fontFamily: 'Quicksand',
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _milestoneDetail!['description'],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF9C857C),
+                                  InkWell(
+                                    onTap: () {
+                                      // Call PATCH API in edit screen
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFE9E3),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Icon(
+                                        Icons.edit,
+                                        color: primaryColor,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Grid Stats
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildGridStatCard(
-                              icon: Icons.calendar_today,
-                              label: 'Ngày đạt được',
-                              value: _milestoneDetail!['dateAchieved'],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildGridStatCard(
-                              icon: Icons.child_care,
-                              label: 'Tuổi của bé',
-                              value: _milestoneDetail!['ageAtMilestone'],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Notes Section
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF1EC),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(Icons.sticky_note_2, color: primaryColor),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Ghi chú của mẹ',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
-                                  ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _milestoneDetail!['title'],
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                  fontFamily: 'Quicksand',
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _milestoneDetail!['description'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF9C857C),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Grid Stats
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildGridStatCard(
+                          icon: Icons.calendar_today,
+                          label: 'Ngày đạt được',
+                          value: _milestoneDetail!['dateAchieved'],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildGridStatCard(
+                          icon: Icons.child_care,
+                          label: 'Tuổi của bé',
+                          value: _milestoneDetail!['ageAtMilestone'],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Notes Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1EC),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.sticky_note_2, color: primaryColor),
+                            SizedBox(width: 8),
                             Text(
-                              _milestoneDetail!['motherNote'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF524440),
-                                height: 1.5,
+                              'Ghi chú của mẹ',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      
-                      const SizedBox(height: 32),
-
-                      // Danger Zone Delete
-                      TextButton.icon(
-                        onPressed: _isDeleting ? null : _deleteMilestone,
-                        icon: _isDeleting
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: errorColor))
-                            : const Icon(Icons.delete, color: errorColor),
-                        label: Text(
-                          _isDeleting ? 'Đang xóa...' : 'Xóa cột mốc này',
+                        const SizedBox(height: 12),
+                        Text(
+                          _milestoneDetail!['motherNote'],
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: errorColor,
+                            color: Color(0xFF524440),
+                            height: 1.5,
                           ),
                         ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            side: BorderSide(color: errorColor.withOpacity(0.3)),
-                          ),
-                          backgroundColor: Colors.transparent,
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Danger Zone Delete
+                  TextButton.icon(
+                    onPressed: _isDeleting ? null : _deleteMilestone,
+                    icon: _isDeleting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: errorColor,
+                            ),
+                          )
+                        : const Icon(Icons.delete, color: errorColor),
+                    label: Text(
+                      _isDeleting ? 'Đang xóa...' : 'Xóa cột mốc này',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: errorColor,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 24,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        side: BorderSide(
+                          color: errorColor.withValues(alpha: 0.3),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                    ],
+                      backgroundColor: Colors.transparent,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
     );
   }
 
-  Widget _buildGridStatCard({required IconData icon, required String label, required String value}) {
+  Widget _buildGridStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
       decoration: BoxDecoration(
@@ -339,7 +379,7 @@ class _DevelopmentMilestoneDetailScreenState extends State<DevelopmentMilestoneD
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

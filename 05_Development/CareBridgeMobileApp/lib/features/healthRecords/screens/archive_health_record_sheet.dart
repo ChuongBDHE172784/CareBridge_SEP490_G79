@@ -17,7 +17,8 @@ class ArchiveHealthRecordSheet extends StatefulWidget {
   }
 
   @override
-  State<ArchiveHealthRecordSheet> createState() => _ArchiveHealthRecordSheetState();
+  State<ArchiveHealthRecordSheet> createState() =>
+      _ArchiveHealthRecordSheetState();
 }
 
 class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
@@ -41,7 +42,10 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể thực hiện. Vui lòng thử lại.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Không thể thực hiện. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -66,7 +70,10 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
             Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(color: const Color(0xFFE0D8D5), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0D8D5),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Expanded(
               child: ListView(
@@ -98,19 +105,36 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
         Container(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(20)),
-          child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF8F00), size: 32),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3CD),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFFF8F00),
+            size: 32,
+          ),
         ),
         const SizedBox(height: 12),
         const Text(
           'Quản lý Hồ sơ Sức khỏe',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 18, fontWeight: FontWeight.w700, color: _onSurface),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
         const Text(
           'Chọn hành động bạn muốn thực hiện với hồ sơ này.',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurfaceVariant, height: 1.5),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _onSurfaceVariant,
+            height: 1.5,
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -128,10 +152,16 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
         children: [
           _infoRow(Icons.description_rounded, 'Tiêu đề', widget.record.title),
           const SizedBox(height: 8),
-          _infoRow(Icons.category_rounded, 'Loại', widget.record.recordType.displayLabel),
+          _infoRow(
+            Icons.category_rounded,
+            'Loại',
+            widget.record.recordType.displayLabel,
+          ),
           const SizedBox(height: 8),
           _infoRow(
-            widget.record.isShared ? Icons.people_rounded : Icons.lock_outline_rounded,
+            widget.record.isShared
+                ? Icons.people_rounded
+                : Icons.lock_outline_rounded,
             'Chia sẻ',
             widget.record.isShared ? 'Đã chia sẻ' : 'Riêng tư',
           ),
@@ -145,9 +175,26 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
       children: [
         Icon(icon, size: 16, color: _primaryContainer),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            color: _onSurfaceVariant,
+          ),
+        ),
         const Spacer(),
-        Text(value, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: _onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _onSurface,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }
@@ -156,7 +203,15 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Chọn hành động', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w700, color: _onSurface)),
+        const Text(
+          'Chọn hành động',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
+        ),
         const SizedBox(height: 12),
         _buildOptionCard(
           selected: _archiveSelected,
@@ -164,7 +219,8 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
           iconBg: const Color(0xFFE8F5E9),
           iconColor: const Color(0xFF4CAF50),
           title: 'Lưu trữ hồ sơ',
-          description: 'Hồ sơ sẽ bị ẩn khỏi dòng thời gian nhưng dữ liệu vẫn được giữ nguyên.',
+          description:
+              'Hồ sơ sẽ bị ẩn khỏi dòng thời gian nhưng dữ liệu vẫn được giữ nguyên.',
           onTap: () => setState(() => _archiveSelected = true),
         ),
         const SizedBox(height: 10),
@@ -208,7 +264,10 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(width: 14),
@@ -216,9 +275,25 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w600, color: _onSurface)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Text(description, style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant, height: 1.4)),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      color: _onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -230,9 +305,18 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: selected ? _primary : Colors.transparent,
-                border: Border.all(color: selected ? _primary : const Color(0xFFCCBBB6), width: 2),
+                border: Border.all(
+                  color: selected ? _primary : const Color(0xFFCCBBB6),
+                  width: 2,
+                ),
               ),
-              child: selected ? const Icon(Icons.check_rounded, color: Colors.white, size: 12) : null,
+              child: selected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 12,
+                    )
+                  : null,
             ),
           ],
         ),
@@ -251,15 +335,36 @@ class _ArchiveHealthRecordSheetState extends State<ArchiveHealthRecordSheet> {
         elevation: 0,
       ),
       child: _isProcessing
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-          : const Text('Xác nhận thực hiện', style: TextStyle(fontFamily: 'Lexend', fontSize: 15, fontWeight: FontWeight.w700)),
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Xác nhận thực hiện',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
     );
   }
 
   Widget _buildCancelButton() {
     return TextButton(
       onPressed: () => Navigator.of(context).pop(false),
-      child: const Text('Hủy bỏ', style: TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant)),
+      child: const Text(
+        'Hủy bỏ',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          color: _onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

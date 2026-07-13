@@ -7,10 +7,12 @@ class PreparationChecklistScreen extends StatefulWidget {
   const PreparationChecklistScreen({super.key});
 
   @override
-  State<PreparationChecklistScreen> createState() => _PreparationChecklistScreenState();
+  State<PreparationChecklistScreen> createState() =>
+      _PreparationChecklistScreenState();
 }
 
-class _PreparationChecklistScreenState extends State<PreparationChecklistScreen> {
+class _PreparationChecklistScreenState
+    extends State<PreparationChecklistScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -79,7 +81,10 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể thêm mục: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Không thể thêm mục: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -93,15 +98,22 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
       final updated = await _service.toggleComplete(item.itemId);
       if (!mounted) return;
       setState(() {
-        _items = _items
-            .map((current) => current.itemId == updated.itemId ? updated : current)
-            .toList()
-          ..sort(_sortItems);
+        _items =
+            _items
+                .map(
+                  (current) =>
+                      current.itemId == updated.itemId ? updated : current,
+                )
+                .toList()
+              ..sort(_sortItems);
       });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể cập nhật mục: $e'), backgroundColor: _error),
+        SnackBar(
+          content: Text('Không thể cập nhật mục: $e'),
+          backgroundColor: _error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _togglingIds.remove(item.itemId));
@@ -129,7 +141,11 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
         ),
         title: const Text(
           'Checklist chuẩn bị',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
       body: _loading
@@ -140,7 +156,10 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                 children: [
-                  _ProgressHeader(total: _items.length, completed: completedCount),
+                  _ProgressHeader(
+                    total: _items.length,
+                    completed: completedCount,
+                  ),
                   const SizedBox(height: 16),
                   if (_errorText != null)
                     _InlineError(message: _errorText!, onRetry: _load)
@@ -193,7 +212,11 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
         color: _surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: _primary.withAlpha(16), blurRadius: 16, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: _primary.withAlpha(16),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
@@ -210,17 +233,22 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<ChecklistCategory>(
-            value: _selectedCategory,
+            initialValue: _selectedCategory,
             decoration: _inputDecoration('Danh mục'),
             items: ChecklistCategory.values
-                .map((category) => DropdownMenuItem(
-                      value: category,
-                      child: Text(category.label),
-                    ))
+                .map(
+                  (category) => DropdownMenuItem(
+                    value: category,
+                    child: Text(category.label),
+                  ),
+                )
                 .toList(),
             onChanged: _saving
                 ? null
-                : (category) => setState(() => _selectedCategory = category ?? ChecklistCategory.general),
+                : (category) => setState(
+                    () => _selectedCategory =
+                        category ?? ChecklistCategory.general,
+                  ),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -239,14 +267,25 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.add_task_rounded),
-            label: const Text('Thêm mục', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800)),
+            label: const Text(
+              'Thêm mục',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             style: FilledButton.styleFrom(
               backgroundColor: _primary,
               minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
             ),
           ),
         ],
@@ -255,23 +294,23 @@ class _PreparationChecklistScreenState extends State<PreparationChecklistScreen>
   }
 
   InputDecoration _inputDecoration(String label) => InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-        filled: true,
-        fillColor: const Color(0xFFFFF8F6),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primary, width: 1.5),
-        ),
-      );
+    labelText: label,
+    labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+    filled: true,
+    fillColor: const Color(0xFFFFF8F6),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _primary, width: 1.5),
+    ),
+  );
 }
 
 class _ProgressHeader extends StatelessWidget {
@@ -348,7 +387,9 @@ class _ChecklistTile extends StatelessWidget {
         value: item.completed,
         onChanged: busy ? null : (_) => onChanged(),
         activeColor: const Color(0xFF845143),
-        checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        checkboxShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5),
+        ),
         title: Text(
           item.itemText,
           style: TextStyle(

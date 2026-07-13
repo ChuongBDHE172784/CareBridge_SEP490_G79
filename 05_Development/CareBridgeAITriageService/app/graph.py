@@ -1,24 +1,66 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from app.config import DISCLAIMER, NO_OFFICIAL_REALTIME_SOURCE_WARNING, NO_SOURCE_WARNING, RISK_COLORS
+from app.config import (
+    DISCLAIMER,
+    GRAPH_VERSION,
+    NO_OFFICIAL_REALTIME_SOURCE_WARNING,
+    NO_SOURCE_WARNING,
+    ONTOLOGY_VERSION,
+    PYTHON_SERVICE_TIMEOUT_SECONDS,
+    RED_LOCAL_EVIDENCE_GAP_WARNING,
+    RESPONSE_SCHEMA_VERSION,
+    RISK_COLORS,
+    RULE_SET_VERSION,
+)
 from app.evidence_cache import cache_pending_sources
-from app.intake_question_engine import ask_followup_questions, determine_missing_information
+from app.gemini_client import GeminiClient, get_gemini_client
+from app.intake_question_engine import (
+    ask_followup_questions,
+    determine_missing_information,
+    naturalize_followup_questions,
+)
 from app.risk_rules import apply_red_flag_rules, missing_info_questions, score_risk
-from app.schemas import ChildTriageRequest, ChildTriageResponse, Citation, Evidence, IntakeQuestion, SourceDocument
-from app.source_retriever import attach_citations, build_evidence, retrieve_realtime_sources, retrieve_sources
+from app.schemas import (
+    ChildTriageRequest,
+    ChildTriageResponse,
+    Citation,
+    Evidence,
+    ExplainabilityMetrics,
+    IntakeQuestion,
+    NormalizedSymptom,
+    SourceDocument,
+)
+from app.source_retriever import (
+    attach_citations,
+    build_evidence,
+    retrieve_realtime_sources,
+    retrieve_sources,
+)
 from app.source_validator import validate_source
-from app.symptom_normalizer import normalize_symptoms
+from app.symptom_normalizer import (
+    CANONICAL_SYMPTOM_CODES,
+    normalize_symptom_details_deterministic,
+    normalize_symptom_details_with_metadata,
+)
+
 
 log = logging.getLogger(__name__)
 
+
 class TriageState(TypedDict, total=False):
     intake: ChildTriageRequest
+    geminiClient: GeminiClient | None
     normalizedSymptoms: list[str]
+    normalizedSymptomDetails: list[NormalizedSymptom]
+    normalizationPrepared: bool
+    normalizationGeminiUsed: bool
+    requestDeadline: float
     missingInformation: list[str]
     retrievedSources: list[SourceDocument]
     riskLevel: str
@@ -27,12 +69,16 @@ class TriageState(TypedDict, total=False):
     possibleConcern: str
     recommendedAction: str
     emergencyActionRequired: bool
+    immediateRed: bool
     redFlags: list[str]
     matchedRules: list[str]
     citations: list[Citation]
     evidence: Evidence
     questions: list[str]
     followupQuestions: list[IntakeQuestion]
+    assistantMessage: str
+    assistantProvider: str
+    assistantFallbackUsed: bool
     warning: str | None
     disclaimer: str
     forceCautiousYellow: bool
@@ -41,86 +87,153 @@ class TriageState(TypedDict, total=False):
 
 def collect_intake(state: TriageState) -> TriageState:
     state["questions"] = missing_info_questions(state["intake"])
+    state["assistantProvider"] = "DETERMINISTIC_FALLBACK"
+    state["assistantFallbackUsed"] = True
     return state
 
 
-def normalize_symptoms_node(state: TriageState) -> TriageState:
-    state["normalizedSymptoms"] = normalize_symptoms(state["intake"])
+def deterministic_emergency_scan(state: TriageState) -> TriageState:
+    details = normalize_symptom_details_deterministic(state["intake"])
+    symptoms = [item.normalizedCode for item in details]
+    red_flags, matched_rules = apply_red_flag_rules(state["intake"], symptoms)
+    if red_flags or not state.get("normalizationPrepared"):
+        state["normalizedSymptomDetails"] = details
+        state["normalizedSymptoms"] = symptoms
+    state["redFlags"] = red_flags
+    state["matchedRules"] = matched_rules
+    state["immediateRed"] = bool(red_flags)
+    if red_flags:
+        _set_risk(state, "RED")
     return state
+
+
+def route_after_emergency_scan(state: TriageState) -> str:
+    return "immediate_red" if state.get("immediateRed") else "normal"
+
+
+def normalize_symptoms_with_gemini(state: TriageState) -> TriageState:
+    if state.get("normalizationPrepared"):
+        return state
+    details, used = normalize_symptom_details_with_metadata(
+        state["intake"], state.get("geminiClient"), state.get("requestDeadline")
+    )
+    state["normalizedSymptomDetails"] = details
+    state["normalizedSymptoms"] = [item.normalizedCode for item in details]
+    state["normalizationGeminiUsed"] = used
+    return state
+
+
+def validate_normalized_symptoms(state: TriageState) -> TriageState:
+    valid = [
+        item for item in state.get("normalizedSymptomDetails", [])
+        if item.normalizedCode in CANONICAL_SYMPTOM_CODES
+    ]
+    state["normalizedSymptomDetails"] = valid
+    state["normalizedSymptoms"] = [item.normalizedCode for item in valid]
+    return state
+
+
+def detect_normalized_red_flags(state: TriageState) -> TriageState:
+    red_flags, matched_rules = apply_red_flag_rules(
+        state["intake"], state.get("normalizedSymptoms", [])
+    )
+    state["redFlags"] = red_flags
+    state["matchedRules"] = matched_rules
+    if red_flags:
+        _set_risk(state, "RED")
+    return state
+
+
+def route_after_normalized_red_scan(state: TriageState) -> str:
+    return "red" if state.get("redFlags") else "continue"
 
 
 def determine_missing_information_node(state: TriageState) -> TriageState:
     state["missingInformation"] = determine_missing_information(state["intake"])
-    state["questions"] = missing_info_questions(state["intake"])
     return state
 
 
-def ask_followup_questions_node(state: TriageState) -> TriageState:
-    state["followupQuestions"] = ask_followup_questions(state["intake"])
+def select_followup_question_keys(state: TriageState) -> TriageState:
+    questions = ask_followup_questions(state["intake"])
+    if not state.get("normalizedSymptoms") and not state.get("redFlags"):
+        generic = IntakeQuestion(
+            questionKey="parentFreeText",
+            text="Vui lòng mô tả dấu hiệu cụ thể mà bạn quan sát được ở trẻ.",
+            answerType="TEXT",
+        )
+        questions = [generic] + [item for item in questions if item.questionKey != "parentFreeText"]
+    state["followupQuestions"] = questions[:3]
+    state["questions"] = [item.text for item in state["followupQuestions"]]
     return state
 
 
-def apply_red_flag_rules_node(state: TriageState) -> TriageState:
+def naturalize_followup_questions_with_gemini(state: TriageState) -> TriageState:
+    questions, message, used = naturalize_followup_questions(
+        state.get("followupQuestions", []),
+        intake=state["intake"],
+        normalized_symptoms=state.get("normalizedSymptoms", []),
+        gemini_client=state.get("geminiClient"),
+        deadline=state.get("requestDeadline"),
+    )
+    state["followupQuestions"] = questions
+    state["questions"] = [item.text for item in questions]
+    state["assistantMessage"] = message
+    if used:
+        state["assistantProvider"] = "GEMINI"
+        state["assistantFallbackUsed"] = False
+    return state
+
+
+def apply_deterministic_rules(state: TriageState) -> TriageState:
     red_flags, matched_rules = apply_red_flag_rules(
-        state["intake"],
-        state.get("normalizedSymptoms", []),
+        state["intake"], state.get("normalizedSymptoms", [])
     )
     state["redFlags"] = red_flags
     state["matchedRules"] = matched_rules
-    return state
-
-
-def score_risk_node(state: TriageState) -> TriageState:
-    if state.get("forceCautiousYellow") and not state.get("redFlags"):
+    if red_flags:
+        risk = "RED"
+    elif state.get("forceCautiousYellow"):
         risk = "YELLOW"
-        matched_rules = state.get("matchedRules", [])
-        if "YELLOW_INCOMPLETE_INFORMATION" not in matched_rules:
-            matched_rules.append("YELLOW_INCOMPLETE_INFORMATION")
-        state["matchedRules"] = matched_rules
+        if "YELLOW_INCOMPLETE_INFORMATION" not in state["matchedRules"]:
+            state["matchedRules"].append("YELLOW_INCOMPLETE_INFORMATION")
     elif state.get("questions"):
         risk = "NEED_MORE_INFO"
     else:
-        risk, matched_rules = score_risk(
+        risk, rules = score_risk(
             state["intake"],
             state.get("normalizedSymptoms", []),
-            state.get("redFlags", []),
-            state.get("matchedRules", []),
+            red_flags,
+            matched_rules,
         )
-        state["matchedRules"] = matched_rules
-    state["riskLevel"] = risk
-    state["riskColor"] = RISK_COLORS[risk]
-    state["emergencyActionRequired"] = risk == "RED"
+        state["matchedRules"] = rules
+    _set_risk(state, risk)
     return state
 
 
 def retrieve_sources_node(state: TriageState) -> TriageState:
     state["retrievedSources"] = retrieve_sources(
-        state.get("normalizedSymptoms", []),
-        state.get("matchedRules", []),
+        state.get("normalizedSymptoms", []), state.get("matchedRules", [])
     )
     return state
 
 
-def realtime_official_search_if_needed_node(state: TriageState) -> TriageState:
-    local_citations = attach_citations(
+def realtime_official_search_if_needed(state: TriageState) -> TriageState:
+    local = attach_citations(
         state.get("retrievedSources", []),
         state.get("normalizedSymptoms", []),
         state.get("matchedRules", []),
     )
-    if local_citations:
+    if local or state.get("riskLevel") in {"RED", "NEED_MORE_INFO"}:
         return state
-    if state.get("riskLevel") not in {"RED", "YELLOW", "GREEN"}:
-        return state
-    realtime_sources = retrieve_realtime_sources(
-        state.get("normalizedSymptoms", []),
-        state.get("matchedRules", []),
+    realtime = retrieve_realtime_sources(
+        state.get("normalizedSymptoms", []), state.get("matchedRules", [])
     )
-    cache_pending_sources(realtime_sources)
-    state["retrievedSources"] = realtime_sources
+    cache_pending_sources(realtime)
+    state["retrievedSources"] = realtime
     return state
 
 
-def validate_sources_node(state: TriageState) -> TriageState:
+def validate_sources(state: TriageState) -> TriageState:
     symptoms = state.get("normalizedSymptoms", [])
     state["retrievedSources"] = [
         source for source in state.get("retrievedSources", [])
@@ -129,50 +242,7 @@ def validate_sources_node(state: TriageState) -> TriageState:
     return state
 
 
-def generate_safe_response_node(state: TriageState) -> TriageState:
-    risk = state["riskLevel"]
-    symptoms = ", ".join(state.get("normalizedSymptoms", [])) or "trieu chung da nhap"
-    if risk == "NEED_MORE_INFO":
-        state["summary"] = "CareBridge can them thong tin truoc khi phan loai rui ro."
-        state["possibleConcern"] = "Thieu tuoi cua tre hoac mo ta trieu chung."
-        state["recommendedAction"] = (
-            "Vui long tra loi cac cau hoi bo sung. Neu tre co dau hieu nang, "
-            "hay lien he co so y te hoac cap cuu."
-        )
-    elif risk == "RED":
-        red_flags = ", ".join(state.get("redFlags", [])) or "dau hieu nguy hiem"
-        state["summary"] = (
-            f"Trieu chung {red_flags} la dau hieu nguy hiem theo rule engine va "
-            "nguon y te chinh thong, can dua tre di kham/cap cuu ngay."
-        )
-        state["possibleConcern"] = "; ".join(state.get("redFlags", []))
-        state["recommendedAction"] = (
-            "Lien he cap cuu hoac dua tre den co so y te gan nhat ngay. "
-            "Khong cho tu van AI neu tinh trang dang xau di."
-        )
-    elif risk == "YELLOW":
-        state["summary"] = (
-            f"Cac trieu chung {symptoms} can duoc theo doi va co the can nhan vien y te "
-            "danh gia neu keo dai, nang hon hoac kem dau hieu canh bao."
-        )
-        state["possibleConcern"] = "Trieu chung chua co red flag ro, nhung can theo doi dien tien."
-        state["recommendedAction"] = (
-            "Theo doi nhiet do, nhip tho, bu/uong va tinh trang tinh tao. "
-            "Lien he bac si neu keo dai, nang hon hoac xuat hien red flag."
-        )
-    else:
-        state["summary"] = "Chua ghi nhan red flag tu thong tin hien co."
-        state["possibleConcern"] = (
-            "Trieu chung nhe, tre van tinh tao, bu/uong tot va tho binh thuong."
-        )
-        state["recommendedAction"] = (
-            "Theo doi tai nha, cho tre bu/uong du, ghi nhan trieu chung va "
-            "quay lai kiem tra neu co thay doi."
-        )
-    return state
-
-
-def attach_citations_node(state: TriageState) -> TriageState:
+def attach_evidence(state: TriageState) -> TriageState:
     citations = attach_citations(
         state.get("retrievedSources", []),
         state.get("normalizedSymptoms", []),
@@ -182,7 +252,9 @@ def attach_citations_node(state: TriageState) -> TriageState:
     state["evidence"] = build_evidence(citations, state.get("normalizedSymptoms", []))
     if citations:
         state["warning"] = None
-    elif state.get("riskLevel") in {"RED", "YELLOW", "GREEN"}:
+    elif state.get("riskLevel") == "RED":
+        state["warning"] = RED_LOCAL_EVIDENCE_GAP_WARNING
+    elif state.get("riskLevel") in {"YELLOW", "GREEN"}:
         state["warning"] = NO_OFFICIAL_REALTIME_SOURCE_WARNING
     else:
         state["warning"] = NO_SOURCE_WARNING
@@ -192,48 +264,154 @@ def attach_citations_node(state: TriageState) -> TriageState:
     return state
 
 
-def audit_log(state: TriageState) -> TriageState:
+def compose_deterministic_response(state: TriageState) -> TriageState:
+    risk = state["riskLevel"]
+    symptoms = ", ".join(state.get("normalizedSymptoms", [])) or "các dấu hiệu đã nhập"
+    if risk == "NEED_MORE_INFO":
+        state["summary"] = "CareBridge cần thêm thông tin trước khi phân loại rủi ro."
+        state["possibleConcern"] = "Thông tin hiện tại chưa đủ để phân loại an toàn."
+        state["recommendedAction"] = (
+            "Vui lòng trả lời các câu hỏi bổ sung. Nếu trẻ có dấu hiệu nặng, "
+            "hãy liên hệ cơ sở y tế hoặc cấp cứu."
+        )
+    elif risk == "RED":
+        flags = ", ".join(state.get("redFlags", [])) or "dấu hiệu nguy hiểm"
+        state["summary"] = f"Hệ thống ghi nhận {flags}; đây là dấu hiệu cần được đánh giá khẩn cấp."
+        state["possibleConcern"] = "Có dấu hiệu nguy hiểm theo quy tắc phân loại rủi ro của CareBridge."
+        state["recommendedAction"] = (
+            "Hãy liên hệ cấp cứu hoặc đưa trẻ đến cơ sở y tế gần nhất ngay. "
+            "Không chờ tư vấn AI nếu tình trạng đang xấu đi."
+        )
+    elif risk == "YELLOW":
+        state["summary"] = f"Các dấu hiệu {symptoms} cần được theo dõi sát."
+        state["possibleConcern"] = "Chưa ghi nhận red flag rõ ràng nhưng diễn tiến cần được theo dõi."
+        state["recommendedAction"] = (
+            "Theo dõi nhiệt độ, nhịp thở, bú/uống và độ tỉnh táo; liên hệ nhân viên y tế "
+            "nếu triệu chứng kéo dài, nặng hơn hoặc xuất hiện dấu hiệu cảnh báo."
+        )
+    else:
+        state["summary"] = "Chưa ghi nhận dấu hiệu nguy hiểm từ thông tin hiện có."
+        state["possibleConcern"] = "Các dấu hiệu hiện tại phù hợp với mức theo dõi tại nhà."
+        state["recommendedAction"] = (
+            "Tiếp tục theo dõi, cho trẻ bú/uống đủ và đánh giá lại ngay nếu tình trạng thay đổi."
+        )
+    state["disclaimer"] = DISCLAIMER
+    return state
+
+
+def compose_safe_explanation_with_gemini(state: TriageState) -> TriageState:
+    compose_deterministic_response(state)
+    if state.get("riskLevel") == "RED":
+        return state
+    client = state.get("geminiClient")
+    if client is None:
+        return state
+    explanation = client.explain_triage_result(
+        risk_level=state["riskLevel"],
+        matched_rules=state.get("matchedRules", []),
+        red_flags=state.get("redFlags", []),
+        normalized_symptoms=state.get("normalizedSymptoms", []),
+        recommendation_code=_recommendation_code(state["riskLevel"]),
+        citations=state.get("citations", []),
+        deadline=state.get("requestDeadline"),
+    )
+    if explanation is None:
+        state["assistantProvider"] = "DETERMINISTIC_FALLBACK"
+        state["assistantFallbackUsed"] = True
+        return state
+    state["summary"] = explanation.summary
+    state["possibleConcern"] = explanation.possibleConcern
+    state["recommendedAction"] = explanation.recommendedAction
+    state["assistantProvider"] = "GEMINI"
+    state["assistantFallbackUsed"] = False
+    state["disclaimer"] = DISCLAIMER
+    return state
+
+
+def validate_final_response(state: TriageState) -> TriageState:
+    if state.get("redFlags") and state.get("riskLevel") != "RED":
+        _set_risk(state, "RED")
+        compose_deterministic_response(state)
+        state["assistantProvider"] = "DETERMINISTIC_FALLBACK"
+        state["assistantFallbackUsed"] = True
+    state["disclaimer"] = DISCLAIMER
+    return state
+
+
+def audit_handoff(state: TriageState) -> TriageState:
     log.info(
-        "ai_triage_audit normalizedSymptoms=%s riskLevel=%s matchedRules=%s citationIds=%s sourceStatus=%s emergencyActionRequired=%s warning=%s",
+        "ai_triage_audit normalizedSymptoms=%s riskLevel=%s matchedRules=%s "
+        "citationIds=%s emergencyActionRequired=%s assistantProvider=%s fallback=%s",
         state.get("normalizedSymptoms", []),
         state.get("riskLevel"),
         state.get("matchedRules", []),
-        [citation.id for citation in state.get("citations", [])],
-        [citation.sourceStatus for citation in state.get("citations", [])],
+        [citation.sourceId or citation.id for citation in state.get("citations", [])],
         state.get("emergencyActionRequired"),
-        state.get("warning"),
+        state.get("assistantProvider"),
+        state.get("assistantFallbackUsed"),
     )
     return state
+
+
+def _set_risk(state: TriageState, risk: str) -> None:
+    state["riskLevel"] = risk
+    state["riskColor"] = RISK_COLORS[risk]
+    state["emergencyActionRequired"] = risk == "RED"
+
+
+def _recommendation_code(risk: str) -> str:
+    return {
+        "RED": "SEEK_EMERGENCY_CARE",
+        "YELLOW": "CONTACT_HEALTHCARE_PROVIDER",
+        "GREEN": "MONITOR_AT_HOME",
+        "NEED_MORE_INFO": "PROVIDE_MORE_INFORMATION",
+    }[risk]
 
 
 def build_graph():
     graph = StateGraph(TriageState)
     graph.add_node("collect_intake", collect_intake)
-    graph.add_node("normalize_symptoms", normalize_symptoms_node)
+    graph.add_node("deterministic_emergency_scan", deterministic_emergency_scan)
+    graph.add_node("normalize_symptoms_with_gemini", normalize_symptoms_with_gemini)
+    graph.add_node("validate_normalized_symptoms", validate_normalized_symptoms)
+    graph.add_node("detect_normalized_red_flags", detect_normalized_red_flags)
     graph.add_node("determine_missing_information", determine_missing_information_node)
-    graph.add_node("ask_followup_questions", ask_followup_questions_node)
-    graph.add_node("retrieve_local_sources", retrieve_sources_node)
-    graph.add_node("realtime_official_search_if_needed", realtime_official_search_if_needed_node)
-    graph.add_node("validate_sources", validate_sources_node)
-    graph.add_node("apply_red_flag_rules", apply_red_flag_rules_node)
-    graph.add_node("score_risk", score_risk_node)
-    graph.add_node("generate_safe_response", generate_safe_response_node)
-    graph.add_node("attach_citations", attach_citations_node)
-    graph.add_node("audit_log", audit_log)
+    graph.add_node("select_followup_question_keys", select_followup_question_keys)
+    graph.add_node("naturalize_followup_questions_with_gemini", naturalize_followup_questions_with_gemini)
+    graph.add_node("apply_deterministic_rules", apply_deterministic_rules)
+    graph.add_node("retrieve_sources", retrieve_sources_node)
+    graph.add_node("realtime_official_search_if_needed", realtime_official_search_if_needed)
+    graph.add_node("validate_sources", validate_sources)
+    graph.add_node("attach_evidence", attach_evidence)
+    graph.add_node("compose_safe_explanation_with_gemini", compose_safe_explanation_with_gemini)
+    graph.add_node("validate_final_response", validate_final_response)
+    graph.add_node("audit_handoff", audit_handoff)
 
     graph.set_entry_point("collect_intake")
-    graph.add_edge("collect_intake", "normalize_symptoms")
-    graph.add_edge("normalize_symptoms", "determine_missing_information")
-    graph.add_edge("determine_missing_information", "ask_followup_questions")
-    graph.add_edge("ask_followup_questions", "apply_red_flag_rules")
-    graph.add_edge("apply_red_flag_rules", "score_risk")
-    graph.add_edge("score_risk", "retrieve_local_sources")
-    graph.add_edge("retrieve_local_sources", "realtime_official_search_if_needed")
+    graph.add_edge("collect_intake", "deterministic_emergency_scan")
+    graph.add_conditional_edges(
+        "deterministic_emergency_scan",
+        route_after_emergency_scan,
+        {"immediate_red": "retrieve_sources", "normal": "normalize_symptoms_with_gemini"},
+    )
+    graph.add_edge("normalize_symptoms_with_gemini", "validate_normalized_symptoms")
+    graph.add_edge("validate_normalized_symptoms", "detect_normalized_red_flags")
+    graph.add_conditional_edges(
+        "detect_normalized_red_flags",
+        route_after_normalized_red_scan,
+        {"red": "retrieve_sources", "continue": "determine_missing_information"},
+    )
+    graph.add_edge("determine_missing_information", "select_followup_question_keys")
+    graph.add_edge("select_followup_question_keys", "naturalize_followup_questions_with_gemini")
+    graph.add_edge("naturalize_followup_questions_with_gemini", "apply_deterministic_rules")
+    graph.add_edge("apply_deterministic_rules", "retrieve_sources")
+    graph.add_edge("retrieve_sources", "realtime_official_search_if_needed")
     graph.add_edge("realtime_official_search_if_needed", "validate_sources")
-    graph.add_edge("validate_sources", "generate_safe_response")
-    graph.add_edge("generate_safe_response", "attach_citations")
-    graph.add_edge("attach_citations", "audit_log")
-    graph.add_edge("audit_log", END)
+    graph.add_edge("validate_sources", "attach_evidence")
+    graph.add_edge("attach_evidence", "compose_safe_explanation_with_gemini")
+    graph.add_edge("compose_safe_explanation_with_gemini", "validate_final_response")
+    graph.add_edge("validate_final_response", "audit_handoff")
+    graph.add_edge("audit_handoff", END)
     return graph.compile()
 
 
@@ -245,14 +423,49 @@ def run_triage(
     *,
     force_cautious_yellow: bool = False,
     forced_warning: str | None = None,
+    gemini_client: GeminiClient | None = None,
+    normalized_details: list[NormalizedSymptom] | None = None,
+    normalization_gemini_used: bool = False,
+    request_deadline: float | None = None,
 ) -> ChildTriageResponse:
-    state = TRIAGE_GRAPH.invoke({
+    client = gemini_client if gemini_client is not None else get_gemini_client()
+    initial: TriageState = {
         "intake": intake,
+        "geminiClient": client,
         "forceCautiousYellow": force_cautious_yellow,
         "forcedWarning": forced_warning,
-    })
+        "requestDeadline": request_deadline or (time.monotonic() + PYTHON_SERVICE_TIMEOUT_SECONDS),
+    }
+    if normalized_details is not None:
+        initial.update({
+            "normalizedSymptomDetails": normalized_details,
+            "normalizedSymptoms": [item.normalizedCode for item in normalized_details],
+            "normalizationPrepared": True,
+            "normalizationGeminiUsed": normalization_gemini_used,
+        })
+    state = TRIAGE_GRAPH.invoke(initial)
+    citations = state.get("citations", [])
+    details = state.get("normalizedSymptomDetails", [])
+    retrieval_modes = {citation.retrievalMode for citation in citations}
+    retrieval_mode = "REALTIME" if "REALTIME" in retrieval_modes else ("LOCAL" if citations else "NONE")
+    matched_symptoms = set(state.get("normalizedSymptoms", []))
+    matched_rules = set(state.get("matchedRules", []))
+    covered_symptoms = {value for item in citations for value in item.matchedSymptoms}
+    covered_rules = {value for item in citations for value in item.matchedRules}
+    coverage = (
+        "NONE" if not citations
+        else "FULL" if matched_symptoms <= covered_symptoms and matched_rules <= covered_rules
+        else "PARTIAL"
+    )
+    methods = {item.normalizationMethod for item in details}
+    quality = (
+        "NONE" if not matched_rules
+        else "EXACT" if methods and methods <= {"EXACT", "STRUCTURED"}
+        else "PARTIAL"
+    )
+    risk = state["riskLevel"]
     return ChildTriageResponse(
-        riskLevel=state["riskLevel"],
+        riskLevel=risk,
         riskColor=state["riskColor"],
         summary=state["summary"],
         possibleConcern=state["possibleConcern"],
@@ -260,9 +473,29 @@ def run_triage(
         emergencyActionRequired=state["emergencyActionRequired"],
         redFlags=state.get("redFlags", []),
         matchedRules=state.get("matchedRules", []),
-        citations=state.get("citations", []),
+        citations=citations,
         evidence=state["evidence"],
         questions=state.get("questions", []),
         warning=state.get("warning"),
-        disclaimer=state.get("disclaimer", DISCLAIMER),
+        disclaimer=DISCLAIMER,
+        normalizedSymptoms=state.get("normalizedSymptoms", []),
+        normalizedSymptomDetails=details,
+        evidenceIds=[item.sourceId or item.id for item in citations if item.sourceId or item.id],
+        recommendationCode=_recommendation_code(risk),
+        explainabilityMetrics=ExplainabilityMetrics(
+            ruleMatchQuality=quality,
+            evidenceCoverage=coverage,
+            normalizationConfidence=min(
+                (item.normalizationConfidence for item in details), default=0.0
+            ),
+            matchedSourceCount=len(citations),
+            retrievalMode=retrieval_mode,
+        ),
+        graphVersion=GRAPH_VERSION,
+        ruleSetVersion=RULE_SET_VERSION,
+        ontologyVersion=ONTOLOGY_VERSION,
+        responseSchemaVersion=RESPONSE_SCHEMA_VERSION,
+        fallbackUsed=False,
+        assistantProvider=state.get("assistantProvider", "DETERMINISTIC_FALLBACK"),
+        assistantFallbackUsed=state.get("assistantFallbackUsed", True),
     )
