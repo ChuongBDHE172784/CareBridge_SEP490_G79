@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Heart, User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
+import { User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
 import { login } from '../services/authApi';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
+import logo from '../../../assets/logo.png';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Vui lòng nhập email hoặc số điện thoại'),
@@ -95,9 +96,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-3xl p-12 shadow-[0_10px_40px_-10px_rgba(132,81,67,0.1)] border border-[rgba(214,194,189,0.3)] flex flex-col gap-8">
           {/* Logo Header */}
           <div className="text-center flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-primary-container text-primary-container rounded-full flex items-center justify-center">
-              <Heart size={28} strokeWidth={2} />
-            </div>
+            <img src={logo} alt="CareBridge Logo" className="w-16 h-16 rounded-2xl object-cover shadow-sm" />
             <div>
               <h1 className="text-2xl font-semibold leading-8 text-primary tracking-tight m-0">CareBridge</h1>
               <p className="text-sm font-normal leading-5 text-on-surface-variant mt-1 mb-0">Hệ thống quản lý y tế</p>
