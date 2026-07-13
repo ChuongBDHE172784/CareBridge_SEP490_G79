@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./05_Development/CareBridgeAPI
+    image: carebridge-backend:local
+    env_file:
+      - ./05_Development/CareBridgeAPI/.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./05_Development/CareBridgeWebApp
+      args:
+        # Browser requests must reach the host-published backend port, not a Docker service name.
+        VITE_API_URL: http://localhost:8080
+    image: carebridge-web:local
+    ports:
+      - "127.0.0.1:5173:8080"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
