@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
-import 'risk_triage_result_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/triage_intake_flow_model.dart';
+import '../models/triage_result_model.dart';
+import '../services/triage_service.dart';
 
 class SymptomIntakeScreen extends StatefulWidget {
   const SymptomIntakeScreen({super.key});
@@ -11,126 +13,165 @@ class SymptomIntakeScreen extends StatefulWidget {
 
 class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Color(0xFFFFF8F6);
+  static const _surfaceLow = Color(0xFFFFF1EC);
   static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _onVariant = Color(0xFF524440);
+  static const _outline = Color(0xFFD6C2BD);
 
-  static const int _totalSteps = 5;
-
-  // Step 1: who has symptoms
-  static const _subjectOptions = [
-    'Bé của tôi',
-    'Mẹ (bản thân)',
-    'Người thân khác',
+  final _service = TriageService();
+  final _initialController = TextEditingController();
+  final Map<String, TextEditingController> _answerControllers = {};
+  final List<_ChatMessage> _messages = [
+    const _ChatMessage(
+      role: _ChatRole.assistant,
+      text: 'Hay mo ta trieu chung cua be. CareBridge se hoi them neu can va chi phan loai rui ro ban dau.',
+    ),
   ];
 
-  // Step 2: primary symptom (shown in CB-015 design)
-  static const _primarySymptoms = [
-    'Sốt cao (trên 38.5°C)',
-    'Ho nhiều, khò khè',
-    'Nôn trớ liên tục',
-    'Tiêu chảy, phân bất thường',
-    'Triệu chứng khác',
-  ];
+  Map<String, dynamic> _currentIntake = _blankIntake();
+  List<IntakeQuestion> _questions = [];
+  final Map<String, dynamic> _answers = {};
+  String? _sessionId;
+  int _round = 1;
+  bool _loading = false;
+  TriageResult? _result;
+  String? _error;
 
-  // Step 3: duration
-  static const _durations = [
-    'Dưới 1 ngày',
-    '1-3 ngày',
-    '3-7 ngày',
-    'Hơn 1 tuần',
-  ];
-
-  int _step = 2; // Start at step 2 per design
-  int? _subjectIndex;
-  int? _symptomIndex;
-  int? _durationIndex;
-  final _otherSymptomCtrl = TextEditingController();
-  final _additionalCtrl = TextEditingController();
-  bool _submitting = false;
-  bool _showOtherInput = false;
+  static Map<String, dynamic> _blankIntake() => {
+        'childAgeMonths': null,
+        'symptomList': <String>[],
+        'duration': null,
+        'temperatureC': null,
+        'feedingStatus': null,
+        'breathingStatus': null,
+        'consciousnessStatus': null,
+        'vomiting': null,
+        'diarrhea': null,
+        'rash': null,
+        'seizure': null,
+        'dehydrationSigns': <String>[],
+        'parentFreeText': null,
+      };
 
   @override
   void dispose() {
-    _otherSymptomCtrl.dispose();
-    _additionalCtrl.dispose();
+    _initialController.dispose();
+    for (final controller in _answerControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  String _buildSymptomsText() {
-    final parts = <String>[];
-    if (_subjectIndex != null) {
-      parts.add('Đối tượng: ${_subjectOptions[_subjectIndex!]}');
-    }
-    if (_symptomIndex != null) {
-      final s = _symptomIndex == 4
-          ? _otherSymptomCtrl.text.trim()
-          : _primarySymptoms[_symptomIndex!];
-      parts.add('Triệu chứng chính: $s');
-    }
-    if (_durationIndex != null) {
-      parts.add('Thời gian: ${_durations[_durationIndex!]}');
-    }
-    if (_additionalCtrl.text.trim().isNotEmpty) {
-      parts.add('Chi tiết thêm: ${_additionalCtrl.text.trim()}');
-    }
-    return parts.join('. ');
-  }
-
-  Future<void> _submit() async {
-    if (_symptomIndex == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn triệu chứng chính')),
-      );
-      return;
-    }
-    final symptoms = _buildSymptomsText();
-    if (symptoms.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng mô tả triệu chứng')),
-      );
-      return;
-    }
-    setState(() => _submitting = true);
+  Future<void> _start() async {
+    final text = _initialController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _messages.add(_ChatMessage(role: _ChatRole.user, text: text));
+      _currentIntake = {
+        ..._blankIntake(),
+        'symptomList': <String>[text],
+        'parentFreeText': text,
+      };
+    });
     try {
-      final result = await apiPost('/api/v1/triage/intake', {
-        'symptoms': symptoms,
-      });
-      final sessionId =
-          (result['data'] as Map<String, dynamic>)['sessionId'] as String;
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => RiskTriageResultScreen(sessionId: sessionId),
-          ),
-        );
-      }
+      final response = await _service.startConversation(
+        initialText: text,
+        currentIntake: _currentIntake,
+      );
+      _applyResponse(response);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) setState(() => _error = 'Khong the gui trieu chung: $e');
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _nextStep() {
-    if (_step < _totalSteps) {
-      setState(() => _step++);
-    } else {
-      _submit();
+  Future<void> _sendAnswers() async {
+    if (_sessionId == null || _questions.isEmpty) return;
+    final newAnswers = <String, dynamic>{};
+    for (final question in _questions) {
+      final value = _valueFor(question);
+      if (value != null) {
+        newAnswers[question.questionKey] = value;
+      }
+    }
+    if (newAnswers.isEmpty) {
+      setState(() => _error = 'Vui long tra loi it nhat mot cau hoi.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+      _messages.add(_ChatMessage(role: _ChatRole.user, text: _answersText(newAnswers)));
+    });
+    try {
+      final response = await _service.continueConversation(
+        intakeSessionId: _sessionId!,
+        currentIntake: _currentIntake,
+        newAnswers: newAnswers,
+        round: _round,
+      );
+      _applyResponse(response);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Khong the gui cau tra loi: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _prevStep() {
-    if (_step > 1) {
-      setState(() => _step--);
-    } else {
-      Navigator.of(context).pop();
+  void _applyResponse(IntakeFlowResponse response) {
+    setState(() {
+      _sessionId = response.intakeSessionId;
+      _currentIntake = response.mergedIntake;
+      _questions = response.questions;
+      _round = response.round;
+      _result = response.triageResult;
+      _answers.clear();
+      _answerControllers.clear();
+      if ((response.assistantMessage ?? '').isNotEmpty) {
+        _messages.add(_ChatMessage(role: _ChatRole.assistant, text: response.assistantMessage!));
+      }
+      if (response.questions.isNotEmpty) {
+        _messages.add(_ChatMessage(
+          role: _ChatRole.assistant,
+          text: response.questions.map((q) => q.text).join('\n'),
+        ));
+      }
+      if (response.status == 'TRIAGE_COMPLETE' && response.triageResult != null) {
+        _messages.add(_ChatMessage(
+          role: _ChatRole.assistant,
+          text: response.triageResult!.summary ?? 'Da co ket qua phan loai rui ro.',
+        ));
+      }
+    });
+  }
+
+  dynamic _valueFor(IntakeQuestion question) {
+    switch (question.answerType) {
+      case 'NUMBER':
+      case 'TEXT':
+        return _answerControllers[question.questionKey]?.text.trim();
+      case 'BOOLEAN':
+      case 'SINGLE_CHOICE':
+        return _answers[question.questionKey];
+      case 'MULTI_CHOICE':
+        return (_answers[question.questionKey] as Set<String>?)?.toList();
+      default:
+        return null;
+    }
+  }
+
+  String _answersText(Map<String, dynamic> answers) {
+    return answers.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -138,535 +179,316 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _surface,
+      appBar: AppBar(
+        backgroundColor: _surface,
+        elevation: 0,
+        foregroundColor: _primary,
+        title: const Text('AI Symptom Intake'),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
-                child: _buildStepContent(),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  ..._messages.map(_buildBubble),
+                  if (_result != null) _buildResult(_result!),
+                  if (_questions.isNotEmpty && _result == null) _buildQuestions(),
+                  if (_error != null) _buildError(),
+                ],
               ),
             ),
-            _buildBottomAction(),
+            _buildComposer(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildBubble(_ChatMessage message) {
+    final isUser = message.role == _ChatRole.user;
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isUser ? _primary : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: isUser ? _primary : _outline),
+        ),
+        child: Text(
+          message.text,
+          style: TextStyle(
+            color: isUser ? Colors.white : _onSurface,
+            height: 1.35,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestions() {
     return Container(
-      color: _surface,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      child: Row(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-              onPressed: _prevStep,
-            ),
-          ),
-          const Spacer(),
           const Text(
-            'Kiểm tra triệu chứng',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: _primary,
-            ),
+            'Tra loi bo sung',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _onSurface),
           ),
-          const Spacer(),
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.help_outline, color: _onSurfaceVariant),
-              onPressed: () => _showHelpDialog(),
-            ),
-          ),
+          const SizedBox(height: 12),
+          ..._questions.map(_buildQuestionInput),
         ],
       ),
     );
   }
 
-  Widget _buildStepContent() {
-    switch (_step) {
-      case 1:
-        return _buildStep1();
-      case 2:
-        return _buildStep2();
-      case 3:
-        return _buildStep3();
-      case 4:
-        return _buildStep4();
-      case 5:
-        return _buildStep5();
-      default:
-        return _buildStep2();
-    }
-  }
-
-  Widget _buildProgressBar() {
-    return Row(
-      children: List.generate(
-        _totalSteps,
-        (i) => Expanded(
-          child: Container(
-            height: 4,
-            margin: EdgeInsets.only(right: i < _totalSteps - 1 ? 4 : 0),
-            decoration: BoxDecoration(
-              color: i < _step ? _primary : _outlineVariant,
-              borderRadius: BorderRadius.circular(99),
+  Widget _buildQuestionInput(IntakeQuestion question) {
+    switch (question.answerType) {
+      case 'NUMBER':
+      case 'TEXT':
+        final controller = _answerControllers.putIfAbsent(
+          question.questionKey,
+          () => TextEditingController(),
+        );
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: TextField(
+            controller: controller,
+            keyboardType: question.answerType == 'NUMBER'
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.multiline,
+            maxLines: question.answerType == 'TEXT' ? 3 : 1,
+            decoration: InputDecoration(
+              labelText: question.text,
+              border: const OutlineInputBorder(),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // Step 1: Who
-  Widget _buildStep1() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildProgressBar(),
-        const SizedBox(height: 24),
-        const Text(
-          'Ai đang có triệu chứng?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Chọn đối tượng để AI có thể phân tích phù hợp.',
-          style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
-        ),
-        const SizedBox(height: 24),
-        ..._subjectOptions.asMap().entries.map(
-          (e) => _OptionCard(
-            label: e.value,
-            selected: _subjectIndex == e.key,
-            onTap: () => setState(() => _subjectIndex = e.key),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Step 2: Primary symptom (as shown in CB-015 design)
-  Widget _buildStep2() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildProgressBar(),
-        const SizedBox(height: 24),
-        const Text(
-          'Bé nhà bạn đang gặp triệu chứng gì nổi bật nhất?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Chọn một triệu chứng chính để AI có thể phân tích chính xác nhất.',
-          style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
-        ),
-        const SizedBox(height: 24),
-        ..._primarySymptoms.asMap().entries.map(
-          (e) => _OptionCard(
-            label: e.value,
-            selected: _symptomIndex == e.key,
-            onTap: () {
+        );
+      case 'MULTI_CHOICE':
+        final selected = (_answers[question.questionKey] as Set<String>?) ?? <String>{};
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: _ChoiceGroup(
+            question: question,
+            selected: selected,
+            multi: true,
+            onSelected: (value) {
               setState(() {
-                _symptomIndex = e.key;
-                _showOtherInput = e.key == 4;
+                final next = {...selected};
+                next.contains(value) ? next.remove(value) : next.add(value);
+                _answers[question.questionKey] = next;
               });
             },
           ),
-        ),
-        if (_showOtherInput) ...[
-          const SizedBox(height: 8),
-          TextField(
-            controller: _otherSymptomCtrl,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Vui lòng mô tả ngắn gọn triệu chứng của bé...',
-              hintStyle: const TextStyle(
-                color: _onSurfaceVariant,
-                fontSize: 14,
-              ),
-              filled: true,
-              fillColor: _surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _outlineVariant),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _primary),
-              ),
-              contentPadding: const EdgeInsets.all(16),
-            ),
+        );
+      case 'BOOLEAN':
+      case 'SINGLE_CHOICE':
+      default:
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: _ChoiceGroup(
+            question: question,
+            selected: {_answers[question.questionKey]?.toString() ?? ''},
+            multi: false,
+            onSelected: (value) => setState(() => _answers[question.questionKey] = value),
           ),
-        ],
-      ],
-    );
+        );
+    }
   }
 
-  // Step 3: Duration
-  Widget _buildStep3() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildProgressBar(),
-        const SizedBox(height: 24),
-        const Text(
-          'Triệu chứng xuất hiện bao lâu?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Thời gian giúp AI đánh giá mức độ nghiêm trọng.',
-          style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
-        ),
-        const SizedBox(height: 24),
-        ..._durations.asMap().entries.map(
-          (e) => _OptionCard(
-            label: e.value,
-            selected: _durationIndex == e.key,
-            onTap: () => setState(() => _durationIndex = e.key),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Step 4: Additional details
-  Widget _buildStep4() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildProgressBar(),
-        const SizedBox(height: 24),
-        const Text(
-          'Bạn có muốn mô tả thêm không?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Thêm chi tiết giúp AI phân tích chính xác hơn. (Không bắt buộc)',
-          style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _additionalCtrl,
-          maxLines: 6,
-          maxLength: 1000,
-          decoration: InputDecoration(
-            hintText:
-                'Ví dụ: bé vẫn uống sữa được, không có phát ban, đã uống hạ sốt...',
-            hintStyle: const TextStyle(color: _onSurfaceVariant, fontSize: 14),
-            filled: true,
-            fillColor: _surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _outlineVariant),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _primary),
-            ),
-            contentPadding: const EdgeInsets.all(16),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Step 5: Review & submit
-  Widget _buildStep5() {
-    final symptomLabel = _symptomIndex != null
-        ? (_symptomIndex == 4
-              ? _otherSymptomCtrl.text.trim()
-              : _primarySymptoms[_symptomIndex!])
-        : '—';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildProgressBar(),
-        const SizedBox(height: 24),
-        const Text(
-          'Xem lại thông tin',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Kiểm tra lại trước khi gửi cho AI phân tích.',
-          style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
-        ),
-        const SizedBox(height: 24),
-        _ReviewRow(
-          label: 'Đối tượng',
-          value: _subjectIndex != null ? _subjectOptions[_subjectIndex!] : '—',
-        ),
-        _ReviewRow(label: 'Triệu chứng chính', value: symptomLabel),
-        _ReviewRow(
-          label: 'Thời gian',
-          value: _durationIndex != null ? _durations[_durationIndex!] : '—',
-        ),
-        if (_additionalCtrl.text.trim().isNotEmpty)
-          _ReviewRow(
-            label: 'Chi tiết thêm',
-            value: _additionalCtrl.text.trim(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildBottomAction() {
-    final isLastStep = _step == _totalSteps;
+  Widget _buildResult(TriageResult result) {
+    final color = _riskColor(result.riskLevel);
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Color(0xFFFFF8F6)],
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.psychology_alt_outlined,
-                size: 16,
-                color: _primary,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: RichText(
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
-                    children: [
-                      TextSpan(
-                        text: 'CareBridge AI hỗ trợ phân tích định hướng, ',
-                      ),
-                      TextSpan(
-                        text: 'không',
-                        style: TextStyle(
-                          color: _onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            ' thay thế chẩn đoán y khoa chuyên nghiệp từ bác sĩ.',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryContainer,
-                foregroundColor: Colors.white,
-                shape: const StadiumBorder(),
-                elevation: 4,
-                shadowColor: _primaryContainer.withValues(alpha: 0.4),
-              ),
-              onPressed: _submitting ? null : _nextStep,
-              child: _submitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          isLastStep ? 'Gửi phân tích' : 'Tiếp theo',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          isLastStep ? Icons.send : Icons.arrow_forward,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Hướng dẫn'),
-        content: const Text(
-          'Hãy chọn triệu chứng nổi bật nhất của bé. AI sẽ đưa ra gợi ý định hướng để hỗ trợ bạn, không phải chẩn đoán y tế.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đã hiểu'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OptionCard extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _OptionCard({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minHeight: 56),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFFF1EC) : const Color(0xFFFFF8F6),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: selected ? const Color(0xFFC98C7B) : const Color(0xFFD6C2BD),
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  const BoxShadow(
-                    color: Color(0x0A5A3F36),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: selected
-                      ? const Color(0xFF51271B)
-                      : const Color(0xFF271812),
-                  fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
-                ),
-              ),
-            ),
-            AnimatedOpacity(
-              opacity: selected ? 1 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(
-                Icons.check_circle,
-                color: Color(0xFF845143),
-                size: 22,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReviewRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ReviewRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1EC),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.45), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF524440),
-              fontWeight: FontWeight.w500,
-            ),
+            'Risk: ${result.riskLevel ?? 'UNKNOWN'}',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Color(0xFF271812),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          if ((result.summary ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(result.summary!, style: const TextStyle(color: _onSurface, height: 1.35)),
+          ],
+          if ((result.recommendedAction ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(result.recommendedAction!, style: const TextStyle(color: _onVariant, height: 1.35)),
+          ],
+          if (result.redFlags.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('Red flags: ${result.redFlags.join(', ')}'),
+          ],
+          if ((result.warning ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(result.warning!, style: const TextStyle(color: Colors.orange)),
+          ],
+          if (result.citations.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text('Nguon tham khao chinh thong', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            ...result.citations.map(_buildCitation),
+          ],
+          if ((result.disclaimer ?? '').isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(result.disclaimer!, style: const TextStyle(fontSize: 12, color: _onVariant)),
+          ],
         ],
       ),
     );
   }
+
+  Widget _buildCitation(TriageCitation citation) {
+    return InkWell(
+      onTap: citation.url.isEmpty ? null : () => _openUrl(citation.url),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _surfaceLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${citation.organization ?? citation.source} - ${citation.title}',
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            if (citation.url.isNotEmpty)
+              Text(citation.url, style: const TextStyle(color: _primary, decoration: TextDecoration.underline)),
+            if (citation.matchedSymptoms.isNotEmpty)
+              Text('Matched symptoms: ${citation.matchedSymptoms.join(', ')}'),
+            Text('Status: ${citation.sourceStatus}'),
+            if (citation.sourceStatus == 'PENDING_REVIEW')
+              const Text('Nguon chinh thong duoc truy xuat tu dong, dang cho kiem duyet noi bo.',
+                  style: TextStyle(fontSize: 12, color: _onVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComposer() {
+    if (_result != null) {
+      return const SizedBox(height: 12);
+    }
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      decoration: const BoxDecoration(color: _surface),
+      child: _questions.isEmpty
+          ? Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _initialController,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Vi du: Be bi sot va ho...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _loading ? null : _start,
+                  icon: _loading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.send),
+                ),
+              ],
+            )
+          : SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _loading ? null : _sendAnswers,
+                icon: _loading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.send),
+                label: const Text('Gui cau tra loi'),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildError() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text(_error!, style: const TextStyle(color: Colors.red)),
+    );
+  }
+
+  Color _riskColor(String? riskLevel) {
+    switch (riskLevel) {
+      case 'GREEN':
+        return const Color(0xFF22C55E);
+      case 'YELLOW':
+        return const Color(0xFFFACC15);
+      case 'RED':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+}
+
+class _ChoiceGroup extends StatelessWidget {
+  final IntakeQuestion question;
+  final Set<String> selected;
+  final bool multi;
+  final ValueChanged<String> onSelected;
+
+  const _ChoiceGroup({
+    required this.question,
+    required this.selected,
+    required this.multi,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(question.text, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: question.options.map((option) {
+            final isSelected = selected.contains(option);
+            return ChoiceChip(
+              label: Text(option),
+              selected: isSelected,
+              onSelected: (_) => onSelected(option),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+enum _ChatRole { user, assistant }
+
+class _ChatMessage {
+  final _ChatRole role;
+  final String text;
+
+  const _ChatMessage({required this.role, required this.text});
 }

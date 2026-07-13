@@ -47,6 +47,11 @@ public class StructuredIntakeService implements IStructuredIntakeService {
             GeminiExtractionClient.ExtractionResult result =
                     geminiExtractionClient.extractStructuredData(EXTRACTION_CONSTRAINT);
 
+            if (result == null) {
+                log.warn("Extraction returned no result for session [{}] — skipping", event.sessionId());
+                return;
+            }
+
             // C1 (UC131): emergencyFlag=true → publish EmergencyEscalationTriggered BEFORE DB save
             if (result.emergencyFlag()) {
                 eventPublisher.publishEvent(new EmergencyEscalationTriggered(
@@ -75,7 +80,7 @@ public class StructuredIntakeService implements IStructuredIntakeService {
                     event.sessionId(), result.emergencyFlag());
 
         } catch (Exception e) {
-            log.warn("Extraction failed for session [{}]: {}", event.sessionId(), e.getClass().getSimpleName());
+            log.warn("Extraction failed for session [{}]: {}", event.sessionId(), e.getClass().getSimpleName(), e);
         }
     }
 }

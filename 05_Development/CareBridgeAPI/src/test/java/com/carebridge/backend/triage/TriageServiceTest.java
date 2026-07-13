@@ -5,9 +5,12 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.entity.IntakeSession;
+import com.carebridge.backend.triage.engine.ChildTriageResult;
+import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
-import com.carebridge.backend.triage.service.GeminiTriageClient;
+import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.impl.TriageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,25 +21,27 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TriageServiceTest {
 
     @Mock private IIntakeSessionRepository intakeSessionRepository;
-    @Mock private GeminiTriageClient geminiTriageClient;
+    @Mock private ChildTriageAiClient childTriageAiClient;
+    @Mock private TriageGraphService triageGraphService;
     @Mock private ApplicationEventPublisher eventPublisher;
-    @InjectMocks private TriageService triageService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
+
+    private TriageService service() {
+        return new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService, objectMapper, eventPublisher);
+    }
 
     @Test
     void runIntake_validSymptoms_shouldReturnCompletedSession() {
         // TRIAGE-TC-001
-        GeminiTriageClient.AiTriageResult aiResult = new GeminiTriageClient.AiTriageResult(
-                RiskLevel.GREEN, "AI provides guidance only, not medical diagnosis.");
-        when(geminiTriageClient.analyzeSymptoms(anyString())).thenReturn(aiResult);
+        when(childTriageAiClient.triageChild(any())).thenReturn(greenJson());
 
         IntakeSession saved = TriageTestFactory.makeIntakeSession(s -> {
             s.setStatus(IntakeStatus.COMPLETED);
@@ -45,23 +50,47 @@ class TriageServiceTest {
         });
         when(intakeSessionRepository.save(any())).thenReturn(saved);
 
-        IntakeSessionResponse result = triageService.runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+        IntakeSessionResponse result = service().runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
 
         assertThat(result.getSessionId()).isNotNull();
         assertThat(result.getStatus()).isEqualTo("COMPLETED");
         assertThat(result.getDisclaimer()).isNotBlank();
+        verify(triageGraphService, never()).run(any());
     }
 
     @Test
-    void runIntake_geminiTimeout_shouldSaveFailedStatus() {
+    void runIntake_aiServiceUnavailable_shouldFallbackToJavaRules() {
         // TRIAGE-TC-004
-        when(geminiTriageClient.analyzeSymptoms(anyString()))
-                .thenThrow(new RuntimeException("Gemini timeout"));
+        when(childTriageAiClient.triageChild(any()))
+                .thenThrow(new RuntimeException("AI service unavailable"));
+        when(triageGraphService.run(any())).thenReturn(greenResult());
+
+        IntakeSession saved = TriageTestFactory.makeIntakeSession(s -> {
+            s.setStatus(IntakeStatus.COMPLETED);
+            s.setRiskLevel(RiskLevel.GREEN);
+            s.setDisclaimer("AI guidance only.");
+        });
+        when(intakeSessionRepository.save(any())).thenReturn(saved);
+
+        IntakeSessionResponse result = service().runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getRiskLevel()).isEqualTo("GREEN");
+        verify(triageGraphService).run(any());
+    }
+
+    @Test
+    void runIntake_aiAndFallbackFailure_shouldSaveFailedStatus() {
+        // TRIAGE-TC-004
+        when(childTriageAiClient.triageChild(any()))
+                .thenThrow(new RuntimeException("AI service unavailable"));
+        when(triageGraphService.run(any()))
+                .thenThrow(new RuntimeException("Fallback triage failed"));
 
         IntakeSession failedSession = TriageTestFactory.makeIntakeSession(s -> s.setStatus(IntakeStatus.FAILED));
         when(intakeSessionRepository.save(any())).thenReturn(failedSession);
 
-        assertThatThrownBy(() -> triageService.runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID))
+        assertThatThrownBy(() -> service().runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID))
                 .isInstanceOf(Exception.class);
 
         verify(intakeSessionRepository, atLeastOnce()).save(any(IntakeSession.class));
@@ -76,9 +105,7 @@ class TriageServiceTest {
         logger.addAppender(listAppender);
 
         try {
-            GeminiTriageClient.AiTriageResult aiResult = new GeminiTriageClient.AiTriageResult(
-                    RiskLevel.GREEN, "AI guidance only.");
-            when(geminiTriageClient.analyzeSymptoms(anyString())).thenReturn(aiResult);
+            when(childTriageAiClient.triageChild(any())).thenReturn(greenJson());
             IntakeSession saved = TriageTestFactory.makeIntakeSession(s -> {
                 s.setStatus(IntakeStatus.COMPLETED);
                 s.setRiskLevel(RiskLevel.GREEN);
@@ -86,7 +113,7 @@ class TriageServiceTest {
             });
             when(intakeSessionRepository.save(any())).thenReturn(saved);
 
-            triageService.runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+            service().runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
 
             boolean symptomInLog = listAppender.list.stream()
                     .anyMatch(e -> e.getFormattedMessage().contains("SYNTHETIC_SYMPTOMS_TEST_DATA"));
@@ -94,5 +121,40 @@ class TriageServiceTest {
         } finally {
             logger.detachAppender(listAppender);
         }
+    }
+
+    private ChildTriageResult greenResult() {
+        return ChildTriageResult.builder()
+                .status("COMPLETED")
+                .riskLevel("GREEN")
+                .riskColor("#22C55E")
+                .summary("No red flags")
+                .recommendedAction("Monitor at home")
+                .emergencyActionRequired(false)
+                .redFlags(java.util.List.of())
+                .matchedRules(java.util.List.of("GREEN_MILD_NO_RED_FLAGS"))
+                .citations(java.util.List.of())
+                .disclaimer("AI guidance only.")
+                .questions(java.util.List.of())
+                .build();
+    }
+
+    private String greenJson() {
+        return """
+                {
+                  "riskLevel": "GREEN",
+                  "riskColor": "#22C55E",
+                  "summary": "No red flags",
+                  "possibleConcern": "Mild symptoms",
+                  "recommendedAction": "Monitor at home",
+                  "emergencyActionRequired": false,
+                  "redFlags": [],
+                  "matchedRules": ["GREEN_MILD_NO_RED_FLAGS"],
+                  "citations": [],
+                  "questions": [],
+                  "warning": "Không tìm thấy nguồn phù hợp trong knowledge base.",
+                  "disclaimer": "AI guidance only."
+                }
+                """;
     }
 }
