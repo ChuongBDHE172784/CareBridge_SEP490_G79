@@ -4,9 +4,14 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
+import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
+import com.carebridge.backend.triage.dto.response.TriageResultResponse;
+import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
+import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationRequest;
 import com.carebridge.backend.triage.entity.IntakeSession;
 import com.carebridge.backend.triage.engine.ChildTriageResult;
 import com.carebridge.backend.triage.engine.TriageGraphService;
+import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.impl.TriageService;
@@ -19,6 +24,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Optional;
+import java.time.Instant;
+import org.mockito.ArgumentCaptor;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -123,6 +132,248 @@ class TriageServiceTest {
         }
     }
 
+    @Test
+    void startConversation_shouldUseAndPersistCanonicalDatabaseSessionId() {
+        IntakeSession session = TriageTestFactory.makeIntakeSession(s -> {
+            s.setStatus(IntakeStatus.PROCESSING);
+            s.setRiskLevel(null);
+        });
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","intakeSessionId":"client-id","mergedIntake":{},"questions":[{"questionKey":"childAgeMonths","text":"Bé hiện bao nhiêu tháng tuổi?","answerType":"NUMBER","options":[]}],"round":2}
+                """);
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder().initialText("be sot").build(), USER_ID);
+
+        assertThat(response.getIntakeSessionId()).isEqualTo(session.getId().toString());
+        assertThat(session.getStatus()).isEqualTo(IntakeStatus.NEED_MORE_INFO);
+        assertThat(session.getCompletedAt()).isNull();
+        assertThat(session.getRawAiResponse()).contains(session.getId().toString());
+    }
+
+    @Test
+    void continueConversation_ownerMismatch_shouldRejectBeforePython() {
+        UUID sessionId = UUID.randomUUID();
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(sessionId, USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().continueConversation(
+                ContinueIntakeConversationRequest.builder()
+                        .intakeSessionId(sessionId.toString())
+                        .newAnswers(Map.of("childAgeMonths", 8))
+                        .build(), USER_ID))
+                .isInstanceOf(Exception.class);
+        verify(childTriageAiClient, never()).continueIntake(any());
+    }
+
+    @Test
+    void continueConversation_clientStateCannotOverridePersistedCanonicalState() {
+        IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","intakeSessionId":"00000000-0000-0000-0000-000000000001",
+                 "mergedIntake":{"childAgeMonths":8,"breathingStatus":"tho binh thuong"},"questions":[{"questionKey":"duration","text":"Triệu chứng kéo dài bao lâu?","answerType":"TEXT","options":[]}],"round":2}
+                """);
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(childTriageAiClient.continueIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","mergedIntake":{"childAgeMonths":8},"questions":[{"questionKey":"duration","text":"Triệu chứng kéo dài bao lâu?","answerType":"TEXT","options":[]}],"round":3}
+                """);
+
+        service().continueConversation(ContinueIntakeConversationRequest.builder()
+                .intakeSessionId(session.getId().toString())
+                .currentIntake(Map.of("childAgeMonths", 99))
+                .round(99)
+                .newAnswers(Map.of("duration", "1 ngay"))
+                .build(), USER_ID);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(childTriageAiClient).continueIntake(captor.capture());
+        assertThat(captor.getValue().get("round")).isEqualTo(2);
+        assertThat(((Map<?, ?>) captor.getValue().get("currentIntake")).get("childAgeMonths")).isEqualTo(8);
+    }
+
+    @Test
+    void pythonRedConversation_shouldPersistCanonicalRedContract() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"TRIAGE_COMPLETE","mergedIntake":{"breathingStatus":"kho tho"},"questions":[],"round":1,
+                 "triageResult":{"riskLevel":"RED","emergencyActionRequired":true,"matchedRules":["RED_BREATHING_DISTRESS"],"recommendationCode":"SEEK_EMERGENCY_CARE",
+                 "graphVersion":"python-1","ruleSetVersion":"rules-1","ontologyVersion":"ontology-1","responseSchemaVersion":"2.0"}}
+                """);
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder().initialText("be kho tho").build(), USER_ID);
+
+        assertThat(session.getStatus()).isEqualTo(IntakeStatus.COMPLETED);
+        assertThat(session.getRiskLevel()).isEqualTo(RiskLevel.RED);
+        assertThat(response.getTriageResult()).containsEntry("riskLevel", "RED")
+                .containsEntry("emergencyActionRequired", true);
+        verify(eventPublisher).publishEvent(any(IntakeSessionCompleted.class));
+    }
+
+    @Test
+    void javaFallbackRedConversation_shouldShareVersionedRedContract() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenThrow(new IllegalStateException("offline"));
+        when(triageGraphService.run(any())).thenReturn(redResult());
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder().initialText("be kho tho").build(), USER_ID);
+
+        assertThat(session.getRiskLevel()).isEqualTo(RiskLevel.RED);
+        assertThat(response.getTriageResult()).containsEntry("riskLevel", "RED")
+                .containsEntry("emergencyActionRequired", true)
+                .containsKeys("graphVersion", "ruleSetVersion", "ontologyVersion", "responseSchemaVersion");
+    }
+
+    @Test
+    void javaFallbackAskMore_shouldReturnStructuredVietnameseQuestions() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenThrow(new IllegalStateException("offline"));
+        when(triageGraphService.run(any())).thenReturn(ChildTriageResult.builder()
+                .status("NEED_MORE_INFO")
+                .questions(java.util.List.of("Trẻ hiện bao nhiêu tháng tuổi?"))
+                .build());
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder().initialText("bé ho và sốt").build(), USER_ID);
+
+        assertThat(response.getStatus()).isEqualTo("ASK_MORE");
+        assertThat(response.getAssistantMessage()).contains("cần thêm một vài thông tin");
+        assertThat(response.getQuestions()).hasSize(3);
+        assertThat(response.getQuestions().getFirst()).isInstanceOf(Map.class);
+        Map<?, ?> firstQuestion = (Map<?, ?>) response.getQuestions().getFirst();
+        assertThat(firstQuestion.get("questionKey")).isEqualTo("childAgeMonths");
+        assertThat(firstQuestion.get("answerType")).isEqualTo("NUMBER");
+        assertThat(firstQuestion.get("text")).isEqualTo("Bé hiện bao nhiêu tháng tuổi?");
+    }
+
+    @Test
+    void javaFallbackAskMore_withCoreFieldsPresent_shouldStillReturnRenderablePrompt() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenThrow(new IllegalStateException("offline"));
+        when(triageGraphService.run(any())).thenReturn(ChildTriageResult.builder()
+                .status("NEED_MORE_INFO")
+                .questions(java.util.List.of("Mô tả cụ thể hơn"))
+                .build());
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .initialText("triệu chứng chưa rõ")
+                        .currentIntake(Map.of(
+                                "childAgeMonths", 12,
+                                "breathingStatus", "Bình thường",
+                                "consciousnessStatus", "Tỉnh táo",
+                                "feedingStatus", "Bú tốt"))
+                        .build(), USER_ID);
+
+        Map<?, ?> question = (Map<?, ?>) response.getQuestions().getFirst();
+        assertThat(question.get("questionKey")).isEqualTo("parentFreeText");
+        assertThat(question.get("answerType")).isEqualTo("TEXT");
+        assertThat(question.get("text").toString()).contains("mô tả cụ thể hơn");
+    }
+
+    @Test
+    void continueConversation_shouldRejectAnswerOutsideOutstandingQuestions() {
+        IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","mergedIntake":{"childAgeMonths":8},
+                 "questions":[{"questionKey":"duration","text":"Bao lâu?","answerType":"TEXT","options":[]}],"round":2}
+                """);
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID))
+                .thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service().continueConversation(
+                ContinueIntakeConversationRequest.builder()
+                        .intakeSessionId(session.getId().toString())
+                        .newAnswers(Map.of("symptomList", java.util.List.of("difficulty_breathing")))
+                        .build(), USER_ID))
+                .isInstanceOf(Exception.class);
+        verify(childTriageAiClient, never()).continueIntake(any());
+    }
+
+    @Test
+    void getResult_shouldUnwrapConversationExplainabilityAndFilterMalformedCitation() {
+        IntakeSession session = conversationSession(IntakeStatus.COMPLETED, """
+                {"status":"TRIAGE_COMPLETE","triageResult":{"riskLevel":"RED","emergencyActionRequired":true,
+                 "normalizedSymptoms":["difficulty_breathing"],"matchedRules":["RED_BREATHING_DISTRESS"],
+                 "evidenceIds":["WHO_1"],"recommendationCode":"SEEK_EMERGENCY_CARE","ruleSetVersion":"rules-1","responseSchemaVersion":"2.0",
+                 "citations":[
+                   {"sourceId":"WHO_1","title":"WHO danger signs","organization":"WHO","url":"https://who.int/health-topics/child-health","domain":"who.int","excerpt":"danger signs","sourceVersion":"1","lastReviewed":"2026-07-10","section":"Danger signs","matchedSymptoms":["difficulty_breathing"],"matchedRules":["RED_BREATHING_DISTRESS"],"sourceStatus":"APPROVED","retrievedAt":"2026-07-10T00:00:00Z","retrievalMode":"LOCAL"},
+                   {"title":"Bad","source":"Blog","url":"https://example.com/post","excerpt":"bad"}]}}
+                """);
+        session.setRiskLevel(RiskLevel.RED);
+        when(intakeSessionRepository.findByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        TriageResultResponse response = service().getResult(session.getId(), USER_ID);
+
+        assertThat(response.getNormalizedSymptoms()).containsExactly("difficulty_breathing");
+        assertThat(response.getMatchedRules()).containsExactly("RED_BREATHING_DISTRESS");
+        assertThat(response.getEvidenceIds()).containsExactly("WHO_1");
+        assertThat(response.getRecommendationCode()).isEqualTo("SEEK_EMERGENCY_CARE");
+        assertThat(response.getCitations()).hasSize(1);
+    }
+
+    @Test
+    void terminalContinue_shouldNotCallAiPersistOrEmitSecondEvent() {
+        IntakeSession session = conversationSession(IntakeStatus.COMPLETED, "{\"status\":\"TRIAGE_COMPLETE\"}");
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service().continueConversation(ContinueIntakeConversationRequest.builder()
+                .intakeSessionId(session.getId().toString()).newAnswers(Map.of("duration", "2 ngay")).build(), USER_ID));
+
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void duplicateAskMoreContinue_shouldReturnPriorEnvelopeWithoutSideEffects() {
+        IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","intakeSessionId":"00000000-0000-0000-0000-000000000001",
+                 "mergedIntake":{"childAgeMonths":8},"questions":[{"questionKey":"duration"}],"round":2}
+                """);
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        IntakeConversationResponse response = service().continueConversation(ContinueIntakeConversationRequest.builder()
+                .intakeSessionId(session.getId().toString()).newAnswers(Map.of("childAgeMonths", 8)).build(), USER_ID);
+
+        assertThat(response.getRound()).isEqualTo(2);
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void legacyOneShotMissingVersions_shouldMapWithoutError() {
+        IntakeSession session = conversationSession(IntakeStatus.COMPLETED,
+                "{\"riskLevel\":\"GREEN\",\"summary\":\"legacy\",\"citations\":[]}");
+        session.setRiskLevel(RiskLevel.GREEN);
+        when(intakeSessionRepository.findByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        TriageResultResponse response = service().getResult(session.getId(), USER_ID);
+        assertThat(response.getRiskLevel()).isEqualTo("GREEN");
+        assertThat(response.getResponseSchemaVersion()).isEqualTo("1.0");
+        assertThat(response.getGraphVersion()).isNull();
+    }
+
+    @Test
+    void completedEnvelopeWithInvalidRisk_shouldUseFallbackInsteadOfPersistingNullRisk() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"TRIAGE_COMPLETE","mergedIntake":{"breathingStatus":"kho tho"},"triageResult":{"riskLevel":"UNKNOWN"}}
+                """);
+        when(triageGraphService.run(any())).thenReturn(redResult());
+
+        service().startConversation(StartIntakeConversationRequest.builder().initialText("be kho tho").build(), USER_ID);
+
+        assertThat(session.getStatus()).isEqualTo(IntakeStatus.COMPLETED);
+        assertThat(session.getRiskLevel()).isEqualTo(RiskLevel.RED);
+    }
+
     private ChildTriageResult greenResult() {
         return ChildTriageResult.builder()
                 .status("COMPLETED")
@@ -137,6 +388,31 @@ class TriageServiceTest {
                 .disclaimer("AI guidance only.")
                 .questions(java.util.List.of())
                 .build();
+    }
+
+    private ChildTriageResult redResult() {
+        return ChildTriageResult.builder()
+                .status("COMPLETED")
+                .riskLevel("RED")
+                .riskColor("#EF4444")
+                .summary("Immediate danger sign")
+                .recommendedAction("Seek emergency care")
+                .emergencyActionRequired(true)
+                .redFlags(java.util.List.of("Difficulty breathing"))
+                .matchedRules(java.util.List.of("RED_BREATHING_DISTRESS"))
+                .citations(java.util.List.of())
+                .disclaimer("Risk classification only.")
+                .questions(java.util.List.of())
+                .build();
+    }
+
+    private IntakeSession conversationSession(IntakeStatus status, String rawResponse) {
+        return TriageTestFactory.makeIntakeSession(session -> {
+            session.setStatus(status);
+            session.setRawAiResponse(rawResponse);
+            session.setSymptoms("CONVERSATION_INTAKE");
+            session.setCreatedAt(Instant.parse("2026-07-13T00:00:00Z"));
+        });
     }
 
     private String greenJson() {

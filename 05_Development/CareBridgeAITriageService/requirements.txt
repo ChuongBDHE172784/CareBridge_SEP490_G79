@@ -8,3 +8,5 @@ pytest
 httpx
 beautifulsoup4
 requests
+google-genai
+python-dotenv

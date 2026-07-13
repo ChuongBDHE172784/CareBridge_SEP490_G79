@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import unicodedata
 from uuid import uuid4
 
+from app.gemini_client import GeminiClient
 from app.risk_rules import apply_red_flag_rules
 from app.schemas import ChildTriageRequest, IntakeQuestion
 from app.symptom_normalizer import normalize_symptoms
@@ -13,72 +15,72 @@ MAX_FOLLOWUP_ROUNDS = 3
 QUESTION_BANK: dict[str, IntakeQuestion] = {
     "parentFreeText": IntakeQuestion(
         questionKey="parentFreeText",
-        text="Be dang co trieu chung gi? Hay mo ta ngan gon dau hieu ban thay.",
+        text="Bé đang có triệu chứng gì? Hãy mô tả ngắn gọn dấu hiệu bạn thấy.",
         answerType="TEXT",
     ),
     "childAgeMonths": IntakeQuestion(
         questionKey="childAgeMonths",
-        text="Be hien bao nhieu thang tuoi?",
+        text="Bé hiện bao nhiêu tháng tuổi?",
         answerType="NUMBER",
     ),
     "breathingStatus": IntakeQuestion(
         questionKey="breathingStatus",
-        text="Be co kho tho, tho rut lom nguc hoac tim tai khong?",
+        text="Bé có khó thở, thở rút lõm ngực hoặc tím tái không?",
         answerType="SINGLE_CHOICE",
-        options=["Khong", "Kho tho", "Tho rut lom nguc", "Tim tai", "Khong chac"],
+        options=["Không", "Khó thở", "Thở rút lõm ngực", "Tím tái", "Không chắc"],
     ),
     "consciousnessStatus": IntakeQuestion(
         questionKey="consciousnessStatus",
-        text="Be co tinh tao khong, hay lo mo/li bi/kho danh thuc?",
+        text="Bé có tỉnh táo không, hay lơ mơ/li bì/khó đánh thức?",
         answerType="SINGLE_CHOICE",
-        options=["Tinh tao", "Lo mo", "Li bi", "Kho danh thuc", "Khong chac"],
+        options=["Tỉnh táo", "Lơ mơ", "Li bì", "Khó đánh thức", "Không chắc"],
     ),
     "seizure": IntakeQuestion(
         questionKey="seizure",
-        text="Be co co giat khong?",
+        text="Bé có co giật không?",
         answerType="BOOLEAN",
-        options=["Khong", "Co", "Khong chac"],
+        options=["Không", "Có", "Không chắc"],
     ),
     "feedingStatus": IntakeQuestion(
         questionKey="feedingStatus",
-        text="Be co bu/uong duoc khong?",
+        text="Bé có bú/uống được không?",
         answerType="SINGLE_CHOICE",
-        options=["Bu/uong tot", "Bu/uong kem", "Bo bu", "Khong uong duoc", "Khong chac"],
+        options=["Bú/uống tốt", "Bú/uống kém", "Bỏ bú", "Không uống được", "Không chắc"],
     ),
     "temperatureC": IntakeQuestion(
         questionKey="temperatureC",
-        text="Nhiet do cao nhat do duoc la bao nhieu do C?",
+        text="Nhiệt độ cao nhất đo được là bao nhiêu độ C?",
         answerType="NUMBER",
     ),
     "dehydrationSigns": IntakeQuestion(
         questionKey="dehydrationSigns",
-        text="Be co dau hieu mat nuoc nao khong?",
+        text="Bé có dấu hiệu mất nước nào không?",
         answerType="MULTI_CHOICE",
-        options=["Khong", "Moi kho", "Tieu it", "Mat trung", "Khoc khong co nuoc mat", "Khong chac"],
+        options=["Không", "Môi khô", "Tiểu ít", "Mắt trũng", "Khóc không có nước mắt", "Không chắc"],
     ),
     "vomiting": IntakeQuestion(
         questionKey="vomiting",
-        text="Be co non khong? Neu co, non it hay non lien tuc?",
+        text="Bé có nôn không? Nếu có, nôn ít hay nôn liên tục?",
         answerType="SINGLE_CHOICE",
-        options=["Khong", "Non it", "Non lien tuc", "Khong chac"],
+        options=["Không", "Nôn ít", "Nôn liên tục", "Không chắc"],
     ),
     "diarrhea": IntakeQuestion(
         questionKey="diarrhea",
-        text="Be co tieu chay khong?",
+        text="Bé có tiêu chảy không?",
         answerType="SINGLE_CHOICE",
-        options=["Khong", "Nhe", "Nhieu lan", "Kem mat nuoc", "Khong chac"],
+        options=["Không", "Nhẹ", "Nhiều lần", "Kèm mất nước", "Không chắc"],
     ),
     "duration": IntakeQuestion(
         questionKey="duration",
-        text="Trieu chung xuat hien bao lau?",
+        text="Triệu chứng xuất hiện bao lâu?",
         answerType="SINGLE_CHOICE",
-        options=["Duoi 1 ngay", "1-3 ngay", "3-7 ngay", "Hon 1 tuan", "Khong chac"],
+        options=["Dưới 1 ngày", "1-3 ngày", "3-7 ngày", "Hơn 1 tuần", "Không chắc"],
     ),
     "rash": IntakeQuestion(
         questionKey="rash",
-        text="Be co phat ban khong?",
+        text="Bé có phát ban không?",
         answerType="SINGLE_CHOICE",
-        options=["Khong", "Phat ban nhe", "Phat ban kem sot cao", "Xau nhanh", "Khong chac"],
+        options=["Không", "Phát ban nhẹ", "Phát ban kèm sốt cao", "Xấu nhanh", "Không chắc"],
     ),
 }
 
@@ -144,6 +146,34 @@ def ask_followup_questions(intake: ChildTriageRequest) -> list[IntakeQuestion]:
     return [QUESTION_BANK[key] for key in determine_missing_information(intake) if key in QUESTION_BANK]
 
 
+def naturalize_followup_questions(
+    questions: list[IntakeQuestion],
+    *,
+    intake: ChildTriageRequest,
+    normalized_symptoms: list[str],
+    gemini_client: GeminiClient | None,
+    deadline: float | None = None,
+) -> tuple[list[IntakeQuestion], str, bool]:
+    selected = questions[:MAX_QUESTIONS_PER_ROUND]
+    fallback_message = "CareBridge cần thêm một vài thông tin để phân loại rủi ro an toàn hơn."
+    if gemini_client is None or not selected:
+        return selected, fallback_message, False
+    draft = gemini_client.compose_followup_questions(
+        questions=selected,
+        child_age_months=intake.childAgeMonths,
+        normalized_symptoms=normalized_symptoms,
+        deadline=deadline,
+    )
+    if draft is None:
+        return selected, fallback_message, False
+    by_key = {item.questionKey: item for item in draft.questions}
+    naturalized = [
+        original.model_copy(update={"text": by_key[original.questionKey].text})
+        for original in selected
+    ]
+    return naturalized, draft.assistantMessage, True
+
+
 def has_red_flag(intake: ChildTriageRequest) -> bool:
     symptoms = normalize_symptoms(intake)
     red_flags, _ = apply_red_flag_rules(intake, symptoms)
@@ -168,7 +198,7 @@ def _coerce_answer(key: str, value: object) -> object:
     if key == "seizure":
         if isinstance(value, bool):
             return value
-        text = str(value).strip().lower()
+        text = _answer_token(value)
         if text in {"co", "yes", "true", "1"}:
             return True
         if text in {"khong", "no", "false", "0"}:
@@ -176,13 +206,18 @@ def _coerce_answer(key: str, value: object) -> object:
         return None
     if key == "dehydrationSigns":
         if isinstance(value, list):
-            return [str(item) for item in value if str(item).lower() != "khong"]
-        return [] if str(value).lower() == "khong" else [str(value)]
+            return [str(item) for item in value if _answer_token(item) != "khong"]
+        return [] if _answer_token(value) == "khong" else [str(value)]
     return str(value)
 
 
 def _empty(value: str | None) -> bool:
     return value is None or not value.strip()
+
+
+def _answer_token(value: object) -> str:
+    normalized = unicodedata.normalize("NFD", str(value).strip().lower())
+    return "".join(char for char in normalized if unicodedata.category(char) != "Mn").replace("đ", "d")
 
 
 def _context_text(intake: ChildTriageRequest) -> str:

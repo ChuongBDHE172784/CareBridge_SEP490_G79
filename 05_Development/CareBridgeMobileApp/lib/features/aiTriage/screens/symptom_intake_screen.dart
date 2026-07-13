@@ -36,7 +36,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     const _ChatMessage(
       role: _ChatRole.assistant,
       text:
-          'Hay mo ta trieu chung cua be. CareBridge se hoi them neu can va chi phan loai rui ro ban dau.',
+          'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
     ),
   ];
 
@@ -104,7 +104,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       if (mounted) _applyResponse(response, userMessage: text);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Khong the gui trieu chung. Vui long thu lai.');
+        setState(() => _error = 'Không thể gửi triệu chứng. Vui lòng thử lại.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -122,7 +122,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       }
     }
     if (newAnswers.isEmpty) {
-      setState(() => _error = 'Vui long tra loi it nhat mot cau hoi.');
+      setState(() => _error = 'Vui lòng trả lời ít nhất một câu hỏi.');
       return;
     }
     setState(() {
@@ -141,7 +141,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Khong the gui cau tra loi. Vui long thu lai.');
+        setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -186,7 +186,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             role: _ChatRole.assistant,
             text:
                 response.triageResult!.summary ??
-                'Da co ket qua phan loai rui ro.',
+                'Đã có kết quả phân loại rủi ro.',
           ),
         );
       }
@@ -209,7 +209,23 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   }
 
   String _answersText(Map<String, dynamic> answers) {
-    return answers.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+    const labels = {
+      'childAgeMonths': 'Tuổi của bé (tháng)',
+      'breathingStatus': 'Tình trạng hô hấp',
+      'consciousnessStatus': 'Tình trạng tỉnh táo',
+      'seizure': 'Co giật',
+      'feedingStatus': 'Khả năng bú/uống',
+      'temperatureC': 'Nhiệt độ',
+      'dehydrationSigns': 'Dấu hiệu mất nước',
+      'vomiting': 'Nôn',
+      'diarrhea': 'Tiêu chảy',
+      'duration': 'Thời gian triệu chứng',
+      'rash': 'Phát ban',
+      'parentFreeText': 'Mô tả bổ sung',
+    };
+    return answers.entries
+        .map((entry) => '${labels[entry.key] ?? entry.key}: ${entry.value}')
+        .join('\n');
   }
 
   Future<void> _openUrl(String url) async {
@@ -253,7 +269,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         setState(() {
           _emergencyFailed = true;
           _error =
-              'Khong the kich hoat ho tro khan cap. Vui long goi cap cuu hoac thu lai.';
+              'Không thể kích hoạt hỗ trợ khẩn cấp. Vui lòng gọi cấp cứu hoặc thử lại.';
         });
       }
     } finally {
@@ -269,7 +285,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         backgroundColor: _surface,
         elevation: 0,
         foregroundColor: _primary,
-        title: const Text('AI Symptom Intake'),
+        title: const Text('Kiểm tra triệu chứng'),
       ),
       body: SafeArea(
         child: Column(
@@ -329,7 +345,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Tra loi bo sung',
+            'Trả lời bổ sung',
             style: TextStyle(fontWeight: FontWeight.w700, color: _onSurface),
           ),
           const SizedBox(height: 12),
@@ -409,7 +425,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Risk: ${result.riskLevel ?? 'UNKNOWN'}',
+            'Mức rủi ro: ${result.riskLevel ?? 'CHƯA XÁC ĐỊNH'}',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -432,7 +448,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           ],
           if (result.redFlags.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text('Red flags: ${result.redFlags.join(', ')}'),
+            Text('Dấu hiệu cảnh báo: ${result.redFlags.join(', ')}'),
           ],
           if (result.riskLevel == 'RED' || result.emergencyActionRequired) ...[
             const SizedBox(height: 16),
@@ -448,7 +464,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.emergency),
-                label: const Text('Kich hoat ho tro khan cap'),
+                label: const Text('Kích hoạt hỗ trợ khẩn cấp'),
               ),
             ),
           ],
@@ -459,7 +475,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           if (result.citations.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Text(
-              'Nguon tham khao chinh thong',
+              'Nguồn tham khảo chính thống',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
@@ -506,11 +522,13 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 ),
               ),
             if (citation.matchedSymptoms.isNotEmpty)
-              Text('Matched symptoms: ${citation.matchedSymptoms.join(', ')}'),
-            Text('Status: ${citation.sourceStatus}'),
+              Text(
+                'Triệu chứng phù hợp: ${citation.matchedSymptoms.join(', ')}',
+              ),
+            Text('Trạng thái: ${citation.sourceStatus}'),
             if (citation.sourceStatus == 'PENDING_REVIEW')
               const Text(
-                'Nguon chinh thong duoc truy xuat tu dong, dang cho kiem duyet noi bo.',
+                'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',
                 style: TextStyle(fontSize: 12, color: _onVariant),
               ),
           ],
@@ -535,7 +553,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                     minLines: 1,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      hintText: 'Vi du: Be bi sot va ho...',
+                      hintText: 'Ví dụ: Bé bị sốt và ho...',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -564,7 +582,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.send),
-                label: const Text('Gui cau tra loi'),
+                label: const Text('Gửi câu trả lời'),
               ),
             ),
     );
@@ -582,7 +600,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               key: const Key('triage-emergency-fallback-map'),
               onPressed: () => context.push('/emergency/map'),
               icon: const Icon(Icons.map_outlined),
-              label: const Text('Van mo ban do khan cap'),
+              label: const Text('Vẫn mở bản đồ khẩn cấp'),
             ),
         ],
       ),

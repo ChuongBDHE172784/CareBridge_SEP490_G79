@@ -92,6 +92,8 @@ QODER.md
 # Local helper scripts and one-off tools
 scripts/
 tools/
+!05_Development/CareBridgeAITriageService/scripts/
+!05_Development/CareBridgeAITriageService/scripts/test_gemini_connection.py
 
 # Generated document artifacts
 ~$*

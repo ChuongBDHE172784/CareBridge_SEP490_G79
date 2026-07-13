@@ -10,7 +10,10 @@ riskLevels: [YELLOW, RED]
 symptoms: [fever, lethargy, dehydration, breathing_difficulty, seizure]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
-sourceStatus: REVIEWED
+sourceStatus: APPROVED
+sourceVersion: '1.0'
+approvedAt: 2026-07-10
+approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
 Internal evidence seed for fever safety context from CDC official health

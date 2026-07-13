@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import '../../../core/network/api_client.dart';
@@ -10,7 +11,8 @@ class TriageService {
     seconds: int.fromEnvironment('AI_TRIAGE_TIMEOUT_SECONDS', defaultValue: 8),
   );
 
-  final String _clientRequestId = _newClientRequestId();
+  String? _pendingStartRequestId;
+  String? _pendingStartFingerprint;
 
   Future<TriageResult> getResult(String sessionId) async {
     final data = await apiGet(
@@ -23,12 +25,28 @@ class TriageService {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) async {
+    final fingerprint = jsonEncode({
+      'initialText': initialText,
+      'currentIntake': currentIntake,
+    });
+    if (_pendingStartFingerprint != fingerprint) {
+      _pendingStartFingerprint = fingerprint;
+      _pendingStartRequestId = _newClientRequestId();
+    }
+    final requestId = _pendingStartRequestId!;
     final data = await apiPost('/api/v1/triage/intake/conversation/start', {
       'initialText': initialText,
       'currentIntake': currentIntake,
-      'clientRequestId': _clientRequestId,
+      'clientRequestId': requestId,
     }).timeout(_requestTimeout);
-    return IntakeFlowResponse.fromJson(data['data'] as Map<String, dynamic>);
+    final response = IntakeFlowResponse.fromJson(
+      data['data'] as Map<String, dynamic>,
+    );
+    if (_pendingStartRequestId == requestId) {
+      _pendingStartRequestId = null;
+      _pendingStartFingerprint = null;
+    }
+    return response;
   }
 
   Future<IntakeFlowResponse> continueConversation({

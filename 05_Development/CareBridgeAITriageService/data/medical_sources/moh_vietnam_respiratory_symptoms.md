@@ -10,6 +10,10 @@ riskLevels: [YELLOW, RED]
 symptoms: [cough, runny_nose, breathing_difficulty, chest_indrawing, cyanosis]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
+sourceStatus: APPROVED
+sourceVersion: '1.0'
+approvedAt: 2026-07-10
+approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
 Internal evidence seed for respiratory risk classification. Mild cough or runny

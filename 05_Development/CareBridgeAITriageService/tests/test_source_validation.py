@@ -49,6 +49,6 @@ def source_doc(
         riskLevels=["YELLOW"],
         symptoms=symptoms or ["fever"],
         sourceType="official_guideline",
-        sourceStatus="REVIEWED",
+        sourceStatus="APPROVED",
         body=body,
     )

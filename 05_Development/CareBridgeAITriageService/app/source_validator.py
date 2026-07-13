@@ -11,11 +11,15 @@ def domain_from_url(url: str) -> str:
 
 
 def is_whitelisted_url(url: str, domain: str | None = None) -> bool:
-    host = domain_from_url(url)
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
     declared_domain = (domain or "").lower().strip()
     if declared_domain and declared_domain not in OFFICIAL_DOMAIN_WHITELIST:
         return False
-    return any(host == allowed or host.endswith(f".{allowed}") for allowed in OFFICIAL_DOMAIN_WHITELIST)
+    has_specific_path = bool(parsed.path and parsed.path.strip("/"))
+    return has_specific_path and any(
+        host == allowed or host.endswith(f".{allowed}") for allowed in OFFICIAL_DOMAIN_WHITELIST
+    )
 
 
 def validate_source_domain(source: SourceDocument) -> bool:
@@ -29,7 +33,8 @@ def validate_title_organization(source: SourceDocument) -> bool:
 def validate_relevance(source: SourceDocument, symptoms: list[str]) -> bool:
     if not symptoms:
         return True
-    source_symptoms = set(source.symptoms)
+    aliases = {"breathing_difficulty": "difficulty_breathing", "dehydration": "mild_dehydration", "convulsion": "seizure", "vomiting": "persistent_vomiting"}
+    source_symptoms = {aliases.get(code, code) for code in source.symptoms}
     if source_symptoms & set(symptoms):
         return True
     haystack = " ".join([
@@ -42,6 +47,9 @@ def validate_relevance(source: SourceDocument, symptoms: list[str]) -> bool:
 
 def validate_source(source: SourceDocument, symptoms: list[str]) -> bool:
     return (
+        source.sourceStatus not in {"DEPRECATED", "ARCHIVED", "DRAFT"}
+        and source.url.lower().startswith("https://")
+        and
         validate_source_domain(source)
         and validate_title_organization(source)
         and validate_relevance(source, symptoms)

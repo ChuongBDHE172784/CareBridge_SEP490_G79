@@ -60,11 +60,11 @@ class _AskMoreTriageService extends TriageService {
     status: 'ASK_MORE',
     intakeSessionId: _sessionId,
     mergedIntake: {'serverState': 'kept'},
-    assistantMessage: 'Can them tuoi cua be',
+    assistantMessage: 'Cần thêm tuổi của bé',
     questions: [
       IntakeQuestion(
         questionKey: 'childAgeMonths',
-        text: 'Be bao nhieu thang?',
+        text: 'Bé bao nhiêu tháng?',
         answerType: 'SINGLE_CHOICE',
         options: ['24'],
       ),
@@ -173,16 +173,16 @@ void main() {
     await _submitInitial(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Be bao nhieu thang?'), findsWidgets);
+    expect(find.text('Bé bao nhiêu tháng?'), findsWidgets);
     await tester.tap(find.text('24'));
-    await tester.tap(find.text('Gui cau tra loi'));
+    await tester.tap(find.text('Gửi câu trả lời'));
     await tester.pumpAndSettle();
 
     expect(triage.continuedSessionId, _sessionId);
     expect(triage.continuedRound, 3);
     expect(triage.continuedIntake, {'serverState': 'kept'});
     expect(triage.continuedAnswers, {'childAgeMonths': '24'});
-    expect(find.text('Risk: GREEN'), findsOneWidget);
+    expect(find.text('Mức rủi ro: GREEN'), findsOneWidget);
   });
 
   testWidgets('RED inline result ignores duplicate emergency tap', (
@@ -230,7 +230,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.textContaining('Khong the kich hoat ho tro khan cap'),
+        find.textContaining('Không thể kích hoạt hỗ trợ khẩn cấp'),
         findsOneWidget,
       );
       expect(find.textContaining('RAW_EMERGENCY_FAILURE'), findsNothing);
@@ -314,7 +314,7 @@ void main() {
     );
     await _submitInitial(tester);
 
-    expect(find.textContaining('dang cho kiem duyet noi bo'), findsOneWidget);
+    expect(find.textContaining('đang chờ kiểm duyệt nội bộ'), findsOneWidget);
   });
 
   testWidgets('raw triage exception is never rendered', (tester) async {
@@ -322,7 +322,7 @@ void main() {
     await _submitInitial(tester);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Khong the gui trieu chung'), findsOneWidget);
+    expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
     expect(find.textContaining('RAW_SECRET_BACKEND_DETAIL'), findsNothing);
   });
 
@@ -336,7 +336,7 @@ void main() {
       );
       await _submitInitial(tester);
 
-      expect(find.text('Risk: $risk'), findsOneWidget);
+      expect(find.text('Mức rủi ro: $risk'), findsOneWidget);
       expect(find.text('Theo doi huong dan'), findsOneWidget);
       expect(find.text('Khong thay the chan doan y khoa'), findsOneWidget);
       expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);

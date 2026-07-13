@@ -22,6 +22,9 @@ public class IntakeSession {
     @Column(name = "baby_profile_id")
     private UUID babyProfileId;
 
+    @Column(name = "client_request_id", length = 64)
+    private String clientRequestId;
+
     @Column(name = "symptoms", nullable = false, columnDefinition = "TEXT")
     private String symptoms;
 

@@ -80,4 +80,23 @@ class IntakeControllerTest {
                         .content("{\"symptoms\":\"test symptoms\"}"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
+    void startConversation_initialTextTooLong_shouldReturn400() throws Exception {
+        String tooLong = "a".repeat(2001);
+        mockMvc.perform(post(BASE_URL + "/conversation/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialText\":\"" + tooLong + "\",\"currentIntake\":{}}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
+    void continueConversation_invalidSessionId_shouldReturn400() throws Exception {
+        mockMvc.perform(post(BASE_URL + "/conversation/continue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"intakeSessionId\":\"client-id\",\"newAnswers\":{}}"))
+                .andExpect(status().isBadRequest());
+    }
 }
