@@ -16,6 +16,17 @@ interface CredentialItem {
   expertName?: string;
 }
 
+const credentialTypeLabels: Record<string, string> = {
+  CERTIFICATE: 'Chứng chỉ',
+  DEGREE: 'Bằng cấp chuyên môn',
+  IDENTITY_DOCUMENT: 'Giấy tờ định danh',
+  MEDICAL_LICENSE: 'Giấy phép hành nghề',
+  PROFESSIONAL_LICENSE: 'Giấy phép hành nghề',
+};
+
+const credentialTypeLabel = (credentialType: string) =>
+  credentialTypeLabels[credentialType] ?? credentialType.replaceAll('_', ' ');
+
 export default function ExpertVerificationQueuePage() {
   const [items, setItems] = useState<CredentialItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,13 +74,26 @@ export default function ExpertVerificationQueuePage() {
   const selected = items.find((i) => i.credentialId === selectedId);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-6 md:p-8">
+    <main className="min-h-screen bg-[#F6F1EC] p-5 md:p-10">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-6 rounded-3xl border border-outline-variant/40 bg-surface px-6 py-6 shadow-sm md:px-8">
+          <div className="flex items-start gap-4">
+            <span className="material-symbols-outlined rounded-2xl bg-primary-container p-3 text-primary">fact_check</span>
+            <div>
+              <p className="text-sm font-semibold text-primary">Quản trị chuyên gia</p>
+              <h1 className="mt-1 text-2xl font-bold text-on-surface">Hàng đợi xác minh chuyên gia</h1>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
       {/* Queue list */}
       <div
-        className={`flex flex-col rounded-2xl border border-outline-variant/50 bg-surface shadow-sm ${selectedId ? 'w-1/2' : 'w-full'}`}
+        className={`flex flex-col rounded-3xl border border-outline-variant/40 bg-surface shadow-sm ${selectedId ? 'w-full lg:w-1/2' : 'w-full'}`}
       >
         <div className="p-4 pb-3 space-y-3">
-          <h2 className="text-xl font-bold text-on-surface">Hàng đợi xác minh chuyên gia</h2>
+          <h2 className="text-xl font-bold text-on-surface">Hồ sơ chờ xử lý</h2>
           <div className="flex gap-2">
             <input
               type="text"
@@ -115,7 +139,7 @@ export default function ExpertVerificationQueuePage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-on-surface leading-snug">{item.credentialType}</h3>
+                    <h3 className="text-sm font-semibold text-on-surface leading-snug">{credentialTypeLabel(item.credentialType)}</h3>
                     {item.expertName && (
                       <p className="text-xs text-on-surface-variant mt-1">Chuyên gia: {item.expertName}</p>
                     )}
@@ -148,7 +172,7 @@ export default function ExpertVerificationQueuePage() {
 
       {/* Detail pane */}
       {selected && (
-        <div className="ml-4 w-1/2 flex flex-col rounded-2xl border border-outline-variant/50 bg-surface-container-lowest shadow-sm">
+        <div className="flex w-full flex-col rounded-3xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm lg:w-1/2">
           <div className="p-5 border-b border-outline-variant/50 bg-surface flex items-center justify-between">
             <h3 className="text-base font-semibold text-on-surface leading-snug">
               Chi tiết hồ sơ xác minh
@@ -163,7 +187,7 @@ export default function ExpertVerificationQueuePage() {
 
           <div className="flex-1 p-5 space-y-4 overflow-y-auto">
             <div className="rounded-2xl border border-outline-variant/60 bg-surface p-4 space-y-2">
-              <p><strong>Loại:</strong> {selected.credentialType}</p>
+              <p><strong>Loại:</strong> {credentialTypeLabel(selected.credentialType)}</p>
               {selected.credentialNumber && (
                 <p><strong>Số hiệu:</strong> {selected.credentialNumber}</p>
               )}
@@ -208,24 +232,29 @@ export default function ExpertVerificationQueuePage() {
               disabled={actionId === selected.credentialId}
               className="flex-1 h-12 rounded-full bg-green-600 text-white font-semibold text-base hover:brightness-110 transition disabled:opacity-50"
             >
-              {actionId === selected.credentialId ? 'Đang xử lý…' : 'Duyệt / Approve'}
+              {actionId === selected.credentialId ? 'Đang xử lý…' : 'Duyệt'}
             </button>
             <button
               onClick={() => reviewCredential(selected.credentialId, 'REJECTED')}
               disabled={actionId === selected.credentialId}
               className="flex-1 h-12 rounded-full bg-error text-white font-semibold text-base hover:brightness-110 transition disabled:opacity-50"
             >
-              Từ chối / Reject
+              Từ chối
             </button>
           </div>
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+function timeAgo(iso?: string): string {
+  const timestamp = iso ? Date.parse(iso) : Number.NaN;
+  if (Number.isNaN(timestamp)) return 'Không rõ thời gian';
+
+  const diff = Math.max(0, Date.now() - timestamp);
   const h = Math.floor(diff / 3_600_000);
   if (h < 1) return 'Vừa xong';
   if (h < 24) return `${h} giờ trước`;
