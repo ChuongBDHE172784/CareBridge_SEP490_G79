@@ -78,7 +78,7 @@ public class ExpertCredentialController {
 
   // UC-70: Admin get pending reviews
   @GetMapping("/pending")
-  @PreAuthorize("hasRole('EXPERT')")
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<List<DocumentReviewResponse>>> getPendingReviews(
     @RequestParam(required = false) String credentialType) {
     return ResponseEntity.ok(ApiResponse.success(credentialService.getPendingReviews(credentialType)));

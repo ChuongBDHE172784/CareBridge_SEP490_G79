@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations', roles: ['MODERATOR'] },
   { label: 'Quy tắc AI', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
   { label: 'Tác động & vận hành', icon: 'insights', path: '/moderator/impact-report', roles: ['SYSTEM_ADMIN'] },
+  { label: 'Cấu hình hệ thống', icon: 'tune', path: '/moderator/system-configuration', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 
 export default function ModPortalSidebar() {

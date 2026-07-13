@@ -63,10 +63,10 @@ export default function ExpertVerificationQueuePage() {
   const selected = items.find((i) => i.credentialId === selectedId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-6 md:p-8">
       {/* Queue list */}
       <div
-        className={`flex flex-col border-r border-outline-variant/50 bg-surface ${selectedId ? 'w-1/2' : 'w-full'}`}
+        className={`flex flex-col rounded-2xl border border-outline-variant/50 bg-surface shadow-sm ${selectedId ? 'w-1/2' : 'w-full'}`}
       >
         <div className="p-4 pb-3 space-y-3">
           <h2 className="text-xl font-bold text-on-surface">Hàng đợi xác minh chuyên gia</h2>
@@ -148,7 +148,7 @@ export default function ExpertVerificationQueuePage() {
 
       {/* Detail pane */}
       {selected && (
-        <div className="w-1/2 flex flex-col bg-surface-container-lowest">
+        <div className="ml-4 w-1/2 flex flex-col rounded-2xl border border-outline-variant/50 bg-surface-container-lowest shadow-sm">
           <div className="p-5 border-b border-outline-variant/50 bg-surface flex items-center justify-between">
             <h3 className="text-base font-semibold text-on-surface leading-snug">
               Chi tiết hồ sơ xác minh
