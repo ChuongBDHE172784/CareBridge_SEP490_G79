@@ -1,13 +1,153 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
-stages:
-- test
-sast:
+stages: [validate, test, security, build, publish, deploy]
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+default:
+  interruptible: true
+
+variables:
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: "1"
+  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  DOCKER_BUILDKIT: "1"
+  BACKEND_IMAGE: "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA"
+  WEB_IMAGE: "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHORT_SHA"
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+.all_rules: &all_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeAPI/**/*", "05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore", "05_Development/Deployment/**/*"]
+.backend_rules: &backend_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeAPI/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+.web_rules: &web_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+
+validate_backend:
+  stage: validate
+  image: eclipse-temurin:21-jdk
+  rules: *backend_rules
+  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -DskipTests compile"]
+validate_web:
+  stage: validate
+  image: node:22-alpine
+  rules: *web_rules
+  script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run lint"]
+test_backend:
   stage: test
-include:
-- template: Security/SAST.gitlab-ci.yml
+  image: eclipse-temurin:21-jdk
+  services: [{name: "docker:27.5.1-dind", alias: docker}]
+  rules: *backend_rules
+  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B test"]
+  artifacts:
+    when: always
+    reports: {junit: "05_Development/CareBridgeAPI/target/surefire-reports/TEST-*.xml"}
+test_web:
+  stage: test
+  image: node:22-alpine
+  rules: *web_rules
+  script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run build", "echo 'No web test script is configured; build is the available verification.'"]
+
+semgrep_sast:
+  stage: security
+  image: returntocorp/semgrep:1.123.0
+  rules: *all_rules
+  script: ["semgrep scan --error --config p/default --config .semgrep.yml --gitlab-sast --output semgrep-report.json"]
+  artifacts:
+    when: always
+    reports: {sast: semgrep-report.json}
+trivy_fs:
+  stage: security
+  image: aquasec/trivy:0.59.1
+  rules: *all_rules
+  script:
+    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --format template --template '@contrib/gitlab.tpl' --output trivy-fs-report.json .
+    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity CRITICAL --exit-code 1 .
+  artifacts: {when: always, paths: [trivy-fs-report.json]}
+trivy_fs_high_advisory:
+  stage: security
+  image: aquasec/trivy:0.59.1
+  rules: *all_rules
+  allow_failure: true
+  script: ["trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
+
+.docker_build:
+  stage: build
+  image: docker:27.5.1-cli
+  services: [{name: "docker:27.5.1-dind", alias: docker}]
+  script: ["docker build --pull --build-arg VITE_API_URL=${VITE_API_URL:-} --tag $IMAGE $CONTEXT", "docker save $IMAGE --output $ARCHIVE"]
+  artifacts: {paths: ["$ARCHIVE"], expire_in: 1 day}
+build_backend_image:
+  extends: .docker_build
+  rules: *backend_rules
+  variables: {IMAGE: "$BACKEND_IMAGE", CONTEXT: 05_Development/CareBridgeAPI, ARCHIVE: backend-image.tar}
+build_web_image:
+  extends: .docker_build
+  rules: *web_rules
+  variables: {IMAGE: "$WEB_IMAGE", CONTEXT: 05_Development/CareBridgeWebApp, ARCHIVE: web-image.tar}
+  before_script: ["test -n \"$VITE_API_URL\" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }"]
+
+.image_scan:
+  stage: publish
+  image: aquasec/trivy:0.59.1
+  script: ["trivy image --input $ARCHIVE --ignorefile .trivyignore --severity CRITICAL --exit-code 1"]
+scan_backend_image:
+  extends: .image_scan
+  rules: *backend_rules
+  needs: [{job: build_backend_image, artifacts: true}]
+  variables: {ARCHIVE: backend-image.tar}
+scan_web_image:
+  extends: .image_scan
+  rules: *web_rules
+  needs: [{job: build_web_image, artifacts: true}]
+  variables: {ARCHIVE: web-image.tar}
+
+.publish:
+  stage: publish
+  image: docker:27.5.1-cli
+  services: [{name: "docker:27.5.1-dind", alias: docker}]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+  before_script: ["echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin", "docker load --input $ARCHIVE"]
+  script:
+    - docker push "$IMAGE"
+    - if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then docker tag "$IMAGE" "$LATEST_IMAGE" && docker push "$LATEST_IMAGE"; fi
+publish_backend_image:
+  extends: .publish
+  needs: [{job: build_backend_image, artifacts: true}, {job: scan_backend_image}]
+  variables: {IMAGE: "$BACKEND_IMAGE", LATEST_IMAGE: "$CI_REGISTRY_IMAGE/backend:latest", ARCHIVE: backend-image.tar}
+publish_web_image:
+  extends: .publish
+  needs: [{job: build_web_image, artifacts: true}, {job: scan_web_image}]
+  variables: {IMAGE: "$WEB_IMAGE", LATEST_IMAGE: "$CI_REGISTRY_IMAGE/web:latest", ARCHIVE: web-image.tar}
+
+deploy_staging:
+  stage: deploy
+  image: alpine:3.21
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+  when: manual
+  environment: {name: staging}
+  needs: [publish_backend_image, publish_web_image]
+  before_script:
+    - apk add --no-cache openssh-client
+    - test -n "$SSH_PRIVATE_KEY" && test -n "$SSH_KNOWN_HOSTS" && test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_PATH"
+    - eval "$(ssh-agent -s)"
+    - printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+  script:
+    - ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' docker compose -f docker-compose.staging.yml pull && BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' docker compose -f docker-compose.staging.yml up -d --remove-orphans"

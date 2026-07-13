@@ -1,0 +1,7 @@
+# Project-owned Semgrep entry point. Add only reviewed, narrow exclusions here.
+rules:
+  - id: carebridge-no-committed-private-key
+    message: Do not commit private keys or credentials to the repository.
+    severity: ERROR
+    languages: [generic]
+    patterns: [{pattern-regex: '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'}]

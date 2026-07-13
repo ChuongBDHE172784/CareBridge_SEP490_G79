@@ -1,0 +1,25 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Set an immutable backend image tag}
+    restart: unless-stopped
+    # Defaults to the server-only .env; BACKEND_ENV_FILE=/dev/null enables syntax checks without secrets.
+    env_file: ["${BACKEND_ENV_FILE:-.env}"]
+    ports: ["${BACKEND_PORT:-8080}:8080"]
+    healthcheck:
+      # The API lacks an unauthenticated health endpoint; this is process liveness only.
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+  web:
+    image: ${WEB_IMAGE:?Set an immutable web image tag}
+    restart: unless-stopped
+    ports: ["${WEB_PORT:-8081}:8080"]
+    depends_on:
+      backend: {condition: service_started}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
