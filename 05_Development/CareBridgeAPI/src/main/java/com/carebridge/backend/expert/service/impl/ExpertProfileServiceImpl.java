@@ -1,4 +1,4 @@
-﻿package com.carebridge.backend.expert.service.impl;
+package com.carebridge.backend.expert.service.impl;
 
 import com.carebridge.backend.expert.dto.request.CreateExpertProfileRequest;
 import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
@@ -57,7 +57,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	@Transactional(readOnly = true)
 	public ExpertProfileDetailResponse getMyProfile(UUID userId) {
 		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
-			.orElseGet(() -> expertProfileMapper.toDetailResponse(new ExpertProfile()));
+			.orElseGet(() -> new ExpertProfile());
 		return expertProfileMapper.toDetailResponse(profile, getAvatarUrl(userId));
 	}
 
