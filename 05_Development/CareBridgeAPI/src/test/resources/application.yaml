@@ -33,3 +33,10 @@ carebridge:
     otp:
       expiration-seconds: 300
       max-attempts: 5
+  fcm:
+    enabled: false
+    credentials-base64: ""
+
+ai:
+  triage-service:
+    url: http://localhost:8001

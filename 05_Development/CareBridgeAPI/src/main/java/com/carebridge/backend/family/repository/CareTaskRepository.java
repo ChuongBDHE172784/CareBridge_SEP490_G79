@@ -28,7 +28,7 @@ public interface CareTaskRepository extends JpaRepository<CareTask, UUID> {
     @Query("""
             UPDATE FamilyCareTask t
                SET t.assignedTo = :toUserId,
-                   t.updatedAt = CURRENT_TIMESTAMP
+                   t.updatedAt = :now
              WHERE t.careGroupId = :groupId
                AND t.assignedTo = :fromUserId
                AND t.status IN :statuses
@@ -36,10 +36,11 @@ public interface CareTaskRepository extends JpaRepository<CareTask, UUID> {
     int reassignIncompleteTasks(@Param("groupId") UUID groupId,
                                 @Param("fromUserId") UUID fromUserId,
                                 @Param("toUserId") UUID toUserId,
-                                @Param("statuses") List<CareTaskStatus> statuses);
+                                @Param("statuses") List<CareTaskStatus> statuses,
+                                @Param("now") Instant now);
 
     default int reassignIncompleteTasks(UUID groupId, UUID fromUserId, UUID toUserId) {
         return reassignIncompleteTasks(groupId, fromUserId, toUserId,
-                List.of(CareTaskStatus.OPEN, CareTaskStatus.IN_PROGRESS));
+                List.of(CareTaskStatus.OPEN, CareTaskStatus.IN_PROGRESS), Instant.now());
     }
 }
