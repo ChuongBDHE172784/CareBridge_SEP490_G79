@@ -11,12 +11,14 @@ import type {
   ContentStage,
   ContentStatus,
   ContentDecision,
+  ContentSource,
 } from '../models/content';
 
 export async function fetchContentList(params: {
   type?: ContentType;
   stage?: ContentStage;
   topicId?: string;
+  sources?: ContentSource[];
   page?: number;
   size?: number;
 }): Promise<PaginatedResponse<ContentListItem>> {
@@ -101,6 +103,7 @@ export async function createContent(data: {
   body: string;
   stage: ContentStage;
   topicId?: string;
+  sources?: ContentSource[];
 }): Promise<CreateContentResult> {
   const res = await apiClient.post<ApiResponse<CreateContentResult>>('/api/v1/admin/content', data);
   return res.data.data;
@@ -115,6 +118,7 @@ export async function updateContent(
     topicId?: string;
     status: ContentStatus;
     sourceLabel?: string;
+    sources?: ContentSource[];
   },
 ): Promise<ContentDetail & { status: ContentStatus; versionNo: number }> {
   const res = await apiClient.put<ApiResponse<ContentDetail & { status: ContentStatus; versionNo: number }>>(

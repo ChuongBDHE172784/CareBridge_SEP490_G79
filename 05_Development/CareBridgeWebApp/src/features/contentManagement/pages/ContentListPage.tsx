@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchContentList, searchContent } from '../services/contentApi';
+import { fetchStaffContentList, searchContent } from '../services/contentApi';
 import type { ContentListItem, ContentSearchItem, ContentType } from '../models/content';
 import { TYPE_LABELS } from '../models/content';
 
@@ -57,11 +57,7 @@ export default function ContentListPage() {
         setItems(data.content);
         setTotal(data.totalElements);
       } else {
-        const data = await fetchContentList({
-          type: typeFilter || undefined,
-          page,
-          size: pageSize,
-        });
+        const data = await fetchStaffContentList();
         setItems(data.content);
         setTotal(data.totalElements);
       }

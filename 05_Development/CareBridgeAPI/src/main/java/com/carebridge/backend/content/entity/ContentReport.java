@@ -44,6 +44,11 @@ public class ContentReport {
     @Column(name = "category", length = 50)
     private String category;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "report_source", nullable = false, length = 20)
+    @Builder.Default
+    private ReportSource reportSource = ReportSource.USER;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import com.carebridge.backend.content.exception.ContentException;
 
 @RestController
 @RequestMapping("/api/v1/admin/content")
@@ -42,8 +43,11 @@ public class AdminContentController {
             @RequestParam(required = false) ContentStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 50) {
+            throw ContentException.validationFailed("size", "must be between 1 and 50");
+        }
         return ResponseEntity.ok(ApiResponse.success(
-                adminContentService.getStaffContents(status, PageRequest.of(page, Math.min(size, 100))),
+                adminContentService.getStaffContents(status, PageRequest.of(page, size)),
                 "Content workspace loaded"));
     }
 

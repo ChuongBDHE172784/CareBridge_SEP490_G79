@@ -15,6 +15,7 @@ import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.entity.UrgencyLevel;
+import com.carebridge.backend.community.entity.UserTopicFollow;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
@@ -22,12 +23,24 @@ import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.repository.UserTopicFollowRepository;
 import com.carebridge.backend.content.entity.ContentReport;
+import com.carebridge.backend.content.entity.ContentItem;
+import com.carebridge.backend.content.entity.ContentSource;
+import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ContentType;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
 import com.carebridge.backend.content.entity.ReportStatus;
+import com.carebridge.backend.content.entity.ReportSource;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.repository.ContentReportRepository;
+import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
@@ -123,6 +136,10 @@ public class DevDataSeeder implements ApplicationRunner {
     private final CommunityBookmarkRepository communityBookmarkRepository;
     private final ContentReportRepository contentReportRepository;
     private final ModerationActionRepository moderationActionRepository;
+    private final UserTopicFollowRepository userTopicFollowRepository;
+    private final ContentRepository contentRepository;
+    private final ChecklistTemplateRepository checklistTemplateRepository;
+    private final ChecklistItemRepository checklistItemRepository;
     private final JdbcTemplate jdbcTemplate;
 
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
@@ -197,6 +214,38 @@ public class DevDataSeeder implements ApplicationRunner {
         seedVerifiedProfileData(savedUsers);
         seedCommunitySampleData(savedUsers);
         seedCommunitySampleDataBatch2(savedUsers);
+        seedVerifiedContent(savedUsers);
+    }
+
+    /** Small idempotent content library covering public, draft and review lifecycle states. */
+    private void seedVerifiedContent(Map<String, User> users) {
+        User author = users.get("content@carebridge.dev");
+        seedContent(author, "[DEV] Dinh dưỡng thai kỳ an toàn", ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        seedContent(author, "[DEV] Câu hỏi thường gặp sau sinh", ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW);
+        seedContent(author, "[DEV] Checklist chuẩn bị sinh", ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.DRAFT);
+        seedChecklistTemplate();
+    }
+
+    private void seedContent(User author, String title, ContentType type, ContentStage stage, ContentStatus status) {
+        if (contentRepository.findByTitleIgnoreCaseAndStageAndType(title, stage, type).isPresent()) return;
+        Instant now = Instant.now();
+        contentRepository.save(ContentItem.builder().type(type).title(title)
+                .body("Nội dung mẫu dùng để kiểm thử luồng nội dung đã xác thực.")
+                .stage(stage).status(status).versionNo(1).authorUserId(author.getId())
+                .sourceLabel("WHO").sources(List.of(new ContentSource("WHO maternal health guidance", "https://www.who.int/health-topics/maternal-health", "WHO")))
+                .publishedAt(status == ContentStatus.APPROVED ? now : null).build());
+    }
+
+    private void seedChecklistTemplate() {
+        ChecklistTemplate template = checklistTemplateRepository.findAll().stream()
+                .filter(t -> "[DEV] Checklist chuẩn bị sinh".equals(t.getName())).findFirst()
+                .orElseGet(() -> checklistTemplateRepository.save(ChecklistTemplate.builder()
+                        .name("[DEV] Checklist chuẩn bị sinh").stage(ContentStage.PREGNANCY)
+                        .description("Checklist mẫu tương ứng nội dung CHECKLIST đã seed.").build()));
+        if (checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).isEmpty()) {
+            checklistItemRepository.save(ChecklistItem.builder().template(template).itemText("Chuẩn bị giấy tờ cần thiết")
+                    .order(1).isRequired(true).build());
+        }
     }
 
     /**
@@ -405,7 +454,7 @@ public class DevDataSeeder implements ApplicationRunner {
         CommunityQuestion q5 = seedQuestion(mother, topicIdByName.get("Tâm lý & Cảm xúc"),
             "Mang thai tuần 10 hay khóc vô cớ, có phải trầm cảm thai kỳ không?",
             "Dạo này em hay xúc động và khóc không rõ lý do, không biết có phải dấu hiệu trầm cảm thai kỳ không ạ?",
-            PregnancyStage.PREGNANCY, (short) 10, null, UrgencyLevel.NORMAL, false, QuestionStatus.HIDDEN, 0);
+            PregnancyStage.PREGNANCY, (short) 10, null, UrgencyLevel.NORMAL, true, QuestionStatus.HIDDEN, 0);
 
         CommunityQuestion q6 = seedQuestion(family2, topicIdByName.get("Chăm sóc bé sơ sinh"),
             "Có nên dùng phấn rôm cho bé sơ sinh 1 tháng tuổi không?",
@@ -459,6 +508,10 @@ public class DevDataSeeder implements ApplicationRunner {
 
         seedBookmark(family, q3.getId());
         seedBookmark(mother3, q4.getId());
+        seedTopicFollow(mother3, topicIdByName.get("Dinh dưỡng"));
+        // q5 is anonymous; this makes the moderator queue exercise anonymous internal traceability
+        // alongside a system-generated (not user-submitted) safety signal.
+        seedAutomatedReport(q5.getId(), ReportTargetType.QUESTION);
 
         // 4 content reports: 2 PENDING (feed the report-based moderation queue), 1 RESOLVED, 1 DISMISSED
         seedContentReport(family, q4.getId(), ReportTargetType.QUESTION, "SPAM",
@@ -571,6 +624,20 @@ public class DevDataSeeder implements ApplicationRunner {
             .userId(userId)
             .questionId(questionId)
             .build());
+    }
+
+    private void seedTopicFollow(UUID userId, UUID topicId) {
+        if (topicId == null || userTopicFollowRepository.findByUserIdAndTopicId(userId, topicId).isPresent()) return;
+        userTopicFollowRepository.save(UserTopicFollow.builder().userId(userId).topicId(topicId).build());
+    }
+
+    private void seedAutomatedReport(UUID targetId, ReportTargetType targetType) {
+        if (contentReportRepository.findByTargetIdAndCategory(targetId, "AUTO_FLAG").isPresent()) return;
+        Instant now = Instant.now();
+        contentReportRepository.save(ContentReport.builder().targetId(targetId).targetType(targetType)
+                .category("AUTO_FLAG").description("System safety classifier signal")
+                .reportSource(ReportSource.AUTOMATED).status(ReportStatus.PENDING)
+                .createdAt(now).updatedAt(now).build());
     }
 
     private ContentReport seedContentReport(UUID reporterId, UUID targetId, ReportTargetType targetType,

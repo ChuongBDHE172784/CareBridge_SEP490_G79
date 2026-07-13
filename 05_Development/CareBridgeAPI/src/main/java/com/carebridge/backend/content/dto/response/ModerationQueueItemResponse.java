@@ -2,6 +2,7 @@ package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.content.entity.ReportSource;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,7 +15,8 @@ public record ModerationQueueItemResponse(
         long reportCount,
         Instant reportedAt,
         String reportReason,
-        ReportStatus status
+        ReportStatus status,
+        ReportSource reportSource
 ) {
     public ModerationQueueItemResponse(
             UUID id,
@@ -24,6 +26,6 @@ public record ModerationQueueItemResponse(
             Instant reportedAt,
             String reportReason,
             ReportStatus status) {
-        this(id, null, targetType, null, contentPreview, reportCount, reportedAt, reportReason, status);
+        this(id, null, targetType, null, contentPreview, reportCount, reportedAt, reportReason, status, ReportSource.USER);
     }
 }

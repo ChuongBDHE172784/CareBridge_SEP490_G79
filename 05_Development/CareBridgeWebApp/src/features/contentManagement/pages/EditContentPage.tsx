@@ -11,6 +11,8 @@ export default function EditContentPage() {
   const [detail, setDetail] = useState<ContentDetail | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [sourceTitle, setSourceTitle] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -26,6 +28,8 @@ export default function EditContentPage() {
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
+      setSourceTitle(data.sources?.[0]?.title ?? '');
+      setSourceUrl(data.sources?.[0]?.url ?? '');
     } catch {
       setLoadError(
         'Không thể tải nội dung để chỉnh sửa. Vui lòng thử lại hoặc kiểm tra quyền Content Admin.',
@@ -48,6 +52,7 @@ export default function EditContentPage() {
         stage: detail.stage,
         topicId: detail.topicId || undefined,
         status,
+        sources: sourceTitle.trim() ? [{ title: sourceTitle.trim(), url: sourceUrl.trim() || undefined }] : undefined,
       });
       navigate(`/content/${id}`);
     } catch (err: unknown) {
@@ -165,6 +170,8 @@ export default function EditContentPage() {
               rows={14}
               className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface-container-low text-sm text-on-surface font-sans resize-none"
             />
+            <input value={sourceTitle} onChange={e => setSourceTitle(e.target.value)} placeholder="Nguồn tham khảo đã xác thực" className="w-full mt-4 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
+            <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="Liên kết nguồn" className="w-full mt-3 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
           </div>
 
           <div className="bg-surface rounded-2xl p-6 shadow-md">

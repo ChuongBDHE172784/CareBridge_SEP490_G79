@@ -1,0 +1,1 @@
+ALTER TABLE content_reports ADD COLUMN report_source VARCHAR(20) NOT NULL DEFAULT 'USER';

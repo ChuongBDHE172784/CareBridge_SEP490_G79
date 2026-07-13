@@ -27,4 +27,6 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
     // has since been superseded by a newer one on the same target.
     Optional<ModerationAction> findTopByTargetIdAndTargetTypeOrderByActionAtDesc(
             UUID targetId, ReportTargetType targetType);
+
+    Page<ModerationAction> findByActionTypeOrderByActionAtDesc(ModerationActionType actionType, Pageable pageable);
 }

@@ -28,7 +28,8 @@ public class ModerationMapper {
                 reportCount,
                 report.getCreatedAt(),
                 buildReason(report),
-                report.getStatus()
+                report.getStatus(),
+                report.getReportSource()
         );
     }
 

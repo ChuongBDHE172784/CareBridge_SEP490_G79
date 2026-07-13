@@ -413,7 +413,8 @@ public class ModerationServiceImpl implements ModerationService {
 
     // UC-102/UC-58: only account-level actions are valid at this endpoint.
     private static final Set<ModerationActionType> ACCOUNT_ACTION_TYPES =
-            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND, ModerationActionType.RESTRICT);
+            Set.of(ModerationActionType.WARN, ModerationActionType.SUSPEND, ModerationActionType.RESTRICT,
+                    ModerationActionType.ESCALATE);
 
     @Override
     @Transactional
@@ -444,7 +445,9 @@ public class ModerationServiceImpl implements ModerationService {
             throw ModerationException.accountReasonRequired(actionType);
         }
 
-        if (actionType == ModerationActionType.SUSPEND) {
+        if (actionType == ModerationActionType.ESCALATE) {
+            if (expiresAt != null) throw ModerationException.warnExpiresAtNotAllowed();
+        } else if (actionType == ModerationActionType.SUSPEND) {
             if (expiresAt == null || !expiresAt.isAfter(Instant.now())) {
                 throw ModerationException.suspendExpiresAtInvalid();
             }
@@ -513,6 +516,7 @@ public class ModerationServiceImpl implements ModerationService {
             case WARN -> "WARNED";
             case SUSPEND -> "SUSPENDED_UNTIL_" + response.expiresAt();
             case RESTRICT -> "COMMUNITY_RESTRICTED_UNTIL_" + response.expiresAt();
+            case ESCALATE -> "ESCALATED_TO_SYSTEM_ADMIN";
             default -> throw ModerationException.accountActionTypeNotSupported(response.actionType());
         };
     }
@@ -709,6 +713,7 @@ public class ModerationServiceImpl implements ModerationService {
             case WARN -> ModerationActionType.WARN;
             case SUSPEND -> ModerationActionType.SUSPEND;
             case RESTRICT -> ModerationActionType.RESTRICT;
+            case ESCALATE -> ModerationActionType.ESCALATE;
             case DISMISS -> throw new IllegalArgumentException("DISMISS has no ModerationActionType mapping");
         };
     }

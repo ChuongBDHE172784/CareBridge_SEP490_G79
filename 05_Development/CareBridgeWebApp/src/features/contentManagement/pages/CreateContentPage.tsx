@@ -15,6 +15,8 @@ export default function CreateContentPage() {
   const [summary, setSummary] = useState('');
   const [body, setBody] = useState('');
   const [sourceLabel, setSourceLabel] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourcePublisher, setSourcePublisher] = useState('');
   const [topics, setTopics] = useState<CommunityTopic[]>([]);
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [error, setError] = useState('');
@@ -37,6 +39,7 @@ export default function CreateContentPage() {
         body,
         stage,
         topicId: topicId || undefined,
+        sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
       });
       if (sendForApproval || sourceLabel.trim()) {
         await updateContent(result.id, {
@@ -46,6 +49,7 @@ export default function CreateContentPage() {
           topicId: topicId || undefined,
           status: sendForApproval ? 'PENDING_REVIEW' : 'DRAFT',
           sourceLabel: sourceLabel.trim() || undefined,
+          sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
         });
       }
       setCreated({ id: result.id, title: result.title, sentForApproval: sendForApproval });
@@ -55,7 +59,7 @@ export default function CreateContentPage() {
     } finally {
       setSubmitting(null);
     }
-  }, [type, stage, title, body, topicId, sourceLabel]);
+  }, [type, stage, title, body, topicId, sourceLabel, sourceUrl, sourcePublisher]);
 
   if (created) {
     return (
@@ -190,6 +194,8 @@ export default function CreateContentPage() {
             placeholder="VD: WHO, Vinmec, Bác sĩ Nguyễn Văn A..."
             className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
           />
+          <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="Liên kết nguồn (https://...)" className="w-full mt-3 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
+          <input value={sourcePublisher} onChange={e => setSourcePublisher(e.target.value)} placeholder="Đơn vị xuất bản" className="w-full mt-3 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
           <p className="text-[11px] text-outline mt-1">Tăng độ tin cậy cho bài viết với người đọc.</p>
         </div>
       </div>

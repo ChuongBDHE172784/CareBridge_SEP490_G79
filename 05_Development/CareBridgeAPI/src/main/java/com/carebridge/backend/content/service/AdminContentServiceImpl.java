@@ -114,8 +114,11 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setTopicId(request.topicId());
         item.setStatus(request.status());
         item.setSourceLabel(request.sourceLabel());
-        item.setSources(request.sources() == null ? java.util.List.of() : request.sources().stream()
-                .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList());
+        // Omitted sources mean the client did not edit them. An explicit [] intentionally clears them.
+        if (request.sources() != null) {
+            item.setSources(request.sources().stream()
+                    .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList());
+        }
 
         // ADR-002: versionNo += 1 on every successful update; null (legacy row) treated as starting at 1
         int currentVersion = item.getVersionNo() == null ? 1 : item.getVersionNo();

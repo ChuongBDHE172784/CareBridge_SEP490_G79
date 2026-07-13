@@ -23,7 +23,10 @@ export interface ContentDetail {
   publishedAt: string | null;
   status: ContentStatus;
   createdAt: string;
+  sources?: ContentSource[];
 }
+
+export interface ContentSource { title: string; url?: string; publisher?: string; }
 
 export interface ContentSearchItem {
   id: string;

@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchContentDetail } from "../services/contentApi";
+import { fetchStaffContentDetail } from "../services/contentApi";
+import type { ContentDetail } from "../models/content";
 
 export default function ContentVersionHistoryPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
+  const [content, setContent] = useState<ContentDetail | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetchContentDetail(id)
-      .then((d) => setTitle(d.title))
+    fetchStaffContentDetail(id)
+      .then((d) => { setTitle(d.title); setContent(d); })
       .catch(() => setTitle("(không tải được tiêu đề)"));
   }, [id]);
 
@@ -58,11 +60,11 @@ export default function ContentVersionHistoryPage() {
           history
         </span>
         <h2 className="mt-4 text-xl font-bold text-on-surface">
-          Chưa có dữ liệu lịch sử phiên bản
+          Phiên bản hiện tại: v{content?.version ?? "—"}
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-on-surface-variant">
-          Backend hiện chỉ trả phiên bản hiện tại của nội dung. Màn hình không
-          hiển thị dữ liệu mẫu cố định.
+          Hệ thống dùng bộ đếm phiên bản trên bản ghi hiện hành, không lưu snapshot lịch sử.
+          {content?.sources?.length ? ` Nguồn: ${content.sources.map(s => s.title).join(", ")}.` : " Chưa khai báo nguồn tham khảo."}
         </p>
       </div>
     </div>

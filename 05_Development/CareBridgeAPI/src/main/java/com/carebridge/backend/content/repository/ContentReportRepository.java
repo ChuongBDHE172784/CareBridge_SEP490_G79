@@ -16,6 +16,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ContentReportRepository extends JpaRepository<ContentReport, UUID> {
 
+    Optional<ContentReport> findByTargetIdAndCategory(UUID targetId, String category);
+
     Page<ContentReport> findByStatus(ReportStatus status, Pageable pageable);
 
     Page<ContentReport> findByStatusAndTargetType(
