@@ -527,7 +527,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               Text(
                 'Triệu chứng phù hợp: ${citation.matchedSymptoms.join(', ')}',
               ),
-            Text('Trạng thái: ${citation.sourceStatus}'),
             if (citation.sourceStatus == 'PENDING_REVIEW')
               const Text(
                 'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',

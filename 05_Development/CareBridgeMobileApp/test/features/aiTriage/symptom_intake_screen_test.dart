@@ -292,6 +292,7 @@ void main() {
     expect(allowedInk.onTap, isNotNull);
     expect(insecureInk.onTap, isNull);
     expect(lookalikeInk.onTap, isNull);
+    expect(find.text('Trạng thái: REVIEWED'), findsNothing);
   });
 
   testWidgets('duplicate citation URLs render with unique widget keys', (
@@ -351,6 +352,7 @@ void main() {
     );
     await _submitInitial(tester);
 
+    expect(find.text('Trạng thái: PENDING_REVIEW'), findsNothing);
     expect(find.textContaining('đang chờ kiểm duyệt nội bộ'), findsOneWidget);
   });
 
