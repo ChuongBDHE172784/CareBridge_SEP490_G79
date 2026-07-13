@@ -52,7 +52,7 @@ export default function SecurityIncidentListPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl p-6 md:p-10">
       <h1 className="text-[28px] font-bold text-on-surface m-0">Danh sách Sự cố Bảo mật</h1>
       <p className="text-on-surface-variant text-sm mt-1 mb-6">Theo dõi và quản lý các cảnh báo an toàn hệ thống (CB-151).</p>
 

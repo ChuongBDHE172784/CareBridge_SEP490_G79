@@ -80,7 +80,7 @@ export default function NotificationCenterPage() {
       : notifications;
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl p-6 md:p-10">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-[28px] font-bold text-on-surface m-0">Trung tâm thông báo</h1>

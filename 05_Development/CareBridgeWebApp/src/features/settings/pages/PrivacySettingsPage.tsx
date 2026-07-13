@@ -103,7 +103,7 @@ export default function PrivacySettingsPage() {
   }
 
   return (
-    <div className="relative pb-20">
+    <div className="relative mx-auto max-w-7xl p-6 pb-20 md:p-10 md:pb-20">
       <h1 className="text-2xl font-bold text-on-surface m-0">Cài đặt Quyền riêng tư</h1>
 
       <div className="mt-6">

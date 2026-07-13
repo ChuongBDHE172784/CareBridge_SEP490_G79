@@ -30,7 +30,7 @@ export default function SecurityEventsPage() {
   const highCount = events.filter(e => e.severity === 'HIGH').length;
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl p-6 md:p-10">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-on-surface m-0">Sự kiện Bảo mật (CB-142)</h1>
