@@ -1,4 +1,4 @@
-package com.carebridge.backend.expert.service.impl;
+﻿package com.carebridge.backend.expert.service.impl;
 
 import com.carebridge.backend.expert.dto.request.CreateExpertProfileRequest;
 import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
@@ -33,216 +33,221 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExpertProfileServiceImpl implements IExpertProfileService {
 
-    private final ExpertProfileRepository expertProfileRepository;
-    private final UserRepository userRepository;
-    private final ExpertProfileMapper expertProfileMapper;
+	private final ExpertProfileRepository expertProfileRepository;
+	private final UserRepository userRepository;
+	private final ExpertProfileMapper expertProfileMapper;
 
-    @Override
-    public ExpertProfileResponse createProfile(UUID userId, CreateExpertProfileRequest request) {
-        if (expertProfileRepository.existsByUserId(userId)) {
-            throw new ExpertException(
-                    org.springframework.http.HttpStatus.CONFLICT,
-                    "EXPERT-001", "Expert profile already exists for this user");
-        }
-        ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
-        ExpertProfile saved = expertProfileRepository.save(profile);
-        return expertProfileMapper.toResponse(saved);
-    }
+	private String getAvatarUrl(UUID userId) {
+		return userRepository.findById(userId).map(u -> u.getAvatarUrl()).orElse(null);
+	}
 
-    @Override
-    @Transactional(readOnly = true)
- public ExpertProfileDetailResponse getMyProfile(UUID userId) {
-  return expertProfileRepository.findByUserId(userId)
-   .map(expertProfileMapper::toDetailResponse)
-   .orElseGet(() -> expertProfileMapper.toDetailResponse(new ExpertProfile()));
- }
+	@Override
+	public ExpertProfileResponse createProfile(UUID userId, CreateExpertProfileRequest request) {
+		if (expertProfileRepository.existsByUserId(userId)) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.CONFLICT,
+				"EXPERT-001", "Expert profile already exists for this user");
+		}
+		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
+		ExpertProfile saved = expertProfileRepository.save(profile);
+		return expertProfileMapper.toResponse(saved, getAvatarUrl(userId));
+	}
 
-    @Override
-    public ExpertProfileDetailResponse updateProfile(UUID userId, UpdateExpertProfileRequest request) {
-        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-002", "Expert profile not found"));
-        expertProfileMapper.updateEntity(profile, request);
-        return expertProfileMapper.toDetailResponse(expertProfileRepository.save(profile));
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public ExpertProfileDetailResponse getMyProfile(UUID userId) {
+		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+			.orElseGet(() -> expertProfileMapper.toDetailResponse(new ExpertProfile()));
+		return expertProfileMapper.toDetailResponse(profile, getAvatarUrl(userId));
+	}
 
-    // ── UC-63: View Verification Status & Renew ────────────────────────
+	@Override
+	public ExpertProfileDetailResponse updateProfile(UUID userId, UpdateExpertProfileRequest request) {
+		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-002", "Expert profile not found"));
+		expertProfileMapper.updateEntity(profile, request);
+		ExpertProfile saved = expertProfileRepository.save(profile);
+		return expertProfileMapper.toDetailResponse(saved, getAvatarUrl(userId));
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public VerificationStatusResponse getMyVerificationStatus(UUID userId) {
-        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-002", "Expert profile not found"));
+	// ── UC-63: View Verification Status & Renew ────────────────────────
 
-        boolean canRenew = profile.getVerificationStatus() == VerificationStatus.REJECTED
-                || profile.getVerificationStatus() == VerificationStatus.EXPIRED;
-        String nextStep = switch (profile.getVerificationStatus()) {
-            case PENDING, UNDER_REVIEW -> "Đang chờ xét duyệt";
-            case APPROVED -> "Đã được phê duyệt";
-            case REJECTED, EXPIRED -> "Vui lòng gửi lại hồ sơ";
-            case SUSPENDED -> "Tài khoản đã bị tạm ngưng — liên hệ quản trị viên";
-        };
+	@Override
+	@Transactional(readOnly = true)
+	public VerificationStatusResponse getMyVerificationStatus(UUID userId) {
+		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-002", "Expert profile not found"));
 
-        return new VerificationStatusResponse(
-                profile.getVerificationStatus(),
-                profile.getVerifiedAt(),
-                profile.getVerifiedBy(),
-                null,
-                canRenew,
-                nextStep
-        );
-    }
+		boolean canRenew = profile.getVerificationStatus() == VerificationStatus.REJECTED
+			|| profile.getVerificationStatus() == VerificationStatus.EXPIRED;
+		String nextStep = switch (profile.getVerificationStatus()) {
+			case PENDING, UNDER_REVIEW -> "Đang chờ xét duyệt";
+			case APPROVED -> "Đã được phê duyệt";
+			case REJECTED, EXPIRED -> "Vui lòng gửi lại hồ sơ";
+			case SUSPENDED -> "Tài khoản đã bị tạm ngưng — liên hệ quản trị viên";
+		};
 
-    @Override
-    public void renewVerification(UUID userId) {
-        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-002", "Expert profile not found"));
+		return new VerificationStatusResponse(
+			profile.getVerificationStatus(),
+			profile.getVerifiedAt(),
+			profile.getVerifiedBy(),
+			null,
+			canRenew,
+			nextStep
+		);
+	}
 
-        if (profile.getVerificationStatus() != VerificationStatus.REJECTED
-                && profile.getVerificationStatus() != VerificationStatus.EXPIRED) {
-            throw new ExpertException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-006",
-                    "Không thể gia hạn ở trạng thái hiện tại");
-        }
+	@Override
+	public void renewVerification(UUID userId) {
+		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-002", "Expert profile not found"));
 
-        profile.setVerificationStatus(VerificationStatus.PENDING);
-        profile.setVerifiedAt(null);
-        profile.setVerifiedBy(null);
-        expertProfileRepository.save(profile);
-    }
+		if (profile.getVerificationStatus() != VerificationStatus.REJECTED
+			&& profile.getVerificationStatus() != VerificationStatus.EXPIRED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-006",
+				"Không thể gia hạn ở trạng thái hiện tại");
+		}
 
-    // ── UC-65: Public directory ────────────────────────────────────────
+		profile.setVerificationStatus(VerificationStatus.PENDING);
+		profile.setVerifiedAt(null);
+		profile.setVerifiedBy(null);
+		expertProfileRepository.save(profile);
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public ExpertDirectoryResponse getPublicDirectory(String specialty, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
-        Page<ExpertProfile> result;
-        if (specialty != null && !specialty.isBlank()) {
-            result = expertProfileRepository.findVerifiedBySpecialty(specialty)
-                    .stream()
-                    .map(p -> {
-                        ExpertProfile ep = new ExpertProfile();
-                        ep.setExpertProfileId(p.getExpertProfileId());
-                        ep.setUserId(p.getUserId());
-                        ep.setSpecialty(p.getSpecialty());
-                        ep.setProfessionalTitle(p.getProfessionalTitle());
-                        ep.setExperienceYears(p.getExperienceYears());
-                        ep.setWorkplace(p.getWorkplace());
-                        ep.setVerificationStatus(p.getVerificationStatus());
-                        ep.setRatingAvg(p.getRatingAvg());
-                        ep.setCreatedAt(p.getCreatedAt());
-                        return ep;
-                    })
-                    .collect(Collectors.collectingAndThen(Collectors.toList(), PageImpl::new));
-        } else {
-            result = new PageImpl<>(
-                    expertProfileRepository.findVerifiedPublic(), pageable, 0);
-        }
-        return expertProfileMapper.toDirectoryResponse(result);
-    }
+	// ── UC-65: Public directory ────────────────────────────────────────
 
-    @Override
-    @Transactional(readOnly = true)
-    public ExpertProfileDetailResponse getPublicProfile(UUID expertProfileId) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-003", "Expert profile not found"));
-        if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
-            throw new ExpertException(
-                    org.springframework.http.HttpStatus.NOT_FOUND,
-                    "EXPERT-004", "Expert profile not available");
-        }
-        return expertProfileMapper.toDetailResponse(profile);
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public ExpertDirectoryResponse getPublicDirectory(String specialty, int page, int size) {
+		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
+		Page<ExpertProfile> result;
+		if (specialty != null && !specialty.isBlank()) {
+			result = expertProfileRepository.findVerifiedBySpecialty(specialty)
+				.stream()
+				.map(p -> {
+					ExpertProfile ep = new ExpertProfile();
+					ep.setExpertProfileId(p.getExpertProfileId());
+					ep.setUserId(p.getUserId());
+					ep.setSpecialty(p.getSpecialty());
+					ep.setProfessionalTitle(p.getProfessionalTitle());
+					ep.setExperienceYears(p.getExperienceYears());
+					ep.setWorkplace(p.getWorkplace());
+					ep.setVerificationStatus(p.getVerificationStatus());
+					ep.setRatingAvg(p.getRatingAvg());
+					ep.setCreatedAt(p.getCreatedAt());
+					return ep;
+				})
+				.collect(Collectors.collectingAndThen(Collectors.toList(), PageImpl::new));
+		} else {
+			result = new PageImpl<>(
+				expertProfileRepository.findVerifiedPublic(), pageable, 0);
+		}
+		return expertProfileMapper.toDirectoryResponse(result);
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ExpertProfileResponse> getVerifiedExperts() {
-        return expertProfileRepository.findVerifiedPublic().stream()
-                .map(expertProfileMapper::toResponse)
-                .toList();
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public ExpertProfileDetailResponse getPublicProfile(UUID expertProfileId) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-004", "Expert profile not available");
+		}
+		return expertProfileMapper.toDetailResponse(profile, getAvatarUrl(profile.getUserId()));
+	}
 
-    // ── UC-70: Admin approve / reject ──────────────────────────────────
+	@Override
+	@Transactional(readOnly = true)
+	public List<ExpertProfileResponse> getVerifiedExperts() {
+		return expertProfileRepository.findVerifiedPublic().stream()
+			.map(p -> expertProfileMapper.toResponse(p, getAvatarUrl(p.getUserId())))
+			.toList();
+	}
 
-    @Override
-    public void approveExpert(UUID expertProfileId, UUID adminId) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-003", "Expert profile not found"));
-        profile.setVerificationStatus(VerificationStatus.APPROVED);
-        profile.setVerifiedAt(LocalDateTime.now());
-        profile.setVerifiedBy(adminId);
-        expertProfileRepository.save(profile);
-    }
+	// ── UC-70: Admin approve / reject ──────────────────────────────────
 
-    @Override
-    public void rejectExpert(UUID expertProfileId, UUID adminId, String reason) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-003", "Expert profile not found"));
-        profile.setVerificationStatus(VerificationStatus.REJECTED);
-        profile.setVerifiedAt(LocalDateTime.now());
-        profile.setVerifiedBy(adminId);
-        expertProfileRepository.save(profile);
-    }
+	@Override
+	public void approveExpert(UUID expertProfileId, UUID adminId) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		profile.setVerificationStatus(VerificationStatus.APPROVED);
+		profile.setVerifiedAt(LocalDateTime.now());
+		profile.setVerifiedBy(adminId);
+		expertProfileRepository.save(profile);
+	}
 
-    // ── UC-71: Admin trust action ──────────────────────────────────────
+	@Override
+	public void rejectExpert(UUID expertProfileId, UUID adminId, String reason) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		profile.setVerificationStatus(VerificationStatus.REJECTED);
+		profile.setVerifiedAt(LocalDateTime.now());
+		profile.setVerifiedBy(adminId);
+		expertProfileRepository.save(profile);
+	}
 
-    @Override
-    public void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-003", "Expert profile not found"));
-        profile.setTrustStatus(newStatus);
-        if (newStatus == TrustStatus.SUSPENDED || newStatus == TrustStatus.ACTIVE) {
-            profile.setVerifiedAt(LocalDateTime.now());
-            profile.setVerifiedBy(adminId);
-        }
-        expertProfileRepository.save(profile);
-    }
+	// ── UC-71: Admin trust action ──────────────────────────────────────
 
-    @Override
-public List<ExpertProfileResponse> getAllExperts() {
-return expertProfileRepository.findAll().stream()
-.map(expertProfileMapper::toResponse)
-.toList();
-}
+	@Override
+	public void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		profile.setTrustStatus(newStatus);
+		if (newStatus == TrustStatus.SUSPENDED || newStatus == TrustStatus.ACTIVE) {
+			profile.setVerifiedAt(LocalDateTime.now());
+			profile.setVerifiedBy(adminId);
+		}
+		expertProfileRepository.save(profile);
+	}
 
-// ── Shop / customisation ───────────────────────────────────────────
+	@Override
+	public List<ExpertProfileResponse> getAllExperts() {
+		return expertProfileRepository.findAll().stream()
+			.map(p -> expertProfileMapper.toResponse(p, getAvatarUrl(p.getUserId())))
+			.toList();
+	}
 
-    @Override
-    public void saveCategorySelection(UUID expertProfileId, List<String> categoryIds) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "EXPERT-003", "Expert profile not found"));
-        profile.setConsultationScope(java.util.Objects.toString(categoryIds));
-        expertProfileRepository.save(profile);
-    }
+	// ── Shop / customisation ───────────────────────────────────────────
 
-    @Override
-    public void saveTitleAndPrice(UUID expertProfileId, String customTitle, int customPrice) {
-        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "EXPERT-003", "Expert profile not found"));
-        profile.setProfessionalTitle(customTitle);
-        profile.setRatingAvg(java.math.BigDecimal.valueOf(customPrice));
-        expertProfileRepository.save(profile);
-    }
+	@Override
+	public void saveCategorySelection(UUID expertProfileId, List<String> categoryIds) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND, "EXPERT-003", "Expert profile not found"));
+		profile.setConsultationScope(java.util.Objects.toString(categoryIds));
+		expertProfileRepository.save(profile);
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getConsultationHistory(UUID expertId) {
-        return List.of();
-    }
+	@Override
+	public void saveTitleAndPrice(UUID expertProfileId, String customTitle, int customPrice) {
+		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND, "EXPERT-003", "Expert profile not found"));
+		profile.setProfessionalTitle(customTitle);
+		profile.setRatingAvg(java.math.BigDecimal.valueOf(customPrice));
+		expertProfileRepository.save(profile);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> getConsultationHistory(UUID expertId) {
+		return List.of();
+	}
 }
