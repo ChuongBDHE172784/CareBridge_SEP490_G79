@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../baby/models/baby_model.dart';
 import '../../baby/services/baby_service.dart';
 import '../models/reminder_model.dart';
@@ -20,24 +21,20 @@ class _CreateVaccinationReminderScreenState
   static const _surface = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
+  static const _error = Color(0xFFBA1A1A);
 
   final _reminderService = ReminderService.instance;
   final _babyService = BabyService();
-  final _vaccineNameCtrl = TextEditingController();
-  final _locationCtrl = TextEditingController();
+  final _vaccineNameController = TextEditingController();
+  final _locationController = TextEditingController();
 
   List<BabyProfile> _babies = [];
   BabyProfile? _selectedBaby;
   DateTime _scheduledDate = DateTime.now().add(const Duration(days: 3));
-  int _leadTimeDays = 3;
   List<Map<String, dynamic>> _suggestions = [];
-
-  bool _isLoadingBabies = true;
-  bool _isLoadingSuggestions = false;
-  bool _isSaving = false;
-  bool _showSuccess = false;
-
-  static const _leadTimeOptions = [1, 3, 5, 7];
+  bool _loadingBabies = true;
+  bool _loadingSuggestions = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -47,37 +44,37 @@ class _CreateVaccinationReminderScreenState
 
   @override
   void dispose() {
-    _vaccineNameCtrl.dispose();
-    _locationCtrl.dispose();
+    _vaccineNameController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
   Future<void> _loadBabies() async {
     try {
       final babies = await _babyService.listBabyProfiles();
+      if (!mounted) return;
       setState(() {
         _babies = babies;
-        if (babies.isNotEmpty) {
-          _selectedBaby = babies.first;
-          _loadSuggestions(babies.first.id);
-        }
+        _selectedBaby = babies.isEmpty ? null : babies.first;
       });
-    } catch (_) {
-      // Non-critical failure — babies list can be empty
+      if (babies.isNotEmpty) {
+        await _loadSuggestions(babies.first.id);
+      }
     } finally {
-      if (mounted) setState(() => _isLoadingBabies = false);
+      if (mounted) setState(() => _loadingBabies = false);
     }
   }
 
   Future<void> _loadSuggestions(String babyId) async {
-    setState(() => _isLoadingSuggestions = true);
+    setState(() => _loadingSuggestions = true);
     try {
-      final s = await _reminderService.getVaccinationSuggestions(babyId);
-      setState(() => _suggestions = s);
+      final suggestions = await _reminderService.getVaccinationSuggestions(babyId);
+      if (!mounted) return;
+      setState(() => _suggestions = suggestions);
     } catch (_) {
-      setState(() => _suggestions = []);
+      if (mounted) setState(() => _suggestions = []);
     } finally {
-      if (mounted) setState(() => _isLoadingSuggestions = false);
+      if (mounted) setState(() => _loadingSuggestions = false);
     }
   }
 
@@ -87,62 +84,48 @@ class _CreateVaccinationReminderScreenState
       initialDate: _scheduledDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: _primary,
-            onPrimary: Colors.white,
-            surface: _canvas,
-          ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) setState(() => _scheduledDate = picked);
   }
 
   Future<void> _save() async {
     if (_selectedBaby == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn bé.'),
-          backgroundColor: _primary,
-        ),
-      );
+      _showError('Vui lòng chọn bé.');
       return;
     }
-    if (_vaccineNameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên vắc xin.'),
-          backgroundColor: _primary,
-        ),
-      );
+    final vaccineName = _vaccineNameController.text.trim();
+    if (vaccineName.isEmpty) {
+      _showError('Vui lòng nhập tên vắc xin.');
       return;
     }
-    setState(() => _isSaving = true);
+
+    final location = _locationController.text.trim();
+    final title = location.isEmpty ? vaccineName : '$vaccineName - $location';
+    setState(() => _saving = true);
     try {
       await _reminderService.createVaccinationReminder(
         babyId: _selectedBaby!.id,
-        title: _vaccineNameCtrl.text.trim(),
+        title: title,
         scheduledAt: _scheduledDate,
         recurrenceType: RecurrenceType.none,
       );
-      setState(() => _showSuccess = true);
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể lưu. Vui lòng thử lại.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tạo nhắc lịch tiêm chủng.')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Không thể lưu nhắc lịch tiêm chủng: $e');
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: _error),
+    );
   }
 
   @override
@@ -154,104 +137,129 @@ class _CreateVaccinationReminderScreenState
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Đặt nhắc lịch tiêm',
+          'Nhắc lịch tiêm chủng',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
             color: _onSurface,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
-      body: Stack(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+          _buildBabySelector(),
+          const SizedBox(height: 14),
+          _Section(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildBabySelector(),
-                const SizedBox(height: 16),
-                _buildVaccineNameCard(),
-                const SizedBox(height: 16),
-                _buildScheduleCard(),
-                const SizedBox(height: 16),
-                _buildLocationCard(),
-                const SizedBox(height: 16),
-                if (_suggestions.isNotEmpty || _isLoadingSuggestions) ...[
-                  _buildSuggestionsCard(),
-                  const SizedBox(height: 16),
-                ],
-                _buildTipCard(),
-                const SizedBox(height: 24),
-                _buildSaveButton(),
+                TextField(
+                  controller: _vaccineNameController,
+                  maxLength: 255,
+                  decoration: _inputDecoration('Tên vắc xin *'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _locationController,
+                  maxLength: 120,
+                  decoration: _inputDecoration('Địa điểm tiêm chủng'),
+                ),
               ],
             ),
           ),
-          if (_showSuccess) _buildSuccessToast(),
+          const SizedBox(height: 14),
+          _Section(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DateButton(
+                  label: 'Ngày tiêm dự kiến',
+                  value: _formatDate(_scheduledDate),
+                  onTap: _pickDate,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Gợi ý bên dưới được lấy từ dữ liệu/lịch tiêm đã ghi nhận trong hệ thống. Vui lòng kiểm tra lại với nhân viên y tế khi cần.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_loadingSuggestions || _suggestions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _buildSuggestions(),
+          ],
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_rounded),
+            label: const Text(
+              'Lưu nhắc lịch',
+              style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: _primary,
+              minimumSize: const Size.fromHeight(54),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildBabySelector() {
-    if (_isLoadingBabies) {
+    if (_loadingBabies) {
       return const SizedBox(
-        height: 80,
-        child: Center(
-          child: CircularProgressIndicator(color: _primaryContainer),
-        ),
+        height: 84,
+        child: Center(child: CircularProgressIndicator(color: _primary)),
       );
     }
     if (_babies.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text(
-          'Chưa có hồ sơ bé. Vui lòng thêm bé trước.',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 13,
-            color: _onSurfaceVariant,
-          ),
+      return const _Section(
+        child: Text(
+          'Chưa có hồ sơ bé. Vui lòng thêm hồ sơ bé trước khi tạo nhắc lịch tiêm chủng.',
           textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
         ),
       );
     }
     return SizedBox(
-      height: 90,
+      height: 86,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _babies.length + 1,
+        itemCount: _babies.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          if (i == _babies.length) return _buildAddBabyChip();
-          final b = _babies[i];
-          final selected = _selectedBaby?.id == b.id;
+        itemBuilder: (_, index) {
+          final baby = _babies[index];
+          final selected = _selectedBaby?.id == baby.id;
           return GestureDetector(
             onTap: () {
-              setState(() => _selectedBaby = b);
-              _loadSuggestions(b.id);
+              setState(() => _selectedBaby = baby);
+              _loadSuggestions(baby.id);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: 72,
+              width: 82,
               decoration: BoxDecoration(
                 color: selected ? _primary : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected ? _primary : _surface,
-                  width: 2,
-                ),
-                boxShadow: selected
-                    ? [BoxShadow(color: _primary.withAlpha(40), blurRadius: 8)]
-                    : [],
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: selected ? _primary : _surface),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -259,20 +267,19 @@ class _CreateVaccinationReminderScreenState
                   Icon(
                     Icons.child_care_rounded,
                     color: selected ? Colors.white : _primaryContainer,
-                    size: 28,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    b.nickname,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : _onSurface,
-                    ),
-                    textAlign: TextAlign.center,
+                    baby.nickname,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? Colors.white : _onSurface,
+                    ),
                   ),
                 ],
               ),
@@ -283,308 +290,36 @@ class _CreateVaccinationReminderScreenState
     );
   }
 
-  Widget _buildAddBabyChip() {
-    return Container(
-      width: 72,
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _surface, width: 2),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.add_circle_outline_rounded,
-            color: _onSurfaceVariant,
-            size: 26,
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Thêm bé',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 10,
-              color: _onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVaccineNameCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withAlpha(15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: _vaccineNameCtrl,
-              maxLength: 255,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: _onSurface,
-              ),
-              decoration: _inputDeco(
-                'Tên vắc xin *',
-                hint: 'Cúm mùa, Thủy đậu...',
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              // AI suggestion — would trigger an API call for vaccine name suggestions
-              if (_suggestions.isNotEmpty) {
-                final first = _suggestions.first;
-                _vaccineNameCtrl.text = first['vaccineName']?.toString() ?? '';
-              }
-            },
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _primaryContainer.withAlpha(30),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: _primaryContainer,
-                size: 22,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScheduleCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withAlpha(15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+  Widget _buildSuggestions() {
+    return _Section(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Lịch tiêm',
+            'Gợi ý lịch tiêm đã ghi nhận',
             style: TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               color: _onSurface,
             ),
           ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: _pickDate,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    color: _primary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Ngày tiêm dự kiến',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 10,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                        Text(
-                          '${_scheduledDate.day.toString().padLeft(2, '0')}/${_scheduledDate.month.toString().padLeft(2, '0')}/${_scheduledDate.year}',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: _onSurfaceVariant,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Nhắc trước',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12,
-              color: _onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: _leadTimeOptions.map((d) {
-              final selected = _leadTimeDays == d;
-              return GestureDetector(
-                onTap: () => setState(() => _leadTimeDays = d),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? _primary : _surface,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: Text(
-                    '$d ngày',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : _onSurface,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withAlpha(15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: _locationCtrl,
-        style: const TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 14,
-          color: _onSurface,
-        ),
-        decoration:
-            _inputDeco(
-              'Địa điểm tiêm chủng',
-              hint: 'VNVC, phòng khám...',
-            ).copyWith(
-              prefixIcon: const Icon(
-                Icons.location_on_rounded,
-                color: _primaryContainer,
-                size: 20,
-              ),
-            ),
-      ),
-    );
-  }
-
-  Widget _buildSuggestionsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withAlpha(15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.auto_awesome_rounded,
-                color: _primaryContainer,
-                size: 16,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Lịch tiêm tham khảo',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_isLoadingSuggestions)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(color: _primaryContainer),
-              ),
-            )
+          const SizedBox(height: 10),
+          if (_loadingSuggestions)
+            const Center(child: CircularProgressIndicator(color: _primary))
           else
-            ...(_suggestions.take(3).map((s) => _buildSuggestionTile(s))),
+            ..._suggestions.take(3).map(_buildSuggestionTile),
         ],
       ),
     );
   }
 
-  Widget _buildSuggestionTile(Map<String, dynamic> s) {
-    final name = s['vaccineName']?.toString() ?? 'Vắc xin';
-    final date = s['suggestedDate']?.toString();
-    return GestureDetector(
-      onTap: () => setState(() => _vaccineNameCtrl.text = name),
+  Widget _buildSuggestionTile(Map<String, dynamic> suggestion) {
+    final name = suggestion['vaccineName']?.toString() ?? 'Vắc xin';
+    final date = suggestion['suggestedDate']?.toString();
+    return InkWell(
+      onTap: () => setState(() => _vaccineNameController.text = name),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
@@ -594,11 +329,7 @@ class _CreateVaccinationReminderScreenState
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.vaccines_rounded,
-              color: _primaryContainer,
-              size: 20,
-            ),
+            const Icon(Icons.vaccines_rounded, color: _primaryContainer),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -608,8 +339,7 @@ class _CreateVaccinationReminderScreenState
                     name,
                     style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: _onSurface,
                     ),
                   ),
@@ -618,156 +348,91 @@ class _CreateVaccinationReminderScreenState
                       date,
                       style: const TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 11,
+                        fontSize: 12,
                         color: _onSurfaceVariant,
                       ),
                     ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: _onSurfaceVariant,
-              size: 16,
-            ),
+            const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTipCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _primaryContainer.withAlpha(35),
-            _primaryContainer.withAlpha(15),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  InputDecoration _inputDecoration(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _primaryContainer.withAlpha(70)),
         ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Row(
-        children: [
-          Icon(
-            Icons.lightbulb_outline_rounded,
-            color: _primaryContainer,
-            size: 20,
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Tiêm chủng đầy đủ giúp bé phòng ngừa các bệnh truyền nhiễm nguy hiểm. Hãy theo dõi lịch tiêm định kỳ.',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 11,
-                color: _onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
-          ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _primary, width: 1.5),
+        ),
+      );
+
+  static String _formatDate(DateTime value) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+}
+
+class _Section extends StatelessWidget {
+  final Widget child;
+
+  const _Section({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6)),
         ],
       ),
+      child: child,
     );
   }
+}
 
-  Widget _buildSaveButton() {
-    return ElevatedButton(
-      onPressed: _isSaving ? null : _save,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: const StadiumBorder(),
-        elevation: 0,
+class _DateButton extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _DateButton({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.calendar_month_rounded),
+      label: Row(
+        children: [
+          Text(label, style: const TextStyle(fontFamily: 'Lexend')),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+        ],
       ),
-      child: _isSaving
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: Colors.white,
-              ),
-            )
-          : const Text(
-              'Lưu nhắc lịch',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-    );
-  }
-
-  Widget _buildSuccessToast() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withAlpha(100),
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 20),
-              ],
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.vaccines_rounded, color: _primary, size: 48),
-                SizedBox(height: 12),
-                Text(
-                  'Đã lưu lịch tiêm!',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF845143),
+        side: const BorderSide(color: Color(0xFFC98C7B)),
+        minimumSize: const Size.fromHeight(50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
-
-  InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    labelStyle: const TextStyle(
-      fontFamily: 'Lexend',
-      fontSize: 12,
-      color: _onSurfaceVariant,
-    ),
-    hintStyle: const TextStyle(
-      fontFamily: 'Lexend',
-      fontSize: 13,
-      color: Color(0xFFBBA9A4),
-    ),
-    filled: true,
-    fillColor: Colors.white,
-    counterText: '',
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _surface, width: 2),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _surface, width: 2),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _primaryContainer, width: 2),
-    ),
-  );
 }

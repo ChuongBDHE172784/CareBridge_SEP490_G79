@@ -82,6 +82,17 @@ public class ReminderServiceImpl implements IReminderService {
         return toDetailResponse(reminder);
     }
 
+    // ─── View All Reminders ───────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReminderDetailResponse> getAllReminders(UUID callerId) {
+        return reminderRepository.findByOwnerUserIdOrderByScheduledAtDesc(callerId)
+                .stream()
+                .map(this::toDetailResponse)
+                .toList();
+    }
+
     // ─── UC46: Create Medication Reminder ─────────────────────────────────────
 
     @Override
@@ -337,12 +348,10 @@ public class ReminderServiceImpl implements IReminderService {
                         "Baby profile not found or not owned by caller"));
     }
 
-    /** ADR-REM-STATE-001: completed, skipped, and cancelled reminders are immutable terminal states. */
+    /** ADR-REM-STATE-001: cancelled reminders are immutable terminal states. */
     private void requireMutableState(Reminder reminder) {
         ReminderStatus status = reminder.getStatus();
-        if (status == ReminderStatus.COMPLETED
-                || status == ReminderStatus.SKIPPED
-                || status == ReminderStatus.CANCELLED) {
+        if (status == ReminderStatus.CANCELLED) {
             throw new BusinessException(HttpStatus.CONFLICT, "REM-007",
                     "Reminder in terminal state " + status + " cannot be modified");
         }

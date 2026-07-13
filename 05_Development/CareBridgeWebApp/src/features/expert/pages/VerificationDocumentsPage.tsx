@@ -1,7 +1,39 @@
 import { useState, useEffect } from 'react';
 import { getMyCredentials, submitCredential, deleteCredential } from '../services/expertApi';
 
-function CredentialFileViewModal({ url, fileName, onClose }: { url: string; fileName?: string; onClose: () => void }) {
+/* ── Small reusable field components ─────────────────────────────────── */
+
+function Field({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
+      {children}
+    </div>
+  );
+}
+
+function SelectField({ label, children, value, onChange, required = false }: {
+  label: string; children: React.ReactNode; value: string; onChange: (value: string) => void; required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
+      <select
+        className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+/* ── Modal for viewing attachment files ─────────────────────────────── */
+
+function CredentialFileViewModal({ url, fileName, onClose }: {
+  url: string; fileName?: string; onClose: () => void;
+}) {
   if (!url) return null;
   const ext = url.split('.').pop()?.toLowerCase();
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
@@ -24,7 +56,7 @@ function CredentialFileViewModal({ url, fileName, onClose }: { url: string; file
               <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-gray-500 mb-4">Không thể xem trựcếp. Tải xuống để xem.</p>
+              <p className="text-gray-500 mb-4">Không thể xem trực tiếp. Tải xuống để xem.</p>
               <a href={url} download className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">
                 Tải xuống
               </a>
@@ -36,12 +68,15 @@ function CredentialFileViewModal({ url, fileName, onClose }: { url: string; file
   );
 }
 
+/* ── Main page ──────────────────────────────────────────────────────── */
+
 export default function VerificationDocumentsPage() {
   const [credentials, setCredentials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     credentialType: '',
@@ -52,7 +87,6 @@ export default function VerificationDocumentsPage() {
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -87,9 +121,7 @@ const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     setSelectedFile(file);
-    if (file) {
-      setError(null);
-    }
+    if (file) setError(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -121,7 +153,7 @@ const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-on-surface">Chứng chỉ & Giấy tờ</h1>
+        <h1 className="text-2xl font-bold text-on-surface">Chứng chỉ &amp; Giấy tờ</h1>
         <button
           onClick={() => setShowUpload(!showUpload)}
           className="px-4 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary/90"
@@ -172,15 +204,15 @@ const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
               onChange={handleFileChange} />
             {selectedFile && (
-              <p className="mt-1 text-xs text-gray-500">Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
             )}
           </Field>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowUpload(false)}
-              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
-              Hủy
-            </button>
+              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Hủy</button>
             <button type="submit" disabled={submitting || !form.credentialType || !form.issuedDate}
               className="px-4 py-2 rounded bg-primary text-white font-medium disabled:opacity-50">
               {submitting ? 'Đang tải...' : 'Gửi xét duyệt'}
@@ -219,58 +251,33 @@ const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
                   Gửi lúc: {new Date(cred.createdAt).toLocaleString('vi-VN')}
                 </p>
               </div>
-          <div className="flex flex-col items-end gap-2 ml-4">
-            {cred.fileUrl && (
-              <button
-                onClick={() => setViewFileUrl(cred.fileUrl)}
-                className="text-sm text-primary hover:text-primary/80 font-medium"
-              >
-                Xem tài liệu
-              </button>
-            )}
-            <button
-              onClick={() => handleDelete(cred.credentialId)}
-              className="text-sm text-red-600 hover:text-red-800"
-            >
-              Xóa
-            </button>
-          </div>
+              <div className="flex flex-col items-end gap-2 ml-4">
+                {cred.fileUrl && (
+                  <button
+                    onClick={() => setViewFileUrl(cred.fileUrl)}
+                    className="text-sm text-primary hover:text-primary/80 font-medium"
+                  >
+                    Xem tài liệu
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(cred.credentialId)}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-function Field({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
-      {children}
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  children,
-  value,
-  onChange,
-  required = false,
-}: {
-  label: string;
-  children: React.ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
-      <select className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-        value={value} onChange={(e) => onChange(e.target.value)}>
-        {children}
-      </select>
+      {viewFileUrl && (
+        <CredentialFileViewModal
+          url={viewFileUrl}
+          onClose={() => setViewFileUrl(null)}
+        />
+      )}
     </div>
   );
 }

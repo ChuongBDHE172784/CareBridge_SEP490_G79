@@ -21,12 +21,16 @@ public final class TodayTaskTestFactory {
     private TodayTaskTestFactory() {}
 
     public static Reminder pendingReminderToday(ReminderType type) {
+        return pendingReminderToday(type, Instant.now().plus(1, ChronoUnit.HOURS));
+    }
+
+    public static Reminder pendingReminderToday(ReminderType type, Instant scheduledAt) {
         return Reminder.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(OWNER_ID)
                 .reminderType(type)
                 .title(type.name() + " today")
-                .scheduledAt(Instant.now().plus(1, ChronoUnit.HOURS))
+                .scheduledAt(scheduledAt)
                 .status(ReminderStatus.PENDING)
                 .build();
     }
@@ -43,6 +47,18 @@ public final class TodayTaskTestFactory {
                 .build();
     }
 
+    public static Reminder snoozedReminderToday(ReminderType type, Instant scheduledAt, Instant snoozedUntil) {
+        return Reminder.builder()
+                .id(UUID.randomUUID())
+                .ownerUserId(OWNER_ID)
+                .reminderType(type)
+                .title(type.name() + " snoozed today")
+                .scheduledAt(scheduledAt)
+                .status(ReminderStatus.SNOOZED)
+                .snoozedUntil(snoozedUntil)
+                .build();
+    }
+
     public static Reminder completedReminderToday(ReminderType type) {
         return Reminder.builder()
                 .id(UUID.randomUUID())
@@ -55,13 +71,17 @@ public final class TodayTaskTestFactory {
     }
 
     public static CareTask openCareTaskToday() {
+        return openCareTaskToday(Instant.now().plus(2, ChronoUnit.HOURS));
+    }
+
+    public static CareTask openCareTaskToday(Instant dueAt) {
         return CareTask.builder()
                 .id(UUID.randomUUID())
                 .careGroupId(CARE_GROUP_ID)
                 .assignedTo(OWNER_ID)
                 .title("Open care task today")
                 .status(CareTaskStatus.OPEN)
-                .dueAt(Instant.now().plus(2, ChronoUnit.HOURS))
+                .dueAt(dueAt)
                 .build();
     }
 

@@ -230,8 +230,7 @@ class _MaternalHealthMetricScreenState
                 _buildMetricCard(m),
                 const SizedBox(height: 8),
                 _buildDetailsCard(m),
-                const SizedBox(height: 8),
-                _buildTrendCard(),
+
                 if (!readOnly) ...[
                   const SizedBox(height: 24),
                   _buildActionButtons(m),
@@ -311,14 +310,7 @@ class _MaternalHealthMetricScreenState
                       color: _onSurface,
                     ),
                   ),
-                  Text(
-                    'Hôm nay, ${_formatTime(m.measuredAt)}',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
+
                 ],
               ),
             ],
@@ -351,8 +343,7 @@ class _MaternalHealthMetricScreenState
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _TrendBadge(),
+
         ],
       ),
     );
@@ -397,39 +388,7 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildTrendCard() {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Xu hướng (Tháng này)',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _onSurface,
-                ),
-              ),
-              const Icon(Icons.insights_outlined, color: _primary, size: 20),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // TODO: wire to GET /api/v1/health-metrics?journeyId=X&type=X&period=month (UC-187)
-          SizedBox(
-            height: 128,
-            child: CustomPaint(
-              painter: _BarChartPainter(),
-              size: Size.infinite,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildActionButtons(HealthMetricDetail metric) {
     return Row(
@@ -512,37 +471,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _TrendBadge extends StatelessWidget {
-  const _TrendBadge();
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFE2D9),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.trending_up, size: 16, color: Color(0xFF845143)),
-          SizedBox(width: 4),
-          Text(
-            '+0.5kg so với tuần trước',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.06,
-              color: Color(0xFF845143),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _DetailRow extends StatelessWidget {
   final IconData icon;
@@ -648,100 +577,4 @@ class _NoteRow extends StatelessWidget {
   }
 }
 
-// Simple bar chart painter (4 bars, last is active/current month)
-class _BarChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const barHeights = [0.40, 0.45, 0.50, 0.65];
-    const labels = ['T1', 'T2', 'T3', 'HT'];
-    final barCount = barHeights.length;
-    final totalGap = size.width * 0.35;
-    final barWidth = (size.width - totalGap) / barCount;
-    final gap = totalGap / (barCount + 1);
-    const bottomPad = 24.0;
-    final chartHeight = size.height - bottomPad;
 
-    final inactivePaint = Paint()
-      ..color = const Color(0xFFFADCD3)
-      ..style = PaintingStyle.fill;
-    final activePaint = Paint()
-      ..color = const Color(0xFFC98C7B)
-      ..style = PaintingStyle.fill;
-
-    final textStyle = const TextStyle(
-      fontFamily: 'Lexend',
-      fontSize: 10,
-      color: Color(0xFF524440),
-    );
-
-    for (int i = 0; i < barCount; i++) {
-      final x = gap * (i + 1) + barWidth * i;
-      final barH = chartHeight * barHeights[i];
-      final rect = RRect.fromRectAndCorners(
-        Rect.fromLTWH(x, chartHeight - barH, barWidth, barH),
-        topLeft: const Radius.circular(4),
-        topRight: const Radius.circular(4),
-      );
-      canvas.drawRRect(rect, i == barCount - 1 ? activePaint : inactivePaint);
-
-      // Label
-      final tp = TextPainter(
-        text: TextSpan(
-          text: labels[i],
-          style: textStyle.copyWith(
-            fontWeight: i == barCount - 1 ? FontWeight.bold : FontWeight.normal,
-            color: i == barCount - 1
-                ? const Color(0xFF845143)
-                : const Color(0xFF524440),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(x + (barWidth - tp.width) / 2, chartHeight + 6));
-
-      // Tooltip on last bar
-      if (i == barCount - 1) {
-        final tooltipPaint = Paint()
-          ..color = const Color(0xFF271812)
-          ..style = PaintingStyle.fill;
-        final tooltipY = chartHeight - barH - 28;
-        const tooltipText = '62.5';
-        final ttp = TextPainter(
-          text: TextSpan(
-            text: tooltipText,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 10,
-              color: Colors.white,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        final tooltipRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(x - 4, tooltipY, ttp.width + 16, 20),
-          const Radius.circular(6),
-        );
-        canvas.drawRRect(tooltipRect, tooltipPaint);
-        ttp.paint(canvas, Offset(x + 4, tooltipY + 4));
-      }
-    }
-
-    // Grid lines
-    final gridPaint = Paint()
-      ..color = const Color(0xFFFADCD3)
-      ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(0, chartHeight * 0.35),
-      Offset(size.width, chartHeight * 0.35),
-      gridPaint,
-    );
-    canvas.drawLine(
-      Offset(0, chartHeight),
-      Offset(size.width, chartHeight),
-      gridPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

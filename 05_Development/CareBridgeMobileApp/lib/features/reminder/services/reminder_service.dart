@@ -1,44 +1,22 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_client.dart';
 import '../models/reminder_model.dart';
+import '../models/today_task_model.dart';
 
 class ReminderService extends ChangeNotifier {
   ReminderService._();
   static final instance = ReminderService._();
 
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-  static const _storageKey = 'cb_task_done_state';
-
-  final Map<String, bool> _doneOverrides = {};
-
-  Future<void> loadState() async {
-    final raw = await _storage.read(key: _storageKey);
-    if (raw != null) {
-      final map = jsonDecode(raw) as Map<String, dynamic>;
-      _doneOverrides
-        ..clear()
-        ..addAll(map.map((k, v) => MapEntry(k, v as bool)));
-      notifyListeners();
-    }
-  }
-
-  Future<void> _persist() async {
-    await _storage.write(key: _storageKey, value: jsonEncode(_doneOverrides));
-  }
+  Future<void> loadState() async {}
 
   bool isDone(Reminder r) {
-    if (_doneOverrides.containsKey(r.id)) return _doneOverrides[r.id]!;
     return r.status == ReminderStatus.done;
   }
 
-  void toggleDone(Reminder r) {
-    _doneOverrides[r.id] = !isDone(r);
+  Future<void> toggleDone(Reminder r) async {
+    if (isDone(r)) return;
+    await completeReminder(r.id);
     notifyListeners();
-    _persist();
   }
 
   Future<Reminder> getReminderDetail(String reminderId) async {
@@ -51,6 +29,10 @@ class ReminderService extends ChangeNotifier {
       final data = await apiGet('/api/v1/reminders/today');
       final list = data['data'] as List? ?? [];
       return list
+          .where((e) {
+            final item = e as Map<String, dynamic>;
+            return item['sourceType'] == null || item['sourceType'] == 'REMINDER';
+          })
           .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {
@@ -58,21 +40,38 @@ class ReminderService extends ChangeNotifier {
     }
   }
 
-  // TODO: PATCH /api/v1/reminders/{id}/status when endpoint available (UC-213/214/215)
+  Future<List<Reminder>> listAllReminders() async {
+    try {
+      final data = await apiGet('/api/v1/reminders');
+      final list = data['data'] as List? ?? [];
+      return list
+          .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<TodayTask>> listTodayTasks() async {
+    final data = await apiGet('/api/v1/reminders/today');
+    final list = data['data'] as List? ?? [];
+    return list
+        .map((e) => TodayTask.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<void> markDone(String reminderId) async {
-    _doneOverrides[reminderId] = true;
+    await completeReminder(reminderId);
     notifyListeners();
-    await _persist();
   }
 
   Future<void> snooze(String reminderId) async {
-    _doneOverrides[reminderId] = false;
     notifyListeners();
-    await _persist();
   }
 
   Future<void> skip(String reminderId) async {
-    // placeholder
+    await skipReminder(reminderId);
+    notifyListeners();
   }
 
   // UC-46: Create medication reminder
@@ -91,7 +90,7 @@ class ReminderService extends ChangeNotifier {
           : recurrenceType.toApiValue(),
       if (recurrenceEndDate != null)
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      'journeyId': ?journeyId,
+      if (journeyId != null) 'journeyId': journeyId,
     };
     final data = await apiPost('/api/v1/reminders/medication', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -115,9 +114,34 @@ class ReminderService extends ChangeNotifier {
           : recurrenceType.toApiValue(),
       if (recurrenceEndDate != null)
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
-      'journeyId': ?journeyId,
+      if (journeyId != null) 'journeyId': journeyId,
     };
     final data = await apiPost('/api/v1/reminders/vaccination', body);
+    return Reminder.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  // UC-45: Create appointment reminder
+  Future<Reminder> createAppointmentReminder({
+    required String title,
+    required DateTime scheduledAt,
+    String? babyId,
+    RecurrenceType recurrenceType = RecurrenceType.none,
+    DateTime? recurrenceEndDate,
+    String? journeyId,
+  }) async {
+    final body = <String, dynamic>{
+      'reminderType': 'APPOINTMENT',
+      'title': title,
+      'scheduledAt': scheduledAt.toUtc().toIso8601String(),
+      'recurrenceType': recurrenceType == RecurrenceType.none
+          ? null
+          : recurrenceType.toApiValue(),
+      if (recurrenceEndDate != null)
+        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      if (journeyId != null) 'journeyId': journeyId,
+      if (babyId != null) 'babyId': babyId,
+    };
+    final data = await apiPost('/api/v1/reminders', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
@@ -145,7 +169,7 @@ class ReminderService extends ChangeNotifier {
     DateTime? recurrenceEndDate,
   }) async {
     final body = <String, dynamic>{
-      'title': ?title,
+      if (title != null) 'title': title,
       if (scheduledAt != null)
         'scheduledAt': scheduledAt.toUtc().toIso8601String(),
       if (recurrenceType != null) 'recurrenceType': recurrenceType.toApiValue(),

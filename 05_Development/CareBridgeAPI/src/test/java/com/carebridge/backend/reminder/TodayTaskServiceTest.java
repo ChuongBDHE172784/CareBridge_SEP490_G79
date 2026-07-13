@@ -1,6 +1,7 @@
 package com.carebridge.backend.reminder;
 
 import com.carebridge.backend.reminder.dto.TodayTaskItem;
+import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.repository.CareTaskRepository;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
@@ -12,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.ZoneId;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -39,7 +42,7 @@ class TodayTaskServiceTest {
         var medication  = TodayTaskTestFactory.pendingReminderToday(ReminderType.MEDICATION);
         var careTask    = TodayTaskTestFactory.openCareTaskToday();
 
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 eq(TodayTaskTestFactory.OWNER_ID), any(), any(), any()))
                 .thenReturn(List.of(medication, vaccination));
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
@@ -51,16 +54,18 @@ class TodayTaskServiceTest {
         assertThat(tasks).hasSize(3);
         // VACCINATION priority 1 must come first
         assertThat(tasks.get(0).getType()).isEqualTo("VACCINATION");
+        assertThat(tasks.get(0).getSourceType()).isEqualTo("REMINDER");
         // MEDICATION priority 2 second
         assertThat(tasks.get(1).getType()).isEqualTo("MEDICATION");
         // CARE_TASK priority 4 last
         assertThat(tasks.get(2).getType()).isEqualTo("CARE_TASK");
+        assertThat(tasks.get(2).getSourceType()).isEqualTo("CARE_TASK");
     }
 
     // TODAY-TC-002: Empty result when no tasks today
     @Test
     void getTodayTasks_noTasksToday_returnsEmptyList() {
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of());
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
                 any(), any(), any(), any())).thenReturn(List.of());
@@ -73,7 +78,7 @@ class TodayTaskServiceTest {
     // TODAY-TC-003: COMPLETED reminders are excluded from today list
     @Test
     void getTodayTasks_completedRemindersExcluded() {
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of());
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
                 any(), any(), any(), any())).thenReturn(List.of());
@@ -88,7 +93,7 @@ class TodayTaskServiceTest {
     @Test
     void getTodayTasks_snoozedRemindersIncluded() {
         var snoozed = TodayTaskTestFactory.snoozedReminderToday(ReminderType.MEDICATION);
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of(snoozed));
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
                 any(), any(), any(), any())).thenReturn(List.of());
@@ -97,6 +102,8 @@ class TodayTaskServiceTest {
 
         assertThat(tasks).hasSize(1);
         assertThat(tasks.get(0).getStatus()).isEqualTo("SNOOZED");
+        assertThat(tasks.get(0).getDueAt()).isEqualTo(snoozed.getSnoozedUntil());
+        assertThat(tasks.get(0).getSnoozedUntil()).isEqualTo(snoozed.getSnoozedUntil());
     }
 
     // TODAY-TC-005: Sort order — VACCINATION(1) > MEDICATION(2) > APPOINTMENT(3) > CARE_TASK(4)
@@ -107,7 +114,7 @@ class TodayTaskServiceTest {
         var medication   = TodayTaskTestFactory.pendingReminderToday(ReminderType.MEDICATION);
         var careTask     = TodayTaskTestFactory.openCareTaskToday();
 
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any()))
                 .thenReturn(List.of(appointment, medication, vaccination));
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
@@ -121,11 +128,52 @@ class TodayTaskServiceTest {
         assertThat(tasks.get(2).getPriority()).isLessThan(tasks.get(3).getPriority());
     }
 
+    @Test
+    void getTodayTasks_samePriority_sortsByDueAtAscending() {
+        Instant now = Instant.now();
+        var later = TodayTaskTestFactory.pendingReminderToday(
+                ReminderType.MEDICATION, now.plus(3, ChronoUnit.HOURS));
+        var earlier = TodayTaskTestFactory.pendingReminderToday(
+                ReminderType.MEDICATION, now.plus(1, ChronoUnit.HOURS));
+
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
+                any(), any(), any(), any()))
+                .thenReturn(List.of(later, earlier));
+        when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
+                any(), any(), any(), any())).thenReturn(List.of());
+
+        var tasks = todayTaskService.getTodayTasks(TodayTaskTestFactory.OWNER_ID, VN_ZONE);
+
+        assertThat(tasks).extracting(TodayTaskItem::getDueAt)
+                .containsExactly(earlier.getScheduledAt(), later.getScheduledAt());
+    }
+
     // TODAY-TC-006: Timezone — queries use correct day boundaries for given timezone
+    @Test
+    void getTodayTasks_pendingReminderWithStaleSnoozedUntil_usesScheduledAtAsDueAt() {
+        Instant now = Instant.now();
+        var reminder = TodayTaskTestFactory.snoozedReminderToday(
+                ReminderType.MEDICATION,
+                now.plus(1, ChronoUnit.HOURS),
+                now.plus(4, ChronoUnit.HOURS));
+        reminder.setStatus(ReminderStatus.PENDING);
+
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
+                any(), any(), any(), any()))
+                .thenReturn(List.of(reminder));
+        when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
+                any(), any(), any(), any())).thenReturn(List.of());
+
+        var tasks = todayTaskService.getTodayTasks(TodayTaskTestFactory.OWNER_ID, VN_ZONE);
+
+        assertThat(tasks).extracting(TodayTaskItem::getDueAt)
+                .containsExactly(reminder.getScheduledAt());
+    }
+
     @Test
     void getTodayTasks_customTimezone_usesDayBoundariesInThatZone() {
         ZoneId utcZone = ZoneId.of("UTC");
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of());
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
                 any(), any(), any(), any())).thenReturn(List.of());
@@ -138,7 +186,7 @@ class TodayTaskServiceTest {
     // TODAY-TC-007: Care tasks assigned to other users are not included
     @Test
     void getTodayTasks_careTasksAssignedToOthers_notIncluded() {
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of());
         // Repository is called with callerId — if assigned to other user it's filtered by the query
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
@@ -155,7 +203,7 @@ class TodayTaskServiceTest {
     @Test
     void getTodayTasks_returnedItems_haveRequiredFields() {
         var reminder = TodayTaskTestFactory.pendingReminderToday(ReminderType.MEDICATION);
-        when(reminderRepository.findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
+        when(reminderRepository.findDueTodayByOwnerAndStatusIn(
                 any(), any(), any(), any())).thenReturn(List.of(reminder));
         when(careTaskRepository.findByAssignedToAndStatusAndDueAtBetween(
                 any(), any(), any(), any())).thenReturn(List.of());
@@ -166,8 +214,10 @@ class TodayTaskServiceTest {
         var item = tasks.get(0);
         assertThat(item.getId()).isNotNull();
         assertThat(item.getType()).isNotNull();
+        assertThat(item.getSourceType()).isEqualTo("REMINDER");
         assertThat(item.getTitle()).isNotNull();
         assertThat(item.getScheduledAt()).isNotNull();
+        assertThat(item.getDueAt()).isNotNull();
         assertThat(item.getStatus()).isNotNull();
         assertThat(item.getPriority()).isGreaterThan(0);
     }

@@ -42,6 +42,17 @@ public final class JourneyUpdateTestFactory {
                 .build();
     }
 
+    public static MotherJourney makePrePregnancyJourney() {
+        return MotherJourney.builder()
+                .id(JOURNEY_ID)
+                .ownerUserId(MOTHER_ID)
+                .journeyType(JourneyType.PRE_PREGNANCY)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .status(JourneyStatus.ACTIVE)
+                .notes("Preparing")
+                .build();
+    }
+
     public static MotherJourney makeArchivedJourney() {
         return MotherJourney.builder()
                 .id(JOURNEY_ID)

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
-import '../../../core/network/api_client.dart';
 
-/// CB-167 — Reminder Detail (UC-212, UC-213, UC-214, UC-215)
-/// Shows full reminder detail: hero card, bento info grid, notes, action buttons.
-/// Calls GET /api/v1/reminders/{reminderId}.
 class ReminderDetailScreen extends StatefulWidget {
   final String reminderId;
 
@@ -19,19 +17,16 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _secondary = Color(0xFF6E5A52);
+  static const _surface = Colors.white;
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFF84736F);
-  static const _surfaceContainerLowest = Colors.white;
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _errorContainer = Color(0xFFFFDAD6);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
   Reminder? _reminder;
   bool _loading = true;
-  String? _error2;
+  bool _processing = false;
+  String? _errorText;
 
   @override
   void initState() {
@@ -40,400 +35,568 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error2 = null; });
+    setState(() {
+      _loading = true;
+      _errorText = null;
+    });
     try {
-      final r = await _service.getReminderDetail(widget.reminderId);
-      if (mounted) {
-        setState(() { _reminder = r; _loading = false; });
-      }
-    } on ApiException {
-      // fallback to mock for development
-      if (mounted) {
-        setState(() {
-          _reminder = Reminder(
-            id: widget.reminderId,
-            reminderType: ReminderType.vaccination,
-            title: 'Tiêm ngừa mũi 5 trong 1',
-            scheduledAt: DateTime(2023, 10, 25, 8, 0),
-            recurrenceType: RecurrenceType.monthly,
-            status: ReminderStatus.pending,
-            note: 'Nhớ mang theo sổ tiêm chủng của bé. Cho bé ăn nhẹ trước khi đi tiêm. Theo dõi nhiệt độ sau tiêm.',
-            assignee: ReminderAssignee.baby,
-          );
-          _loading = false;
-        });
-      }
+      final reminder = await _service.getReminderDetail(widget.reminderId);
+      if (!mounted) return;
+      setState(() {
+        _reminder = reminder;
+        _loading = false;
+      });
     } catch (_) {
-      if (mounted) {
-        setState(() { _error2 = 'Lỗi kết nối.'; _loading = false; });
-      }
+      if (!mounted) return;
+      setState(() {
+        _errorText = 'Không thể tải nhắc lịch.';
+        _loading = false;
+      });
     }
   }
 
-  Future<void> _markDone() async {
-    await _service.markDone(widget.reminderId);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã hoàn thành!')));
-    Navigator.pop(context);
-  }
-
-  Future<void> _snooze() async {
-    await _service.snooze(widget.reminderId);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã hoãn lại.')));
-    Navigator.pop(context);
-  }
-
-  Future<void> _skip() async {
-    await _service.skip(widget.reminderId);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã bỏ qua.')));
-    Navigator.pop(context);
-  }
-
-  Future<void> _delete() async {
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    Color confirmColor = _primaryContainer,
+  }) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa nhắc nhở?', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        content: const Text('Hành động này không thể khôi phục.', style: TextStyle(fontFamily: 'Lexend')),
+        title: Text(
+          title,
+          style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+        ),
+        content: Text(message, style: const TextStyle(fontFamily: 'Lexend')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: _error),
-            child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend')),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            child: Text(confirmLabel, style: const TextStyle(fontFamily: 'Lexend')),
           ),
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+    return ok == true;
+  }
+
+  Future<void> _runAction(Future<void> Function() action) async {
+    setState(() => _processing = true);
     try {
-      await _service.deleteReminder(widget.reminderId);
+      await action();
       if (!mounted) return;
       Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể xóa. Vui lòng thử lại.')));
+        SnackBar(content: Text('Thao tác thất bại: $e'), backgroundColor: _error),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
     }
   }
 
-  String _formatDateTime(DateTime dt) {
-    const wd = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m - ${wd[dt.weekday - 1]}';
+  Future<void> _complete() async {
+    final ok = await _confirm(
+      title: 'Hoàn thành nhắc lịch?',
+      message: 'Chỉ đánh dấu nhắc lịch này là đã hoàn thành.',
+      confirmLabel: 'Hoàn thành',
+    );
+    if (!ok) return;
+    await _runAction(() async {
+      await _service.completeReminder(widget.reminderId);
+    });
   }
 
-  String _formatDate(DateTime dt) =>
-      '${dt.day} Tháng ${dt.month}, ${dt.year}';
+  Future<void> _skip() async {
+    final ok = await _confirm(
+      title: 'Bỏ qua nhắc lịch?',
+      message: 'Chỉ bỏ qua lần nhắc lịch này.',
+      confirmLabel: 'Bỏ qua',
+    );
+    if (!ok) return;
+    await _runAction(() async {
+      await _service.skipReminder(widget.reminderId);
+    });
+  }
+
+  Future<void> _snooze() async {
+    await _runAction(() async {
+      await _service.snoozeReminder(
+        widget.reminderId,
+        DateTime.now().add(const Duration(hours: 1)),
+      );
+    });
+  }
+
+  Future<void> _delete() async {
+    final ok = await _confirm(
+      title: 'Tắt nhắc lịch?',
+      message: 'Chỉ hủy nhắc lịch này để không còn xuất hiện khi đến hạn.',
+      confirmLabel: 'Tắt',
+      confirmColor: _error,
+    );
+    if (!ok) return;
+    await _runAction(() async {
+      await _service.deleteReminder(widget.reminderId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator(color: _primaryContainer))
-            : _error2 != null
-                ? _buildError()
-                : _buildContent(_reminder!),
-      ),
-    );
-  }
-
-  Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: _error),
-          const SizedBox(height: 12),
-          Text(_error2!, style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
-          TextButton(onPressed: _load,
-              child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', color: _primary))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent(Reminder r) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: Column(
-        children: [
-          _buildAppBar(r),
-          _buildHeroCard(r),
-          const SizedBox(height: 16),
-          _buildBentoGrid(r),
-          if (r.note != null && r.note!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildNoteCard(r.note!),
-          ],
-          const SizedBox(height: 24),
-          _buildPrimaryActions(),
-          const SizedBox(height: 12),
-          _buildSecondaryActions(r),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppBar(Reminder r) {
-    return SizedBox(
-      height: 64,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _primary),
-          ),
-          Expanded(
-            child: Text(
-              'Ứng dụng Mẹ và Bé',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: _onSurfaceVariant),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroCard(Reminder r) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(20), blurRadius: 20, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
-            child: const Icon(Icons.vaccines, color: _primary, size: 40),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: _primaryContainer.withAlpha(26),
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: _primaryContainer.withAlpha(51)),
-            ),
-            child: Text(r.reminderType.displayLabel,
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w700, color: _primary, letterSpacing: 0.6)),
-          ),
-          const SizedBox(height: 8),
-          Text(r.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 24, fontWeight: FontWeight.w700, color: _onSurface)),
-          const SizedBox(height: 4),
-          Text('Bé Sushi', style: const TextStyle(fontFamily: 'Lexend', fontSize: 16, color: _secondary)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBentoGrid(Reminder r) {
-    return Column(
-      children: [
-        _InfoTile(
-          icon: Icons.schedule,
-          label: 'LẦN TỚI',
-          mainText: _formatDateTime(r.scheduledAt),
-          subText: _formatDate(r.scheduledAt),
-          fullWidth: true,
+      appBar: AppBar(
+        backgroundColor: _canvas,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
+          onPressed: () => Navigator.pop(context),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _InfoTile(
-                icon: Icons.update,
-                label: 'LẶP LẠI',
-                mainText: r.recurrenceType.displayLabel,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _InfoTile(
-                icon: Icons.pending_actions,
-                label: 'TRẠNG THÁI',
-                mainText: r.status.displayLabel,
-                mainColor: _secondary,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoteCard(String note) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _outlineVariant.withAlpha(77)),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.description_outlined, size: 20, color: _secondary),
-              SizedBox(width: 8),
-              Text('GHI CHÚ', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: _secondary)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(note, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: _onSurfaceVariant, height: 1.6)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryActions() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: FilledButton.icon(
-            onPressed: _markDone,
-            style: FilledButton.styleFrom(
-              backgroundColor: _primaryContainer,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            icon: const Icon(Icons.check_circle, size: 20),
-            label: const Text('Hoàn thành', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Chi tiết nhắc lịch',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurface,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: OutlinedButton.icon(
-            onPressed: _snooze,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primaryContainer,
-              side: const BorderSide(color: _primaryContainer, width: 2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            icon: const Icon(Icons.snooze, size: 20),
-            label: const Text('Hoãn lại', style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecondaryActions(Reminder r) {
-    return Container(
-      padding: const EdgeInsets.only(top: 16),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: _outlineVariant.withAlpha(77)))),
-      child: Row(
-        children: [
-          Expanded(child: _SecondaryBtn(icon: Icons.edit_outlined, label: 'Sửa', onTap: () {
-            // TODO: navigate to EditReminderScreen (UC-213/214)
-          })),
-          const SizedBox(width: 16),
-          Expanded(child: _SecondaryBtn(icon: Icons.delete_outline, label: 'Xóa', color: _error, onTap: _delete)),
-          const SizedBox(width: 16),
-          Expanded(child: _SecondaryBtn(icon: Icons.block, label: 'Bỏ qua', onTap: _skip)),
-        ],
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: _primary))
+          : _errorText != null
+              ? _ErrorState(message: _errorText!, onRetry: _load)
+              : _ReminderContent(
+                  reminder: _reminder!,
+                  processing: _processing,
+                  onComplete: _complete,
+                  onSnooze: _snooze,
+                  onEdit: () async {
+                    final changed = await context.push(
+                      '/reminders/${_reminder!.id}/manage',
+                      extra: _reminder,
+                    );
+                    if (changed == true && mounted) _load();
+                  },
+                  onDelete: _delete,
+                  onSkip: _skip,
+                ),
     );
   }
 }
 
-class _InfoTile extends StatelessWidget {
+class _ReminderContent extends StatelessWidget {
+  final Reminder reminder;
+  final bool processing;
+  final VoidCallback onComplete;
+  final VoidCallback onSnooze;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onSkip;
+
+  const _ReminderContent({
+    required this.reminder,
+    required this.processing,
+    required this.onComplete,
+    required this.onSnooze,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onSkip,
+  });
+
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surface = Colors.white;
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _error = Color(0xFFBA1A1A);
+
+  @override
+  Widget build(BuildContext context) {
+    final isTerminal = reminder.status.isTerminal;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: _primary.withAlpha(18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: _primaryContainer.withAlpha(35),
+                    child: Icon(_iconFor(reminder.reminderType), color: _primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          reminder.title,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: _onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _typeLabel(reminder.reminderType),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _InfoRow(icon: Icons.schedule_rounded, label: 'Bắt đầu', value: _formatDateTime(reminder.scheduledAt)),
+              _InfoRow(
+                icon: Icons.event_available_rounded,
+                label: 'Kết thúc',
+                value: reminder.recurrenceEndDate != null ? _formatDateTime(reminder.recurrenceEndDate!) : 'Không giới hạn',
+              ),
+              _InfoRow(icon: Icons.repeat_rounded, label: 'Lặp lại', value: _recurrenceLabel(reminder.recurrenceType)),
+              _InfoRow(icon: Icons.flag_rounded, label: 'Trạng thái', value: _statusLabel(reminder.status)),
+              if (reminder.location != null && reminder.location!.trim().isNotEmpty)
+                _InfoRow(icon: Icons.place_rounded, label: 'Địa điểm', value: reminder.location!),
+              if (reminder.note != null && reminder.note!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Hướng dẫn',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  reminder.note!,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    color: _onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              const Text(
+                'Bảng lịch theo dõi',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                ),
+                itemCount: 30, // Mock 30 days
+                itemBuilder: (context, index) {
+                  final day = index + 1;
+                  // Mock logic: some green, some yellow
+                  Color bgColor = Colors.white;
+                  Color textColor = _onSurfaceVariant;
+                  if (day < 10) {
+                    bgColor = const Color(0xFFE2F3E7); // Hoàn thành - xanh
+                    textColor = const Color(0xFF1E8E3E);
+                  } else if (day == 10 || day == 12) {
+                    bgColor = const Color(0xFFFFF3E0); // Bỏ qua - vàng
+                    textColor = const Color(0xFFF57C00);
+                  }
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _primary.withAlpha(20)),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        if (isTerminal)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _primaryContainer.withAlpha(70)),
+            ),
+            child: Text(
+              'Nhắc lịch này đang ở trạng thái ${_statusLabel(reminder.status).toLowerCase()} và không thể chỉnh sửa.',
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          )
+        else ...[
+        FilledButton.icon(
+          onPressed: processing ? null : onComplete,
+          style: FilledButton.styleFrom(
+            backgroundColor: _primaryContainer,
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          icon: const Icon(Icons.check_circle_outline_rounded),
+          label: const Text('Hoàn thành', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: processing ? null : onSnooze,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primary,
+            side: const BorderSide(color: _primaryContainer),
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          icon: const Icon(Icons.snooze_rounded),
+          label: const Text('Hoãn 1 giờ', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(child: _SmallAction(icon: Icons.block_rounded, label: 'Bỏ qua', onTap: processing ? null : onSkip)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _SmallAction(
+                icon: Icons.delete_outline_rounded,
+                label: 'Tắt',
+                color: _error,
+                onTap: processing ? null : onDelete,
+              ),
+            ),
+          ],
+        ),
+        ],
+      ],
+    );
+  }
+
+  static IconData _iconFor(ReminderType type) {
+    switch (type) {
+      case ReminderType.medication:
+        return Icons.medication_rounded;
+      case ReminderType.vaccination:
+        return Icons.vaccines_rounded;
+      case ReminderType.appointment:
+        return Icons.event_rounded;
+      case ReminderType.task:
+        return Icons.task_alt_rounded;
+      case ReminderType.other:
+        return Icons.notifications_rounded;
+    }
+  }
+
+  static String _typeLabel(ReminderType type) {
+    switch (type) {
+      case ReminderType.medication:
+        return 'Nhắc thuốc hoặc vitamin';
+      case ReminderType.vaccination:
+        return 'Nhắc lịch tiêm chủng';
+      case ReminderType.appointment:
+        return 'Nhắc lịch hẹn hoặc tái khám';
+      case ReminderType.task:
+        return 'Nhắc việc';
+      case ReminderType.other:
+        return 'Nhắc lịch';
+    }
+  }
+
+  static String _recurrenceLabel(RecurrenceType recurrence) {
+    switch (recurrence) {
+      case RecurrenceType.daily:
+        return 'Hằng ngày';
+      case RecurrenceType.weekly:
+        return 'Hằng tuần';
+      case RecurrenceType.monthly:
+        return 'Hằng tháng';
+      case RecurrenceType.none:
+        return 'Không lặp lại';
+    }
+  }
+
+  static String _statusLabel(ReminderStatus status) {
+    switch (status) {
+      case ReminderStatus.done:
+        return 'Đã hoàn thành';
+      case ReminderStatus.snoozed:
+        return 'Đã hoãn';
+      case ReminderStatus.skipped:
+        return 'Đã bỏ qua';
+      case ReminderStatus.cancelled:
+        return 'Đã tắt';
+      case ReminderStatus.pending:
+        return 'Đang chờ';
+    }
+  }
+
+  static String _formatDateTime(DateTime value) {
+    final local = value.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$d/$m/${local.year} $h:$min';
+  }
+}
+
+class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String mainText;
-  final String? subText;
-  final Color? mainColor;
-  final bool fullWidth;
+  final String value;
 
-  const _InfoTile({
-    required this.icon, required this.label, required this.mainText,
-    this.subText, this.mainColor, this.fullWidth = false,
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD6C2BD).withAlpha(77)),
-        boxShadow: [BoxShadow(color: const Color(0xFF5A463F).withAlpha(13), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: const Color(0xFF845143)),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: Color(0xFF6E5A52))),
-            ],
+          Icon(icon, size: 20, color: const Color(0xFF845143)),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: Color(0xFF524440),
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(mainText, style: TextStyle(fontFamily: 'Lexend', fontSize: 20, fontWeight: FontWeight.w600, color: mainColor ?? const Color(0xFF271812))),
-          if (subText != null)
-            Text(subText!, style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: Color(0xFF524440))),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF271812),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _SecondaryBtn extends StatelessWidget {
+class _SmallAction extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color? color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Color color;
 
-  const _SecondaryBtn({required this.icon, required this.label, this.color, required this.onTap});
+  const _SmallAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color = const Color(0xFF845143),
+  });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? const Color(0xFF271812);
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 52,
+        height: 76,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFE9E3),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withAlpha(55)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: c),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontFamily: 'Lexend', fontSize: 16, color: c)),
+            Icon(icon, color: color),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const SizedBox(height: 10),
+          Text(message, style: const TextStyle(fontFamily: 'Lexend')),
+          const SizedBox(height: 10),
+          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ],
       ),
     );
   }

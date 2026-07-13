@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
 
-class CreateMedicationReminderScreen extends StatefulWidget {
-  const CreateMedicationReminderScreen({super.key});
+class CreateAppointmentReminderScreen extends StatefulWidget {
+  const CreateAppointmentReminderScreen({super.key});
 
   @override
-  State<CreateMedicationReminderScreen> createState() => _CreateMedicationReminderScreenState();
+  State<CreateAppointmentReminderScreen> createState() => _CreateAppointmentReminderScreenState();
 }
 
-class _CreateMedicationReminderScreenState extends State<CreateMedicationReminderScreen> {
+class _CreateAppointmentReminderScreenState extends State<CreateAppointmentReminderScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -21,11 +21,11 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
 
   final _service = ReminderService.instance;
   final _titleController = TextEditingController();
-  final _instructionsController = TextEditingController();
+  final _locationController = TextEditingController();
   final List<TimeOfDay> _times = [];
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
-  RecurrenceType _recurrence = RecurrenceType.daily;
+  RecurrenceType _recurrence = RecurrenceType.none;
   bool _saving = false;
 
   @override
@@ -38,7 +38,7 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
   @override
   void dispose() {
     _titleController.dispose();
-    _instructionsController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -79,7 +79,7 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      _showError('Vui lòng nhập tên thuốc hoặc vitamin.');
+      _showError('Vui lòng nhập nội dung lịch hẹn, khám định kỳ hoặc tái khám.');
       return;
     }
     if (_times.isEmpty) {
@@ -106,11 +106,11 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
 
     setState(() => _saving = true);
     try {
-      final instructions = _instructionsController.text.trim();
-      final reminderTitle = instructions.isEmpty ? title : '$title - $instructions';
+      final location = _locationController.text.trim();
+      final reminderTitle = location.isEmpty ? title : '$title - $location';
       var createdCount = 0;
       for (final scheduledAt in scheduledTimes) {
-        await _service.createMedicationReminder(
+        await _service.createAppointmentReminder(
           title: reminderTitle,
           scheduledAt: scheduledAt,
           recurrenceType: _recurrence,
@@ -120,12 +120,12 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã tạo $createdCount nhắc lịch.')),
+        SnackBar(content: Text('Đã tạo $createdCount nhắc lịch hẹn.')),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      _showError('Không thể lưu tất cả nhắc lịch. Hãy kiểm tra Việc hôm nay rồi thử lại.');
+      _showError('Không thể tạo nhắc lịch. Hãy kiểm tra Việc hôm nay rồi thử lại.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -149,7 +149,7 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Nhắc thuốc / vitamin',
+          'Nhắc lịch hẹn',
           style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
         ),
       ),
@@ -163,7 +163,7 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
                 TextField(
                   controller: _titleController,
                   maxLength: 255,
-                  decoration: _inputDecoration('Tên thuốc hoặc vitamin *'),
+                  decoration: _inputDecoration('Lịch hẹn, khám định kỳ hoặc tái khám *'),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -178,7 +178,7 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Chỉ tạo nhắc lịch từ hướng dẫn bạn đã có từ nhân viên y tế hoặc nhãn sản phẩm.',
+                          'Nhắc nhở này sẽ giúp bạn không quên lịch hẹn quan trọng với bác sĩ.',
                           style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: _onSurfaceVariant),
                         ),
                       ),
@@ -191,10 +191,10 @@ class _CreateMedicationReminderScreenState extends State<CreateMedicationReminde
           const SizedBox(height: 14),
           _Section(
             child: TextField(
-              controller: _instructionsController,
+              controller: _locationController,
               minLines: 2,
               maxLines: 4,
-              decoration: _inputDecoration('Hướng dẫn do người dùng nhập'),
+              decoration: _inputDecoration('Địa điểm hoặc phòng khám'),
             ),
           ),
           const SizedBox(height: 14),

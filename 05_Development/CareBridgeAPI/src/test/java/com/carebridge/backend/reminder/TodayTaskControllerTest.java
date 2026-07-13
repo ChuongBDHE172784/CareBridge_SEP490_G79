@@ -54,9 +54,11 @@ class TodayTaskControllerTest {
     void getTodayTasks_authenticatedMother_returns200() throws Exception {
         var item = TodayTaskItem.builder()
                 .id(UUID.randomUUID())
+                .sourceType("REMINDER")
                 .type("MEDICATION")
                 .title("Vitamin D")
                 .scheduledAt(Instant.now().plus(1, ChronoUnit.HOURS))
+                .dueAt(Instant.now().plus(1, ChronoUnit.HOURS))
                 .status("PENDING")
                 .priority(2)
                 .build();
@@ -65,6 +67,8 @@ class TodayTaskControllerTest {
         mockMvc.perform(get("/api/v1/reminders/today"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].sourceType").value("REMINDER"))
+                .andExpect(jsonPath("$.data[0].dueAt").exists())
                 .andExpect(jsonPath("$.data[0].type").value("MEDICATION"));
     }
 

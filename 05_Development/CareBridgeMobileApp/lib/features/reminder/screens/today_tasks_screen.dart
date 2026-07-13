@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/reminder_model.dart';
+import '../models/today_task_model.dart';
 import '../services/reminder_service.dart';
+import 'create_appointment_reminder_screen.dart';
+import 'create_medication_reminder_screen.dart';
+import 'create_vaccination_reminder_screen.dart';
 import 'reminder_detail_screen.dart';
 
-/// CB-013 — Today Tasks (UC-45, UC-46, UC-47, UC-48, UC-49, UC-50, UC-212–215)
-/// Lists today's reminders grouped with filter chips (Tất cả / Cần làm / Đã xong).
-/// Task cards with checkbox, importance badge, role chip, location.
-/// Data: mock list (TODO: wire to GET /api/v1/reminders?date=today).
+/// CB-013 - Today Tasks.
+/// Server-backed aggregate of reminders and family care tasks due today.
 class TodayTasksScreen extends StatefulWidget {
   const TodayTasksScreen({super.key});
 
@@ -14,101 +17,91 @@ class TodayTasksScreen extends StatefulWidget {
   State<TodayTasksScreen> createState() => _TodayTasksScreenState();
 }
 
-enum _TaskFilter { all, pending, done }
+enum _TaskFilter { all, pending, completed, snoozed }
 
 class _TodayTasksScreenState extends State<TodayTasksScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSecondaryContainer = Color(0xFF735E56);
-  static const _tertiary = Color(0xFF625D59);
-  static const _tertiaryContainer = Color(0xFFA09A95);
-  static const _onTertiaryContainer = Color(0xFF36322E);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outline = Color(0xFF84736F);
 
   final _service = ReminderService.instance;
-  List<Reminder> _allReminders = [];
+  List<TodayTask> _allTasks = [];
   _TaskFilter _filter = _TaskFilter.all;
   bool _loading = true;
+  String? _errorText;
 
   @override
   void initState() {
     super.initState();
-    _service.addListener(_onServiceChanged);
     _load();
   }
 
-  @override
-  void dispose() {
-    _service.removeListener(_onServiceChanged);
-    super.dispose();
-  }
-
-  void _onServiceChanged() {
-    if (mounted) setState(() {});
-  }
-
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorText = null;
+    });
     try {
-      final list = await _service.listTodayReminders();
-      if (mounted) {
-        setState(() {
-          _allReminders = list;
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      final list = await _service.listTodayTasks();
+      if (!mounted) return;
+      setState(() {
+        _allTasks = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+          _errorText = 'Không thể tải công việc hôm nay.';
+        _loading = false;
+      });
     }
   }
 
-  List<Reminder> get _filtered {
-    return _allReminders.where((r) {
+  List<TodayTask> get _filtered {
+    final list = _allTasks.where((task) {
       switch (_filter) {
         case _TaskFilter.all:
           return true;
         case _TaskFilter.pending:
-          return !_service.isDone(r);
-        case _TaskFilter.done:
-          return _service.isDone(r);
+          return task.isPending;
+        case _TaskFilter.completed:
+          return task.isCompleted;
+        case _TaskFilter.snoozed:
+          return task.isSnoozed;
       }
     }).toList();
+    list.sort((a, b) => a.dueAt.compareTo(b.dueAt));
+    return list;
   }
 
   String _todayLabel() {
-    const weekdays = [
-      'Thứ Hai',
-      'Thứ Ba',
-      'Thứ Tư',
-      'Thứ Năm',
-      'Thứ Sáu',
-      'Thứ Bảy',
-      'Chủ Nhật',
-    ];
-    const months = [
-      'Tháng 1',
-      'Tháng 2',
-      'Tháng 3',
-      'Tháng 4',
-      'Tháng 5',
-      'Tháng 6',
-      'Tháng 7',
-      'Tháng 8',
-      'Tháng 9',
-      'Tháng 10',
-      'Tháng 11',
-      'Tháng 12',
-    ];
     final now = DateTime.now();
-    final wd = weekdays[now.weekday - 1];
-    return '$wd, ${now.day} ${months[now.month - 1]}';
+    return '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+  }
+
+  Future<void> _openTask(TodayTask task) async {
+    if (task.isReminder) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReminderDetailScreen(reminderId: task.id),
+        ),
+      );
+      if (result == true) {
+        _load();
+      }
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Chi tiết công việc gia đình chưa được kết nối từ Today Tasks.'),
+      ),
+    );
   }
 
   @override
@@ -131,7 +124,9 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                   : RefreshIndicator(
                       color: _primaryContainer,
                       onRefresh: _load,
-                      child: _filtered.isEmpty
+                      child: _errorText != null
+                          ? _buildError()
+                          : _filtered.isEmpty
                           ? _buildEmpty()
                           : ListView.separated(
                               padding: const EdgeInsets.fromLTRB(
@@ -144,18 +139,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                               separatorBuilder: (_, _) =>
                                   const SizedBox(height: 12),
                               itemBuilder: (_, i) => _TaskCard(
-                                reminder: _filtered[i],
-                                isDone: _service.isDone(_filtered[i]),
-                                onToggle: () =>
-                                    _service.toggleDone(_filtered[i]),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ReminderDetailScreen(
-                                      reminderId: _filtered[i].id,
-                                    ),
-                                  ),
-                                ),
+                                task: _filtered[i],
+                                onTap: () => _openTask(_filtered[i]),
                               ),
                             ),
                     ),
@@ -167,9 +152,7 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         backgroundColor: _primaryContainer,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () {
-          // TODO: open CreateReminderSheet (UC-45)
-        },
+        onPressed: _showCreateReminderTypeSheet,
         child: const Icon(Icons.add),
       ),
     );
@@ -190,14 +173,19 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 ),
               const Expanded(
                 child: Text(
-                  'Việc cần làm',
+                  'Việc hôm nay',
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF271812),
+                    color: _onSurface,
                   ),
                 ),
+              ),
+              IconButton(
+                tooltip: 'Tất cả lời nhắc',
+                onPressed: () => context.push('/reminders/all'),
+                icon: const Icon(Icons.format_list_bulleted, color: _primary),
               ),
             ],
           ),
@@ -207,7 +195,7 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 16,
-              color: Color(0xFF524440),
+              color: _onSurfaceVariant,
             ),
           ),
         ],
@@ -229,15 +217,21 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
             ),
             const SizedBox(width: 8),
             _FilterPill(
-              label: 'Cần làm',
+              label: 'Chưa làm',
               selected: _filter == _TaskFilter.pending,
               onTap: () => setState(() => _filter = _TaskFilter.pending),
             ),
             const SizedBox(width: 8),
             _FilterPill(
-              label: 'Đã xong',
-              selected: _filter == _TaskFilter.done,
-              onTap: () => setState(() => _filter = _TaskFilter.done),
+              label: 'Đã làm',
+              selected: _filter == _TaskFilter.completed,
+              onTap: () => setState(() => _filter = _TaskFilter.completed),
+            ),
+            const SizedBox(width: 8),
+            _FilterPill(
+              label: 'Đang hoãn',
+              selected: _filter == _TaskFilter.snoozed,
+              onTap: () => setState(() => _filter = _TaskFilter.snoozed),
             ),
           ],
         ),
@@ -246,10 +240,181 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
   }
 
   Widget _buildEmpty() {
-    return const Center(
-      child: Text(
-        'Không có việc nào.',
-        style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF524440)),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 180),
+        Center(
+          child: Text(
+            'Hôm nay không có việc đến hạn.',
+            style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildError() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        const SizedBox(height: 160),
+        const Icon(Icons.error_outline_rounded, color: _primary, size: 40),
+        const SizedBox(height: 10),
+        Center(
+          child: Text(
+            _errorText!,
+            style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+          ),
+        ),
+        Center(
+          child: TextButton(
+            onPressed: _load,
+            child: const Text('Thử lại'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showCreateReminderTypeSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            32,
+            24,
+            MediaQuery.of(context).padding.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Tạo nhắc lịch',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildTypeOption(
+                icon: Icons.medication,
+                color: const Color(0xFF6E5A52),
+                bgColor: const Color(0xFFF6DACF),
+                title: 'Thuốc hoặc vitamin',
+                subtitle: 'Chỉ tạo từ hướng dẫn bạn đã có',
+                onTap: () => _openCreateScreen(
+                  const CreateMedicationReminderScreen(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTypeOption(
+                icon: Icons.vaccines,
+                color: const Color(0xFF625D59),
+                bgColor: const Color(0xFFE9E1DB),
+                title: 'Tiêm chủng',
+                subtitle: 'Dùng gợi ý từ lịch tiêm đã ghi nhận',
+                onTap: () => _openCreateScreen(
+                  const CreateVaccinationReminderScreen(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTypeOption(
+                icon: Icons.calendar_month,
+                color: _primary,
+                bgColor: const Color(0xFFFFE2D9),
+                title: 'Lịch hẹn hoặc khám định kỳ',
+                subtitle: 'Tạo nhắc lịch chăm sóc chung',
+                onTap: () => _openCreateScreen(
+                  const CreateAppointmentReminderScreen(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openCreateScreen(Widget screen) async {
+    Navigator.pop(context);
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
+    if (result == true) {
+      _load();
+    }
+  }
+
+  Widget _buildTypeOption({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: _surfaceVariant),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: _onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -272,7 +437,7 @@ class _FilterPill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFC98C7B) : const Color(0xFFFFF8F6),
           borderRadius: BorderRadius.circular(99),
@@ -289,7 +454,7 @@ class _FilterPill extends StatelessWidget {
           label,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: selected ? Colors.white : const Color(0xFF524440),
           ),
@@ -300,20 +465,17 @@ class _FilterPill extends StatelessWidget {
 }
 
 class _TaskCard extends StatelessWidget {
-  final Reminder reminder;
-  final bool isDone;
-  final VoidCallback onToggle;
+  final TodayTask task;
   final VoidCallback onTap;
 
   const _TaskCard({
-    required this.reminder,
-    required this.isDone,
-    required this.onToggle,
+    required this.task,
     required this.onTap,
   });
 
   IconData get _typeIcon {
-    switch (reminder.reminderType) {
+    if (task.isCareTask) return Icons.groups;
+    switch (task.type) {
       case ReminderType.appointment:
         return Icons.calendar_month;
       case ReminderType.medication:
@@ -326,7 +488,8 @@ class _TaskCard extends StatelessWidget {
   }
 
   Color get _iconBg {
-    switch (reminder.reminderType) {
+    if (task.isCareTask) return const Color(0xFFE9E1DB);
+    switch (task.type) {
       case ReminderType.appointment:
         return const Color(0xFFFFE2D9);
       case ReminderType.medication:
@@ -339,7 +502,8 @@ class _TaskCard extends StatelessWidget {
   }
 
   Color get _iconColor {
-    switch (reminder.reminderType) {
+    if (task.isCareTask) return const Color(0xFF625D59);
+    switch (task.type) {
       case ReminderType.appointment:
         return const Color(0xFF845143);
       case ReminderType.medication:
@@ -351,9 +515,14 @@ class _TaskCard extends StatelessWidget {
     }
   }
 
+  String get _sourceLabel {
+    if (task.isCareTask) return 'Việc gia đình';
+    return task.type.displayLabel;
+  }
+
   String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
+    final h = dt.toLocal().hour.toString().padLeft(2, '0');
+    final m = dt.toLocal().minute.toString().padLeft(2, '0');
     return '$h:$m';
   }
 
@@ -361,148 +530,133 @@ class _TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Opacity(
-        opacity: isDone ? 0.7 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF8F6),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF5A463F).withAlpha(15),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _iconBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(_typeIcon, color: _iconColor),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            reminder.title,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8F6),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withAlpha(15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(color: _iconBg, shape: BoxShape.circle),
+              child: Icon(_typeIcon, color: _iconColor),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF271812),
+                          ),
+                        ),
+                      ),
+                      if (task.isSnoozed)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFDAD6).withAlpha(77),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Text(
+                            'Đã hoãn',
                             style: TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF271812),
-                              decoration: isDone
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                              fontSize: 12,
+                              color: Color(0xFFBA1A1A),
                             ),
                           ),
-                        ),
-                        if (reminder.isImportant)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFDAD6).withAlpha(77),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: const Text(
-                              'Quan trọng',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 12,
-                                color: Color(0xFFBA1A1A),
-                              ),
-                            ),
+                        )
+                      else if (task.isCompleted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                      ],
-                    ),
-                    if (reminder.location != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${reminder.location}, ${_formatTime(reminder.scheduledAt)}',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 14,
-                          color: Color(0xFF524440),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: reminder.assignee == ReminderAssignee.mother
-                            ? const Color(0xFFF6DACF).withAlpha(128)
-                            : const Color(0xFFE9E1DB).withAlpha(128),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            reminder.assignee == ReminderAssignee.mother
-                                ? Icons.person
-                                : Icons.child_care,
-                            size: 16,
-                            color: const Color(0xFF735E56),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE2F3E7),
+                            borderRadius: BorderRadius.circular(99),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            reminder.assignee.displayLabel,
-                            style: const TextStyle(
+                          child: const Text(
+                            'Đã xong',
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
-                              color: Color(0xFF735E56),
+                              color: Color(0xFF1E8E3E),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: onToggle,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isDone
-                        ? const Color(0xFF845143)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: isDone
-                          ? const Color(0xFF845143)
-                          : const Color(0xFF84736F),
-                      width: 2,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime(task.dueAt),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: Color(0xFF524440),
                     ),
                   ),
-                  child: isDone
-                      ? const Icon(Icons.check, size: 16, color: Colors.white)
-                      : null,
-                ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: task.isCareTask
+                          ? const Color(0xFFE9E1DB).withAlpha(128)
+                          : const Color(0xFFF6DACF).withAlpha(128),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          task.isCareTask ? Icons.groups : Icons.alarm,
+                          size: 16,
+                          color: const Color(0xFF735E56),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _sourceLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: Color(0xFF735E56),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: Color(0xFF84736F)),
+          ],
         ),
       ),
     );

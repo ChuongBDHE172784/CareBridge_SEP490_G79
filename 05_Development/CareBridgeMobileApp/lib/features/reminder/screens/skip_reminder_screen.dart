@@ -1,413 +1,229 @@
 import 'package:flutter/material.dart';
 
+import '../models/reminder_model.dart';
+import '../services/reminder_service.dart';
+
 class SkipReminderScreen extends StatefulWidget {
   final String reminderId;
 
   const SkipReminderScreen({
-    Key? key,
+    super.key,
     required this.reminderId,
-  }) : super(key: key);
+  });
 
   @override
   State<SkipReminderScreen> createState() => _SkipReminderScreenState();
 }
 
 class _SkipReminderScreenState extends State<SkipReminderScreen> {
-  final TextEditingController _reasonController = TextEditingController();
-  bool _isProcessing = false;
-  bool _showToast = false;
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
+  static const _surface = Colors.white;
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _error = Color(0xFFBA1A1A);
+
+  final _service = ReminderService.instance;
+  Reminder? _reminder;
+  bool _loading = true;
+  bool _processing = false;
+  String? _errorText;
 
   @override
-  void dispose() {
-    _reasonController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  Future<void> _skipReminder() async {
-    setState(() => _isProcessing = true);
-    
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _errorText = null;
+    });
     try {
-      // API call: POST /api/v1/reminders/{reminderId}/skip
-      // final reason = _reasonController.text;
-      await Future.delayed(const Duration(milliseconds: 600)); // Simulate network
-      
+      final reminder = await _service.getReminderDetail(widget.reminderId);
+      if (!mounted) return;
       setState(() {
-        _isProcessing = false;
-        _showToast = true;
+        _reminder = reminder;
+        _loading = false;
       });
-      
-      // Auto dismiss after 2s and pop
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _showToast) {
-          Navigator.pop(context, true);
-        }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorText = 'Unable to load reminder.';
+        _loading = false;
       });
-      
-    } catch (e) {
-      setState(() => _isProcessing = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Có lỗi xảy ra')),
-        );
-      }
     }
   }
 
-  void _undoSkip() {
-    setState(() {
-      _showToast = false;
-    });
+  Future<void> _skip() async {
+    setState(() => _processing = true);
+    try {
+      await _service.skipReminder(widget.reminderId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reminder skipped.')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to skip reminder: $e'), backgroundColor: _error),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF845143);
-    const bgColor = Color(0xFFFEF8F4);
-    const textColor = Color(0xFF2D2A28);
-    const primaryFixedColor = Color(0xFFFFDBD1);
-
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: _canvas,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: _canvas,
         elevation: 0,
-        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryColor),
+          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'CareBridge',
-          style: TextStyle(
-            color: primaryColor,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
-            fontSize: 20,
-          ),
+          'Skip reminder',
+          style: TextStyle(fontFamily: 'Lexend', color: _onSurface, fontWeight: FontWeight.w800),
         ),
-        actions: const [
-          SizedBox(width: 48), // Spacer
-        ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: AnimatedOpacity(
-              opacity: _showToast ? 0.4 : 1.0,
-              duration: const Duration(milliseconds: 300),
-              child: IgnorePointer(
-                ignoring: _showToast,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: _primary))
+          : _errorText != null
+              ? _ErrorState(message: _errorText!, onRetry: _load)
+              : _SkipContent(
+                  reminder: _reminder!,
+                  processing: _processing,
+                  onSkip: _skip,
+                ),
+    );
+  }
+}
+
+class _SkipContent extends StatelessWidget {
+  final Reminder reminder;
+  final bool processing;
+  final VoidCallback onSkip;
+
+  const _SkipContent({
+    required this.reminder,
+    required this.processing,
+    required this.onSkip,
+  });
+
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surface = Colors.white;
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+
+  @override
+  Widget build(BuildContext context) {
+    final isTerminal = reminder.status.isTerminal;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(color: _primary.withAlpha(18), blurRadius: 16, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: _primaryContainer.withAlpha(40),
+                child: const Icon(Icons.block_rounded, color: _primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Reminder Summary Section
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFC98C7B).withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: const BoxDecoration(
-                                  color: primaryFixedColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.medical_services, color: Color(0xFF693A2D)),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'SẮP DIỄN RA LÚC 08:30',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: primaryColor,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Uống thuốc điều trị cao huyết áp',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                        fontFamily: 'Quicksand',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Liều lượng: 1 viên (5mg), sau khi ăn sáng.',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: textColor.withOpacity(0.7),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF6F1EC), // surface-accent-light
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFD6C2BD).withOpacity(0.3)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: const [
-                                    Icon(Icons.calendar_today, color: primaryColor, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Chỉ lần này',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: primaryColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Các lần nhắc nhở tiếp theo trong lịch trình sẽ không thay đổi.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: const Color(0xFF524440),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    Text(
+                      reminder.title,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Skip Reason & Preview
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFC98C7B).withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4, bottom: 12),
-                            child: Text(
-                              'Lý do bỏ qua (không bắt buộc)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF524440),
-                              ),
-                            ),
-                          ),
-                          TextField(
-                            controller: _reasonController,
-                            maxLines: 4,
-                            decoration: InputDecoration(
-                              hintText: 'Ví dụ: Đã uống sớm hơn, Hết thuốc...',
-                              hintStyle: TextStyle(color: const Color(0xFF84736F).withOpacity(0.6)),
-                              filled: true,
-                              fillColor: const Color(0xFFF6F1EC),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFF2EAE4), width: 2),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFF2EAE4), width: 2),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFC98C7B), width: 2),
-                              ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF9F2EE), // surface-container-low
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.update, color: Color(0xFF625D59)), // secondary
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text(
-                                      'LẦN NHẮC KẾ TIẾP',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF625D59),
-                                      ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      'Mai, 08:30',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Call to Action
-                    ElevatedButton(
-                      onPressed: _isProcessing ? null : _skipReminder,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFC98C7B),
-                        disabledBackgroundColor: const Color(0xFFC98C7B).withOpacity(0.6),
-                        minimumSize: const Size(double.infinity, 56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: _isProcessing
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text(
-                              'Bỏ qua lần này',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF51271B), // on-primary-container
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      child: const Text(
-                        'Hủy bỏ',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF625D59), // secondary
-                        ),
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Due ${_formatDateTime(reminder.scheduledAt)}',
+                      style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-          
-          // Success State Toast
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutBack,
-            bottom: _showToast ? 40 : -100,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF32302D), // inverse-surface
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.check_circle, color: primaryFixedColor),
-                      SizedBox(width: 12),
-                      Text(
-                        'Đã bỏ qua nhắc nhở',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton(
-                    onPressed: _undoSkip,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                      minimumSize: const Size(80, 36),
-                    ),
-                    child: const Text('Hoàn tác'),
-                  ),
-                ],
-              ),
-            ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          isTerminal
+              ? 'This reminder is already ${reminder.status.displayLabel.toLowerCase()}.'
+              : 'Skip only this reminder occurrence. Future reminders are not changed.',
+          style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant, height: 1.45),
+        ),
+        const SizedBox(height: 20),
+        OutlinedButton.icon(
+          onPressed: processing || isTerminal ? null : onSkip,
+          icon: processing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.skip_next_rounded),
+          label: const Text('Skip this reminder', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w800)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primary,
+            side: const BorderSide(color: _primaryContainer),
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
+        ),
+      ],
+    );
+  }
+
+  static String _formatDateTime(DateTime value) {
+    final local = value.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$d/$m/${local.year} $h:$min';
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Color(0xFFBA1A1A), size: 44),
+          const SizedBox(height: 10),
+          Text(message, style: const TextStyle(fontFamily: 'Lexend')),
+          const SizedBox(height: 10),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );

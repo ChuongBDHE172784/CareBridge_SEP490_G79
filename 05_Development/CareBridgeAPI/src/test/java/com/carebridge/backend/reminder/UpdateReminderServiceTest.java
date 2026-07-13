@@ -4,6 +4,8 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.reminder.dto.ReminderDetailResponse;
+import com.carebridge.backend.reminder.entity.RecurrenceType;
+import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
@@ -11,12 +13,17 @@ import com.carebridge.backend.reminder.service.INotificationService;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -184,7 +191,25 @@ class UpdateReminderServiceTest {
                 "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
     }
 
-    // UPD-TC-010: Skip reminder happy path → status = SKIPPED
+    // UPD-TC-010: Complete snoozed reminder happy path → status = COMPLETED
+    // UPD-TC-011: Skip reminder happy path → status = SKIPPED
+    @Test
+    void completeReminder_snoozedReminder_returnsCompletedStatus() {
+        var snoozed = ReminderTestFactory.snoozedReminder();
+        snoozed.setFcmJobId("job-snoozed-complete");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(snoozed));
+        when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ReminderDetailResponse resp = reminderService.completeReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(resp.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
+        verify(notificationService).cancelFcmJob("job-snoozed-complete");
+        verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
+    }
+
     @Test
     void skipReminder_pendingReminder_returnsSkippedStatus() {
         var pending = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
@@ -202,7 +227,102 @@ class UpdateReminderServiceTest {
                 "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
     }
 
-    // UPD-TC-011: Complete — COMPLETED is terminal; double-complete → 409
+    // UPD-TC-012: Skip snoozed reminder happy path → status = SKIPPED
+    // UPD-TC-013: Complete — COMPLETED is terminal; double-complete → 409
+    @Test
+    void skipReminder_snoozedReminder_returnsSkippedStatus() {
+        var snoozed = ReminderTestFactory.snoozedReminder();
+        snoozed.setFcmJobId("job-snoozed-skip");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(snoozed));
+        when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ReminderDetailResponse resp = reminderService.skipReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
+        verify(notificationService).cancelFcmJob("job-snoozed-skip");
+        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+    }
+
+    @Test
+    void skipReminder_dailyRecurringReminder_createsNextPendingOccurrence() {
+        Instant scheduledAt = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant nextScheduledAt = scheduledAt.plus(1, ChronoUnit.DAYS);
+        UUID nextReminderId = UUID.randomUUID();
+        var recurring = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
+        recurring.setScheduledAt(scheduledAt);
+        recurring.setRecurrenceType(RecurrenceType.DAILY);
+        recurring.setRecurrenceEndDate(scheduledAt.plus(3, ChronoUnit.DAYS));
+        recurring.setFcmJobId("job-recurring-skip");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(recurring));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> {
+            Reminder saved = inv.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(nextReminderId);
+            }
+            return saved;
+        });
+        when(notificationService.scheduleFcmPush(
+                ReminderTestFactory.OWNER_ID,
+                recurring.getTitle(),
+                "Reminder: " + recurring.getTitle(),
+                nextScheduledAt))
+                .thenReturn("job-next-occurrence");
+
+        ReminderDetailResponse resp = reminderService.skipReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
+        ArgumentCaptor<Reminder> savedCaptor = ArgumentCaptor.forClass(Reminder.class);
+        verify(reminderRepository, times(3)).save(savedCaptor.capture());
+        List<Reminder> savedReminders = savedCaptor.getAllValues();
+        assertThat(savedReminders.get(0).getId()).isEqualTo(ReminderTestFactory.REMINDER_ID);
+        assertThat(savedReminders.get(0).getStatus()).isEqualTo(ReminderStatus.SKIPPED);
+        assertThat(savedReminders.get(1).getId()).isEqualTo(nextReminderId);
+        assertThat(savedReminders.get(1).getStatus()).isEqualTo(ReminderStatus.PENDING);
+        assertThat(savedReminders.get(1).getScheduledAt()).isEqualTo(nextScheduledAt);
+        assertThat(savedReminders.get(1).getRecurrenceType()).isEqualTo(RecurrenceType.DAILY);
+        assertThat(savedReminders.get(1).getRecurrenceEndDate()).isEqualTo(recurring.getRecurrenceEndDate());
+        assertThat(savedReminders.get(2).getFcmJobId()).isEqualTo("job-next-occurrence");
+        verify(notificationService).cancelFcmJob("job-recurring-skip");
+        verify(notificationService).scheduleFcmPush(
+                ReminderTestFactory.OWNER_ID,
+                recurring.getTitle(),
+                "Reminder: " + recurring.getTitle(),
+                nextScheduledAt);
+        verify(auditService).log(AuditAction.REMINDER_CREATED, ReminderTestFactory.OWNER_ID,
+                "Reminder", nextReminderId.toString(), "next recurring occurrence created after skip");
+        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+    }
+
+    @Test
+    void skipReminder_dailyRecurringReminderPastEndDate_doesNotCreateNextOccurrence() {
+        Instant scheduledAt = Instant.now().minus(1, ChronoUnit.HOURS);
+        var recurring = ReminderTestFactory.pendingReminder(ReminderType.MEDICATION);
+        recurring.setScheduledAt(scheduledAt);
+        recurring.setRecurrenceType(RecurrenceType.DAILY);
+        recurring.setRecurrenceEndDate(scheduledAt.plus(12, ChronoUnit.HOURS));
+        recurring.setFcmJobId("job-recurring-ended");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(recurring));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReminderDetailResponse resp = reminderService.skipReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
+        verify(reminderRepository, times(1)).save(any(Reminder.class));
+        verify(notificationService).cancelFcmJob("job-recurring-ended");
+        verify(notificationService, never()).scheduleFcmPush(any(), anyString(), anyString(), any());
+        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
+                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+        verify(auditService, never()).log(eq(AuditAction.REMINDER_CREATED), any(), anyString(), anyString(), anyString());
+    }
+
     @Test
     void completeReminder_alreadyCompleted_throwsBusinessException409() {
         var completed = ReminderTestFactory.completedReminder();

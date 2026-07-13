@@ -220,12 +220,14 @@ class CreateJourneyResponse {
 }
 
 class UpdateJourneyRequest {
+  final JourneyType? journeyType;
   final String? startDate;
   final String? lastMenstrualDate;
   final String? estimatedDueDate;
   final String? notes;
 
   const UpdateJourneyRequest({
+    this.journeyType,
     this.startDate,
     this.lastMenstrualDate,
     this.estimatedDueDate,
@@ -233,6 +235,7 @@ class UpdateJourneyRequest {
   });
 
   Map<String, dynamic> toJson() => {
+    if (journeyType != null) 'journeyType': journeyType!.toApiValue(),
     if (startDate != null) 'startDate': startDate,
     if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
     if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,

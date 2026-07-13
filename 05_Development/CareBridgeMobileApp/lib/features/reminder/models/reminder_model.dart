@@ -4,20 +4,20 @@ extension ReminderTypeExtension on ReminderType {
   String get displayLabel {
     switch (this) {
       case ReminderType.appointment:
-        return 'Lịch khám';
+        return 'Lịch hẹn';
       case ReminderType.medication:
-        return 'Thuốc';
+        return 'Thuốc / vitamin';
       case ReminderType.vaccination:
         return 'Tiêm chủng';
       case ReminderType.task:
-        return 'Việc cần làm';
+        return 'Công việc';
       case ReminderType.other:
         return 'Khác';
     }
   }
 
-  static ReminderType fromApi(String? v) {
-    switch (v) {
+  static ReminderType fromApi(String? value) {
+    switch (value) {
       case 'APPOINTMENT':
         return ReminderType.appointment;
       case 'MEDICATION':
@@ -25,7 +25,6 @@ extension ReminderTypeExtension on ReminderType {
       case 'VACCINATION':
         return ReminderType.vaccination;
       case 'TASK':
-        return ReminderType.task;
       case 'CARE_TASK':
         return ReminderType.task;
       default:
@@ -34,32 +33,37 @@ extension ReminderTypeExtension on ReminderType {
   }
 }
 
-enum ReminderStatus { pending, done, snoozed, skipped }
+enum ReminderStatus { pending, done, snoozed, skipped, cancelled }
 
 extension ReminderStatusExtension on ReminderStatus {
   String get displayLabel {
     switch (this) {
       case ReminderStatus.pending:
-        return 'Chờ thực hiện';
+        return 'Đang chờ';
       case ReminderStatus.done:
         return 'Đã hoàn thành';
       case ReminderStatus.snoozed:
         return 'Đã hoãn';
       case ReminderStatus.skipped:
         return 'Đã bỏ qua';
+      case ReminderStatus.cancelled:
+        return 'Đã tắt';
     }
   }
 
-  static ReminderStatus fromApi(String? v) {
-    switch (v) {
+  bool get isTerminal => this == ReminderStatus.cancelled;
+
+  static ReminderStatus fromApi(String? value) {
+    switch (value) {
       case 'DONE':
-        return ReminderStatus.done;
       case 'COMPLETED':
         return ReminderStatus.done;
       case 'SNOOZED':
         return ReminderStatus.snoozed;
       case 'SKIPPED':
         return ReminderStatus.skipped;
+      case 'CANCELLED':
+        return ReminderStatus.cancelled;
       default:
         return ReminderStatus.pending;
     }
@@ -72,18 +76,18 @@ extension RecurrenceTypeExtension on RecurrenceType {
   String get displayLabel {
     switch (this) {
       case RecurrenceType.none:
-        return 'Không lặp';
+        return 'Không lặp lại';
       case RecurrenceType.daily:
-        return '1 Lần / Ngày';
+        return 'Hằng ngày';
       case RecurrenceType.weekly:
-        return '1 Lần / Tuần';
+        return 'Hằng tuần';
       case RecurrenceType.monthly:
-        return '1 Lần / Tháng';
+        return 'Hằng tháng';
     }
   }
 
-  static RecurrenceType fromApi(String? v) {
-    switch (v) {
+  static RecurrenceType fromApi(String? value) {
+    switch (value) {
       case 'DAILY':
         return RecurrenceType.daily;
       case 'WEEKLY':
@@ -111,11 +115,17 @@ extension RecurrenceTypeApi on RecurrenceType {
   }
 }
 
-// "Mẹ" or "Bé"
 enum ReminderAssignee { mother, baby }
 
 extension ReminderAssigneeExtension on ReminderAssignee {
-  String get displayLabel => this == ReminderAssignee.mother ? 'Mẹ' : 'Bé';
+  String get displayLabel {
+    switch (this) {
+      case ReminderAssignee.mother:
+        return 'Mẹ';
+      case ReminderAssignee.baby:
+        return 'Bé';
+    }
+  }
 }
 
 class Reminder {
@@ -124,6 +134,7 @@ class Reminder {
   final String title;
   final DateTime scheduledAt;
   final RecurrenceType recurrenceType;
+  final DateTime? recurrenceEndDate;
   final ReminderStatus status;
   final bool isImportant;
   final String? location;
@@ -136,6 +147,7 @@ class Reminder {
     required this.title,
     required this.scheduledAt,
     this.recurrenceType = RecurrenceType.none,
+    this.recurrenceEndDate,
     this.status = ReminderStatus.pending,
     this.isImportant = false,
     this.location,
@@ -154,6 +166,9 @@ class Reminder {
       recurrenceType: RecurrenceTypeExtension.fromApi(
         json['recurrenceType'] as String?,
       ),
+      recurrenceEndDate: json['recurrenceEndDate'] == null 
+          ? null 
+          : DateTime.parse(json['recurrenceEndDate'] as String),
       status: ReminderStatusExtension.fromApi(json['status'] as String?),
       location: json['location'] as String?,
       note: json['note'] as String?,

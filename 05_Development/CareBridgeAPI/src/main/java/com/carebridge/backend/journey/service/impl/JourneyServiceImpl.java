@@ -142,6 +142,9 @@ public class JourneyServiceImpl implements IJourneyService {
 
         // Apply field updates — only overwrite when request provides a non-null value
         MotherJourney.MotherJourneyBuilder builder = journey.toBuilder();
+        if (request.getJourneyType() != null) {
+            builder.journeyType(request.getJourneyType());
+        }
         if (request.getNotes() != null) {
             builder.notes(request.getNotes());
         }
