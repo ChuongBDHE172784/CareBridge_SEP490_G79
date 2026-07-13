@@ -68,7 +68,7 @@ export default function FaqListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, activeTab]);
+  }, [page, pageSize]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

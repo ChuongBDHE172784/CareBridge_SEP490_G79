@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 
 type TrustStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
@@ -30,7 +30,7 @@ export default function AdminExpertTrustManagementPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [keyword, setKeyword] = useState('');
 
-  const fetchExperts = async () => {
+  const fetchExperts = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = { page: '0', size: '50' };
@@ -45,9 +45,9 @@ export default function AdminExpertTrustManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, keyword]);
 
-  useEffect(() => { fetchExperts(); }, [statusFilter]);
+  useEffect(() => { fetchExperts(); }, [fetchExperts]);
 
   const setTrust = async (profileId: string, status: TrustStatus) => {
     setActionId(profileId);
