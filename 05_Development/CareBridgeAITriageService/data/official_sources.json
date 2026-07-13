@@ -1,0 +1,38 @@
+[
+  {
+    "organization": "WHO",
+    "title": "Pocket Book of Hospital Care for Children",
+    "url": "https://www.who.int/publications/i/item/978-92-4-154837-3",
+    "domain": "who.int"
+  },
+  {
+    "organization": "WHO",
+    "title": "Integrated Management of Childhood Illness",
+    "url": "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/child-health/integrated-management-of-childhood-illness",
+    "domain": "who.int"
+  },
+  {
+    "organization": "Bộ Y tế Việt Nam",
+    "title": "Cổng thông tin Bộ Y tế",
+    "url": "https://moh.gov.vn",
+    "domain": "moh.gov.vn"
+  },
+  {
+    "organization": "Cục Bà mẹ và Trẻ em",
+    "title": "Cục Bà mẹ và Trẻ em - Bộ Y tế",
+    "url": "https://mch.moh.gov.vn",
+    "domain": "mch.moh.gov.vn"
+  },
+  {
+    "organization": "CDC",
+    "title": "CDC Child Health",
+    "url": "https://www.cdc.gov",
+    "domain": "cdc.gov"
+  },
+  {
+    "organization": "UNICEF",
+    "title": "UNICEF Child Health",
+    "url": "https://www.unicef.org",
+    "domain": "unicef.org"
+  }
+]

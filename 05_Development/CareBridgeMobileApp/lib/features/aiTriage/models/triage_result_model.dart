@@ -11,6 +11,7 @@ class TriageResult {
   final List<String> redFlags;
   final List<String> matchedRules;
   final List<TriageCitation> citations;
+  final TriageEvidence? evidence;
   final String? disclaimer;
   final List<String> questions;
   final String? warning;
@@ -31,6 +32,7 @@ class TriageResult {
     this.redFlags = const [],
     this.matchedRules = const [],
     this.citations = const [],
+    this.evidence,
     this.disclaimer,
     this.questions = const [],
     this.warning,
@@ -59,6 +61,9 @@ class TriageResult {
           .whereType<Map<String, dynamic>>()
           .map(TriageCitation.fromJson)
           .toList(),
+      evidence: json['evidence'] is Map<String, dynamic>
+          ? TriageEvidence.fromJson(json['evidence'] as Map<String, dynamic>)
+          : null,
       disclaimer: json['disclaimer'] as String?,
       questions: (json['questions'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
@@ -75,27 +80,78 @@ class TriageResult {
 }
 
 class TriageCitation {
+  final String? id;
   final String title;
   final String source;
+  final String? organization;
   final String url;
+  final String? domain;
   final String excerpt;
   final String retrievedAt;
+  final List<String> matchedSymptoms;
+  final String sourceStatus;
 
   const TriageCitation({
+    this.id,
     required this.title,
     required this.source,
+    this.organization,
     required this.url,
+    this.domain,
     required this.excerpt,
     required this.retrievedAt,
+    this.matchedSymptoms = const [],
+    this.sourceStatus = 'REVIEWED',
   });
 
   factory TriageCitation.fromJson(Map<String, dynamic> json) {
     return TriageCitation(
+      id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       source: json['source']?.toString() ?? '',
+      organization: json['organization']?.toString(),
       url: json['url']?.toString() ?? '',
+      domain: json['domain']?.toString(),
       excerpt: json['excerpt']?.toString() ?? '',
       retrievedAt: json['retrievedAt']?.toString() ?? '',
+      matchedSymptoms: (json['matchedSymptoms'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      sourceStatus: json['sourceStatus']?.toString() ?? 'REVIEWED',
+    );
+  }
+}
+
+class TriageEvidence {
+  final String basis;
+  final String legalSafetyNote;
+  final List<String> matchedSymptoms;
+  final List<String> matchedOfficialSources;
+  final List<String> unmatchedSymptoms;
+
+  const TriageEvidence({
+    required this.basis,
+    required this.legalSafetyNote,
+    this.matchedSymptoms = const [],
+    this.matchedOfficialSources = const [],
+    this.unmatchedSymptoms = const [],
+  });
+
+  factory TriageEvidence.fromJson(Map<String, dynamic> json) {
+    return TriageEvidence(
+      basis: json['basis']?.toString() ?? '',
+      legalSafetyNote: json['legalSafetyNote']?.toString() ?? '',
+      matchedSymptoms: (json['matchedSymptoms'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      matchedOfficialSources:
+          (json['matchedOfficialSources'] as List<dynamic>? ?? const [])
+              .map((item) => item.toString())
+              .toList(),
+      unmatchedSymptoms:
+          (json['unmatchedSymptoms'] as List<dynamic>? ?? const [])
+              .map((item) => item.toString())
+              .toList(),
     );
   }
 }

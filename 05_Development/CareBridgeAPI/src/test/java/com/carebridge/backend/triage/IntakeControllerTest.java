@@ -6,7 +6,10 @@ import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.triage.controller.IntakeController;
+import com.carebridge.backend.triage.engine.TriageGraphService;
+import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -30,6 +33,9 @@ class IntakeControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private ITriageService triageService;
+    @MockitoBean private ChildTriageAiClient childTriageAiClient;
+    @MockitoBean private TriageGraphService triageGraphService;
+    @MockitoBean private ObjectMapper objectMapper;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

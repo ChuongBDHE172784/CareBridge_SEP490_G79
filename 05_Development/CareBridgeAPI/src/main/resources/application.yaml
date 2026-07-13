@@ -72,3 +72,7 @@ carebridge:
   fcm:
     enabled: ${CAREBRIDGE_FCM_ENABLED:false}
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+
+ai:
+  triage-service:
+    url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}

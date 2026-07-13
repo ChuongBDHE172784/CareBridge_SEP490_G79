@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
 import '../../emergency/services/emergency_service.dart';
@@ -80,6 +81,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
       }
     } finally {
       if (mounted) setState(() => _openingEmergency = false);
+    }
+  }
+
+  Future<void> _openSourceUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -412,6 +421,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
           const SizedBox(height: 16),
         ],
+        if ((result?.evidence?.legalSafetyNote ?? '').isNotEmpty) ...[
+          _buildInfoSection(
+            title: 'Cơ sở phân loại',
+            icon: Icons.verified_outlined,
+            body: result!.evidence!.legalSafetyNote,
+          ),
+          const SizedBox(height: 16),
+        ],
         // AI disclaimer (from API)
         Container(
           padding: const EdgeInsets.all(16),
@@ -572,7 +589,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               Icon(Icons.source_outlined, color: _primary),
               SizedBox(width: 8),
               Text(
-                'Nguồn tham khảo',
+                'Nguồn tham khảo chính thống',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -589,7 +606,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${citation.title} (${citation.source})',
+                    '${citation.source} — ${citation.title}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -605,6 +622,59 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                       height: 1.35,
                     ),
                   ),
+                      if (citation.matchedSymptoms.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Triệu chứng khớp: ${citation.matchedSymptoms.join(', ')}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                        height: 1.35,
+                          ),
+                        ),
+                      ],
+                      if (citation.sourceStatus == 'PENDING_REVIEW') ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
+                          ),
+                          child: const Text(
+                            'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _onSurfaceVariant,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (citation.url.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: () => _openSourceUrl(citation.url),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.open_in_new, size: 16, color: _primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              citation.url,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

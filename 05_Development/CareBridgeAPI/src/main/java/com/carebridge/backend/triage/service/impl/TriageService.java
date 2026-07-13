@@ -12,6 +12,7 @@ import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
+import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.ITriageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -41,6 +42,7 @@ public class TriageService implements ITriageService {
     private static final Logger log = LoggerFactory.getLogger(TriageService.class);
 
     private final IIntakeSessionRepository intakeSessionRepository;
+    private final ChildTriageAiClient childTriageAiClient;
     private final TriageGraphService triageGraphService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -60,16 +62,18 @@ public class TriageService implements ITriageService {
         log.info("Processing intake for session [{}]", sessionId);
 
         try {
-            ChildTriageResult graphResult = triageGraphService.run(request);
-            String aiResponse = objectMapper.writeValueAsString(graphResult);
+            String aiResponse = triageWithAiServiceOrFallback(request, sessionId);
             JsonNode result = objectMapper.readTree(aiResponse);
-            String triageStatus = result.path("status").asText("COMPLETED");
+            String triageStatus = result.path("status").asText(null);
             String riskLevel = result.path("riskLevel").isMissingNode() || result.path("riskLevel").isNull()
                     ? null
                     : result.path("riskLevel").asText();
+            if (triageStatus == null) {
+                triageStatus = "NEED_MORE_INFO".equals(riskLevel) ? "NEED_MORE_INFO" : "COMPLETED";
+            }
 
             session.setRawAiResponse(aiResponse);
-            session.setRiskLevel(riskLevel != null ? RiskLevel.valueOf(riskLevel) : null);
+            session.setRiskLevel(isPersistableRiskLevel(riskLevel) ? RiskLevel.valueOf(riskLevel) : null);
             session.setDisclaimer(result.path("disclaimer").asText(null));
             session.setStatus("NEED_MORE_INFO".equals(triageStatus)
                     ? IntakeStatus.NEED_MORE_INFO
@@ -98,6 +102,17 @@ public class TriageService implements ITriageService {
         return toResponse(session);
     }
 
+    private String triageWithAiServiceOrFallback(RunIntakeRequest request, UUID sessionId) throws JsonProcessingException {
+        try {
+            return childTriageAiClient.triageChild(request);
+        } catch (Exception e) {
+            log.warn("AI triage service unavailable for session [{}], falling back to Java rule engine: {}",
+                    sessionId, e.getClass().getSimpleName());
+            ChildTriageResult graphResult = triageGraphService.run(request);
+            return objectMapper.writeValueAsString(graphResult);
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TriageResultResponse getResult(UUID sessionId, UUID userId) {
@@ -117,6 +132,7 @@ public class TriageService implements ITriageService {
                 .redFlags(readStringList(session, "redFlags"))
                 .matchedRules(readStringList(session, "matchedRules"))
                 .citations(readObjectList(session, "citations"))
+                .evidence(readObject(session, "evidence"))
                 .disclaimer(readText(session, "disclaimer", session.getDisclaimer()))
                 .questions(readStringList(session, "questions"))
                 .warning(readText(session, "warning"))
@@ -180,6 +196,10 @@ public class TriageService implements ITriageService {
         return node.asText();
     }
 
+    private boolean isPersistableRiskLevel(String riskLevel) {
+        return "GREEN".equals(riskLevel) || "YELLOW".equals(riskLevel) || "RED".equals(riskLevel);
+    }
+
     private Boolean readBoolean(IntakeSession session, String field) {
         JsonNode node = rawResult(session).path(field);
         return node.isMissingNode() || node.isNull() ? Boolean.FALSE : node.asBoolean();
@@ -201,5 +221,13 @@ public class TriageService implements ITriageService {
             return Collections.emptyList();
         }
         return objectMapper.convertValue(node, new TypeReference<List<Map<String, Object>>>() {});
+    }
+
+    private Map<String, Object> readObject(IntakeSession session, String field) {
+        JsonNode node = rawResult(session).path(field);
+        if (!node.isObject()) {
+            return Collections.emptyMap();
+        }
+        return objectMapper.convertValue(node, new TypeReference<Map<String, Object>>() {});
     }
 }

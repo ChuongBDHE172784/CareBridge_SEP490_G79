@@ -19,6 +19,7 @@ public class TriageResultResponse {
     private List<String> redFlags;
     private List<String> matchedRules;
     private List<Map<String, Object>> citations;
+    private Map<String, Object> evidence;
     private String disclaimer;
     private List<String> questions;
     private String warning;
