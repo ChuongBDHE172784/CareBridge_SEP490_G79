@@ -579,10 +579,11 @@ packages:
   sensors_plus:
     dependency: "direct main"
     description:
-      name: sensors_plus
-      sha256: "89e2bfc3d883743539ce5774a2b93df61effde40ff958ecad78cd66b1a8b8d52"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/sensors_plus/sensors_plus"
+      ref: "sensors_plus-v6.1.2"
+      resolved-ref: "9f03424b7916b195ec6a4bebe4cc1a310ba40d4a"
+      url: "https://github.com/fluttercommunity/plus_plugins.git"
+    source: git
     version: "6.1.2"
   sensors_plus_platform_interface:
     dependency: transitive

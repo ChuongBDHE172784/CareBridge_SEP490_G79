@@ -36,7 +36,7 @@ public class DevPortStubConfiguration {
         };
     }
 
-    // LocationConsentPort (safety + emergency), FamilyMemberPort, and
+    // Emergency LocationConsentPort, FamilyMemberPort, and
     // FcmNotificationPort now have real @Component adapters
     // (consent/family/notification modules) — their dev stubs here were
     // removed to avoid duplicate-bean conflicts with those adapters.

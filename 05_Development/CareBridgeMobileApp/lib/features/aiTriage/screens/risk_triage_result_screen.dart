@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
 import '../../emergency/services/emergency_service.dart';
@@ -80,6 +81,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
       }
     } finally {
       if (mounted) setState(() => _openingEmergency = false);
+    }
+  }
+
+  Future<void> _openSourceUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -167,6 +176,9 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
 
   Widget _buildContent() {
     final p = _presentation;
+    final result = _result;
+    final needsMoreInfo =
+        result?.triageStatus == 'NEED_MORE_INFO' || result?.status == 'NEED_MORE_INFO';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -197,7 +209,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                 child: Icon(p.icon, size: 32, color: p.iconColor),
               ),
               Text(
-                p.title,
+                needsMoreInfo ? 'Cần thêm thông tin' : p.title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 24,
@@ -207,7 +219,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                p.description,
+                result?.summary ?? p.description,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -219,6 +231,40 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        if (needsMoreInfo) ...[
+          _buildListSection(
+            title: 'Câu hỏi cần bổ sung',
+            icon: Icons.help_outline,
+            items: result?.questions.isNotEmpty == true
+                ? result!.questions
+                : const ['Vui lòng bổ sung tuổi, tình trạng thở, tỉnh táo và bú/uống của trẻ.'],
+          ),
+          const SizedBox(height: 24),
+        ],
+        if ((result?.possibleConcern ?? '').isNotEmpty) ...[
+          _buildInfoSection(
+            title: 'Điểm cần chú ý',
+            icon: Icons.health_and_safety_outlined,
+            body: result!.possibleConcern!,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if ((result?.recommendedAction ?? '').isNotEmpty) ...[
+          _buildInfoSection(
+            title: 'Hành động khuyến nghị',
+            icon: Icons.checklist_rtl,
+            body: result!.recommendedAction!,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (result?.redFlags.isNotEmpty == true) ...[
+          _buildListSection(
+            title: 'Dấu hiệu cảnh báo',
+            icon: Icons.warning_amber_outlined,
+            items: result!.redFlags,
+          ),
+          const SizedBox(height: 16),
+        ],
         // Recommended actions
         const Text(
           'Hành động khuyến nghị',
@@ -331,7 +377,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             ),
             onPressed: _openingEmergency
                 ? null
-                : _result?.riskLevel == 'RED'
+                : (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
                 ? _openEmergencyFlow
                 : () => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -344,14 +390,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  _result?.riskLevel == 'RED'
+                  (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
                       ? Icons.emergency_outlined
                       : Icons.local_hospital_outlined,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _result?.riskLevel == 'RED'
+                  (_result?.emergencyActionRequired == true || _result?.riskLevel == 'RED')
                       ? 'Kích hoạt hỗ trợ khẩn cấp'
                       : 'Tìm phòng khám gần nhất',
                   style: const TextStyle(
@@ -364,6 +410,25 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
         ),
         const SizedBox(height: 16),
+        if (result?.citations.isNotEmpty == true) ...[
+          _buildCitations(result!.citations),
+          const SizedBox(height: 16),
+        ] else if ((result?.warning ?? '').isNotEmpty) ...[
+          _buildInfoSection(
+            title: 'Nguồn tham khảo',
+            icon: Icons.source_outlined,
+            body: result!.warning!,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if ((result?.evidence?.legalSafetyNote ?? '').isNotEmpty) ...[
+          _buildInfoSection(
+            title: 'Cơ sở phân loại',
+            icon: Icons.verified_outlined,
+            body: result!.evidence!.legalSafetyNote,
+          ),
+          const SizedBox(height: 16),
+        ],
         // AI disclaimer (from API)
         Container(
           padding: const EdgeInsets.all(16),
@@ -403,6 +468,219 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInfoSection({
+    required String title,
+    required IconData icon,
+    required String body,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: _onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListSection({
+    required String title,
+    required IconData icon,
+    required List<String> items,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: _primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('• ', style: TextStyle(color: _onSurfaceVariant)),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: _onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCitations(List<TriageCitation> citations) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.source_outlined, color: _primary),
+              SizedBox(width: 8),
+              Text(
+                'Nguồn tham khảo chính thống',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...citations.map(
+            (citation) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${citation.source} — ${citation.title}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    citation.excerpt,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                      height: 1.35,
+                    ),
+                  ),
+                      if (citation.matchedSymptoms.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Triệu chứng khớp: ${citation.matchedSymptoms.join(', ')}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                        height: 1.35,
+                          ),
+                        ),
+                      ],
+                      if (citation.sourceStatus == 'PENDING_REVIEW') ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
+                          ),
+                          child: const Text(
+                            'Nguồn chính thống được truy xuất tự động, đang chờ kiểm duyệt nội bộ.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _onSurfaceVariant,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (citation.url.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: () => _openSourceUrl(citation.url),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.open_in_new, size: 16, color: _primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              citation.url,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

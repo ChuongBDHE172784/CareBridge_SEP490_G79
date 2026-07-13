@@ -56,7 +56,6 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_answer_composer_screen.dart';
 import '../../features/expert/screens/expert_home_screen.dart';
 import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';

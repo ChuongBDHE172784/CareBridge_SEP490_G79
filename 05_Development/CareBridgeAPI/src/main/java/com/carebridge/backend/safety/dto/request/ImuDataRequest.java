@@ -2,7 +2,6 @@ package com.carebridge.backend.safety.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
@@ -32,8 +31,4 @@ public class ImuDataRequest {
 
     @NotNull
     private Instant timestamp;
-
-    private BigDecimal latitude;
-
-    private BigDecimal longitude;
 }
