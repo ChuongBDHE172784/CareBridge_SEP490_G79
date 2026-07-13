@@ -1,2 +1,0 @@
--- Placeholder for migration 20260707091000 applied via direct DB access.
--- No schema changes needed; resolved Flyway validation error.
