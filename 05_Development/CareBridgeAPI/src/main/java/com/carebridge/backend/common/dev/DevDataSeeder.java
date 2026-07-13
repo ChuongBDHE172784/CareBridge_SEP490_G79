@@ -196,6 +196,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
         seedVerifiedProfileData(savedUsers);
         seedCommunitySampleData(savedUsers);
+        seedCommunitySampleDataBatch2(savedUsers);
     }
 
     /**
@@ -606,5 +607,172 @@ public class DevDataSeeder implements ApplicationRunner {
             .reason(reason)
             .actionAt(Instant.now())
             .build());
+    }
+
+    /**
+     * Second wave of ~40 community sample rows (8 questions, 10 answers, 3 profiles, 5 question
+     * likes, 5 answer likes, 3 bookmarks, 4 reports, 2 moderation actions), covering the two
+     * remaining topics not used by {@link #seedCommunitySampleData} and continuing to feed both
+     * moderation queues (PENDING questions/answers, PENDING reports). Idempotent via the same
+     * author+title / question+author / reporter+target+category matching as the first batch.
+     */
+    private void seedCommunitySampleDataBatch2(Map<String, User> savedUsers) {
+        Map<String, UUID> topicIdByName = new HashMap<>();
+        for (CommunityTopic topic : communityTopicRepository.findAllByOrderBySortOrderAsc()) {
+            topicIdByName.put(topic.getName(), topic.getId());
+        }
+        if (topicIdByName.isEmpty()) {
+            log.warn("[DevDataSeeder] No community topics found - skipping community sample data batch 2.");
+            return;
+        }
+
+        UUID mother = savedUsers.get("mother@carebridge.dev").getId();
+        UUID mother3 = savedUsers.get("mother3@carebridge.dev").getId();
+        UUID mother4 = savedUsers.get("mother4@carebridge.dev").getId();
+        UUID family = savedUsers.get("family@carebridge.dev").getId();
+        UUID family2 = savedUsers.get("family2@carebridge.dev").getId();
+        UUID family3 = savedUsers.get("family3@carebridge.dev").getId();
+        UUID expert = savedUsers.get("expert@carebridge.dev").getId();
+        UUID expert2 = savedUsers.get("expert2@carebridge.dev").getId();
+        UUID expert3 = savedUsers.get("expert3@carebridge.dev").getId();
+        UUID moderator = savedUsers.get("moderator@carebridge.dev").getId();
+
+        // 8 questions: 2 PENDING (feed the pending-content moderation queue), the rest APPROVED/HIDDEN/LOCKED
+        CommunityQuestion q7 = seedQuestion(family3, topicIdByName.get("Giấc ngủ và thể chất"),
+            "Ngủ nghiêng bên phải khi mang thai có an toàn không?",
+            "Em quen ngủ nghiêng bên phải từ trước khi mang thai, nghe nói bầu nên ngủ nghiêng trái, em có cần đổi không?",
+            PregnancyStage.PREGNANCY, (short) 24, null, UrgencyLevel.NORMAL, false, QuestionStatus.PENDING, 0);
+
+        CommunityQuestion q8 = seedQuestion(mother4, topicIdByName.get("Hỏi đáp chung"),
+            "Sau sinh bao lâu thì có thể quan hệ vợ chồng trở lại?",
+            "Vợ chồng em muốn hỏi kinh nghiệm từ các mẹ, sau sinh thường thì nên kiêng cữ bao lâu là hợp lý ạ?",
+            PregnancyStage.POSTPARTUM, null, (short) 3, UrgencyLevel.NORMAL, true, QuestionStatus.PENDING, 0);
+
+        CommunityQuestion q9 = seedQuestion(mother, topicIdByName.get("Dinh dưỡng thai kỳ"),
+            "Bầu 3 tháng đầu nghén nặng không ăn được gì, phải làm sao?",
+            "Em nghén rất nặng, ngửi mùi thức ăn là buồn nôn, sụt gần 2kg rồi, các mẹ có cách nào giúp ăn được không ạ?",
+            PregnancyStage.PREGNANCY, (short) 8, null, UrgencyLevel.NORMAL, false, QuestionStatus.APPROVED, 2);
+
+        CommunityQuestion q10 = seedQuestion(family, topicIdByName.get("Sức khỏe thai nhi"),
+            "Khám thai định kỳ nên siêu âm bao nhiêu lần là đủ?",
+            "Gia đình em muốn hỏi lịch siêu âm định kỳ hợp lý trong thai kỳ là bao nhiêu lần để theo dõi thai nhi tốt nhất ạ?",
+            PregnancyStage.PREGNANCY, (short) 28, null, UrgencyLevel.LOW, false, QuestionStatus.APPROVED, 1);
+
+        CommunityQuestion q11 = seedQuestion(mother3, topicIdByName.get("Chăm sóc bé sơ sinh"),
+            "Bé sơ sinh ngủ ngày cày đêm, làm sao chỉnh lại giờ giấc?",
+            "Bé nhà em 1 tháng tuổi cứ ngủ suốt ban ngày rồi thức chơi cả đêm, em rất mệt, mẹ nào có kinh nghiệm chỉ em với.",
+            PregnancyStage.BABY_CARE, null, (short) 1, UrgencyLevel.NORMAL, false, QuestionStatus.APPROVED, 1);
+
+        CommunityQuestion q12 = seedQuestion(family2, topicIdByName.get("Nuôi con bằng sữa mẹ"),
+            "Mẹ bị tắc tia sữa phải xử lý thế nào tại nhà?",
+            "Người nhà em bị tắc tia sữa 2 hôm nay, ngực căng cứng và đau, có cách nào xử lý tại nhà trước khi đi khám không ạ?",
+            PregnancyStage.BABY_CARE, null, (short) 2, UrgencyLevel.URGENT, false, QuestionStatus.HIDDEN, 0);
+
+        CommunityQuestion q13 = seedQuestion(mother4, topicIdByName.get("Tâm lý & Cảm xúc"),
+            "Làm sao để cân bằng công việc và chăm con nhỏ mà không kiệt sức?",
+            "Em sắp đi làm lại sau nghỉ thai sản nhưng rất lo lắng không thể vừa làm việc vừa chăm bé chu đáo, mọi người tư vấn giúp em với.",
+            PregnancyStage.BABY_CARE, null, (short) 6, UrgencyLevel.NORMAL, false, QuestionStatus.LOCKED, 0);
+
+        CommunityQuestion q14 = seedQuestion(family3, topicIdByName.get("Chăm sóc sau sinh"),
+            "Sản dịch sau sinh kéo dài bao lâu là bình thường?",
+            "Người nhà em sinh được 3 tuần mà sản dịch vẫn ra, không biết bao lâu thì hết là bình thường ạ?",
+            PregnancyStage.POSTPARTUM, null, (short) 1, UrgencyLevel.NORMAL, false, QuestionStatus.APPROVED, 1);
+
+        // 10 answers: 2 PENDING (feed the pending-content moderation queue), the rest APPROVED
+        CommunityAnswer a7 = seedAnswer(q9.getId(), expert2,
+            "Nghén nặng gây sụt cân cần được theo dõi sát, bạn nên chia nhỏ bữa ăn, ưu tiên món dễ tiêu và uống đủ nước; "
+                + "nếu tiếp tục sụt cân hoặc nôn liên tục không giữ được nước, cần đến khám để được truyền dịch và hỗ trợ kịp thời.",
+            true, false, AnswerStatus.APPROVED, 1);
+
+        seedAnswer(q9.getId(), mother3,
+            "Mình cũng nghén dữ lắm hồi đầu, sau đó ăn bánh quy mặn trước khi ngồi dậy buổi sáng thì đỡ hẳn.",
+            false, true, AnswerStatus.PENDING, 0);
+
+        CommunityAnswer a9 = seedAnswer(q10.getId(), expert3,
+            "Số lần siêu âm cụ thể tùy phác đồ của từng bác sĩ, nhưng thông thường có 3 mốc quan trọng cần siêu âm hình thái/tầm soát dị tật "
+                + "(12 tuần, 22 tuần, 32 tuần), ngoài ra bác sĩ có thể chỉ định thêm tùy tình trạng thai kỳ.",
+            true, false, AnswerStatus.APPROVED, 1);
+
+        seedAnswer(q10.getId(), family3,
+            "Nhà mình đi khám đều đặn mỗi tháng một lần, bác sĩ siêu âm khi thấy cần thiết chứ không cố định số lần.",
+            false, true, AnswerStatus.PENDING, 0);
+
+        CommunityAnswer a11 = seedAnswer(q11.getId(), expert,
+            "Bé sơ sinh chưa phân biệt ngày đêm là bình thường, mẹ nên tăng ánh sáng và tương tác vào ban ngày, giữ phòng tối yên tĩnh vào ban đêm, "
+                + "việc này sẽ cải thiện dần trong khoảng 6-8 tuần đầu.",
+            true, false, AnswerStatus.APPROVED, 1);
+
+        CommunityAnswer a12 = seedAnswer(q11.getId(), mother4,
+            "Bé nhà mình cũng vậy, mình tắm bé vào buổi tối và hạn chế ngủ quá nhiều vào chiều thì bé quen giờ giấc nhanh hơn.",
+            false, true, AnswerStatus.APPROVED, 0);
+
+        CommunityAnswer a13 = seedAnswer(q12.getId(), expert2,
+            "Khi bị tắc tia sữa, nên chườm ấm trước khi cho bú, massage nhẹ nhàng theo hướng về núm vú và cho bé bú thường xuyên hơn ở bên tắc; "
+                + "nếu sau 24-48 giờ không cải thiện hoặc sốt, cần đến cơ sở y tế ngay vì có thể tiến triển thành viêm tuyến vú.",
+            true, false, AnswerStatus.APPROVED, 0);
+
+        CommunityAnswer a14 = seedAnswer(q13.getId(), mother,
+            "Mình cũng từng rất áp lực khi đi làm lại, sau đó thỏa thuận với công ty làm việc linh hoạt hơn và nhờ gia đình hỗ trợ buổi chiều thì đỡ hẳn.",
+            false, true, AnswerStatus.APPROVED, 0);
+
+        CommunityAnswer a15 = seedAnswer(q14.getId(), expert3,
+            "Sản dịch thường kéo dài 2-6 tuần và giảm dần về lượng lẫn màu sắc; nếu sau 3 tuần vẫn ra nhiều, có mùi hôi hoặc kèm sốt thì cần tái khám ngay.",
+            true, false, AnswerStatus.APPROVED, 1);
+
+        CommunityAnswer a16 = seedAnswer(q14.getId(), family2,
+            "Người nhà mình sinh xong sản dịch kéo dài gần 1 tháng mới hết hẳn, bác sĩ nói vẫn trong giới hạn bình thường.",
+            false, true, AnswerStatus.APPROVED, 0);
+
+        // 3 more public community profiles
+        seedCommunityProfile(expert2, "BS. Sản khoa - Ngọc Anh",
+            "Bác sĩ chuyên khoa Sản, đồng hành cùng các mẹ trong thai kỳ và giai đoạn hậu sản.",
+            "PREGNANCY", true, "TP. Hồ Chí Minh");
+        seedCommunityProfile(expert3, "BS. Nhi khoa - Minh Quân",
+            "Bác sĩ Nhi khoa, tư vấn chăm sóc và theo dõi phát triển trẻ sơ sinh, trẻ nhỏ.",
+            "BABY_CARE", true, "TP. Hồ Chí Minh");
+        seedCommunityProfile(mother4, "Mẹ Bông",
+            "Mẹ bỉm sữa giai đoạn hậu sản, có bé nhỏ dưới 1 tuổi.",
+            "POSTPARTUM", true, "Đà Nẵng");
+
+        // Likes + bookmarks, kept consistent with each item's seeded like_count above
+        seedQuestionLike(expert, q9.getId());
+        seedQuestionLike(family3, q9.getId());
+        seedQuestionLike(family2, q10.getId());
+        seedQuestionLike(mother, q11.getId());
+        seedQuestionLike(expert2, q14.getId());
+
+        seedAnswerLike(family, a7.getId());
+        seedAnswerLike(mother3, a9.getId());
+        seedAnswerLike(family2, a11.getId());
+        seedAnswerLike(mother4, a15.getId());
+        seedAnswerLike(expert, a16.getId());
+
+        seedBookmark(family, q9.getId());
+        seedBookmark(mother3, q11.getId());
+        seedBookmark(expert, q14.getId());
+
+        // 4 content reports: 2 PENDING (feed the report-based moderation queue), 1 RESOLVED, 1 DISMISSED
+        seedContentReport(family, q11.getId(), ReportTargetType.QUESTION, "OTHER",
+            "Nghi ngờ một số thông tin trong câu hỏi chưa được kiểm chứng.",
+            ReportStatus.PENDING, null, null);
+
+        seedContentReport(mother4, a11.getId(), ReportTargetType.ANSWER, "UNSAFE_ADVICE",
+            "Câu trả lời có thể chưa phù hợp với mọi trường hợp, cần chuyên gia xác nhận lại.",
+            ReportStatus.PENDING, null, null);
+
+        ContentReport r7 = seedContentReport(expert2, q13.getId(), ReportTargetType.QUESTION, "HARASSMENT",
+            "Phần bình luận qua lại trong câu hỏi có ngôn từ gay gắt, cần rà soát lại.",
+            ReportStatus.RESOLVED, moderator, Instant.now().minus(java.time.Duration.ofDays(3)));
+
+        seedContentReport(family3, q14.getId(), ReportTargetType.QUESTION, "INACCURATE_INFORMATION",
+            "Nội dung có thể gây hoang mang, đề nghị kiểm tra lại - nhưng nội dung vẫn phù hợp sau khi xem xét.",
+            ReportStatus.DISMISSED, moderator, Instant.now().minus(java.time.Duration.ofDays(4)));
+
+        // Moderation actions: one tied to the resolved report above (LOCK on q13), one proactive (HIDE on q12,
+        // reportId=null per ADR-001 - UC-100 style action with no underlying user report)
+        seedModerationAction(q13.getId(), ReportTargetType.QUESTION, ModerationActionType.LOCK, moderator,
+            "Khóa câu hỏi do tranh cãi kéo dài giữa các bình luận, cần rà soát lại.", r7.getId());
+        seedModerationAction(q12.getId(), ReportTargetType.QUESTION, ModerationActionType.HIDE, moderator,
+            "Ẩn câu hỏi chủ động do nội dung nhạy cảm liên quan sức khỏe, đã trao đổi riêng với tác giả.", null);
     }
 }
