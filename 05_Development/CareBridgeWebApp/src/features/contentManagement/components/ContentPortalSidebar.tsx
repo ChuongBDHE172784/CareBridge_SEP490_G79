@@ -4,15 +4,13 @@ import { useAuth } from '../../../shared/auth/useAuth';
 // Keep these roles aligned with the ProtectedRoute guards in app/router/index.tsx.
 // Navigation is only a presentation concern; the guards remain authoritative.
 const NAV_ITEMS = [
-  { label: 'Tổng quan', icon: 'dashboard', path: '/content/dashboard', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { label: 'Thư viện nội dung', icon: 'folder', path: '/content/list', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { label: 'Bài tập thai kỳ', icon: 'fitness_center', path: '/content/exercises', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { label: 'FAQ', icon: 'help', path: '/content/faq', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { label: 'Checklist', icon: 'checklist', path: '/content/checklists', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { label: 'Danh mục', icon: 'category', path: '/content/categories', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
+  { label: 'Tổng quan', icon: 'dashboard', path: '/content/dashboard', roles: ['CONTENT_ADMIN'] },
+  { label: 'Thư viện nội dung', icon: 'folder', path: '/content/list', roles: ['CONTENT_ADMIN'] },
+  { label: 'Bài tập thai kỳ', icon: 'fitness_center', path: '/content/exercises', roles: ['CONTENT_ADMIN'] },
+  { label: 'FAQ', icon: 'help', path: '/content/faq', roles: ['CONTENT_ADMIN'] },
+  { label: 'Checklist', icon: 'checklist', path: '/content/checklists', roles: ['CONTENT_ADMIN'] },
+  { label: 'Danh mục', icon: 'category', path: '/content/categories', roles: ['CONTENT_ADMIN'] },
   { label: 'Chủ đề cộng đồng', icon: 'topic', path: '/content/topics', roles: ['CONTENT_ADMIN', 'MODERATOR'] },
-  { label: 'Hàng chờ duyệt', icon: 'fact_check', path: '/content/approval-queue', roles: ['SYSTEM_ADMIN'] },
-  { label: 'Cấu hình tư thế', icon: 'settings_accessibility', path: '/posture-configs', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 
 export default function ContentPortalSidebar() {
@@ -37,15 +35,6 @@ export default function ContentPortalSidebar() {
         </div>
         <p className="text-xs text-[#84736F] ml-8">Quản lý nội dung</p>
       </div>
-      {hasRole('SYSTEM_ADMIN') && (
-        <NavLink
-          to="/admin/dashboard"
-          className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-[#845143] border-b border-[#FFE2D9] hover:bg-[#FFF8F6] transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Về trang Admin
-        </NavLink>
-      )}
       {hasRole('MODERATOR') && (
         <NavLink
           to="/moderator"

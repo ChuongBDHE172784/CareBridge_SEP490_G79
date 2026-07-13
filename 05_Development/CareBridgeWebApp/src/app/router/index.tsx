@@ -48,7 +48,6 @@ import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopic
 import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
 import EditContentPage from '../../features/contentManagement/pages/EditContentPage';
 import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
-import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
 import PregnancyExerciseListPage from '../../features/contentManagement/pages/PregnancyExerciseListPage';
 import PregnancyExerciseDetailPage from '../../features/contentManagement/pages/PregnancyExerciseDetailPage';
 import CreatePregnancyExercisePage from '../../features/contentManagement/pages/CreatePregnancyExercisePage';
@@ -137,19 +136,14 @@ export const router = createBrowserRouter([
               { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/notifications', element: <NotificationCenterPage /> },
               { path: '/settings/privacy', element: <PrivacySettingsPage /> },
-              {
-                element: <ContentLayout />,
-                children: [
-                  { path: '/posture-configs', element: <PostureConfigListPage /> },
-                  { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
-                  { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
-                  { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
-                ],
-              },
+              { path: '/posture-configs', element: <PostureConfigListPage /> },
+              { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
+              { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
+              { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
             ],
           },
           {
-            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
+            element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN']} />,
             children: [
               {
                 element: <ContentLayout />,
@@ -173,16 +167,6 @@ export const router = createBrowserRouter([
                   { path: '/content/exercises/:exerciseId/preview', element: <ExercisePreviewPage /> },
                   { path: '/content/exercises/preview', element: <ExercisePreviewPage /> },
                 ],
-              },
-            ],
-          },
-          {
-            // ContentApprovalController is @PreAuthorize hasRole('SYSTEM_ADMIN') at class level
-            element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
-            children: [
-              {
-                element: <ContentLayout />,
-                children: [{ path: '/content/approval-queue', element: <ContentApprovalQueuePage /> }],
               },
             ],
           },

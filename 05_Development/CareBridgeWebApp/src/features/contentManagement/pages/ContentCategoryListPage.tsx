@@ -1,8 +1,166 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   createContentCategory,
   fetchContentCategories,
   updateContentCategory,
 } from '../services/contentApi';
 import type { CommunityTopic } from '../models/content';
-export default function ContentCategoryListPage() { const [items, setItems] = useState<CommunityTopic[]>([]); const [search, setSearch] = useState(''); const [name, setName] = useState(''); const [open, setOpen] = useState(false); const [error, setError] = useState<string | null>(null); useEffect(() => { fetchContentCategories(true).then(setItems).catch(() => setError('Không thể tải danh mục.')); }, []); const shown = items.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())); async function add() { try { const created = await createContentCategory({ name, icon: 'label' }); setItems((old) => [...old, created]); setName(''); setOpen(false); } catch { setError('Không thể tạo danh mục.'); } } async function toggle(item: CommunityTopic) { try { const updated = await updateContentCategory(item.id, { isHidden: !item.isHidden }); setItems((old) => old.map((current) => current.id === item.id ? updated : current)); } catch { setError('Không thể cập nhật trạng thái.'); } } return <div className="min-h-screen bg-background font-sans text-on-surface"><aside className="fixed inset-y-0 hidden w-72 bg-surface-container-low p-8 lg:block"><h1 className="text-3xl font-bold text-primary">CareTech Admin</h1><p className="mt-2 text-sm">Healthcare Portal</p><nav className="mt-16 space-y-3"><p className="rounded-full bg-primary-container px-5 py-3 text-on-primary">▣ Content Management</p></nav></aside><main className="lg:ml-72"><header className="flex items-center justify-between border-b border-outline-variant bg-surface p-6"><h2 className="text-xl font-bold">Healthcare Admin</h2><input placeholder="Tìm kiếm..." className="rounded-full border border-outline-variant px-4 py-2" /></header><div className="p-8 md:p-12"><div className="flex justify-between"><div><h2 className="text-3xl font-bold">Quản lý danh mục</h2><p className="mt-2 text-on-surface-variant">Quản lý các chuyên mục nội dung bài viết và câu hỏi thường gặp.</p></div><button onClick={() => setOpen(true)} className="rounded-full bg-primary px-6 py-3 font-semibold text-on-primary"><span className="material-symbols-outlined mr-2 align-middle">add</span>Thêm danh mục</button></div>{error && <p className="mt-5 rounded-xl bg-error-container p-3 text-error">{error}</p>}<section className="mt-7 bg-surface p-6"><div className="flex gap-4"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên danh mục..." className="w-80 rounded-xl border border-outline-variant px-4 py-3" /><select className="rounded-xl border border-outline-variant px-4"><option>Tất cả loại</option></select></div><div className="mt-6 overflow-x-auto"><table className="w-full min-w-[720px]"><thead className="border-b border-outline-variant text-left text-xs text-on-surface-variant"><tr><th className="p-3">TÊN DANH MỤC</th><th>DANH MỤC CHA</th><th>LOẠI</th><th>THỨ TỰ</th><th>SỐ BÀI</th><th>TRẠNG THÁI</th></tr></thead><tbody>{shown.map((item) => <tr key={item.id} className="border-b border-outline-variant"><td className="p-4 font-semibold"><span className="material-symbols-outlined mr-2 align-middle text-primary">folder</span>{item.name}</td><td>-</td><td><span className="rounded-full bg-secondary-container px-3 py-1 text-sm">Bài viết</span></td><td>{item.sortOrder}</td><td>—</td><td><button aria-label={item.isHidden ? `Hiện ${item.name}` : `Ẩn ${item.name}`} onClick={() => toggle(item)} className={`h-6 w-11 rounded-full ${item.isHidden ? 'bg-outline' : 'bg-primary'}`}><span className={`block h-5 w-5 rounded-full bg-white transition-transform ${item.isHidden ? 'translate-x-0.5' : 'translate-x-5'}`} /></button></td></tr>)}</tbody></table></div></section>{open && <div className="fixed inset-0 flex items-center justify-center bg-scrim/30"><form onSubmit={(e) => { e.preventDefault(); add(); }} className="w-full max-w-md rounded-3xl bg-surface p-7"><h3 className="text-xl font-bold">Thêm danh mục</h3><input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên danh mục" className="mt-5 w-full rounded-xl border border-outline-variant p-3" /><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setOpen(false)}>Hủy</button><button className="rounded-full bg-primary px-5 py-3 text-on-primary">Lưu</button></div></form></div>}</div></main></div>; }
+
+export default function ContentCategoryListPage() {
+  const [items, setItems] = useState<CommunityTopic[]>([]);
+  const [search, setSearch] = useState('');
+  const [name, setName] = useState('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchContentCategories(true)
+      .then(setItems)
+      .catch(() => setError('Không thể tải danh mục. Vui lòng thử lại.'))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const shownItems = useMemo(
+    () => items.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())),
+    [items, search],
+  );
+
+  async function addCategory() {
+    if (!name.trim()) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const created = await createContentCategory({ name: name.trim(), icon: 'label' });
+      setItems((current) => [...current, created]);
+      setName('');
+      setIsCreateOpen(false);
+    } catch {
+      setError('Không thể tạo danh mục. Vui lòng kiểm tra tên danh mục và thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function toggleCategory(item: CommunityTopic) {
+    setError(null);
+    try {
+      const updated = await updateContentCategory(item.id, { isHidden: !item.isHidden });
+      setItems((current) => current.map((entry) => (entry.id === item.id ? updated : entry)));
+    } catch {
+      setError('Không thể cập nhật trạng thái danh mục. Vui lòng thử lại.');
+    }
+  }
+
+  return (
+    <div className="p-8 font-sans text-on-surface">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="m-0 text-[26px] font-bold">Quản lý danh mục</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Tạo, cập nhật và ẩn các danh mục dùng cho nội dung CareBridge.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          className="flex items-center gap-2 rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-on-primary"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
+          Thêm danh mục
+        </button>
+      </div>
+
+      {error && <div className="mb-5 rounded-xl bg-error-container px-4 py-3 text-sm text-error">{error}</div>}
+
+      <section className="rounded-2xl bg-surface p-6 shadow-md">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full max-w-sm">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm theo tên danh mục..."
+              className="w-full rounded-2xl border border-outline-variant bg-surface py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary"
+            />
+          </div>
+          <span className="text-sm text-on-surface-variant">{shownItems.length} danh mục</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse">
+            <thead>
+              <tr className="border-b-2 border-surface-container-highest text-left">
+                {['DANH MỤC', 'MÔ TẢ', 'THỨ TỰ', 'TRẠNG THÁI', 'HÀNH ĐỘNG'].map((label) => (
+                  <th key={label} className="px-2 py-3 text-[11px] font-semibold tracking-[0.05em] text-outline">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} className="py-12 text-center text-outline">Đang tải danh mục...</td></tr>
+              ) : shownItems.length === 0 ? (
+                <tr><td colSpan={5} className="py-12 text-center text-outline">Không tìm thấy danh mục phù hợp.</td></tr>
+              ) : shownItems.map((item) => (
+                <tr key={item.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                  <td className="px-2 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary">folder</span>
+                      <span className="font-semibold text-sm">{item.name}</span>
+                    </div>
+                  </td>
+                  <td className="max-w-sm px-2 py-3.5 text-[13px] text-on-surface-variant">{item.description || '—'}</td>
+                  <td className="px-2 py-3.5 text-sm text-on-surface-variant">{item.sortOrder}</td>
+                  <td className="px-2 py-3.5">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.isHidden ? 'bg-surface-container-high text-on-surface-variant' : 'bg-[#E6F4EA] text-[#137333]'}`}>
+                      {item.isHidden ? 'Đã ẩn' : 'Đang hiển thị'}
+                    </span>
+                  </td>
+                  <td className="px-2 py-3.5">
+                    <button
+                      type="button"
+                      aria-label={item.isHidden ? `Hiện ${item.name}` : `Ẩn ${item.name}`}
+                      onClick={() => toggleCategory(item)}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${item.isHidden ? 'bg-outline' : 'bg-primary'}`}
+                    >
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${item.isHidden ? 'left-0.5' : 'left-5'}`} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-scrim/30 p-4">
+          <form
+            onSubmit={(event) => { event.preventDefault(); void addCategory(); }}
+            className="w-full max-w-md rounded-2xl bg-surface p-7 shadow-xl"
+          >
+            <h2 className="text-xl font-bold">Thêm danh mục</h2>
+            <p className="mt-1 text-sm text-on-surface-variant">Danh mục sẽ dùng chung cho nội dung trong hệ thống.</p>
+            <label className="mt-5 block text-sm font-semibold">Tên danh mục</label>
+            <input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ví dụ: Dinh dưỡng thai kỳ"
+              className="mt-2 w-full rounded-xl border border-outline-variant p-3 outline-none focus:border-primary"
+            />
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsCreateOpen(false)} className="rounded-full px-5 py-3 text-sm font-semibold text-on-surface-variant">Hủy</button>
+              <button disabled={isSaving} className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary disabled:opacity-60">
+                {isSaving ? 'Đang lưu...' : 'Lưu danh mục'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
