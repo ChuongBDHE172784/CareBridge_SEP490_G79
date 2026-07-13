@@ -51,6 +51,18 @@ export async function fetchProfile(): Promise<UserProfile> {
   return data.data;
 }
 
+// UC-08: Update current user profile (avatarUrl, phone, displayName, etc.)
+export async function updateUserProfile(body: {
+	displayName?: string;
+	avatarUrl?: string | null;
+	phoneNumber?: string;
+	dateOfBirth?: string;
+	area?: string;
+}): Promise<UserProfile> {
+	const { data } = await apiClient.patch<ApiResponse<UserProfile>>('/api/v1/profile', body);
+	return data.data;
+}
+
 // UC-05: Forgot password
 export async function forgotPassword(request: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
   const { data } = await apiClient.post<ApiResponse<ForgotPasswordResponse>>('/api/v1/auth/forgot-password', request);
