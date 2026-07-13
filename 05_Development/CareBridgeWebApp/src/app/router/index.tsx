@@ -48,6 +48,7 @@ import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopic
 import CreateContentPage from '../../features/contentManagement/pages/CreateContentPage';
 import EditContentPage from '../../features/contentManagement/pages/EditContentPage';
 import ContentVersionHistoryPage from '../../features/contentManagement/pages/ContentVersionHistoryPage';
+import ContentApprovalQueuePage from '../../features/contentManagement/pages/ContentApprovalQueuePage';
 import PregnancyExerciseListPage from '../../features/contentManagement/pages/PregnancyExerciseListPage';
 import PregnancyExerciseDetailPage from '../../features/contentManagement/pages/PregnancyExerciseDetailPage';
 import CreatePregnancyExercisePage from '../../features/contentManagement/pages/CreatePregnancyExercisePage';
@@ -129,6 +130,7 @@ export const router = createBrowserRouter([
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
+              { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
 { path: '/security/incidents', element: <SecurityIncidentListPage /> },
               { path: '/security/events', element: <SecurityEventsPage /> },
               { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },

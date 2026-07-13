@@ -5,9 +5,19 @@ import { useAuth } from '../../shared/auth/useAuth';
 // so the Admin and ModPortal sidebars read as one consistent design system.
 const NAV_LINKS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
-  // '/moderator' role-aware-redirects to the page each role actually has backend access to
-  // (ModeratorIndexRedirect) — MODERATOR -> safety-cases queue, SYSTEM_ADMIN -> community dashboard.
-  { to: '/moderator', label: 'Kiểm duyệt', icon: 'shield', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
+  { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/expert-trust-management', label: 'Tin cậy chuyên gia', icon: 'health_and_safety', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/partners/verification', label: 'Xét duyệt đối tác', icon: 'handshake', roles: ['SYSTEM_ADMIN'] },
+  { to: '/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
+  { to: '/moderator/dashboard', label: 'Tổng quan cộng đồng', icon: 'groups', roles: ['SYSTEM_ADMIN'] },
+  { to: '/moderator/safety-rules', label: 'Quy tắc AI', icon: 'rule', roles: ['SYSTEM_ADMIN'] },
+  { to: '/moderator/impact-report', label: 'Báo cáo tác động', icon: 'insights', roles: ['SYSTEM_ADMIN'] },
+  { to: '/moderator/system-configuration', label: 'Cấu hình hệ thống', icon: 'tune', roles: ['SYSTEM_ADMIN'] },
+  { to: '/security/incidents', label: 'Sự cố bảo mật', icon: 'security', roles: ['SYSTEM_ADMIN'] },
+  { to: '/security/events', label: 'Sự kiện bảo mật', icon: 'policy', roles: ['SYSTEM_ADMIN'] },
+  { to: '/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
+  { to: '/settings/privacy', label: 'Quyền riêng tư', icon: 'privacy_tip', roles: ['SYSTEM_ADMIN'] },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
   { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
