@@ -8,13 +8,7 @@ const NAV_LINKS = [
   // '/moderator' role-aware-redirects to the page each role actually has backend access to
   // (ModeratorIndexRedirect) — MODERATOR -> safety-cases queue, SYSTEM_ADMIN -> community dashboard.
   { to: '/moderator', label: 'Kiểm duyệt', icon: 'shield', roles: ['MODERATOR', 'SYSTEM_ADMIN'] },
-  { to: '/content/dashboard', label: 'Tổng quan CMS', icon: 'article', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/list', label: 'Thư viện', icon: 'folder', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/exercises', label: 'Bài tập thai kỳ', icon: 'fitness_center', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
-  { to: '/content/faq', label: 'FAQ', icon: 'help', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/checklists', label: 'Checklist', icon: 'checklist', roles: ['CONTENT_ADMIN', 'SYSTEM_ADMIN'] },
-  { to: '/content/topics', label: 'Danh mục', icon: 'category', roles: ['MODERATOR', 'CONTENT_ADMIN'] },
+  { to: '/content/dashboard', label: 'Quản lý nội dung', icon: 'article', roles: ['SYSTEM_ADMIN'] },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
   { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
@@ -36,7 +30,11 @@ export default function AdminLayout() {
 
   // ModPortal pages (/moderator/*) render their own full-page sidebar (ModPortalSidebar) —
   // skip this layout's sidebar/margin here to avoid a double ml-64 offset (empty gap bug).
-  if (location.pathname.startsWith('/moderator')) {
+  if (
+    location.pathname.startsWith('/moderator') ||
+    location.pathname.startsWith('/content') ||
+    location.pathname.startsWith('/posture-configs')
+  ) {
     return <Outlet />;
   }
 

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AuthLayout from '../layouts/AuthLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
 import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
@@ -136,45 +137,63 @@ export const router = createBrowserRouter([
               { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/notifications', element: <NotificationCenterPage /> },
               { path: '/settings/privacy', element: <PrivacySettingsPage /> },
-              { path: '/posture-configs', element: <PostureConfigListPage /> },
-              { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
-              { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
-              { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
+              {
+                element: <ContentLayout />,
+                children: [
+                  { path: '/posture-configs', element: <PostureConfigListPage /> },
+                  { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
+                  { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
+                  { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
+                ],
+              },
             ],
           },
           {
             element: <ProtectedRoute requiredRoles={['CONTENT_ADMIN', 'SYSTEM_ADMIN']} />,
             children: [
-              { path: '/content/dashboard', element: <ContentDashboardPage /> },
-              { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
-              { path: '/content/create', element: <CreateContentPage /> },
-              { path: '/content/list', element: <ContentListPage /> },
-              { path: '/content/:id', element: <ContentDetailPage /> },
-              { path: '/content/:id/edit', element: <EditContentPage /> },
-              { path: '/content/:id/preview', element: <ContentPreviewPage /> },
-              { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
-              { path: '/content/faq', element: <FaqListPage /> },
-              { path: '/content/checklists', element: <ChecklistListPage /> },
-              { path: '/content/categories', element: <ContentCategoryListPage /> },
-              { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
-              { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
-              { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
-              { path: '/content/exercises/:exerciseId', element: <PregnancyExerciseDetailPage /> },
-              { path: '/content/exercises/:exerciseId/edit', element: <EditPregnancyExercisePage /> },
-              { path: '/content/exercises/:exerciseId/preview', element: <ExercisePreviewPage /> },
-              { path: '/content/exercises/preview', element: <ExercisePreviewPage /> },
+              {
+                element: <ContentLayout />,
+                children: [
+                  { path: '/content/dashboard', element: <ContentDashboardPage /> },
+                  { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
+                  { path: '/content/create', element: <CreateContentPage /> },
+                  { path: '/content/list', element: <ContentListPage /> },
+                  { path: '/content/:id', element: <ContentDetailPage /> },
+                  { path: '/content/:id/edit', element: <EditContentPage /> },
+                  { path: '/content/:id/preview', element: <ContentPreviewPage /> },
+                  { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
+                  { path: '/content/faq', element: <FaqListPage /> },
+                  { path: '/content/checklists', element: <ChecklistListPage /> },
+                  { path: '/content/categories', element: <ContentCategoryListPage /> },
+                  { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
+                  { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
+                  { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
+                  { path: '/content/exercises/:exerciseId', element: <PregnancyExerciseDetailPage /> },
+                  { path: '/content/exercises/:exerciseId/edit', element: <EditPregnancyExercisePage /> },
+                  { path: '/content/exercises/:exerciseId/preview', element: <ExercisePreviewPage /> },
+                  { path: '/content/exercises/preview', element: <ExercisePreviewPage /> },
+                ],
+              },
             ],
           },
           {
             // ContentApprovalController is @PreAuthorize hasRole('SYSTEM_ADMIN') at class level
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
-              { path: '/content/approval-queue', element: <ContentApprovalQueuePage /> },
+              {
+                element: <ContentLayout />,
+                children: [{ path: '/content/approval-queue', element: <ContentApprovalQueuePage /> }],
+              },
             ],
           },
           {
             element: <ProtectedRoute requiredRoles={['MODERATOR', 'CONTENT_ADMIN']} />,
-            children: [{ path: '/content/topics', element: <ManageTopicsPage /> }],
+            children: [
+              {
+                element: <ContentLayout />,
+                children: [{ path: '/content/topics', element: <ManageTopicsPage /> }],
+              },
+            ],
           },
           {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
