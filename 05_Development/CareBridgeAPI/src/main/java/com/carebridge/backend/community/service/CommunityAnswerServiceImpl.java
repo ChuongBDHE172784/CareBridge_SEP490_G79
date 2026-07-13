@@ -9,6 +9,7 @@ import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.exception.AnswerNotFoundException;
+import com.carebridge.backend.community.exception.AnswerNotEditableException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
@@ -71,7 +72,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         }
 
         if (answer.getStatus() == AnswerStatus.HIDDEN || answer.getStatus() == AnswerStatus.DELETED) {
-            throw new AccessDeniedException("Only the author can edit this answer");
+            throw new AnswerNotEditableException(answerId.toString());
         }
 
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
@@ -98,6 +99,11 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         CommunityAnswer answer = answerRepository.findById(answerId)
             .orElseThrow(() -> new AnswerNotFoundException(answerId.toString()));
 
+        if (!answer.getAuthorId().equals(callerId) && !isModeratorCaller) {
+            throw new AccessDeniedException("You do not own this answer");
+        }
+
+        boolean wasDeleted = answer.getStatus() == AnswerStatus.DELETED;
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
 
         answer.setStatus(AnswerStatus.DELETED);
@@ -105,6 +111,11 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
         if (wasApproved) {
             questionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
+
+        if (!wasDeleted) {
+            auditService.log(AuditAction.COMMUNITY_ANSWER_DELETED, callerId,
+                "CommunityAnswer", answerId.toString(), "deleted");
         }
     }
 

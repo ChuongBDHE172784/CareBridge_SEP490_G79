@@ -19,6 +19,7 @@ import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +56,7 @@ class CommunityQuestionDetailServiceImplTest {
     @Mock CommunityAnswerMapper answerMapper;
     @Mock AuditService auditService;
     @Mock CommunityAuthorDisplayResolver authorDisplayResolver;
+    @Mock ExpertProfileRepository expertProfileRepository;
     @InjectMocks CommunityQuestionServiceImpl questionService;
 
     private static final UUID QUESTION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

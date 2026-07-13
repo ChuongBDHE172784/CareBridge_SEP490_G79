@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
@@ -25,6 +26,7 @@ import com.carebridge.backend.community.mapper.CommunityAnswerMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -60,6 +62,9 @@ class CommunityAnswerServiceImplTest {
 
     @Mock
     private CommunityAuthorDisplayResolver authorDisplayResolver;
+
+    @Mock
+    private ExpertProfileRepository expertProfileRepository;
 
     @InjectMocks
     private CommunityAnswerServiceImpl service;
@@ -186,6 +191,7 @@ class CommunityAnswerServiceImplTest {
                 .hasMessageContaining("COM-007");
 
         verify(answerRepository, never()).save(any());
+        verifyNoInteractions(auditService);
     }
 
     // COM56-TC: isPersonalExperience=false — still saves with expertLabeled=false (ADR-COM-005)
@@ -378,6 +384,7 @@ class CommunityAnswerServiceImplTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(answerRepository, never()).save(any());
+        verifyNoInteractions(auditService);
     }
 
     // TC-201-5: MODERATOR bypasses ownership check

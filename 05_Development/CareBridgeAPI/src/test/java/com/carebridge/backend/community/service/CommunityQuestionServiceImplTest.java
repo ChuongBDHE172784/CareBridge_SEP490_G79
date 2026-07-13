@@ -30,6 +30,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionLikeReposito
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.entity.AnswerStatus;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,6 +77,9 @@ class CommunityQuestionServiceImplTest {
 
     @Mock
     private CommunityAuthorDisplayResolver authorDisplayResolver;
+
+    @Mock
+    private ExpertProfileRepository expertProfileRepository;
 
     @InjectMocks
     private CommunityQuestionServiceImpl questionService;
