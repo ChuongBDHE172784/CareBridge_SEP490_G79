@@ -1,6 +1,6 @@
 package com.carebridge.backend.expertverification.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,7 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Data
 public class SubmitCredentialRequest {
 
- @NotBlank(message = "credentialType must not be blank")
+ @Pattern(regexp = "MEDICAL_LICENSE|DEGREE|CERTIFICATE|IDENTITY_DOCUMENT|PROFESSIONAL_LICENSE",
+          message = "Loai chung chi khong hop le")
  @Size(max = 50)
  private String credentialType;
 
