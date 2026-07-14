@@ -12,21 +12,9 @@ import {
 import type { PendingContentItem, ModerationHistoryItem, ModerationContentDetail, ReportTargetType } from '../models/moderation';
 import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
 
-type PendingActionType = 'HIDE' | 'LOCK' | 'REQUEST_REVISION';
+type PendingActionType = 'REQUEST_REVISION';
 
 const PENDING_ACTION_CONFIG: Record<PendingActionType, { title: string; reasonLabel: string; reasonPlaceholder: string; tone: 'default' | 'danger' }> = {
-  HIDE: {
-    title: 'Ẩn nội dung này?',
-    reasonLabel: 'Lý do ẩn nội dung (bắt buộc)',
-    reasonPlaceholder: 'Nhập lý do ẩn nội dung này...',
-    tone: 'danger',
-  },
-  LOCK: {
-    title: 'Khóa thảo luận này?',
-    reasonLabel: 'Lý do khóa thảo luận (bắt buộc)',
-    reasonPlaceholder: 'Nhập lý do khóa thảo luận này...',
-    tone: 'default',
-  },
   REQUEST_REVISION: {
     title: 'Yêu cầu tác giả chỉnh sửa?',
     reasonLabel: 'Nội dung cần chỉnh sửa (bắt buộc)',
@@ -107,8 +95,8 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  // Backend (C6, ADR-006 của UC-100) bắt buộc lý do khi HIDE/LOCK/REQUEST_REVISION — thu thập
-  // qua ConfirmDialog (shared/components/ConfirmDialog.tsx) thay vì window.prompt().
+  // A first-time review can request an author revision. Hide/lock belong to reported or already
+  // published content workflows, not this PENDING-only queue.
   const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
     setDialogError('');
     setPendingAction({ item, type });
@@ -292,24 +280,6 @@ export default function PendingContentQueuePage() {
                           <button
                             type="button"
                             disabled={actioningId === item.targetId}
-                            onClick={() => openPendingAction(item, 'HIDE')}
-                            className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
-                          </button>
-                          {item.targetType === 'QUESTION' && (
-                            <button
-                              type="button"
-                              disabled={actioningId === item.targetId}
-                              onClick={() => openPendingAction(item, 'LOCK')}
-                              className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
-                            >
-                              {actioningId === item.targetId ? 'Đang xử lý...' : 'Khóa'}
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={actioningId === item.targetId}
                             onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
                             className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
                           >
@@ -333,7 +303,7 @@ export default function PendingContentQueuePage() {
         key={pendingAction ? `${pendingAction.item.targetId}-${pendingAction.type}` : 'none'}
         open={pendingAction !== null}
         title={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].title : ''}
-        icon={pendingAction?.type === 'HIDE' ? 'visibility_off' : pendingAction?.type === 'LOCK' ? 'lock' : 'edit_note'}
+        icon="edit_note"
         tone={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].tone : 'default'}
         reasonLabel={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonLabel : ''}
         reasonPlaceholder={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonPlaceholder : ''}
