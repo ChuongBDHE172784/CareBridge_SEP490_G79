@@ -12,63 +12,6 @@ function Field({ label, children, required = false }: { label: string; children:
   );
 }
 
-function SelectField({ label, children, value, onChange, required = false }: {
-  label: string; children: React.ReactNode; value: string; onChange: (value: string) => void; required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
-      <select
-        className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
-
-/* ── Issuer options (Vietnam medical licensing authorities) ───────────── */
-
-const ISSUERS = [
-  'Bộ Y tế',
-  'Sở Y tế Hà Nội',
-  'Sở Y tế TP Hồ Chí Minh',
-  'Sở Y tế Đà Nẵng',
-  'Sở Y tế khác',
-  'Hội đồng Y khoa Việt Nam',
-  'Trường Đại học Y Hà Nội',
-  'Trường Đại học Y dược TP Hồ Chí Minh',
-  'Trường Đại học Y dược Huế',
-  'Trường Đại học Y dược Cần Thơ',
-  'Học viện Y học cổ truyền Việt Nam',
-  'Bộ Giáo dục và Đào tạo',
-  'Trường Đại học khác',
-  'Cơ quan đăng ký hành nghề y tế',
-  'UBND tỉnh / thành phố',
-  'Hội nghề nghiệp y tế',
-  'Tổ chức y tế quốc tế',
-  'Khác',
-];
-
-/* ── File type helpers ───────────────────────────────────────────────── */
-
-function getFileExt(url: string): string {
-  const clean = url.split('?')[0];
-  const dot = clean.lastIndexOf('.');
-  return dot >= 0 ? clean.substring(dot + 1).toLowerCase() : '';
-}
-
-function isImageFile(url: string): boolean {
-  return ['jpg','jpeg','png','gif','webp','bmp'].includes(getFileExt(url));
-}
-
-const DOC_EXTS = new Set(['pdf','doc','docx','txt','rtf','odt','xls','xlsx','ppt','pptx']);
-
-/* ── Modal for viewing attachment files ───────────────────────────────── */
-
-function CredentialFileViewModal({ url, fileName, onClose }: { url: string; fileName?: string; onClose: () => void }) {
   if (!url) return null;
   const ext = getFileExt(url);
   const isImage = isImageFile(url);
@@ -130,7 +73,6 @@ export default function VerificationDocumentsPage() {
     issuedDate: '',
     expiryDate: '',
   });
-  const [customIssuer, setCustomIssuer] = useState('');
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -150,7 +92,6 @@ export default function VerificationDocumentsPage() {
 
   const openUploadForm = () => {
     setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
-    setCustomIssuer('');
     setSelectedFile(null);
     setError(null);
     setShowUpload(true);
@@ -165,12 +106,9 @@ export default function VerificationDocumentsPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const body = form.issuer === 'Khác' && customIssuer.trim()
-        ? { ...form, issuer: customIssuer.trim() }
-        : form;
+  const body = form;
       await submitCredential({ body, file: selectedFile! });
       setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
-      setCustomIssuer('');
       setSelectedFile(null);
       setShowUpload(false);
       await load();
@@ -224,8 +162,6 @@ export default function VerificationDocumentsPage() {
     PROFESSIONAL_LICENSE: 'Giấy phép hành nghề',
   };
 
-  const isOtherIssuer = form.issuer === 'Khác';
-
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -247,125 +183,33 @@ export default function VerificationDocumentsPage() {
             <div className="mb-2 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
           )}
 
-          <SelectField label="Loại chứng chỉ" required value={form.credentialType} onChange={(v) => setForm({ ...form, credentialType: v })}>
+        <Field label="Loại chứng chỉ" required>
+          <select
+            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+            value={form.credentialType}
+            onChange={(e) => setForm({ ...form, credentialType: e.target.value })}
+          >
             <option value="">-- Chọn loại --</option>
             <option value="MEDICAL_LICENSE">Giấy phép hành nghề y</option>
             <option value="DEGREE">Bằng cấp chuyên môn</option>
             <option value="CERTIFICATE">Chứng chỉ đào tạo</option>
             <option value="IDENTITY_DOCUMENT">Giấy tờ định danh</option>
             <option value="PROFESSIONAL_LICENSE">Giấy phép hành nghề</option>
-          </SelectField>
+          </select>
+        </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Số chứng chỉ">
               <input className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
                 value={form.credentialNumber} onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })} />
-            </Field>
-            <div>
-              <SelectField label="Nơi cấp" value={form.issuer} onChange={(v) => setForm({ ...form, issuer: v })}>
-                <option value="">-- Chọn nơi cấp --</option>
-                {ISSUERS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </SelectField>
-              {form.issuer === 'Khác' && (
-                <input
-                  className="mt-2 block w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Nhập tên cơ quan cấp..."
-                  value={customIssuer}
-                  onChange={(e) => setCustomIssuer(e.target.value)}
-                  autoFocus
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Ngày cấp" required>
-              <input type="date" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-                value={form.issuedDate} onChange={(e) => setForm({ ...form, issuedDate: e.target.value })} />
-            </Field>
-            <Field label="Ngày hết hạn (tùy chọn)">
-              <input type="date" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-                value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
-            </Field>
-          </div>
-
-          <Field label="Tài liệu đính kèm (PDF, JPG, PNG - tối đa 20MB)">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
-              onChange={handleFileChange} />
-            {selectedFile && (
-              <p className="mt-1 text-xs text-gray-500">
-                Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-              </p>
-            )}
-          </Field>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={cancelUpload} className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Hủy</button>
-            <button type="submit" disabled={submitting || !form.credentialType || !form.issuedDate}
-              className="px-4 py-2 rounded bg-primary text-white font-medium disabled:opacity-50">
-              {submitting ? 'Đang tải...' : 'Gửi xét duyệt'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div className="space-y-4">
-        {credentials.length === 0 && !loading && !error && (
-          <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-gray-200">
-            Chưa có chứng chỉ nào. Nhấn "Tải lên chứng chỉ" để bắt đầu.
-          </div>
-        )}
-
-        {credentials
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .map((cred) => (
-            <div
-              key={cred.credentialId}
-              style={{
-                maxHeight: deletingId === cred.credentialId ? 0 : 500,
-                opacity: deletingId === cred.credentialId ? 0 : 1,
-                marginBottom: deletingId === cred.credentialId ? 0 : undefined,
-                overflow: 'hidden',
-                transition: 'max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease',
-              }}
-            >
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="font-semibold text-gray-900">{typeLabels[cred.credentialType] || cred.credentialType}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium border ${statusStyles[cred.reviewStatus] || 'bg-gray-50'}`}>
-                        {cred.reviewStatus}
-                      </span>
-                    </div>
-                    {cred.credentialNumber && <p className="text-sm text-gray-600">Số: {cred.credentialNumber}</p>}
-                    {cred.issuer && <p className="text-sm text-gray-600">Nơi cấp: {cred.issuer}</p>}
-                    <p className="text-sm text-gray-500 mt-1">
-                      Ngày cấp: {cred.issuedDate}
-                      {cred.expiryDate && <> · Hết hạn: {cred.expiryDate}</>}
-                    </p>
-                    {cred.reviewNote && (
-                      <p className="text-sm text-gray-600 mt-2 italic">Ghi chú: {cred.reviewNote}</p>
-                    )}
-                    <p className="text-xs text-gray-400 mt-2">
-                      Gửi lúc: {new Date(cred.createdAt).toLocaleString('vi-VN')}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 ml-4">
-                    {cred.fileUrl && (
-                      <button onClick={() => setViewFileUrl(cred.fileUrl)}
-                        className="text-sm text-primary hover:text-primary/80 font-medium">
-                        Xem tài liệu
-                      </button>
-                    )}
-                    <button onClick={() => handleDelete(cred.credentialId)}
-                      disabled={deletingId === cred.credentialId}
-                      className="text-sm text-red-600 hover:text-red-800 disabled:opacity-40">
-                      {deletingId === cred.credentialId ? 'Đang xóa...' : 'Xóa'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+        <Field label="Nơi cấp">
+          <input
+            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+            value={form.issuer}
+            onChange={(e) => setForm({ ...form, issuer: e.target.value })}
+            placeholder="T\u00ean c\u01a1\u01a1n / t\u1ed5 ch\u1ee9c c\u1ea5p"
+          />
+        </Field>
               {deletingId === cred.credentialId && (
                 <div className="flex items-center justify-center py-2 text-sm text-gray-400">
                   Đang xóa...
