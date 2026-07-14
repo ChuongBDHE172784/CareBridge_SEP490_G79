@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStaffContentList, searchContent } from '../services/contentApi';
+import { fetchStaffContentList } from '../services/contentApi';
 import type { ContentListItem, ContentSearchItem, ContentType } from '../models/content';
 import { TYPE_LABELS } from '../models/content';
 
@@ -47,20 +47,14 @@ export default function ContentListPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (keyword) {
-        const data = await searchContent({
-          keyword,
-          type: typeFilter || undefined,
-          page,
-          size: pageSize,
-        });
-        setItems(data.content);
-        setTotal(data.totalElements);
-      } else {
-        const data = await fetchStaffContentList(undefined, page, pageSize);
-        setItems(data.content);
-        setTotal(data.totalElements);
-      }
+      const data = await fetchStaffContentList({
+        keyword: keyword || undefined,
+        type: typeFilter || undefined,
+        page,
+        size: pageSize,
+      });
+      setItems(data.content);
+      setTotal(data.totalElements);
     } catch {
       setItems([]);
       setTotal(0);

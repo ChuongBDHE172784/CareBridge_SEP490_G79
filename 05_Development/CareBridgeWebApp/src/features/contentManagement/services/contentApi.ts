@@ -52,13 +52,16 @@ export async function fetchStaffContentDetail(id: string): Promise<ContentDetail
   return res.data.data;
 }
 
-export async function fetchStaffContentList(
-  status?: ContentStatus,
-  page = 0,
-  size = 50,
+export async function fetchStaffContentList(params: {
+  status?: ContentStatus;
+  type?: ContentType;
+  keyword?: string;
+  page?: number;
+  size?: number;
+} = {},
 ): Promise<PaginatedResponse<ContentDetail>> {
   const res = await apiClient.get<ApiResponse<PaginatedResponse<ContentDetail>>>('/api/v1/admin/content', {
-    params: { status, page, size },
+    params: { ...params, page: params.page ?? 0, size: params.size ?? 50 },
   });
   return res.data.data;
 }
