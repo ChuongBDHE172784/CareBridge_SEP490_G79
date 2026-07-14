@@ -57,7 +57,7 @@ export default function ContentListPage() {
         setItems(data.content);
         setTotal(data.totalElements);
       } else {
-        const data = await fetchStaffContentList();
+        const data = await fetchStaffContentList(undefined, page, pageSize);
         setItems(data.content);
         setTotal(data.totalElements);
       }
