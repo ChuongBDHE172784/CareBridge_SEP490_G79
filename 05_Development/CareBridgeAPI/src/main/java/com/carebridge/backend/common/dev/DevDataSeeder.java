@@ -34,6 +34,7 @@ import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
+import com.carebridge.backend.content.entity.ReportCategory;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportSource;
 import com.carebridge.backend.content.entity.ReportTargetType;
@@ -632,10 +633,11 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     private void seedAutomatedReport(UUID targetId, ReportTargetType targetType) {
-        if (contentReportRepository.findByTargetIdAndCategory(targetId, "AUTO_FLAG").isPresent()) return;
+        String category = ReportCategory.UNSAFE_ADVICE.name();
+        if (contentReportRepository.findByTargetIdAndCategory(targetId, category).isPresent()) return;
         Instant now = Instant.now();
         contentReportRepository.save(ContentReport.builder().targetId(targetId).targetType(targetType)
-                .category("AUTO_FLAG").description("System safety classifier signal")
+                .category(category).description("System safety classifier signal")
                 .reportSource(ReportSource.AUTOMATED).status(ReportStatus.PENDING)
                 .createdAt(now).updatedAt(now).build());
     }
