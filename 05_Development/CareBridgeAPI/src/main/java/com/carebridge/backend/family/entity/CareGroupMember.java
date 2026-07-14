@@ -3,7 +3,9 @@ package com.carebridge.backend.family.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -55,6 +57,7 @@ public class CareGroupMember {
     @Column(name = "invited_phone", length = 20)
     private String invitedPhone;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "permission_json", columnDefinition = "jsonb")
     private String permissionJson;
 

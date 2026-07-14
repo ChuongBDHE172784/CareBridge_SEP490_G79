@@ -12,23 +12,6 @@ return (
 );
 }
 
-function SelectField({ label, children, value, onChange, required = false }: {
-label: string; children: React.ReactNode; value: string; onChange: (value: string) => void; required?: boolean;
-}) {
-return (
-<div>
-<label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
-<select
-className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-value={value}
-onChange={(e) => onChange(e.target.value)}
->
-{children}
-</select>
-</div>
-);
-}
-
 /* ── File type helpers ───────────────────────────────────────────────── */
 
 function getFileExt(url: string): string {
@@ -54,7 +37,6 @@ const isPdf = ext === 'pdf';
 return (
 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
 <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-{/* Header with download button */}
 <div className="flex items-center justify-between p-4 border-b">
 <div className="flex items-center gap-2 min-w-0">
 <span className="material-symbols-outlined text-gray-400">
@@ -63,11 +45,7 @@ return (
 <h3 className="font-semibold text-gray-800 truncate text-sm">{fileName || 'Xem tài liệu'}</h3>
 </div>
 <div className="flex items-center gap-2 flex-shrink-0">
-<a
-href={url}
-download
-className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
->
+<a href={url} download className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90">
 <span className="material-symbols-outlined text-[18px]">download</span>
 Tải về
 </a>
@@ -82,13 +60,11 @@ Tải về
 ) : (
 <div className="text-center py-12">
 <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 0 0 1-2-2V5a2 0 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 0 0 01-2 2z" />
+<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 </svg>
 <p className="text-gray-500 mb-2">Không thể xem trực tiếp định dạng .{ext}</p>
 <p className="text-xs text-gray-400 mb-4">Nhấn "Tải về" để mở bằng phần mềm tương ứng</p>
-<a href={url} download className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">
-Tải xuống
-</a>
+<a href={url} download className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">Tải xuống</a>
 </div>
 )}
 </div>
@@ -120,8 +96,8 @@ const [deletingId, setDeletingId] = useState<string | null>(null);
 
 const load = async () => {
 try {
-const data = await getMyCredentials();
-setCredentials(data);
+const creds = await getMyCredentials();
+setCredentials(creds);
 } catch (e: any) {
 setError(e.response?.data?.message ?? 'Không thể tải chứng chỉ');
 } finally {
@@ -206,10 +182,7 @@ return (
 <div className="max-w-3xl mx-auto p-6">
 <div className="flex items-center justify-between mb-6">
 <h1 className="text-2xl font-bold text-on-surface">Chứng chỉ &amp; Giấy tờ</h1>
-<button
-onClick={openUploadForm}
-className="px-4 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary/90"
->
+<button onClick={openUploadForm} className="px-4 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary/90">
 Tải lên chứng chỉ
 </button>
 </div>
@@ -226,39 +199,54 @@ Tải lên chứng chỉ
 <div className="mb-2 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
 )}
 
-<SelectField label="Loại chứng chỉ" required value={form.credentialType} onChange={(v) => setForm({ ...form, credentialType: v })}>
+<Field label="Loại chứng chỉ" required>
+<select
+className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
+value={form.credentialType}
+onChange={(e) => setForm({ ...form, credentialType: e.target.value })}
+>
 <option value="">-- Chọn loại --</option>
 <option value="MEDICAL_LICENSE">Giấy phép hành nghề y</option>
 <option value="DEGREE">Bằng cấp chuyên môn</option>
 <option value="CERTIFICATE">Chứng chỉ đào tạo</option>
 <option value="IDENTITY_DOCUMENT">Giấy tờ định danh</option>
 <option value="PROFESSIONAL_LICENSE">Giấy phép hành nghề</option>
-</SelectField>
+</select>
+</Field>
 
 <div className="grid grid-cols-2 gap-4">
 <Field label="Số chứng chỉ">
 <input className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-value={form.credentialNumber} onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })} />
+value={form.credentialNumber}
+onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })}
+/>
 </Field>
 <Field label="Nơi cấp">
 <input className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} />
+value={form.issuer}
+onChange={(e) => setForm({ ...form, issuer: e.target.value })}
+placeholder="Tên cơ quan / tổ chức cấp"
+/>
 </Field>
 </div>
 
 <div className="grid grid-cols-2 gap-4">
 <Field label="Ngày cấp" required>
 <input type="date" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-value={form.issuedDate} onChange={(e) => setForm({ ...form, issuedDate: e.target.value })} />
+value={form.issuedDate}
+onChange={(e) => setForm({ ...form, issuedDate: e.target.value })}
+/>
 </Field>
 <Field label="Ngày hết hạn (tùy chọn)">
 <input type="date" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+value={form.expiryDate}
+onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+/>
 </Field>
 </div>
 
 <Field label="Tài liệu đính kèm (PDF, JPG, PNG - tối đa 20MB)">
-<input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
+<input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx" className="mt-1 block w-full text-sm"
 onChange={handleFileChange} />
 {selectedFile && (
 <p className="mt-1 text-xs text-gray-500">
@@ -268,8 +256,7 @@ onChange={handleFileChange} />
 </Field>
 
 <div className="flex justify-end gap-3 pt-2">
-<button type="button" onClick={cancelUpload}
-className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Hủy</button>
+<button type="button" onClick={cancelUpload} className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Hủy</button>
 <button type="submit" disabled={submitting || !form.credentialType || !form.issuedDate}
 className="px-4 py-2 rounded bg-primary text-white font-medium disabled:opacity-50">
 {submitting ? 'Đang tải...' : 'Gửi xét duyệt'}
@@ -322,18 +309,14 @@ Gửi lúc: {new Date(cred.createdAt).toLocaleString('vi-VN')}
 </div>
 <div className="flex flex-col items-end gap-2 ml-4">
 {cred.fileUrl && (
-<button
-onClick={() => setViewFileUrl(cred.fileUrl)}
-className="text-sm text-primary hover:text-primary/80 font-medium"
->
+<button onClick={() => setViewFileUrl(cred.fileUrl)}
+className="text-sm text-primary hover:text-primary/80 font-medium">
 Xem tài liệu
 </button>
 )}
-<button
-onClick={() => handleDelete(cred.credentialId)}
+<button onClick={() => handleDelete(cred.credentialId)}
 disabled={deletingId === cred.credentialId}
-className="text-sm text-red-600 hover:text-red-800 disabled:opacity-40"
->
+className="text-sm text-red-600 hover:text-red-800 disabled:opacity-40">
 {deletingId === cred.credentialId ? 'Đang xóa...' : 'Xóa'}
 </button>
 </div>
@@ -349,11 +332,9 @@ className="text-sm text-red-600 hover:text-red-800 disabled:opacity-40"
 </div>
 
 {viewFileUrl && (
-<CredentialFileViewModal
-url={viewFileUrl}
-onClose={() => setViewFileUrl(null)}
-/>
+<CredentialFileViewModal url={viewFileUrl} onClose={() => setViewFileUrl(null)} />
 )}
 </div>
 );
+
 }

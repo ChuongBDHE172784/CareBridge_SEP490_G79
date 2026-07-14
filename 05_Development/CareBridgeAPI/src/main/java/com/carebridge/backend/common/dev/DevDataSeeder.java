@@ -34,6 +34,7 @@ import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
+import com.carebridge.backend.content.entity.ReportCategory;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportSource;
 import com.carebridge.backend.content.entity.ReportTargetType;
@@ -65,7 +66,6 @@ import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -79,7 +79,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,7 +139,6 @@ public class DevDataSeeder implements ApplicationRunner {
     private final ContentRepository contentRepository;
     private final ChecklistTemplateRepository checklistTemplateRepository;
     private final ChecklistItemRepository checklistItemRepository;
-    private final JdbcTemplate jdbcTemplate;
 
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;
@@ -379,27 +377,19 @@ public class DevDataSeeder implements ApplicationRunner {
         }
     }
 
-    /**
-     * The live expert_profiles table carries extra legacy NOT NULL columns
-     * (display_name, years_of_experience, consultation_fee_vnd, ...) left over from a remote
-     * migration that are not mapped by ExpertProfile.java. A plain JPA save() on a fresh row
-     * fails on those columns, so the very first insert is done via JDBC, letting Postgres
-     * defaults fill the unmapped columns; every read/update afterwards goes through JPA as usual.
-     */
     private ExpertProfile insertExpertProfileRow(User expertUser, User admin, String specialty,
                                                   String professionalTitle, int experienceYears, String workplace) {
-        jdbcTemplate.update(
-            "INSERT INTO expert_profiles (user_id, display_name, years_of_experience, consultation_fee_vnd, "
-                + "specialty, professional_title, experience_years, workplace, consultation_scope, "
-                + "verification_status, verified_at, verified_by) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            expertUser.getId(), expertUser.getName(), experienceYears, 0L,
-            specialty, professionalTitle, experienceYears, workplace, "Tư vấn thai sản và chăm sóc mẹ bé",
-            VerificationStatus.APPROVED.name(), Timestamp.valueOf(LocalDateTime.now()), admin.getId());
-
-        return expertProfileRepository.findByUserId(expertUser.getId())
-            .orElseThrow(() -> new IllegalStateException(
-                "Failed to read back seeded expert_profiles row for " + expertUser.getEmail()));
+        return expertProfileRepository.save(ExpertProfile.builder()
+            .userId(expertUser.getId())
+            .specialty(specialty)
+            .professionalTitle(professionalTitle)
+            .experienceYears(experienceYears)
+            .workplace(workplace)
+            .consultationScope("Tư vấn thai sản và chăm sóc mẹ bé")
+            .verificationStatus(VerificationStatus.APPROVED)
+            .verifiedAt(LocalDateTime.now())
+            .verifiedBy(admin.getId())
+            .build());
     }
 
     /**
@@ -632,10 +622,11 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     private void seedAutomatedReport(UUID targetId, ReportTargetType targetType) {
-        if (contentReportRepository.findByTargetIdAndCategory(targetId, "AUTO_FLAG").isPresent()) return;
+        String category = ReportCategory.UNSAFE_ADVICE.name();
+        if (contentReportRepository.findByTargetIdAndCategory(targetId, category).isPresent()) return;
         Instant now = Instant.now();
         contentReportRepository.save(ContentReport.builder().targetId(targetId).targetType(targetType)
-                .category("AUTO_FLAG").description("System safety classifier signal")
+                .category(category).description("System safety classifier signal")
                 .reportSource(ReportSource.AUTOMATED).status(ReportStatus.PENDING)
                 .createdAt(now).updatedAt(now).build());
     }
