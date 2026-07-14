@@ -10,8 +10,19 @@ import '../../../core/network/api_client.dart';
 /// growth/milestones/vaccination, and trend chart. Calls GET /api/v1/babies/{babyId}.
 class BabyProfileDetailScreen extends StatefulWidget {
   final String babyId;
+  final bool embedded;
+  final VoidCallback? onSwitchBaby;
+  final VoidCallback? onAddBaby;
+  final VoidCallback? onProfileChanged;
 
-  const BabyProfileDetailScreen({super.key, required this.babyId});
+  const BabyProfileDetailScreen({
+    super.key,
+    required this.babyId,
+    this.embedded = false,
+    this.onSwitchBaby,
+    this.onAddBaby,
+    this.onProfileChanged,
+  });
 
   @override
   State<BabyProfileDetailScreen> createState() =>
@@ -38,11 +49,23 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   String? _error;
   _Tab _activeTab = _Tab.growth;
 
+  double get _horizontalPadding => widget.embedded ? 0 : 24;
+
   @override
   void initState() {
     super.initState();
     _selectionStorage.saveLastOpenedBabyProfileId(widget.babyId);
     _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(covariant BabyProfileDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.babyId != widget.babyId) {
+      _selectionStorage.saveLastOpenedBabyProfileId(widget.babyId);
+      _activeTab = _Tab.growth;
+      _loadProfile();
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -79,7 +102,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Future<void> _openEditProfile() async {
     await context.push('/babies/${widget.babyId}/edit');
-    if (mounted) _loadProfile();
+    if (mounted) {
+      await _loadProfile();
+      widget.onProfileChanged?.call();
+    }
   }
 
   void _openLogSummary() {
@@ -88,11 +114,27 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Future<void> _openAddMilestone() async {
     await context.push('/babies/${widget.babyId}/milestones/add');
-    if (mounted) _loadProfile();
+    if (mounted) {
+      await _loadProfile();
+      widget.onProfileChanged?.call();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      if (_loading) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 56),
+          child: Center(
+            child: CircularProgressIndicator(color: _primaryContainer),
+          ),
+        );
+      }
+      if (_error != null) return _buildErrorState();
+      return _buildEmbeddedContent();
+    }
+
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
@@ -157,6 +199,64 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     );
   }
 
+  Widget _buildEmbeddedContent() {
+    final p = _profile!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildEmbeddedToolbar(p),
+        const SizedBox(height: 14),
+        _buildIdentityHeader(p),
+        _buildSummary24h(),
+        _buildQuickActions(),
+        _buildTabBar(),
+        _buildTabContent(),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildEmbeddedToolbar(BabyProfile p) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            p.nickname,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _primary,
+            ),
+          ),
+        ),
+        if (widget.onAddBaby != null)
+          Tooltip(
+            message: 'Thêm hồ sơ bé',
+            child: IconButton(
+              onPressed: widget.onAddBaby,
+              icon: const Icon(Icons.add_rounded),
+              color: _onSurfaceVariant,
+            ),
+          ),
+        if (widget.onSwitchBaby != null)
+          Tooltip(
+            message: 'Đổi hồ sơ bé',
+            child: IconButton.filled(
+              onPressed: widget.onSwitchBaby,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              style: IconButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildAppBar(BabyProfile p) {
     return SizedBox(
       height: 72,
@@ -193,7 +293,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Widget _buildIdentityHeader(BabyProfile p) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
       child: Column(
         children: [
           Container(
@@ -245,7 +345,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Widget _buildSummary24h() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -301,7 +401,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Widget _buildQuickActions() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      padding: EdgeInsets.fromLTRB(
+        _horizontalPadding,
+        0,
+        _horizontalPadding,
+        20,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -351,7 +456,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   Widget _buildTabBar() {
     return Container(
       color: _canvas.withAlpha(230),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: _horizontalPadding,
+        vertical: 4,
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -381,7 +489,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Widget _buildTabContent() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: EdgeInsets.fromLTRB(
+        _horizontalPadding,
+        16,
+        _horizontalPadding,
+        0,
+      ),
       child: switch (_activeTab) {
         _Tab.growth => _buildGrowthTab(),
         _Tab.milestones => _buildMilestoneTab(),

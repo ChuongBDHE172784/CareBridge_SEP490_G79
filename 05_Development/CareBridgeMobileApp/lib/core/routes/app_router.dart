@@ -188,7 +188,16 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/journey-setup',
-      builder: (context, state) => const JourneySetupScreen(),
+      builder: (context, state) {
+        final journeyId = state.uri.queryParameters['journeyId'];
+        return JourneySetupScreen(
+          journeyId: journeyId,
+          isEditMode:
+              state.uri.queryParameters['mode'] == 'edit' &&
+              journeyId != null &&
+              journeyId.isNotEmpty,
+        );
+      },
     ),
     GoRoute(
       path: '/journey-update',
