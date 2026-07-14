@@ -23,6 +23,7 @@ import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
@@ -392,6 +393,44 @@ class ModerationServiceImplTest {
         ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
 
         assertThat(response.content().get(0).reason()).isEqualTo("Nội dung không phù hợp");
+    }
+
+    @Test
+    void getAccountViolationHistory_returnsAccountActionsNewestFirstWithSafeNameFallbacks() {
+        UUID missingTargetId = UUID.randomUUID();
+        UUID moderatorId = UUID.randomUUID();
+        ModerationAction latest = makeAction(UUID.randomUUID(), missingTargetId, ReportTargetType.ACCOUNT,
+                ModerationActionType.SUSPEND, moderatorId, "Vi phạm quy tắc");
+        latest.setExpiresAt(Instant.now().plusSeconds(3600));
+        Page<ModerationAction> actionPage = new PageImpl<>(List.of(latest),
+                org.springframework.data.domain.PageRequest.of(0, 20), 1);
+        ArgumentCaptor<Pageable> pageableCaptor = forClass(Pageable.class);
+        when(moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                eq(ReportTargetType.ACCOUNT), any(), pageableCaptor.capture())).thenReturn(actionPage);
+        when(userRepository.findAllById(any())).thenReturn(List.of(User.builder()
+                .id(moderatorId).name("Moderator Test").build()));
+
+        AccountViolationHistoryResponse response = moderationService.getAccountViolationHistory(0, 20, mockPrincipal);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).targetUserName()).isEqualTo("Tài khoản không còn tồn tại");
+        assertThat(response.content().get(0).moderatorName()).isEqualTo("Moderator Test");
+        assertThat(response.content().get(0).expiresAt()).isEqualTo(latest.getExpiresAt());
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("actionAt").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void getAccountViolationHistory_withNoActions_returnsEmptyPage() {
+        when(moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                eq(ReportTargetType.ACCOUNT), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        AccountViolationHistoryResponse response = moderationService.getAccountViolationHistory(0, 20, mockPrincipal);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
     }
 
     private CommunityQuestion makeQuestion(UUID id, QuestionStatus status, UUID authorId, boolean anonymous, int bodyLength) {

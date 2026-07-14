@@ -11,6 +11,7 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.content.controller.ModerationController;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.entity.ReportStatus;
@@ -114,6 +115,27 @@ class ModerationControllerTest {
 
     private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
     private static final String HISTORY_URL = "/api/v1/admin/moderation/history";
+    private static final String ACCOUNT_HISTORY_URL = "/api/v1/admin/moderation/account-history";
+
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getAccountViolationHistory_pageSizeExceedsMax_shouldReturn400() throws Exception {
+        mockMvc.perform(get(ACCOUNT_HISTORY_URL + "?size=51").with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("MOD-002"));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getAccountViolationHistory_validRequestAsModerator_shouldReturn200() throws Exception {
+        when(moderationService.getAccountViolationHistory(any(Integer.class), any(Integer.class), any()))
+                .thenReturn(new AccountViolationHistoryResponse(List.of(), 0, 0, 20));
+
+        mockMvc.perform(get(ACCOUNT_HISTORY_URL + "?page=0&size=20").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
 
     // PCQH-TC-005: size > 50 returns 400 with MOD-002 (same guard as /queue, /pending-content)
     @Test

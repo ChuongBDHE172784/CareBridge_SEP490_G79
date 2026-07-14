@@ -17,6 +17,8 @@ import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
@@ -200,6 +202,39 @@ public class ModerationServiceImpl implements ModerationService {
                 .toList();
 
         return new ModerationHistoryResponse(items, page.getTotalElements(), page.getNumber(), page.getSize());
+    }
+
+    @Override
+    public AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal) {
+        Page<ModerationAction> actionPage = moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                ReportTargetType.ACCOUNT,
+                ACCOUNT_ACTION_TYPES,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "actionAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))));
+
+        List<UUID> userIds = actionPage.getContent().stream()
+                .flatMap(action -> java.util.stream.Stream.of(action.getTargetId(), action.getModeratorUserId()))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, String> names = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+
+        List<AccountViolationHistoryItemResponse> items = actionPage.getContent().stream()
+                .map(action -> new AccountViolationHistoryItemResponse(
+                        action.getId(),
+                        action.getTargetId(),
+                        names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
+                        action.getModeratorUserId(),
+                        names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
+                        action.getActionType(),
+                        action.getReason(),
+                        action.getExpiresAt(),
+                        action.getReportId(),
+                        action.getActionAt()))
+                .toList();
+        return new AccountViolationHistoryResponse(
+                items, actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
     }
 
     private Map<UUID, String> batchPreviewsFor(List<ModerationAction> actions, ReportTargetType targetType) {
