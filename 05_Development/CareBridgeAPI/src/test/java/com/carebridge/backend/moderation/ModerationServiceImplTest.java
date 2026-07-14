@@ -27,6 +27,7 @@ import com.carebridge.backend.content.dto.response.AccountViolationHistoryRespon
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ModerationAction;
@@ -428,6 +429,41 @@ class ModerationServiceImplTest {
                 eq(ReportTargetType.ACCOUNT), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
         AccountViolationHistoryResponse response = moderationService.getAccountViolationHistory(0, 20, mockPrincipal);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+    }
+
+    @Test
+    void getRelatedReports_returnsOnlyReportsForTheSelectedTargetNewestFirst() {
+        ContentReport selected = makeReport(REPORT_ID_1, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.PENDING);
+        ContentReport related = makeReport(REPORT_ID_2, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.RESOLVED);
+        related.setCategory("SPAM");
+        related.setCreatedAt(Instant.now().plusSeconds(60));
+        ArgumentCaptor<Pageable> pageableCaptor = forClass(Pageable.class);
+        when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(selected));
+        when(contentReportRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(
+                eq(TARGET_ID_1), eq(ReportTargetType.QUESTION), pageableCaptor.capture()))
+                .thenReturn(new PageImpl<>(List.of(related), org.springframework.data.domain.PageRequest.of(0, 20), 1));
+
+        RelatedReportPageResponse response = moderationService.getRelatedReports(REPORT_ID_1, 0, 20, mockPrincipal);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).id()).isEqualTo(REPORT_ID_2);
+        assertThat(response.content().get(0).category()).isEqualTo("SPAM");
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void getRelatedReports_withNoMatchingReports_returnsEmptyPage() {
+        ContentReport selected = makeReport(REPORT_ID_1, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.PENDING);
+        when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(selected));
+        when(contentReportRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(
+                eq(TARGET_ID_1), eq(ReportTargetType.QUESTION), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        RelatedReportPageResponse response = moderationService.getRelatedReports(REPORT_ID_1, 0, 20, mockPrincipal);
 
         assertThat(response.content()).isEmpty();
         assertThat(response.totalElements()).isZero();

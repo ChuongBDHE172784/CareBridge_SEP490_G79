@@ -1,6 +1,7 @@
 import apiClient from '../../../shared/api/apiClient';
 import type {
   ModerationQueuePage,
+  RelatedReportPage,
   AccountViolationHistoryPage,
   ModerateContentResult,
   ModerationActionType,
@@ -19,6 +20,16 @@ export async function fetchAccountViolationHistory(params: {
   size?: number;
 } = {}): Promise<AccountViolationHistoryPage> {
   const res = await apiClient.get<AccountViolationHistoryPage>('/api/v1/admin/moderation/account-history', {
+    params: { page: params.page ?? 0, size: params.size ?? 20 },
+  });
+  return res.data;
+}
+
+export async function fetchRelatedReports(reportId: string, params: {
+  page?: number;
+  size?: number;
+} = {}): Promise<RelatedReportPage> {
+  const res = await apiClient.get<RelatedReportPage>(`/api/v1/admin/moderation/reports/${reportId}/related`, {
     params: { page: params.page ?? 0, size: params.size ?? 20 },
   });
   return res.data;

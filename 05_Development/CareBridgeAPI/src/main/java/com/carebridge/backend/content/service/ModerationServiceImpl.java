@@ -26,6 +26,8 @@ import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportItemResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
@@ -235,6 +237,24 @@ public class ModerationServiceImpl implements ModerationService {
                 .toList();
         return new AccountViolationHistoryResponse(
                 items, actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    }
+
+    @Override
+    public RelatedReportPageResponse getRelatedReports(UUID reportId, int page, int size, Principal principal) {
+        ContentReport selectedReport = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
+        Page<ContentReport> relatedReports = contentReportRepository
+                .findByTargetIdAndTargetTypeOrderByCreatedAtDesc(selectedReport.getTargetId(),
+                        selectedReport.getTargetType(),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")
+                                .and(Sort.by(Sort.Direction.DESC, "id"))));
+        List<RelatedReportItemResponse> items = relatedReports.getContent().stream()
+                .map(report -> new RelatedReportItemResponse(
+                        report.getId(), report.getCategory(), report.getDescription(),
+                        report.getStatus(), report.getReportSource(), report.getCreatedAt()))
+                .toList();
+        return new RelatedReportPageResponse(items, relatedReports.getTotalElements(),
+                relatedReports.getNumber(), relatedReports.getSize());
     }
 
     private Map<UUID, String> batchPreviewsFor(List<ModerationAction> actions, ReportTargetType targetType) {

@@ -13,6 +13,7 @@ import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ReportStatus;
@@ -112,6 +113,19 @@ public class ModerationController {
             throw ModerationException.pageSizeExceeded();
         }
         return ResponseEntity.ok(moderationService.getAccountViolationHistory(page, size, principal));
+    }
+
+    @GetMapping("/reports/{reportId}/related")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<RelatedReportPageResponse> getRelatedReports(
+            @PathVariable UUID reportId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            Principal principal) {
+        if (size > 50) {
+            throw ModerationException.pageSizeExceeded();
+        }
+        return ResponseEntity.ok(moderationService.getRelatedReports(reportId, page, size, principal));
     }
 
     // C1: RBAC enforcement — MODERATOR only (ADR-002); controller has no business logic, delegates to service

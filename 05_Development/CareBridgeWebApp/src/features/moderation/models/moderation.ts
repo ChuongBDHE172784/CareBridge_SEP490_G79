@@ -27,6 +27,22 @@ export interface ModerationQueuePage {
   size: number;
 }
 
+export interface RelatedReportItem {
+  id: string;
+  category: string | null;
+  reason: string | null;
+  status: ReportStatus;
+  reportSource: 'USER' | 'AUTOMATED';
+  reportedAt: string;
+}
+
+export interface RelatedReportPage {
+  content: RelatedReportItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
 // CB-MOD-IMP-004: content that has never been reported, queried directly by status=PENDING —
 // distinct from ModerationQueueItem, which is report-driven and carries reportCount/reportReason
 // that do not apply here.

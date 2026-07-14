@@ -12,6 +12,7 @@ import com.carebridge.backend.content.dto.response.ModerationContentDetailRespon
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
@@ -44,6 +45,9 @@ public interface ModerationService {
      * content-only moderation history so account identity projection remains moderator scoped.
      */
     AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal);
+
+    /** Lists privacy-safe reports that apply to the exact target of the selected report. */
+    RelatedReportPageResponse getRelatedReports(UUID reportId, int page, int size, Principal principal);
 
     /**
      * Applies an APPROVE/HIDE/LOCK action directly to a community question or answer,
