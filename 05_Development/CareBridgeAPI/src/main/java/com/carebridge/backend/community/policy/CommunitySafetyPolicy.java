@@ -12,6 +12,7 @@ import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ReportCategory;
+import com.carebridge.backend.content.entity.ReportSource;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.repository.ContentReportRepository;
@@ -95,6 +96,7 @@ public class CommunitySafetyPolicy {
                 .targetType(targetType)
                 .status(ReportStatus.PENDING)
                 .category(ReportCategory.UNSAFE_ADVICE.name())
+                .reportSource(ReportSource.AUTOMATED)
                 .description("Auto-flagged by community red-flag policy")
                 .reporterUserId(reporterUserId)
                 .createdAt(Instant.now())
