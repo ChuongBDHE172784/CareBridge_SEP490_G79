@@ -39,8 +39,19 @@ public class AdminContentServiceImpl implements AdminContentService {
     @Override
     @Transactional(readOnly = true)
     public Page<ContentDetailResponse> getStaffContents(ContentStatus status, ContentType type, String keyword, Pageable pageable) {
-        Page<ContentItem> items = contentRepository.findStaffByFilters(
-                status, type, keyword == null || keyword.isBlank() ? null : keyword.trim(), pageable);
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<ContentItem> items;
+        if (status != null) {
+            items = contentRepository.findByStatus(status, pageable);
+        } else if (normalizedKeyword != null && type != null) {
+            items = contentRepository.searchStaffByKeywordAndType(normalizedKeyword, type, pageable);
+        } else if (normalizedKeyword != null) {
+            items = contentRepository.searchStaffByKeyword(normalizedKeyword, pageable);
+        } else if (type != null) {
+            items = contentRepository.findByType(type, pageable);
+        } else {
+            items = contentRepository.findAll(pageable);
+        }
         return items.map(contentMapper::toDetailResponse);
     }
 
