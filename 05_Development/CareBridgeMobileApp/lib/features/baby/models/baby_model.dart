@@ -79,7 +79,8 @@ class BabyProfile {
       gender: BabyGenderExtension.fromApi(json['gender'] as String?),
       birthWeightKg: (json['birthWeightKg'] as num?)?.toDouble(),
       birthLengthCm: (json['birthLengthCm'] as num?)?.toDouble(),
-      isActive: json['isActive'] as bool? ?? false,
+      isActive:
+          (json['isActive'] as bool?) ?? (json['active'] as bool?) ?? false,
     );
   }
 }

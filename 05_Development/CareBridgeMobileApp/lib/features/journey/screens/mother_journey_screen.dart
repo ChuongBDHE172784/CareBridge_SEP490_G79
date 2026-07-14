@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../baby/models/baby_model.dart';
+import '../../baby/services/baby_profile_selection_storage.dart';
+import '../../baby/services/baby_service.dart';
 import '../../healthRecords/models/health_metric_model.dart';
 import '../../healthRecords/services/health_metric_service.dart';
 import '../../reminder/models/reminder_model.dart';
@@ -20,6 +23,8 @@ class MotherJourneyScreen extends StatefulWidget {
   State<MotherJourneyScreen> createState() => _MotherJourneyScreenState();
 }
 
+enum _JourneySection { pregnancy, babyCare }
+
 class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -30,12 +35,18 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   static const _outlineVariant = Color(0xFFD6C2BD);
 
   final _journeyService = JourneyService();
+  final _babyService = BabyService();
+  final _babySelectionStorage = BabyProfileSelectionStorage();
   final _reminderService = ReminderService.instance;
   final _healthMetricService = HealthMetricService();
   JourneyDashboard? _dashboard;
+  List<BabyProfile> _babyProfiles = [];
+  String? _selectedBabyProfileId;
   List<Reminder> _reminders = [];
   MetricTrend? _weightTrend;
   MetricTrend? _heartRateTrend;
+  _JourneySection _selectedSection = _JourneySection.pregnancy;
+  bool _didChooseInitialSection = false;
   bool _loading = true;
   String? _error;
 
@@ -53,27 +64,43 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
     try {
       final dashboard = await _journeyService.getDashboard();
+      final babyProfiles = await _loadBabyProfiles();
+      final lastOpenedBabyProfileId = await _babySelectionStorage
+          .readLastOpenedBabyProfileId();
       final reminders = await _loadReminders();
-      final weightTrend =
-          dashboard.hasActiveJourney && dashboard.journeyId != null
+      final hasPregnancyJourney =
+          dashboard.hasActiveJourney && dashboard.isPregnancy;
+      final shouldShowBabyCare =
+          !hasPregnancyJourney &&
+          (dashboard.journeyType == 'BABY_CARE' || babyProfiles.isNotEmpty);
+      final weightTrend = hasPregnancyJourney && dashboard.journeyId != null
           ? await _loadWeightTrend(dashboard.journeyId!)
           : null;
-      final heartRateTrend =
-          dashboard.hasActiveJourney && dashboard.journeyId != null
+      final heartRateTrend = hasPregnancyJourney && dashboard.journeyId != null
           ? await _loadHeartRateTrend(dashboard.journeyId!)
           : null;
       if (!mounted) return;
       setState(() {
         _dashboard = dashboard;
+        _babyProfiles = babyProfiles;
+        _selectedBabyProfileId = _resolveSelectedBabyProfileId(
+          babyProfiles,
+          preferredBabyProfileId: lastOpenedBabyProfileId,
+        );
         _reminders = reminders;
         _weightTrend = weightTrend;
         _heartRateTrend = heartRateTrend;
+        if (!_didChooseInitialSection && shouldShowBabyCare) {
+          _selectedSection = _JourneySection.babyCare;
+        }
+        _didChooseInitialSection = true;
         _loading = false;
       });
     } on ApiException catch (_) {
       if (!mounted) return;
       setState(() {
         _dashboard = null;
+        _babyProfiles = [];
         _error = 'Không thể tải dữ liệu hành trình.';
         _loading = false;
       });
@@ -81,10 +108,52 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
       if (!mounted) return;
       setState(() {
         _dashboard = null;
+        _babyProfiles = [];
         _error = 'Lỗi kết nối. Vui lòng kéo để thử lại.';
         _loading = false;
       });
     }
+  }
+
+  Future<List<BabyProfile>> _loadBabyProfiles() async {
+    try {
+      return await _babyService.listBabyProfiles();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  String? _resolveSelectedBabyProfileId(
+    List<BabyProfile> profiles, {
+    String? preferredBabyProfileId,
+  }) {
+    if (profiles.isEmpty) return null;
+    if (preferredBabyProfileId != null &&
+        profiles.any((profile) => profile.id == preferredBabyProfileId)) {
+      return preferredBabyProfileId;
+    }
+    final currentId = _selectedBabyProfileId;
+    if (currentId != null &&
+        profiles.any((profile) => profile.id == currentId)) {
+      return currentId;
+    }
+    for (final profile in profiles) {
+      if (profile.isActive) return profile.id;
+    }
+    return profiles.first.id;
+  }
+
+  BabyProfile? get _selectedBabyProfile {
+    final selectedId = _selectedBabyProfileId;
+    if (selectedId != null) {
+      for (final profile in _babyProfiles) {
+        if (profile.id == selectedId) return profile;
+      }
+    }
+    for (final profile in _babyProfiles) {
+      if (profile.isActive) return profile;
+    }
+    return _babyProfiles.isEmpty ? null : _babyProfiles.first;
   }
 
   Future<List<Reminder>> _loadReminders() async {
@@ -137,6 +206,66 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     await context.push(route);
   }
 
+  Future<void> _openPregnancySetup() async {
+    await context.push('/journey-setup');
+    if (mounted) await _load();
+  }
+
+  Future<void> _openAddBabyProfile() async {
+    final result = await context.push('/babies/add?entry=list');
+    if (!mounted) return;
+    if (result == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
+      );
+    }
+    await _load();
+  }
+
+  Future<void> _openBabyDetail(BabyProfile profile) async {
+    setState(() => _selectedBabyProfileId = profile.id);
+    await _babySelectionStorage.saveLastOpenedBabyProfileId(profile.id);
+    if (!mounted) return;
+    await context.push('/babies/detail/${profile.id}');
+    if (mounted) await _load();
+  }
+
+  Future<void> _openBabyProfilePicker() async {
+    final result = await showModalBottomSheet<_BabyPickerResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _BabyProfilePickerSheet(
+        profiles: _babyProfiles,
+        selectedBabyId: _selectedBabyProfile?.id,
+      ),
+    );
+
+    if (!mounted || result == null) return;
+    if (result.action == _BabyPickerAction.add) {
+      await _openAddBabyProfile();
+      return;
+    }
+
+    final selected = result.profile;
+    if (selected == null) return;
+    setState(() => _selectedBabyProfileId = selected.id);
+    await _babySelectionStorage.saveLastOpenedBabyProfileId(selected.id);
+    if (!selected.isActive) {
+      try {
+        await _babyService.switchActiveBabyProfile(selected.id);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể đổi hồ sơ bé đang theo dõi.'),
+          ),
+        );
+      }
+    }
+    if (mounted) await _load();
+  }
+
   Reminder? _nearestReminder(ReminderType type) {
     final pending =
         _reminders
@@ -172,9 +301,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dashboard = _dashboard;
-    final hasJourney = dashboard?.hasActiveJourney == true;
-
     return RefreshIndicator(
       color: _primaryContainer,
       onRefresh: _load,
@@ -194,24 +320,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
                       ),
                     ),
                   )
-                else if (!hasJourney)
-                  _buildEmptyJourneyCard()
                 else ...[
-                  _buildPhaseChip(dashboard!),
-                  const SizedBox(height: 24),
-                  _buildHeroCard(dashboard),
-                  const SizedBox(height: 16),
-                  _buildDueDateCard(dashboard),
-                  const SizedBox(height: 16),
-                  _buildNextAppointmentCard(),
-                  const SizedBox(height: 16),
-                  _buildVaccinationCard(),
-                  const SizedBox(height: 16),
-                  _buildSetupSourceCard(dashboard),
-                  const SizedBox(height: 24),
-                  _buildMetricButtons(),
-                  const SizedBox(height: 24),
-                  _buildBentoSummary(),
+                  _buildSectionTabs(),
+                  const SizedBox(height: 20),
+                  if (_selectedSection == _JourneySection.pregnancy)
+                    ..._buildPregnancySection()
+                  else
+                    ..._buildBabyCareSection(),
                   const SizedBox(height: 24),
                 ],
               ]),
@@ -220,6 +335,72 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
         ],
       ),
     );
+  }
+
+  JourneyDashboard? get _pregnancyDashboard {
+    final dashboard = _dashboard;
+    if (dashboard == null) return null;
+    if (!dashboard.hasActiveJourney || !dashboard.isPregnancy) return null;
+    return dashboard;
+  }
+
+  List<Widget> _buildPregnancySection() {
+    final dashboard = _pregnancyDashboard;
+    if (dashboard == null) {
+      return [
+        _buildEmptyStateCard(
+          icon: _error == null ? Icons.pregnant_woman_rounded : Icons.wifi_off,
+          title: _error ?? 'Chưa có hành trình mang thai',
+          description:
+              'Thiết lập ngày dự sinh hoặc ngày chu kỳ để CareBridge hiển thị dữ liệu thai kỳ của mẹ.',
+          actionLabel: 'Thêm hành trình',
+          onPressed: _openPregnancySetup,
+        ),
+      ];
+    }
+
+    return [
+      _buildHeroCard(dashboard),
+      const SizedBox(height: 16),
+      _buildDueDateCard(dashboard),
+      const SizedBox(height: 16),
+      _buildNextAppointmentCard(),
+      const SizedBox(height: 16),
+      _buildVaccinationCard(),
+      const SizedBox(height: 16),
+      _buildSetupSourceCard(dashboard),
+      const SizedBox(height: 24),
+      _buildMetricButtons(),
+      const SizedBox(height: 24),
+      _buildBentoSummary(),
+    ];
+  }
+
+  List<Widget> _buildBabyCareSection() {
+    if (_babyProfiles.isEmpty) {
+      return [
+        _buildEmptyStateCard(
+          icon: Icons.child_care_rounded,
+          title: 'Chưa có hồ sơ bé',
+          description:
+              'Tạo hồ sơ bé để CareBridge hiển thị thông tin nuôi con, lịch tiêm và nhật ký chăm sóc phù hợp.',
+          actionLabel: 'Thêm hồ sơ bé',
+          onPressed: _openAddBabyProfile,
+        ),
+      ];
+    }
+
+    final selectedProfile = _selectedBabyProfile ?? _babyProfiles.first;
+
+    return [
+      _buildBabyCareHeader(selectedProfile),
+      const SizedBox(height: 16),
+      _buildBabySwitcherCard(selectedProfile),
+      const SizedBox(height: 12),
+      _buildBabyProfileCard(selectedProfile),
+      const SizedBox(height: 12),
+      _buildAddBabyActionCard(),
+    ];
   }
 
   Widget _buildHeader() {
@@ -243,29 +424,99 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     );
   }
 
-  Widget _buildPhaseChip(JourneyDashboard dashboard) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: _primaryContainer,
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: Text(
-          dashboard.phaseLabel,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+  Widget _buildSectionTabs() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2EAE4),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSectionTab(
+              label: 'Mang thai',
+              icon: Icons.pregnant_woman_rounded,
+              section: _JourneySection.pregnancy,
+            ),
+          ),
+          Expanded(
+            child: _buildSectionTab(
+              label: 'Nuôi con',
+              icon: Icons.child_care_rounded,
+              section: _JourneySection.babyCare,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTab({
+    required String label,
+    required IconData icon,
+    required _JourneySection section,
+  }) {
+    final selected = _selectedSection == section;
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => setState(() => _selectedSection = section),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? _surfaceContainerLowest : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: _primary.withAlpha(16),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? _primary : _onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? _primary : _onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyJourneyCard() {
+  Widget _buildEmptyStateCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required String actionLabel,
+    required VoidCallback onPressed,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -280,14 +531,11 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
               color: _surfaceContainerHigh,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              _error == null ? Icons.route_rounded : Icons.wifi_off_rounded,
-              color: _primary,
-            ),
+            child: Icon(icon, color: _primary),
           ),
           const SizedBox(height: 16),
           Text(
-            _error ?? 'Chưa có hành trình thai kỳ',
+            title,
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 20,
@@ -296,16 +544,262 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Thiết lập ngày dự sinh hoặc ngày chu kỳ để CareBridge hiển thị dữ liệu cá nhân của mẹ.',
-            style: TextStyle(
+          Text(
+            description,
+            style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
               color: _onSurfaceVariant,
               height: 1.45,
             ),
           ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(actionLabel),
+            style: FilledButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              textStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBabyCareHeader(BabyProfile selectedProfile) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Hồ sơ bé',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Đang hiển thị ${selectedProfile.nickname}',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Tooltip(
+          message: 'Đổi hồ sơ bé',
+          child: IconButton.filled(
+            onPressed: _openBabyProfilePicker,
+            icon: const Icon(Icons.swap_horiz_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBabySwitcherCard(BabyProfile selectedProfile) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: _openBabyProfilePicker,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: _surfaceContainerLowest,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.manage_accounts_outlined,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Đổi hồ sơ bé',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${_babyProfiles.length} hồ sơ khả dụng • đang xem ${selectedProfile.nickname}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBabyProfileCard(BabyProfile profile) {
+    final genderLabel = profile.gender.displayLabel.isEmpty
+        ? 'Chưa cập nhật giới tính'
+        : profile.gender.displayLabel;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => _openBabyDetail(profile),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.child_care, color: _primary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.nickname,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        profile.ageLabel,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (profile.isActive)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'Đang theo dõi',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _InfoRow(
+              icon: Icons.cake_outlined,
+              label: 'Ngày sinh',
+              value: _formatDate(profile.birthDate),
+            ),
+            const SizedBox(height: 10),
+            _InfoRow(
+              icon: Icons.badge_outlined,
+              label: 'Giới tính',
+              value: genderLabel,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => _openBabyDetail(profile),
+              icon: const Icon(Icons.visibility_outlined, size: 18),
+              label: const Text('Xem hồ sơ'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: _primary,
+                side: const BorderSide(color: _outlineVariant),
+                textStyle: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddBabyActionCard() {
+    return OutlinedButton.icon(
+      onPressed: _openAddBabyProfile,
+      icon: const Icon(Icons.add_rounded),
+      label: const Text('Thêm hồ sơ bé'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        foregroundColor: _primary,
+        side: const BorderSide(color: _outlineVariant),
+        textStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -879,6 +1373,218 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
           offset: const Offset(0, 4),
         ),
       ],
+    );
+  }
+}
+
+enum _BabyPickerAction { select, add }
+
+class _BabyPickerResult {
+  const _BabyPickerResult.select(this.profile)
+    : action = _BabyPickerAction.select;
+  const _BabyPickerResult.add()
+    : action = _BabyPickerAction.add,
+      profile = null;
+
+  final _BabyPickerAction action;
+  final BabyProfile? profile;
+}
+
+class _BabyProfilePickerSheet extends StatelessWidget {
+  const _BabyProfilePickerSheet({
+    required this.profiles,
+    required this.selectedBabyId,
+  });
+
+  final List<BabyProfile> profiles;
+  final String? selectedBabyId;
+
+  static const _primary = Color(0xFF845143);
+  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
+  static const _onSurface = Color(0xFF271812);
+  static const _outlineVariant = Color(0xFFD6C2BD);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 18),
+              decoration: BoxDecoration(
+                color: _outlineVariant,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.child_care_rounded, color: _primary),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Chọn hồ sơ bé',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: profiles.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final profile = profiles[index];
+                  final selected = profile.id == selectedBabyId;
+                  return _BabyPickerTile(
+                    profile: profile,
+                    selected: selected,
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(_BabyPickerResult.select(profile)),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pop(const _BabyPickerResult.add()),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Thêm hồ sơ bé'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                foregroundColor: _primary,
+                side: const BorderSide(color: _outlineVariant),
+                textStyle: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BabyPickerTile extends StatelessWidget {
+  const _BabyPickerTile({
+    required this.profile,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final BabyProfile profile;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
+  static const _surfaceContainerLowest = Color(0xFFFFF8F6);
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _outlineVariant = Color(0xFFD6C2BD);
+
+  @override
+  Widget build(BuildContext context) {
+    final genderLabel = profile.gender.displayLabel;
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? _surfaceContainerHigh : _surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? _primaryContainer : _outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: selected ? Colors.white : _surfaceContainerHigh,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.child_care, color: _primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    [
+                      profile.ageLabel,
+                      if (genderLabel.isNotEmpty) genderLabel,
+                      if (profile.isActive) 'Đang theo dõi',
+                    ].join(' • '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: selected ? _primaryContainer : _onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

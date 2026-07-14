@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
 import '../../../core/network/api_client.dart';
@@ -7,8 +10,20 @@ import '../../../core/network/api_client.dart';
 /// Add Baby Profile screen — UC-31
 /// Collects nickname, birthDate, gender, birthWeightKg, birthLengthCm.
 /// Calls POST /api/v1/babies on submit.
+enum AddBabyEntryPoint {
+  onboarding,
+  profileList;
+
+  bool get returnsHome => this == AddBabyEntryPoint.onboarding;
+}
+
 class AddBabyScreen extends StatefulWidget {
-  const AddBabyScreen({super.key});
+  final AddBabyEntryPoint entryPoint;
+
+  const AddBabyScreen({
+    super.key,
+    this.entryPoint = AddBabyEntryPoint.profileList,
+  });
 
   @override
   State<AddBabyScreen> createState() => _AddBabyScreenState();
@@ -87,6 +102,22 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       setState(() => _errorMsg = 'Vui lòng chọn ngày sinh của bé.');
       return;
     }
+    final birthWeightKg = _parseOptionalDecimal(_weightCtrl.text);
+    if (_weightCtrl.text.trim().isNotEmpty &&
+        !_isValidBirthWeight(birthWeightKg)) {
+      setState(
+        () => _errorMsg = 'Cân nặng lúc sinh phải trong khoảng 0.5–10 kg.',
+      );
+      return;
+    }
+    final birthLengthCm = _parseOptionalDecimal(_lengthCtrl.text);
+    if (_lengthCtrl.text.trim().isNotEmpty &&
+        !_isValidBirthLength(birthLengthCm)) {
+      setState(
+        () => _errorMsg = 'Chiều dài lúc sinh phải trong khoảng 20–100 cm.',
+      );
+      return;
+    }
     setState(() {
       _loading = true;
       _errorMsg = null;
@@ -97,23 +128,89 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
           nickname: _nicknameCtrl.text.trim(),
           birthDate: _formatDate(_birthDate!),
           gender: _gender,
-          birthWeightKg: _weightCtrl.text.trim().isNotEmpty
-              ? double.tryParse(_weightCtrl.text.trim())
-              : null,
-          birthLengthCm: _lengthCtrl.text.trim().isNotEmpty
-              ? double.tryParse(_lengthCtrl.text.trim())
-              : null,
+          birthWeightKg: birthWeightKg,
+          birthLengthCm: birthLengthCm,
         ),
       );
       if (!mounted) return;
-      Navigator.pop(context);
+
+      if (widget.entryPoint.returnsHome) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
+        );
+        context.go('/');
+        return;
+      }
+
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop(true);
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
+      );
+      context.go('/babies');
     } on ApiException catch (e) {
-      setState(() => _errorMsg = 'Tạo hồ sơ thất bại (${e.statusCode}).');
+      setState(() => _errorMsg = _formatCreateBabyError(e));
     } catch (_) {
       setState(() => _errorMsg = 'Lỗi kết nối. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _formatCreateBabyError(ApiException error) {
+    try {
+      final decoded = jsonDecode(error.message);
+      if (decoded is Map<String, dynamic>) {
+        final details = decoded['details'];
+        if (details is List && details.isNotEmpty) {
+          final first = details.first;
+          if (first is Map<String, dynamic>) {
+            final field = first['field']?.toString();
+            switch (field) {
+              case 'birthWeightKg':
+                return 'Cân nặng lúc sinh phải trong khoảng 0.5–10 kg.';
+              case 'birthLengthCm':
+                return 'Chiều dài lúc sinh phải trong khoảng 20–100 cm.';
+              case 'birthDate':
+                return 'Ngày sinh không hợp lệ. Vui lòng chọn ngày hôm nay hoặc trước đó.';
+              case 'nickname':
+                return 'Tên bé không được để trống và tối đa 100 ký tự.';
+            }
+            final message = first['message']?.toString();
+            if (message != null && message.isNotEmpty) {
+              return 'Tạo hồ sơ thất bại: $message';
+            }
+          }
+        }
+        final message = decoded['message']?.toString();
+        if (message != null && message.isNotEmpty) {
+          return 'Tạo hồ sơ thất bại: $message';
+        }
+      }
+    } catch (_) {
+      // Fall back to a generic message when the server body is not JSON.
+    }
+    return 'Tạo hồ sơ thất bại (${error.statusCode}).';
+  }
+
+  double? _parseOptionalDecimal(String raw) {
+    final normalized = raw.trim().replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+
+  bool _isValidBirthWeight(double? value) {
+    if (value == null) return false;
+    return value >= 0.5 && value <= 10;
+  }
+
+  bool _isValidBirthLength(double? value) {
+    if (value == null) return false;
+    return value >= 20 && value <= 100;
   }
 
   @override
@@ -380,7 +477,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       controller: _weightCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
       ],
       style: const TextStyle(
         fontFamily: 'Lexend',
@@ -395,9 +492,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       ),
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
-        final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 10) {
-          return 'Cân nặng không hợp lệ (0–10 kg).';
+        final n = _parseOptionalDecimal(v);
+        if (!_isValidBirthWeight(n)) {
+          return 'Cân nặng không hợp lệ (0.5–10 kg).';
         }
         return null;
       },
@@ -409,7 +506,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       controller: _lengthCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
       ],
       style: const TextStyle(
         fontFamily: 'Lexend',
@@ -424,9 +521,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       ),
       validator: (v) {
         if (v == null || v.trim().isEmpty) return null;
-        final n = double.tryParse(v.trim());
-        if (n == null || n <= 0 || n > 80) {
-          return 'Chiều dài không hợp lệ (0–80 cm).';
+        final n = _parseOptionalDecimal(v);
+        if (!_isValidBirthLength(n)) {
+          return 'Chiều dài không hợp lệ (20–100 cm).';
         }
         return null;
       },

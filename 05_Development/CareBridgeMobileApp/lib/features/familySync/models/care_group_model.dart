@@ -81,6 +81,8 @@ class CareGroup {
           [],
     );
   }
+
+  String get groupId => id;
 }
 
 /// UC-83 — a pending care-group invitation the current user has not yet

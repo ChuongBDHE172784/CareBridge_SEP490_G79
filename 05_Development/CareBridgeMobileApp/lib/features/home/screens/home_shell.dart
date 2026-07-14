@@ -3,10 +3,10 @@ import 'mother_home_screen.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
-import 'screens_explorer_screen.dart';
+import '../../exercise/screens/mother_exercise_screen.dart';
 
 /// Main app shell housing the BottomNavigationBar (5 tabs).
-/// Tabs: Home (CB-008) | Journey (CB-009) | Community | Screens | Profile
+/// Tabs: Home (CB-008) | Journey (CB-009) | Community | Exercise | Profile
 class HomeShell extends StatefulWidget {
   /// optionally jump to a specific tab on launch (e.g. from a notification)
   final int initialIndex;
@@ -35,7 +35,7 @@ class _HomeShellState extends State<HomeShell> {
     MotherHomeScreen(), // 0: Trang chủ  (CB-008)
     MotherJourneyScreen(), // 1: Hành trình (CB-009)
     CommunityFeedScreen(), // 2: Cộng đồng  (CB-014)
-    ScreensExplorerScreen(), // 3: Screen directory/explorer
+    MotherExerciseScreen(), // 3: Exercise for mother
     AccountProfileScreen(), // 4: Hồ sơ tài khoản
   ];
 
@@ -72,9 +72,9 @@ class _HomeShellState extends State<HomeShell> {
             label: 'Cộng đồng',
           ),
           NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore, color: _primary),
-            label: 'Screen',
+            icon: Icon(Icons.self_improvement_outlined),
+            selectedIcon: Icon(Icons.self_improvement, color: _primary),
+            label: 'Bài tập',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outlined),

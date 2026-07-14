@@ -22,7 +22,7 @@ public interface PartnerOrganizationRepository extends JpaRepository<PartnerOrga
     long countByStatus(OrganizationStatus status);
 
     @Query("select p from PartnerOrganization p where (:status is null or p.status = :status) "
-            + "and (:search is null or lower(p.name) like lower(concat('%', :search, '%')))")
+            + "and (:search is null or lower(cast(p.name as string)) like lower(concat('%', :search, '%')))")
     Page<PartnerOrganization> searchVerificationQueue(
             @Param("status") OrganizationStatus status, @Param("search") String search, Pageable pageable);
 }

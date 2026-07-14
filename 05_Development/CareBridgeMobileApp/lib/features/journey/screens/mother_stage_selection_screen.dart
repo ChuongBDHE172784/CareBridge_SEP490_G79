@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/api_client.dart';
-import '../services/auth_service.dart';
+import '../../../core/network/api_client.dart';
+import '../../auth/services/auth_service.dart';
+import '../models/journey_model.dart';
+import '../services/journey_service.dart';
 
-/// Role selection gate for newly verified accounts before role-specific setup.
-class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({super.key});
+/// First mother-specific onboarding gate before selecting the concrete setup flow.
+class MotherStageSelectionScreen extends StatefulWidget {
+  const MotherStageSelectionScreen({super.key});
 
   @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+  State<MotherStageSelectionScreen> createState() =>
+      _MotherStageSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+enum _MotherStage { planning, pregnant, babyCare }
+
+class _MotherStageSelectionScreenState
+    extends State<MotherStageSelectionScreen> {
   static const _primary = Color(0xFFC98C7B);
   static const _primaryDark = Color(0xFF845143);
   static const _canvas = Color(0xFFF6F1EC);
@@ -20,36 +26,78 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
-  String? _selectedRole;
+  final _journeyService = JourneyService();
+
+  _MotherStage? _selectedStage;
   bool _loading = false;
   String? _error;
 
-  bool get _canContinue => _selectedRole != null && !_loading;
+  bool get _canContinue => _selectedStage != null && !_loading;
+
+  String _formatApiDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String get _buttonLabel {
+    switch (_selectedStage) {
+      case _MotherStage.planning:
+        return 'Tạo hành trình chuẩn bị';
+      case _MotherStage.pregnant:
+        return 'Tiếp tục tính thai kỳ';
+      case _MotherStage.babyCare:
+        return 'Thiết lập hồ sơ bé';
+      case null:
+        return 'Tiếp tục';
+    }
+  }
 
   Future<void> _continue() async {
-    final role = _selectedRole;
-    if (role == null) return;
+    final stage = _selectedStage;
+    if (stage == null) return;
+
+    if (stage == _MotherStage.pregnant) {
+      context.go('/journey-setup');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
 
+    final now = DateTime.now();
+    final journeyType = stage == _MotherStage.planning
+        ? JourneyType.prePregnancy
+        : JourneyType.babyCare;
+    final notes = stage == _MotherStage.planning
+        ? 'Selected mother stage: planning pregnancy'
+        : 'Selected mother stage: caring for baby';
+
     try {
-      await AuthService.instance.selectRole(role);
+      await _journeyService.createJourney(
+        CreateJourneyRequest(
+          journeyType: journeyType,
+          startDate: _formatApiDate(DateTime(now.year, now.month, now.day)),
+          notes: notes,
+        ),
+      );
       await AuthService.instance.refreshSession();
       if (!mounted) return;
-      if (role == 'MOTHER') {
-        context.go('/mother-stage-selection');
-      } else {
-        context.go('/');
-      }
+      context.go(
+        stage == _MotherStage.planning ? '/' : '/babies/add?entry=onboarding',
+      );
     } on ApiException catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.statusCode == 400
-            ? 'Vai trò đã được thiết lập hoặc không hợp lệ.'
-            : 'Không thể lưu vai trò. Vui lòng thử lại.';
+        _error = e.statusCode == 409
+            ? 'Bạn đã có hành trình đang hoạt động cho lựa chọn này.'
+            : 'Không thể tạo hành trình. Vui lòng thử lại.';
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Không thể kết nối đến máy chủ.');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -64,44 +112,44 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 140),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 148),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 28),
-                  _RoleCard(
+                  _StageCard(
+                    icon: Icons.spa_rounded,
+                    title: 'Muốn mang thai',
+                    subtitle:
+                        'Nhận nội dung chuẩn bị sức khỏe, dinh dưỡng và nhắc việc trước thai kỳ.',
+                    selected: _selectedStage == _MotherStage.planning,
+                    onTap: () => setState(() {
+                      _selectedStage = _MotherStage.planning;
+                      _error = null;
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  _StageCard(
                     icon: Icons.favorite_rounded,
-                    title: 'Mẹ bầu',
+                    title: 'Đang mang thai',
                     subtitle:
-                        'Theo dõi thai kỳ, lịch chăm sóc và hành trình sức khỏe.',
-                    selected: _selectedRole == 'MOTHER',
+                        'Tính tuổi thai, ngày dự sinh và cá nhân hóa hành trình theo tuần thai.',
+                    selected: _selectedStage == _MotherStage.pregnant,
                     onTap: () => setState(() {
-                      _selectedRole = 'MOTHER';
+                      _selectedStage = _MotherStage.pregnant;
                       _error = null;
                     }),
                   ),
                   const SizedBox(height: 16),
-                  _RoleCard(
-                    icon: Icons.groups_rounded,
-                    title: 'Người thân',
+                  _StageCard(
+                    icon: Icons.child_care_rounded,
+                    title: 'Đang nuôi bé',
                     subtitle:
-                        'Đồng hành cùng mẹ qua nhóm chăm sóc và cảnh báo gia đình.',
-                    selected: _selectedRole == 'FAMILY',
+                        'Tạo hồ sơ bé để theo dõi tăng trưởng, cột mốc và lịch chăm sóc hằng ngày.',
+                    selected: _selectedStage == _MotherStage.babyCare,
                     onTap: () => setState(() {
-                      _selectedRole = 'FAMILY';
-                      _error = null;
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-                  _RoleCard(
-                    icon: Icons.medical_services_rounded,
-                    title: 'Chuyên gia',
-                    subtitle:
-                        'Hỗ trợ tư vấn, phản hồi câu hỏi và theo dõi yêu cầu chuyên môn.',
-                    selected: _selectedRole == 'EXPERT',
-                    onTap: () => setState(() {
-                      _selectedRole = 'EXPERT';
+                      _selectedStage = _MotherStage.babyCare;
                       _error = null;
                     }),
                   ),
@@ -123,25 +171,25 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: _primary.withValues(alpha: 0.15),
+            color: _primary.withAlpha(38),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.route_rounded, color: _primary, size: 28),
+          child: const Icon(Icons.auto_awesome_rounded, color: _primary),
         ),
         const SizedBox(height: 20),
         const Text(
-          'Chọn vai trò',
+          'Bạn đang ở giai đoạn nào?',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
+            fontSize: 31,
+            fontWeight: FontWeight.w800,
             color: _primaryDark,
-            height: 1.2,
+            height: 1.18,
           ),
         ),
         const SizedBox(height: 12),
         const Text(
-          'CareBridge sẽ mở đúng hành trình thiết lập cho vai trò của bạn.',
+          'CareBridge sẽ mở đúng hành trình chăm sóc cho mẹ và gia đình.',
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 16,
@@ -159,7 +207,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [_canvas, _canvas, Colors.transparent],
+          colors: [_canvas, _canvas, Color(0x00F6F1EC)],
           stops: [0.0, 0.72, 1.0],
         ),
       ),
@@ -190,13 +238,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ],
           SizedBox(
             width: double.infinity,
-            height: 54,
+            height: 56,
             child: FilledButton(
               onPressed: _canContinue ? _continue : null,
               style: FilledButton.styleFrom(
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: _primary.withValues(alpha: 0.48),
+                disabledBackgroundColor: _primary.withAlpha(112),
                 shape: const StadiumBorder(),
                 elevation: 0,
               ),
@@ -209,12 +257,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Tiếp tục',
-                      style: TextStyle(
+                  : Text(
+                      _buttonLabel,
+                      style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
             ),
@@ -225,8 +273,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 }
 
-class _RoleCard extends StatelessWidget {
-  const _RoleCard({
+class _StageCard extends StatelessWidget {
+  const _StageCard({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -250,27 +298,27 @@ class _RoleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 240),
+      duration: const Duration(milliseconds: 220),
       decoration: BoxDecoration(
         color: selected ? _surfaceLow : _surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: selected ? _primary : _border.withValues(alpha: 0.6),
+          color: selected ? _primary : _border.withAlpha(160),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5A463F).withValues(alpha: 0.06),
-            blurRadius: 28,
+            color: _text.withAlpha(15),
+            blurRadius: 30,
             offset: const Offset(0, 12),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -300,12 +348,12 @@ class _RoleCard extends StatelessWidget {
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: _text,
                           height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 7),
                       Text(
                         subtitle,
                         style: const TextStyle(

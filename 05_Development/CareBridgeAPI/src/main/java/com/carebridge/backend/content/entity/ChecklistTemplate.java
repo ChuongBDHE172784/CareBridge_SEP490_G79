@@ -39,6 +39,11 @@ public class ChecklistTemplate {
     @Column(name = "stage", length = 30)
     private ContentStage stage;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private ContentStatus status = ContentStatus.DRAFT;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

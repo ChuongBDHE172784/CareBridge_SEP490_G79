@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
-import 'add_baby_screen.dart';
-import 'baby_profile_detail_screen.dart';
+import '../widgets/switch_active_baby_sheet.dart';
 
 /// CB-010 — Baby Profiles (UC-31, UC-32, UC-33, UC-192, UC-193)
 /// Lists all baby profiles for the current user. Active profile is highlighted.
-/// Data: mock list (TODO: wire to GET /api/v1/babies when endpoint is available).
 class BabyProfilesScreen extends StatefulWidget {
   const BabyProfilesScreen({super.key});
 
@@ -59,38 +58,52 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
   }
 
   void _openAddBaby() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddBabyScreen()),
-    ).then((_) => _loadProfiles());
+    context.push('/babies/add?entry=list').then((result) {
+      if (!mounted) return;
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
+        );
+      }
+      _loadProfiles();
+    });
   }
 
   void _openBabyDetail(BabyProfile profile) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BabyProfileDetailScreen(babyId: profile.id),
-      ),
-    );
+    context.push('/babies/detail/${profile.id}');
   }
 
-  void _switchActiveBaby(BabyProfile profile) {
-    setState(() {
-      _profiles = _profiles
-          .map(
-            (p) => BabyProfile(
-              id: p.id,
-              nickname: p.nickname,
-              birthDate: p.birthDate,
-              gender: p.gender,
-              birthWeightKg: p.birthWeightKg,
-              birthLengthCm: p.birthLengthCm,
-              isActive: p.id == profile.id,
-            ),
-          )
-          .toList();
-    });
-    // TODO: call PATCH /api/v1/babies/{id}/activate when endpoint is available (UC-193)
+  Future<void> _switchActiveBaby(BabyProfile profile) async {
+    try {
+      await _service.switchActiveBabyProfile(profile.id);
+      await _loadProfiles();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể chuyển hồ sơ đang theo dõi. $e')),
+      );
+    }
+  }
+
+  Future<void> _openSwitchActiveSheet() async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SwitchActiveBabySheet(
+        profiles: _profiles,
+        onActiveBabyChanged: () {
+          _loadProfiles();
+        },
+      ),
+    );
+
+    if (!mounted) return;
+    if (result == 'add') {
+      _openAddBaby();
+    } else if (result == 'manage' || result == 'changed') {
+      await _loadProfiles();
+    }
   }
 
   @override
@@ -158,6 +171,10 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAddButton(),
+            if (_profiles.length > 1) ...[
+              const SizedBox(height: 12),
+              _buildSwitchActiveButton(),
+            ],
             const SizedBox(height: 24),
             if (_profiles.isEmpty)
               _buildEmptyState()
@@ -211,6 +228,30 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchActiveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: _openSwitchActiveSheet,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          side: const BorderSide(color: Color(0xFFD6C2BD)),
+          shape: const StadiumBorder(),
+        ),
+        icon: const Icon(Icons.swap_horiz, size: 20),
+        label: const Text(
+          'Chọn bé đang theo dõi',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -323,16 +364,18 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: navigate to EditBabyScreen (UC-34/35)
+                context
+                    .push('/babies/${profile.id}/edit')
+                    .then((_) => _loadProfiles());
               },
             ),
             ListTile(
               leading: const Icon(
-                Icons.delete_outline,
+                Icons.archive_outlined,
                 color: Color(0xFFBA1A1A),
               ),
               title: const Text(
-                'Xóa hồ sơ',
+                'Lưu trữ hồ sơ',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   color: Color(0xFFBA1A1A),
@@ -340,7 +383,7 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: call DELETE /api/v1/babies/{id} (UC-33)
+                _confirmArchive(profile);
               },
             ),
             const SizedBox(height: 8),
@@ -348,6 +391,40 @@ class _BabyProfilesScreenState extends State<BabyProfilesScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmArchive(BabyProfile profile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Lưu trữ hồ sơ'),
+        content: Text(
+          'Hồ sơ ${profile.nickname} sẽ được ẩn khỏi danh sách đang theo dõi. Dữ liệu nhật ký và sức khỏe liên quan vẫn được giữ lại.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Lưu trữ'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _service.archiveBabyProfile(profile.id);
+      await _loadProfiles();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể lưu trữ hồ sơ. $e')));
+    }
   }
 }
 
