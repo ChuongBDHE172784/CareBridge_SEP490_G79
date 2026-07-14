@@ -26,6 +26,7 @@
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Implement hoàn chỉnh: `findByStatus()` trên `CommunityQuestionRepository`/`CommunityAnswerRepository`, DTO mới, `MOD-023`, `ModerationService.getPendingContentQueue()`, endpoint `GET /pending-content`; frontend `PendingContentQueuePage.tsx` + `moderationApi.fetchPendingContentQueue()`/`moderateContentDirect()` + sidebar link + route. Không sửa dòng nào của UC-99/UC-100 code đã Approved trước đó. 9/9 test PASS, verify UI thật qua Chrome DevTools MCP (moderator duyệt câu hỏi PENDING test → APPROVED → hiện trên feed của mother, `moderation_actions.report_id = NULL` đúng thiết kế). |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Bổ sung nút "Ẩn" (HIDE) bên cạnh "Duyệt" trên `PendingContentQueuePage.tsx` theo yêu cầu user — tái dùng nguyên `moderateContentDirect()`/`POST /actions` (UC-100, actionType=HIDE), không đổi backend. Thu thập lý do bắt buộc (C6/ADR-006 UC-100) qua `window.prompt()` — theo đúng convention `window.confirm()` đã có sẵn ở `SafetyRuleManagementPage.tsx`, dự án chưa có shared modal component. Verify UI thật: tạo câu hỏi PENDING test, bấm Ẩn, xác nhận `status → HIDDEN` và `reason` được ghi đúng vào `moderation_actions`. Cũng đã sửa bug có sẵn (không liên quan tài liệu này) tại `shared/auth/roleRoutes.ts` — MODERATOR đăng nhập bị đá sang `/forbidden` do default route trỏ nhầm `/moderator/dashboard` (SYSTEM_ADMIN-only); đổi thành `/moderator/queue`. |
 | 2026-07-03 | HuyND | Approved §16 (EXTENSION — Moderation History) — tự duyệt để tiến hành implement ngay |
+| 2026-07-14 | Codex | Correction — hàng đợi duyệt lần đầu chỉ hiển thị `Duyệt` và `Yêu cầu sửa`; bỏ `Ẩn`/`Khóa` vì nguồn dữ liệu chỉ là QUESTION/ANSWER `PENDING`, chưa công khai. Các action `HIDE`/`LOCK` vẫn thuộc UC-100 nhưng chỉ được thực hiện từ luồng reported/processed content; lịch sử vẫn ghi nhận các action đã xảy ra. |
 
 ---
 
@@ -334,6 +335,8 @@ Query params: `targetType` (bắt buộc — `QUESTION` \| `ANSWER`), `page` (de
 | Router config (nơi khai báo route `/moderator/...`)                    | + route mới `/moderator/pending-content`                                                    |
 | `src/features/moderation/components/ModPortalSidebar.tsx`              | + link điều hướng tới trang mới — nếu không có link, trang không thể truy cập được (chính là bug đang sửa) |
 
+**Ràng buộc UI hiện hành:** Hai tab `Câu hỏi mới` và `Câu trả lời mới` chỉ chứa nội dung `PENDING` chưa hiển thị công khai, nên chỉ có `Duyệt` và `Yêu cầu sửa`. `Ẩn`/`Khóa` không được hiển thị tại đây; chúng là quyết định moderation cho nội dung đã công khai hoặc đã vào luồng báo cáo/xử lý. Tab `Đã xử lý` là lịch sử audit, không cung cấp các quyết định enforcement trực tiếp.
+
 **Ngoài phạm vi (không đụng trong lần này — liệt kê để user biết, không tự ý sửa):**
 - `EscalatedModerationCasesPage.tsx`'s stub `console.log` resolve action.
 - Route `/moderator/queue/:reportId` hiện đang mồ côi theo báo cáo của subagent.
@@ -450,7 +453,7 @@ Phát hiện lúc làm phần này: `GET /pending-content` (§ADR-005) **chưa t
 ### 16.7. Frontend
 - `moderationApi.ts`: + `fetchModerationHistory(targetType?, page?, size?)`.
 - `models/moderation.ts`: + `ModerationHistoryItem`, `ModerationHistoryPage` types.
-- `PendingContentQueuePage.tsx`: + tab "Đã xử lý" (3rd tab, cạnh "Câu hỏi mới"/"Câu trả lời mới"), hiển thị bảng gồm loại, preview, hành động (Duyệt/Ẩn — màu khác nhau), lý do, người xử lý, thời gian.
+- `PendingContentQueuePage.tsx`: + tab "Đã xử lý" (3rd tab, cạnh "Câu hỏi mới"/"Câu trả lời mới"), hiển thị lịch sử audit gồm loại, preview, hành động, lý do, người xử lý và thời gian. Đây là read-only history; `Ẩn`/`Khóa` không xuất hiện trong hai tab `PENDING`.
 
 ### 16.8. Test
 Không tạo TDS/Test-Spec riêng — amend tài liệu này (cùng ngày, cùng trang, cùng logic mở rộng). Test case mới: xem §Test-Spec cùng thư mục, mục "EXTENSION History".

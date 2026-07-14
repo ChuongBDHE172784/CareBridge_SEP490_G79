@@ -21,6 +21,7 @@
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Implement hoàn chỉnh theo Red-Green-Refactor — 9/9 test PASS (`./mvnw test`), verify qua UI thật bằng Chrome DevTools MCP (đăng nhập moderator, duyệt câu hỏi test, xác nhận hiện trên feed của mother). Không có regression (11 lỗi pre-existing ở module exercise không liên quan). |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Bổ sung nút "Ẩn" (HIDE) — chỉ ở frontend, tái dùng backend UC-100 không đổi nên không có unit test mới; verify bằng UI E2E thủ công (tạo câu hỏi PENDING test, bấm Ẩn, xác nhận DB `status → HIDDEN`, `reason` được ghi đúng, `report_id = NULL`). Không nằm trong 9 test case ban đầu của tài liệu này — ghi nhận trung thực, không thêm test case giả. |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | EXTENSION History (TDS §16): 6 TC mới (PCQH-TC-001…006), Red→Green xác nhận, 34/34 test PASS tổng cộng. Tab "Đã xử lý" verify UI thật với dữ liệu thật trong DB dev (không phải data test tự tạo) — hiển thị đúng preview, hành động, lý do, người xử lý, thời gian. |
+| 2026-07-14 | Codex | Correction — manual UI acceptance cho tab `PENDING`: chỉ thấy `Duyệt` và `Yêu cầu sửa`; không thấy `Ẩn` hoặc `Khóa`. Bản ghi HIDE cũ là lịch sử implementation, không còn là expected behavior của first-time queue. |
 
 ---
 
@@ -78,6 +79,7 @@ Out of scope: `moderateContent()` (UC-100, không đổi), frontend unit tests (
 - Kết quả rỗng → content=[], không lỗi
 - Non-MODERATOR → 403
 - contentPreview không chứa PII
+- Manual UI: với QUESTION/ANSWER `PENDING`, chỉ hiển thị `Duyệt` và `Yêu cầu sửa`; không hiển thị `Ẩn`/`Khóa`.
 
 ### TDS-04 — Test Techniques
 Equivalence partitioning (targetType hợp lệ/không hợp lệ), boundary (size=50 vs 51), mocked repository (unit, không cần DB thật).
