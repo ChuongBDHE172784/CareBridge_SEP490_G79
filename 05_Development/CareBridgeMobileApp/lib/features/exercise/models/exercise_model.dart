@@ -1,3 +1,113 @@
+class ExerciseSummary {
+  final String id;
+  final String title;
+  final String description;
+  final String trimesterScope;
+  final String difficultyLevel;
+  final int durationMinutes;
+  final String? mediaUrl;
+  final String? safetyWarning;
+  final bool supportsPostureAnalysis;
+
+  const ExerciseSummary({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.trimesterScope,
+    required this.difficultyLevel,
+    required this.durationMinutes,
+    this.mediaUrl,
+    this.safetyWarning,
+    required this.supportsPostureAnalysis,
+  });
+
+  factory ExerciseSummary.fromJson(Map<String, dynamic> json) {
+    return ExerciseSummary(
+      id: json['exerciseId'] as String,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      trimesterScope: json['trimesterScope'] as String? ?? '',
+      difficultyLevel: json['difficultyLevel'] as String? ?? '',
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 0,
+      mediaUrl: json['mediaUrl'] as String?,
+      safetyWarning: json['safetyWarning'] as String?,
+      supportsPostureAnalysis:
+          json['supportsPostureAnalysis'] as bool? ?? false,
+    );
+  }
+}
+
+class ExerciseDetail {
+  final String id;
+  final String title;
+  final String description;
+  final String trimesterScope;
+  final String difficultyLevel;
+  final int durationMinutes;
+  final String instructionContent;
+  final String? mediaUrl;
+  final String? safetyWarning;
+  final bool supportsPostureAnalysis;
+
+  const ExerciseDetail({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.trimesterScope,
+    required this.difficultyLevel,
+    required this.durationMinutes,
+    required this.instructionContent,
+    this.mediaUrl,
+    this.safetyWarning,
+    required this.supportsPostureAnalysis,
+  });
+
+  factory ExerciseDetail.fromJson(Map<String, dynamic> json) {
+    return ExerciseDetail(
+      id: json['exerciseId'] as String,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      trimesterScope: json['trimesterScope'] as String? ?? '',
+      difficultyLevel: json['difficultyLevel'] as String? ?? '',
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 0,
+      instructionContent: json['instructionContent'] as String? ?? '',
+      mediaUrl: json['mediaUrl'] as String?,
+      safetyWarning: json['safetyWarning'] as String?,
+      supportsPostureAnalysis:
+          json['supportsPostureAnalysis'] as bool? ?? false,
+    );
+  }
+}
+
+class ExerciseSafetyCheck {
+  final String id;
+  final String exerciseId;
+  final String resultStatus;
+  final bool redFlagDetected;
+  final String? blockedReason;
+
+  const ExerciseSafetyCheck({
+    required this.id,
+    required this.exerciseId,
+    required this.resultStatus,
+    required this.redFlagDetected,
+    this.blockedReason,
+  });
+
+  factory ExerciseSafetyCheck.fromJson(Map<String, dynamic> json) {
+    return ExerciseSafetyCheck(
+      id: json['safetyCheckId'] as String,
+      exerciseId: json['exerciseId'] as String? ?? '',
+      resultStatus: json['resultStatus'] as String? ?? '',
+      redFlagDetected: json['redFlagDetected'] as bool? ?? false,
+      blockedReason: json['blockedReason'] as String?,
+    );
+  }
+
+  bool get isCleared =>
+      resultStatus.toUpperCase() == 'CLEARED' && !redFlagDetected;
+}
+
 class ExerciseSession {
   final String id;
   final String exerciseId;

@@ -43,4 +43,16 @@ class BabyService {
       'isActive': body['isActive'] ?? true,
     });
   }
+
+  // UC-193: Switch active baby profile (CB-160)
+  Future<BabyProfile> switchActiveBabyProfile(String babyId) async {
+    final data = await apiPatch('/api/v1/babies/$babyId/active', {});
+    final body = data['data'] as Map<String, dynamic>;
+    return BabyProfile.fromJson(body);
+  }
+
+  // UC-33: Soft-archive baby profile, linked data is preserved.
+  Future<void> archiveBabyProfile(String babyId) async {
+    await apiPost('/api/v1/babies/$babyId/archive', {});
+  }
 }

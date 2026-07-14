@@ -8,6 +8,9 @@ import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/home/screens/home_shell.dart';
+import '../../features/home/screens/expert_app_home_screen.dart';
+import '../../features/home/screens/family_member_home_screen.dart';
+import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
@@ -18,7 +21,9 @@ import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
 import '../../features/baby/screens/edit_baby_daily_log_screen.dart';
+import '../../features/baby/screens/baby_daily_log_detail_screen.dart';
 import '../../features/baby/screens/baby_log_summary_screen.dart';
+import '../../features/baby/screens/development_milestone_detail_screen.dart';
 import '../../features/baby/screens/record_milestone_screen.dart';
 import '../../features/baby/models/baby_daily_log_model.dart';
 
@@ -61,6 +66,39 @@ import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
 
+Widget _buildHomeForRole(String? role, {required int initialIndex}) {
+  switch ((role ?? '').trim().toUpperCase()) {
+    case 'FAMILY':
+      return const FamilyMemberHomeScreen();
+    case 'EXPERT':
+      return const ExpertAppHomeScreen();
+    case 'MOTHER':
+      return HomeShell(initialIndex: initialIndex);
+    default:
+      return const _UnsupportedRoleHome();
+  }
+}
+
+class _UnsupportedRoleHome extends StatelessWidget {
+  const _UnsupportedRoleHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Vai trò tài khoản chưa được hỗ trợ trên mobile app.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontFamily: 'Lexend', fontSize: 16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -100,7 +138,9 @@ final GoRouter appRouter = GoRouter(
     if (isAuth &&
         hasAssignedRole &&
         state.matchedLocation == '/role-selection') {
-      return auth.role == 'EXPERT' ? '/expert-home' : '/';
+      return auth.role == 'EXPERT'
+          ? '/expert-home'
+          : (auth.role == 'MOTHER' ? '/mother-stage-selection' : '/');
     }
 
     if (isAuth && isAuthRoute) {
@@ -130,13 +170,20 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
+      path: '/mother-stage-selection',
+      builder: (context, state) => const MotherStageSelectionScreen(),
+    ),
+    GoRoute(
       path: '/',
       builder: (context, state) {
         final tabParam = state.uri.queryParameters['tab'];
         final int initialIndex = tabParam != null
             ? int.tryParse(tabParam) ?? 0
             : 0;
-        return HomeShell(initialIndex: initialIndex);
+        return _buildHomeForRole(
+          AuthState.instance.role,
+          initialIndex: initialIndex,
+        );
       },
     ),
     GoRoute(
@@ -241,7 +288,14 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/babies/add',
-      builder: (context, state) => const AddBabyScreen(),
+      builder: (context, state) {
+        final entry = state.uri.queryParameters['entry'];
+        return AddBabyScreen(
+          entryPoint: entry == 'onboarding'
+              ? AddBabyEntryPoint.onboarding
+              : AddBabyEntryPoint.profileList,
+        );
+      },
     ),
     GoRoute(
       path: '/babies/detail/:id',
@@ -255,6 +309,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return EditBabyProfileScreen(babyId: id);
+      },
+    ),
+    GoRoute(
+      path: '/babies/:babyId/daily-logs/:logId',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        final logId = state.pathParameters['logId'] ?? '';
+        return BabyDailyLogDetailScreen(babyId: babyId, logId: logId);
       },
     ),
     GoRoute(
@@ -282,6 +344,17 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final babyId = state.pathParameters['babyId'] ?? '';
         return RecordMilestoneScreen(babyId: babyId);
+      },
+    ),
+    GoRoute(
+      path: '/babies/:babyId/milestones/:milestoneId',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        final milestoneId = state.pathParameters['milestoneId'] ?? '';
+        return DevelopmentMilestoneDetailScreen(
+          babyId: babyId,
+          milestoneId: milestoneId,
+        );
       },
     ),
     GoRoute(

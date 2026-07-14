@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/baby_model.dart';
+import '../services/baby_profile_selection_storage.dart';
 import '../services/baby_service.dart';
 import '../../../core/network/api_client.dart';
 
@@ -27,8 +29,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   static const _secondary = Color(0xFF6E5A52);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
+  static const _outlineVariant = Color(0xFFD6C2BD);
 
   final _service = BabyService();
+  final _selectionStorage = BabyProfileSelectionStorage();
   BabyProfile? _profile;
   bool _loading = true;
   String? _error;
@@ -37,6 +41,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _selectionStorage.saveLastOpenedBabyProfileId(widget.babyId);
     _loadProfile();
   }
 
@@ -72,6 +77,20 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     }
   }
 
+  Future<void> _openEditProfile() async {
+    await context.push('/babies/${widget.babyId}/edit');
+    if (mounted) _loadProfile();
+  }
+
+  void _openLogSummary() {
+    context.push('/babies/${widget.babyId}/log-summary');
+  }
+
+  Future<void> _openAddMilestone() async {
+    await context.push('/babies/${widget.babyId}/milestones/add');
+    if (mounted) _loadProfile();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,9 +105,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
             : _buildContent(),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: open add daily log bottom sheet (UC-194/195)
-        },
+        onPressed: _openLogSummary,
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -132,6 +149,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         SliverToBoxAdapter(child: _buildAppBar(p)),
         SliverToBoxAdapter(child: _buildIdentityHeader(p)),
         SliverToBoxAdapter(child: _buildSummary24h()),
+        SliverToBoxAdapter(child: _buildQuickActions()),
         SliverToBoxAdapter(child: _buildTabBar()),
         SliverToBoxAdapter(child: _buildTabContent()),
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -163,7 +181,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           ),
           IconButton(
             onPressed: () {
-              // TODO: navigate to EditBabyScreen (UC-35/36)
+              _openEditProfile();
             },
             icon: const Icon(Icons.edit_outlined),
             color: _onSurfaceVariant,
@@ -281,6 +299,55 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     );
   }
 
+  Widget _buildQuickActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _openLogSummary,
+              icon: const Icon(Icons.list_alt_outlined, size: 18),
+              label: const Text('Log'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primary,
+                side: const BorderSide(color: _outlineVariant),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                _openAddMilestone();
+              },
+              icon: const Icon(Icons.flag_outlined, size: 18),
+              label: const Text('Milestone'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primary,
+                side: const BorderSide(color: _outlineVariant),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                _openEditProfile();
+              },
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Edit'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primary,
+                side: const BorderSide(color: _outlineVariant),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTabBar() {
     return Container(
       color: _canvas.withAlpha(230),
@@ -317,9 +384,66 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       child: switch (_activeTab) {
         _Tab.growth => _buildGrowthTab(),
-        _Tab.milestones => _buildComingSoon('Cột mốc phát triển'),
+        _Tab.milestones => _buildMilestoneTab(),
         _Tab.vaccination => _buildComingSoon('Lịch tiêm chủng'),
       },
+    );
+  }
+
+  Widget _buildMilestoneTab() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withAlpha(15),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cot moc phat trien',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Ghi nhan cot moc moi hoac mo chi tiet cot moc tu danh sach khi API danh sach san sang.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                _openAddMilestone();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Ghi nhan cot moc'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _primaryContainer,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

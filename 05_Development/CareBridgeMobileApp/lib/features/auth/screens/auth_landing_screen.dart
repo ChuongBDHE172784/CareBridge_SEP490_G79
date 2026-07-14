@@ -6,8 +6,8 @@ import '../../journey/services/journey_service.dart';
 
 /// Routes authenticated users to the right first screen after login.
 ///
-/// Mothers without an active journey must complete CB-007 first. Once a
-/// journey type exists in the dashboard, they can land directly on CB-008.
+/// Mothers without an active journey choose their current stage before setup.
+/// Once a journey type exists in the dashboard, they can land directly on CB-008.
 class AuthLandingScreen extends StatefulWidget {
   const AuthLandingScreen({super.key});
 
@@ -39,10 +39,10 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
     try {
       final dashboard = await _journeyService.getDashboard();
       if (!mounted) return;
-      context.go(dashboard.hasActiveJourney ? '/' : '/journey-setup');
+      context.go(dashboard.hasActiveJourney ? '/' : '/mother-stage-selection');
     } catch (_) {
       if (!mounted) return;
-      context.go('/journey-setup');
+      context.go('/mother-stage-selection');
     }
   }
 

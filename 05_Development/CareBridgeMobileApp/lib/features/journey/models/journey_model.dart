@@ -83,18 +83,11 @@ class JourneyDashboard {
     if (pregnancyWeek != null) return pregnancyWeek;
     if (!isPregnancy) return null;
 
-    if (lastMenstrualDate != null) {
-      final lmp = DateTime(
-        lastMenstrualDate!.year,
-        lastMenstrualDate!.month,
-        lastMenstrualDate!.day,
-      );
-      return (_today.difference(lmp).inDays / 7).floor().clamp(0, 42);
-    }
-
-    final daysLeft = calculatedDaysUntilDue;
-    if (daysLeft == null) return null;
-    return ((280 - daysLeft) / 7).floor().clamp(0, 42);
+    return calculatePregnancyWeek(
+      lastMenstrualDate: lastMenstrualDate,
+      estimatedDueDate: estimatedDueDate,
+      today: _today,
+    );
   }
 
   int? get effectivePregnancyWeek => displayPregnancyWeek;

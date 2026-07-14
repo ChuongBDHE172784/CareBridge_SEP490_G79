@@ -16,14 +16,17 @@ public class CreateBabyProfileRequest {
     private String nickname;
 
     @NotNull
+    @PastOrPresent
     private LocalDate birthDate;
 
     private Gender gender;
 
-    @DecimalMin("0.5") @DecimalMax("8.0")
+    @DecimalMin("0.5")
+    @DecimalMax("10.0")
     private BigDecimal birthWeightKg;
 
-    @DecimalMin("25.0") @DecimalMax("65.0")
+    @DecimalMin("20.0")
+    @DecimalMax("100.0")
     private BigDecimal birthLengthCm;
 
     private UUID relatedJourneyId;
