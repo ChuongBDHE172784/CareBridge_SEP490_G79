@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../baby/models/baby_model.dart';
+import '../../baby/screens/baby_profile_detail_screen.dart';
 import '../../baby/services/baby_profile_selection_storage.dart';
 import '../../baby/services/baby_service.dart';
 import '../../healthRecords/models/health_metric_model.dart';
@@ -222,14 +223,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     await _load();
   }
 
-  Future<void> _openBabyDetail(BabyProfile profile) async {
-    setState(() => _selectedBabyProfileId = profile.id);
-    await _babySelectionStorage.saveLastOpenedBabyProfileId(profile.id);
-    if (!mounted) return;
-    await context.push('/babies/detail/${profile.id}');
-    if (mounted) await _load();
-  }
-
   Future<void> _openBabyProfilePicker() async {
     final result = await showModalBottomSheet<_BabyPickerResult>(
       context: context,
@@ -393,13 +386,14 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
     final selectedProfile = _selectedBabyProfile ?? _babyProfiles.first;
 
     return [
-      _buildBabyCareHeader(selectedProfile),
-      const SizedBox(height: 16),
-      _buildBabySwitcherCard(selectedProfile),
-      const SizedBox(height: 12),
-      _buildBabyProfileCard(selectedProfile),
-      const SizedBox(height: 12),
-      _buildAddBabyActionCard(),
+      BabyProfileDetailScreen(
+        key: ValueKey(selectedProfile.id),
+        babyId: selectedProfile.id,
+        embedded: true,
+        onSwitchBaby: _openBabyProfilePicker,
+        onAddBaby: _openAddBabyProfile,
+        onProfileChanged: _load,
+      ),
     ];
   }
 
@@ -570,236 +564,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBabyCareHeader(BabyProfile selectedProfile) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Hồ sơ bé',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Đang hiển thị ${selectedProfile.nickname}',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  color: _onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Tooltip(
-          message: 'Đổi hồ sơ bé',
-          child: IconButton.filled(
-            onPressed: _openBabyProfilePicker,
-            icon: const Icon(Icons.swap_horiz_rounded),
-            style: IconButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBabySwitcherCard(BabyProfile selectedProfile) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: _openBabyProfilePicker,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: _surfaceContainerLowest,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.manage_accounts_outlined,
-                color: _primary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Đổi hồ sơ bé',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${_babyProfiles.length} hồ sơ khả dụng • đang xem ${selectedProfile.nickname}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBabyProfileCard(BabyProfile profile) {
-    final genderLabel = profile.gender.displayLabel.isEmpty
-        ? 'Chưa cập nhật giới tính'
-        : profile.gender.displayLabel;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => _openBabyDetail(profile),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: _surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.child_care, color: _primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile.nickname,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: _onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        profile.ageLabel,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (profile.isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: const Text(
-                      'Đang theo dõi',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _primary,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _InfoRow(
-              icon: Icons.cake_outlined,
-              label: 'Ngày sinh',
-              value: _formatDate(profile.birthDate),
-            ),
-            const SizedBox(height: 10),
-            _InfoRow(
-              icon: Icons.badge_outlined,
-              label: 'Giới tính',
-              value: genderLabel,
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => _openBabyDetail(profile),
-              icon: const Icon(Icons.visibility_outlined, size: 18),
-              label: const Text('Xem hồ sơ'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-                foregroundColor: _primary,
-                side: const BorderSide(color: _outlineVariant),
-                textStyle: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddBabyActionCard() {
-    return OutlinedButton.icon(
-      onPressed: _openAddBabyProfile,
-      icon: const Icon(Icons.add_rounded),
-      label: const Text('Thêm hồ sơ bé'),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-        foregroundColor: _primary,
-        side: const BorderSide(color: _outlineVariant),
-        textStyle: const TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }
