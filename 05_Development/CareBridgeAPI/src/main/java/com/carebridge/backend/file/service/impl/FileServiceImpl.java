@@ -76,10 +76,14 @@ public class FileServiceImpl implements IFileService {
                     "Failed to store file");
         }
 
+        // Capture the real public URL returned by the storage backend (e.g. Cloudinary HTTPS URL).
+        // This is what the frontend uses to display/download the file, so store it in the DB.
+        String publicUrl = storageService.generatePresignedUrl(storageKey, 15);
+
         // C4: accountId from JWT
         UploadedFile saved = fileRepository.save(UploadedFile.builder()
                 .ownerUserId(callerId)
-                .storageKey(storageKey)
+                .storageKey(publicUrl)
                 .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
                 .mimeType(mimeType)
                 .fileSizeBytes(file.getSize())
@@ -87,7 +91,7 @@ public class FileServiceImpl implements IFileService {
                 .build());
 
         // C3: presigned URL TTL = 15 minutes (ADR-FILE-004)
-        String presignedUrl = storageService.generatePresignedUrl(storageKey, 15);
+        String presignedUrl = storageService.generatePresignedUrl(saved.getStorageKey(), 15);
 
         // C5: emit audit event
         auditService.log(AuditAction.FILE_UPLOADED, callerId,
@@ -115,7 +119,8 @@ public class FileServiceImpl implements IFileService {
                         && header[0] == (byte) 0x89 && header[1] == 0x50
                         && header[2] == 0x4E && header[3] == 0x47) return "image/png";
                 if (header.length >= 6
-                        && header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46) return "image/gif";
+                        && header[0] == 0x47 && header[1] == 0x49
+                        && header[2] == 0x46) return "image/gif";
             }
             String declared = file.getContentType();
             return declared != null ? declared : "application/octet-stream";
@@ -138,7 +143,7 @@ public class FileServiceImpl implements IFileService {
 
         fileAccessPolicy.assertViewable(file, callerId, authorities);
 
-        // C3: presigned URL TTL = 15 minutes (ADR-FILE-006)
+        // Generate fresh presigned URL from the stored public URL
         String presignedUrl = storageService.generatePresignedUrl(file.getStorageKey(), 15);
 
         auditService.log(AuditAction.FILE_VIEWED, callerId,
