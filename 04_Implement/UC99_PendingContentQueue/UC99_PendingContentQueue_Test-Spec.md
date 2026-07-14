@@ -22,6 +22,8 @@
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | Bổ sung nút "Ẩn" (HIDE) — chỉ ở frontend, tái dùng backend UC-100 không đổi nên không có unit test mới; verify bằng UI E2E thủ công (tạo câu hỏi PENDING test, bấm Ẩn, xác nhận DB `status → HIDDEN`, `reason` được ghi đúng, `report_id = NULL`). Không nằm trong 9 test case ban đầu của tài liệu này — ghi nhận trung thực, không thêm test case giả. |
 | 2026-07-03 | AI Agent — Amelia (Dev Agent) | EXTENSION History (TDS §16): 6 TC mới (PCQH-TC-001…006), Red→Green xác nhận, 34/34 test PASS tổng cộng. Tab "Đã xử lý" verify UI thật với dữ liệu thật trong DB dev (không phải data test tự tạo) — hiển thị đúng preview, hành động, lý do, người xử lý, thời gian. |
 | 2026-07-14 | Codex | Correction — manual UI acceptance cho tab `PENDING`: chỉ thấy `Duyệt` và `Yêu cầu sửa`; không thấy `Ẩn` hoặc `Khóa`. Bản ghi HIDE cũ là lịch sử implementation, không còn là expected behavior của first-time queue. |
+| 2026-07-14 | Codex | Clarification — `Ẩn` là expected behavior ở hai tab `PENDING`, kèm lý do bắt buộc. `Khóa` chỉ hiện trong `Đã xử lý` với QUESTION đã được duyệt và phải kiểm tra trạng thái hiện tại trước khi xác nhận; ANSWER không có action này. |
+| 2026-07-14 | Codex | Safety coverage — thêm service test cho `APPROVED → LOCKED` thành công và nhánh conditional update trả 0 (`MOD-031`, không ghi action), bảo vệ race condition khi nhiều moderator cùng thao tác. |
 
 ---
 
@@ -79,7 +81,7 @@ Out of scope: `moderateContent()` (UC-100, không đổi), frontend unit tests (
 - Kết quả rỗng → content=[], không lỗi
 - Non-MODERATOR → 403
 - contentPreview không chứa PII
-- Manual UI: với QUESTION/ANSWER `PENDING`, chỉ hiển thị `Duyệt` và `Yêu cầu sửa`; không hiển thị `Ẩn`/`Khóa`.
+- Manual UI: với QUESTION/ANSWER `PENDING`, hiển thị `Duyệt`, `Ẩn`, `Yêu cầu sửa`; `Ẩn` yêu cầu lý do. Không hiển thị `Khóa`. Với history record APPROVE của QUESTION, chỉ cho mở confirm `Khóa` sau khi API detail xác nhận trạng thái hiện tại là `APPROVED`; ANSWER không có action này. Service test phải xác nhận `LOCK` chỉ persist action sau conditional transition `APPROVED → LOCKED`; transition trả 0 phải trả `MOD-031` và không persist action.
 
 ### TDS-04 — Test Techniques
 Equivalence partitioning (targetType hợp lệ/không hợp lệ), boundary (size=50 vs 51), mocked repository (unit, không cần DB thật).

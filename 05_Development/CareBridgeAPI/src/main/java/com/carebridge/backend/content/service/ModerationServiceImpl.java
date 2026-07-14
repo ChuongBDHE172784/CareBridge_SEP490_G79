@@ -332,13 +332,19 @@ public class ModerationServiceImpl implements ModerationService {
 
     // C5: action-targetType compatibility per TDS §6.4 — QUESTION supports APPROVE/HIDE/LOCK/REQUEST_REVISION
     private String moderateQuestion(UUID targetId, ModerationActionType actionType) {
+        if (actionType == ModerationActionType.LOCK) {
+            if (communityQuestionRepository.lockIfApproved(targetId) == 0) {
+                throw ModerationException.questionMustBeApprovedToLock(targetId);
+            }
+            return QuestionStatus.LOCKED.name();
+        }
+
         CommunityQuestion question = communityQuestionRepository.findById(targetId)
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.QUESTION));
 
         QuestionStatus newStatus = switch (actionType) {
             case APPROVE -> QuestionStatus.APPROVED;
             case HIDE -> QuestionStatus.HIDDEN;
-            case LOCK -> QuestionStatus.LOCKED;
             case REQUEST_REVISION -> QuestionStatus.PENDING;
             // A label records a safety warning without changing visibility or discussion state.
             case LABEL -> question.getStatus();

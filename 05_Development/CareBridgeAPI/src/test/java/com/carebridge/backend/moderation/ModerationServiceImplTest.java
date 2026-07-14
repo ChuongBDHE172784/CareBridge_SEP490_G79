@@ -433,6 +433,40 @@ class ModerationServiceImplTest {
         assertThat(response.totalElements()).isZero();
     }
 
+    @Test
+    void moderateContent_lockHiddenQuestion_throwsConflictWithoutPersistingAction() {
+        when(communityQuestionRepository.lockIfApproved(TARGET_ID_1)).thenReturn(0);
+
+        ModerationException ex = assertThrows(ModerationException.class, () -> moderationService.moderateContent(
+                new com.carebridge.backend.content.dto.request.ModerateContentRequest(
+                        TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.LOCK, "Đã xử lý xong"),
+                moderatorPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-031");
+        verify(moderationActionRepository, times(0)).save(any());
+    }
+
+    @Test
+    void moderateContent_lockApprovedQuestion_recordsActionAfterAtomicTransition() {
+        UUID moderatorId = UUID.fromString(moderatorPrincipal.getName());
+        ModerationAction savedAction = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.LOCK, moderatorId, "Đóng thảo luận sau khi đã được xử lý");
+        when(communityQuestionRepository.lockIfApproved(TARGET_ID_1)).thenReturn(1);
+        when(moderationActionRepository.save(any())).thenReturn(savedAction);
+
+        var response = moderationService.moderateContent(
+                new com.carebridge.backend.content.dto.request.ModerateContentRequest(
+                        TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.LOCK,
+                        "Đóng thảo luận sau khi đã được xử lý"),
+                moderatorPrincipal);
+
+        assertThat(response.resultingStatus()).isEqualTo("LOCKED");
+        verify(communityQuestionRepository, times(1)).lockIfApproved(TARGET_ID_1);
+        verify(moderationActionRepository, times(1)).save(any());
+        verify(auditService, times(1)).log(eq(AuditAction.MODERATION_ACTION), eq(moderatorId),
+                eq("QUESTION"), eq(TARGET_ID_1.toString()), any());
+    }
+
     private CommunityQuestion makeQuestion(UUID id, QuestionStatus status, UUID authorId, boolean anonymous, int bodyLength) {
         return CommunityQuestion.builder()
                 .id(id)

@@ -12,9 +12,15 @@ import {
 import type { PendingContentItem, ModerationHistoryItem, ModerationContentDetail, ReportTargetType } from '../models/moderation';
 import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
 
-type PendingActionType = 'REQUEST_REVISION';
+type PendingActionType = 'HIDE' | 'REQUEST_REVISION';
 
 const PENDING_ACTION_CONFIG: Record<PendingActionType, { title: string; reasonLabel: string; reasonPlaceholder: string; tone: 'default' | 'danger' }> = {
+  HIDE: {
+    title: 'Ẩn nội dung này?',
+    reasonLabel: 'Lý do ẩn nội dung (bắt buộc)',
+    reasonPlaceholder: 'Nhập lý do ẩn nội dung này...',
+    tone: 'danger',
+  },
   REQUEST_REVISION: {
     title: 'Yêu cầu tác giả chỉnh sửa?',
     reasonLabel: 'Nội dung cần chỉnh sửa (bắt buộc)',
@@ -56,6 +62,11 @@ export default function PendingContentQueuePage() {
   const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
   const [undoSubmitting, setUndoSubmitting] = useState(false);
   const [undoError, setUndoError] = useState('');
+  const [lockTarget, setLockTarget] = useState<ModerationHistoryItem | null>(null);
+  const [lockSubmitting, setLockSubmitting] = useState(false);
+  const [lockError, setLockError] = useState('');
+  const [lockLoadingId, setLockLoadingId] = useState<string | null>(null);
+  const [historyActionError, setHistoryActionError] = useState('');
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -95,8 +106,7 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  // A first-time review can request an author revision. Hide/lock belong to reported or already
-  // published content workflows, not this PENDING-only queue.
+  // First-time review may either reject unsafe content (HIDE) or return it to its author for revision.
   const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
     setDialogError('');
     setPendingAction({ item, type });
@@ -154,6 +164,42 @@ export default function PendingContentQueuePage() {
     }
   };
 
+  // Lock only appears for a previously approved QUESTION in audit history. ANSWER has no LOCKED
+  // state, and a pending item is not a discussion that can be meaningfully locked.
+  const confirmLock = async (reason?: string) => {
+    if (!lockTarget || !reason) return;
+    setLockSubmitting(true);
+    setLockError('');
+    try {
+      await moderateContentDirect(lockTarget.targetId, 'QUESTION', 'LOCK', reason);
+      setLockTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setLockError(message || 'Khóa thảo luận thất bại, vui lòng thử lại.');
+    } finally {
+      setLockSubmitting(false);
+    }
+  };
+
+  const openLockDialog = async (item: ModerationHistoryItem) => {
+    setLockLoadingId(item.actionId);
+    setHistoryActionError('');
+    try {
+      const detail = await fetchContentDetail('QUESTION', item.targetId);
+      if (detail.status !== 'APPROVED') {
+        setHistoryActionError('Câu hỏi này không còn ở trạng thái đã duyệt nên không thể khóa.');
+        return;
+      }
+      setLockError('');
+      setLockTarget(item);
+    } catch {
+      setHistoryActionError('Không kiểm tra được trạng thái câu hỏi trước khi khóa. Vui lòng thử lại.');
+    } finally {
+      setLockLoadingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <ModPortalSidebar />
@@ -187,6 +233,9 @@ export default function PendingContentQueuePage() {
           <div className="bg-error-container rounded-2xl p-6 text-error text-sm">{error}</div>
         ) : tab === 'HISTORY' ? (
           <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
+            {historyActionError && (
+              <div className="mx-4 mt-4 rounded-xl bg-error-container px-4 py-3 text-sm text-error">{historyActionError}</div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] border-collapse">
                 <thead>
@@ -230,6 +279,16 @@ export default function PendingContentQueuePage() {
                               className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold whitespace-nowrap"
                             >
                               Hoàn tác
+                            </button>
+                          )}
+                          {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
+                            <button
+                              type="button"
+                              disabled={lockLoadingId === item.actionId}
+                              onClick={() => void openLockDialog(item)}
+                              className="px-3 py-1.5 rounded-xl bg-surface-container-highest text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {lockLoadingId === item.actionId ? 'Đang kiểm tra...' : 'Khóa thảo luận'}
                             </button>
                           )}
                         </div>
@@ -280,6 +339,14 @@ export default function PendingContentQueuePage() {
                           <button
                             type="button"
                             disabled={actioningId === item.targetId}
+                            onClick={() => openPendingAction(item, 'HIDE')}
+                            className="px-3 py-1.5 rounded-xl bg-error text-on-error text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actioningId === item.targetId}
                             onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
                             className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
                           >
@@ -303,7 +370,7 @@ export default function PendingContentQueuePage() {
         key={pendingAction ? `${pendingAction.item.targetId}-${pendingAction.type}` : 'none'}
         open={pendingAction !== null}
         title={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].title : ''}
-        icon="edit_note"
+        icon={pendingAction?.type === 'HIDE' ? 'visibility_off' : 'edit_note'}
         tone={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].tone : 'default'}
         reasonLabel={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonLabel : ''}
         reasonPlaceholder={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonPlaceholder : ''}
@@ -312,6 +379,22 @@ export default function PendingContentQueuePage() {
         errorText={dialogError}
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
+      />
+
+      <ConfirmDialog
+        key={lockTarget ? lockTarget.actionId : 'none'}
+        open={lockTarget !== null}
+        title="Khóa thảo luận này?"
+        description="Chỉ khóa câu hỏi đã được duyệt; bình luận mới sẽ không thể được thêm vào."
+        icon="lock"
+        tone="default"
+        reasonLabel="Lý do khóa thảo luận (bắt buộc)"
+        reasonPlaceholder="Nhập lý do khóa thảo luận..."
+        confirmLabel="Khóa thảo luận"
+        submitting={lockSubmitting}
+        errorText={lockError}
+        onConfirm={confirmLock}
+        onCancel={() => setLockTarget(null)}
       />
 
       <ConfirmDialog
