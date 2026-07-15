@@ -18,7 +18,14 @@ import '../services/journey_service.dart';
 /// CB-009 - Mother Journey (UC-23, UC-24, UC-25, UC-26, UC-27, UC-28)
 /// Shows the active mother journey from GET /api/v1/journeys/me/dashboard.
 class MotherJourneyScreen extends StatefulWidget {
-  const MotherJourneyScreen({super.key});
+  const MotherJourneyScreen({
+    super.key,
+    this.loadData = true,
+    this.initialBabyProfiles = const [],
+  });
+
+  final bool loadData;
+  final List<BabyProfile> initialBabyProfiles;
 
   @override
   State<MotherJourneyScreen> createState() => _MotherJourneyScreenState();
@@ -54,7 +61,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.loadData) {
+      _load();
+    } else {
+      _babyProfiles = widget.initialBabyProfiles;
+      _selectedBabyProfileId = _resolveSelectedBabyProfileId(_babyProfiles);
+      _selectedSection = _JourneySection.babyCare;
+      _didChooseInitialSection = true;
+      _loading = false;
+    }
   }
 
   Future<void> _load() async {
@@ -242,13 +257,16 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
     final selected = result.profile;
     if (selected == null) return;
+    final previousId = _selectedBabyProfileId;
     setState(() => _selectedBabyProfileId = selected.id);
+    if (!widget.loadData) return;
     await _babySelectionStorage.saveLastOpenedBabyProfileId(selected.id);
     if (!selected.isActive) {
       try {
         await _babyService.switchActiveBabyProfile(selected.id);
       } catch (_) {
         if (!mounted) return;
+        setState(() => _selectedBabyProfileId = previousId);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Không thể đổi hồ sơ bé đang theo dõi.'),
@@ -296,7 +314,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: _primaryContainer,
-      onRefresh: _load,
+      onRefresh: widget.loadData ? _load : () async {},
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _buildHeader()),
@@ -390,9 +408,11 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
         key: ValueKey(selectedProfile.id),
         babyId: selectedProfile.id,
         embedded: true,
+        loadData: widget.loadData,
+        initialProfile: selectedProfile,
         onSwitchBaby: _openBabyProfilePicker,
         onAddBaby: _openAddBabyProfile,
-        onProfileChanged: _load,
+        onProfileChanged: widget.loadData ? _load : null,
       ),
     ];
   }

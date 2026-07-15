@@ -8,9 +8,16 @@ import '../../../core/network/api_client.dart';
 /// 4 info cards (schedule, facility, child profile, notes), action buttons.
 /// Calls GET /api/v1/vaccinations/{vaccinationId}.
 class VaccinationDetailScreen extends StatefulWidget {
+  final String babyId;
   final String vaccinationId;
+  final VaccinationRecord? initialRecord;
 
-  const VaccinationDetailScreen({super.key, required this.vaccinationId});
+  const VaccinationDetailScreen({
+    super.key,
+    required this.babyId,
+    required this.vaccinationId,
+    this.initialRecord,
+  });
 
   @override
   State<VaccinationDetailScreen> createState() =>
@@ -46,32 +53,19 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       _error2 = null;
     });
     try {
-      final r = await _service.getVaccination(widget.vaccinationId);
+      final r =
+          widget.initialRecord ??
+          await _service.getVaccination(widget.babyId, widget.vaccinationId);
       if (mounted) {
         setState(() {
           _record = r;
           _loading = false;
         });
       }
-    } on ApiException {
-      // Fallback mock for development
+    } on ApiException catch (_) {
       if (mounted) {
         setState(() {
-          _record = VaccinationRecord(
-            vaccinationId: widget.vaccinationId,
-            vaccineName: 'Vắc xin 6 trong 1 (Hexaxim)',
-            status: VaccinationStatus.completed,
-            plannedDate: DateTime(2023, 10, 15),
-            actualDate: DateTime(2023, 10, 16),
-            facilityName: 'Bệnh viện Nhi Đồng 1',
-            facilityAddress:
-                '341 Sư Vạn Hạnh, Phường 10, Quận 10, TP. Hồ Chí Minh',
-            childId: 'child-1',
-            childName: 'Nguyễn Văn A',
-            childBirthDate: DateTime(2023, 4, 12),
-            note:
-                'Trẻ có biểu hiện sốt nhẹ sau khi tiêm. Đã dùng thuốc hạ sốt theo chỉ định của bác sĩ. Cần theo dõi thêm trong 24h.',
-          );
+          _error2 = 'Không thể tải dữ liệu tiêm chủng.';
           _loading = false;
         });
       }
@@ -101,7 +95,11 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     );
     if (picked == null) return;
     try {
-      await _service.rescheduleVaccination(widget.vaccinationId, picked);
+      await _service.rescheduleVaccination(
+        widget.babyId,
+        widget.vaccinationId,
+        picked,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -143,7 +141,7 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     );
     if (ok != true || !mounted) return;
     try {
-      await _service.deleteVaccination(widget.vaccinationId);
+      await _service.deleteVaccination(widget.babyId, widget.vaccinationId);
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (_) {

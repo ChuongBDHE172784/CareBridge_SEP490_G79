@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/growth_measurement_model.dart';
 import '../services/growth_measurement_service.dart';
+import 'growth_measurement_detail_screen.dart';
 
 class GrowthMeasurementHistoryScreen extends StatefulWidget {
   final String babyId;
@@ -47,6 +48,7 @@ class _GrowthMeasurementHistoryScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: const Key('growth-history-screen'),
       backgroundColor: const Color(0xFFFEF8F4),
       appBar: AppBar(
         backgroundColor: const Color(0xFFFEF8F4),
@@ -269,8 +271,16 @@ class _GrowthMeasurementHistoryScreenState
         : '';
 
     return GestureDetector(
-      onTap: () {
-        // TODO: Navigate to detail
+      onTap: () async {
+        final changed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => GrowthMeasurementDetailScreen(
+              babyId: widget.babyId,
+              measurement: record,
+            ),
+          ),
+        );
+        if (changed == true && mounted) await _loadData();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),

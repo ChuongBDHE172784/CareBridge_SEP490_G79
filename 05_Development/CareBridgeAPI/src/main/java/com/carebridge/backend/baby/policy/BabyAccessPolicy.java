@@ -1,30 +1,33 @@
 package com.carebridge.backend.baby.policy;
 
 import com.carebridge.backend.baby.entity.BabyProfile;
-import com.carebridge.backend.family.entity.InviteStatus;
-import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.entity.CareGroup;
+import com.carebridge.backend.family.entity.PermissionFlag;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
+import com.carebridge.backend.family.entity.CareGroupStatus;
 
 @Component
 @RequiredArgsConstructor
 public class BabyAccessPolicy {
 
-    private final CareGroupMemberRepository memberRepository;
+    private final CareGroupRepository careGroupRepository;
+    private final CareGroupAuthorizationPolicy authorizationPolicy;
 
     /**
-     * Returns true if caller is the owner OR is an ACCEPTED member of any care group
-     * that includes this baby's owner.
-     * ADR-BABY-001: ACCEPTED status is required — PENDING is NOT sufficient.
+     * Owner access is unconditional. Delegated access requires an active care
+     * group linked to this baby, ACCEPTED membership, and explicit permission.
      */
     public boolean canView(BabyProfile profile, UUID callerId) {
-        if (profile.getOwnerUserId().equals(callerId)) {
+        if (isOwner(profile, callerId)) {
             return true;
         }
-        return memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
-                profile.getId(), callerId, InviteStatus.ACCEPTED);
+        return hasPermission(profile, callerId, PermissionFlag.BABY_VIEW);
     }
 
     public boolean isOwner(BabyProfile profile, UUID callerId) {
@@ -32,6 +35,28 @@ public class BabyAccessPolicy {
     }
 
     public boolean canManage(BabyProfile profile, UUID callerId) {
-        return isOwner(profile, callerId);
+        return canManageJournal(profile, callerId);
+    }
+
+    public boolean canManageJournal(BabyProfile profile, UUID callerId) {
+        return isOwner(profile, callerId)
+                || hasPermission(profile, callerId, PermissionFlag.BABY_JOURNAL_WRITE);
+    }
+
+    public boolean canManageGrowth(BabyProfile profile, UUID callerId) {
+        return isOwner(profile, callerId)
+                || hasPermission(profile, callerId, PermissionFlag.BABY_GROWTH_WRITE);
+    }
+
+    private boolean hasPermission(BabyProfile profile, UUID callerId, PermissionFlag permission) {
+        return linkedGroups(profile.getId()).stream()
+                .anyMatch(group -> authorizationPolicy.isMember(group.getId(), callerId)
+                        && authorizationPolicy.hasPermission(group.getId(), callerId, permission));
+    }
+
+    private List<CareGroup> linkedGroups(UUID babyId) {
+        return careGroupRepository.findByLinkedBabyProfileId(babyId).stream()
+                .filter(group -> group.getStatus() == CareGroupStatus.ACTIVE)
+                .toList();
     }
 }
