@@ -58,6 +58,10 @@ carebridge:
     max-context-chunks: 5
     base-url: https://generativelanguage.googleapis.com/v1beta
     model: gemini-1.5-flash
+  zego:
+    app-id: ${ZEGO_APP_ID:0}
+    server-secret: ${ZEGO_SERVER_SECRET:}
+    token-ttl-seconds: 3600
 
   supabase:
     url: ${SUPABASE_URL}
@@ -71,6 +75,18 @@ carebridge:
   fcm:
     enabled: ${CAREBRIDGE_FCM_ENABLED:false}
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+
+  # UC-144D Direct Consult Chat & Call — Firebase Realtime Database signaling (ADR-DCC-004).
+  # Shares the same service-account credentials as fcm.credentials-base64 above; independent
+  # enable flag because RTDB signaling is a hard requirement of this feature, unlike FCM.
+  firebase:
+    realtime:
+      enabled: ${CAREBRIDGE_FIREBASE_REALTIME_ENABLED:false}
+      database-url: ${FIREBASE_DATABASE_URL:}
+
+  directchat:
+    call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}
+    firebase-event-retention-hours: ${DIRECTCHAT_FIREBASE_EVENT_RETENTION_HOURS:24}
 
 ai:
   triage-service:

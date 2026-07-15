@@ -1,0 +1,13 @@
+{
+  "name": "carebridge-rtdb-rules-test",
+  "private": true,
+  "type": "module",
+  "description": "DCC-TC-020 — verifies 05_Development/Firebase/database.rules.json against a real Firebase RTDB + Auth emulator. Not part of any shipped app; run via `npm install && npm test` from this directory (with the emulators already running, see ../README.md).",
+  "scripts": {
+    "test": "node rtdb-rules.test.mjs"
+  },
+  "devDependencies": {
+    "firebase": "^11.1.0",
+    "firebase-admin": "^13.0.0"
+  }
+}

@@ -6,12 +6,12 @@
 | **Document ID** | `CB-CONSULTATION-IMP-095` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Draft` *(reverted 2026-07-15 — decoupled from UC-144, see CHANGELOG)* |
 | **Document Owner** | `TV4-Lâm` |
 | **Author** | `AI Agent (Technical Architect)` |
-| **Reviewed by** | `[Tech Lead — Pending]` |
-| **DPO Sign-off** | `[ ] Pending` *(session touches health-context conversation content — see §1)* |
-| **Approved by** | `[Principal Architect — Pending]` |
+| **Reviewed by** | `Confirmed via user decision 2026-07-15` |
+| **DPO Sign-off** | `[ ] Pending` *(outstanding, proceeding for dev/test per explicit user decision 2026-07-15 — see CHANGELOG)* |
+| **Approved by** | `[ ] Pending — Approved status revoked 2026-07-15, see CHANGELOG` |
 | **Last Review** | `2026-07-02` |
 | **Based on EDS** | `v2.0` |
 
@@ -22,6 +22,9 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC95 |
+| 2026-07-15 | AI Agent — Amelia (Dev Agent) | **Implemented & tested (core only — see Deferred below):** `ConsultationSessionEntity` (extended existing UC-113 mapping), `ConsultationSessionPolicy` (`assertIsSessionParticipant`/`assertIsAssignedExpert`/`assertJoinable`/`assertEndable`/`resolveParticipantRole`), `ConsultationSessionServiceImpl` (`joinSession`/`endSession`/`getSession`), `ConsultationSessionController` (`POST .../join`, `POST .../end`, `GET .../{id}`). **17 unit tests passing** (`ConsultationSessionPolicyTest` x10, `ConsultationSessionServiceImplTest` x7) covering: mother/verified-expert join, non-participant/unverified-expert rejection, IDOR guard (expert of a different booking), first-join WAITING→IN_SESSION transition, idempotent re-join (no re-transition, fresh token), ZegoCloud failure leaves `session_status` unchanged (503), end IN_SESSION→COMPLETED, end-rejected when not IN_SESSION, session-not-found. Note: TDS §16 used "VERIFIED" as shorthand for the SRS actor description; the actual `VerificationStatus` enum value is `APPROVED` — code uses the real enum, this is a terminology reconciliation, not a scope change. **Deferred/NOT implemented (honestly flagged, non-blocking for UC-144 chat):** `PATCH .../status` endpoint, `GET /sessions` list-my-sessions endpoint, the `ConsultationSessionStatusChanged` domain event (§7) — audit logging (`CONSULTATION_SESSION_JOINED`/`_ENDED`) is emitted instead, no downstream event consumers exist yet to require it — and the 15-minute no-show reconciliation job (§ADR-SESSION-003, was already scoped as a non-blocking follow-up in the original TDS). |
+| 2026-07-15 | AI Agent — Technical Architect | **Scope extension for UC-144 (chat) dependency, per user decision 2026-07-15 ("build UC-154→UC-95→UC-144 as one vertical slice"):** broadened session join/read ownership from Expert-only (Web Portal) to **both session participants** (assigned, verified Expert OR the booking's requester/Mother — mirrors UC-144 ADR-CHAT-004's two-party check exactly, see ADR-SESSION-002 below), since Mother's mobile client also needs a session-scoped ZegoCloud token to receive live chat signals. ADR-SESSION-001's `WAITING`+`IN_SESSION` chat-eligible window confirmed (no longer `Open` — Product/Tech Lead decision recorded). Platform widened to Web (Expert Portal) + Mobile (Mother, Expert). Full no-show reconciliation cron (§ADR-SESSION-003) remains deferred/non-blocking as originally scoped — only the join/end/get core is built in this pass. |
+| 2026-07-15 | AI Agent — Technical Architect | **DECOUPLED — reverted Approved → Draft.** UC-144 no longer depends on `consultation_sessions`; it moved to a direct mother↔expert conversation model independent of any booking (see `04_Implement/UC144_DirectConsultChat/`). This UC (booking-tied session join/end/lifecycle for a *scheduled paid consultation*, distinct from direct messaging) remains a legitimate, independently valuable future feature, but it currently has **no consumer** — the `ConsultationSessionServiceImpl`/`ConsultationSessionController`/`ConsultationSessionPolicy` code built in the previous pass is being **removed** (not merely left unused) per "smallest scoped change" (CLAUDE.md) since nothing calls it anymore. `ConsultationSessionEntity`/`ConsultationSessionRepository` are reverted to their original minimal UC-113 read-only mapping (`id`, `endedAt`, `createdAt` only) — `ImpactReportServiceImpl.getImpactReport()` depends on `countByEndedAtIsNotNull()` and must not regress. Re-open this TDS (fresh Draft→Approval cycle) if/when booking-based session management is actually requested. |
 
 ---
 
@@ -54,9 +57,9 @@
 | **Module Name** | `Consultation — Session Management` |
 | **Bounded Context** | `Consultation` (package `com.carebridge.backend.consultation`) |
 | **Function ID / UC** | `3.2.1.9 Manage Consultation Session` / `UC-95` (SRS L922-941) |
-| **Primary Actor** | Verified Expert |
+| **Primary Actor** | Verified Expert (session management/end), Mother (session join for chat/call participation) |
 | **Secondary Actor** | ZegoCloud Realtime Service |
-| **Platform** | **Web (Expert Portal)** — React + TypeScript + Vite |
+| **Platform** | **Web (Expert Portal)** — React + TypeScript + Vite — **and Mobile (Mother, Expert)** — Flutter *(widened 2026-07-15 — see CHANGELOG; join/get are two-party, end/status-update remain Expert-only)* |
 | **Priority** | High |
 | **Sprint / Owner** | Sprint 4 "Real Providers And Admin Polish" — TV4-Lâm |
 | **Data Classification** | `Confidential` (session metadata, participation timestamps; `consultation_messages.message_body` may carry health-context conversation content — `Sensitive-PII`-adjacent) |
@@ -151,8 +154,8 @@ a cross-document follow-up in §2 Traceability Matrix, not silently resolved.
 | Field | Value |
 |-------|-------|
 | **Status** | `Accepted` *(this TDS is the definitive owner of this value — confirms and supersedes UC79's `Proposed` assumption)* |
-| **Deciders** | `AI Agent (proposal) — pending TV4-Lâm / Tech Lead confirmation` |
-| **Date** | `2026-07-02` |
+| **Deciders** | `AI Agent (proposal) — confirmed by Product/Tech Lead 2026-07-15` |
+| **Date** | `2026-07-02`, confirmed `2026-07-15` |
 | **Supersedes** | Confirms `ADR-REVIEW-001` (UC79) assumption; UC79 must update its status from `Proposed` to `Accepted` referencing this ADR once this TDS is approved. |
 
 #### Bối cảnh (Context)
@@ -204,42 +207,64 @@ reconciliation ambiguity.
 
 ---
 
-### ADR-SESSION-002 — Ownership: only the booking's assigned Expert may manage/join the session as the Expert-side participant
+### ADR-SESSION-002 — Ownership: two-tier — both session participants may `join`/`get`; only the assigned Expert may `end`/`update-status`
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
-| **Deciders** | `AI Agent — derived directly from schema + BR-RBAC` |
-| **Date** | `2026-07-02` |
+| **Status** | `Accepted` *(widened 2026-07-15 — see CHANGELOG)* |
+| **Deciders** | `AI Agent — derived directly from schema + BR-RBAC; widened per user decision 2026-07-15 to unblock UC-144 chat for the Mother's mobile client` |
+| **Date** | `2026-07-02`, widened `2026-07-15` |
 
 #### Bối cảnh (Context)
 `consultation_bookings.expert_profile_id` identifies the assigned Expert
 (FK → `expert_profiles.expert_profile_id`, itself FK'd to `expert_profiles
-.user_id`). `consultation_sessions.booking_id` links 1:1 to the booking
-(`consultation_sessions_booking_id_key UNIQUE (booking_id)`, schema L1528).
-UC95's actor is the Verified Expert only (Web Expert Portal) — the Mother-side
-join flow is a separate mobile use case, out of scope for this TDS.
+.user_id`). `consultation_bookings.requester_user_id` identifies the Mother
+who created the booking. `consultation_sessions.booking_id` links 1:1 to the
+booking (`consultation_sessions_booking_id_key UNIQUE (booking_id)`, schema
+L1528). **Originally** this TDS scoped UC-95 as Expert-only (Web Portal),
+deferring the Mother-side join to "a separate mobile use case, out of
+scope." That deferral is now resolved: UC-144 (Consult via Chat) requires
+the Mother's mobile client to obtain a ZegoCloud token scoped to the session
+in order to receive realtime chat signals, and the natural, non-duplicative
+way to provide that is to let the Mother call the same `join`/`get`
+endpoints this TDS already defines — rather than UC-144 inventing a second,
+parallel token-issuance path. **Ending/managing** the session's lifecycle
+(`end`, `update-status`) remains Expert-only: the SRS actor for UC-95's core
+lifecycle-management responsibility is still "Verified Expert," and giving
+the Mother the power to force-end a paid session is out of scope and not
+requested.
 
 #### Các phương án đã xem xét (Options Considered)
 
 | Phương án | Mô tả | Ưu điểm | Nhược điểm |
 |-----------|-------|----------|------------|
 | A | Any authenticated Expert can manage any session | Simple | Violates ownership/BR-RBAC; allows cross-account session hijack |
-| B | **Only the Expert whose `user_id` matches `expert_profiles.user_id` for the booking's `expert_profile_id` may join/manage the session as Expert** | Matches schema FK semantics; prevents IDOR | Requires a policy check per request (negligible cost) |
+| B | Expert-only for every endpoint (original scope) | Simple, single-branch check | Blocks the Mother from ever obtaining a session-scoped ZegoCloud token, which UC-144 (chat) needs for her mobile client — would force UC-144 to duplicate token-issuance logic instead of reusing UC-95 |
+| C | **Two-tier: `join`/`get` open to either session participant (Expert OR Mother, same two-branch check as UC-144's ADR-CHAT-004); `end`/`update-status` remain Expert-only** | Matches chat's actual need (both parties need a token to receive signals) without granting the Mother lifecycle-management power she doesn't need; reuses the exact same two-branch policy shape UC-144 already defines, avoiding two slightly different ownership checks in the same bounded context | Two authorization branches instead of one per endpoint — same shape already validated in UC-144, negligible added complexity |
 
 #### Quyết định (Decision)
-Chọn **Phương án B**. `ConsultationSessionPolicy.assertIsAssignedExpert(booking,
-currentUserId)` must verify `expert_profiles.user_id == currentUserId` for
-the booking's `expert_profile_id`, and additionally
-`expert_profiles.verification_status == 'VERIFIED'` (SRS actor: "Verified
-Expert"). Non-assigned or unverified experts receive `403 Forbidden`
-(`SES-004`).
+Chọn **Phương án C**.
+- `ConsultationSessionPolicy.assertIsAssignedExpert(booking, currentUserId)` —
+  unchanged, still verifies `expert_profiles.user_id == currentUserId` for
+  the booking's `expert_profile_id` AND `verification_status == 'VERIFIED'`.
+  Required for `POST .../end` and `PATCH .../status`.
+- `ConsultationSessionPolicy.assertIsSessionParticipant(booking,
+  currentUserId)` — **new**, verifies EITHER the Expert branch above OR
+  `booking.requesterUserId == currentUserId` (the Mother). Required for
+  `POST .../join` and `GET .../{sessionId}`. This is the **same check**
+  UC-144's `ConsultationChatPolicy.assertIsSessionParticipant()` performs
+  (ADR-CHAT-004) — implemented once in `ConsultationSessionPolicy` and
+  reused by UC-144's chat policy rather than duplicated, since both modules
+  need an identical two-party ownership test against the same
+  `consultation_bookings` row.
+- Non-participant (session join/get) or non-assigned-Expert (end/status)
+  receives `403 Forbidden` (`SES-004`).
 
 #### Hệ quả (Consequences)
 
-**Tích cực:** Prevents IDOR / cross-tenant session hijack; enforces the "Verified Expert" precondition from the SRS actor definition.
-**Tiêu cực / Trade-offs:** None material — mandatory RBAC control.
-**Compliance Impact:** Satisfies BR-RBAC.
+**Tích cực:** Prevents IDOR / cross-tenant session hijack; enforces the "Verified Expert" precondition where lifecycle control matters; unblocks the Mother's mobile client for chat without over-granting session-management power; single reusable participant-check shared by UC-95 and UC-144 avoids policy drift.
+**Tiêu cực / Trade-offs:** Two authorization branches instead of one for `join`/`get` — negligible added complexity, already validated in UC-144's design.
+**Compliance Impact:** Satisfies BR-RBAC; supports UC-144's PDPA data-minimization requirement (only the two legitimate participants can ever obtain a session token).
 
 ---
 
@@ -865,11 +890,11 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 
 | Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
 |--------|------|------------|----------------|------------|-------------|
-| `POST` | `/api/v1/consultations/sessions/{sessionId}/join` | JWT Bearer | `EXPERT` (assigned, verified only) | 60/min | Yes (re-issues token) |
+| `POST` | `/api/v1/consultations/sessions/{sessionId}/join` | JWT Bearer | `EXPERT` (assigned, verified) **or** `MOTHER` (booking requester) — widened 2026-07-15 | 60/min | Yes (re-issues token) |
 | `POST` | `/api/v1/consultations/sessions/{sessionId}/end` | JWT Bearer | `EXPERT` (assigned only) | 20/min | No |
 | `PATCH` | `/api/v1/consultations/sessions/{sessionId}/status` | JWT Bearer | `EXPERT` (assigned only) | 20/min | No |
-| `GET` | `/api/v1/consultations/sessions/{sessionId}` | JWT Bearer | `EXPERT` (assigned), `SYSTEM_ADMIN` | 300/min | Yes |
-| `GET` | `/api/v1/consultations/sessions` | JWT Bearer | `EXPERT` (own assigned only) | 300/min | Yes |
+| `GET` | `/api/v1/consultations/sessions/{sessionId}` | JWT Bearer | `EXPERT` (assigned), `MOTHER` (booking requester — widened 2026-07-15), `SYSTEM_ADMIN` | 300/min | Yes |
+| `GET` | `/api/v1/consultations/sessions` | JWT Bearer | `EXPERT` (own assigned only), `MOTHER` (own booked sessions — widened 2026-07-15) | 300/min | Yes |
 
 ### 9.2. Request / Response Schemas
 
@@ -953,9 +978,9 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 
 - [ ] **BLOCKING:** Booking creation/payment service (UC-75/76) implemented; `consultation_bookings` rows exist with real `expert_profile_id`/`status`
 - [ ] **BLOCKING:** `IZegoCloudService` (UC-154) implemented and stable — UC95 depends on it as a collaborator
-- [ ] ADR-SESSION-001 confirmed by Product/Tech Lead (currently `Accepted` by this TDS — pending sign-off)
+- [x] ADR-SESSION-001 confirmed by Product/Tech Lead (2026-07-15 — `WAITING`+`IN_SESSION` non-terminal chat/session-eligible window confirmed)
 - [ ] UC79's `ADR-REVIEW-001` updated to reference this ADR (cross-document follow-up, tracked here since UC95 owns the value)
-- [ ] DPO review for `consultation_messages.message_body` (may carry health-context content) — sign-off pending
+- [ ] DPO review for `consultation_messages.message_body` (may carry health-context content) — **sign-off still pending; proceeding for dev/test build per explicit user decision 2026-07-15, flagged as an outstanding compliance risk, not a implementation blocker**
 - [ ] Principal Architect approves this TDS
 
 ### 11.2. Pre-Migration Checklist
@@ -1049,6 +1074,9 @@ Standard PIR within 48h for any data-integrity or authorization incident.
 | TC-COND-010 | Mid-session disconnect does not auto-transition — session stays IN_SESSION |
 | TC-COND-011 | Session not found → 404 (`SES-003`) |
 | TC-COND-012 | `ConsultationSessionStatusChanged` event emitted on every valid transition |
+| TC-COND-013 | Booking's requester (Mother) joins WAITING session → token issued, does NOT trigger Expert-only side effects |
+| TC-COND-014 | Non-participant Mother (different booking) attempts join → 403 (`SES-004`) |
+| TC-COND-015 | Mother attempts `end`/`update-status` → 403 (`SES-004`) — join/get widening does not extend to lifecycle-management endpoints |
 
 ---
 
@@ -1105,13 +1133,13 @@ curl -X POST https://[host]/api/v1/consultations/sessions/{sessionId}/join \
 
 ## 16. Bảng tổng hợp phân quyền (Authorization Matrix)
 
-| Endpoint | `GUEST` | `MOTHER` | `EXPERT` (non-assigned) | `EXPERT` (assigned, unverified) | `EXPERT` (assigned, verified) | `SYSTEM_ADMIN` |
-|----------|---------|----------|--------------------------|----------------------------------|-------------------------------|-----------------|
-| `POST /sessions/{id}/join` | ❌ | ❌ *(Mother-side join is a separate mobile UC, out of scope)* | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
-| `POST /sessions/{id}/end` | ❌ | ❌ | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
-| `PATCH /sessions/{id}/status` | ❌ | ❌ | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
-| `GET /sessions/{id}` | ❌ | ❌ *(out of scope for UC95)* | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ Own | ✅ All |
-| `GET /sessions` | ❌ | ❌ | ✅ *(own list only, empty if none assigned)* | ✅ *(own list only)* | ✅ Own | ✅ All |
+| Endpoint | `GUEST` | `MOTHER` (booking requester) | `MOTHER` (non-participant) | `EXPERT` (non-assigned) | `EXPERT` (assigned, unverified) | `EXPERT` (assigned, verified) | `SYSTEM_ADMIN` |
+|----------|---------|-------------------------------|-------------------------------|--------------------------|----------------------------------|-------------------------------|-----------------|
+| `POST /sessions/{id}/join` | ❌ | ✅ *(widened 2026-07-15 — needed for UC-144 chat token)* | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
+| `POST /sessions/{id}/end` | ❌ | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
+| `PATCH /sessions/{id}/status` | ❌ | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ | ✅ |
+| `GET /sessions/{id}` | ❌ | ✅ Own *(widened 2026-07-15)* | ❌ (`SES-004`) | ❌ (`SES-004`) | ❌ (`SES-004`) | ✅ Own | ✅ All |
+| `GET /sessions` | ❌ | ✅ *(own booking sessions only, widened 2026-07-15)* | — | ✅ *(own list only, empty if none assigned)* | ✅ *(own list only)* | ✅ Own | ✅ All |
 
 **Chú thích:**
 - ✅ = Được phép; ❌ = Bị từ chối (403); `Own` = chỉ với session của booking được gán cho chính mình.
@@ -1125,7 +1153,7 @@ curl -X POST https://[host]/api/v1/consultations/sessions/{sessionId}/join \
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-----------------|---------------|
 | C1 | `session_status` MUST follow the exact state machine in §6.4 — never allow a direct `WAITING → COMPLETED` transition; `'COMPLETED'` is the definitive terminal value | `ADR-SESSION-001` | `2026-07-02` |
-| C2 | Only the assigned, `verification_status='VERIFIED'` Expert (`expert_profiles.user_id == currentUserId`) may join/end/update the session | `ADR-SESSION-002` / `BR-RBAC` | `2026-07-02` |
+| C2 | `join`/`get` open to EITHER the assigned, `verification_status='VERIFIED'` Expert OR the booking's `requester_user_id` (Mother); `end`/`update-status` remain Expert-only | `ADR-SESSION-002` (widened 2026-07-15) / `BR-RBAC` | `2026-07-15` |
 | C3 | ZegoCloud token generation MUST delegate to `IZegoCloudService` (UC154) — do NOT re-implement `TokenServerAssistant.generateToken04()` calls inside `ConsultationSessionService` | `§1.3 ZegoCloud Integration Pattern Reuse` | `2026-07-02` |
 | C4 | ZegoCloud SDK failure during join/reconnect MUST NOT change `session_status` — return `SES-005` (503) and leave state untouched | `ADR-SESSION-003` | `2026-07-02` |
 | C5 | `'COMPLETED'` is set ONLY via explicit `POST /sessions/{id}/end` — never inferred automatically from a disconnect event | `ADR-SESSION-003` | `2026-07-02` |

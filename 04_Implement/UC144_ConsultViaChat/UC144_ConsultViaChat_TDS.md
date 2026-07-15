@@ -6,12 +6,12 @@
 | **Document ID** | `CB-CONSULTATION-IMP-144` |
 | **Version** | `1.0` |
 | **Date** | `2026-07-02` |
-| **Status** | `Draft` |
+| **Status** | `Draft` *(reverted 2026-07-15 — session-tied implementation SUPERSEDED by `04_Implement/UC144_DirectConsultChat/` per explicit user redesign; this document is kept for history only, see CHANGELOG)* |
 | **Document Owner** | `TV4-Lâm` |
 | **Author** | `AI Agent (Technical Architect)` |
-| **Reviewed by** | `[Tech Lead — Pending]` |
-| **DPO Sign-off** | `[ ] Pending` *(message content may carry health-context conversation content between Mother and Expert — see §1)* |
-| **Approved by** | `[Principal Architect — Pending]` |
+| **Reviewed by** | `Confirmed via user decision 2026-07-15` |
+| **DPO Sign-off** | `[ ] Pending` *(outstanding, proceeding for dev/test per explicit user decision 2026-07-15 — see CHANGELOG)* |
+| **Approved by** | `[ ] Pending — Approved status revoked 2026-07-15, see CHANGELOG` |
 | **Last Review** | `2026-07-02` |
 | **Based on EDS** | `v2.0` |
 
@@ -22,6 +22,9 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC144 |
+| 2026-07-15 | AI Agent — Amelia (Dev Agent) | **Implemented & tested (backend + mobile + web):** Backend — `ConsultationMessageEntity`, `ConsultationMessageRepository` (cursor pagination both directions), `ConsultationChatPolicy`, `ConsultationChatServiceImpl` (send with idempotency + isolated-transaction race handling, list with bidirectional cursor pagination), `ConsultationChatController`, new-message push notification (reuses existing `ConsultationNotificationService`/FCM, recipient-only, metadata-only payload). **18 unit tests passing** + 1 Testcontainers integration test (compiles; could not execute — no Docker in this sandbox) covering send/list/idempotency/conflict/pagination/notification-routing/notification-failure-is-non-fatal. Mobile (Flutter) — models, `ConsultationChatService` (REST client), `ZegoZimSignalingPort` (real `zego_zim` v3.0.0 SDK, API verified against installed package source, not guessed), `ChatScreen` (optimistic send, retry, cursor sync, load-older, session-ended read-only, dispose lifecycle), route registered. 17 unit tests passing; `flutter build web` succeeds; native Android APK build is blocked by `zego_zim`'s bundled Android `build.gradle` using the removed `jcenter()` repository method (incompatible with this project's Android Gradle Plugin version) — a third-party plugin/tooling issue, not a code defect; see final report. Web (React) — mirrored models/service/`ZegoZimSignalingPort` (`zego-zim-web` v3.0.0, API verified against installed `.d.ts`), `ChatPanel`, `SessionRoomPage`, route registered under Expert Portal. `npm run build`'s `tsc -b` step fails on 4 **pre-existing, unrelated** errors in `ExpertProfilePage.tsx`/`ExpertVerificationQueuePage.tsx`/`VerificationDocumentsPage.tsx` (files never touched this session); `tsc --noEmit` confirms zero errors reference any new consultation-chat file, and `vite build` alone succeeds. `npm audit` flags a critical `protobufjs` transitive vulnerability pulled in by `zego-zim-web` — flagged as a known risk, not silently fixed (see final report). **No client-side automated test framework exists in the web project** (no vitest/jest configured, zero pre-existing test files) — adding one was out of scope per "smallest change" and is flagged as a gap, not silently skipped. |
+| 2026-07-15 | AI Agent — Technical Architect | **Resolved per explicit user decisions (2026-07-15):** (1) ADR-CHAT-001 confirmed — chat eligible for `WAITING`+`IN_SESSION` (no longer Open). (2) ADR-CHAT-002 confirmed — ZegoCloud ZIM (in-app messaging/signaling) SDK, reusing the identical Token04 issued by `IZegoCloudService` (UC-154), sends a minimal signal-only payload (`eventType`, `sessionId`, `messageId`, `sentAt`, `senderUserId` — never `messageBody`) on the session's room; REST remains the sole durable write/read path (no change to that part of the decision). (3) DPO sign-off remains outstanding — proceeding for dev/test build, flagged as a known risk in the final report, not a blocking gate for this pass. (4) **Genuine gap correction:** added `client_message_id` idempotency key — the original schema/DTO had no way to make retried sends safe, which contradicts the mandatory "retry does not duplicate" requirement. This requires a new, minimal Flyway migration (see §5.3) — supersedes the original "no new migration required" claim. (5) Switched `GET .../messages` from offset (`page`/`size`) to cursor-based pagination (`after`/`before` + `limit`) for correctness under concurrent inserts. |
+| 2026-07-15 | AI Agent — Technical Architect | **SUPERSEDED — reverted Approved → Draft.** User rejected the booking/session-tied chat architecture: direct messaging must not depend on `consultation_bookings`/`consultation_sessions` at all (Mother picks a Verified Expert directly, no prior booking). All session-coupled code described above (`ConsultationMessage`, `ConsultationChatServiceImpl`, `ZegoZimSignalingPort` used for chat transport, ZIM-for-chat) is being **removed**. The redesigned feature (find-or-create direct conversation, PostgreSQL history, Firebase Realtime Database for delivery signal, ZegoCloud reserved for voice/video call only) is specified fresh in `04_Implement/UC144_DirectConsultChat/UC144_DirectConsultChat_TDS.md`. This document is retained only as a historical record of the rejected approach; do not implement against it. |
 
 ---
 
@@ -199,10 +202,10 @@ must verify `session.sessionStatus NOT IN ('COMPLETED', 'NO_SHOW',
 'CANCELLED')` — i.e. chat is permitted for `WAITING` and `IN_SESSION`. This
 reuses UC95's exact enum values (no new state, no new column) and is the
 precise structural inverse of UC96's `assertSessionCompleted()` gate,
-making the two policies easy to reconcile during code review. **Marked
-`Open`** for Product/Tech Lead sign-off on whether `WAITING` should also be
-chat-eligible (this TDS's working assumption) or whether Option A's
-stricter `IN_SESSION`-only reading is intended instead.
+making the two policies easy to reconcile during code review. **Confirmed
+2026-07-15 by explicit Product/Tech Lead decision** — `WAITING` is
+chat-eligible (this TDS's working assumption, now settled; Option A's
+stricter `IN_SESSION`-only reading was not selected).
 
 #### Hệ quả (Consequences)
 
@@ -216,7 +219,7 @@ stricter `IN_SESSION`-only reading is intended instead.
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` for the durable-persistence contract (REST write→DB); `Open` for the exact live-delivery push mechanism |
+| **Status** | `Accepted` — both the durable-persistence contract (REST write→DB) and the live-delivery push mechanism (ZegoCloud ZIM, confirmed 2026-07-15) |
 | **Deciders** | `AI Agent — derived directly from SRS L3578 Secondary Actor + UC95/UC154 reuse boundary` |
 | **Date** | `2026-07-02` |
 
@@ -239,27 +242,51 @@ invented choice.
 
 #### Quyết định (Decision)
 Chọn **Phương án C**. Backend contract (this TDS's scope, `Accepted`):
-- `POST /api/v1/consultations/sessions/{sessionId}/messages` persists a new
-  `ConsultationMessageEntity` row — the single source of truth.
-- `GET /api/v1/consultations/sessions/{sessionId}/messages` returns the
-  full/paginated message history — used for initial load and as a
-  reconciliation fallback if a client misses a realtime signal.
+- `POST /api/v1/consultation-sessions/{sessionId}/messages` persists a new
+  `ConsultationMessageEntity` row — the single source of truth. Only after
+  the DB transaction commits does the server best-effort publish a ZegoCloud
+  signal (see below); a signal is never sent for a message that failed to
+  persist.
+- `GET /api/v1/consultation-sessions/{sessionId}/messages` (cursor-paginated,
+  §9) returns message history — used for initial load and as the
+  reconciliation path when a client misses a realtime signal or reconnects.
 - The backend does **not** implement a bespoke WebSocket/SSE server for
   chat; ZegoCloud's already-established session room (same
   `communicationRoomId` = `session_id.toString()`, reused per UC95 §5.3 gap
   note 2) carries the live-delivery signal client-to-client, exactly as
   UC145/UC146 reuse it for voice/video.
-- **Marked `Open`** (non-blocking for this TDS's REST/persistence
-  contract): whether the Mobile/Web client uses ZegoCloud's IM/custom-signal
-  SDK feature to push new-message notifications, or simply re-calls `GET
-  .../messages` on a ZegoCloud room-presence-change event. Either resolves
-  to the same REST contract specified in §9.
+
+**Confirmed 2026-07-15 by explicit user decision (resolves the prior Open
+item):** **ZegoCloud ZIM SDK** (in-app messaging/signaling product; separate
+from the ZegoExpressEngine RTC product used for voice/video, but
+authenticated with the **identical Token04** issued by
+`IZegoCloudService.generateToken()` — ZegoCloud's token format is shared
+across its SDK families, confirmed by the project's own prior integration
+reference (`TokenServerAssistant.generateToken04()`), so no second
+token-issuance mechanism is introduced). Concretely:
+- Both participants log into the ZIM SDK using `roomId = session_id`
+  (matches UC95's `communication_room_id`) and their session token.
+- After a successful `POST .../messages` commit, the sender's client (or,
+  if the SDK/plan supports authenticated server-side signaling, the backend
+  itself — implementation detail left to Chặng 3, does not change this
+  contract) sends a **room message** carrying only:
+  `{ "eventType": "CONSULTATION_MESSAGE_CREATED", "sessionId", "messageId",
+  "sentAt", "senderUserId" }` — **never `messageBody`** (ADR-CHAT-002
+  reaffirms: no health-context content transits ZegoCloud's signaling
+  channel, signal-only).
+- The receiving client, on receipt, calls `GET .../messages?after={cursor}`
+  to fetch the authoritative row(s) and merges by `messageId` — it never
+  trusts message content carried in the signal itself (there is none to
+  trust).
+- If ZIM delivery fails/times out, the message is already durably persisted
+  (REST committed first) — the receiving client's next reconnect/poll
+  reconciles via `GET .../messages?after={cursor}` regardless (§9, SRS E3).
 
 #### Hệ quả (Consequences)
 
-**Tích cực:** Zero new infrastructure; consistent, auditable reuse pattern across UC95/UC144/UC145/UC146; durable persistence is fully testable (Testcontainers) independent of the realtime signaling detail that remains Open.
-**Tiêu cực / Trade-offs:** The exact client-side low-latency delivery mechanism is Open — acceptable since it does not change the backend contract this TDS owns; flagged for Product/Tech Lead + Mobile/Web leads before Chặng 3 client work begins.
-**Compliance Impact:** No new PII exposure surface beyond what UC95 already classifies `Confidential`/`Sensitive-PII`-adjacent for `consultation_messages`; no raw message content ever transits ZegoCloud's infrastructure if the IM/custom-signal-only variant is chosen (signal-only, not payload-carrying) — to be confirmed at Chặng 3, non-blocking.
+**Tích cực:** Zero new infrastructure; consistent, auditable reuse pattern across UC95/UC144/UC145/UC146 (single Token04 mechanism for both RTC and IM); durable persistence is fully testable (Testcontainers) independent of the realtime signaling transport; signal-only payload keeps health-context content off ZegoCloud's infrastructure entirely.
+**Tiêu cực / Trade-offs:** Requires adding the ZegoCloud ZIM client SDK dependency to Mobile/Web (neither currently has any ZegoCloud dependency) — net-new but explicitly approved; exact SDK method names must be verified against the actual installed SDK version at Chặng 3 (client work), not guessed.
+**Compliance Impact:** No new PII exposure surface beyond what UC95 already classifies `Confidential`/`Sensitive-PII`-adjacent for `consultation_messages`; message body never transits ZegoCloud's infrastructure (signal-only, confirmed, not deferred).
 
 ---
 
@@ -539,11 +566,13 @@ ConsultationSessionEntity --> SessionStatus : sessionStatus (app-level, owned by
 > **CareBridge rule:** `V1__init_schema.sql` and approved Flyway migrations
 > are primary source of truth. ERD is supporting context only.
 
-**No new migration is required.** The persistence target already exists
-(`V1__init_schema.sql`, verified):
+**Correction (2026-07-15): a new migration IS required.** The original
+"no new migration" claim did not account for the mandatory idempotent-retry
+requirement — the existing table has no column to detect a retried send of
+the same logical message. `V1__init_schema.sql` (verified):
 
 ```sql
--- consultation_messages (V1__init_schema.sql L911-921)
+-- consultation_messages (V1__init_schema.sql L911-921) — BEFORE this TDS's migration
 CREATE TABLE public.consultation_messages (
     message_id     uuid        NOT NULL DEFAULT gen_random_uuid(),
     session_id      uuid        NOT NULL,
@@ -558,6 +587,43 @@ CREATE TABLE public.consultation_messages (
 -- PK: message_id (L1428-1429)
 -- FK: session_id -> consultation_sessions (L1841-1842), sender_user_id -> users (L1844-1845)
 -- Index: idx_consultation_messages_session_id (L1640)
+```
+
+**New minimal Flyway migration (this TDS's actual deliverable — smallest
+possible addition, per CLAUDE.md "smallest scoped change"):**
+
+```sql
+-- V<next>__add_consultation_message_client_id.sql
+ALTER TABLE public.consultation_messages
+    ADD COLUMN client_message_id uuid;
+
+-- Idempotency scope: a retry is the SAME sender resubmitting the SAME
+-- clientMessageId. Two different senders (or the same sender across two
+-- different sessions) may legitimately reuse a UUID they generated
+-- independently, so uniqueness is scoped to (session_id, sender_user_id,
+-- client_message_id), not global.
+CREATE UNIQUE INDEX uq_consultation_messages_client_id
+    ON public.consultation_messages (session_id, sender_user_id, client_message_id)
+    WHERE client_message_id IS NOT NULL;
+```
+
+Nullable (existing rows / non-idempotent internal writes, if any, remain
+valid); new chat sends always populate it. Original table definition after
+migration:
+
+```sql
+CREATE TABLE public.consultation_messages (
+    message_id        uuid        NOT NULL DEFAULT gen_random_uuid(),
+    session_id         uuid        NOT NULL,
+    sender_user_id      uuid        NOT NULL,
+    message_type        varchar(30) NOT NULL,
+    message_body        text,
+    file_url            text,
+    client_message_id  uuid,                          -- NEW
+    sent_at              timestamptz NOT NULL DEFAULT now(),
+    read_at              timestamptz,
+    status                varchar(20) NOT NULL DEFAULT 'SENT'
+);
 
 -- consultation_sessions (V1__init_schema.sql L898-909) — REUSED, READ-ONLY for this module
 CREATE TABLE public.consultation_sessions (
@@ -855,9 +921,12 @@ public record ChatMessageSent(
 // SendChatMessageRequest.java — Input DTO
 // @version 1.0
 public class SendChatMessageRequest {
+    @NotNull
+    private UUID clientMessageId;   // NEW 2026-07-15 — client-generated idempotency key, see §5.3 migration
+
     @NotBlank
     @Size(max = 2000)
-    private String messageBody;     // Schema: consultation_messages.message_body text (nullable, no DB length limit — app-level bound per §5.3 gap note 2)
+    private String messageBody;     // trimmed server-side before validation; blank-after-trim rejected (CHAT-001)
 
     @NotBlank
     @Pattern(regexp = "TEXT|FILE|SYSTEM")
@@ -873,6 +942,7 @@ public class ChatMessageResponse {
     private UUID sessionId;
     private UUID senderUserId;
     private String senderRole;              // "EXPERT" | "MOTHER" — derived, not persisted separately
+    private UUID clientMessageId;            // NEW — echoed back so the client can reconcile its optimistic entry
     private String messageType;
     private String messageBody;
     private String fileUrl;
@@ -883,13 +953,11 @@ public class ChatMessageResponse {
     // getters / setters — NEVER expose ConsultationMessageEntity directly
 }
 
-// ChatMessagePageResponse.java — Output DTO for GET .../messages
+// ChatMessagePageResponse.java — Output DTO for GET .../messages (cursor-paginated, NOT offset)
 public class ChatMessagePageResponse {
-    private List<ChatMessageResponse> messages;
-    private int page;
-    private int pageSize;
-    private long totalElements;
-    private boolean hasNext;
+    private List<ChatMessageResponse> messages;   // ascending sentAt order
+    private String nextCursor;                     // opaque cursor for the next page; null if no more
+    private boolean hasMore;
 }
 
 // IConsultationChatService.java — Service Contract
@@ -897,22 +965,30 @@ public class ChatMessagePageResponse {
 public interface IConsultationChatService {
     /**
      * Sends a message inside a valid (non-terminal) consultation session.
-     * Only the session's two participants may call this.
+     * Only the session's two participants may call this. Transactional;
+     * idempotent on (sessionId, currentUserId, request.clientMessageId) —
+     * a retry with the same triple returns the original row unchanged
+     * (200, not 201); the same clientMessageId with a DIFFERENT messageBody
+     * from the same sender/session is a client bug and returns 409
+     * (CHAT-002), never silently overwrites.
      * @throws ChatAuthorizationException (CHAT-004) if currentUserId is not a session participant
      * @throws ChatSessionNotEligibleException (CHAT-006) if session_status is terminal
      * @throws ChatValidationException (CHAT-001) if messageBody is blank/too long or messageType invalid
      * @throws SessionNotFoundException (CHAT-003) if sessionId does not exist
+     * @throws ChatIdempotencyConflictException (CHAT-002) if clientMessageId reused with a different body
      * @throws ChatWriteUnavailableException (CHAT-007) on downstream write failure/timeout
      */
     ChatMessageResponse sendMessage(UUID sessionId, SendChatMessageRequest request, UUID currentUserId);
 
     /**
      * Retrieves the message history for a session — only the session's two
-     * participants may call this. Ordered by sentAt ascending, paginated.
+     * participants may call this. Ordered by sentAt ascending, cursor-paginated
+     * (NOT offset — a stable (sentAt, messageId) cursor avoids skipped/duplicated
+     * rows when new messages arrive between page fetches).
      * @throws ChatAuthorizationException (CHAT-004) if unauthorized
      * @throws SessionNotFoundException (CHAT-003) if not found
      */
-    ChatMessagePageResponse listMessages(UUID sessionId, UUID currentUserId, Pageable pageable);
+    ChatMessagePageResponse listMessages(UUID sessionId, UUID currentUserId, String afterCursor, int limit);
 }
 ```
 
@@ -923,7 +999,13 @@ public interface IConsultationChatService {
 // @version 1.0
 public interface ConsultationMessageRepository extends JpaRepository<ConsultationMessageEntity, UUID> {
 
-    Page<ConsultationMessageEntity> findBySessionIdOrderBySentAtAsc(UUID sessionId, Pageable pageable);
+    // Cursor pagination: fetch messages with (sentAt, messageId) strictly after the cursor,
+    // ordered ascending — stable under concurrent inserts, unlike LIMIT/OFFSET.
+    List<ConsultationMessageEntity> findPageAfterCursor(UUID sessionId, Instant afterSentAt, UUID afterMessageId, int limit);
+
+    // Idempotency lookup — used by sendMessage() before insert.
+    Optional<ConsultationMessageEntity> findBySessionIdAndSenderUserIdAndClientMessageId(
+        UUID sessionId, UUID senderUserId, UUID clientMessageId);
 
     // Append-only: no delete()/update() exposed beyond JpaRepository's default save()
     // for new-row insert. No @Modifying UPDATE method in baseline scope (§5.3 gap note 3
@@ -946,28 +1028,30 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 
 | Method | Path | Auth Level | Required Roles | Rate Limit | Idempotent? |
 |--------|------|------------|----------------|------------|-------------|
-| `POST` | `/api/v1/consultations/sessions/{sessionId}/messages` | JWT Bearer | `EXPERT` (assigned, verified), `MOTHER` (booking requester) | 60/min | No (each call creates a new message) |
-| `GET` | `/api/v1/consultations/sessions/{sessionId}/messages` | JWT Bearer | `EXPERT` (assigned), `MOTHER` (booking requester) | 300/min | Yes |
+| `POST` | `/api/v1/consultation-sessions/{sessionId}/messages` | JWT Bearer | `EXPERT` (assigned, verified), `MOTHER` (booking requester) | 60/min | **Yes** — keyed on `(sessionId, senderUserId, clientMessageId)` |
+| `GET` | `/api/v1/consultation-sessions/{sessionId}/messages?after={cursor}&limit={n}` | JWT Bearer | `EXPERT` (assigned), `MOTHER` (booking requester) | 300/min | Yes |
 
 ### 9.2. Request / Response Schemas
 
-#### `POST /api/v1/consultations/sessions/{sessionId}/messages` — Send a chat message
+#### `POST /api/v1/consultation-sessions/{sessionId}/messages` — Send a chat message
 
 **Request Body:**
 ```json
 {
+  "clientMessageId": "c1a2b3c4-d5e6-47f8-9012-3456789abcde",
   "messageBody": "Hello, I'm ready when you are. Let me know if you have any questions before we start.",
   "messageType": "TEXT"
 }
 ```
 
-**Response — 201 Created (Happy Path):**
+**Response — 201 Created (Happy Path — first time this clientMessageId is seen):**
 ```json
 {
   "messageId": "8a7b6c5d-1111-4a5b-8c9d-0e1f2a3b4c5d",
   "sessionId": "9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d",
   "senderUserId": "1a2b3c4d-0000-4a5b-8c9d-0e1f2a3b4c5d",
   "senderRole": "EXPERT",
+  "clientMessageId": "c1a2b3c4-d5e6-47f8-9012-3456789abcde",
   "messageType": "TEXT",
   "messageBody": "Hello, I'm ready when you are. Let me know if you have any questions before we start.",
   "fileUrl": null,
@@ -975,6 +1059,27 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
   "readAt": null,
   "status": "SENT",
   "contentSafetyWarnings": []
+}
+```
+
+**Response — 200 OK (Retry — same sender/session/clientMessageId, same body — returns the original row, no new insert):**
+```json
+{
+  "messageId": "8a7b6c5d-1111-4a5b-8c9d-0e1f2a3b4c5d",
+  "clientMessageId": "c1a2b3c4-d5e6-47f8-9012-3456789abcde",
+  "messageBody": "Hello, I'm ready when you are. Let me know if you have any questions before we start.",
+  "sentAt": "2026-07-02T10:05:00.000Z",
+  "status": "SENT"
+}
+```
+
+**Response — 409 Conflict (Same clientMessageId reused with a DIFFERENT body — client bug, not a legitimate retry):**
+```json
+{
+  "error": {
+    "code": "CHAT-002",
+    "message": "clientMessageId already used for a different message"
+  }
 }
 ```
 
@@ -1012,7 +1117,14 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 }
 ```
 
-#### `GET /api/v1/consultations/sessions/{sessionId}/messages?page=0&size=50` — List chat messages
+#### `GET /api/v1/consultation-sessions/{sessionId}/messages?after={cursor}&limit=50` — List/sync chat messages (cursor pagination)
+
+`after` is an opaque, base64-encoded `(sentAt, messageId)` cursor; omitted
+on first load (returns the most recent `limit` messages, oldest-first
+within the page). `limit` bounded `[1, 100]`, default 50. Used both for
+initial history load and for post-reconnect sync (client passes its
+last-known cursor to fetch only what it missed — no offset drift, no
+duplicate/skipped rows under concurrent inserts).
 
 **Response — 200 OK (Happy Path):**
 ```json
@@ -1021,15 +1133,14 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
     {
       "messageId": "8a7b6c5d-1111-4a5b-8c9d-0e1f2a3b4c5d",
       "senderRole": "EXPERT",
+      "clientMessageId": "c1a2b3c4-d5e6-47f8-9012-3456789abcde",
       "messageBody": "Hello, I'm ready when you are.",
       "sentAt": "2026-07-02T10:05:00.000Z",
       "status": "SENT"
     }
   ],
-  "page": 0,
-  "pageSize": 50,
-  "totalElements": 1,
-  "hasNext": false
+  "nextCursor": "eyJzZW50QXQiOiIyMDI2LTA3LTAyVDEwOjA1OjAwWiIsIm1lc3NhZ2VJZCI6IjhhN2I2YzVkLTExMTEtNGE1Yi04YzlkLTBlMWYyYTNiNGM1ZCJ9",
+  "hasMore": false
 }
 ```
 
@@ -1039,7 +1150,8 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|--------------|--------------|-------------------|
-| `CHAT-001` | 400 | Validation failed | Dữ liệu không hợp lệ | `messageBody` blank or exceeds 2000 chars, or `messageType` not a valid enum value |
+| `CHAT-001` | 400 | Validation failed | Dữ liệu không hợp lệ | `messageBody` blank/blank-after-trim or exceeds 2000 chars, `messageType` not a valid enum value, or `clientMessageId` missing |
+| `CHAT-002` | 409 | Idempotency conflict | Xung đột định danh tin nhắn | Same `(sessionId, senderUserId, clientMessageId)` resubmitted with a different `messageBody`/`messageType` |
 | `CHAT-003` | 404 | Session not found | Không tìm thấy phiên tư vấn | `sessionId` does not exist |
 | `CHAT-004` | 403 | Insufficient permissions | Không đủ quyền | Current user is not one of the session's two participants (assigned, verified Expert or booking requester/Mother) |
 | `CHAT-006` | 400 | Session no longer accepting messages | Phiên tư vấn không còn nhận tin nhắn | `consultation_sessions.session_status IN ('COMPLETED','NO_SHOW','CANCELLED')` (ADR-CHAT-001) |
@@ -1052,16 +1164,19 @@ public interface ConsultationSessionRepository extends JpaRepository<Consultatio
 
 ### 11.1. Prerequisites
 
-- [ ] **BLOCKING:** `UC-95 Manage Consultation Session` implemented — `consultation_sessions` rows must exist with a real `session_status`
-- [ ] **BLOCKING:** `IZegoCloudService` (UC-154, via UC95) implemented and stable, if realtime signaling is wired for Chặng 3 client work (ADR-CHAT-002's Open item)
-- [ ] ADR-CHAT-001, ADR-CHAT-002, ADR-CHAT-003, ADR-CHAT-004 confirmed by Product/Tech Lead (currently `Accepted`/`Open` as noted per-ADR — pending sign-off)
-- [ ] ADR-CHAT-003's exact content-safety keyword/pattern list confirmed by Product/DPO/clinical advisor (shared Open item with UC96 ADR-SUMMARY-002 — should reuse the same pattern set once available)
-- [ ] DPO review for `consultation_messages.message_body` (free-text conversation content between Mother and Expert) — sign-off pending
+- [x] **BLOCKING (resolved in this build):** `UC-95 Manage Consultation Session` implemented alongside this TDS — `consultation_sessions` rows exist with a real `session_status`
+- [x] **BLOCKING (resolved in this build):** `IZegoCloudService` (UC-154) implemented alongside this TDS
+- [x] ADR-CHAT-001, ADR-CHAT-002 confirmed by explicit user/Product decision 2026-07-15 (see CHANGELOG); ADR-CHAT-003, ADR-CHAT-004 were already `Accepted`
+- [ ] ADR-CHAT-003's exact content-safety keyword/pattern list confirmed by Product/DPO/clinical advisor (shared Open item with UC96 ADR-SUMMARY-002 — non-blocking; a minimal placeholder pattern set is used until this is confirmed)
+- [ ] DPO review for `consultation_messages.message_body` (free-text conversation content between Mother and Expert) — **sign-off still pending; proceeding for dev/test build per explicit user decision 2026-07-15, flagged as an outstanding compliance risk, not an implementation blocker**
 - [ ] Principal Architect approves this TDS
 
 ### 11.2. Pre-Migration Checklist
 
-- [ ] **N/A** — no new migration required (see §5.3)
+- [ ] New Flyway migration `V<next>__add_consultation_message_client_id.sql`
+      (see §5.3) — adds nullable `client_message_id uuid` + partial unique
+      index scoped to `(session_id, sender_user_id, client_message_id)`.
+      Additive-only, no backfill required, no data loss risk.
 
 ### 11.3. Implementation Steps
 

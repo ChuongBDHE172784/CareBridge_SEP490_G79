@@ -4,7 +4,26 @@
 **Document ID:** `FPT-EDU-TDD-CB-CONSULTATION-095`
 **Version:** `1.0`
 **Date:** `2026-07-02`
-**Status:** `Draft`
+**Status:** `Draft` *(reverted 2026-07-15 — see note below)*
+
+<!-- 2026-07-15 AI Agent — Amelia (Dev Agent): GREEN — TC-COND-001/002/003/004/005/006/007/011
+    implemented and passing via ConsultationSessionPolicyTest (SES-TC-001..010) and
+    ConsultationSessionServiceImplTest (SES-TC-101..107). RED/deferred, honestly not
+    implemented in this pass: TC-COND-008 (invalid direct-transition guard beyond the
+    join/end boundary), TC-COND-009 (no-show reconciliation job), TC-COND-010 (explicit
+    mid-session-disconnect non-transition test), TC-COND-012 (ConsultationSessionStatusChanged
+    event emission — audit log used instead, see TDS changelog). Verified via
+    `./mvnw test -Dtest=com.carebridge.backend.consultation.**`: 52/52 passed, 0 failures
+    (consultation module only; Testcontainers-based integration test could not execute in
+    this sandbox — no Docker — but compiles cleanly). -->
+
+<!-- 2026-07-15 AI Agent — Technical Architect: DECOUPLED — reverted Approved → Draft.
+    UC-144 chat no longer depends on consultation_sessions (see UC144_DirectConsultChat/).
+    The tested code above (ConsultationSessionServiceImplTest, ConsultationSessionPolicyTest)
+    is being deleted along with the now-unused service/controller/policy it exercised, since
+    it has no remaining consumer. This spec is retained for history; re-open with a fresh
+    Draft->Approval cycle if booking-tied session management is requested again. -->
+
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Technical Architect + Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`

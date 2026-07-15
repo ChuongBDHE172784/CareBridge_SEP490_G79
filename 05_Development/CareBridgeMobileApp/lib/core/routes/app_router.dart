@@ -65,6 +65,9 @@ import '../../features/expert/screens/expert_home_screen.dart';
 import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
+import '../../features/directChat/screens/expert_directory_screen.dart';
+import '../../features/directChat/screens/conversation_list_screen.dart';
+import '../../features/directChat/screens/direct_chat_screen.dart';
 
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
@@ -230,6 +233,23 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/health-records',
       builder: (context, state) => const HealthRecordTimelineScreen(),
+    ),
+    // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call. Role/authorization
+    // is always resolved server-side from the JWT, never from a client-supplied flag.
+    GoRoute(
+      path: '/experts',
+      builder: (context, state) => const ExpertDirectoryScreen(),
+    ),
+    GoRoute(
+      path: '/direct-chats',
+      builder: (context, state) => const ConversationListScreen(),
+    ),
+    GoRoute(
+      path: '/direct-chat/:conversationId',
+      builder: (context, state) {
+        final conversationId = state.pathParameters['conversationId'] ?? '';
+        return DirectChatScreen(conversationId: conversationId);
+      },
     ),
     GoRoute(
       path: '/reminders/all',

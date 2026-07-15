@@ -4,7 +4,7 @@
 **Document ID:** `CB-CON-TDD-004`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Draft`
+**Status:** `Draft` *(reverted 2026-07-15 — token-generation core retained and reused for calls; ZIM-for-chat scenarios n/a, see UC144_DirectConsultChat)*
 **Author:** `AI Agent`
 
 ---
@@ -14,6 +14,9 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo Test-Spec |
+| 2026-07-15 | AI Agent — Amelia (Dev Agent) | **GREEN:** ZEGO-TC-001 through ZEGO-TC-005 all implemented and passing (10 JUnit tests total across `ZegoToken04GeneratorTest`/`ZegoCloudServiceImplTest` — some scenarios split into multiple assertions). Verified via `./mvnw test -Dtest=com.carebridge.backend.integration.zegocloud.**`: 10/10 passed, 0 failures. |
+| 2026-07-15 | AI Agent — Technical Architect | Realigned to actual schema: no `zego_sessions` table, no `mother_joined_at`/`expert_joined_at`, no single `consultations` table. Scope narrowed to `IZegoCloudService.generateToken()` (stateless token generation only) per TDS realignment; join/session-state tests moved to UC-95's own Test-Spec. |
+| 2026-07-15 | AI Agent — Technical Architect | **REPURPOSED — reverted Approved → Draft.** ZEGO-TC-001..005 (roomId format, TTL, no repository dependency, typed failure, env-only secrets) all still hold structurally and their 10 passing JUnit tests are **kept as-is** — only the semantic meaning of `roomId` changes (now `conversation_calls.zego_room_id`, not `consultation_sessions.session_id`), tracked in the new `UC144_DirectConsultChat` Test-Spec's call-token test cases rather than rewritten here. |
 
 ---
 
@@ -45,8 +48,8 @@
 
 | # | Spec gốc | Thực tế | Fix |
 |---|----------|---------|-----|
-| L1 | SRS: "creates rooms or tokens" — no implementation detail | ADR-ZEGO-001: lazy room creation, roomId=consultationId | Test roomId format |
-| L2 | SRS: "maintains chat, voice, video status" — no DB spec | ADR-ZEGO-002: zego_sessions tracks join timestamps | Test session recorded |
+| L1 | SRS: "creates rooms or tokens" — no implementation detail | ADR-ZEGO-001 (realigned): lazy room creation, roomId=`consultation_sessions.session_id` | Test roomId format |
+| L2 | SRS: "maintains chat, voice, video status" — no DB spec | ADR-ZEGO-002 (superseded): no `zego_sessions` table exists; session-state tracking (`session_status`/`started_at`/`ended_at`) is owned by UC-95, tested in UC-95's own Test-Spec | Test scope narrowed to token generation only here |
 
 ---
 
@@ -97,152 +100,120 @@ EstablishRealtimeCommunicationSession bao gồm các layer:
 ## 4. Test Case Specification
 
 ```java
-class ZegoSessionTestFactory {
-    static Consultation makeConfirmedConsultation() {
-        Consultation c = new Consultation();
-        c.setId(UUID.fromString("00000000-0000-0000-0000-000000000200"));
-        c.setStatus(ConsultationStatus.CONFIRMED);
-        c.setMotherAccountId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        c.setScheduledAt(Instant.now().plus(Duration.ofMinutes(2)));
-        c.setDurationMinutes(60);
-        return c;
-    }
+class ZegoTokenTestFactory {
+    static final UUID SESSION_ID = UUID.fromString("00000000-0000-0000-0000-000000000200");
+    static final UUID USER_ID    = UUID.fromString("00000000-0000-0000-0000-000000000001");
 }
 ```
 
 ---
 
-### ZEGO-TC-001 — Token generated with consultationId as roomId
+### ZEGO-TC-001 — Token generated with session_id as roomId
 
 **Severity:** `CRITICAL`
 **Oracle Source:** `ADR-ZEGO-001`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
-// Mock ZegoCloud SDK
-when(zegoCloudService.generateToken(consultationId.toString(), userId, displayName))
-    .thenReturn(new ZegoTokenDto("04AAAxx...", Instant.now().plusSeconds(3600)));
-
-JoinSessionResponse resp = sessionService.joinSession(consultationId, motherAccountId);
-assertThat(resp.getRoomId()).isEqualTo(consultationId.toString());
-// NOT UUID.randomUUID()
+ZegoTokenDto token = zegoCloudService.generateToken(SESSION_ID.toString(), USER_ID.toString(), "Dr. Lam");
+assertThat(token.getRoomId()).isEqualTo(SESSION_ID.toString());
+// NOT UUID.randomUUID() — roomId is always the session_id, never a separately generated id
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
-### ZEGO-TC-002 — Token NOT persisted to DB
+### ZEGO-TC-002 — Token TTL is 3600 seconds and never persisted to any DB column
 
 **Severity:** `HIGH`
 **Oracle Source:** `ADR-ZEGO-001`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 ```java
-sessionService.joinSession(consultationId, motherAccountId);
-ZegoSession session = zegoSessionRepo.findByConsultationId(consultationId).orElseThrow();
-// ZegoSession entity has no 'token' field
-assertThat(session).hasNoNullFieldsOrPropertiesExcept("endedAt", "expertJoinedAt");
-// Verify token is not in session entity
+ZegoTokenDto token = zegoCloudService.generateToken(SESSION_ID.toString(), USER_ID.toString(), "Dr. Lam");
+assertThat(token.getExpiresAt()).isCloseTo(Instant.now().plusSeconds(3600), within(5, ChronoUnit.SECONDS));
+// Static check (code review / architecture test): no repository/entity field of type String named
+// "token"/"zegoToken" exists anywhere under consultation.entity — token is generated fresh per call.
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
-### ZEGO-TC-003 — Join records mother_joined_at
+### ZEGO-TC-003 — generateToken() never reads or writes consultation_sessions
 
 **Severity:** `HIGH`
-**Oracle Source:** `ADR-ZEGO-002`
-**TDD Phase:** 🔴 RED
+**Oracle Source:** `ADR-ZEGO-002 (superseded — ownership boundary)`
+**TDD Phase:** 🟢 GREEN
 
 ```java
-sessionService.joinSession(consultationId, motherAccountId);
-ZegoSession session = zegoSessionRepo.findByConsultationId(consultationId).orElseThrow();
-assertThat(session.getMotherJoinedAt()).isNotNull();
+// Verify ZegoCloudServiceImpl has no dependency on ConsultationSessionRepository —
+// architecture/unit test asserting the class only depends on env-configured
+// appId/serverSecret, not on any repository. Prevents an AI implementation from
+// re-introducing session-state mutation into this service (see UC-95 for that ownership).
 ```
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
-### ZEGO-TC-004 — First joiner → consultation IN_SESSION
-
-**Severity:** `HIGH`
-**Oracle Source:** `ADR-ZEGO-002`
-**TDD Phase:** 🔴 RED
-
-```java
-sessionService.joinSession(consultationId, motherAccountId);
-Consultation c = consultationRepo.findById(consultationId).orElseThrow();
-assertThat(c.getStatus()).isEqualTo(ConsultationStatus.IN_SESSION);
-```
-
-**Current Status:** 🔴 Not written
-
----
-
-### ZEGO-TC-005 — ZegoCloud SDK failure → 503, status NOT changed
+### ZEGO-TC-004 — ZegoCloud SDK failure surfaces as a checked exception, does not throw for the caller to swallow silently
 
 **Severity:** `HIGH`
 **Oracle Source:** `ADR-ZEGO-001`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
 **Test Steps:**
-1. Mock SDK to throw RuntimeException
-2. Call `joinSession()`
+1. Configure invalid/malformed server secret (simulates SDK-level failure)
+2. Call `generateToken()`
 
 **Expected Result:**
-- throws ServiceUnavailableException (ZEGO-001)
-- consultation.status still CONFIRMED (not IN_SESSION)
+- throws `ZegoTokenGenerationException` — caller (UC-95/UC-144) is responsible for mapping this to `503` and leaving its own state unchanged (tested in UC-95/UC-144's own Test-Specs)
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
-### ZEGO-TC-006 — Non-participant → 403
+### ZEGO-TC-005 — appId/serverSecret sourced only from environment, never hardcoded
 
 **Severity:** `CRITICAL`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 
-**Expected Result:** throws ForbiddenException (ZEGO-002)
+**Expected Result:** `@Value("${zego.app-id}")`/`@Value("${zego.server-secret}")` — grep for literal numeric appId or 32-char secret string anywhere in source finds none
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
 ## 5. Red-Green-Refactor Tracker
 
-| TC ID | 🔴 RED | 🟢 GREEN |
+| TC ID | 🔴 RED confirmed | 🟢 GREEN (commit) |
 |-------|--------|----------|
-| `ZEGO-TC-001` | `[ ]` | `___` |
-| `ZEGO-TC-002` | `[ ]` | `___` |
-| `ZEGO-TC-004` | `[ ]` | `___` |
-| `ZEGO-TC-005` | `[ ]` | `___` |
+| `ZEGO-TC-001` | `[x]` | `Passed` |
+| `ZEGO-TC-002` | `[x]` | `Passed` |
+| `ZEGO-TC-003` | `[x]` | `Passed` |
+| `ZEGO-TC-004` | `[x]` | `Passed` |
+| `ZEGO-TC-005` | `[x]` | `Passed` |
 
 ---
 
 ## 6. Exit Criteria
 
-- [ ] roomId = consultationId enforced
-- [ ] Token never persisted
-- [ ] ZegoCloud failure leaves consultation unaffected
-- [ ] Red Gate confirmed
+- [x] roomId = session_id enforced
+- [x] Token never persisted
+- [x] `IZegoCloudService` has zero dependency on any repository (pure token generator)
+- [x] ZegoCloud failure surfaces as a typed exception, caller state unaffected
+- [x] Red Gate confirmed
 
 ---
 
 ## 7. Rollback Plan
 
 ```bash
-# Revert migration (dev only)
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
-  -c "DROP TABLE IF EXISTS zego_sessions CASCADE;"
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
-  -c "DELETE FROM flyway_schema_history WHERE version = '037';"
-
-# Revert code
-git checkout -- src/main/java/com/carebridge/backend/consultation/
-git checkout -- src/test/java/com/carebridge/backend/consultation/
+# No migration owned by this module (see TDS §11.2) — code-only rollback:
+git checkout -- src/main/java/com/carebridge/backend/consultation/integration/zegocloud/
+git checkout -- src/test/java/com/carebridge/backend/consultation/integration/zegocloud/
 ```
 
 ---

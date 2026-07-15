@@ -192,6 +192,12 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
+    @ExceptionHandler(com.carebridge.backend.directchat.exception.DirectChatException.class)
+    public ResponseEntity<ErrorResponse> handleDirectChat(
+            com.carebridge.backend.directchat.exception.DirectChatException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ModerationException.class)
     public ResponseEntity<ErrorResponse> handleModeration(ModerationException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
