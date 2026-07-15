@@ -65,7 +65,7 @@ class ConversationEventPublisherImplTest {
 
         ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
         verify(gateway).write(pathCaptor.capture(), any());
-        assertThat(pathCaptor.getValue()).startsWith("/user-conversation-events/" + EXPERT_ID + "/");
+        assertThat(pathCaptor.getValue()).startsWith("userConversationEvents/" + EXPERT_ID + "/events/");
     }
 
     @Test
@@ -78,7 +78,7 @@ class ConversationEventPublisherImplTest {
 
         ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
         verify(gateway).write(pathCaptor.capture(), any());
-        assertThat(pathCaptor.getValue()).startsWith("/user-conversation-events/" + MOTHER_ID + "/");
+        assertThat(pathCaptor.getValue()).startsWith("userConversationEvents/" + MOTHER_ID + "/events/");
     }
 
     // DCC-TC-011 — Firebase payload never contains messageBody or any field beyond the 5 fixed ones.
@@ -118,7 +118,7 @@ class ConversationEventPublisherImplTest {
     void publish_gatewayThrows_doesNotPropagate() throws Exception {
         setRealtimeEnabled(true);
         when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
-        org.mockito.Mockito.doThrow(new RuntimeException("RTDB unreachable")).when(gateway).write(anyString(), any());
+        org.mockito.Mockito.doThrow(new RuntimeException("Firestore unreachable")).when(gateway).write(anyString(), any());
         ConversationEventDomainEvent event = new ConversationEventDomainEvent("MESSAGE_SENT", CONVERSATION_ID, MOTHER_ID, RESOURCE_ID, fixedNow);
 
         publisher.publishAfterCommit(event); // must not throw

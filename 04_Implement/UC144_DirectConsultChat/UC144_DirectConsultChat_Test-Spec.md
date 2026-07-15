@@ -30,6 +30,7 @@
 | 2026-07-15 | AI Agent — Technical Architect | v1.2 — **Request Changes #2 (vẫn Draft — user xác nhận Approve sau khi áp dụng).** Viết lại hoàn toàn `DCC-TC-029` thành 1 test case dạng ma trận (5 kịch bản: Mother read allowed, Mother send/call blocked, Expert send/call blocked, end() trên call ANSWERED vẫn cho phép, end() trên call chưa answer vẫn bị chặn) theo ADR-DCC-007/BR-DCC-015 — không còn giả định "message saved but event skipped". Thêm bước kiểm `message_type='FILE'` bị CHECK constraint từ chối vào `DCC-TC-INT-001` (BR-DCC-016) và bước 10 xác nhận DCC-010/read-allowed trên DB thật. Tổng số test case giữ nguyên `DCC-TC-001..030` (không thêm số mới — 4 kịch bản Expert-revocation gộp vào DCC-TC-029 dạng matrix, đúng yêu cầu giữ nguyên khoảng tham chiếu tài liệu). |
 | 2026-07-15 | AI Agent — Technical Architect | **v1.2 — APPROVED.** User đã duyệt sau 3 sửa lỗi biên tập: (1) Entry Criteria tham chiếu TDS v1.1→v1.2; (2) Rollback §12 tham chiếu TDS v1.1→v1.2; (3) `DCC-TC-029` "4 kịch bản" → "5 kịch bản" (đúng số bước thực tế trong test). Status chuyển `Draft` → `Approved`. Phạm vi được xác nhận lại: call = record + Firebase signaling only, KHÔNG có ZegoCloud RTC audio/video thật trong pass này. Bắt đầu Red Gate ngay sau entry này. |
 | 2026-07-15 | AI Agent — Amelia (Dev Agent) | **IMPLEMENTED (backend + mobile + web + Firebase).** Red Gate xác nhận (mọi service/policy stub throw `UnsupportedOperationException`, chạy `./mvnw test` → toàn bộ RED trước khi implement) → implement thật → GREEN. **Backend: 47/47 unit test passing** (`./mvnw test -Dtest=com.carebridge.backend.directchat.**,com.carebridge.backend.integration.firebase.**`), full `mvn test` xác nhận 0 regression (95 failures/errors trước đó không đổi, tất cả thuộc module không liên quan — Docker-unavailable Testcontainers + 1 bug Hibernate 7.4 có sẵn trong `CommunityQuestionRepository`, không phải do pass này). **Mobile: 45/45 test passing**, `dart analyze` sạch, **`flutter build apk --debug` THÀNH CÔNG** (gỡ `zego_zim` đã sửa luôn lỗi Gradle chặn build ở pass UC-144 cũ). **Web:** `npx vite build`/`tsc --noEmit`/`eslint` đều sạch cho code mới, `npm audit` 0 vulnerability (khác hẳn `zego-zim-web` cũ có lỗ hổng critical). **DCC-TC-020 (Firebase Rules) chạy thật trên Firebase Emulator** (`firebase emulators:start`), không phải mock — 4/4 assertion PASS, script lưu tại `05_Development/Firebase/rules-test/`. Bảng Red-Green đầy đủ ở §5; các TC còn RED (integration-only cần Postgres/Docker thật, và mobile/web widget-test) được flag rõ, không claim GREEN giả. |
+| 2026-07-15 | AI Agent — Dev Agent | **FIRESTORE AMENDMENT.** DCC-TC-020 now exercises owner-read, cross-user/unauthenticated-read denial, and all-client-write denial against `firestore.rules` in the Firestore Emulator. Publisher-path assertions use `userConversationEvents/{uid}/events/{eventId}`; client reconciliation covers snapshot replay plus signals received before the initial cursor or during an active REST sync. |
 
 ---
 
@@ -41,7 +42,7 @@
 | **Module** | `directchat` |
 | **Priority** | 🔴 P0 |
 | **Data Classification** | `Sensitive-PII` |
-| **Upstream Dependencies** | `users`, `expert_profiles`, Firebase Admin SDK + Emulator Suite (RTDB + Auth), `IZegoCloudService` (UC-154, unchanged) |
+| **Upstream Dependencies** | `users`, `expert_profiles`, Firebase Admin SDK + Emulator Suite (Firestore + Auth), `IZegoCloudService` (UC-154, unchanged) |
 
 ---
 
@@ -66,7 +67,7 @@ directchat bao gồm:
 ├── Policy (mock Repository — Mockito)
 ├── Service (mock Repository — Mockito, incl. race/idempotency/conditional-update simulation)
 ├── Controller (@WebMvcTest, mock Service)
-├── Firebase adapter (mock FirebaseDatabase/FirebaseAuth cho unit test)
+├── Firebase adapter (mock Firestore/FirebaseAuth cho unit test)
 ├── Firebase Rules (Firebase Emulator Suite — KHÔNG mock, test Rules thật)
 ├── Integration (Testcontainers PostgreSQL — CHECK constraint, FK, unique constraint thật)
 ├── Scheduled jobs (CallTimeoutReconciliationJob, FirebaseEventRetentionJob — mock Clock + repository)
@@ -101,7 +102,7 @@ directchat bao gồm:
 | TC-COND-014 | Reopen conversation load lại lịch sử có phân trang | mobile/web integration | DCC-TC-MOB-002 |
 | TC-COND-015 | Cursor `before`/`after` đúng semantics, đúng biên trang | `ConversationTimelineRepository` | DCC-TC-024, DCC-TC-025, DCC-TC-026 |
 | TC-COND-016 | Custom token luôn ứng userId từ JWT, không thể xin token hộ người khác | `FirebaseTokenController` | DCC-TC-019 |
-| TC-COND-017 | RTDB Rules chặn đọc chéo user | Firebase Emulator | DCC-TC-020 |
+| TC-COND-017 | Firestore Rules chặn đọc chéo user | Firebase Emulator | DCC-TC-020 |
 | TC-COND-018 | Event chỉ gửi recipient (counterpart), không gửi actor | `ConversationEventPublisherImpl.resolveRecipient` | DCC-TC-021 |
 | TC-COND-019 | Duplicate/expired Firebase event không gây lỗi logic | client-side event handling | DCC-TC-022 |
 | TC-COND-020 | Answer-vs-timeout race có đúng 1 kết quả | `ConversationCallRepository` conditional UPDATE | DCC-TC-028 |
@@ -222,7 +223,7 @@ class DirectChatTestFactory {
 ### DCC-TC-010 — Firebase publish failure does not roll back the saved message
 
 **Severity:** `CRITICAL` · **TDD Phase:** 🔴 RED · **Oracle:** BR-DCC-007, ADR-DCC-002
-**Test Steps:** Mock `FirebaseDatabase` ném exception khi publish sau khi message đã commit (listener `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` — chạy trên thread pool riêng, không phải request thread, xem TDS §6.2/§8).
+**Test Steps:** Mock Firestore gateway ném exception khi publish sau khi message đã commit (listener `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` — chạy trên thread pool riêng, không phải request thread, xem TDS §6.2/§8).
 **Expected Result:** `direct_messages` row vẫn tồn tại; response 201, không bị trễ bởi việc publish (test dùng `CountDownLatch`/timing để xác nhận response trả về trước khi async publish hoàn tất); exception được log, không propagate, không rollback.
 **Current Status:** 🔴 Not written
 
@@ -320,18 +321,18 @@ class DirectChatTestFactory {
 
 ---
 
-### DCC-TC-020 — Firebase RTDB Rules deny reading another user's inbox (Firebase Emulator)
+### DCC-TC-020 — Firestore Rules deny reading another user's inbox (Firebase Emulator)
 
 **Severity:** `CRITICAL` · **OWASP:** `A01:2021` · **TDD Phase:** 🔴 RED
-**Feature Under Test:** `database.rules.json` (ADR-DCC-004 §4)
+**Feature Under Test:** `firestore.rules` (ADR-DCC-004 §4)
 **Test File:** chạy qua Firebase Emulator Suite — **không** phải unit test Java thông thường (Rules không thể verify bằng mock).
-**Precondition:** `firebase emulators:exec` khởi động RTDB + Auth emulator cục bộ, nạp `database.rules.json` thật.
+**Precondition:** `firebase emulators:exec` khởi động Firestore + Auth emulator cục bộ, nạp `firestore.rules` thật.
 
 **Test Steps:**
 1. Sign in emulator Auth với custom token có `uid=userA`.
-2. Cố đọc `/user-conversation-events/{userB}` (khác `userA`) → assert bị **PERMISSION_DENIED**.
-3. Đọc `/user-conversation-events/{userA}` (chính mình) → assert **thành công**.
-4. Cố **ghi** trực tiếp (không qua Admin SDK) vào `/user-conversation-events/{userA}/fake-event` bằng client SDK đã sign-in → assert bị từ chối (`.write: false` tuyệt đối, kể cả ghi vào node của chính mình).
+2. Cố đọc `userConversationEvents/{userB}/events` (khác `userA`) → assert bị **PERMISSION_DENIED**.
+3. Đọc `userConversationEvents/{userA}/events` (chính mình) → assert **thành công**.
+4. Cố **ghi** trực tiếp (không qua Admin SDK) vào `userConversationEvents/{userA}/events/fake-event` bằng client SDK đã sign-in → assert bị từ chối tuyệt đối, kể cả ghi vào inbox của chính mình.
 
 **Expected Result:** Rules đúng như ADR-DCC-004 §4 — đọc chỉ chính mình, ghi luôn bị chặn từ client.
 **Current Status:** 🔴 Not written
@@ -343,7 +344,7 @@ class DirectChatTestFactory {
 
 **Severity:** `CRITICAL` · **TDD Phase:** 🔴 RED · **Oracle:** BR-DCC-010, ADR-DCC-004
 
-**Test Steps:** Mother gửi message → capture mọi lời gọi tới `FirebaseDatabase` (mock) → assert **chỉ 1** lời ghi, tới path `/user-conversation-events/{expertUserId}/...` — không có bất kỳ ghi nào tới `/user-conversation-events/{motherUserId}/...`.
+**Test Steps:** Mother gửi message → capture mọi lời gọi tới Firestore gateway (mock) → assert **chỉ 1** lời ghi, tới document path `userConversationEvents/{expertUserId}/events/{eventId}` — không có bất kỳ ghi nào tới inbox của Mother.
 **Expected Result:** Sender không bao giờ nhận signal về hành động của chính mình.
 **Current Status:** 🔴 Not written
 
@@ -352,9 +353,9 @@ class DirectChatTestFactory {
 ### DCC-TC-022 — Duplicate or expired Firebase event does not break client reconciliation
 
 **Severity:** `MEDIUM` · **TDD Phase:** 🔴 RED
-**Feature Under Test:** client-side event handler (mobile) — nhận cùng `eventId` 2 lần (RTDB có thể replay khi reconnect), hoặc nhận event mà `occurredAt` đã cũ hơn cursor client hiện có.
-**Test Steps:** Đưa 2 event giống hệt `eventId` vào handler → assert chỉ gọi `GET /timeline` reconcile 1 lần hiệu quả (dedupe theo `eventId` phía client) hoặc gọi nhiều lần nhưng không tạo duplicate UI item (dedupe cuối cùng theo `messageId` từ REST, không theo `eventId`). Event có `occurredAt` < cursor hiện tại của client → bị bỏ qua, không kích hoạt fetch lùi về trước.
-**Expected Result:** Không duplicate UI item, không lỗi, không loop fetch vô hạn.
+**Feature Under Test:** client-side event handler (mobile) — nhận cùng `eventId` 2 lần (Firestore snapshot có thể replay khi reconnect), hoặc nhận event mà `occurredAt` đã cũ hơn cursor client hiện có.
+**Test Steps:** Đưa 2 event giống hệt `eventId` vào handler → assert chỉ gọi `GET /timeline` reconcile 1 lần hiệu quả (dedupe theo `eventId` phía client) hoặc gọi nhiều lần nhưng không tạo duplicate UI item (dedupe cuối cùng theo `messageId` từ REST, không theo `eventId`). Event có `occurredAt` < cursor hiện tại của client → bị bỏ qua, không kích hoạt fetch lùi về trước. Phát thêm một signal trước khi initial REST load đặt cursor và một signal trong lúc `GET /timeline?after=...` đang chạy → mỗi cửa sổ race phải coalesce thành đúng một lượt catch-up tiếp theo.
+**Expected Result:** Không duplicate UI item, không lỗi, không loop fetch vô hạn, và không mất item khi signal đến trước initial cursor hoặc trong active REST sync.
 **Current Status:** 🔴 Not written
 
 ---
@@ -438,7 +439,7 @@ class DirectChatTestFactory {
 **Test Steps (matrix — 5 kịch bản bắt buộc):**
 
 1. **Mother read allowed:** Mother gọi `GET /{id}/timeline` → assert `200`, trả đúng lịch sử cũ đầy đủ (không bị cắt bớt).
-2. **Mother send/call blocked:** Mother gọi `POST /{id}/messages` (body hợp lệ) → assert `409 DCC-010`; assert **không có row mới** trong `direct_messages` (query lại đếm số dòng trước/sau); assert `FirebaseDatabase` mock **không** nhận bất kỳ lời gọi ghi nào. Lặp lại với `POST /{id}/calls` → cùng kết quả (409, không tạo `conversation_calls` row, không publish).
+2. **Mother send/call blocked:** Mother gọi `POST /{id}/messages` (body hợp lệ) → assert `409 DCC-010`; assert **không có row mới** trong `direct_messages` (query lại đếm số dòng trước/sau); assert Firestore gateway mock **không** nhận bất kỳ lời gọi ghi nào. Lặp lại với `POST /{id}/calls` → cùng kết quả (409, không tạo `conversation_calls` row, không publish).
 3. **Expert send/call blocked:** Expert gọi `POST /{id}/messages` và `POST /{id}/calls` → assert `403 DCC-002` (Expert đã bị chặn truy cập từ `assertIsParticipant`/BR-DCC-003 trước cả khi chạm tới `assertConversationWritable` — thứ tự chặn không quan trọng với Expert vì cả 2 đều dẫn tới từ chối, nhưng test phải xác nhận không có row nào được tạo bất kể lỗi 403 hay 409).
 4. **Ending an already-ANSWERED call remains allowed:** Seed 1 call ở trạng thái `ANSWERED` (answered trước khi Expert bị revoke, mô phỏng cuộc gọi đang diễn ra) → Mother hoặc Expert gọi `PATCH .../end` → assert `200`, `call_status=ENDED`, `duration_seconds` tính đúng như bình thường (không bị `assertConversationWritable` chặn — ngoại lệ ADR-DCC-007 §2).
 5. **Phản chứng cho bước 4:** Seed 1 call khác ở trạng thái `RINGING` (chưa answer) sau khi Expert đã bị revoke → gọi `PATCH .../end` → assert `409 DCC-010` (đây KHÔNG phải "đóng call đang chạy", ngoại lệ không áp dụng).
@@ -516,7 +517,7 @@ class DirectChatTestFactory {
 | DCC-TC-017 | `[x]` | Passed | IDOR = trường hợp riêng của non-participant, cùng cơ chế đã test |
 | DCC-TC-018 | `[x]` | Passed | `assertIsParticipant_expertParticipantRevoked_throws403` |
 | DCC-TC-019 | `[x]` | Passed | `FirebaseAuthBridgeServiceImplTest` + `FirebaseTokenControllerTest` |
-| DCC-TC-020 | `[x]` | **Passed — Firebase Emulator thật** | `05_Development/Firebase/rules-test/rtdb-rules.test.mjs`, 4/4 assertion PASS chạy trực tiếp trên `firebase emulators:start`, không phải mock |
+| DCC-TC-020 | `[x]` | **Passed — Firebase Emulator thật** | `05_Development/Firebase/rules-test/firestore-rules.test.mjs`, 4/4 assertion PASS chạy trực tiếp trên `firebase emulators:start`, không phải mock |
 | DCC-TC-021 | `[x]` | Passed | `publish_actorIsMother_writesToExpertInbox` + đối xứng |
 | DCC-TC-022 | `[ ]` | — | Client-side dedup mobile chưa có test riêng (an toàn nhờ merge idempotent, nhưng chưa test tường minh) |
 | DCC-TC-023 | `[ ]` | — | Same-timestamp tie-break cần Postgres — integration-only |

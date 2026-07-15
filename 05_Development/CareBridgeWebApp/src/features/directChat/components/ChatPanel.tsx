@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './ChatPanel.css';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { ConversationSignalingPort } from '../../../shared/integrations/firebaseRealtime/conversationSignalingPort';
@@ -39,15 +39,40 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const nextCursorRef = useRef<string | null>(null);
   const previousCursorRef = useRef<string | null>(null);
   const signalingRef = useRef<ConversationSignalingPort | null>(null);
+  const initialLoadCompleteRef = useRef(false);
   const syncingNewerRef = useRef(false);
+  const pendingNewerSyncRef = useRef(false);
+  const activeConversationRef = useRef(conversationId);
+
+  useLayoutEffect(() => {
+    activeConversationRef.current = conversationId;
+    initialLoadCompleteRef.current = false;
+    syncingNewerRef.current = false;
+    pendingNewerSyncRef.current = false;
+  }, [conversationId]);
 
   const syncNewer = useCallback(async () => {
-    if (!nextCursorRef.current || syncingNewerRef.current) return;
+    const requestedConversationId = conversationId;
+    if (activeConversationRef.current !== requestedConversationId) return;
+    if (!initialLoadCompleteRef.current || syncingNewerRef.current) {
+      pendingNewerSyncRef.current = true;
+      return;
+    }
     syncingNewerRef.current = true;
     try {
+      if (!nextCursorRef.current) {
+        const page = await directChatApi.getTimeline(conversationId);
+        if (activeConversationRef.current !== requestedConversationId) return;
+        setItems((prev) => mergeTimelineItems(prev, page.items));
+        nextCursorRef.current = page.nextCursor;
+        previousCursorRef.current = page.previousCursor;
+        setHasMoreOlder(page.hasMoreOlder);
+        return;
+      }
       let cursor: string | null = nextCursorRef.current;
       while (cursor) {
         const page = await directChatApi.getTimeline(conversationId, { after: cursor });
+        if (activeConversationRef.current !== requestedConversationId) return;
         if (page.items.length > 0) {
           setItems((prev) => mergeTimelineItems(prev, page.items));
           nextCursorRef.current = page.nextCursor;
@@ -59,12 +84,20 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     } catch {
       // best-effort background sync — next resume/manual refresh retries.
     } finally {
-      syncingNewerRef.current = false;
+      if (activeConversationRef.current === requestedConversationId) {
+        syncingNewerRef.current = false;
+        if (pendingNewerSyncRef.current) {
+          pendingNewerSyncRef.current = false;
+          queueMicrotask(() => void syncNewer());
+        }
+      }
     }
   }, [conversationId]);
 
   useEffect(() => {
     let cancelled = false;
+    initialLoadCompleteRef.current = false;
+    pendingNewerSyncRef.current = false;
 
     (async () => {
       try {
@@ -78,10 +111,21 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
         previousCursorRef.current = page.previousCursor;
         setHasMoreOlder(page.hasMoreOlder);
         setExpertAvailable(conversation.expertAvailable);
+        if (pendingNewerSyncRef.current) {
+          pendingNewerSyncRef.current = false;
+          queueMicrotask(() => void syncNewer());
+        }
       } catch (e) {
         if (!cancelled) setError(`Không thể tải cuộc trò chuyện: ${e}`);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          initialLoadCompleteRef.current = true;
+          setLoading(false);
+          if (pendingNewerSyncRef.current) {
+            pendingNewerSyncRef.current = false;
+            queueMicrotask(() => void syncNewer());
+          }
+        }
       }
     })();
 

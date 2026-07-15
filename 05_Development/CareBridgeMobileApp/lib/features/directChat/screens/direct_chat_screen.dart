@@ -27,7 +27,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   bool _loading = true;
   bool _sending = false;
   bool _loadingOlder = false;
+  bool _initialLoadComplete = false;
   bool _syncingNewer = false;
+  bool _pendingNewerSync = false;
   bool _expertAvailable = true;
   String? _nextCursor;
   String? _previousCursor;
@@ -65,6 +67,14 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       if (!mounted) return;
       setState(() => _loading = false);
       _showError('Không thể tải cuộc trò chuyện: $e');
+    } finally {
+      if (mounted) {
+        _initialLoadComplete = true;
+        if (_pendingNewerSync) {
+          _pendingNewerSync = false;
+          scheduleMicrotask(_syncNewer);
+        }
+      }
     }
   }
 
@@ -72,12 +82,12 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     final port = FirebaseConversationSignalingPort();
     _signalingPort = port;
     try {
-      await port.connect();
       _signalSubscription = port.events.listen((signal) {
         if (signal.conversationId == widget.conversationId) {
           _syncNewer();
         }
       });
+      await port.connect();
     } catch (_) {
       // Firebase unavailable/misconfigured — degrade gracefully. Chat delivery is never
       // gated on Firebase (ADR-DCC-002/BR-DCC-007): reconnect-on-resume + pull-to-refresh
@@ -88,9 +98,25 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   /// Reconnect reconcile — DCC-TC-014/025: fetch every item strictly newer than the last
   /// cursor we hold, merge without duplication.
   Future<void> _syncNewer() async {
-    if (_nextCursor == null || _syncingNewer) return;
+    if (!_initialLoadComplete || _syncingNewer) {
+      _pendingNewerSync = true;
+      return;
+    }
     _syncingNewer = true;
     try {
+      if (_nextCursor == null) {
+        final page = await DirectChatService.instance.getTimeline(
+          widget.conversationId,
+        );
+        if (!mounted) return;
+        setState(() {
+          _items = mergeTimelineItems(_items, page.items);
+          _nextCursor = page.nextCursor;
+          _previousCursor = page.previousCursor;
+          _hasMoreOlder = page.hasMoreOlder;
+        });
+        return;
+      }
       var cursor = _nextCursor;
       do {
         final page = await DirectChatService.instance.getTimeline(
@@ -112,6 +138,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       // best-effort background sync — surfaced errors would be noisy; next resume/pull retries.
     } finally {
       _syncingNewer = false;
+      if (_pendingNewerSync && mounted) {
+        _pendingNewerSync = false;
+        scheduleMicrotask(_syncNewer);
+      }
     }
   }
 

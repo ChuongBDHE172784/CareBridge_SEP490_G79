@@ -1,4 +1,4 @@
-/** Client-side shape of the minimal RTDB payload (ADR-DCC-004 §1) — the exact 5 fields
+/** Client-side shape of the minimal Firestore payload (ADR-DCC-004 §1) — the exact 5 fields
  * the backend ever writes. Signal-only: never trust anything beyond "something changed";
  * the client always reconciles via REST (GET /timeline), never renders this directly. */
 export interface ConversationEventSignal {

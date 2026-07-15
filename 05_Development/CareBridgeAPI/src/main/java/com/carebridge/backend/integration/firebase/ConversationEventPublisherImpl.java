@@ -24,7 +24,7 @@ public class ConversationEventPublisherImpl implements IConversationEventPublish
     private final IFirebaseRealtimeGateway gateway;
     private final Clock clock;
 
-    @Value("${carebridge.firebase.realtime.enabled:false}")
+    @Value("${carebridge.firebase.firestore.enabled:false}")
     private boolean realtimeEnabled;
 
     @Autowired
@@ -57,7 +57,7 @@ public class ConversationEventPublisherImpl implements IConversationEventPublish
             UUID recipientUserId = resolveRecipient(conversation.get(), event.actorUserId());
 
             String eventId = UUID.randomUUID().toString();
-            String path = "/user-conversation-events/" + recipientUserId + "/" + eventId;
+            String path = "userConversationEvents/" + recipientUserId + "/events/" + eventId;
             java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
             payload.put("eventId", eventId);
             payload.put("eventType", event.eventType());

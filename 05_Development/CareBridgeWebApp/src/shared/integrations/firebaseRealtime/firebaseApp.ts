@@ -8,7 +8,6 @@ function readConfig() {
   return {
     apiKey: env.VITE_FIREBASE_API_KEY as string | undefined,
     authDomain: env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-    databaseURL: env.VITE_FIREBASE_DATABASE_URL as string | undefined,
     projectId: env.VITE_FIREBASE_PROJECT_ID as string | undefined,
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
@@ -18,7 +17,7 @@ function readConfig() {
 
 export function isFirebaseConfigured(): boolean {
   const config = readConfig();
-  return Boolean(config.apiKey && config.databaseURL && config.projectId && config.appId);
+  return Boolean(config.apiKey && config.projectId && config.appId);
 }
 
 let cachedApp: FirebaseApp | null = null;

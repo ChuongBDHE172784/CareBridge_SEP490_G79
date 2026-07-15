@@ -15,20 +15,17 @@ import java.util.Base64;
 /**
  * Initializes the Firebase Admin SDK from a base64-encoded service account JSON.
  * Active when EITHER FCM push (carebridge.fcm.enabled) OR direct-chat realtime signaling
- * (carebridge.firebase.realtime.enabled, UC-144 ADR-DCC-004) is enabled — both share the
- * same FirebaseApp/credentials, only the databaseUrl is realtime-specific.
+ * (carebridge.firebase.firestore.enabled, UC-144 ADR-DCC-004) is enabled — both share the
+ * same FirebaseApp and service-account credentials.
  * Using an env-var-carried value (instead of a file path) avoids working-directory-relative
  * path resolution issues between local dev and containerized deployments.
  */
 @Configuration
-@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.realtime.enabled:false}")
+@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.firestore.enabled:false}")
 public class FirebaseConfig {
 
     @Value("${carebridge.fcm.credentials-base64:}")
     private String credentialsBase64;
-
-    @Value("${carebridge.firebase.realtime.database-url:}")
-    private String databaseUrl;
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
@@ -37,12 +34,10 @@ public class FirebaseConfig {
         }
         byte[] credentialsJson = Base64.getDecoder().decode(credentialsBase64.trim());
         try (ByteArrayInputStream serviceAccount = new ByteArrayInputStream(credentialsJson)) {
-            FirebaseOptions.Builder builder = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount));
-            if (databaseUrl != null && !databaseUrl.isBlank()) {
-                builder.setDatabaseUrl(databaseUrl);
-            }
-            return FirebaseApp.initializeApp(builder.build());
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .build();
+            return FirebaseApp.initializeApp(options);
         }
     }
 }

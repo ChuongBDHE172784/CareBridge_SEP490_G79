@@ -26,6 +26,7 @@
 | 2026-07-15 | AI Agent — Technical Architect | v1.2 — **Request Changes #2 (vẫn Draft, chưa Approved — user xác nhận sẽ Approve sau khi áp dụng 2 thay đổi cuối này).** (1) **Thiết kế lại hành vi khi Expert mất APPROVED** (ADR-DCC-007, BR-DCC-015): thay vì "vẫn lưu message, chỉ bỏ qua publish Firebase" (BR-DCC-010 bản cũ), giờ chặn **toàn bộ** message/call mới từ **cả 2 phía trước khi persist** — không lưu, không publish; Mother vẫn đọc được lịch sử cũ (đọc không đổi); duy nhất `PATCH /end` trên call đang `ANSWERED` được miễn trừ để đóng cuộc gọi sạch sẽ; trả lỗi nghiệp vụ có tài liệu `DCC-010`; response conversation có field `expertAvailable` để client hiển thị trạng thái read-only "Expert is no longer available". `DCC-TC-029` viết lại hoàn toàn theo hành vi mới; không còn giả định "message saved but event skipped". (2) **Giới hạn `message_type` chỉ còn `TEXT`** trong pass này — bỏ `FILE`/`SYSTEM` khỏi CHECK constraint/entity/API vì bảo mật attachment, lưu trữ và vòng đời file chưa được đặc tả; ghi rõ đây là placeholder mở rộng sau (BR-DCC-016). Sửa khoảng tham chiếu tài liệu: CHANGELOG v1.1 và §13–15 nay phản ánh đúng `DCC-TC-001..030`. |
 | 2026-07-15 | AI Agent — Technical Architect | **v1.2 — APPROVED.** User đã duyệt sau 3 sửa lỗi biên tập trong Test-Spec (v1.1→v1.2 ở Entry Criteria và Rollback §12; "4 kịch bản"→"5 kịch bản" ở `DCC-TC-029`). Status chuyển `Draft` → `Approved`. Phạm vi xác nhận lại: call = record + Firebase signaling only, KHÔNG có ZegoCloud RTC audio/video thật trong pass này (không đổi so với §1.1). Bắt đầu triển khai theo Red → Green → Refactor ngay sau entry này. |
 | 2026-07-15 | AI Agent — Amelia (Dev Agent) | **IMPLEMENTED.** 2 migration mới (`create_direct_conversation_schema`, `widen_audit_logs_action_direct_chat`) — không sửa migration cũ. Package `directchat` + mở rộng `integration/firebase` (gateway abstraction cho FirebaseDatabase/FirebaseAuth để unit-test được mà không cần credentials thật). Code ZIM-cho-chat đã gỡ hoàn toàn (mobile: `zego_zim`, `lib/features/consultation/*`; web: `zego-zim-web`, `consultationManagement/*`); `ConsultationSession`/`ConsultationSessionRepository`/`AuditAction`/notification files revert về trạng thái trước pass cũ, xác nhận bằng `ImpactReportServiceImpl` vẫn hoạt động (`countByEndedAtIsNotNull` không đổi). Backend 47/47 unit test GREEN, mobile 45/45, web build/typecheck/eslint sạch. `DCC-TC-020` chạy thật trên Firebase Emulator (không mock). Chi tiết đầy đủ + hạng mục còn RED (integration-only, cần Docker/Postgres thật) ở Test-Spec §5 và báo cáo cuối cùng gửi trong hội thoại. |
+| 2026-07-15 | AI Agent — Dev Agent | **FIRESTORE AMENDMENT.** Replaced Realtime Database transport with Native-mode Cloud Firestore. Recipient path is `userConversationEvents/{uid}/events/{eventId}`; payload remains exactly five fields; owner-only Rules, bounded scheduled collection-group cleanup, and Firestore Emulator coverage replace the previous database-specific assets. PostgreSQL remains the sole durable source of truth. |
 
 ---
 
@@ -46,20 +47,20 @@
 
 **Backend Firebase capability đã xác minh** (đọc trực tiếp code, không giả định):
 - `pom.xml` đã có `firebase-admin` (không cần dependency mới).
-- `FirebaseConfig.java` hiện chỉ khởi tạo `FirebaseApp` khi `carebridge.fcm.enabled=true`, và **không** set `databaseUrl`. Cần mở rộng: (a) tách điều kiện khởi tạo `FirebaseApp` khỏi cờ `fcm.enabled` — dùng cờ mới `carebridge.firebase.realtime.enabled` (mặc định `false`, độc lập với FCM); (b) thêm `.setDatabaseUrl(...)`.
-- `firebase-admin` Java SDK có sẵn `FirebaseDatabase` (ghi RTDB từ server, bypass Rules bằng Admin credentials) và `FirebaseAuth.createCustomToken()` (custom-token bridge) — **không cần dependency mới**.
-- Khi `carebridge.firebase.realtime.enabled=false`: publisher hoạt động như logging stub — đúng pattern `FirebaseFcmServiceImpl`. Backend build/test được mà không cần Firebase project thật.
+- `FirebaseConfig.java` khởi tạo `FirebaseApp` khi FCM hoặc `carebridge.firebase.firestore.enabled=true`; Firestore không cần `databaseUrl`.
+- `firebase-admin` Java SDK có sẵn `FirestoreClient` và `FirebaseAuth.createCustomToken()`; không cần dependency backend mới.
+- Khi `carebridge.firebase.firestore.enabled=false`: publisher hoạt động như logging stub. Backend build/test được mà không cần Firebase project thật.
 
-**Mobile Firebase capability đã xác minh:** `firebase_core: ^3.8.0`, `firebase_messaging: ^15.1.6`, `google-services.json` đã có. `firebase_database`/`firebase_auth` chưa có — cần thêm (đã duyệt).
+**Mobile Firebase capability:** `firebase_core`, `firebase_auth`, and `cloud_firestore`; `google-services.json` supplies project configuration.
 
-**Web Firebase capability đã xác minh:** `package.json` không có package Firebase nào — cần thêm `firebase` (Web SDK) từ đầu + Web app config từ user.
+**Web Firebase capability đã xác minh:** `firebase` Web SDK đã được thêm; runtime config lấy từ sáu biến `VITE_FIREBASE_*`.
 
 **Config còn thiếu, cần user cung cấp trước khi chạy với Firebase project thật:**
-1. `FIREBASE_DATABASE_URL` (backend `.env`)
-2. Firebase Web app config 6 field (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`)
-3. Xác nhận Realtime Database (không phải Firestore) đã bật trên Firebase project hiện tại
+1. `FIREBASE_CREDENTIALS_BASE64` and `CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED=true` for backend publishing.
+2. Firebase Web app config 6 field (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`).
+3. Native-mode Cloud Firestore đã bật trong project `carebridge-4d86e`; Rules và indexes production đã deploy ngày 2026-07-15.
 
-Không có các giá trị trên, code/test vẫn hoàn thiện bằng stub (`carebridge.firebase.realtime.enabled=false`) + Firebase Emulator Suite (RTDB + Auth emulator) cho adapter/Rules test — bắt buộc cho §1.1 Rules test (mục 9 dưới).
+Không có các giá trị trên, code/test vẫn hoàn thiện bằng stub (`carebridge.firebase.firestore.enabled=false`) + Firestore/Auth Emulator cho adapter/Rules test.
 
 ---
 
@@ -78,15 +79,15 @@ Không có các giá trị trên, code/test vẫn hoàn thiện bằng stub (`ca
 | BR-DCC-009 | Business Rule | Chỉ Mother thuộc conversation và Expert tương ứng truy cập được | `DirectConversationPolicy.assertIsParticipant` | RBAC | ADR-DCC-001 |
 | BR-DCC-010 | Business Rule | Firebase event chỉ ghi vào inbox của **counterpart** (người không phải actor) | `ConversationEventPublisherImpl.resolveRecipient()` | PDPA, RBAC | ADR-DCC-004 |
 | BR-DCC-011 | Business Rule | MISSED chỉ được set bởi reconciliation job phía server; không có endpoint client nào set MISSED trực tiếp | `CallTimeoutReconciliationJob` + conditional `UPDATE ... WHERE call_status='RINGING'` | — | ADR-DCC-005 |
-| BR-DCC-012 | Business Rule | Firebase RTDB event có TTL, bị dọn định kỳ; PostgreSQL là lưu trữ vĩnh viễn duy nhất | `FirebaseEventRetentionJob` | Data minimization | ADR-DCC-006 |
+| BR-DCC-012 | Business Rule | Firestore signal documents are deleted by bounded scheduled cleanup after approximately 24 hours; PostgreSQL is the only durable store | `FirebaseEventRetentionJob` | Data minimization | ADR-DCC-006 |
 | BR-DCC-013 | Business Rule | Firebase custom token luôn ứng với `userId` lấy từ JWT hiện tại, không bao giờ nhận từ request body/param | `FirebaseTokenController.POST /firebase/custom-token` | Security (broken access control) | ADR-DCC-004 |
 | BR-DCC-014 | Business Rule | `last_activity_at` cập nhật khi có message MỚI **hoặc** call MỚI/đổi trạng thái — không chỉ message | `DirectConversationRepository.touchActivity()`, gọi từ cả `DirectMessageServiceImpl` và `ConversationCallServiceImpl` | — | ADR-DCC-001 |
 | BR-DCC-015 | Business Rule | Khi Expert của conversation không còn APPROVED: chặn **mọi** message/call mới từ **cả 2** phía trước khi persist (không lưu, không publish); Mother vẫn đọc được lịch sử cũ; ngoại lệ duy nhất: `PATCH /end` trên call đang `ANSWERED` vẫn cho phép để đóng cuộc gọi sạch sẽ | `DirectConversationPolicy.assertConversationWritable()` | RBAC, Data integrity | ADR-DCC-007 |
 | BR-DCC-016 | Business Rule | Chỉ hỗ trợ `message_type = TEXT` trong pass này — không FILE/SYSTEM (bảo mật attachment/lifecycle chưa được đặc tả) | `chk_direct_messages_type`, `MessageType` enum | — | ADR-DCC-001 |
 | ADR-DCC-001 | Decision | Direct conversation model, decoupled từ booking | `directchat` package | — | — |
-| ADR-DCC-002 | Decision | Firebase RTDB làm transport, REST là nguồn sự thật | `integration.firebase.*` | — | Superseded (path) by ADR-DCC-004 |
+| ADR-DCC-002 | Decision | Cloud Firestore làm transport, REST là nguồn sự thật | `integration.firebase.*` | — | Amended by ADR-DCC-004 |
 | ADR-DCC-003 | Decision | ZegoCloud chỉ dùng cho call; call record độc lập DB | `conversation_calls` | — | Supersedes ADR-ZEGO-001 (UC-154) |
-| ADR-DCC-004 | Decision | Recipient-scoped inbox path + custom-token bridge + RTDB Rules | `integration.firebase.*` | — | Amends ADR-DCC-002 |
+| ADR-DCC-004 | Decision | Recipient-scoped Firestore inbox + custom-token bridge + Firestore Rules | `integration.firebase.*` | — | Amends ADR-DCC-002 |
 | ADR-DCC-005 | Decision | Missed-call timeout: reconciliation job + conditional update | `CallTimeoutReconciliationJob` | — | Extends ADR-DCC-003 |
 | ADR-DCC-006 | Decision | Firebase event retention/cleanup | `FirebaseEventRetentionJob` | — | Extends ADR-DCC-004 |
 | ADR-DCC-007 | Decision | Expert de-verification blocks new writes (not Mother's reads); pre-persistence check; `/end`-on-`ANSWERED` exemption | `DirectConversationPolicy.assertConversationWritable()` | — | Supersedes BR-DCC-010's old "skip publish" sub-clause |
@@ -101,7 +102,7 @@ Không có các giá trị trên, code/test vẫn hoàn thiện bằng stub (`ca
 
 ---
 
-### ADR-DCC-002 — Firebase Realtime Database cho signal, không dùng ZegoCloud ZIM cho chat
+### ADR-DCC-002 — Cloud Firestore cho signal, không dùng ZegoCloud ZIM cho chat
 
 | Field | Value |
 |-------|-------|
@@ -118,7 +119,7 @@ Quyết định gốc: publish tín hiệu tối thiểu lên Firebase **sau khi
 
 ---
 
-### ADR-DCC-004 — Recipient-scoped Firebase inbox + custom-token auth bridge + RTDB Rules
+### ADR-DCC-004 — Recipient-scoped Firestore inbox + custom-token auth bridge + Rules
 
 | Field | Value |
 |-------|-------|
@@ -131,23 +132,10 @@ Quyết định gốc: publish tín hiệu tối thiểu lên Firebase **sau khi
 Thiết kế v1.0 dùng 1 node Firebase dùng chung cho cả conversation (`/conversation-events/{conversationId}/...`), đọc được bởi cả 2 participant. User chỉ ra đây là bề mặt rò rỉ không cần thiết: sender không cần nhận lại tín hiệu về chính message mình vừa gửi (đã có response 201 rồi), và mô hình "mọi participant đọc chung 1 node" không thể áp Firebase Rules chi tiết theo từng người dùng — chỉ có thể mở cho "ai là participant của conversationId" (phải duy trì danh sách participant trong Rules hoặc dùng Firebase custom claims phức tạp). Mô hình **inbox theo user** (`/user-conversation-events/{recipientUserId}/{eventId}`) cho phép Rule đơn giản, chỉ dựa vào `auth.uid`.
 
 #### Quyết định
-1. **Path:** `/user-conversation-events/{recipientUserId}/{eventId}`. `recipientUserId` = participant còn lại không phải actor gây ra event (`resolveRecipient(conversation, actorUserId)` — nếu `actorUserId == motherUserId` thì recipient = `expertUserId`, ngược lại recipient = `motherUserId`). Sender/actor **không bao giờ** nhận event của chính hành động mình vừa thực hiện (BR-DCC-010).
+1. **Path:** `userConversationEvents/{recipientUserId}/events/{eventId}`. `recipientUserId` = participant còn lại không phải actor gây ra event. Sender/actor **không bao giờ** nhận event của chính hành động mình vừa thực hiện (BR-DCC-010).
 2. **Không ghi tới Expert đã mất APPROVED:** trước khi publish, nếu recipient là Expert, `ConversationEventPublisherImpl` kiểm `verification_status` hiện tại; nếu không còn `APPROVED` thì **bỏ qua publish** (không ghi, không lỗi) — message/call vẫn lưu Postgres bình thường, chỉ không đẩy tín hiệu realtime cho Expert đã bị thu hồi (phòng thủ song song với BR-DCC-003's request-time re-check).
-3. **Firebase Auth custom-token bridge:** `POST /api/v1/firebase/custom-token` (JWT Bearer bắt buộc) → backend gọi `FirebaseAuth.getInstance(app).createCustomToken(careBridgeUserId.toString())` — `careBridgeUserId` lấy từ `SecurityUtils.requireCurrentUserId()`, **không bao giờ** từ request body/param (không có input nào khác ngoài JWT — endpoint không có `@RequestBody`). Client dùng custom token này để `signInWithCustomToken` vào Firebase, khiến `auth.uid` trong RTDB Rules == CareBridge `user_id` (dạng string UUID).
-4. **RTDB Rules** (`database.rules.json`, deploy thủ công qua Firebase CLI — không tự động từ backend):
-   ```json
-   {
-     "rules": {
-       "user-conversation-events": {
-         "$uid": {
-           ".read": "auth != null && auth.uid === $uid",
-           ".write": false
-         }
-       }
-     }
-   }
-   ```
-   Client **không bao giờ** ghi trực tiếp vào RTDB (`.write: false` tuyệt đối) — chỉ Admin SDK backend (dùng service-account credentials, bypass Rules) mới ghi được. Rules test bắt buộc chạy qua Firebase Emulator Suite (`@firebase/rules-unit-testing` phía test, hoặc REST Emulator API phía backend nếu cần) — không thể verify Rules bằng unit test Java thông thường.
+3. **Firebase Auth custom-token bridge:** unchanged; `auth.uid` equals the CareBridge UUID from the authenticated backend JWT.
+4. **Firestore Rules** (`firestore.rules`) allow authenticated reads only when the path UID equals `request.auth.uid`, and deny all client writes. Admin SDK writes bypass Rules under service-account IAM. Rules are verified with the Firestore/Auth emulators.
 
 #### Hệ quả
 **Tích cực:** Rule đơn giản, không rò rỉ dữ liệu chéo user; sender không nhận noise về hành động của chính mình; Expert bị revoke ngừng nhận tín hiệu mới ngay cả khi vẫn còn network connection cũ.
@@ -194,7 +182,7 @@ v1.0 chỉ ghi "RINGING --> MISSED : timeout" mà không đặc tả cơ chế. 
 
 ---
 
-### ADR-DCC-006 — Firebase RTDB event retention/cleanup
+### ADR-DCC-006 — Cloud Firestore event retention/cleanup
 
 | Field | Value |
 |-------|-------|
@@ -203,14 +191,14 @@ v1.0 chỉ ghi "RINGING --> MISSED : timeout" mà không đặc tả cơ chế. 
 | **Date** | `2026-07-15` |
 
 #### Bối cảnh
-Firebase RTDB không phải nơi lưu trữ lâu dài — PostgreSQL mới là system of record (ADR-DCC-002). Event node dưới `/user-conversation-events/{uid}/{eventId}` cần được dọn định kỳ, không được tích luỹ vô hạn, và không được coi là nguồn "lịch sử" (client luôn phải fetch lại từ REST, không bao giờ dùng RTDB làm cache lâu dài).
+Cloud Firestore không phải nơi lưu trữ lâu dài — PostgreSQL mới là system of record. Signal documents are advisory only.
 
 #### Quyết định
-`FirebaseEventRetentionJob` (`@Scheduled(cron = "0 0 * * * *")`, mỗi giờ) xoá mọi node con dưới `/user-conversation-events/{uid}` có `occurredAt` cũ hơn `carebridge.directchat.firebase-event-retention-hours` (mặc định `24`), dùng Admin SDK (`FirebaseDatabase.getReference(...).removeValueAsync()`), quét theo `orderByChild("occurredAt")` + `endAt(cutoffEpochMillis)`. Việc xoá **không ảnh hưởng** dữ liệu PostgreSQL — chỉ dọn transport layer. Client không có trách nhiệm tự xoá event đã đọc (server-side cleanup là đảm bảo duy nhất, không phụ thuộc client có ack hay không).
+`FirebaseEventRetentionJob` runs hourly and queries collection group `events` where numeric `occurredAt` is older than the configured cutoff. It deletes documents in bounded batches of 200 through the Admin SDK. No paid/eventual Firestore TTL field is used, so the payload remains exactly five fields. PostgreSQL is unaffected.
 
 #### Hệ quả
-**Tích cực:** RTDB storage bị chặn trên (bounded), không phình vô hạn; rõ ràng về vai trò "transport-only, không phải storage" của Firebase.
-**Tiêu cực / Trade-offs:** Job chạy mỗi giờ — nếu client offline > 24h, một số signal cũ có thể bị dọn trước khi client kịp đọc; **không sao** vì client luôn reconcile qua REST `GET /timeline?after=cursor` khi reconnect (không phụ thuộc RTDB còn event hay không).
+**Tích cực:** Firestore transport storage bị chặn trên (bounded), không phình vô hạn; rõ ràng về vai trò "transport-only, không phải storage" của Firebase.
+**Tiêu cực / Trade-offs:** Job chạy mỗi giờ — nếu client offline > 24h, một số signal cũ có thể bị dọn trước khi client kịp đọc; **không sao** vì client luôn reconcile qua REST `GET /timeline?after=cursor` khi reconnect (không phụ thuộc Firestore còn event hay không).
 
 ---
 
@@ -398,10 +386,10 @@ FirebaseEventPublisher -> FirebaseEventPublisher: recipientUserId = resolveRecip
 alt recipient is Expert AND verification_status != APPROVED
     FirebaseEventPublisher -> FirebaseEventPublisher: SKIP publish (BR-DCC-010) — log, không lỗi
 else
-    FirebaseEventPublisher -> Firebase RTDB: SET /user-conversation-events/{recipientUserId}/{eventId}
+    FirebaseEventPublisher -> Cloud Firestore: SET userConversationEvents/{recipientUserId}/events/{eventId}
 end
 note right: sender KHÔNG BAO GIỜ nhận event của chính message mình vừa gửi (BR-DCC-010)
-Recipient (đã signInWithCustomToken, auth.uid=recipientUserId) -> Firebase RTDB: onChildAdded tại node của chính mình
+Recipient (đã signInWithCustomToken, auth.uid=recipientUserId) -> Cloud Firestore: onSnapshot latest added document
 Recipient -> Controller: GET /direct-conversations/{id}/timeline?after=cursor
 Controller --> Recipient: real message from PostgreSQL (never trust Firebase payload)
 ```
@@ -445,11 +433,11 @@ end note
 
 ## 7. Domain Event Catalog
 
-### 7.1 Events Published (Firebase Realtime Database)
+### 7.1 Events Published (Cloud Firestore)
 
 | Event Type | Trigger | Path | Payload |
 |---|---|---|---|
-| `MESSAGE_SENT` | Sau commit `direct_messages` insert | `/user-conversation-events/{recipientUserId}/{eventId}` | `{eventId, eventType, conversationId, resourceId=messageId, occurredAt}` |
+| `MESSAGE_SENT` | Sau commit `direct_messages` insert | `userConversationEvents/{recipientUserId}/events/{eventId}` | `{eventId, eventType, conversationId, resourceId=messageId, occurredAt}` |
 | `CALL_INITIATED` | Sau commit `conversation_calls` insert | cùng path (recipient=callee) | `resourceId=callId` |
 | `CALL_STATE_CHANGED` | Sau mỗi PATCH thành công | cùng path (recipient=counterpart của actor PATCH) | `resourceId=callId` |
 
@@ -504,7 +492,7 @@ public interface IDirectConversationPolicy {
 
 // integration.firebase
 public interface IConversationEventPublisher {
-    @Async  // truly non-blocking — request thread returns to client without waiting on RTDB I/O
+    @Async  // truly non-blocking — request thread returns without waiting on Firestore I/O
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void publishAfterCommit(ConversationEventDomainEvent event);
     // implementation resolves recipientUserId = counterpart(actorUserId) — BR-DCC-010.
@@ -525,7 +513,7 @@ class CallTimeoutReconciliationJob {
 
 class FirebaseEventRetentionJob {
     @Scheduled(cron = "0 0 * * * *")
-    void purgeExpiredEvents();  // deletes RTDB nodes older than retention window, see ADR-DCC-006
+    void purgeExpiredEvents();  // bounded Firestore collection-group cleanup, see ADR-DCC-006
 }
 ```
 
@@ -698,9 +686,9 @@ LIMIT :limit
 
 1. Migration #1: 3 bảng + toàn bộ CHECK constraint (§5.2). Migration #2: widen `audit_logs_action_check`.
 2. Backend: package `directchat` + mở rộng `integration/firebase` (`FirebaseConfig` tách cờ, `ConversationEventPublisherImpl` với `resolveRecipient`, `FirebaseAuthBridgeServiceImpl`, `FirebaseTokenController`, `CallTimeoutReconciliationJob`, `FirebaseEventRetentionJob`).
-3. `database.rules.json` + `firebase.json` + `.firebaserc` template (không commit secret) — deploy thủ công qua Firebase CLI, ngoài phạm vi backend deploy pipeline.
+3. `firestore.rules` + `firestore.indexes.json` + `firebase.json` + `.firebaserc` template — deploy manually after review.
 4. Xoá code ZIM-cho-chat + revert `ConsultationSession`/`ConsultationSessionRepository`/`AuditAction`/notification files/`DevDataSeeder`.
-5. Mobile: `firebase_database`/`firebase_auth`, `directChat` feature module, custom-token sign-in flow.
+5. Mobile: `cloud_firestore`/`firebase_auth`, `directChat` feature module, custom-token sign-in flow.
 6. Web: Firebase Web SDK (chờ config), `directChat` feature module.
 7. Test theo Test-Spec kèm theo tài liệu này — bao gồm Firebase Emulator Suite cho Rules test.
 
@@ -747,7 +735,7 @@ Xem `UC144_DirectConsultChat_Test-Spec.md` — `DCC-TC-001..030`.
 | `PATCH .../end` — call `INITIATED`/`RINGING` | ✅ nếu participant | ❌ `DCC-010` *(không phải "đóng call đang chạy")* | ❌ | ✅ | ❌ `DCC-002` |
 | `POST /firebase/custom-token` | ✅ | ✅ | ✅ | ✅ | ✅ *(token không tự nó cấp quyền đọc conversation — Rules + REST vẫn chặn)* |
 
-**Chú thích:** "Verified" = `expert_profiles.verification_status = APPROVED`, kiểm tra **liên tục ở mọi lần truy cập** (BR-DCC-003, quyết định 403/422 `DCC-002` cho chính Expert đó). Khi Expert **đã có quyền truy cập** (APPROVED) nhưng **conversation đối tác** không còn APPROVED — trường hợp này không xảy ra vì `DCC-002` đã chặn Expert trước; cột "MOTHER — Expert đã revoke" mới là nơi `DCC-010`/ADR-DCC-007 áp dụng thực tế, vì Mother luôn có quyền truy cập (không phụ thuộc verification), chỉ bị chặn *ghi* khi đối tác Expert mất APPROVED. Firebase custom token issuance không phải là một quyền truy cập dữ liệu — nó chỉ cho phép `signInWithCustomToken`; quyền đọc thực tế do RTDB Rules (`auth.uid === $uid`, ADR-DCC-004) và REST policy quyết định độc lập.
+**Chú thích:** "Verified" = `expert_profiles.verification_status = APPROVED`, kiểm tra **liên tục ở mọi lần truy cập** (BR-DCC-003, quyết định 403/422 `DCC-002` cho chính Expert đó). Khi Expert **đã có quyền truy cập** (APPROVED) nhưng **conversation đối tác** không còn APPROVED — trường hợp này không xảy ra vì `DCC-002` đã chặn Expert trước; cột "MOTHER — Expert đã revoke" mới là nơi `DCC-010`/ADR-DCC-007 áp dụng thực tế, vì Mother luôn có quyền truy cập (không phụ thuộc verification), chỉ bị chặn *ghi* khi đối tác Expert mất APPROVED. Firebase custom token issuance không phải là một quyền truy cập dữ liệu — nó chỉ cho phép `signInWithCustomToken`; quyền đọc thực tế do Firestore Rules (`request.auth.uid == uid`, ADR-DCC-004) và REST policy quyết định độc lập.
 
 ---
 
@@ -761,7 +749,7 @@ Xem `UC144_DirectConsultChat_Test-Spec.md` — `DCC-TC-001..030`.
 | C4 | Idempotent insert dùng `REQUIRES_NEW` isolated writer | BR-DCC-005 |
 | C5 | `duration_seconds` luôn tính ở server; `EndCallRequest` không có field này | BR-DCC-008 |
 | C6 | Mọi AuditAction mới phải có migration widen CHECK constraint đi kèm | §5.2 |
-| C7 | Firebase path = `/user-conversation-events/{recipientUserId}/{eventId}`; recipient = counterpart của actor, không bao giờ actor | ADR-DCC-004, BR-DCC-010 |
+| C7 | Firestore path = `userConversationEvents/{recipientUserId}/events/{eventId}`; recipient = counterpart của actor, không bao giờ actor | ADR-DCC-004, BR-DCC-010 |
 | C8 | `POST /firebase/custom-token` không nhận input nào ngoài JWT | BR-DCC-013 |
 | C9 | MISSED chỉ set bởi `CallTimeoutReconciliationJob` qua conditional UPDATE; không có endpoint client | BR-DCC-011, ADR-DCC-005 |
 | C10 | Rollback sau khi migration đã áp dụng ở môi trường chia sẻ = migration xuôi mới, không DROP/xoá schema_history | §12 |

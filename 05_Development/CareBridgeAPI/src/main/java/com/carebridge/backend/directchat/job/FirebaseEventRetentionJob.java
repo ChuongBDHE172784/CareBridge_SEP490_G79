@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** ADR-DCC-006: purges RTDB signal nodes older than the retention window — transport-layer only. */
+/** ADR-DCC-006: purges Firestore signal documents older than the retention window. */
 @Component
 public class FirebaseEventRetentionJob {
 
@@ -19,8 +19,8 @@ public class FirebaseEventRetentionJob {
     private final IFirebaseRealtimeGateway gateway;
     private final Clock clock;
 
-    @Value("${carebridge.firebase.realtime.enabled:false}")
-    private boolean realtimeEnabled;
+    @Value("${carebridge.firebase.firestore.enabled:false}")
+    private boolean firestoreEnabled;
 
     @Value("${carebridge.directchat.firebase-event-retention-hours:24}")
     private long retentionHours;
@@ -38,7 +38,11 @@ public class FirebaseEventRetentionJob {
 
     @Scheduled(cron = "0 0 * * * *")
     public void purgeExpiredEvents() {
-        if (!realtimeEnabled) {
+        if (!firestoreEnabled) {
+            return;
+        }
+        if (retentionHours <= 0) {
+            log.error("Firebase event retention hours must be greater than zero");
             return;
         }
         Instant cutoff = Instant.now(clock).minus(java.time.Duration.ofHours(retentionHours));

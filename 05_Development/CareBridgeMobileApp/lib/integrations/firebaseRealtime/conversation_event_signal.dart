@@ -1,4 +1,4 @@
-/// Client-side shape of the minimal Firebase RTDB payload (ADR-DCC-004 §1) — exactly the
+/// Client-side shape of the minimal Cloud Firestore payload (ADR-DCC-004 §1) — exactly the
 /// 5 fields the backend ever writes. Signal-only: never trust anything beyond "something
 /// changed"; the client always reconciles via REST (`GET /timeline`), never renders this
 /// payload directly.
@@ -17,7 +17,7 @@ class ConversationEventSignal {
     required this.occurredAt,
   });
 
-  factory ConversationEventSignal.fromSnapshotValue(Map<Object?, Object?> raw) {
+  factory ConversationEventSignal.fromSnapshotValue(Map<String, dynamic> raw) {
     return ConversationEventSignal(
       eventId: raw['eventId'] as String,
       eventType: raw['eventType'] as String,

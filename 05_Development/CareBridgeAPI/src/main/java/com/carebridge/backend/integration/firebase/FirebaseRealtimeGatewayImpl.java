@@ -1,25 +1,24 @@
 package com.carebridge.backend.integration.firebase;
 
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.cloud.FirestoreClient;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.Query;
+import com.google.cloud.firestore.WriteBatch;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.ArrayList;
-import java.util.List;
-import com.google.api.core.ApiFuture;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FirebaseRealtimeGatewayImpl implements IFirebaseRealtimeGateway {
+
+    private static final int CLEANUP_BATCH_SIZE = 200;
 
     private final Optional<FirebaseApp> firebaseApp;
 
@@ -30,64 +29,67 @@ public class FirebaseRealtimeGatewayImpl implements IFirebaseRealtimeGateway {
     @Override
     public void write(String path, Map<String, Object> payload) {
         FirebaseApp app = firebaseApp.orElseThrow(() -> new IllegalStateException("FirebaseApp bean not configured"));
-        DatabaseReference ref = FirebaseDatabase.getInstance(app).getReference(path);
         try {
-            ref.setValueAsync(payload).get(5, TimeUnit.SECONDS);
+            FirestoreClient.getFirestore(app).document(normalizeDocumentPath(path))
+                    .set(payload).get(5, TimeUnit.SECONDS);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while writing to Firebase RTDB", ex);
+            throw new RuntimeException("Interrupted while writing to Cloud Firestore", ex);
         } catch (ExecutionException | TimeoutException ex) {
-            throw new RuntimeException("Failed to write to Firebase RTDB at " + path, ex);
+            throw new RuntimeException("Failed to write to Cloud Firestore at " + path, ex);
         }
     }
 
     @Override
     public void purgeEventsOlderThan(Instant cutoff) {
         FirebaseApp app = firebaseApp.orElseThrow(() -> new IllegalStateException("FirebaseApp bean not configured"));
-        DatabaseReference root = FirebaseDatabase.getInstance(app).getReference("/user-conversation-events");
-
-        CompletableFuture<DataSnapshot> future = new CompletableFuture<>();
-        root.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                future.complete(snapshot);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-                future.completeExceptionally(error.toException());
-            }
-        });
-
-        DataSnapshot snapshot;
-        try {
-            snapshot = future.get(10, TimeUnit.SECONDS);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while reading Firebase RTDB for retention purge", ex);
-        } catch (ExecutionException | TimeoutException ex) {
-            throw new RuntimeException("Failed to read Firebase RTDB for retention purge", ex);
-        }
-
-        long cutoffMillis = cutoff.toEpochMilli();
-        List<ApiFuture<Void>> removals = new ArrayList<>();
-        for (DataSnapshot userNode : snapshot.getChildren()) {
-            for (DataSnapshot eventNode : userNode.getChildren()) {
-                Object occurredAt = eventNode.child("occurredAt").getValue();
-                if (occurredAt instanceof Number number && number.longValue() < cutoffMillis) {
-                    removals.add(eventNode.getRef().removeValueAsync());
-                }
-            }
-        }
-        for (ApiFuture<Void> removal : removals) {
+        Firestore firestore = FirestoreClient.getFirestore(app);
+        Query query = firestore.collectionGroup("events")
+                .whereLessThan("occurredAt", cutoff.toEpochMilli())
+                .orderBy("occurredAt")
+                .limit(CLEANUP_BATCH_SIZE);
+        while (true) {
             try {
-                removal.get(5, TimeUnit.SECONDS);
+                QuerySnapshot snapshot = query.get().get(10, TimeUnit.SECONDS);
+                if (snapshot.isEmpty()) {
+                    return;
+                }
+                WriteBatch batch = firestore.batch();
+                int deleteCount = 0;
+                for (DocumentSnapshot document : snapshot.getDocuments()) {
+                    if (isDirectChatEventPath(document.getReference().getPath())) {
+                        batch.delete(document.getReference());
+                        deleteCount++;
+                    }
+                }
+                if (deleteCount > 0) {
+                    batch.commit().get(10, TimeUnit.SECONDS);
+                }
+                if (snapshot.size() < CLEANUP_BATCH_SIZE) return;
+                query = firestore.collectionGroup("events")
+                        .whereLessThan("occurredAt", cutoff.toEpochMilli())
+                        .orderBy("occurredAt")
+                        .startAfter(snapshot.getDocuments().get(snapshot.size() - 1))
+                        .limit(CLEANUP_BATCH_SIZE);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted while deleting expired Firebase events", ex);
+                throw new RuntimeException("Interrupted while purging Cloud Firestore events", ex);
             } catch (ExecutionException | TimeoutException ex) {
-                throw new RuntimeException("Failed to delete expired Firebase events", ex);
+                throw new RuntimeException("Failed to purge expired Cloud Firestore events", ex);
             }
         }
+    }
+
+    private static String normalizeDocumentPath(String path) {
+        return path.startsWith("/") ? path.substring(1) : path;
+    }
+
+    static boolean isDirectChatEventPath(String path) {
+        String[] segments = normalizeDocumentPath(path).split("/");
+        return segments.length == 4
+                && "userConversationEvents".equals(segments[0])
+                && !segments[1].isBlank()
+                && "events".equals(segments[2])
+                && !segments[3].isBlank();
     }
 }
