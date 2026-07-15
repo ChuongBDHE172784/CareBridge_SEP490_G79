@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AddGrowthMeasurementRequest;
 import com.carebridge.backend.carejourney.dto.GrowthChartResponse;
@@ -24,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -37,11 +40,12 @@ public class GrowthServiceImpl implements IGrowthService {
     private final BabyProfileRepository babyProfileRepository;
     private final GrowthMeasurementRepository growthMeasurementRepository;
     private final AuditService auditService;
+    private final BabyAccessPolicy babyAccessPolicy;
 
     @Override
     public GrowthChartResponse getGrowthChart(UUID userId, UUID babyId) {
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertOwner(baby, userId);
+        assertViewAccess(baby, userId);
 
         List<GrowthMeasurement> measurements =
                 growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(babyId);
@@ -72,8 +76,9 @@ public class GrowthServiceImpl implements IGrowthService {
     public GrowthMeasurementResponse addGrowthMeasurement(UUID userId, UUID babyId,
                                                           AddGrowthMeasurementRequest request) {
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertOwner(baby, userId);
+        assertWriteAccess(baby, userId);
         assertActive(baby);
+        validateNewMeasurementMetadata(request.getMeasuredDate(), request.getSourceType());
         if (!hasAnyMeasurement(request.getWeightKg(), request.getHeightCm(), request.getHeadCircumferenceCm())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-072",
                     "At least one measurement value is required");
@@ -103,12 +108,13 @@ public class GrowthServiceImpl implements IGrowthService {
     public GrowthMeasurementResponse updateGrowthMeasurement(UUID userId, UUID babyId, UUID growthMeasurementId,
                                                              UpdateGrowthMeasurementRequest request) {
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertOwner(baby, userId);
+        assertWriteAccess(baby, userId);
         assertActive(baby);
         if (isEmptyUpdate(request)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-076",
                     "At least one field is required");
         }
+        validateUpdatedMeasurementMetadata(request.getMeasuredDate(), request.getSourceType());
 
         GrowthMeasurement measurement = growthMeasurementRepository.findById(growthMeasurementId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-079",
@@ -160,7 +166,7 @@ public class GrowthServiceImpl implements IGrowthService {
     @Transactional
     public void deleteGrowthMeasurement(UUID userId, UUID babyId, UUID growthMeasurementId) {
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertOwner(baby, userId);
+        assertWriteAccess(baby, userId);
         assertActive(baby);
 
         GrowthMeasurement measurement = growthMeasurementRepository.findById(growthMeasurementId)
@@ -188,7 +194,7 @@ public class GrowthServiceImpl implements IGrowthService {
         }
 
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertOwner(baby, userId);
+        assertViewAccess(baby, userId);
         return growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(babyId, pageable)
                 .map(this::toHistoryItem);
     }
@@ -198,9 +204,19 @@ public class GrowthServiceImpl implements IGrowthService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-070", "Baby not found"));
     }
 
-    private void assertOwner(BabyProfile baby, UUID userId) {
-        if (!baby.getOwnerUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-071", "Baby not owned by user");
+    private void assertViewAccess(BabyProfile baby, UUID userId) {
+        if (!baby.getOwnerUserId().equals(userId)
+                && !babyAccessPolicy.canView(baby, userId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-071", "Baby not accessible to user");
+        }
+    }
+
+    private void assertWriteAccess(BabyProfile baby, UUID userId) {
+        if (!baby.getOwnerUserId().equals(userId)
+                && !babyAccessPolicy.canManageGrowth(baby, userId)) {
+            auditService.log(AuditAction.SECURITY_EVENT, userId, "GROWTH_MEASUREMENT_ACCESS_DENIED",
+                    baby.getId().toString(), "Growth write permission denied");
+            throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-071", "Baby not writable by user");
         }
     }
 
@@ -218,6 +234,24 @@ public class GrowthServiceImpl implements IGrowthService {
                 && request.getHeadCircumferenceCm() == null
                 && request.getSourceType() == null
                 && request.getNote() == null;
+    }
+
+    private void validateNewMeasurementMetadata(LocalDate measuredDate, String sourceType) {
+        if (measuredDate == null
+                || measuredDate.isAfter(LocalDate.now(ZoneOffset.UTC))
+                || sourceType == null
+                || sourceType.isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-GROWTH-400",
+                    "Measurement date and source are required and the date cannot be in the future");
+        }
+    }
+
+    private void validateUpdatedMeasurementMetadata(LocalDate measuredDate, String sourceType) {
+        if ((measuredDate != null && measuredDate.isAfter(LocalDate.now(ZoneOffset.UTC)))
+                || (sourceType != null && sourceType.isBlank())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-GROWTH-400",
+                    "Measurement date and source are invalid");
+        }
     }
 
     private boolean hasAnyMeasurement(BigDecimal weightKg, BigDecimal heightCm, BigDecimal headCircumferenceCm) {

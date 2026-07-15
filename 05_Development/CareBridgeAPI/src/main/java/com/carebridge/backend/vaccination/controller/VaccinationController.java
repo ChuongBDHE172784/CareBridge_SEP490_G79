@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/vaccination")
@@ -28,6 +29,15 @@ import java.util.UUID;
 public class VaccinationController {
 
     private final IVaccinationService vaccinationService;
+
+    @GetMapping("/babies/{babyId}/records")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<VaccinationRecordResponse>>> listVaccinationRecords(
+            @PathVariable UUID babyId, Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                vaccinationService.listVaccinationRecords(babyId, callerId)));
+    }
 
     // UC228: View vaccination schedule for baby
     @GetMapping("/babies/{babyId}/schedule")

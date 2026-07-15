@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.Principal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -45,7 +46,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
     @Override
     public AddBabyDailyLogResponse addDailyLog(UUID babyId, AddBabyDailyLogRequest request, UUID userId) {
         BabyProfile baby = findBaby(babyId);
-        checkOwnership(baby, userId);
+        checkWriteAccess(baby, userId);
         checkActiveStatus(baby);
         validateFeedingUnit(request);
 
@@ -70,6 +71,21 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
         return toAddResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<BabyDailyLogResponse> getDailyLogs(UUID babyId, Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        BabyProfile baby = findBaby(babyId);
+        if (!babyAccessPolicy.canView(baby, userId)) {
+            throw new AccessDeniedBusinessException("You do not have permission to view this baby journal");
+        }
+        return babyDailyLogRepository
+                .findByBabyIdAndStatusOrderByCreatedAtDesc(babyId, BabyDailyLogStatus.ACTIVE)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     // ── UC35: Update Baby Daily Log ───────────────────────────────
 
     @Override
@@ -77,6 +93,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
     public BabyDailyLogResponse getDailyLogDetail(UUID babyId, UUID logId, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         BabyDailyLog log = findActiveDailyLog(logId);
+        validateLogBelongsToBaby(log, babyId);
         BabyProfile baby = findActualBabyForLog(log);
 
         if (!babyAccessPolicy.canView(baby, userId)) {
@@ -94,7 +111,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
 
         // C1: verify ownership
         BabyProfile baby = findBaby(babyId);
-        checkOwnership(baby, userId);
+        checkWriteAccess(baby, userId);
 
         BabyDailyLog log = findActiveLogForExistingUc(logId);
         validateLogBelongsToBaby(log, babyId);
@@ -123,6 +140,7 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
 
         BabyDailyLog log = findActiveDailyLog(logId);
+        validateLogBelongsToBaby(log, babyId);
         BabyProfile baby = findActualBabyForLog(log);
         if (!babyAccessPolicy.canManage(baby, userId)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "DAILYLOG-003",
@@ -168,9 +186,12 @@ public class BabyDailyLogServiceImpl implements IBabyDailyLogService {
                         "Baby daily log not found"));
     }
 
-    private void checkOwnership(BabyProfile baby, UUID userId) {
-        if (!baby.getOwnerUserId().equals(userId)) {
-            throw new AccessDeniedBusinessException("You do not own this baby profile");
+    private void checkWriteAccess(BabyProfile baby, UUID userId) {
+        if (!baby.getOwnerUserId().equals(userId)
+                && !babyAccessPolicy.canManageJournal(baby, userId)) {
+            auditService.log(AuditAction.SECURITY_EVENT, userId, "BABY_DAILY_LOG_ACCESS_DENIED",
+                    baby.getId().toString(), "Journal write permission denied");
+            throw new AccessDeniedBusinessException("You do not have permission to manage this baby journal");
         }
     }
 

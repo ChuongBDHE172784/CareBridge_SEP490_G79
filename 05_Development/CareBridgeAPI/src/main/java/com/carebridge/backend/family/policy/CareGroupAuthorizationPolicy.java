@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -49,7 +50,11 @@ public class CareGroupAuthorizationPolicy {
 
     /** UC-74 (ADR-FAM-002): ACCEPTED membership check for read access. */
     public boolean isMember(UUID groupId, UUID userId) {
-        return memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, userId, InviteStatus.ACCEPTED);
+        return memberRepository.findByCareGroupIdAndUserId(groupId, userId)
+                .map(member -> member.getInviteStatus() == InviteStatus.ACCEPTED
+                        && (member.getInviteExpiresAt() == null
+                        || member.getInviteExpiresAt().isAfter(Instant.now())))
+                .orElse(false);
     }
 
     /**

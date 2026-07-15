@@ -13,6 +13,7 @@ import com.carebridge.backend.reminder.dto.SnoozeReminderRequest;
 import com.carebridge.backend.reminder.dto.UpdateReminderRequest;
 import com.carebridge.backend.reminder.dto.VaccinationSuggestionDto;
 import com.carebridge.backend.reminder.entity.Reminder;
+import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
@@ -283,10 +284,43 @@ public class ReminderServiceImpl implements IReminderService {
 
         Reminder saved = reminderRepository.save(reminder);
 
+        if (reminder.getRecurrenceType() != null && reminder.getRecurrenceType() != RecurrenceType.NONE) {
+            Instant nextAt = nextOccurrence(reminder.getScheduledAt(), reminder.getRecurrenceType());
+            if (reminder.getRecurrenceEndDate() == null || !nextAt.isAfter(reminder.getRecurrenceEndDate())) {
+                Reminder next = Reminder.builder()
+                        .ownerUserId(reminder.getOwnerUserId())
+                        .journeyId(reminder.getJourneyId())
+                        .babyId(reminder.getBabyId())
+                        .reminderType(reminder.getReminderType())
+                        .title(reminder.getTitle())
+                        .scheduledAt(nextAt)
+                        .recurrenceType(reminder.getRecurrenceType())
+                        .recurrenceEndDate(reminder.getRecurrenceEndDate())
+                        .status(ReminderStatus.PENDING)
+                        .build();
+                Reminder savedNext = reminderRepository.save(next);
+                savedNext.setFcmJobId(notificationService.scheduleFcmPush(
+                        callerId, savedNext.getTitle(), "Reminder: " + savedNext.getTitle(), nextAt));
+                reminderRepository.save(savedNext);
+                auditService.log(AuditAction.REMINDER_CREATED, callerId,
+                        "Reminder", savedNext.getId().toString(),
+                        "next recurring occurrence created after skip");
+            }
+        }
+
         auditService.log(AuditAction.REMINDER_SKIPPED, callerId,
                 "Reminder", reminderId.toString(), "skipped");
 
         return toDetailResponse(saved);
+    }
+
+    private Instant nextOccurrence(Instant scheduledAt, RecurrenceType recurrenceType) {
+        return switch (recurrenceType) {
+            case DAILY -> scheduledAt.plus(1, ChronoUnit.DAYS);
+            case WEEKLY -> scheduledAt.plus(7, ChronoUnit.DAYS);
+            case MONTHLY -> scheduledAt.plus(30, ChronoUnit.DAYS);
+            case NONE -> scheduledAt;
+        };
     }
 
     @Override
@@ -348,17 +382,20 @@ public class ReminderServiceImpl implements IReminderService {
                         "Baby profile not found or not owned by caller"));
     }
 
-    /** ADR-REM-STATE-001: cancelled reminders are immutable terminal states. */
+    /** ADR-REM-STATE-001: completed, skipped and cancelled reminders are immutable terminal states. */
     private void requireMutableState(Reminder reminder) {
         ReminderStatus status = reminder.getStatus();
-        if (status == ReminderStatus.CANCELLED) {
+        if (status == ReminderStatus.CANCELLED
+                || status == ReminderStatus.COMPLETED
+                || status == ReminderStatus.SKIPPED) {
             throw new BusinessException(HttpStatus.CONFLICT, "REM-007",
                     "Reminder in terminal state " + status + " cannot be modified");
         }
     }
 
     private void requirePendingState(Reminder reminder, String code, String message) {
-        if (reminder.getStatus() != ReminderStatus.PENDING) {
+        if (reminder.getStatus() != ReminderStatus.PENDING
+                && reminder.getStatus() != ReminderStatus.SNOOZED) {
             throw new BusinessException(HttpStatus.CONFLICT, code, message);
         }
     }
