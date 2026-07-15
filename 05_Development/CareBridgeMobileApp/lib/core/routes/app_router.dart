@@ -61,7 +61,6 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_home_screen.dart';
 import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
@@ -536,7 +535,7 @@ final GoRouter appRouter = GoRouter(
     // CB-036: Expert Home / Dashboard (UC-60)
     GoRoute(
       path: '/expert-home',
-      builder: (context, state) => const ExpertHomeScreen(),
+      builder: (context, state) => const ExpertAppHomeScreen(),
     ),
     // CB-053: Expert Calendar (UC-64)
     GoRoute(
