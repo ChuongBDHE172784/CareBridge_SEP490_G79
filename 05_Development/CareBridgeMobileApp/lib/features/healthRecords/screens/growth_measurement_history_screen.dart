@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/growth_measurement_model.dart';
 import '../services/growth_measurement_service.dart';
+import '../widgets/growth_trend_chart.dart';
 import 'growth_measurement_detail_screen.dart';
 
 class GrowthMeasurementHistoryScreen extends StatefulWidget {
@@ -213,54 +214,22 @@ class _GrowthMeasurementHistoryScreenState
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            height: 192,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF6F1EC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE7E1DD)),
-            ),
-            child: const Center(
-              child: Text(
-                'Chart Visualization Area',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegend(const Color(0xFFC98C7B), 'Chỉ số bé'),
-              const SizedBox(width: 24),
-              _buildLegend(const Color(0xFFCCC5C0), 'Tiêu chuẩn WHO'),
-            ],
+          GrowthTrendChart(
+            measurements: _records,
+            metric: _selectedTrendMetric,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLegend(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF524F4C),
-          ),
-        ),
-      ],
-    );
+  GrowthTrendMetric get _selectedTrendMetric {
+    return switch (_selectedTab) {
+      'Chiều cao' => GrowthTrendMetric.height,
+      'Cân nặng' => GrowthTrendMetric.weight,
+      'Vòng đầu' => GrowthTrendMetric.headCircumference,
+      _ => GrowthTrendMetric.automatic,
+    };
   }
 
   Widget _buildRecordCard(GrowthMeasurement record) {
