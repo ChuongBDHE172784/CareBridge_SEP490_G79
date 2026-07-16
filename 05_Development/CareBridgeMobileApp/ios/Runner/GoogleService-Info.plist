@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.untitled</string>
+	<string>com.carebridge.g79.mobile</string>
 	<key>PROJECT_ID</key>
 	<string>carebridge-4d86e</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,7 +25,7 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:206390242286:ios:784593630dada4ba633cff</string>
+	<string>1:206390242286:ios:17e288c0a59310e3633cff</string>
 	<key>DATABASE_URL</key>
 	<string>https://carebridge-4d86e-default-rtdb.asia-southeast1.firebasedatabase.app</string>
 </dict>

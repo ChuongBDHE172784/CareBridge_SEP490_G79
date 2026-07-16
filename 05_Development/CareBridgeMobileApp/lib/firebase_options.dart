@@ -54,11 +54,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyA1n88mSf9RHjh8i1FcaPaD17YPCiU1H3Q',
-    appId: '1:206390242286:ios:784593630dada4ba633cff',
+    appId: '1:206390242286:ios:17e288c0a59310e3633cff',
     messagingSenderId: '206390242286',
     projectId: 'carebridge-4d86e',
     databaseURL: 'https://carebridge-4d86e-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'carebridge-4d86e.firebasestorage.app',
-    iosBundleId: 'com.example.untitled',
+    iosBundleId: 'com.carebridge.g79.mobile',
   );
 }
