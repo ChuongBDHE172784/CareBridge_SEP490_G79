@@ -640,6 +640,6 @@ Exit requires all new P0/P1 cases GREEN, existing UC-01 regression GREEN, no tok
 - `FederatedAuthControllerTest`: 3 tests executed, 3 expected failures because `POST /api/v1/auth/federated` is not mapped (HTTP 404).
 - `federated-registration.spec.ts`: 1 Playwright test executed and failed because the accessible Google/phone registration controls and role-completion flow do not exist.
 - `federated_registration_test.dart`: 1 Flutter widget test executed and failed because the Google/phone registration keys do not exist.
-- `FederatedRegistrationIntegrationTest`: written with real PostgreSQL/Testcontainers contracts for collision and provider-subject uniqueness; execution is blocked because no Docker environment is available.
-- Controller, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS. PostgreSQL integration Red Gate: ☐ FAIL ☐ PASS (environment blocked).
-- Overall federated-registration Red Gate remains **in progress** until PostgreSQL failing evidence is captured.
+- `FederatedRegistrationIntegrationTest`: 2 tests executed against PostgreSQL 16 through Testcontainers; both failed as intended because `user_identities` and its provider-subject uniqueness constraint do not exist.
+- Controller, PostgreSQL integration, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS.
+- Overall federated-registration Red Gate: **PASS** — every planned layer has failing evidence caused by missing federated behavior.
