@@ -146,4 +146,46 @@ void main() {
     unawaited(coordinator.dispose());
     unawaited(signals.close());
   });
+
+  testWidgets(
+    'rejected join credentials show setup error without permission guidance',
+    (tester) async {
+      final api = _HostCallApi(_call('ANSWERED'));
+      final signals = StreamController<ConversationEventSignal>.broadcast();
+      final coordinator = DirectCallCoordinator(
+        api: api,
+        signals: signals.stream,
+        currentUserId: () => 'mother-1',
+      );
+      await coordinator.start();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DirectCallHost(
+            coordinator: coordinator,
+            manageAuthenticatedSession: false,
+            child: const Scaffold(body: Text('Chat')),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Tham gia cuộc gọi'));
+      api.credentialsCompleter.completeError(
+        StateError('join credentials unavailable'),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Không thể thiết lập kết nối cuộc gọi. Vui lòng thử lại.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(RegExp(r'camera|micro', caseSensitive: false)),
+        findsNothing,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      unawaited(coordinator.dispose());
+      unawaited(signals.close());
+    },
+  );
 }

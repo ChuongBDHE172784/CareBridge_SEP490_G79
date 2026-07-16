@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "572359204390",
-    "project_id": "carebridge-7825e",
-    "storage_bucket": "carebridge-7825e.firebasestorage.app"
+    "project_number": "206390242286",
+    "project_id": "carebridge-4d86e",
+    "storage_bucket": "carebridge-4d86e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:572359204390:android:4e9abad7932b1998ec10e7",
+        "mobilesdk_app_id": "1:206390242286:android:848b66b102fc6b3f633cff",
         "android_client_info": {
           "package_name": "com.example.untitled"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAzZVkGMMKaObUTg7XT4hxlDO9U5FpISLk"
+          "current_key": "AIzaSyCrMZBxDyvLjT43fDSE0TF6A_Xd_sZqfRQ"
         }
       ],
       "services": {

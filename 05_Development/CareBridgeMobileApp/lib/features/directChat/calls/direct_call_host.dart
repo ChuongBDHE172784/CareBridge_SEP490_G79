@@ -130,8 +130,7 @@ class _DirectCallHostState extends State<DirectCallHost>
       if (!mounted) return;
       setState(() {
         _joining = false;
-        _rtcError =
-            'Không thể tham gia cuộc gọi. Kiểm tra quyền micro/camera và thử lại.';
+        _rtcError = 'Không thể thiết lập kết nối cuộc gọi. Vui lòng thử lại.';
       });
       _coordinator.fail('RTC join credentials failed');
     }
