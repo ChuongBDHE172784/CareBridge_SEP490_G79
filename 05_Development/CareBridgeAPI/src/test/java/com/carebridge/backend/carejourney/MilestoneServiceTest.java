@@ -243,6 +243,19 @@ class MilestoneServiceTest {
     }
 
     @Test
+    void updateMilestone_pathBabyMismatch_returnsNotFound() {
+        DevelopmentMilestone existing = makeSavedMilestone("WALKING");
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.updateMilestone(UUID.randomUUID(), MILESTONE_ID,
+                new UpdateDevelopmentMilestoneRequest(), MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("MILESTONE-001"));
+        verifyNoInteractions(babyProfileRepository, babyAccessPolicy);
+    }
+
+    @Test
     void deleteMilestone_ownerSoftDeletesWithoutChangingMilestoneStatus() {
         DevelopmentMilestone existing = makeSavedMilestone("WALKING");
         existing.setMilestoneStatus(MilestoneAchievementStatus.ACHIEVED);
@@ -269,5 +282,17 @@ class MilestoneServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("MILESTONE-001"));
         verify(milestoneRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteMilestone_pathBabyMismatch_returnsNotFound() {
+        DevelopmentMilestone existing = makeSavedMilestone("WALKING");
+        when(milestoneRepository.findByMilestoneIdAndRecordStatus(MILESTONE_ID, MilestoneRecordStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.deleteMilestone(UUID.randomUUID(), MILESTONE_ID, MOTHER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("MILESTONE-001"));
+        verifyNoInteractions(babyProfileRepository, babyAccessPolicy);
     }
 }

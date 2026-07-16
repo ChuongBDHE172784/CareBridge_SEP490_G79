@@ -396,17 +396,6 @@ public class ReminderServiceImpl implements IReminderService {
                         "Baby profile not found or not owned by caller"));
     }
 
-    /** ADR-REM-STATE-001: completed, skipped, and cancelled reminders are immutable terminal states. */
-    private void requireMutableState(Reminder reminder) {
-        ReminderStatus status = reminder.getStatus();
-        if (status == ReminderStatus.COMPLETED
-                || status == ReminderStatus.SKIPPED
-                || status == ReminderStatus.CANCELLED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "REM-007",
-                    "Reminder in terminal state " + status + " cannot be modified");
-        }
-    }
-
     private void requireActionableState(Reminder reminder, String code, String message) {
         ReminderStatus status = reminder.getStatus();
         if (isRecurringReminder(reminder) && status != ReminderStatus.CANCELLED) {

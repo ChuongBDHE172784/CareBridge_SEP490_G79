@@ -2,11 +2,11 @@ package com.carebridge.backend.carejourney;
 
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.BabyLogSummaryResponse;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.repository.LogTypeAggregateRow;
-import com.carebridge.backend.carejourney.service.GeminiInsightService;
 import com.carebridge.backend.carejourney.service.impl.BabyLogSummaryServiceImpl;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.BusinessException;
@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -36,7 +35,7 @@ class BabyLogSummaryServiceTest {
 
     @Mock private BabyDailyLogRepository babyDailyLogRepository;
     @Mock private BabyProfileRepository babyProfileRepository;
-    @Mock private GeminiInsightService geminiInsightService;
+    @Mock private BabyAccessPolicy babyAccessPolicy;
     @InjectMocks private BabyLogSummaryServiceImpl service;
 
     static final UUID USER_ID       = UUID.fromString("00000000-0000-0000-0000-000000000100");
@@ -90,8 +89,6 @@ class BabyLogSummaryServiceTest {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
         when(babyDailyLogRepository.aggregateByLogType(eq(BABY_ID), any(), any()))
                 .thenReturn(List.of(feedingRow, sleepRow));
-        when(geminiInsightService.generateInsight(any(), eq("24h")))
-                .thenReturn(CompletableFuture.completedFuture("Baby is doing well"));
 
         BabyLogSummaryResponse resp = service.getSummary(BABY_ID, "24h", makePrincipal(USER_ID));
 
@@ -100,7 +97,7 @@ class BabyLogSummaryServiceTest {
         assertThat(resp.getSummaries().get("FEEDING").getCount()).isEqualTo(3);
         assertThat(resp.getSummaries().get("FEEDING").getTotalQuantity()).isEqualByComparingTo("450");
         assertThat(resp.getSummaries()).containsKey("SLEEP");
-        assertThat(resp.getAiInsight()).isEqualTo("Baby is doing well");
+        assertThat(resp.getAiInsight()).isNull();
         assertThat(resp.getFromDate())
                 .isAfter(Instant.now().minus(Duration.ofHours(25)))
                 .isBefore(Instant.now().minus(Duration.ofHours(23)));
@@ -114,8 +111,6 @@ class BabyLogSummaryServiceTest {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
         when(babyDailyLogRepository.aggregateByLogType(eq(BABY_ID), any(), any()))
                 .thenReturn(List.of(feedingRow));
-        when(geminiInsightService.generateInsight(any(), eq("7d")))
-                .thenReturn(CompletableFuture.completedFuture(null));
 
         BabyLogSummaryResponse resp = service.getSummary(BABY_ID, "7d", makePrincipal(USER_ID));
 
@@ -136,8 +131,6 @@ class BabyLogSummaryServiceTest {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
         when(babyDailyLogRepository.aggregateByLogType(any(), any(), any()))
                 .thenReturn(Collections.emptyList());
-        when(geminiInsightService.generateInsight(any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(null));
 
         BabyLogSummaryResponse resp = service.getSummary(BABY_ID, "24h", makePrincipal(USER_ID));
 
@@ -166,6 +159,20 @@ class BabyLogSummaryServiceTest {
                 .isInstanceOf(AccessDeniedBusinessException.class);
     }
 
+    @Test
+    void getSummary_permittedCaregiver_returnsObservationOnlySummary() {
+        BabyProfile baby = makeOtherUserBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canView(baby, USER_ID)).thenReturn(true);
+        when(babyDailyLogRepository.aggregateByLogType(any(), any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        BabyLogSummaryResponse response = service.getSummary(BABY_ID, "24h", makePrincipal(USER_ID));
+
+        assertThat(response.getBabyId()).isEqualTo(BABY_ID);
+        assertThat(response.getAiInsight()).isNull();
+    }
+
     // BABY-TC-036-006: Baby not found -> ResourceNotFoundException BABY-050
     @Test
     void getSummary_babyNotFound_throwsNotFound() {
@@ -175,7 +182,7 @@ class BabyLogSummaryServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
-    // BABY-TC-036-007: Gemini AI error -> aiInsight = null (fail-open, C3)
+    // BABY-TC-036-007: Summary remains observation-only without generated insight
     @Test
     void getSummary_geminiError_summaryStillReturnedWithNullInsight() {
         LogTypeAggregateRow feedingRow = buildFeedingRow();
@@ -183,8 +190,6 @@ class BabyLogSummaryServiceTest {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
         when(babyDailyLogRepository.aggregateByLogType(any(), any(), any()))
                 .thenReturn(List.of(feedingRow));
-        when(geminiInsightService.generateInsight(any(), any()))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Gemini API error")));
 
         BabyLogSummaryResponse resp = service.getSummary(BABY_ID, "24h", makePrincipal(USER_ID));
 

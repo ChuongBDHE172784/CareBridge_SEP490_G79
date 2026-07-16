@@ -12,8 +12,8 @@ import java.time.Instant;
 public class AddBabyDailyLogRequest {
 
     @Pattern(
-        regexp = "FEEDING|SLEEP|DIAPER|FEVER|VOMITING|MEDICINE",
-        message = "log_type must be one of: FEEDING, SLEEP, DIAPER, FEVER, VOMITING, MEDICINE"
+        regexp = "FEEDING|SLEEP|DIAPER|FEVER|VOMITING|MEDICINE|SYMPTOM",
+        message = "log_type must be one of: FEEDING, SLEEP, DIAPER, FEVER, VOMITING, MEDICINE, SYMPTOM"
     )
     private String logType;
 

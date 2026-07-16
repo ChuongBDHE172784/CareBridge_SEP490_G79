@@ -1,12 +1,12 @@
 package com.carebridge.backend.carejourney.service.impl;
 
 import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.BabyLogSummaryResponse;
 import com.carebridge.backend.carejourney.dto.LogTypeSummary;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.repository.LogTypeAggregateRow;
-import com.carebridge.backend.carejourney.service.GeminiInsightService;
 import com.carebridge.backend.carejourney.service.IBabyLogSummaryService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.BusinessException;
@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Transactional(readOnly = true)
@@ -35,11 +34,11 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
 
     private static final Set<String> VALID_PERIODS = Set.of("24h", "7d");
     private static final Set<String> ALL_LOG_TYPES =
-            Set.of("FEEDING", "SLEEP", "DIAPER", "FEVER", "VOMITING", "MEDICINE");
+            Set.of("FEEDING", "SLEEP", "DIAPER", "FEVER", "VOMITING", "MEDICINE", "SYMPTOM");
 
     private final BabyDailyLogRepository babyDailyLogRepository;
     private final BabyProfileRepository babyProfileRepository;
-    private final GeminiInsightService geminiInsightService;
+    private final BabyAccessPolicy babyAccessPolicy;
 
     @Override
     public BabyLogSummaryResponse getSummary(UUID babyId, String period, Principal principal) {
@@ -49,7 +48,8 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Baby profile not found: " + babyId));
 
         // C1: ownership check (BABY-051)
-        if (!baby.getOwnerUserId().equals(userId)) {
+        if (!baby.getOwnerUserId().equals(userId)
+                && !babyAccessPolicy.canView(baby, userId)) {
             throw new AccessDeniedBusinessException("You do not own this baby profile");
         }
 
@@ -72,15 +72,13 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
         Map<String, LogTypeSummary> summaries = buildSummaries(rows, babyId, fromDate, toDate);
 
         // C3: Gemini AI insight — async, fail-open (null on error) — ADR-BABY-006-003
-        String aiInsight = fetchGeminiInsight(summaries, period);
-
         return BabyLogSummaryResponse.builder()
                 .babyId(babyId)
                 .period(period)
                 .fromDate(fromDate)
                 .toDate(toDate)
                 .summaries(summaries)
-                .aiInsight(aiInsight)
+                .aiInsight(null)
                 .build();
     }
 
@@ -119,12 +117,4 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
     }
 
     // C3: Gemini fail-open — returns null on any error (ADR-BABY-006-003)
-    private String fetchGeminiInsight(Map<String, LogTypeSummary> summaries, String period) {
-        try {
-            CompletableFuture<String> future = geminiInsightService.generateInsight(summaries, period);
-            return future.join();
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

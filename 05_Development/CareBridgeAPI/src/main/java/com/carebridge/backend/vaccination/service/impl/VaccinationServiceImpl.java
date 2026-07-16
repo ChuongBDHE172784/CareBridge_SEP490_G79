@@ -118,6 +118,21 @@ public class VaccinationServiceImpl implements IVaccinationService {
     }
 
     @Override
+    public List<VaccinationRecordResponse> listVaccinationRecords(UUID babyId, UUID callerId) {
+        BabyProfile baby = babyRepository.findById(babyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "VAC-001",
+                        "Baby profile not found: " + babyId));
+        if (!accessPolicy.canView(baby, callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "VAC-002",
+                    "Access denied to vaccination records");
+        }
+        return recordRepository.findAllByBabyId(babyId).stream()
+                .filter(record -> record.getStatus() != VaccinationRecordStatus.DELETED)
+                .map(this::toRecordResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public AddVaccinationRecordResponse addVaccinationRecord(UUID babyId, UUID callerId,
                                                              AddVaccinationRecordRequest request) {

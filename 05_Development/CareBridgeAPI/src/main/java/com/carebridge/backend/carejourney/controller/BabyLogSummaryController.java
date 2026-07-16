@@ -18,7 +18,7 @@ public class BabyLogSummaryController {
     private final IBabyLogSummaryService babyLogSummaryService;
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ApiResponse<BabyLogSummaryResponse> getSummary(
             @PathVariable UUID babyId,
             @RequestParam(defaultValue = "24h") String period,

@@ -106,6 +106,33 @@ class UpdateBabyDailyLogRequest {
   };
 }
 
+class AddBabyDailyLogRequest {
+  final LogType logType;
+  final DateTime? startedAt;
+  final DateTime? endedAt;
+  final double? quantity;
+  final String? unit;
+  final String? note;
+
+  const AddBabyDailyLogRequest({
+    required this.logType,
+    this.startedAt,
+    this.endedAt,
+    this.quantity,
+    this.unit,
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'logType': logType.toApiValue(),
+    if (startedAt != null) 'startedAt': startedAt!.toUtc().toIso8601String(),
+    if (endedAt != null) 'endedAt': endedAt!.toUtc().toIso8601String(),
+    if (quantity != null) 'quantity': quantity,
+    if (unit != null) 'unit': unit,
+    if (note != null) 'note': note,
+  };
+}
+
 class LogTypeSummary {
   final int count;
   final double? totalQuantity;
@@ -130,6 +157,26 @@ class LogTypeSummary {
       latestNote: json['latestNote'] as String?,
     );
   }
+}
+
+String formatSleepDuration(LogTypeSummary? summary) {
+  if (summary == null) return '—';
+  if (summary.count == 0) return '0h';
+
+  final quantity = summary.totalQuantity;
+  final unit = summary.unit?.trim().toLowerCase();
+  if (quantity == null || unit == null || unit.isEmpty) return '—';
+
+  final hours = switch (unit) {
+    'h' || 'hr' || 'hrs' || 'hour' || 'hours' => quantity,
+    'm' || 'min' || 'mins' || 'minute' || 'minutes' => quantity / 60,
+    _ => null,
+  };
+  if (hours == null) return '—';
+  final value = hours == hours.roundToDouble()
+      ? hours.toStringAsFixed(0)
+      : hours.toStringAsFixed(1);
+  return '${value}h';
 }
 
 class BabyLogSummaryResponse {
