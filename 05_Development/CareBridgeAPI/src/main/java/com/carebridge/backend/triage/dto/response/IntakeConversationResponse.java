@@ -19,6 +19,7 @@ import java.util.Map;
 public class IntakeConversationResponse {
     private String status;
     private String intakeSessionId;
+    private String stage;
     @Builder.Default
     private Map<String, Object> mergedIntake = new LinkedHashMap<>();
     @Builder.Default

@@ -227,6 +227,7 @@ void main() {
     const first = TriageCitation(
       title: 'WHO source one',
       source: 'WHO',
+      domain: 'who.int',
       url: 'https://who.int/evidence',
       excerpt: 'Evidence one',
       retrievedAt: '2026-07-13',
@@ -234,6 +235,7 @@ void main() {
     const second = TriageCitation(
       title: 'WHO source two',
       source: 'WHO',
+      domain: 'who.int',
       url: 'https://who.int/evidence',
       excerpt: 'Evidence two',
       retrievedAt: '2026-07-13',

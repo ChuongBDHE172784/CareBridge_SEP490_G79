@@ -9,6 +9,7 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TriageResultResponse {
     private UUID sessionId;
+    private String stage;
     private String triageStatus;
     private String riskLevel;
     private String riskColor;
@@ -19,6 +20,7 @@ public class TriageResultResponse {
     private List<String> redFlags;
     private List<String> matchedRules;
     private List<Map<String, Object>> citations;
+    private List<Map<String, Object>> claims;
     private Map<String, Object> evidence;
     private String disclaimer;
     private List<String> questions;

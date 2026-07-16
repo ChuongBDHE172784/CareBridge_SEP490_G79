@@ -43,6 +43,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   Map<String, dynamic> _currentIntake = _blankIntake();
   List<IntakeQuestion> _questions = [];
   final Map<String, dynamic> _answers = {};
+  String _selectedStage = 'INFANT';
   String? _sessionId;
   int _round = 1;
   bool _loading = false;
@@ -58,7 +59,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     _emergencyService = widget.emergencyService ?? EmergencyService();
   }
 
-  static Map<String, dynamic> _blankIntake() => {
+  static Map<String, dynamic> _blankIntake({String stage = 'INFANT'}) => {
+    'stage': stage,
     'childAgeMonths': null,
     'symptomList': <String>[],
     'duration': null,
@@ -91,7 +93,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       _loading = true;
       _error = null;
       _currentIntake = {
-        ..._blankIntake(),
+        ..._blankIntake(stage: _selectedStage),
         'symptomList': <String>[text],
         'parentFreeText': text,
       };
@@ -154,6 +156,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         _messages.add(_ChatMessage(role: _ChatRole.user, text: userMessage));
       }
       _sessionId = response.intakeSessionId;
+      _selectedStage = response.stage;
       _currentIntake = response.mergedIntake;
       _questions = response.questions;
       _round = response.round;
@@ -228,27 +231,23 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         .join('\n');
   }
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri != null && _isAllowedOfficialUri(uri) && await canLaunchUrl(uri)) {
+  Future<void> _openUrl(TriageCitation citation) async {
+    final uri = Uri.tryParse(citation.url);
+    if (uri != null && _isSafeCitationUri(uri, citation.domain) && await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  bool _isAllowedOfficialUri(Uri uri) {
-    const allowed = {
-      'who.int',
-      'moh.gov.vn',
-      'mch.moh.gov.vn',
-      'cdc.gov',
-      'unicef.org',
-      'benhviennhitrunguong.gov.vn',
-      'nhidong.org.vn',
-      'bvndtp.org.vn',
-    };
-    final host = uri.host.toLowerCase();
+  bool _isSafeCitationUri(Uri uri, String? approvedDomain) {
+    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final path = uri.path.replaceAll('/', '').trim().toLowerCase();
     return uri.scheme == 'https' &&
-        allowed.any((domain) => host == domain || host.endsWith('.$domain'));
+        domain.isNotEmpty &&
+        path.isNotEmpty &&
+        path != 'vi' &&
+        path != 'en' &&
+        (host == domain || host.endsWith('.$domain'));
   }
 
   Future<void> _openEmergencyFlow() async {
@@ -294,6 +293,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (_sessionId == null) _buildStageSelector(),
                   ..._messages.map(_buildBubble),
                   if (_result != null) _buildResult(_result!),
                   if (_questions.isNotEmpty && _result == null)
@@ -351,6 +351,40 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           const SizedBox(height: 12),
           ..._questions.map(_buildQuestionInput),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStageSelector() {
+    const stages = {
+      'PRECONCEPTION': 'Chuẩn bị mang thai',
+      'PREGNANCY': 'Đang mang thai',
+      'INFANT': 'Bé 0-12 tháng',
+      'TODDLER': 'Bé 12-24 tháng',
+    };
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _outline),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: stages.entries.map((entry) {
+          return ChoiceChip(
+            label: Text(entry.value),
+            selected: _selectedStage == entry.key,
+            onSelected: _loading
+                ? null
+                : (_) => setState(() {
+                      _selectedStage = entry.key;
+                      _currentIntake = _blankIntake(stage: entry.key);
+                    }),
+          );
+        }).toList(),
       ),
     );
   }
@@ -479,6 +513,19 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: result.citations.indexed.map((entry) {
+                final citation = entry.$2;
+                return ActionChip(
+                  key: Key('triage-source-chip-${citation.id ?? entry.$1}'),
+                  label: Text(citation.organization ?? citation.source),
+                  onPressed: () => _showCitationSheet(citation),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
             ...result.citations.indexed.map(
               (entry) => _buildCitation(entry.$2, entry.$1),
             ),
@@ -497,10 +544,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Widget _buildCitation(TriageCitation citation, int index) {
     final uri = Uri.tryParse(citation.url);
-    final canOpen = uri != null && _isAllowedOfficialUri(uri);
+    final canOpen = uri != null && _isSafeCitationUri(uri, citation.domain);
     return InkWell(
       key: Key('triage-citation-${citation.id ?? citation.url}-$index'),
-      onTap: canOpen ? () => _openUrl(citation.url) : null,
+      onTap: canOpen ? () => _showCitationSheet(citation) : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
@@ -533,6 +580,46 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 style: TextStyle(fontSize: 12, color: _onVariant),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showCitationSheet(TriageCitation citation) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(citation.organization ?? citation.source,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(citation.title),
+              if (citation.excerpt.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(citation.excerpt),
+              ],
+              if (citation.matchedRules.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Quy tắc liên quan: ${citation.matchedRules.join(', ')}'),
+              ],
+              if (citation.sourceStatus == 'PENDING_REVIEW') ...[
+                const SizedBox(height: 8),
+                const Text('Nguồn đang chờ kiểm duyệt nội bộ.'),
+              ],
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => _openUrl(citation),
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Xem nguồn gốc'),
+              ),
+            ],
+          ),
         ),
       ),
     );

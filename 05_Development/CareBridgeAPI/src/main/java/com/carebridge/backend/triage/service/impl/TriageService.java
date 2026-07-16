@@ -2,12 +2,15 @@ package com.carebridge.backend.triage.service.impl;
 
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
+import com.carebridge.backend.triage.TriageStage;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.dto.response.TriageResultResponse;
+import com.carebridge.backend.triage.entity.EvidenceSource;
+import com.carebridge.backend.triage.entity.EvidenceSourceReviewLog;
 import com.carebridge.backend.triage.entity.IntakeSession;
 import com.carebridge.backend.triage.engine.ChildTriageResult;
 import com.carebridge.backend.triage.engine.TriageGraphService;
@@ -16,16 +19,17 @@ import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
+import com.carebridge.backend.triage.service.EvidenceSourceService;
 import com.carebridge.backend.triage.service.ITriageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,23 +45,87 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-@RequiredArgsConstructor
 public class TriageService implements ITriageService {
 
     private static final Logger log = LoggerFactory.getLogger(TriageService.class);
-    private static final java.util.Set<String> OFFICIAL_EVIDENCE_DOMAINS = java.util.Set.of(
-            "who.int", "moh.gov.vn", "mch.moh.gov.vn", "cdc.gov", "unicef.org",
-            "benhviennhitrunguong.gov.vn", "nhidong.org.vn", "bvndtp.org.vn");
 
     private final IIntakeSessionRepository intakeSessionRepository;
     private final ChildTriageAiClient childTriageAiClient;
     private final TriageGraphService triageGraphService;
+    private final EvidenceSourceService evidenceSourceService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            EvidenceSourceService evidenceSourceService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher) {
+        this.intakeSessionRepository = intakeSessionRepository;
+        this.childTriageAiClient = childTriageAiClient;
+        this.triageGraphService = triageGraphService;
+        this.evidenceSourceService = evidenceSourceService;
+        this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
+    }
+
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                legacyEvidenceSourceService(), objectMapper, eventPublisher);
+    }
+
+    private static EvidenceSourceService legacyEvidenceSourceService() {
+        return new EvidenceSourceService() {
+            @Override
+            public EvidenceSource propose(String baseUrl, String organization, String category, String applicableStages, String notes, UUID actorUserId) {
+                throw new UnsupportedOperationException("Evidence source admin service is not available in this test constructor");
+            }
+
+            @Override
+            public List<EvidenceSource> list(String status) {
+                return List.of();
+            }
+
+            @Override
+            public List<EvidenceSource> approvedForStage(String stage) {
+                return List.of();
+            }
+
+            @Override
+            public EvidenceSource changeStatus(UUID id, String newStatus, String notes, UUID actorUserId, String actorRole) {
+                throw new UnsupportedOperationException("Evidence source admin service is not available in this test constructor");
+            }
+
+            @Override
+            public List<EvidenceSourceReviewLog> reviewLog(UUID id) {
+                return List.of();
+            }
+
+            @Override
+            public boolean isApprovedDeepLink(URI uri) {
+                String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase().replaceFirst("^www\\.", "");
+                String path = uri.getPath() == null ? "" : uri.getPath().replace("/", "").trim();
+                return "https".equalsIgnoreCase(uri.getScheme()) && !path.isBlank()
+                        && java.util.Set.of("who.int", "moh.gov.vn", "mch.moh.gov.vn", "cdc.gov", "unicef.org",
+                        "benhviennhitrunguong.gov.vn", "nhidong.org.vn", "bvndtp.org.vn")
+                        .stream().anyMatch(domain -> host.equals(domain) || host.endsWith("." + domain));
+            }
+        };
+    }
 
     @Override
     public synchronized IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
         validateBoundedPayload(request.getCurrentIntake(), "currentIntake");
+        TriageStage stage = resolveStage(request.getStage(), request.getCurrentIntake(), request.getBabyProfileId(), request.getMotherProfileId());
+        validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         String clientRequestId = normalizeClientRequestId(request.getClientRequestId());
         IntakeSession existing = clientRequestId == null ? null : intakeSessionRepository
                 .findByUserIdAndClientRequestId(userId, clientRequestId).orElse(null);
@@ -69,6 +137,9 @@ public class TriageService implements ITriageService {
             session = IntakeSession.builder()
                     .userId(userId)
                     .clientRequestId(clientRequestId)
+                    .stage(stage)
+                    .babyProfileId(stage.isPediatric() ? request.getBabyProfileId() : null)
+                    .motherProfileId(stage.isMaternal() ? request.getMotherProfileId() : null)
                     .symptoms("CONVERSATION_INTAKE")
                     .status(IntakeStatus.PROCESSING)
                     .createdAt(Instant.now())
@@ -78,8 +149,11 @@ public class TriageService implements ITriageService {
         }
         Map<String, Object> canonicalRequest = new LinkedHashMap<>();
         canonicalRequest.put("initialText", request.getInitialText());
-        canonicalRequest.put("currentIntake", request.getCurrentIntake() == null ? Map.of() : request.getCurrentIntake());
+        canonicalRequest.put("currentIntake", withCanonicalStage(
+                request.getCurrentIntake() == null ? Map.of() : request.getCurrentIntake(),
+                session.getStage(), session.getBabyProfileId(), session.getMotherProfileId()));
         canonicalRequest.put("intakeSessionId", session.getId().toString());
+        canonicalRequest.put("stage", session.getStage().name());
         Map<String, Object> envelope;
         try {
             envelope = readJsonObject(childTriageAiClient.startIntake(canonicalRequest));
@@ -90,6 +164,7 @@ public class TriageService implements ITriageService {
         }
         envelope = ensureSafeEnvelope(envelope, canonicalRequest, true);
         envelope.put("intakeSessionId", session.getId().toString());
+        envelope.put("stage", session.getStage().name());
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope);
     }
@@ -108,10 +183,13 @@ public class TriageService implements ITriageService {
         Map<String, Object> normalizedAnswers = coerceConversationAnswers(request.getNewAnswers());
         Map<String, Object> canonical = new LinkedHashMap<>();
         canonical.put("intakeSessionId", session.getId().toString());
-        canonical.put("currentIntake", previous.getOrDefault("mergedIntake", Map.of()));
+        canonical.put("currentIntake", withCanonicalStage(
+                previous.getOrDefault("mergedIntake", Map.of()),
+                session.getStage(), session.getBabyProfileId(), session.getMotherProfileId()));
         canonical.put("messages", List.of());
         canonical.put("newAnswers", normalizedAnswers);
         canonical.put("round", number(previous.get("round"), 1));
+        canonical.put("stage", session.getStage().name());
 
         if (session.getStatus() == IntakeStatus.COMPLETED) {
             if (answersAlreadyApplied(canonical)) {
@@ -144,16 +222,22 @@ public class TriageService implements ITriageService {
         }
         envelope = ensureSafeEnvelope(envelope, canonical, false);
         envelope.put("intakeSessionId", session.getId().toString());
+        envelope.put("stage", session.getStage().name());
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope);
     }
 
     @Override
     public IntakeSessionResponse runIntake(RunIntakeRequest request, UUID userId) {
+        TriageStage stage = resolveStage(request.getStage(), Map.of(), request.getBabyProfileId(), request.getMotherProfileId());
+        request.setStage(stage);
+        validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         IntakeSession session = IntakeSession.builder()
                 .userId(userId)
                 .symptoms(snapshotRequest(request))
                 .babyProfileId(request.getBabyProfileId())
+                .motherProfileId(request.getMotherProfileId())
+                .stage(stage)
                 .status(IntakeStatus.PROCESSING)
                 .createdAt(Instant.now())
                 .createdBy(userId)
@@ -237,6 +321,7 @@ public class TriageService implements ITriageService {
 
         return TriageResultResponse.builder()
                 .sessionId(session.getId())
+                .stage(session.getStage().name())
                 .triageStatus(readText(session, "status", session.getStatus().name()))
                 .riskLevel(readText(session, "riskLevel"))
                 .riskColor(readText(session, "riskColor"))
@@ -247,6 +332,7 @@ public class TriageService implements ITriageService {
                 .redFlags(readStringList(session, "redFlags"))
                 .matchedRules(readStringList(session, "matchedRules"))
                 .citations(citations)
+                .claims(readValidatedClaims(session, citations))
                 .evidence(readObject(session, "evidence"))
                 .disclaimer(readText(session, "disclaimer", session.getDisclaimer()))
                 .questions(readStringList(session, "questions"))
@@ -279,6 +365,7 @@ public class TriageService implements ITriageService {
     private IntakeSessionResponse toResponse(IntakeSession session) {
         return IntakeSessionResponse.builder()
                 .sessionId(session.getId())
+                .stage(session.getStage().name())
                 .status(session.getStatus().name())
                 .riskLevel(session.getRiskLevel() != null ? session.getRiskLevel().name() : null)
                 .disclaimer(session.getDisclaimer())
@@ -290,6 +377,9 @@ public class TriageService implements ITriageService {
     private String snapshotRequest(RunIntakeRequest request) {
         try {
             Map<String, Object> replaySafe = new LinkedHashMap<>();
+            replaySafe.put("stage", request.getStage() == null ? TriageStage.INFANT.name() : request.getStage().name());
+            replaySafe.put("babyProfileId", request.getBabyProfileId());
+            replaySafe.put("motherProfileId", request.getMotherProfileId());
             replaySafe.put("childAgeMonths", request.getChildAgeMonths());
             replaySafe.put("temperatureC", request.getTemperatureC());
             replaySafe.put("feedingStatus", request.getFeedingStatus());
@@ -449,6 +539,7 @@ public class TriageService implements ITriageService {
         sanitizeMergedIntake(current, result);
         envelope.put("status", needMore ? "ASK_MORE" : "TRIAGE_COMPLETE");
         envelope.put("intakeSessionId", request.get("intakeSessionId"));
+        envelope.put("stage", intake.getStage() == null ? TriageStage.INFANT.name() : intake.getStage().name());
         envelope.put("mergedIntake", current);
         envelope.put("assistantMessage", needMore
                 ? "CareBridge cần thêm một vài thông tin để phân loại rủi ro an toàn hơn."
@@ -512,12 +603,13 @@ public class TriageService implements ITriageService {
     private void addJavaFallbackMetadata(Map<String, Object> result) {
         String fallbackRisk = result.get("riskLevel") == null ? null : String.valueOf(result.get("riskLevel"));
         result.putIfAbsent("graphVersion", "java-fallback-1.0");
-        result.putIfAbsent("ruleSetVersion", "java-pediatric-risk-rules-1.0");
-        result.putIfAbsent("ontologyVersion", "java-child-symptoms-1.0");
+        result.putIfAbsent("ruleSetVersion", "java-stage-risk-rules-1.0");
+        result.putIfAbsent("ontologyVersion", "java-stage-symptoms-1.0");
         result.putIfAbsent("responseSchemaVersion", "2.0");
         result.put("fallbackUsed", true);
         result.putIfAbsent("normalizedSymptoms", List.of());
         result.putIfAbsent("evidenceIds", List.of());
+        result.putIfAbsent("claims", List.of());
         result.putIfAbsent("recommendationCode", switch (String.valueOf(fallbackRisk)) {
             case "RED" -> "SEEK_EMERGENCY_CARE";
             case "YELLOW" -> "CONTACT_HEALTHCARE_PROVIDER";
@@ -542,6 +634,51 @@ public class TriageService implements ITriageService {
             return UUID.fromString(String.valueOf(value));
         } catch (Exception exception) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-007", "Invalid intakeSessionId");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> withCanonicalStage(Object intakeValue, TriageStage stage, UUID babyProfileId, UUID motherProfileId) {
+        Map<String, Object> intake = intakeValue instanceof Map<?, ?> map
+                ? new LinkedHashMap<>((Map<String, Object>) map) : new LinkedHashMap<>();
+        intake.put("stage", stage.name());
+        if (stage.isPediatric()) {
+            intake.put("babyProfileId", babyProfileId == null ? null : babyProfileId.toString());
+            intake.remove("motherProfileId");
+        } else {
+            intake.put("motherProfileId", motherProfileId == null ? null : motherProfileId.toString());
+            intake.remove("babyProfileId");
+        }
+        return intake;
+    }
+
+    private TriageStage resolveStage(TriageStage requested, Map<String, Object> currentIntake, UUID babyProfileId, UUID motherProfileId) {
+        if (requested != null) {
+            return requested;
+        }
+        Object stageValue = currentIntake == null ? null : currentIntake.get("stage");
+        if (stageValue != null) {
+            try {
+                return TriageStage.valueOf(String.valueOf(stageValue));
+            } catch (IllegalArgumentException ignored) {
+                throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-011", "Invalid triage stage");
+            }
+        }
+        return motherProfileId != null && babyProfileId == null ? TriageStage.PREGNANCY : TriageStage.INFANT;
+    }
+
+    private void validateStageProfile(TriageStage stage, UUID babyProfileId, UUID motherProfileId, boolean requireProfile) {
+        if (babyProfileId != null && motherProfileId != null) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "Only one profile type may be linked to a triage session");
+        }
+        if (stage.isPediatric() && motherProfileId != null) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "Pediatric triage stages require a baby profile, not a mother profile");
+        }
+        if (stage.isMaternal() && babyProfileId != null) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "Maternal triage stages require a mother profile, not a baby profile");
+        }
+        if (requireProfile && ((stage.isPediatric() && babyProfileId == null) || (stage.isMaternal() && motherProfileId == null))) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "A matching profile is required for the selected triage stage");
         }
     }
 
@@ -660,14 +797,42 @@ public class TriageService implements ITriageService {
     private boolean isOfficialHttpsUrl(String value) {
         try {
             URI uri = URI.create(value);
-            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
-            return "https".equalsIgnoreCase(uri.getScheme())
-                    && uri.getPath() != null && !uri.getPath().replace("/", "").isBlank()
-                    && OFFICIAL_EVIDENCE_DOMAINS.stream().anyMatch(
-                    domain -> host.equals(domain) || host.endsWith("." + domain));
+            return evidenceSourceService.isApprovedDeepLink(uri);
         } catch (IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    private List<Map<String, Object>> readValidatedClaims(
+            IntakeSession session, List<Map<String, Object>> citations) {
+        java.util.Set<String> validEvidenceIds = citations.stream()
+                .map(citation -> nonBlank(citation.get("sourceId")))
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        List<Map<String, Object>> valid = new ArrayList<>();
+        for (Map<String, Object> claim : readObjectList(session, "claims")) {
+            String claimId = nonBlank(claim.get("claimId"));
+            String text = nonBlank(claim.get("text"));
+            Object evidenceValue = claim.get("evidenceIds");
+            if (claimId == null || text == null || !(evidenceValue instanceof List<?> evidenceIds)) {
+                continue;
+            }
+            List<String> verified = evidenceIds.stream()
+                    .map(this::nonBlank)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(validEvidenceIds::contains)
+                    .distinct()
+                    .toList();
+            if (verified.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> safe = new LinkedHashMap<>();
+            safe.put("claimId", claimId);
+            safe.put("text", text);
+            safe.put("evidenceIds", verified);
+            valid.add(safe);
+        }
+        return valid;
     }
 
     private String nonBlank(Object value) {
