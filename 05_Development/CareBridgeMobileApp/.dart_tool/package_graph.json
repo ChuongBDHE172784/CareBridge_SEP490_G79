@@ -7,7 +7,9 @@
       "name": "untitled",
       "version": "1.0.0+1",
       "dependencies": [
+        "cloud_firestore",
         "cupertino_icons",
+        "firebase_auth",
         "firebase_core",
         "firebase_messaging",
         "flutter",
@@ -19,8 +21,11 @@
         "http_parser",
         "intl",
         "mime",
+        "permission_handler",
         "sensors_plus",
-        "url_launcher"
+        "url_launcher",
+        "uuid",
+        "zego_express_engine"
       ],
       "devDependencies": [
         "flutter_launcher_icons",
@@ -79,6 +84,14 @@
       ]
     },
     {
+      "name": "uuid",
+      "version": "4.5.3",
+      "dependencies": [
+        "crypto",
+        "fixnum"
+      ]
+    },
+    {
       "name": "http_parser",
       "version": "4.1.2",
       "dependencies": [
@@ -86,6 +99,28 @@
         "source_span",
         "string_scanner",
         "typed_data"
+      ]
+    },
+    {
+      "name": "zego_express_engine",
+      "version": "3.24.1",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "js"
+      ]
+    },
+    {
+      "name": "permission_handler",
+      "version": "12.0.1",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "permission_handler_android",
+        "permission_handler_apple",
+        "permission_handler_html",
+        "permission_handler_platform_interface",
+        "permission_handler_windows"
       ]
     },
     {
@@ -121,6 +156,31 @@
         "flutter",
         "flutter_web_plugins",
         "sensors_plus_platform_interface"
+      ]
+    },
+    {
+      "name": "firebase_auth",
+      "version": "5.7.0",
+      "dependencies": [
+        "firebase_auth_platform_interface",
+        "firebase_auth_web",
+        "firebase_core",
+        "firebase_core_platform_interface",
+        "flutter",
+        "meta"
+      ]
+    },
+    {
+      "name": "cloud_firestore",
+      "version": "5.6.12",
+      "dependencies": [
+        "cloud_firestore_platform_interface",
+        "cloud_firestore_web",
+        "collection",
+        "firebase_core",
+        "firebase_core_platform_interface",
+        "flutter",
+        "meta"
       ]
     },
     {
@@ -377,6 +437,18 @@
       ]
     },
     {
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "crypto",
+      "version": "3.0.7",
+      "dependencies": [
+        "typed_data"
+      ]
+    },
+    {
       "name": "typed_data",
       "version": "1.4.0",
       "dependencies": [
@@ -397,6 +469,63 @@
         "collection",
         "path",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "js",
+      "version": "0.6.7",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
+      "name": "permission_handler_platform_interface",
+      "version": "4.3.0",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "permission_handler_windows",
+      "version": "0.2.1",
+      "dependencies": [
+        "flutter",
+        "permission_handler_platform_interface"
+      ]
+    },
+    {
+      "name": "permission_handler_html",
+      "version": "0.1.3+5",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "permission_handler_platform_interface",
+        "web"
+      ]
+    },
+    {
+      "name": "permission_handler_apple",
+      "version": "9.4.10",
+      "dependencies": [
+        "flutter",
+        "permission_handler_platform_interface"
+      ]
+    },
+    {
+      "name": "permission_handler_android",
+      "version": "13.0.1",
+      "dependencies": [
+        "flutter",
+        "permission_handler_platform_interface"
       ]
     },
     {
@@ -456,10 +585,65 @@
       ]
     },
     {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
+      "name": "firebase_core_platform_interface",
+      "version": "6.0.3",
       "dependencies": [
-        "flutter"
+        "collection",
+        "flutter",
+        "flutter_test",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "firebase_auth_web",
+      "version": "5.15.3",
+      "dependencies": [
+        "firebase_auth_platform_interface",
+        "firebase_core",
+        "firebase_core_web",
+        "flutter",
+        "flutter_web_plugins",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "firebase_auth_platform_interface",
+      "version": "7.7.3",
+      "dependencies": [
+        "_flutterfire_internals",
+        "collection",
+        "firebase_core",
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "cloud_firestore_web",
+      "version": "4.4.12",
+      "dependencies": [
+        "_flutterfire_internals",
+        "cloud_firestore_platform_interface",
+        "collection",
+        "firebase_core",
+        "firebase_core_web",
+        "flutter",
+        "flutter_web_plugins"
+      ]
+    },
+    {
+      "name": "cloud_firestore_platform_interface",
+      "version": "6.6.12",
+      "dependencies": [
+        "_flutterfire_internals",
+        "collection",
+        "firebase_core",
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
       ]
     },
     {
@@ -483,17 +667,6 @@
         "_flutterfire_internals",
         "firebase_core",
         "flutter",
-        "meta",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "firebase_core_platform_interface",
-      "version": "6.0.3",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "flutter_test",
         "meta",
         "plugin_platform_interface"
       ]
@@ -583,13 +756,6 @@
         "path_provider_linux",
         "path_provider_platform_interface",
         "path_provider_windows"
-      ]
-    },
-    {
-      "name": "crypto",
-      "version": "3.0.7",
-      "dependencies": [
-        "typed_data"
       ]
     },
     {
@@ -686,30 +852,12 @@
       ]
     },
     {
-      "name": "webdriver",
-      "version": "3.1.0",
-      "dependencies": [
-        "matcher",
-        "path",
-        "stack_trace",
-        "sync_http"
-      ]
-    },
-    {
       "name": "fuchsia_remote_debug_protocol",
       "version": "0.0.0",
       "dependencies": [
         "meta",
         "process",
         "vm_service"
-      ]
-    },
-    {
-      "name": "file",
-      "version": "7.0.1",
-      "dependencies": [
-        "meta",
-        "path"
       ]
     },
     {
@@ -743,14 +891,6 @@
       "dependencies": [
         "source_span",
         "string_scanner"
-      ]
-    },
-    {
-      "name": "uuid",
-      "version": "4.5.3",
-      "dependencies": [
-        "crypto",
-        "fixnum"
       ]
     },
     {
@@ -834,13 +974,6 @@
       "dependencies": []
     },
     {
-      "name": "js",
-      "version": "0.6.7",
-      "dependencies": [
-        "meta"
-      ]
-    },
-    {
       "name": "petitparser",
       "version": "7.0.2",
       "dependencies": [
@@ -856,25 +989,6 @@
         "meta",
         "path"
       ]
-    },
-    {
-      "name": "sync_http",
-      "version": "0.3.1",
-      "dependencies": []
-    },
-    {
-      "name": "process",
-      "version": "5.0.5",
-      "dependencies": [
-        "file",
-        "path",
-        "platform"
-      ]
-    },
-    {
-      "name": "fixnum",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "platform",
@@ -966,6 +1080,38 @@
         "meta",
         "pub_semver"
       ]
+    },
+    {
+      "name": "process",
+      "version": "5.0.5",
+      "dependencies": [
+        "file",
+        "path",
+        "platform"
+      ]
+    },
+    {
+      "name": "file",
+      "version": "7.0.1",
+      "dependencies": [
+        "meta",
+        "path"
+      ]
+    },
+    {
+      "name": "webdriver",
+      "version": "3.1.0",
+      "dependencies": [
+        "matcher",
+        "path",
+        "stack_trace",
+        "sync_http"
+      ]
+    },
+    {
+      "name": "sync_http",
+      "version": "0.3.1",
+      "dependencies": []
     }
   ],
   "configVersion": 1
