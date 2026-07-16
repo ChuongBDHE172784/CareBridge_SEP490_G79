@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../baby/models/baby_model.dart';
 import '../models/growth_measurement_model.dart';
+import '../models/who_growth_standard.dart';
 
 enum GrowthTrendMetric { automatic, weight, height, headCircumference }
 
@@ -10,15 +12,20 @@ class GrowthTrendChart extends StatelessWidget {
   static const _accentColor = Color(0xFFC98C7B);
   static const _surfaceColor = Color(0xFFF6F1EC);
   static const _borderColor = Color(0xFFE7E1DD);
-  static const _textColor = Color(0xFF5A463F);
 
   final List<GrowthMeasurement> measurements;
   final GrowthTrendMetric metric;
+  final DateTime? birthDate;
+  final BabyGender? gender;
+  final bool profileLoadFailed;
 
   const GrowthTrendChart({
     super.key,
     required this.measurements,
     this.metric = GrowthTrendMetric.automatic,
+    this.birthDate,
+    this.gender,
+    this.profileLoadFailed = false,
   });
 
   @override
@@ -26,6 +33,8 @@ class GrowthTrendChart extends StatelessWidget {
     final resolvedMetric = _resolveMetric();
     final presentation = _MetricPresentation.forMetric(resolvedMetric);
     final points = _buildPoints(presentation);
+    final whoPoints = _buildWhoPoints(resolvedMetric, points);
+    final whoUnavailableMessage = _whoUnavailableMessage(points, whoPoints);
 
     return Column(
       key: const Key('growth-trend-chart'),
@@ -37,7 +46,8 @@ class GrowthTrendChart extends StatelessWidget {
             container: true,
             label:
                 'Biểu đồ ${presentation.label.toLowerCase()} gồm '
-                '${points.length} điểm dữ liệu',
+                '${points.length} điểm dữ liệu'
+                '${whoPoints.isEmpty ? '' : ' và đường WHO P50 tham khảo'}',
             child: Container(
               height: 192,
               width: double.infinity,
@@ -59,7 +69,10 @@ class GrowthTrendChart extends StatelessWidget {
                   key: ValueKey('growth-trend-chart-points-${points.length}'),
                   child: CustomPaint(
                     key: const Key('growth-trend-chart-canvas'),
-                    painter: GrowthTrendChartPainter(points),
+                    painter: GrowthTrendChartPainter(
+                      points,
+                      whoPoints: whoPoints,
+                    ),
                     size: Size.infinite,
                   ),
                 ),
@@ -67,33 +80,53 @@ class GrowthTrendChart extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 10,
           children: [
-            Container(
+            _LegendItem(
               key: Key('growth-trend-chart-metric-${presentation.keyName}'),
-              width: 12,
-              height: 12,
-              decoration: const BoxDecoration(
-                color: _accentColor,
-                shape: BoxShape.circle,
-              ),
+              color: _accentColor,
+              label:
+                  'Số đo của bé: ${presentation.label} (${presentation.unit})',
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                '${presentation.label} (${presentation.unit})',
-                key: const Key('growth-trend-chart-metric-label'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _textColor,
-                ),
+            if (whoPoints.isNotEmpty)
+              const _LegendItem(
+                key: Key('growth-trend-chart-who-legend'),
+                color: Color(0xFF8E756B),
+                label: 'WHO P50 nội suy (tham khảo)',
+                dashed: true,
               ),
-            ),
           ],
         ),
+        if (whoPoints.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            resolvedMetric == GrowthTrendMetric.height
+                ? 'WHO dùng chiều dài nằm cho trẻ dưới 24 tháng. Đường này chỉ mang tính tham khảo, không dùng để chẩn đoán.'
+                : 'Đường WHO chỉ mang tính tham khảo, không dùng để chẩn đoán.',
+            key: const Key('growth-trend-chart-who-disclaimer'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF5A463F),
+            ),
+          ),
+        ] else if (whoUnavailableMessage != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            whoUnavailableMessage,
+            key: const Key('growth-trend-chart-who-unavailable'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF5A463F),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -134,6 +167,194 @@ class GrowthTrendChart extends StatelessWidget {
       }),
     );
   }
+
+  List<GrowthTrendPoint> _buildWhoPoints(
+    GrowthTrendMetric resolvedMetric,
+    List<GrowthTrendPoint> points,
+  ) {
+    final resolvedBirthDate = birthDate;
+    final sex = switch (gender) {
+      BabyGender.male => WhoGrowthSex.male,
+      BabyGender.female => WhoGrowthSex.female,
+      _ => null,
+    };
+    if (resolvedBirthDate == null || sex == null || points.isEmpty) {
+      return const [];
+    }
+
+    final whoMetric = switch (resolvedMetric) {
+      GrowthTrendMetric.weight => WhoGrowthMetric.weight,
+      GrowthTrendMetric.height => WhoGrowthMetric.length,
+      GrowthTrendMetric.headCircumference => WhoGrowthMetric.headCircumference,
+      GrowthTrendMetric.automatic => null,
+    };
+    if (whoMetric == null) return const [];
+
+    final comparablePoints = points
+        .where((point) {
+          return WhoGrowthStandard.medianAtDate(
+                sex: sex,
+                metric: whoMetric,
+                birthDate: resolvedBirthDate,
+                measuredAt: point.measuredAt,
+              ) !=
+              null;
+        })
+        .toList(growable: false);
+    if (comparablePoints.isEmpty) return const [];
+
+    final monthly = WhoGrowthStandard.monthlySeries(
+      sex: sex,
+      metric: whoMetric,
+      birthDate: resolvedBirthDate,
+    );
+    final firstDate = comparablePoints.first.measuredAt;
+    final lastDate = comparablePoints.last.measuredAt;
+
+    if (firstDate == lastDate) {
+      var lowerIndex = 0;
+      for (var index = 0; index < monthly.length; index++) {
+        if (!monthly[index].measuredAt.isAfter(firstDate)) lowerIndex = index;
+      }
+      var upperIndex = monthly.length - 1;
+      for (var index = monthly.length - 1; index >= 0; index--) {
+        if (!monthly[index].measuredAt.isBefore(firstDate)) upperIndex = index;
+      }
+      if (lowerIndex == upperIndex) {
+        if (upperIndex < monthly.length - 1) {
+          upperIndex++;
+        } else if (lowerIndex > 0) {
+          lowerIndex--;
+        }
+      }
+      return [
+        _toTrendPoint(monthly[lowerIndex]),
+        if (upperIndex != lowerIndex) _toTrendPoint(monthly[upperIndex]),
+      ];
+    }
+
+    final result = <GrowthTrendPoint>[];
+    void addPoint(DateTime measuredAt, double value) {
+      if (result.isNotEmpty && result.last.measuredAt == measuredAt) return;
+      result.add(GrowthTrendPoint(measuredAt: measuredAt, value: value));
+    }
+
+    addPoint(
+      firstDate,
+      WhoGrowthStandard.medianAtDate(
+        sex: sex,
+        metric: whoMetric,
+        birthDate: resolvedBirthDate,
+        measuredAt: firstDate,
+      )!,
+    );
+    for (final point in monthly) {
+      if (point.measuredAt.isAfter(firstDate) &&
+          point.measuredAt.isBefore(lastDate)) {
+        addPoint(point.measuredAt, point.value);
+      }
+    }
+    addPoint(
+      lastDate,
+      WhoGrowthStandard.medianAtDate(
+        sex: sex,
+        metric: whoMetric,
+        birthDate: resolvedBirthDate,
+        measuredAt: lastDate,
+      )!,
+    );
+    return List.unmodifiable(result);
+  }
+
+  GrowthTrendPoint _toTrendPoint(WhoGrowthReferencePoint point) =>
+      GrowthTrendPoint(measuredAt: point.measuredAt, value: point.value);
+
+  String? _whoUnavailableMessage(
+    List<GrowthTrendPoint> points,
+    List<GrowthTrendPoint> whoPoints,
+  ) {
+    if (points.isEmpty || whoPoints.isNotEmpty) return null;
+    if (profileLoadFailed) {
+      return 'Không thể tải thông tin bé để hiển thị WHO P50. Kéo xuống để thử lại.';
+    }
+    if (birthDate == null) {
+      return 'Cần cập nhật ngày sinh của bé để hiển thị WHO P50.';
+    }
+    if (gender == null || gender == BabyGender.unknown) {
+      return 'Cần cập nhật giới tính của bé để hiển thị WHO P50.';
+    }
+    return 'WHO P50 trong nguồn hiện chỉ áp dụng cho trẻ 0–24 tháng.';
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  final bool dashed;
+
+  const _LegendItem({
+    super.key,
+    required this.color,
+    required this.label,
+    this.dashed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 20,
+          height: 12,
+          child: CustomPaint(
+            painter: _LegendLinePainter(color: color, dashed: dashed),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            label,
+            key: dashed
+                ? const Key('growth-trend-chart-who-label')
+                : const Key('growth-trend-chart-metric-label'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5A463F),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendLinePainter extends CustomPainter {
+  final Color color;
+  final bool dashed;
+
+  const _LegendLinePainter({required this.color, required this.dashed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    final y = size.height / 2;
+    if (!dashed) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      return;
+    }
+    canvas.drawLine(Offset(0, y), Offset(6, y), paint);
+    canvas.drawLine(Offset(11, y), Offset(17, y), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LegendLinePainter oldDelegate) =>
+      color != oldDelegate.color || dashed != oldDelegate.dashed;
 }
 
 class _EmptyTrendChart extends StatelessWidget {
@@ -219,12 +440,17 @@ class GrowthTrendPoint {
 
 class GrowthTrendChartPainter extends CustomPainter {
   static const _accentColor = Color(0xFFC98C7B);
+  static const _whoColor = Color(0xFF8E756B);
   static const _gridColor = Color(0x24A88E84);
 
   final List<GrowthTrendPoint> points;
+  final List<GrowthTrendPoint> whoPoints;
 
-  GrowthTrendChartPainter(List<GrowthTrendPoint> points)
-    : points = List<GrowthTrendPoint>.unmodifiable(points);
+  GrowthTrendChartPainter(
+    List<GrowthTrendPoint> points, {
+    List<GrowthTrendPoint> whoPoints = const [],
+  }) : points = List<GrowthTrendPoint>.unmodifiable(points),
+       whoPoints = List<GrowthTrendPoint>.unmodifiable(whoPoints);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -251,7 +477,10 @@ class GrowthTrendChartPainter extends CustomPainter {
       );
     }
 
-    final values = points.map((point) => point.value).toList(growable: false);
+    final allPoints = [...points, ...whoPoints];
+    final values = allPoints
+        .map((point) => point.value)
+        .toList(growable: false);
     final minimum = values.reduce(math.min);
     final maximum = values.reduce(math.max);
     final rawRange = maximum - minimum;
@@ -260,21 +489,38 @@ class GrowthTrendChartPainter extends CustomPainter {
         ? minimum - 0.5
         : minimum - rawRange * 0.15;
 
-    final firstTime = points.first.measuredAt.millisecondsSinceEpoch;
-    final lastTime = points.last.measuredAt.millisecondsSinceEpoch;
+    final times = allPoints
+        .map((point) => point.measuredAt.millisecondsSinceEpoch)
+        .toList(growable: false);
+    final firstTime = times.reduce(math.min);
+    final lastTime = times.reduce(math.max);
     final timeRange = lastTime - firstTime;
-    final offsets = List<Offset>.generate(points.length, (index) {
-      final point = points[index];
-      final x = points.length == 1 || timeRange == 0
-          ? plotRect.center.dx
-          : plotRect.left +
-                plotRect.width *
-                    (point.measuredAt.millisecondsSinceEpoch - firstTime) /
-                    timeRange;
-      final normalized = (point.value - displayMinimum) / displayRange;
-      final y = plotRect.bottom - normalized * plotRect.height;
-      return Offset(x, y);
-    });
+    List<Offset> offsetsFor(List<GrowthTrendPoint> series) {
+      return List<Offset>.generate(series.length, (index) {
+        final point = series[index];
+        final x = timeRange == 0
+            ? plotRect.center.dx
+            : plotRect.left +
+                  plotRect.width *
+                      (point.measuredAt.millisecondsSinceEpoch - firstTime) /
+                      timeRange;
+        final normalized = (point.value - displayMinimum) / displayRange;
+        final y = plotRect.bottom - normalized * plotRect.height;
+        return Offset(x, y);
+      });
+    }
+
+    final offsets = offsetsFor(points);
+    final whoOffsets = offsetsFor(whoPoints);
+
+    if (whoOffsets.isNotEmpty) {
+      final whoPaint = Paint()
+        ..color = _whoColor
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      _drawDashedPolyline(canvas, whoOffsets, whoPaint);
+    }
 
     final linePath = Path()..moveTo(offsets.first.dx, offsets.first.dy);
     for (var index = 1; index < offsets.length; index++) {
@@ -305,12 +551,47 @@ class GrowthTrendChartPainter extends CustomPainter {
     }
   }
 
+  void _drawDashedPolyline(Canvas canvas, List<Offset> offsets, Paint paint) {
+    if (offsets.length == 1) {
+      canvas.drawCircle(offsets.single, 2.5, paint..style = PaintingStyle.fill);
+      return;
+    }
+    const dashLength = 7.0;
+    const gapLength = 5.0;
+    for (var index = 1; index < offsets.length; index++) {
+      final start = offsets[index - 1];
+      final end = offsets[index];
+      final delta = end - start;
+      final distance = delta.distance;
+      if (distance == 0) continue;
+      final direction = delta / distance;
+      var travelled = 0.0;
+      while (travelled < distance) {
+        final dashEnd = math.min(travelled + dashLength, distance);
+        canvas.drawLine(
+          start + direction * travelled,
+          start + direction * dashEnd,
+          paint,
+        );
+        travelled += dashLength + gapLength;
+      }
+    }
+  }
+
   @override
   bool shouldRepaint(covariant GrowthTrendChartPainter oldDelegate) {
-    if (points.length != oldDelegate.points.length) return true;
-    for (var index = 0; index < points.length; index++) {
-      if (points[index].measuredAt != oldDelegate.points[index].measuredAt ||
-          points[index].value != oldDelegate.points[index].value) {
+    return _seriesChanged(points, oldDelegate.points) ||
+        _seriesChanged(whoPoints, oldDelegate.whoPoints);
+  }
+
+  bool _seriesChanged(
+    List<GrowthTrendPoint> current,
+    List<GrowthTrendPoint> previous,
+  ) {
+    if (current.length != previous.length) return true;
+    for (var index = 0; index < current.length; index++) {
+      if (current[index].measuredAt != previous[index].measuredAt ||
+          current[index].value != previous[index].value) {
         return true;
       }
     }

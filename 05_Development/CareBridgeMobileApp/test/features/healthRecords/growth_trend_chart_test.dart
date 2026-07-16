@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/baby/models/baby_model.dart';
 import 'package:untitled/features/healthRecords/models/growth_measurement_model.dart';
+import 'package:untitled/features/healthRecords/screens/growth_measurement_history_screen.dart';
 import 'package:untitled/features/healthRecords/widgets/growth_trend_chart.dart';
 
 GrowthMeasurement _measurement(
@@ -24,6 +26,8 @@ Future<void> _pumpChart(
   WidgetTester tester, {
   required List<GrowthMeasurement> measurements,
   GrowthTrendMetric metric = GrowthTrendMetric.automatic,
+  DateTime? birthDate,
+  BabyGender? gender,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -31,7 +35,12 @@ Future<void> _pumpChart(
         body: Center(
           child: SizedBox(
             width: 360,
-            child: GrowthTrendChart(measurements: measurements, metric: metric),
+            child: GrowthTrendChart(
+              measurements: measurements,
+              metric: metric,
+              birthDate: birthDate,
+              gender: gender,
+            ),
           ),
         ),
       ),
@@ -70,9 +79,16 @@ void main() {
       find.byKey(const ValueKey('growth-trend-chart-points-2')),
       findsOneWidget,
     );
-    expect(find.text('Cân nặng (kg)'), findsOneWidget);
+    expect(find.text('Số đo của bé: Cân nặng (kg)'), findsOneWidget);
     expect(find.text('Chart Visualization Area'), findsNothing);
-    expect(find.textContaining('WHO'), findsNothing);
+    expect(
+      find.byKey(const Key('growth-trend-chart-who-unavailable')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('growth-trend-chart-who-legend')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -91,7 +107,7 @@ void main() {
       find.byKey(const Key('growth-trend-chart-metric-height')),
       findsOneWidget,
     );
-    expect(find.text('Chiều cao (cm)'), findsOneWidget);
+    expect(find.text('Số đo của bé: Chiều cao (cm)'), findsOneWidget);
 
     await _pumpChart(
       tester,
@@ -108,7 +124,7 @@ void main() {
       find.byKey(const Key('growth-trend-chart-metric-head-circumference')),
       findsOneWidget,
     );
-    expect(find.text('Vòng đầu (cm)'), findsOneWidget);
+    expect(find.text('Số đo của bé: Vòng đầu (cm)'), findsOneWidget);
   });
 
   testWidgets('non-finite values are ignored during selection and painting', (
@@ -247,5 +263,119 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('renders the correct WHO P50 series and combined legend', (
+    tester,
+  ) async {
+    await _pumpChart(
+      tester,
+      measurements: [
+        _measurement('month-12', DateTime(2025, 1, 15), weightKg: 9.1),
+      ],
+      metric: GrowthTrendMetric.weight,
+      birthDate: DateTime(2024, 1, 15),
+      gender: BabyGender.female,
+    );
+
+    final customPaint = tester.widget<CustomPaint>(
+      find.byKey(const Key('growth-trend-chart-canvas')),
+    );
+    final painter = customPaint.painter! as GrowthTrendChartPainter;
+    expect(painter.whoPoints, hasLength(2));
+    expect(
+      painter.whoPoints.any(
+        (point) =>
+            point.measuredAt == DateTime(2025, 1, 15) && point.value == 8.9,
+      ),
+      isTrue,
+    );
+    expect(find.text('Số đo của bé: Cân nặng (kg)'), findsOneWidget);
+    expect(find.text('WHO P50 nội suy (tham khảo)'), findsOneWidget);
+    expect(find.textContaining('không dùng để chẩn đoán'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('does not infer WHO sex when gender is unknown', (tester) async {
+    await _pumpChart(
+      tester,
+      measurements: [
+        _measurement('month-12', DateTime(2025, 1, 15), heightCm: 73),
+      ],
+      metric: GrowthTrendMetric.height,
+      birthDate: DateTime(2024, 1, 15),
+      gender: BabyGender.unknown,
+    );
+
+    final customPaint = tester.widget<CustomPaint>(
+      find.byKey(const Key('growth-trend-chart-canvas')),
+    );
+    final painter = customPaint.painter! as GrowthTrendChartPainter;
+    expect(painter.points, hasLength(1));
+    expect(painter.whoPoints, isEmpty);
+    expect(find.text('WHO P50 nội suy (tham khảo)'), findsNothing);
+    expect(find.textContaining('Cần cập nhật giới tính'), findsOneWidget);
+  });
+
+  testWidgets('does not show WHO when every measurement is out of range', (
+    tester,
+  ) async {
+    await _pumpChart(
+      tester,
+      measurements: [
+        _measurement('month-25', DateTime(2026, 2, 16), weightKg: 12),
+      ],
+      metric: GrowthTrendMetric.weight,
+      birthDate: DateTime(2024, 1, 15),
+      gender: BabyGender.male,
+    );
+
+    final customPaint = tester.widget<CustomPaint>(
+      find.byKey(const Key('growth-trend-chart-canvas')),
+    );
+    final painter = customPaint.painter! as GrowthTrendChartPainter;
+    expect(painter.whoPoints, isEmpty);
+    expect(find.textContaining('0–24 tháng'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('height comparison clearly identifies WHO recumbent length', (
+    tester,
+  ) async {
+    await _pumpChart(
+      tester,
+      measurements: [
+        _measurement('month-12', DateTime(2025, 1, 15), heightCm: 74),
+      ],
+      metric: GrowthTrendMetric.height,
+      birthDate: DateTime(2024, 1, 15),
+      gender: BabyGender.female,
+    );
+
+    expect(find.textContaining('WHO dùng chiều dài nằm'), findsOneWidget);
+    expect(find.textContaining('không dùng để chẩn đoán'), findsOneWidget);
+  });
+
+  testWidgets('profile failure does not block measurement history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GrowthMeasurementHistoryScreen(
+          babyId: 'baby-1',
+          loadAvatarImage: false,
+          historyLoader: (_) async => [
+            _measurement('measurement', DateTime(2025, 1, 15), weightKg: 8.9),
+          ],
+          profileLoader: (_) async => throw Exception('profile unavailable'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const Key('growth-trend-chart-canvas')), findsOneWidget);
+    expect(find.textContaining('Không thể tải thông tin bé'), findsOneWidget);
   });
 }

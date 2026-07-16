@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../../baby/models/baby_model.dart';
+import '../../baby/services/baby_service.dart';
 import '../models/growth_measurement_model.dart';
 import '../services/growth_measurement_service.dart';
 import '../widgets/growth_trend_chart.dart';
@@ -6,7 +10,17 @@ import 'growth_measurement_detail_screen.dart';
 
 class GrowthMeasurementHistoryScreen extends StatefulWidget {
   final String babyId;
-  const GrowthMeasurementHistoryScreen({super.key, required this.babyId});
+  final Future<List<GrowthMeasurement>> Function(String babyId)? historyLoader;
+  final Future<BabyProfile> Function(String babyId)? profileLoader;
+  final bool loadAvatarImage;
+
+  const GrowthMeasurementHistoryScreen({
+    super.key,
+    required this.babyId,
+    this.historyLoader,
+    this.profileLoader,
+    this.loadAvatarImage = true,
+  });
 
   @override
   State<GrowthMeasurementHistoryScreen> createState() =>
@@ -16,9 +30,13 @@ class GrowthMeasurementHistoryScreen extends StatefulWidget {
 class _GrowthMeasurementHistoryScreenState
     extends State<GrowthMeasurementHistoryScreen> {
   final _service = GrowthMeasurementService();
+  final _babyService = BabyService();
   bool _isLoading = true;
   List<GrowthMeasurement> _records = [];
+  BabyProfile? _babyProfile;
+  bool _profileLoadFailed = false;
   String _selectedTab = 'Tất cả';
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -27,22 +45,45 @@ class _GrowthMeasurementHistoryScreenState
   }
 
   Future<void> _loadData() async {
+    final generation = ++_loadGeneration;
     setState(() => _isLoading = true);
+    unawaited(_loadProfile(generation));
     try {
-      final records = await _service.getGrowthHistory(widget.babyId);
-      if (mounted) {
+      final records =
+          await (widget.historyLoader?.call(widget.babyId) ??
+              _service.getGrowthHistory(widget.babyId));
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _records = records;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
+    }
+  }
+
+  Future<void> _loadProfile(int generation) async {
+    try {
+      final profile =
+          await (widget.profileLoader?.call(widget.babyId) ??
+              _babyService.getBabyProfile(widget.babyId));
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _babyProfile = profile;
+        _profileLoadFailed = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _babyProfile = null;
+        _profileLoadFailed = true;
+      });
     }
   }
 
@@ -71,9 +112,14 @@ class _GrowthMeasurementHistoryScreenState
             padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               backgroundColor: Colors.grey[200],
-              backgroundImage: const NetworkImage(
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuAfIClE2XrhchB2YXUkxFhAgxyNB_KbnEEMYJ4bx0o5HUbpNys1-ji6CyZ5aWHqhu3JGN8u8GaSCe4rVuqhYMcKH51eLp5ldXo3u0DNdTmslCM9E-ZiehGW0INPsFz2BdM8cC49wt0bMy2Hd2l4efLVevsxb0e1Ap5dLZGaDMteb5V9Yk4GZQJeHW4XmmFXFCVckYCNM2wvz4UG2ZZRm4O2rSlUNHGNBCptOBaXxWOlpnTZc5DV2faJg_uuFgv71Y2vkyhfxvgahQ0',
-              ),
+              backgroundImage: widget.loadAvatarImage
+                  ? const NetworkImage(
+                      'https://lh3.googleusercontent.com/aida-public/AB6AXuAfIClE2XrhchB2YXUkxFhAgxyNB_KbnEEMYJ4bx0o5HUbpNys1-ji6CyZ5aWHqhu3JGN8u8GaSCe4rVuqhYMcKH51eLp5ldXo3u0DNdTmslCM9E-ZiehGW0INPsFz2BdM8cC49wt0bMy2Hd2l4efLVevsxb0e1Ap5dLZGaDMteb5V9Yk4GZQJeHW4XmmFXFCVckYCNM2wvz4UG2ZZRm4O2rSlUNHGNBCptOBaXxWOlpnTZc5DV2faJg_uuFgv71Y2vkyhfxvgahQ0',
+                    )
+                  : null,
+              child: widget.loadAvatarImage
+                  ? null
+                  : const Icon(Icons.child_care, color: Color(0xFF845143)),
             ),
           ),
         ],
@@ -217,6 +263,9 @@ class _GrowthMeasurementHistoryScreenState
           GrowthTrendChart(
             measurements: _records,
             metric: _selectedTrendMetric,
+            birthDate: _babyProfile?.birthDate,
+            gender: _babyProfile?.gender,
+            profileLoadFailed: _profileLoadFailed,
           ),
         ],
       ),
