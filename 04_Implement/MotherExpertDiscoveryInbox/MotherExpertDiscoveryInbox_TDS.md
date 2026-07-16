@@ -801,8 +801,8 @@ GET /api/v1/expert/directory?q=nguyen&specialty=Sản%20khoa&page=0&size=20
 - [x] `./mvnw test` xanh toàn bộ — 146/146 trong `directchat`/`notification`/`expert` packages; 38 class khác fail/error trong toàn repo nhưng xác nhận pre-existing, không liên quan (git diff sạch trên mọi file bị ảnh hưởng)
 - [x] `flutter test` xanh toàn bộ — 65/65 (45 cũ + 20 mới)
 - [x] `flutter analyze` không lỗi mới — `flutter analyze` tự crash do bug LSP/path Unicode có sẵn của môi trường (không liên quan code, tái hiện được qua symlink test); `dart analyze` (cùng engine) dùng thay thế: 0 lỗi, 13 info-level lint
-- [ ] Kiểm tra thủ công bằng tài khoản seed theo kịch bản E2E ở brief gốc §12 — **một phần**: directory search + `displayName` + message-send xác nhận sống trên backend thật; Slice 2/3 endpoint (list/unread-summary/mark-read/notifications) bị chặn bởi gap hạ tầng có sẵn không liên quan feature này (DB Supabase dùng chung chưa migrate, xem Test-Spec §10) — đã xác nhận GREEN qua Testcontainers thay thế
-- [ ] **Migration 3 file CHƯA chạy trên DB Supabase dùng chung** — `spring.flyway.enabled=false` cho local run là cấu hình có sẵn; cần một quyết định vận hành riêng (ai chạy migrate, khi nào) trước khi các endpoint Slice 2/3 hoạt động được trên môi trường dùng chung — xem chi tiết + rủi ro thứ 2 phát hiện (checksum lệch trên 3 migration khác không liên quan) ở Test-Spec §10
+- [x] Kiểm tra thủ công bằng tài khoản seed: toàn bộ directory/profile/find-or-create/send/list/unread/mark-read/notification chạy thật với Supabase; Flutter Web E2E cho cả MOTHER và EXPERT đã pass. E2E còn phát hiện và sửa thanh điều hướng cũ bị lồng trong tab EXPERT “Yêu cầu”; xem Test-Spec §10
+- [x] 3 migration `20260716010600..10800` đã áp dụng lên DB Supabase dùng chung sau khi kiểm tra chỉ đúng 3 version này đang pending. Không repair/ghi đè lịch sử 3 migration cũ đang checksum drift; lần migrate một-lần dùng `validateOnMigrate=false` có chủ đích và được ghi lại ở Test-Spec §10
 
 ---
 
@@ -1049,5 +1049,12 @@ This amendment supersedes conflicting timestamp-only and in-process notification
 - Event actors must be conversation participants. Directory and inbox queries use unique secondary
   ordering keys. Actual migration files are `V20260716010600`, `V20260716010700`, and
   `V20260716010800`.
+- The directory response also returns `specialties: string[]`, sourced by a distinct query over
+  non-blank specialties belonging to `APPROVED` experts. Mobile filter chips use this server-owned
+  list and send the selected exact value through the existing `specialty` query parameter.
+- Mobile reconciliation is generation-guarded: stale directory/inbox/unread requests cannot
+  overwrite newer state. A process-local invalidation bus refreshes both role shells after
+  foreground MESSAGE signals and successful mark-read. Cold-start deep links remain queued until
+  authentication and the root navigator are ready, and route identifiers must be valid UUIDs.
 
 *Status remains Approved; this amendment was explicitly selected by the user during code review.*

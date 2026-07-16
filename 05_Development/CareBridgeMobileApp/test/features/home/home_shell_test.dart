@@ -3,15 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
 import 'package:untitled/features/home/screens/home_shell.dart';
 
 class _FakeDirectChatService extends DirectChatService {
+  int unreadConversationCount = 0;
   @override
-  Future<List<DirectConversationSummary>> listMyConversations() async => const [];
+  Future<List<DirectConversationSummary>> listMyConversations() async =>
+      const [];
 
   @override
-  Future<UnreadSummary> getUnreadSummary() async =>
-      const UnreadSummary(unreadConversationCount: 0, totalUnreadMessageCount: 0);
+  Future<UnreadSummary> getUnreadSummary() async => UnreadSummary(
+    unreadConversationCount: unreadConversationCount,
+    totalUnreadMessageCount: unreadConversationCount,
+  );
 
   @override
   Future<ExpertDirectoryPage> getExpertDirectory({
@@ -73,6 +78,22 @@ void main() {
 
       // Directory tab's own AppBar title proves it rendered in place (IndexedStack, not a push).
       expect(find.text('Chuyên gia đã xác thực'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'foreground conversation events refresh the Mother unread badge',
+    (tester) async {
+      final service = _FakeDirectChatService();
+      DirectChatService.instance = service;
+      await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+      await tester.pumpAndSettle();
+      expect(find.text('2'), findsNothing);
+
+      service.unreadConversationCount = 2;
+      ConversationRefreshBus.notify();
+      await tester.pumpAndSettle();
+      expect(find.text('2'), findsOneWidget);
     },
   );
 }

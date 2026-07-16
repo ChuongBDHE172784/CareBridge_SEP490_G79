@@ -58,6 +58,7 @@ class ExpertProfileServiceImplDirectoryTest {
         ExpertProfile expert = approvedExpert(EXPERT_USER_ID);
         Page<ExpertProfile> page = new PageImpl<>(List.of(expert), PageRequest.of(0, 10), 1);
         when(expertProfileRepository.searchDirectory(isNull(), isNull(), any(Pageable.class))).thenReturn(page);
+        when(expertProfileRepository.findApprovedSpecialties()).thenReturn(List.of("Nhi khoa", "Sản khoa"));
         User user = User.builder().id(EXPERT_USER_ID).name("Nguyễn Văn A").avatarUrl("https://x/a.jpg").build();
         when(userRepository.findAllById(anySet())).thenReturn(List.of(user));
 
@@ -66,6 +67,7 @@ class ExpertProfileServiceImplDirectoryTest {
         assertThat(response.getExperts()).hasSize(1);
         assertThat(response.getExperts().get(0).getDisplayName()).isEqualTo("Nguyễn Văn A");
         assertThat(response.getExperts().get(0).getAvatarUrl()).isEqualTo("https://x/a.jpg");
+        assertThat(response.getSpecialties()).containsExactly("Nhi khoa", "Sản khoa");
     }
 
     // MEDI-TC-003 — page/size actually applied via Pageable, not ignored
@@ -74,6 +76,7 @@ class ExpertProfileServiceImplDirectoryTest {
         ExpertProfile expert = approvedExpert(EXPERT_USER_ID);
         Page<ExpertProfile> page = new PageImpl<>(List.of(expert), PageRequest.of(1, 2), 3);
         when(expertProfileRepository.searchDirectory(isNull(), isNull(), eq(PageRequest.of(1, 2)))).thenReturn(page);
+        when(expertProfileRepository.findApprovedSpecialties()).thenReturn(List.of("Sản khoa"));
         when(userRepository.findAllById(anySet())).thenReturn(List.of());
 
         ExpertDirectoryResponse response = service.getPublicDirectory(null, null, 1, 2);

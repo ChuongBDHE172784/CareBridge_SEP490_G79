@@ -6,6 +6,7 @@ import '../../../integrations/firebaseRealtime/conversation_signaling_port.dart'
 import '../../../integrations/firebaseRealtime/firebase_conversation_signaling_port.dart';
 import '../models/timeline_item.dart';
 import '../services/direct_chat_service.dart';
+import '../services/conversation_refresh_bus.dart';
 
 class DirectChatScreen extends StatefulWidget {
   final String conversationId;
@@ -37,6 +38,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   ConversationSignalingPort? _signalingPort;
   StreamSubscription? _signalSubscription;
+  Timer? _markReadRetry;
+  String? _scheduledReadMessageId;
+  String? _lastMarkedReadMessageId;
 
   @override
   void initState() {
@@ -63,7 +67,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _expertAvailable = conversation.expertAvailable;
         _loading = false;
       });
-      _markReadIfNeeded();
+      _scheduleMarkReadIfNeeded();
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -116,7 +120,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           _previousCursor = page.previousCursor;
           _hasMoreOlder = page.hasMoreOlder;
         });
-        _markReadIfNeeded();
+        _scheduleMarkReadIfNeeded();
         return;
       }
       var cursor = _nextCursor;
@@ -131,7 +135,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             _items = mergeTimelineItems(_items, page.items);
             _nextCursor = page.nextCursor;
           });
-          _markReadIfNeeded();
+          _scheduleMarkReadIfNeeded();
         }
         final next = page.nextCursor;
         if (!page.hasMoreNewer || next == null || next == cursor) break;
@@ -151,7 +155,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   /// TDS §13.6 — lastSeenMessageId is the newest MESSAGE item actually rendered on the
   /// client, never a server-side "latest" guess. No-op if the timeline has no MESSAGE item
   /// yet (call-only or empty) or the newest one is still an unconfirmed optimistic send.
-  Future<void> _markReadIfNeeded() async {
+  void _scheduleMarkReadIfNeeded() {
     TimelineItem? latestMessage;
     for (final item in _items.reversed) {
       if (item.kind == 'MESSAGE' && item.messageId != null) {
@@ -160,10 +164,48 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       }
     }
     if (latestMessage == null) return;
+    final messageId = latestMessage.messageId!;
+    if (messageId == _lastMarkedReadMessageId ||
+        messageId == _scheduledReadMessageId)
+      return;
+    _scheduledReadMessageId = messageId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _scheduledReadMessageId != messageId) return;
+      if (ModalRoute.of(context)?.isCurrent != true) {
+        _scheduledReadMessageId = null;
+        return;
+      }
+      _performMarkRead(messageId, attempt: 0);
+    });
+  }
+
+  Future<void> _performMarkRead(
+    String messageId, {
+    required int attempt,
+  }) async {
     try {
-      await DirectChatService.instance.markRead(widget.conversationId, latestMessage.messageId!);
+      await DirectChatService.instance.markRead(
+        widget.conversationId,
+        messageId,
+      );
+      if (!mounted || _scheduledReadMessageId != messageId) return;
+      _lastMarkedReadMessageId = messageId;
+      _scheduledReadMessageId = null;
+      ConversationRefreshBus.notify();
     } catch (_) {
-      // best-effort — server cursor is monotonic, the next successful call catches up.
+      if (!mounted || _scheduledReadMessageId != messageId) return;
+      if (attempt >= 2) {
+        _scheduledReadMessageId = null;
+        return;
+      }
+      _markReadRetry?.cancel();
+      _markReadRetry = Timer(Duration(seconds: 1 << attempt), () {
+        if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+          _performMarkRead(messageId, attempt: attempt + 1);
+        } else {
+          _scheduledReadMessageId = null;
+        }
+      });
     }
   }
 
@@ -303,6 +345,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _signalSubscription?.cancel();
+    _markReadRetry?.cancel();
     _signalingPort?.dispose();
     _textController.dispose();
     _scrollController.dispose();

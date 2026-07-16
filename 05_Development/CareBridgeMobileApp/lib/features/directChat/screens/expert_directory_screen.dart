@@ -25,6 +25,10 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   String? _error;
   int _page = 0;
   bool _hasMore = false;
+  bool _loadMoreFailed = false;
+  int _requestGeneration = 0;
+  String? _selectedSpecialty;
+  List<String> _specialties = const [];
   String? _startingChatWithExpertProfileId;
 
   @override
@@ -43,7 +47,8 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
         _hasMore &&
         !_loadingMore &&
         !_loading) {
@@ -53,29 +58,40 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () => _load(reset: true));
+    _debounce = Timer(
+      const Duration(milliseconds: 400),
+      () => _load(reset: true),
+    );
   }
 
   Future<void> _load({required bool reset}) async {
+    final generation = ++_requestGeneration;
+    final query = _searchController.text.trim();
+    final specialty = _selectedSpecialty;
     setState(() {
       _loading = true;
+      _loadingMore = false;
       _error = null;
+      _loadMoreFailed = false;
     });
     try {
       final page = await DirectChatService.instance.getExpertDirectory(
-        q: _searchController.text.trim(),
+        q: query,
+        specialty: specialty,
         page: 0,
         size: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _experts = page.experts;
         _page = page.currentPage;
         _hasMore = page.hasMore;
+        _specialties = page.specialties;
         _loading = false;
       });
+      _fillViewportIfNeeded(generation);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _error = 'Không thể tải danh sách chuyên gia.';
         _loading = false;
@@ -84,31 +100,66 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   }
 
   Future<void> _loadMore() async {
-    setState(() => _loadingMore = true);
+    final generation = _requestGeneration;
+    final query = _searchController.text.trim();
+    final specialty = _selectedSpecialty;
+    final nextPage = _page + 1;
+    setState(() {
+      _loadingMore = true;
+      _loadMoreFailed = false;
+    });
     try {
       final page = await DirectChatService.instance.getExpertDirectory(
-        q: _searchController.text.trim(),
-        page: _page + 1,
+        q: query,
+        specialty: specialty,
+        page: nextPage,
         size: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _experts = [..._experts, ...page.experts];
         _page = page.currentPage;
         _hasMore = page.hasMore;
+        _specialties = page.specialties;
       });
+      _fillViewportIfNeeded(generation);
     } catch (_) {
-      // best-effort — user can keep scrolling to retry via the scroll trigger
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _loadMoreFailed = true);
+      }
     } finally {
-      if (mounted) setState(() => _loadingMore = false);
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _loadingMore = false);
+      }
     }
   }
 
+  void _fillViewportIfNeeded(int generation) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          generation != _requestGeneration ||
+          !_hasMore ||
+          _loadingMore)
+        return;
+      if (_scrollController.hasClients &&
+          _scrollController.position.maxScrollExtent <= 0) {
+        _loadMore();
+      }
+    });
+  }
+
+  void _selectSpecialty(String? specialty) {
+    if (_selectedSpecialty == specialty) return;
+    setState(() => _selectedSpecialty = specialty);
+    _load(reset: true);
+  }
+
   Future<void> _startChat(ExpertDirectoryItem expert) async {
+    if (_startingChatWithExpertProfileId != null) return;
     setState(() => _startingChatWithExpertProfileId = expert.expertProfileId);
     try {
-      final conversation =
-          await DirectChatService.instance.findOrCreateConversation(expert.expertProfileId);
+      final conversation = await DirectChatService.instance
+          .findOrCreateConversation(expert.expertProfileId);
       if (!mounted) return;
       context.push('/direct-chat/${conversation.conversationId}');
     } catch (e) {
@@ -135,11 +186,37 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
               decoration: InputDecoration(
                 hintText: 'Tìm theo tên, chuyên khoa...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 isDense: true,
               ),
             ),
           ),
+          if (_specialties.isNotEmpty)
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  ChoiceChip(
+                    label: const Text('Tất cả'),
+                    selected: _selectedSpecialty == null,
+                    onSelected: (_) => _selectSpecialty(null),
+                  ),
+                  const SizedBox(width: 8),
+                  for (final specialty in _specialties) ...[
+                    ChoiceChip(
+                      label: Text(specialty),
+                      selected: _selectedSpecialty == specialty,
+                      onSelected: (_) => _selectSpecialty(specialty),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ),
           Expanded(child: _buildBody()),
         ],
       ),
@@ -157,7 +234,10 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
           children: [
             Text(_error!),
             const SizedBox(height: 12),
-            FilledButton(onPressed: () => _load(reset: true), child: const Text('Thử lại')),
+            FilledButton(
+              onPressed: () => _load(reset: true),
+              child: const Text('Thử lại'),
+            ),
           ],
         ),
       );
@@ -171,26 +251,43 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         if (index >= _experts.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: _loadMoreFailed
+                  ? OutlinedButton.icon(
+                      onPressed: _loadingMore ? null : _loadMore,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Tải lại'),
+                    )
+                  : const CircularProgressIndicator(strokeWidth: 2),
+            ),
           );
         }
         final expert = _experts[index];
-        final isStarting = _startingChatWithExpertProfileId == expert.expertProfileId;
+        final isStarting =
+            _startingChatWithExpertProfileId == expert.expertProfileId;
         return ListTile(
           leading: CircleAvatar(
-            backgroundImage:
-                expert.avatarUrl != null ? NetworkImage(expert.avatarUrl!) : null,
+            backgroundImage: expert.avatarUrl != null
+                ? NetworkImage(expert.avatarUrl!)
+                : null,
             child: expert.avatarUrl == null
-                ? Text((expert.displayName?.isNotEmpty == true ? expert.displayName![0] : '?').toUpperCase())
+                ? Text(
+                    (expert.displayName?.isNotEmpty == true
+                            ? expert.displayName![0]
+                            : '?')
+                        .toUpperCase(),
+                  )
                 : null,
           ),
           title: Row(
             children: [
               Flexible(
                 child: Text(
-                  expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia',
+                  expert.displayName ??
+                      expert.professionalTitle ??
+                      'Chuyên gia',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -199,13 +296,19 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
               const Icon(Icons.verified, size: 16, color: Colors.green),
             ],
           ),
-          subtitle: Text([
-            if (expert.specialty != null) expert.specialty!,
-            if (expert.experienceYears != null) '${expert.experienceYears} năm kinh nghiệm',
-            if (expert.ratingAvg != null) '★ ${expert.ratingAvg!.toStringAsFixed(1)}',
-          ].join(' · ')),
+          subtitle: Text(
+            [
+              if (expert.specialty != null) expert.specialty!,
+              if (expert.experienceYears != null)
+                '${expert.experienceYears} năm kinh nghiệm',
+              if (expert.ratingAvg != null)
+                '★ ${expert.ratingAvg!.toStringAsFixed(1)}',
+            ].join(' · '),
+          ),
           trailing: FilledButton(
-            onPressed: isStarting ? null : () => _startChat(expert),
+            onPressed: _startingChatWithExpertProfileId != null
+                ? null
+                : () => _startChat(expert),
             child: isStarting
                 ? const SizedBox(
                     width: 16,

@@ -142,7 +142,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		Set<UUID> userIds = result.getContent().stream().map(ExpertProfile::getUserId).collect(Collectors.toSet());
 		Map<UUID, User> usersById = userIds.isEmpty() ? Map.of()
 				: userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
-		return expertProfileMapper.toDirectoryResponse(result, usersById);
+		return expertProfileMapper.toDirectoryResponse(
+				result, usersById, expertProfileRepository.findApprovedSpecialties());
 	}
 
 	private static String blankToNull(String s) {

@@ -9,7 +9,8 @@ class ExpertPublicProfileScreen extends StatefulWidget {
   const ExpertPublicProfileScreen({super.key, required this.expertProfileId});
 
   @override
-  State<ExpertPublicProfileScreen> createState() => _ExpertPublicProfileScreenState();
+  State<ExpertPublicProfileScreen> createState() =>
+      _ExpertPublicProfileScreenState();
 }
 
 class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
@@ -36,8 +37,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     try {
       // UC-144D find-or-create — reuses the existing conversation if Mother already
       // messaged this Expert before (BR-DCC-002), never creates a duplicate.
-      final conversation =
-          await DirectChatService.instance.findOrCreateConversation(widget.expertProfileId);
+      final conversation = await DirectChatService.instance
+          .findOrCreateConversation(widget.expertProfileId);
       if (!mounted) return;
       context.push('/direct-chat/${conversation.conversationId}');
     } catch (e) {
@@ -63,7 +64,11 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         ),
         title: const Text(
           'Hồ sơ chuyên gia',
-          style: TextStyle(color: _primary, fontSize: 18, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: _primary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         centerTitle: true,
       ),
@@ -78,6 +83,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
           }
           final profile = snapshot.data!;
           final isApproved = profile['verificationStatus'] == 'APPROVED';
+          final displayName = profile['displayName'] as String?;
+          final professionalTitle = profile['professionalTitle'] as String?;
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Container(
@@ -92,42 +99,66 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    profile['displayName'] as String? ??
-                        profile['professionalTitle'] as String? ??
-                        'Chuyên gia',
+                    displayName ?? professionalTitle ?? 'Chuyên gia',
                     style: const TextStyle(
-                        color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700),
+                      color: _onSurface,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    profile['professionalTitle'] as String? ?? '',
-                    style: const TextStyle(
-                        color: _onSurfaceVariant, fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
+                  if (displayName != null &&
+                      professionalTitle != null &&
+                      professionalTitle != displayName) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      professionalTitle,
+                      style: const TextStyle(
+                        color: _onSurfaceVariant,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     profile['specialty'] as String? ?? '',
-                    style: const TextStyle(color: _onSurfaceVariant, fontSize: 14),
+                    style: const TextStyle(
+                      color: _onSurfaceVariant,
+                      fontSize: 14,
+                    ),
                   ),
                   if (profile['consultationScope'] != null) ...[
                     const SizedBox(height: 16),
                     Text(
                       profile['consultationScope'] as String,
-                      style: const TextStyle(color: _onSurfaceVariant, fontSize: 13, height: 1.4),
+                      style: const TextStyle(
+                        color: _onSurfaceVariant,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: isApproved && !_startingChat ? _startChat : null,
+                      onPressed: isApproved && !_startingChat
+                          ? _startChat
+                          : null,
                       child: _startingChat
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : Text(isApproved ? 'Trò chuyện' : 'Chuyên gia chưa được xác thực'),
+                          : Text(
+                              isApproved
+                                  ? 'Trò chuyện'
+                                  : 'Chuyên gia chưa được xác thực',
+                            ),
                     ),
                   ),
                 ],

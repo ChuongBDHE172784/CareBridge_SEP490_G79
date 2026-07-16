@@ -6,6 +6,7 @@ import '../../../integrations/firebaseRealtime/conversation_signaling_port.dart'
 import '../../../integrations/firebaseRealtime/firebase_conversation_signaling_port.dart';
 import '../models/direct_conversation.dart';
 import '../services/direct_chat_service.dart';
+import '../services/conversation_refresh_bus.dart';
 
 /// Shared between MOTHER and EXPERT roles (TDS §13.5).
 class ConversationListScreen extends StatefulWidget {
@@ -23,6 +24,8 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
   ConversationSignalingPort? _signalingPort;
   StreamSubscription? _signalSubscription;
+  StreamSubscription<void>? _refreshSubscription;
+  int _loadGeneration = 0;
 
   bool get _isExpert => AuthState.instance.role == 'EXPERT';
 
@@ -32,12 +35,14 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     WidgetsBinding.instance.addObserver(this);
     _load();
     _connectSignaling();
+    _refreshSubscription = ConversationRefreshBus.events.listen((_) => _load());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _signalSubscription?.cancel();
+    _refreshSubscription?.cancel();
     _signalingPort?.dispose();
     super.dispose();
   }
@@ -51,7 +56,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     final port = FirebaseConversationSignalingPort();
     _signalingPort = port;
     try {
-      _signalSubscription = port.events.listen((_) => _load());
+      _signalSubscription = port.events.listen((_) {
+        ConversationRefreshBus.notify();
+      });
       await port.connect();
     } catch (_) {
       // Firebase unavailable/misconfigured — degrade gracefully, same as DirectChatScreen.
@@ -60,16 +67,18 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
   Future<void> _load() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
     setState(() => _error = null);
     try {
-      final conversations = await DirectChatService.instance.listMyConversations();
-      if (!mounted) return;
+      final conversations = await DirectChatService.instance
+          .listMyConversations();
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _conversations = conversations;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _error = 'Lỗi tải danh sách: $e';
         _loading = false;
@@ -79,17 +88,14 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
   Future<void> _openConversation(DirectConversationSummary conversation) async {
     await context.push('/direct-chat/${conversation.conversationId}');
-    _load();
+    ConversationRefreshBus.notify();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Trò chuyện')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _buildBody(),
-      ),
+      body: RefreshIndicator(onRefresh: _load, child: _buildBody()),
     );
   }
 
@@ -170,7 +176,8 @@ class _ConversationTile extends StatelessWidget {
 
   String _relativeTime(DateTime? dt) {
     if (dt == null) return '';
-    final diff = DateTime.now().toUtc().difference(dt);
+    final rawDiff = DateTime.now().toUtc().difference(dt);
+    final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
     if (diff.inMinutes < 1) return 'Vừa xong';
     if (diff.inMinutes < 60) return '${diff.inMinutes} phút';
     if (diff.inHours < 24) return '${diff.inHours} giờ';
@@ -180,7 +187,8 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayTime = conversation.lastMessageAt ?? conversation.lastActivityAt;
+    final displayTime =
+        conversation.lastMessageAt ?? conversation.lastActivityAt;
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: conversation.counterpartAvatarUrl != null
@@ -190,7 +198,9 @@ class _ConversationTile extends StatelessWidget {
             ? Text(
                 (conversation.counterpartDisplayName?.isNotEmpty == true
                         ? conversation.counterpartDisplayName![0]
-                        : (conversation.counterpartRole == 'EXPERT' ? 'B' : 'M'))
+                        : (conversation.counterpartRole == 'EXPERT'
+                              ? 'B'
+                              : 'M'))
                     .toUpperCase(),
               )
             : null,
@@ -199,7 +209,7 @@ class _ConversationTile extends StatelessWidget {
         conversation.counterpartDisplayName ??
             (conversation.counterpartRole == 'EXPERT' ? 'Chuyên gia' : 'Mẹ'),
       ),
-      subtitle: !conversation.expertAvailable
+      subtitle: !isExpertViewer && !conversation.expertAvailable
           ? const Text(
               'Chuyên gia hiện không khả dụng',
               style: TextStyle(color: Colors.orange),
@@ -209,14 +219,19 @@ class _ConversationTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(_relativeTime(displayTime), style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            _relativeTime(displayTime),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           if (conversation.unreadCount > 0) ...[
             const SizedBox(height: 4),
             CircleAvatar(
               radius: 10,
               backgroundColor: Theme.of(context).colorScheme.error,
               child: Text(
-                conversation.unreadCount > 9 ? '9+' : '${conversation.unreadCount}',
+                conversation.unreadCount > 9
+                    ? '9+'
+                    : '${conversation.unreadCount}',
                 style: const TextStyle(fontSize: 10, color: Colors.white),
               ),
             ),

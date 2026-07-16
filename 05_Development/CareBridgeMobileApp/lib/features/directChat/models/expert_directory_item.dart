@@ -38,6 +38,7 @@ class ExpertDirectoryPage {
   final int pageSize;
   final int totalElements;
   final int totalPages;
+  final List<String> specialties;
 
   const ExpertDirectoryPage({
     required this.experts,
@@ -45,6 +46,7 @@ class ExpertDirectoryPage {
     required this.pageSize,
     required this.totalElements,
     required this.totalPages,
+    this.specialties = const [],
   });
 
   bool get hasMore => currentPage + 1 < totalPages;
@@ -60,6 +62,10 @@ class ExpertDirectoryPage {
       pageSize: json['pageSize'] as int? ?? rows.length,
       totalElements: (json['totalElements'] as num?)?.toInt() ?? rows.length,
       totalPages: json['totalPages'] as int? ?? 1,
+      specialties: (json['specialties'] as List? ?? const [])
+          .whereType<String>()
+          .where((value) => value.trim().isNotEmpty)
+          .toList(growable: false),
     );
   }
 }

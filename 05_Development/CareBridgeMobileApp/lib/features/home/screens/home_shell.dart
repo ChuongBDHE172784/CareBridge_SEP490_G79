@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'mother_home_screen.dart';
 import '../../journey/screens/mother_journey_screen.dart';
@@ -5,6 +6,7 @@ import '../../auth/screens/account_profile_screen.dart';
 import '../../directChat/screens/expert_directory_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/services/direct_chat_service.dart';
+import '../../directChat/services/conversation_refresh_bus.dart';
 
 /// Main app shell housing the BottomNavigationBar (5 tabs).
 /// Tabs: Home (CB-008) | Journey (CB-009) | Expert directory | Conversations | Profile
@@ -27,6 +29,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   late int _index;
   int _unreadConversationCount = 0;
+  StreamSubscription<void>? _refreshSubscription;
+  int _unreadLoadGeneration = 0;
 
   @override
   void initState() {
@@ -34,11 +38,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _index = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     _refreshUnreadCount();
+    _refreshSubscription = ConversationRefreshBus.events.listen(
+      (_) => _refreshUnreadCount(),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _refreshSubscription?.cancel();
     super.dispose();
   }
 
@@ -48,10 +56,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshUnreadCount() async {
+    final generation = ++_unreadLoadGeneration;
     try {
       final summary = await DirectChatService.instance.getUnreadSummary();
-      if (!mounted) return;
-      setState(() => _unreadConversationCount = summary.unreadConversationCount);
+      if (!mounted || generation != _unreadLoadGeneration) return;
+      setState(
+        () => _unreadConversationCount = summary.unreadConversationCount,
+      );
     } catch (_) {
       // best-effort — badge just stays at its last known value
     }
@@ -105,7 +116,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
           NavigationDestination(
             icon: _unreadConversationCount > 0
-                ? Badge(label: Text('$_unreadConversationCount'), child: const Icon(Icons.chat_bubble_outline))
+                ? Badge(
+                    label: Text('$_unreadConversationCount'),
+                    child: const Icon(Icons.chat_bubble_outline),
+                  )
                 : const Icon(Icons.chat_bubble_outline),
             selectedIcon: _unreadConversationCount > 0
                 ? Badge(

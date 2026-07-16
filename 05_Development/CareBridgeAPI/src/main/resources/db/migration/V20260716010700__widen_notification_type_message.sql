@@ -24,4 +24,4 @@ ALTER TABLE public.notification_records
 -- separate from created_at: an old PENDING row may be claimed for the first time
 -- long after creation and must still receive a fresh, exclusive processing lease.
 ALTER TABLE public.notification_records
-    ADD COLUMN processing_started_at timestamptz NULL;
+    ADD COLUMN IF NOT EXISTS processing_started_at timestamptz NULL;

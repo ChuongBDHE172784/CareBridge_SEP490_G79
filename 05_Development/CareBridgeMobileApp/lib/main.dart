@@ -15,7 +15,6 @@ void main() async {
   // throws on web and blocks runApp(), producing a blank white page.
   if (!kIsWeb) {
     await Firebase.initializeApp();
-    unawaited(FcmService.instance.initTapHandling());
   }
   // Auth and reminder state must be ready before the router renders.
   // Running them after runApp() causes a race: HomeShell fires API calls
@@ -38,6 +37,11 @@ void main() async {
     unawaited(FcmService.instance.registerToken());
   }
   runApp(const CareBridgeApp());
+  if (!kIsWeb) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(FcmService.instance.initTapHandling());
+    });
+  }
 }
 
 class CareBridgeApp extends StatelessWidget {

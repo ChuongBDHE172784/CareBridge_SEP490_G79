@@ -63,7 +63,7 @@ class ExpertProfileControllerTest {
     void getDirectory_qOver100Chars_rejected() throws Exception {
         String q101 = "a".repeat(101);
         when(expertProfileService.getPublicDirectory(null, null, 0, 10))
-                .thenReturn(new ExpertDirectoryResponse(List.of(), 0, 10, 0, 0));
+                .thenReturn(new ExpertDirectoryResponse(List.of(), 0, 10, 0, 0, List.of()));
 
         mockMvc.perform(get("/api/v1/expert/directory").param("q", q101))
                 .andExpect(status().isBadRequest())
@@ -75,7 +75,7 @@ class ExpertProfileControllerTest {
     void getDirectory_qExactly100Chars_accepted() throws Exception {
         String q100 = "a".repeat(100);
         when(expertProfileService.getPublicDirectory(null, q100, 0, 10))
-                .thenReturn(new ExpertDirectoryResponse(List.of(), 0, 10, 0, 0));
+                .thenReturn(new ExpertDirectoryResponse(List.of(), 0, 10, 0, 0, List.of()));
 
         mockMvc.perform(get("/api/v1/expert/directory").param("q", q100))
                 .andExpect(status().isOk());

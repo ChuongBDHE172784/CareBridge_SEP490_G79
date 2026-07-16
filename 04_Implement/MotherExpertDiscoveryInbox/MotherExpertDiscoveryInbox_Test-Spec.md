@@ -911,7 +911,7 @@ class NotificationRecordWriter {
 - [x] `CB-EXPCHAT-IMP-001` TDS đã `Approved`
 - [x] Test-Spec này đã `Approved`
 - [x] Logic Issues (§2) đã confirm khớp code thật (không dựa vào TDS cũ UC80)
-- [x] Migration 3 file đã tạo và chạy thành công qua Testcontainers (`./mvnw test`, real Postgres, Flyway `enabled=true`) — **chưa** chạy trên DB dev Supabase dùng chung: `spring.flyway.enabled=false` cho `spring-boot:run` cục bộ (cấu hình có sẵn từ trước, không phải do feature này), và khi bật thử tạm thời để kiểm chứng, Flyway validation fail trên **3 migration khác không liên quan** (`20260711120000`, `20260712000000`, `20260713010000` — checksum lệch giữa DB và đĩa, không phải file của feature này) — đã revert lại trạng thái ban đầu, không migrate DB dùng chung. Xem báo cáo E2E cuối tài liệu.
+- [x] 3 migration đã chạy thành công qua Testcontainers và trên DB dev Supabase dùng chung. Trước khi áp dụng đã xác nhận chỉ 3 version của feature đang pending; không repair hay thay đổi lịch sử của 3 migration cũ đang checksum drift. Chi tiết thao tác an toàn và kết quả E2E ở §10.
 
 ### Exit Criteria (DoD)
 - [x] `./mvnw test` — tất cả unit/integration test MEDI-TC-* xanh (146/146 test trong `directchat`/`notification`/`expert` packages; xem báo cáo cuối)
@@ -992,7 +992,7 @@ git checkout -- 05_Development/CareBridgeMobileApp/test/features/directChat/
 1. **6 file renamed `*IT.java` → `*IntegrationTest.java`** (TC-002, 009, 014b, 015, 019, 020, 021, SEC-001) — this project's Surefire uses the default include pattern (`**/*Test.java`), which silently skips bare `*IT.java` files under plain `./mvnw test`; confirmed no pre-existing file in the repo uses that suffix. Pure rename, no logic change — see §5 header note.
 2. **MEDI-TC-014b audit oracle** — Test-Spec text says "tồn tại 1 audit log entry NOTIFICATION_FAILED"; implemented/tested as "AuditService.log called exactly once" (Mockito spy) instead of a persisted `audit_logs` row, because `AuditEligibilityPolicy` (pre-existing, unrelated to this feature) does not allowlist `NOTIFICATION_SENT`/`NOTIFICATION_FAILED` — confirmed `CommunityReplyNotificationService` (the exact pattern ADR-MEDI-004 says to mirror) hits the identical no-op today. Touching `AuditEligibilityPolicy` was out of scope (unrelated code, "smallest scoped change").
 3. **EXPERT shell "Yêu cầu" bottom-nav callback (TDS §13.2)** — instruction said "nối callback rỗng tại dòng 465"; ADR-MEDI-005 replaces the entire custom-drawn bottom nav with a real `NavigationBar` (`ExpertHomeShell`), so that specific empty-callback row was removed structurally rather than patched — a second fake nav bar under the real one would be the actual bug.
-4. **`ExpertDirectoryScreen` specialty filter chips (TDS §13.3)** — not implemented. No backend endpoint exists for "distinct specialty values" and deriving chips from only the current page would be misleading UX; deferred as a disclosed gap rather than building a partial/misleading version. Search, pagination, "Đã xác thực" badge, avatar/displayName/rating/experience — all implemented.
+4. **`ExpertDirectoryScreen` specialty filter chips (TDS §13.3)** — originally deferred, then resolved during the adversarial mobile review after explicit user approval to expand scope. `ExpertDirectoryResponse.specialties` now returns distinct, non-blank values from `APPROVED` experts; chips are server-owned and filtering uses the existing `specialty` parameter.
 5. **`ExpertDirectoryScreen`/`ConversationListScreen`'s tap-to-profile navigation (MEDI-FL-05)** — this was genuinely missing from the original screen (only had a "Trò chuyện" CTA button, no way to view the profile itself); added `onTap` on the list row pushing `/expert/public/{expertProfileId}`, per the Test-Spec's own explicit assertion.
 
 ---
@@ -1028,9 +1028,13 @@ Manual E2E was run against the real backend (`spring-boot:run`, `supabase` profi
 - `POST /api/v1/direct-conversations/expert/{expertProfileId}` (find-or-create) — OK, returns a real `conversationId`.
 - `POST /api/v1/direct-conversations/{id}/messages` — message genuinely persisted, response shape correct.
 
-**Blocked — could not verify live, exact reason:** `GET /api/v1/direct-conversations`, `GET /api/v1/direct-conversations/unread-summary`, `PATCH /api/v1/direct-conversations/{id}/read`, `GET /api/v1/notifications` all returned HTTP 500 against the shared Supabase dev database. Root cause: `column dc.mother_last_read_at does not exist` — this session's 3 new Flyway migrations were never applied to that shared database, because `spring.flyway.enabled=false` for local `spring-boot:run` (pre-existing project configuration, confirmed unmodified by this session via `git diff`). Attempted to temporarily enable Flyway (`SPRING_FLYWAY_ENABLED=true`) to apply the pending migrations and complete the check; this surfaced a **second, unrelated pre-existing issue**: Flyway validation failed on 3 *other* migrations (`20260711120000`, `20260712000000`, `20260713010000` — none created by this session) with a checksum mismatch between what's applied on the shared DB and what's currently on disk. Since repairing that drift is a judgment call about unrelated migrations this session didn't author, the attempt was aborted and the backend was restarted in its original (Flyway-disabled) state — confirmed the shared database schema was left unchanged, and Slice 1 (`q` search) still works correctly afterward.
-- **These same endpoints are fully verified GREEN** via `./mvnw test` (Testcontainers, real Postgres, Flyway `enabled=true` — the 3 new migrations apply cleanly from scratch every run, 146/146 tests passing in `directchat`/`notification`/`expert` packages, including `DirectMessageServiceImplExpertRevokedTest`, `DirectConversationServiceImplReadTest`, `DirectMessageNotificationServiceIdempotencyIntegrationTest`, `NotificationRecordWriterConcurrencyIntegrationTest`) — this is strong evidence the code itself is correct; what's unverified live is specifically *this shared dev database's current migration state*, an ops/deployment concern outside this feature's code.
-- **Not attempted:** mobile app E2E (Flutter web/emulator) — would require spinning up a device/browser + the backend fully migrated; given the above blocker and the scope already covered by 65 automated Flutter tests (including MEDI-FL-01..11 widget tests exercising the exact same screens against scripted fakes), this was not additionally run manually.
+**Follow-up verification completed:** the shared database was inspected read-only before mutation. The only pending versions were this feature's `20260716010600`, `20260716010700`, and `20260716010800`; cursor/processing columns already existed from an earlier partial schema change. The first two migrations were made rerunnable with `ADD COLUMN IF NOT EXISTS`, then exactly these three versions were applied with Flyway validation temporarily disabled. No checksum repair or history rewrite was performed for the unrelated drift at `20260711120000`, `20260712000000`, and `20260713010000`.
+
+- Live conversation list, unread summary, mark-read and notification endpoints now pass against the shared Supabase DB. The verified transition was unread `1 → 0`, with the returned read cursor matching the last-seen message.
+- MESSAGE notification durability was verified: one idempotent notification row exists. Delivery is `FAILED` as expected because the seeded test account has no registered FCM device token; the message remains durable.
+- Flutter Web E2E was run against the real backend for both roles: MOTHER directory/search/specialty filter/profile/chat/inbox and EXPERT shell/inbox/chat all passed.
+- The E2E exposed a nested legacy navigation bar inside EXPERT's “Yêu cầu” tab. It was fixed by embedding `ExpertQuestionQueueScreen` in the shell, hiding its legacy inner navigation/back controls, and renaming the heading to “Yêu cầu tư vấn”. A widget regression assertion and a second visual E2E pass confirm exactly one bottom navigation bar remains.
+- Native FCM receipt/tap was not exercised on Flutter Web. Cold-start routing remains covered by automated tests; a physical device with a registered token is still required to prove actual push delivery.
 
 ---
 
@@ -1050,3 +1054,21 @@ The following are blocking regression conditions for the approved amendment:
   previews are deterministic.
 
 *Status remains Approved; this addendum was explicitly selected by the user during code review.*
+
+### Mobile Review Findings (2026-07-16)
+
+- [x] [Review][Patch] Implement real specialty discovery/filtering end-to-end; user selected scope expansion rather than the previously disclosed deferral.
+- [x] [Review][Patch] Queue cold-start MESSAGE deep links until authentication and the root navigator are ready. [`fcm_service.dart`]
+- [x] [Review][Patch] Validate and safely encode notification route identifiers. [`fcm_service.dart`]
+- [x] [Review][Patch] Prevent older directory searches from overwriting newer results. [`expert_directory_screen.dart`]
+- [x] [Review][Patch] Prevent old-query pagination from contaminating reset search results. [`expert_directory_screen.dart`]
+- [x] [Review][Patch] Auto-load additional directory pages when the first page cannot fill the viewport. [`expert_directory_screen.dart`]
+- [x] [Review][Patch] Provide an explicit retry state after pagination failure. [`expert_directory_screen.dart`]
+- [x] [Review][Patch] Prevent concurrent find-or-create requests from pushing competing chat routes. [`expert_directory_screen.dart`]
+- [x] [Review][Patch] Sequence overlapping inbox loads so stale responses and errors cannot win. [`conversation_list_screen.dart`]
+- [x] [Review][Patch] Do not label a mother counterpart as an unavailable expert in the expert inbox. [`conversation_list_screen.dart`]
+- [x] [Review][Patch] Refresh Mother and Expert shell unread badges on foreground chat events and after mark-read. [`home_shell.dart`, `expert_home_shell.dart`]
+- [x] [Review][Patch] Mark messages read only after the corresponding frame has rendered, with safe retry behavior. [`direct_chat_screen.dart`]
+- [x] [Review][Patch] Avoid duplicate professional-title rendering when expert displayName is absent. [`expert_public_profile_screen.dart`]
+- [x] [Review][Patch] Clamp future conversation timestamps before relative-time formatting. [`conversation_list_screen.dart`]
+- [x] [Review][Patch] Strengthen the Expert request-tab widget test so it proves the destination screen rendered. [`expert_app_home_screen_test.dart`]

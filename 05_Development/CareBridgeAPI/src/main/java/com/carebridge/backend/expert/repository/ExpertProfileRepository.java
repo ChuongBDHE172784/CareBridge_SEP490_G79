@@ -52,4 +52,9 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      """,
      nativeQuery = true)
  Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
+
+ @Query("SELECT DISTINCT TRIM(ep.specialty) FROM ExpertProfile ep "
+     + "WHERE ep.verificationStatus = 'APPROVED' AND ep.specialty IS NOT NULL "
+     + "AND TRIM(ep.specialty) <> '' ORDER BY TRIM(ep.specialty)")
+ List<String> findApprovedSpecialties();
 }

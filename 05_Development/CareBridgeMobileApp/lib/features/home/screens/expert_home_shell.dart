@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'expert_app_home_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
 import '../../community/screens/expert_question_queue_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/services/direct_chat_service.dart';
+import '../../directChat/services/conversation_refresh_bus.dart';
 import '../../expert/screens/expert_calendar_screen.dart';
 
 /// EXPERT app shell — ADR-MEDI-005: converts the EXPERT role from a single Scaffold with a
@@ -17,24 +19,31 @@ class ExpertHomeShell extends StatefulWidget {
   State<ExpertHomeShell> createState() => _ExpertHomeShellState();
 }
 
-class _ExpertHomeShellState extends State<ExpertHomeShell> with WidgetsBindingObserver {
+class _ExpertHomeShellState extends State<ExpertHomeShell>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
 
   int _index = 0;
   int _unreadConversationCount = 0;
+  StreamSubscription<void>? _refreshSubscription;
+  int _unreadLoadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refreshUnreadCount();
+    _refreshSubscription = ConversationRefreshBus.events.listen(
+      (_) => _refreshUnreadCount(),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _refreshSubscription?.cancel();
     super.dispose();
   }
 
@@ -44,10 +53,13 @@ class _ExpertHomeShellState extends State<ExpertHomeShell> with WidgetsBindingOb
   }
 
   Future<void> _refreshUnreadCount() async {
+    final generation = ++_unreadLoadGeneration;
     try {
       final summary = await DirectChatService.instance.getUnreadSummary();
-      if (!mounted) return;
-      setState(() => _unreadConversationCount = summary.unreadConversationCount);
+      if (!mounted || generation != _unreadLoadGeneration) return;
+      setState(
+        () => _unreadConversationCount = summary.unreadConversationCount,
+      );
     } catch (_) {
       // best-effort — badge just stays at its last known value
     }
@@ -61,7 +73,7 @@ class _ExpertHomeShellState extends State<ExpertHomeShell> with WidgetsBindingOb
   static const _pages = <Widget>[
     ExpertAppHomeScreen(), // 0: Tổng quan (unchanged dashboard content)
     ConversationListScreen(), // 1: Trò chuyện (shared with MOTHER)
-    ExpertQuestionQueueScreen(), // 2: Yêu cầu
+    ExpertQuestionQueueScreen(embeddedInShell: true), // 2: Yêu cầu
     ExpertCalendarScreen(), // 3: Lịch
     AccountProfileScreen(), // 4: Tài khoản
   ];
@@ -87,7 +99,10 @@ class _ExpertHomeShellState extends State<ExpertHomeShell> with WidgetsBindingOb
           ),
           NavigationDestination(
             icon: _unreadConversationCount > 0
-                ? Badge(label: Text('$_unreadConversationCount'), child: const Icon(Icons.chat_bubble_outline))
+                ? Badge(
+                    label: Text('$_unreadConversationCount'),
+                    child: const Icon(Icons.chat_bubble_outline),
+                  )
                 : const Icon(Icons.chat_bubble_outline),
             selectedIcon: _unreadConversationCount > 0
                 ? Badge(

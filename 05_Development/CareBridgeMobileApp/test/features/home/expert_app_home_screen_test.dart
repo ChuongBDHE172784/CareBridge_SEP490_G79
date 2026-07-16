@@ -4,14 +4,17 @@ import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
 import 'package:untitled/features/home/screens/expert_home_shell.dart';
+import 'package:untitled/features/community/screens/expert_question_queue_screen.dart';
 
 class _FakeDirectChatService extends DirectChatService {
   int unreadConversationCount;
   _FakeDirectChatService({this.unreadConversationCount = 0});
 
   @override
-  Future<List<DirectConversationSummary>> listMyConversations() async => const [];
+  Future<List<DirectConversationSummary>> listMyConversations() async =>
+      const [];
 
   @override
   Future<UnreadSummary> getUnreadSummary() async => UnreadSummary(
@@ -46,19 +49,42 @@ void main() {
     'EXPERT bottom nav shows unread badge on Trò chuyện; Yêu cầu tab actually navigates (no longer a no-op)',
     (tester) async {
       original = DirectChatService.instance;
-      DirectChatService.instance = _FakeDirectChatService(unreadConversationCount: 3);
+      DirectChatService.instance = _FakeDirectChatService(
+        unreadConversationCount: 3,
+      );
 
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      expect(find.text('3'), findsOneWidget); // Badge label on the Trò chuyện destination
+      expect(
+        find.text('3'),
+        findsOneWidget,
+      ); // Badge label on the Trò chuyện destination
 
       await tester.tap(find.text('Yêu cầu'));
       await tester.pumpAndSettle();
 
       // ExpertQuestionQueueScreen actually rendered in place — not a no-op empty callback.
-      expect(find.text('Yêu cầu'), findsWidgets); // nav label + possibly screen content
-      expect(find.byType(ExpertHomeShell), findsOneWidget);
+      expect(find.byType(ExpertQuestionQueueScreen), findsOneWidget);
+      expect(find.text('Yêu cầu tư vấn'), findsOneWidget);
+      expect(find.text('Cộng đồng'), findsNothing);
+      expect(find.byType(NavigationBar), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'foreground conversation events refresh the Expert unread badge',
+    (tester) async {
+      original = DirectChatService.instance;
+      final service = _FakeDirectChatService();
+      DirectChatService.instance = service;
+      await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
+      await tester.pumpAndSettle();
+
+      service.unreadConversationCount = 4;
+      ConversationRefreshBus.notify();
+      await tester.pumpAndSettle();
+      expect(find.text('4'), findsOneWidget);
     },
   );
 
@@ -83,15 +109,29 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      for (final label in const ['Tìm chuyên gia', 'Tìm Mother', 'Nhắn tin mới']) {
+      for (final label in const [
+        'Tìm chuyên gia',
+        'Tìm Mother',
+        'Nhắn tin mới',
+      ]) {
         expect(find.text(label), findsNothing);
       }
 
       // Visit every tab and re-check — IndexedStack keeps them all built, but assert per tab too.
-      for (final tabLabel in const ['Trò chuyện', 'Yêu cầu', 'Lịch', 'Tài khoản', 'Tổng quan']) {
+      for (final tabLabel in const [
+        'Trò chuyện',
+        'Yêu cầu',
+        'Lịch',
+        'Tài khoản',
+        'Tổng quan',
+      ]) {
         await tester.tap(find.text(tabLabel).first);
         await tester.pumpAndSettle();
-        for (final label in const ['Tìm chuyên gia', 'Tìm Mother', 'Nhắn tin mới']) {
+        for (final label in const [
+          'Tìm chuyên gia',
+          'Tìm Mother',
+          'Nhắn tin mới',
+        ]) {
           expect(find.text(label), findsNothing);
         }
       }

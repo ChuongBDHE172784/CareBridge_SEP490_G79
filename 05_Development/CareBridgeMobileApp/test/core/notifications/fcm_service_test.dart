@@ -7,13 +7,16 @@ import 'package:untitled/core/notifications/fcm_service.dart';
 // (extracted as FcmService.resolveTapRoute specifically for this reason) rather than driving
 // FirebaseMessaging.onMessageOpenedApp/getInitialMessage end-to-end.
 void main() {
-  test('MESSAGE type with a conversationId resolves to the direct-chat deep link', () {
-    final route = FcmService.resolveTapRoute({
-      'type': 'MESSAGE',
-      'conversationId': 'X',
-    });
-    expect(route, '/direct-chat/X');
-  });
+  test(
+    'MESSAGE type with a conversationId resolves to the direct-chat deep link',
+    () {
+      final route = FcmService.resolveTapRoute({
+        'type': 'MESSAGE',
+        'conversationId': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      });
+      expect(route, '/direct-chat/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    },
+  );
 
   test('cold-start equivalent: same MESSAGE payload resolves identically', () {
     // initTapHandling()'s getInitialMessage() branch and the onMessageOpenedApp branch both
@@ -21,9 +24,9 @@ void main() {
     // that both paths share (and are covered by) the same decision logic.
     final route = FcmService.resolveTapRoute({
       'type': 'MESSAGE',
-      'conversationId': 'X',
+      'conversationId': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
-    expect(route, '/direct-chat/X');
+    expect(route, '/direct-chat/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });
 
   test('MESSAGE type without a conversationId resolves to no route', () {
@@ -34,9 +37,23 @@ void main() {
   test('EMERGENCY_ALERT still resolves to its existing route (regression)', () {
     final route = FcmService.resolveTapRoute({
       'type': 'EMERGENCY_ALERT',
-      'sessionId': 'S1',
+      'sessionId': 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     });
-    expect(route, '/emergency/alert/S1');
+    expect(route, '/emergency/alert/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+  });
+
+  test('malformed route identifiers are rejected', () {
+    expect(
+      FcmService.resolveTapRoute({
+        'type': 'MESSAGE',
+        'conversationId': '../admin',
+      }),
+      isNull,
+    );
+    expect(
+      FcmService.resolveTapRoute({'type': 'MESSAGE', 'conversationId': 123}),
+      isNull,
+    );
   });
 
   test('unknown type resolves to no route', () {

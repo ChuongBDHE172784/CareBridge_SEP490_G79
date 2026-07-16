@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import '../network/api_client.dart';
 import '../routes/app_router.dart';
+import '../../features/directChat/services/conversation_refresh_bus.dart';
 
 /// Registers this device's FCM token with the backend
 /// (POST /api/v1/notifications/device-token) so server-side alerts
@@ -14,6 +16,11 @@ class FcmService {
 
   StreamSubscription<String>? _refreshSub;
   bool _tapHandlingInitialized = false;
+  String? _pendingRoute;
+  bool _flushScheduled = false;
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
 
   /// Call once after a successful login. Safe to call multiple times —
   /// registering the same token again is a harmless no-op server-side.
@@ -39,8 +46,12 @@ class FcmService {
     if (_tapHandlingInitialized) return;
     _tapHandlingInitialized = true;
     FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
+    FirebaseMessaging.onMessage.listen((message) {
+      if (message.data['type'] == 'MESSAGE') ConversationRefreshBus.notify();
+    });
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) _handleTap(initialMessage);
+    flushPendingRoute();
   }
 
   /// Pure routing decision, factored out of [_handleTap] so it's testable without the
@@ -49,12 +60,16 @@ class FcmService {
   @visibleForTesting
   static String? resolveTapRoute(Map<String, dynamic> data) {
     final sessionId = data['sessionId'];
-    if (data['type'] == 'EMERGENCY_ALERT' && sessionId != null) {
-      return '/emergency/alert/$sessionId';
+    if (data['type'] == 'EMERGENCY_ALERT' &&
+        sessionId is String &&
+        _uuidPattern.hasMatch(sessionId)) {
+      return '/emergency/alert/${Uri.encodeComponent(sessionId)}';
     }
     final conversationId = data['conversationId'];
-    if (data['type'] == 'MESSAGE' && conversationId != null) {
-      return '/direct-chat/$conversationId';
+    if (data['type'] == 'MESSAGE' &&
+        conversationId is String &&
+        _uuidPattern.hasMatch(conversationId)) {
+      return '/direct-chat/${Uri.encodeComponent(conversationId)}';
     }
     return null;
   }
@@ -62,10 +77,34 @@ class FcmService {
   void _handleTap(RemoteMessage message) {
     final route = resolveTapRoute(message.data);
     if (route == null) return;
+    _pendingRoute = route;
+    flushPendingRoute();
+    _schedulePendingFlush();
+  }
+
+  /// Keeps a one-shot cold-start deep link until both auth restoration and the root
+  /// navigator are ready. Firebase's initial message cannot be consumed a second time.
+  void flushPendingRoute() {
+    final route = _pendingRoute;
     final context = rootNavigatorKey.currentContext;
-    if (context != null) {
-      GoRouter.of(context).push(route);
-    }
+    if (route == null || context == null) return;
+    _pendingRoute = null;
+    GoRouter.of(context).push(route);
+  }
+
+  void _schedulePendingFlush([int attempt = 0]) {
+    if (_pendingRoute == null || _flushScheduled) return;
+    _flushScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _flushScheduled = false;
+      flushPendingRoute();
+      if (_pendingRoute != null && attempt < 40) {
+        Timer(
+          const Duration(milliseconds: 50),
+          () => _schedulePendingFlush(attempt + 1),
+        );
+      }
+    });
   }
 
   Future<void> _send(String token) async {
