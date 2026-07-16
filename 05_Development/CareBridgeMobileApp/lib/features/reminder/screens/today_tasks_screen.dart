@@ -17,7 +17,7 @@ class TodayTasksScreen extends StatefulWidget {
   State<TodayTasksScreen> createState() => _TodayTasksScreenState();
 }
 
-enum _TaskFilter { all, pending, completed, snoozed }
+enum _TaskFilter { all, pending, completed, skipped }
 
 class _TodayTasksScreenState extends State<TodayTasksScreen> {
   static const _primary = Color(0xFF845143);
@@ -70,8 +70,8 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
           return task.isPending;
         case _TaskFilter.completed:
           return task.isCompleted;
-        case _TaskFilter.snoozed:
-          return task.isSnoozed;
+        case _TaskFilter.skipped:
+          return task.isSkipped;
       }
     }).toList();
     list.sort((a, b) => a.dueAt.compareTo(b.dueAt));
@@ -231,9 +231,9 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
             ),
             const SizedBox(width: 8),
             _FilterPill(
-              label: 'Đang hoãn',
-              selected: _filter == _TaskFilter.snoozed,
-              onTap: () => setState(() => _filter = _TaskFilter.snoozed),
+              label: 'Bỏ qua',
+              selected: _filter == _TaskFilter.skipped,
+              onTap: () => setState(() => _filter = _TaskFilter.skipped),
             ),
           ],
         ),
@@ -566,26 +566,7 @@ class _TaskCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (task.isSnoozed)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFDAD6).withAlpha(77),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: const Text(
-                            'Đã hoãn',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 12,
-                              color: Color(0xFFBA1A1A),
-                            ),
-                          ),
-                        )
-                      else if (task.isCompleted)
+                      if (task.isCompleted)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -601,6 +582,25 @@ class _TaskCard extends StatelessWidget {
                               fontFamily: 'Lexend',
                               fontSize: 12,
                               color: Color(0xFF1E8E3E),
+                            ),
+                          ),
+                        )
+                      else if (task.isSkipped)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE8C7),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Text(
+                            'Đã bỏ qua',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: Color(0xFF8A4B00),
                             ),
                           ),
                         ),
