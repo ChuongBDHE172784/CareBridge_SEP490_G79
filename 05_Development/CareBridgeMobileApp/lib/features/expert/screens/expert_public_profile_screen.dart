@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/network/api_client.dart';
 import '../../directChat/services/direct_chat_service.dart';
 
 class ExpertPublicProfileScreen extends StatefulWidget {
@@ -29,10 +28,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     _future = _loadProfile();
   }
 
-  Future<Map<String, dynamic>> _loadProfile() async {
-    final response = await apiGet('/api/v1/expert/profiles/${widget.expertProfileId}');
-    return response['data'] as Map<String, dynamic>;
-  }
+  Future<Map<String, dynamic>> _loadProfile() =>
+      DirectChatService.instance.getExpertProfile(widget.expertProfileId);
 
   Future<void> _startChat() async {
     setState(() => _startingChat = true);
@@ -95,9 +92,17 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    profile['professionalTitle'] as String? ?? 'Chuyên gia',
+                    profile['displayName'] as String? ??
+                        profile['professionalTitle'] as String? ??
+                        'Chuyên gia',
                     style: const TextStyle(
                         color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    profile['professionalTitle'] as String? ?? '',
+                    style: const TextStyle(
+                        color: _onSurfaceVariant, fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   Text(

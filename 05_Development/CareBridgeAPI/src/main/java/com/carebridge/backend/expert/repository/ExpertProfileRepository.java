@@ -2,6 +2,8 @@ package com.carebridge.backend.expert.repository;
 
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,4 +29,27 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
  List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
 
  List<ExpertProfile> findByUserIdIn(Set<UUID> userIds);
+
+ // ADR-MEDI-001 mục 1-2 — real pagination (Pageable actually applied, unlike
+ // findVerifiedPublic/findVerifiedBySpecialty above) + optional case-insensitive text search
+ // across users.full_name / expert_profiles.professional_title / expert_profiles.workplace.
+ @Query(value = """
+     SELECT ep.* FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
+     WHERE ep.verification_status = 'APPROVED'
+       AND (:specialty IS NULL OR ep.specialty = :specialty)
+       AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(ep.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
+     ORDER BY ep.rating_avg DESC NULLS LAST, ep.expert_profile_id ASC
+     """,
+     countQuery = """
+     SELECT COUNT(*) FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
+     WHERE ep.verification_status = 'APPROVED'
+       AND (:specialty IS NULL OR ep.specialty = :specialty)
+       AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(ep.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
+     """,
+     nativeQuery = true)
+ Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
 }

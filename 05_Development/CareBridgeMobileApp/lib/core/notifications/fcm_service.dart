@@ -9,8 +9,8 @@ import '../routes/app_router.dart';
 /// (POST /api/v1/notifications/device-token) so server-side alerts
 /// (e.g. UC-65 family emergency alert) can reach this device for real.
 class FcmService {
-  static final FcmService instance = FcmService._();
-  FcmService._();
+  // Mutable so widget tests can swap in a fake subclass to drive _handleTap directly.
+  static FcmService instance = FcmService();
 
   StreamSubscription<String>? _refreshSub;
   bool _tapHandlingInitialized = false;
@@ -43,13 +43,28 @@ class FcmService {
     if (initialMessage != null) _handleTap(initialMessage);
   }
 
+  /// Pure routing decision, factored out of [_handleTap] so it's testable without the
+  /// Firebase Messaging platform channel (this codebase has no Firebase test-mocking
+  /// infrastructure anywhere yet — see MEDI-FL-09).
+  @visibleForTesting
+  static String? resolveTapRoute(Map<String, dynamic> data) {
+    final sessionId = data['sessionId'];
+    if (data['type'] == 'EMERGENCY_ALERT' && sessionId != null) {
+      return '/emergency/alert/$sessionId';
+    }
+    final conversationId = data['conversationId'];
+    if (data['type'] == 'MESSAGE' && conversationId != null) {
+      return '/direct-chat/$conversationId';
+    }
+    return null;
+  }
+
   void _handleTap(RemoteMessage message) {
-    final sessionId = message.data['sessionId'];
-    if (message.data['type'] == 'EMERGENCY_ALERT' && sessionId != null) {
-      final context = rootNavigatorKey.currentContext;
-      if (context != null) {
-        GoRouter.of(context).push('/emergency/alert/$sessionId');
-      }
+    final route = resolveTapRoute(message.data);
+    if (route == null) return;
+    final context = rootNavigatorKey.currentContext;
+    if (context != null) {
+      GoRouter.of(context).push(route);
     }
   }
 

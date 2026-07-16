@@ -21,6 +21,17 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
 
     Page<NotificationRecord> findByUserIdAndType(UUID userId, NotificationType type, Pageable pageable);
 
+    @Query("SELECT r FROM NotificationRecord r WHERE r.userId = :userId "
+            + "AND r.status NOT IN ('PENDING', 'PROCESSING')")
+    Page<NotificationRecord> findVisibleByUserId(@Param("userId") UUID userId, Pageable pageable);
+
+    @Query("SELECT r FROM NotificationRecord r WHERE r.userId = :userId AND r.type = :type "
+            + "AND r.status NOT IN ('PENDING', 'PROCESSING')")
+    Page<NotificationRecord> findVisibleByUserIdAndType(
+            @Param("userId") UUID userId,
+            @Param("type") NotificationType type,
+            Pageable pageable);
+
     // =========================================================================
     // UC-12: Mark as Read
     // =========================================================================
@@ -68,6 +79,12 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     /**
      * Count unread notifications for a user.
      */
-    @Query("SELECT COUNT(r) FROM NotificationRecord r WHERE r.userId = :userId AND r.isRead = false")
+    @Query("SELECT COUNT(r) FROM NotificationRecord r WHERE r.userId = :userId AND r.isRead = false "
+            + "AND r.status NOT IN ('PENDING', 'PROCESSING')")
     long countUnreadByUserId(@Param("userId") UUID userId);
+
+    // ADR-MEDI-004 mục 3 — lookup after NotificationRecordWriter.insertIfAbsent's ON CONFLICT DO
+    // NOTHING, to read back the row that already exists for this (recipient, messageId) pair.
+    Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceType(
+            UUID userId, UUID referenceId, NotificationType type, String referenceType);
 }

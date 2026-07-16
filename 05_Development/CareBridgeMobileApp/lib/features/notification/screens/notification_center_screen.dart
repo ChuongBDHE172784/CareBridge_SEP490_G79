@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
@@ -230,6 +231,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       onTap: () async {
         await _markAsRead(n);
         if (!mounted) return;
+        // TDS §13.8 — MESSAGE bypasses the generic detail screen and deep-links straight
+        // into the conversation; every other type keeps the existing generic behavior.
+        final conversationId = n.type.toUpperCase() == 'MESSAGE'
+            ? (n.metadata?['conversationId'] as String?)
+            : null;
+        if (conversationId != null) {
+          context.push('/direct-chat/$conversationId');
+          return;
+        }
         await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => NotificationDetailScreen(notification: n),

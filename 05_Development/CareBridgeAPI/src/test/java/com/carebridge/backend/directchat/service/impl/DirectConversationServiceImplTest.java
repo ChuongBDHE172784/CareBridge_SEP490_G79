@@ -3,6 +3,7 @@ package com.carebridge.backend.directchat.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -15,11 +16,14 @@ import com.carebridge.backend.directchat.dto.response.DirectConversationSummaryR
 import com.carebridge.backend.directchat.entity.DirectConversation;
 import com.carebridge.backend.directchat.exception.DirectChatException;
 import com.carebridge.backend.directchat.policy.IDirectConversationPolicy;
+import com.carebridge.backend.directchat.repository.ConversationSummaryAggregateRepository;
 import com.carebridge.backend.directchat.repository.DirectConversationRepository;
+import com.carebridge.backend.directchat.repository.DirectMessageRepository;
 import com.carebridge.backend.directchat.service.FindOrCreateConversationResult;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,6 +42,9 @@ class DirectConversationServiceImplTest {
 
     @Mock private DirectConversationRepository conversationRepository;
     @Mock private ExpertProfileRepository expertProfileRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private DirectMessageRepository messageRepository;
+    @Mock private ConversationSummaryAggregateRepository aggregateRepository;
     @Mock private IDirectConversationPolicy policy;
     @Mock private DirectConversationWriter writer;
     @Mock private AuditService auditService;
@@ -53,7 +60,8 @@ class DirectConversationServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new DirectConversationServiceImpl(
-                conversationRepository, expertProfileRepository, policy, writer, auditService, fixedClock);
+                conversationRepository, expertProfileRepository, userRepository, messageRepository,
+                aggregateRepository, policy, writer, auditService, fixedClock);
     }
 
     private static ExpertProfile approvedExpert() {
@@ -129,15 +137,21 @@ class DirectConversationServiceImplTest {
         verify(conversationRepository, never()).findByMotherUserIdAndExpertUserId(any(), any());
     }
 
+    // ADR-MEDI-002 — batch-fetch replaces the old per-row expertProfileRepository.findByUserId lookup;
+    // full field coverage (displayName, specialty, preview, unread) lives in
+    // DirectConversationServiceImplSummaryTest (MEDI-TC-008/010/011/017).
     @Test
     void listMyConversations_mapsCounterpartAndRole() {
         DirectConversation asMother = DirectConversation.builder()
                 .id(UUID.randomUUID()).motherUserId(MOTHER_ID).expertUserId(EXPERT_USER_ID)
                 .status("ACTIVE").lastActivityAt(fixedNow).build();
-        when(conversationRepository.findByMotherUserIdOrExpertUserId(MOTHER_ID, MOTHER_ID))
+        when(conversationRepository.findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(MOTHER_ID, MOTHER_ID))
                 .thenReturn(List.of(asMother));
-        when(expertProfileRepository.findByUserId(EXPERT_USER_ID))
-                .thenReturn(Optional.of(approvedExpert()));
+        when(userRepository.findAllById(Mockito.<Iterable<UUID>>any())).thenReturn(List.of());
+        when(expertProfileRepository.findByUserIdIn(Mockito.anySet()))
+                .thenReturn(List.of(approvedExpert()));
+        when(aggregateRepository.fetchLastMessages(any())).thenReturn(java.util.Map.of());
+        when(aggregateRepository.fetchUnreadCounts(any(), eq(MOTHER_ID))).thenReturn(java.util.Map.of());
 
         List<DirectConversationSummaryResponse> summaries = service.listMyConversations(MOTHER_ID);
 

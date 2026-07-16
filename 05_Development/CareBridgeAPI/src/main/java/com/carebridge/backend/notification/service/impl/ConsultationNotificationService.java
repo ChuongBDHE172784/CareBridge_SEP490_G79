@@ -143,7 +143,8 @@ public class ConsultationNotificationService implements IConsultationNotificatio
                 record.getReferenceType(),
                 record.getStatus().name(),
                 record.getCreatedAt(),
-                record.getSentAt()
+                record.getSentAt(),
+                record.getMetadata()
         );
     }
 }

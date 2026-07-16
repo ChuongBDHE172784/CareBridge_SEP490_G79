@@ -11,4 +11,8 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, UU
     // uq_direct_messages_client_id (conversation_id, sender_user_id, client_message_id).
     Optional<DirectMessage> findByConversationIdAndSenderUserIdAndClientMessageId(
             UUID conversationId, UUID senderUserId, UUID clientMessageId);
+
+    // ADR-MEDI-003 mục 3 (C9) — validates lastSeenMessageId belongs to conversationId in 1 query,
+    // before it is ever used to advance a read cursor.
+    Optional<DirectMessage> findByIdAndConversationId(UUID messageId, UUID conversationId);
 }

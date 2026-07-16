@@ -37,6 +37,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
@@ -90,6 +91,35 @@ public class GlobalExceptionHandler {
                         .rejectedValue(violation.getInvalidValue())
                         .message(violation.getMessage())
                         .build())
+                .toList();
+        ErrorResponse response = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("VALIDATION_ERROR")
+                .message("Invalid request")
+                .path(request.getRequestURI())
+                .details(details)
+                .build();
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // Spring 7 routes @RequestParam/@PathVariable constraint violations (e.g. @Min/@Max/@Size on
+    // ExpertProfileController#getDirectory) through HandlerMethodValidationException, NOT the
+    // classic jakarta.validation.ConstraintViolationException handled above — confirmed empirically
+    // (CB-EXPCHAT-IMP-001 Logic Issue L12): without this handler, such violations fell through to
+    // handleGeneric() and returned 500 INTERNAL_ERROR instead of 400. Same VALIDATION_ERROR shape
+    // as handleConstraintViolation, for every existing @RequestParam-validated endpoint, not just this feature.
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(
+            HandlerMethodValidationException ex,
+            HttpServletRequest request) {
+        logger.error("Request parameter validation error: {}", ex.getMessage(), ex);
+        List<ErrorDetail> details = ex.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> ErrorDetail.builder()
+                                .field(result.getMethodParameter().getParameterName())
+                                .rejectedValue(result.getArgument())
+                                .message(error.getDefaultMessage())
+                                .build()))
                 .toList();
         ErrorResponse response = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())

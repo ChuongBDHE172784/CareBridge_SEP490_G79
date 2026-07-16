@@ -63,6 +63,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _expertAvailable = conversation.expertAvailable;
         _loading = false;
       });
+      _markReadIfNeeded();
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -115,6 +116,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           _previousCursor = page.previousCursor;
           _hasMoreOlder = page.hasMoreOlder;
         });
+        _markReadIfNeeded();
         return;
       }
       var cursor = _nextCursor;
@@ -129,6 +131,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             _items = mergeTimelineItems(_items, page.items);
             _nextCursor = page.nextCursor;
           });
+          _markReadIfNeeded();
         }
         final next = page.nextCursor;
         if (!page.hasMoreNewer || next == null || next == cursor) break;
@@ -142,6 +145,25 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _pendingNewerSync = false;
         scheduleMicrotask(_syncNewer);
       }
+    }
+  }
+
+  /// TDS §13.6 — lastSeenMessageId is the newest MESSAGE item actually rendered on the
+  /// client, never a server-side "latest" guess. No-op if the timeline has no MESSAGE item
+  /// yet (call-only or empty) or the newest one is still an unconfirmed optimistic send.
+  Future<void> _markReadIfNeeded() async {
+    TimelineItem? latestMessage;
+    for (final item in _items.reversed) {
+      if (item.kind == 'MESSAGE' && item.messageId != null) {
+        latestMessage = item;
+        break;
+      }
+    }
+    if (latestMessage == null) return;
+    try {
+      await DirectChatService.instance.markRead(widget.conversationId, latestMessage.messageId!);
+    } catch (_) {
+      // best-effort — server cursor is monotonic, the next successful call catches up.
     }
   }
 

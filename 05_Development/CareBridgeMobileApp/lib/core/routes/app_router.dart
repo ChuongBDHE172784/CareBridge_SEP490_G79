@@ -8,7 +8,7 @@ import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/home/screens/home_shell.dart';
-import '../../features/home/screens/expert_app_home_screen.dart';
+import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
@@ -73,7 +73,7 @@ Widget _buildHomeForRole(String? role, {required int initialIndex}) {
     case 'FAMILY':
       return const FamilyMemberHomeScreen();
     case 'EXPERT':
-      return const ExpertAppHomeScreen();
+      return const ExpertHomeShell();
     case 'MOTHER':
       return HomeShell(initialIndex: initialIndex);
     default:
@@ -535,7 +535,7 @@ final GoRouter appRouter = GoRouter(
     // CB-036: Expert Home / Dashboard (UC-60)
     GoRoute(
       path: '/expert-home',
-      builder: (context, state) => const ExpertAppHomeScreen(),
+      builder: (context, state) => const ExpertHomeShell(),
     ),
     // CB-053: Expert Calendar (UC-64)
     GoRoute(

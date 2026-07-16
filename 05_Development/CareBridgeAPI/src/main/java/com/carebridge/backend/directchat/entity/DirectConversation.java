@@ -43,4 +43,16 @@ public class DirectConversation {
 
     @Column(name = "last_activity_at")
     private Instant lastActivityAt;
+
+    @Column(name = "mother_last_read_at")
+    private Instant motherLastReadAt;
+
+    @Column(name = "mother_last_read_message_id")
+    private UUID motherLastReadMessageId;
+
+    @Column(name = "expert_last_read_at")
+    private Instant expertLastReadAt;
+
+    @Column(name = "expert_last_read_message_id")
+    private UUID expertLastReadMessageId;
 }

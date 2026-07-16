@@ -82,6 +82,13 @@ public class DirectChatException extends RuntimeException {
         return new DirectChatException("DCC-011", "Use either after or before, not both", HttpStatus.BAD_REQUEST);
     }
 
+    // ADR-MEDI-003 mục 3 — reused DCC-006, not a new code: "not found" and "found but belongs to
+    // another conversation" collapse into this single result on purpose, so a non-participant of
+    // that other conversation can never distinguish the two cases (cross-conversation existence leak).
+    public static DirectChatException messageNotInConversation() {
+        return new DirectChatException("DCC-006", "Message not found in this conversation", HttpStatus.NOT_FOUND);
+    }
+
     public static DirectChatException firebaseUnavailable() {
         return new DirectChatException("DCC-012", "Firebase realtime is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }

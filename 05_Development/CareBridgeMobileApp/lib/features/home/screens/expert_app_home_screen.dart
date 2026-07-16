@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../auth/screens/account_profile_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/expert_question_queue_screen.dart';
 import '../../expert/services/expert_home_service.dart';
@@ -86,33 +85,27 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
         child: RefreshIndicator(
           color: _primaryContainer,
           onRefresh: _load,
-          child: Stack(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 124),
-                children: [
-                  _buildHeader(snapshot),
-                  const SizedBox(height: 28),
-                  if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 110),
-                      child: Center(
-                        child: CircularProgressIndicator(color: _primary),
-                      ),
-                    )
-                  else ...[
-                    _buildConsultationSection(snapshot),
-                    const SizedBox(height: 28),
-                    _buildMetricGrid(snapshot),
-                    const SizedBox(height: 30),
-                    _buildSupportSection(snapshot),
-                  ],
-                ],
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: _buildBottomNav(),
-              ),
+              _buildHeader(snapshot),
+              const SizedBox(height: 28),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 110),
+                  child: Center(
+                    child: CircularProgressIndicator(color: _primary),
+                  ),
+                )
+              else ...[
+                _buildConsultationSection(snapshot),
+                const SizedBox(height: 28),
+                _buildMetricGrid(snapshot),
+                const SizedBox(height: 18),
+                _buildCommunityCard(),
+                const SizedBox(height: 30),
+                _buildSupportSection(snapshot),
+              ],
             ],
           ),
         ),
@@ -365,7 +358,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
             count: snapshot?.requestCount ?? 0,
             title: 'Yêu cầu mới',
             subtitle: 'Cần xác nhận',
-            onTap: () {},
+            onTap: _openQuestions,
           ),
         ),
         const SizedBox(width: 18),
@@ -436,49 +429,47 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 10, 22, 22),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5A463F).withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
+  // ADR-MEDI-005 — Community bumped off the EXPERT bottom nav (no "find/message Mother" CTA
+  // anywhere in the EXPERT shell, BR-MEDI-005); this card is its replacement entry point.
+  Widget _buildCommunityCard() {
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          const _ExpertBottomNavItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home,
-            label: 'Trang\nchủ',
-            active: true,
-          ),
-          _ExpertBottomNavItem(
-            icon: Icons.assignment_outlined,
-            label: 'Yêu\ncầu',
-            onTap: () {},
-          ),
-          _ExpertBottomNavItem(
-            icon: Icons.group_outlined,
-            label: 'Cộng\nđồng',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: _surfaceHighest,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.group_outlined, color: _primary, size: 24),
             ),
-          ),
-          _ExpertBottomNavItem(
-            icon: Icons.person_outline,
-            label: 'Tài\nkhoản',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AccountProfileScreen()),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Cộng đồng',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
             ),
-          ),
-        ],
+            const Icon(Icons.chevron_right, color: _outline),
+          ],
+        ),
       ),
     );
   }
@@ -740,59 +731,3 @@ class _SupportCard extends StatelessWidget {
   }
 }
 
-class _ExpertBottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final IconData? activeIcon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  const _ExpertBottomNavItem({
-    required this.icon,
-    required this.label,
-    this.activeIcon,
-    this.active = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active
-        ? _ExpertAppHomeScreenState._primary
-        : _ExpertAppHomeScreenState._outline;
-    final child = Container(
-      width: active ? 92 : 62,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: active
-            ? _ExpertAppHomeScreenState._primaryContainer
-                .withValues(alpha: 0.18)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(32),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(active ? activeIcon ?? icon : icon, color: color, size: 26),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: color,
-              height: 1.1,
-            ),
-          ),
-        ],
-      ),
-    );
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(32),
-      child: child,
-    );
-  }
-}

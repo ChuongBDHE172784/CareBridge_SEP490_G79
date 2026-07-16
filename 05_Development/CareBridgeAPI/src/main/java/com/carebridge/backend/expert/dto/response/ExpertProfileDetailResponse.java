@@ -15,6 +15,7 @@ public class ExpertProfileDetailResponse {
 
 	private UUID expertProfileId;
 	private UUID userId;
+	private String displayName;
 	private String specialty;
 	private String professionalTitle;
 	private Integer experienceYears;

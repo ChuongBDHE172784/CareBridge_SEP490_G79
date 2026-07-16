@@ -7,6 +7,8 @@ import '../../reminder/screens/today_tasks_screen.dart';
 import '../../notification/screens/notification_center_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
+import '../../community/screens/community_feed_screen.dart';
+import '../../exercise/screens/mother_exercise_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
@@ -111,6 +113,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildGreeting(),
+                const SizedBox(height: 24),
+                _buildDiscoverSection(),
                 const SizedBox(height: 24),
                 if (_loading)
                   const Center(
@@ -231,6 +235,30 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
             fontFamily: 'Lexend',
             fontSize: 16,
             color: _onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// TDS MotherExpertDiscoveryInbox §13.1 — Cộng đồng/Bài tập lost their bottom-nav slots to
+  /// Chuyên gia/Trò chuyện, so they need a discovery entry point here instead.
+  Widget _buildDiscoverSection() {
+    return Row(
+      children: [
+        _QuickAction(
+          icon: Icons.group_outlined,
+          label: 'Cộng đồng',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+          ),
+        ),
+        const SizedBox(width: 12),
+        _QuickAction(
+          icon: Icons.self_improvement,
+          label: 'Bài tập',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MotherExerciseScreen()),
           ),
         ),
       ],

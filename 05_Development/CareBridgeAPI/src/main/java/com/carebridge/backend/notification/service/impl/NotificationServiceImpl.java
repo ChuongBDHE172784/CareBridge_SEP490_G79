@@ -122,9 +122,9 @@ public class NotificationServiceImpl implements NotificationService {
         Page<NotificationRecord> page;
         if (type != null && !type.isBlank()) {
             NotificationType notificationType = NotificationType.valueOf(type.toUpperCase());
-            page = notificationRecordRepository.findByUserIdAndType(userId, notificationType, pageable);
+            page = notificationRecordRepository.findVisibleByUserIdAndType(userId, notificationType, pageable);
         } else {
-            page = notificationRecordRepository.findByUserId(userId, pageable);
+            page = notificationRecordRepository.findVisibleByUserId(userId, pageable);
         }
         return page.map(this::toResponse);
     }
@@ -192,7 +192,8 @@ public class NotificationServiceImpl implements NotificationService {
                 r.getReferenceType(),
                 r.getStatus().name(),
                 r.getCreatedAt(),
-                r.getSentAt()
+                r.getSentAt(),
+                r.getMetadata()
         );
     }
 }

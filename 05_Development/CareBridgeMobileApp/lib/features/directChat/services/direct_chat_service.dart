@@ -1,12 +1,19 @@
 import '../../../core/network/api_client.dart';
 import '../models/conversation_call.dart';
 import '../models/direct_conversation.dart';
+import '../models/expert_directory_item.dart';
 import '../models/timeline_item.dart';
 import '../models/timeline_page.dart';
 
 class DirectChatService {
-  static final DirectChatService instance = DirectChatService._();
-  DirectChatService._();
+  // Mutable (not `instance`-final) so widget tests can swap in a fake subclass; the class
+  // itself is stateless (a thin HTTP wrapper), so a non-private constructor is safe to expose.
+  static DirectChatService instance = DirectChatService();
+
+  Future<Map<String, dynamic>> getExpertProfile(String expertProfileId) async {
+    final response = await apiGet('/api/v1/expert/profiles/$expertProfileId');
+    return response['data'] as Map<String, dynamic>;
+  }
 
   Future<DirectConversation> findOrCreateConversation(String expertProfileId) async {
     final response = await apiPost('/api/v1/direct-conversations/expert/$expertProfileId', {});
@@ -59,6 +66,40 @@ class DirectChatService {
       },
     );
     return TimelinePage.fromJson(response['data'] as Map<String, dynamic>);
+  }
+
+  /// ADR-MEDI-003 §9.4 — [lastSeenMessageId] must be the id of the newest MESSAGE item the
+  /// client has actually rendered, never a server-side "latest" guess. Idempotent, safe to
+  /// call repeatedly (server-side cursor only ever advances, never regresses).
+  Future<void> markRead(String conversationId, String lastSeenMessageId) async {
+    await apiPatch(
+      '/api/v1/direct-conversations/$conversationId/read',
+      {'lastSeenMessageId': lastSeenMessageId},
+    );
+  }
+
+  Future<UnreadSummary> getUnreadSummary() async {
+    final response = await apiGet('/api/v1/direct-conversations/unread-summary');
+    return UnreadSummary.fromJson(response['data'] as Map<String, dynamic>);
+  }
+
+  /// ADR-MEDI-001 — directory search/pagination now actually reach the backend query.
+  Future<ExpertDirectoryPage> getExpertDirectory({
+    String? q,
+    String? specialty,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final response = await apiGet(
+      '/api/v1/expert/directory',
+      queryParams: {
+        if (q != null && q.isNotEmpty) 'q': q,
+        if (specialty != null && specialty.isNotEmpty) 'specialty': specialty,
+        'page': page,
+        'size': size,
+      },
+    );
+    return ExpertDirectoryPage.fromJson(response['data'] as Map<String, dynamic>);
   }
 
   Future<ConversationCall> initiateCall(String conversationId, {required String callType}) async {

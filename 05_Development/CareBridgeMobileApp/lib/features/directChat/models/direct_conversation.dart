@@ -38,6 +38,13 @@ class DirectConversationSummary {
   final String counterpartRole;
   final DateTime? lastActivityAt;
   final bool expertAvailable;
+  final String? counterpartDisplayName;
+  final String? counterpartAvatarUrl;
+  final String? counterpartSpecialty;
+  final String? lastMessagePreview;
+  final DateTime? lastMessageAt;
+  final int unreadCount;
+  final String conversationStatus;
 
   const DirectConversationSummary({
     required this.conversationId,
@@ -45,6 +52,13 @@ class DirectConversationSummary {
     required this.counterpartRole,
     this.lastActivityAt,
     required this.expertAvailable,
+    this.counterpartDisplayName,
+    this.counterpartAvatarUrl,
+    this.counterpartSpecialty,
+    this.lastMessagePreview,
+    this.lastMessageAt,
+    this.unreadCount = 0,
+    this.conversationStatus = 'ACTIVE',
   });
 
   factory DirectConversationSummary.fromJson(Map<String, dynamic> json) {
@@ -56,6 +70,32 @@ class DirectConversationSummary {
           ? null
           : DateTime.parse(json['lastActivityAt'] as String).toUtc(),
       expertAvailable: json['expertAvailable'] as bool? ?? false,
+      counterpartDisplayName: json['counterpartDisplayName'] as String?,
+      counterpartAvatarUrl: json['counterpartAvatarUrl'] as String?,
+      counterpartSpecialty: json['counterpartSpecialty'] as String?,
+      lastMessagePreview: json['lastMessagePreview'] as String?,
+      lastMessageAt: json['lastMessageAt'] == null
+          ? null
+          : DateTime.parse(json['lastMessageAt'] as String).toUtc(),
+      unreadCount: json['unreadCount'] as int? ?? 0,
+      conversationStatus: json['conversationStatus'] as String? ?? 'ACTIVE',
+    );
+  }
+}
+
+class UnreadSummary {
+  final int unreadConversationCount;
+  final int totalUnreadMessageCount;
+
+  const UnreadSummary({
+    required this.unreadConversationCount,
+    required this.totalUnreadMessageCount,
+  });
+
+  factory UnreadSummary.fromJson(Map<String, dynamic> json) {
+    return UnreadSummary(
+      unreadConversationCount: json['unreadConversationCount'] as int? ?? 0,
+      totalUnreadMessageCount: json['totalUnreadMessageCount'] as int? ?? 0,
     );
   }
 }
