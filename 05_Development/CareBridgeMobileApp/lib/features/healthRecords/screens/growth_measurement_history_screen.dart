@@ -37,6 +37,9 @@ class _GrowthMeasurementHistoryScreenState
   bool _profileLoadFailed = false;
   String _selectedTab = 'Tất cả';
   int _loadGeneration = 0;
+  Future<void>? _profileLoadFuture;
+  bool _isOpeningFullscreen = false;
+  final ScrollController _historyScrollController = ScrollController();
 
   @override
   void initState() {
@@ -44,10 +47,18 @@ class _GrowthMeasurementHistoryScreenState
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _historyScrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     final generation = ++_loadGeneration;
     setState(() => _isLoading = true);
-    unawaited(_loadProfile(generation));
+    final profileLoadFuture = _loadProfile(generation);
+    _profileLoadFuture = profileLoadFuture;
+    unawaited(profileLoadFuture);
     try {
       final records =
           await (widget.historyLoader?.call(widget.babyId) ??
@@ -134,19 +145,20 @@ class _GrowthMeasurementHistoryScreenState
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _buildTabs(),
-                  const SizedBox(height: 24),
                   _buildChartCard(),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lịch sử ghi nhận',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D2A28),
+                      const Expanded(
+                        child: Text(
+                          'Lịch sử ghi nhận',
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D2A28),
+                          ),
                         ),
                       ),
                       TextButton(
@@ -173,7 +185,7 @@ class _GrowthMeasurementHistoryScreenState
                       ),
                     )
                   else
-                    ..._records.map((r) => _buildRecordCard(r)),
+                    _buildHistoryList(),
                 ],
               ),
             ),
@@ -190,44 +202,19 @@ class _GrowthMeasurementHistoryScreenState
     );
   }
 
-  Widget _buildTabs() {
-    final tabs = ['Tất cả', 'Chiều cao', 'Cân nặng', 'Vòng đầu'];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: tabs.map((t) {
-          final isSelected = t == _selectedTab;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ChoiceChip(
-              label: Text(t),
-              selected: isSelected,
-              selectedColor: const Color(0xFFC98C7B),
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF524F4C),
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
-                side: BorderSide(
-                  color: isSelected
-                      ? Colors.transparent
-                      : const Color(0xFFE7E1DD),
-                ),
-              ),
-              onSelected: (val) {
-                if (val) setState(() => _selectedTab = t);
-              },
-            ),
-          );
-        }).toList(),
-      ),
+  Widget _buildTabs({
+    required String selectedTab,
+    required ValueChanged<String> onSelected,
+  }) {
+    return _GrowthMetricSelector(
+      selectedTab: selectedTab,
+      onSelected: onSelected,
     );
   }
 
   Widget _buildChartCard() {
     return Container(
+      key: const Key('growth-chart-card'),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -245,24 +232,33 @@ class _GrowthMeasurementHistoryScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Biểu đồ tăng trưởng',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D2A28),
+              const Expanded(
+                child: Text(
+                  'Biểu đồ tăng trưởng',
+                  maxLines: 2,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D2A28),
+                  ),
                 ),
               ),
               IconButton(
+                key: const Key('growth-chart-fullscreen-button'),
                 icon: const Icon(Icons.fullscreen, color: Color(0xFF524F4C)),
-                onPressed: () {},
+                tooltip: 'Mở biểu đồ toàn màn hình',
+                onPressed: _openFullscreenChart,
               ),
             ],
+          ),
+          _buildTabs(
+            selectedTab: _selectedTab,
+            onSelected: (tab) => setState(() => _selectedTab = tab),
           ),
           const SizedBox(height: 16),
           GrowthTrendChart(
             measurements: _records,
-            metric: _selectedTrendMetric,
+            metric: _metricForTab(_selectedTab),
             birthDate: _babyProfile?.birthDate,
             gender: _babyProfile?.gender,
             profileLoadFailed: _profileLoadFailed,
@@ -272,13 +268,54 @@ class _GrowthMeasurementHistoryScreenState
     );
   }
 
-  GrowthTrendMetric get _selectedTrendMetric {
-    return switch (_selectedTab) {
-      'Chiều cao' => GrowthTrendMetric.height,
-      'Cân nặng' => GrowthTrendMetric.weight,
-      'Vòng đầu' => GrowthTrendMetric.headCircumference,
-      _ => GrowthTrendMetric.automatic,
-    };
+  Future<void> _openFullscreenChart() async {
+    if (_isOpeningFullscreen) return;
+    _isOpeningFullscreen = true;
+    try {
+      while (true) {
+        final pendingProfileLoad = _profileLoadFuture;
+        if (pendingProfileLoad == null) break;
+        await pendingProfileLoad;
+        if (identical(pendingProfileLoad, _profileLoadFuture)) break;
+      }
+      if (!mounted) return;
+
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => _FullscreenGrowthChartScreen(
+            measurements: _records,
+            birthDate: _babyProfile?.birthDate,
+            gender: _babyProfile?.gender,
+            profileLoadFailed: _profileLoadFailed,
+            initialTab: _selectedTab,
+            onMetricChanged: (tab) {
+              if (mounted) setState(() => _selectedTab = tab);
+            },
+          ),
+        ),
+      );
+    } finally {
+      _isOpeningFullscreen = false;
+    }
+  }
+
+  Widget _buildHistoryList() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 480),
+      child: Scrollbar(
+        key: const Key('growth-history-scrollbar'),
+        controller: _historyScrollController,
+        thumbVisibility: true,
+        child: ListView.builder(
+          key: const Key('growth-history-record-list'),
+          controller: _historyScrollController,
+          primary: false,
+          shrinkWrap: true,
+          itemCount: _records.length,
+          itemBuilder: (context, index) => _buildRecordCard(_records[index]),
+        ),
+      ),
+    );
   }
 
   Widget _buildRecordCard(GrowthMeasurement record) {
@@ -289,6 +326,7 @@ class _GrowthMeasurementHistoryScreenState
         : '';
 
     return GestureDetector(
+      key: ValueKey('growth-history-record-${record.id}'),
       onTap: () async {
         final changed = await Navigator.of(context).push<bool>(
           MaterialPageRoute(
@@ -423,6 +461,168 @@ class _GrowthMeasurementHistoryScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+GrowthTrendMetric _metricForTab(String tab) {
+  return switch (tab) {
+    'Chiều cao' => GrowthTrendMetric.height,
+    'Cân nặng' => GrowthTrendMetric.weight,
+    'Vòng đầu' => GrowthTrendMetric.headCircumference,
+    _ => GrowthTrendMetric.automatic,
+  };
+}
+
+class _GrowthMetricSelector extends StatelessWidget {
+  static const _tabs = ['Tất cả', 'Chiều cao', 'Cân nặng', 'Vòng đầu'];
+
+  final String selectedTab;
+  final ValueChanged<String> onSelected;
+
+  const _GrowthMetricSelector({
+    required this.selectedTab,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      key: const Key('growth-chart-filters'),
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _tabs
+            .map((tab) {
+              final isSelected = tab == selectedTab;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(tab),
+                  selected: isSelected,
+                  selectedColor: const Color(0xFFC98C7B),
+                  backgroundColor: const Color(0xFFF2EAE4),
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF5A463F),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                    side: BorderSide(
+                      color: isSelected
+                          ? Colors.transparent
+                          : const Color(0xFFE7E1DD),
+                    ),
+                  ),
+                  onSelected: (selected) {
+                    if (selected) onSelected(tab);
+                  },
+                ),
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+}
+
+class _FullscreenGrowthChartScreen extends StatefulWidget {
+  final List<GrowthMeasurement> measurements;
+  final DateTime? birthDate;
+  final BabyGender? gender;
+  final bool profileLoadFailed;
+  final String initialTab;
+  final ValueChanged<String> onMetricChanged;
+
+  const _FullscreenGrowthChartScreen({
+    required this.measurements,
+    required this.birthDate,
+    required this.gender,
+    required this.profileLoadFailed,
+    required this.initialTab,
+    required this.onMetricChanged,
+  });
+
+  @override
+  State<_FullscreenGrowthChartScreen> createState() =>
+      _FullscreenGrowthChartScreenState();
+}
+
+class _FullscreenGrowthChartScreenState
+    extends State<_FullscreenGrowthChartScreen> {
+  late String _selectedTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab;
+  }
+
+  void _selectMetric(String tab) {
+    setState(() => _selectedTab = tab);
+    widget.onMetricChanged(tab);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: const Key('growth-chart-fullscreen-screen'),
+      backgroundColor: const Color(0xFFF6F1EC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF6F1EC),
+        elevation: 0,
+        leading: IconButton(
+          key: const Key('growth-chart-fullscreen-close'),
+          tooltip: 'Đóng biểu đồ toàn màn hình',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close, color: Color(0xFF5A463F)),
+        ),
+        title: const Text(
+          'Biểu đồ tăng trưởng',
+          style: TextStyle(
+            color: Color(0xFF5A463F),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0x80E8DDD6)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F5A463F),
+                  blurRadius: 32,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _GrowthMetricSelector(
+                  selectedTab: _selectedTab,
+                  onSelected: _selectMetric,
+                ),
+                const SizedBox(height: 20),
+                GrowthTrendChart(
+                  measurements: widget.measurements,
+                  metric: _metricForTab(_selectedTab),
+                  birthDate: widget.birthDate,
+                  gender: widget.gender,
+                  profileLoadFailed: widget.profileLoadFailed,
+                  chartHeight: 360,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

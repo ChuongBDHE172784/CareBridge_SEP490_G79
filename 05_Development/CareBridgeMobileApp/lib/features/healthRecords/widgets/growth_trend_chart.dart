@@ -18,6 +18,7 @@ class GrowthTrendChart extends StatelessWidget {
   final DateTime? birthDate;
   final BabyGender? gender;
   final bool profileLoadFailed;
+  final double chartHeight;
 
   const GrowthTrendChart({
     super.key,
@@ -26,7 +27,8 @@ class GrowthTrendChart extends StatelessWidget {
     this.birthDate,
     this.gender,
     this.profileLoadFailed = false,
-  });
+    this.chartHeight = 192,
+  }) : assert(chartHeight > 0);
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class GrowthTrendChart extends StatelessWidget {
       key: const Key('growth-trend-chart'),
       children: [
         if (points.isEmpty)
-          _EmptyTrendChart(presentation: presentation)
+          _EmptyTrendChart(presentation: presentation, chartHeight: chartHeight)
         else
           Semantics(
             container: true,
@@ -49,7 +51,8 @@ class GrowthTrendChart extends StatelessWidget {
                 '${points.length} điểm dữ liệu'
                 '${whoPoints.isEmpty ? '' : ' và đường WHO P50 tham khảo'}',
             child: Container(
-              height: 192,
+              key: const Key('growth-trend-chart-plot'),
+              height: chartHeight,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: _surfaceColor,
@@ -359,14 +362,18 @@ class _LegendLinePainter extends CustomPainter {
 
 class _EmptyTrendChart extends StatelessWidget {
   final _MetricPresentation presentation;
+  final double chartHeight;
 
-  const _EmptyTrendChart({required this.presentation});
+  const _EmptyTrendChart({
+    required this.presentation,
+    required this.chartHeight,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('growth-trend-chart-empty'),
-      height: 192,
+      key: const Key('growth-trend-chart-plot'),
+      height: chartHeight,
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -375,6 +382,7 @@ class _EmptyTrendChart extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE7E1DD)),
       ),
       child: Center(
+        key: const Key('growth-trend-chart-empty'),
         child: Text(
           'Chưa có dữ liệu ${presentation.label.toLowerCase()} '
           'để hiển thị biểu đồ.',

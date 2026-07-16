@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/baby/models/baby_model.dart';
@@ -46,6 +48,29 @@ Future<void> _pumpChart(
       ),
     ),
   );
+}
+
+Future<void> _pumpHistoryScreen(
+  WidgetTester tester, {
+  required List<GrowthMeasurement> measurements,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: GrowthMeasurementHistoryScreen(
+        babyId: 'baby-1',
+        loadAvatarImage: false,
+        historyLoader: (_) async => measurements,
+        profileLoader: (_) async => BabyProfile(
+          id: 'baby-1',
+          nickname: 'Bé',
+          birthDate: DateTime(2024, 1, 15),
+          gender: BabyGender.female,
+          isActive: true,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -377,5 +402,265 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byKey(const Key('growth-trend-chart-canvas')), findsOneWidget);
     expect(find.textContaining('Không thể tải thông tin bé'), findsOneWidget);
+  });
+
+  testWidgets('chart accepts a presentation-only custom plot height', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GrowthTrendChart(
+          measurements: [
+            _measurement('one', DateTime(2025, 1, 15), weightKg: 8.9),
+          ],
+          chartHeight: 360,
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('growth-trend-chart-plot'))).height,
+      360,
+    );
+  });
+
+  testWidgets('metric filters are contained inside the growth chart card', (
+    tester,
+  ) async {
+    await _pumpHistoryScreen(
+      tester,
+      measurements: [
+        _measurement('one', DateTime(2025, 1, 15), weightKg: 8.9, heightCm: 74),
+      ],
+    );
+
+    final chartCard = find.byKey(const Key('growth-chart-card'));
+    final filters = find.byKey(const Key('growth-chart-filters'));
+    expect(chartCard, findsOneWidget);
+    expect(filters, findsOneWidget);
+    expect(find.descendant(of: chartCard, matching: filters), findsOneWidget);
+    expect(
+      find.descendant(of: filters, matching: find.byType(ChoiceChip)),
+      findsNWidgets(4),
+    );
+
+    await tester.tap(find.text('Chiều cao'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('growth-trend-chart-metric-height')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('chart card remains usable on a narrow screen', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpHistoryScreen(tester, measurements: const []);
+
+    expect(find.byKey(const Key('growth-chart-card')), findsOneWidget);
+    expect(
+      find.byKey(const Key('growth-chart-fullscreen-button')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('short history sizes naturally without an artificial block', (
+    tester,
+  ) async {
+    await _pumpHistoryScreen(
+      tester,
+      measurements: [_measurement('one', DateTime(2025, 1, 15), weightKg: 8.9)],
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('growth-history-record-list')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(
+      tester
+          .getSize(find.byKey(const Key('growth-history-record-list')))
+          .height,
+      lessThan(480),
+    );
+  });
+
+  testWidgets('long history is bounded and scrolls independently', (
+    tester,
+  ) async {
+    final measurements = List.generate(
+      12,
+      (index) => _measurement(
+        'record-$index',
+        DateTime(2025, 1, 15).add(Duration(days: index * 7)),
+        weightKg: 8.9 + index / 10,
+      ),
+    );
+    await _pumpHistoryScreen(tester, measurements: measurements);
+    final listFinder = find.byKey(const Key('growth-history-record-list'));
+    await tester.scrollUntilVisible(
+      listFinder,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    final list = tester.widget<ListView>(listFinder);
+    expect(tester.getSize(listFinder).height, lessThanOrEqualTo(480));
+    expect(list.controller, isNotNull);
+    expect(list.controller!.offset, 0);
+
+    await tester.dragFrom(
+      tester.getTopLeft(listFinder) + const Offset(100, 100),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+
+    expect(list.controller!.offset, greaterThan(0));
+    expect(find.byKey(const Key('growth-history-scrollbar')), findsOneWidget);
+
+    list.controller!.jumpTo(list.controller!.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('growth-history-record-record-11')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('fullscreen preserves metric and WHO after close', (
+    tester,
+  ) async {
+    await _pumpHistoryScreen(
+      tester,
+      measurements: [
+        _measurement(
+          'month-12',
+          DateTime(2025, 1, 15),
+          weightKg: 8.9,
+          heightCm: 74,
+        ),
+      ],
+    );
+
+    await tester.tap(find.byKey(const Key('growth-chart-fullscreen-button')));
+    await tester.pumpAndSettle();
+    final fullscreen = find.byKey(const Key('growth-chart-fullscreen-screen'));
+    expect(fullscreen, findsOneWidget);
+    expect(
+      find.descendant(
+        of: fullscreen,
+        matching: find.byKey(const Key('growth-trend-chart-who-legend')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getSize(
+            find.descendant(
+              of: fullscreen,
+              matching: find.byKey(const Key('growth-trend-chart-plot')),
+            ),
+          )
+          .height,
+      greaterThan(192),
+    );
+
+    await tester.tap(find.text('Chiều cao'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: fullscreen,
+        matching: find.byKey(const Key('growth-trend-chart-who-legend')),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('growth-chart-fullscreen-close')));
+    await tester.pumpAndSettle();
+
+    expect(fullscreen, findsNothing);
+    expect(
+      find.byKey(const Key('growth-trend-chart-metric-height')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('growth-trend-chart-who-legend')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('fullscreen waits for the latest profile before showing WHO', (
+    tester,
+  ) async {
+    final profileCompleter = Completer<BabyProfile>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GrowthMeasurementHistoryScreen(
+          babyId: 'baby-1',
+          loadAvatarImage: false,
+          historyLoader: (_) async => [
+            _measurement('month-12', DateTime(2025, 1, 15), weightKg: 8.9),
+          ],
+          profileLoader: (_) => profileCompleter.future,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('growth-chart-fullscreen-button')));
+    await tester.pump();
+    expect(
+      find.byKey(const Key('growth-chart-fullscreen-screen')),
+      findsNothing,
+    );
+
+    profileCompleter.complete(
+      BabyProfile(
+        id: 'baby-1',
+        nickname: 'Bé',
+        birthDate: DateTime(2024, 1, 15),
+        gender: BabyGender.female,
+        isActive: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('growth-chart-fullscreen-screen')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('growth-trend-chart-who-legend')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('system back closes fullscreen and keeps latest metric', (
+    tester,
+  ) async {
+    await _pumpHistoryScreen(
+      tester,
+      measurements: [
+        _measurement('month-12', DateTime(2025, 1, 15), heightCm: 74),
+      ],
+    );
+    await tester.tap(find.byKey(const Key('growth-chart-fullscreen-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chiều cao'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('growth-chart-fullscreen-screen')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('growth-trend-chart-metric-height')),
+      findsOneWidget,
+    );
   });
 }
