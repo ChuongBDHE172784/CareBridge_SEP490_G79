@@ -75,9 +75,12 @@ carebridge:
   fcm:
     enabled: ${CAREBRIDGE_FCM_ENABLED:false}
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+    use-application-default-credentials: ${FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS:false}
+    project-id: ${FIREBASE_PROJECT_ID:}
+    service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
 
   # UC-144D Direct Consult Chat & Call — Cloud Firestore signaling (ADR-DCC-004).
-  # Shares the same service-account credentials as fcm.credentials-base64 above; independent
+  # Shares the same Firebase credentials configured under fcm above; independent
   # Enable explicitly because Firestore signaling is a hard requirement of this feature, unlike FCM.
   firebase:
     firestore:

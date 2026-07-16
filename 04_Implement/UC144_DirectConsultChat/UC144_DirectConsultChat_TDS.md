@@ -58,7 +58,7 @@
 **Config còn thiếu, cần user cung cấp trước khi chạy với Firebase project thật:**
 1. `FIREBASE_CREDENTIALS_BASE64` and `CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED=true` for backend publishing.
 2. Firebase Web app config 6 field (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`).
-3. Native-mode Cloud Firestore đã bật trong project `carebridge-4d86e`; Rules và indexes production đã deploy ngày 2026-07-15.
+3. Native-mode Cloud Firestore đã bật trong project `project-d04b488f-17fb-4ae5-b64`; Rules và indexes production đã deploy lại ngày 2026-07-17.
 
 Không có các giá trị trên, code/test vẫn hoàn thiện bằng stub (`carebridge.firebase.firestore.enabled=false`) + Firestore/Auth Emulator cho adapter/Rules test.
 

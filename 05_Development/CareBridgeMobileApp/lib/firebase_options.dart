@@ -24,10 +24,7 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
@@ -53,12 +50,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyA1n88mSf9RHjh8i1FcaPaD17YPCiU1H3Q',
-    appId: '1:206390242286:ios:17e288c0a59310e3633cff',
-    messagingSenderId: '206390242286',
-    projectId: 'carebridge-4d86e',
-    databaseURL: 'https://carebridge-4d86e-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'carebridge-4d86e.firebasestorage.app',
+    apiKey: 'AIzaSyD9H059fpMXz5HCJzKFYgEsP5oUO806ESw',
+    appId: '1:772548995876:ios:4990ba914a2228f3f261b1',
+    messagingSenderId: '772548995876',
+    projectId: 'project-d04b488f-17fb-4ae5-b64',
+    storageBucket: 'project-d04b488f-17fb-4ae5-b64.firebasestorage.app',
     iosBundleId: 'com.carebridge.g79.mobile',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDYGZ11NhRF8rruzW3iFClX9WSDyGNhr5Q',
+    appId: '1:772548995876:android:725c8b5f57b8ebd6f261b1',
+    messagingSenderId: '772548995876',
+    projectId: 'project-d04b488f-17fb-4ae5-b64',
+    storageBucket: 'project-d04b488f-17fb-4ae5-b64.firebasestorage.app',
   );
 }
