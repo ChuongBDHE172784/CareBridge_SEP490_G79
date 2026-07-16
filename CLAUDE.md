@@ -28,6 +28,10 @@
 * Infrastructure: Docker Compose, GitLab CI/CD.
 * Integrations: Firebase, TrackAsia, ZegoCloud, VNPay, Gmail SMTP, Gemini.
 
+## Firebase Agent Skills
+
+Always look for and use the appropriate **Firebase agent skills** to perform tasks related to Firebase.
+
 ## Architecture
 
 Use a modular monolith. Do not introduce microservices, MongoDB, new infrastructure, or dependencies without approval.

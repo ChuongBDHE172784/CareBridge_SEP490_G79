@@ -4,7 +4,7 @@
 **Document ID:** `CB-AUTH-TEST-003`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Implemented — 2026-07-04 (10/10 PASS; LOGIN-TC-INT-001 now GREEN via Testcontainers PostgreSQL — LoginIntegrationTest). LOGIN-TC-007 in JwtTokenProviderSecretValidationTest; LOGIN-TC-008 in AuthServiceLoginTest (verified-identifier branch persists SHA-256 hash).`
+**Status:** `Approved — v1.1 Firebase federated-login extension; existing 10/10 password-login tests remain GREEN, new FED-LOGIN tests are Not written.`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -550,3 +550,67 @@ git checkout -- src/main/java/com/carebridge/backend/auth/service/JwtServiceImpl
 
 *TDD Spec CB-AUTH-TEST-003 v1.0 — UC-03 Login*
 *Tuân theo EDS v2.0 + CASE 2.0*
+
+---
+
+## 9. v1.1 Federated Login Test Extension
+
+### 9.1 Risk-based conditions
+
+| Condition ID | Priority | Test level | Expected oracle |
+| --- | --- | --- | --- |
+| `FED-LOGIN-COND-001` known Google identity | P0 | Integration | `200`, CareBridge access/refresh token and session |
+| `FED-LOGIN-COND-002` known phone identity | P0 | Integration | same CareBridge session contract as Google/password |
+| `FED-LOGIN-COND-003` forged/expired/revoked token | P0 | Unit + controller | `401 AUTH-FED-001`, no session/token |
+| `FED-LOGIN-COND-004` locked/disabled/suspended account | P0 | Service | `403 AUTH-FED-004`, no session/token |
+| `FED-LOGIN-COND-005` Firebase outage/timeout | P1 | Service | `503 AUTH-FED-005`, bounded failure, no mutation |
+| `FED-LOGIN-COND-006` refresh/session persistence | P0 | PostgreSQL integration | SHA-256 token references and matching session ownership |
+| `FED-LOGIN-COND-007` role-less account | P1 | Security + clients | only profile/role/refresh/logout; route to role completion |
+| `FED-LOGIN-COND-008` replay/repeated request | P0 | Integration | no duplicate identity/user; each successful login has a distinct session |
+| `FED-LOGIN-COND-009` audit/log redaction | P0 | Unit/integration | event exists; ID token and raw subject absent |
+| `FED-LOGIN-COND-010` password login regression | P0 | Existing suite | current 10/10 UC-03 cases remain GREEN |
+
+### 9.2 Planned executable cases
+
+| Test ID | Intended file | Core assertion | Initial status |
+| --- | --- | --- | --- |
+| `FED-LOGIN-TC-001` | `FederatedAuthServiceTest.java` | Known GOOGLE identity produces the existing `AuthResponse` contract | 🔴 Not written |
+| `FED-LOGIN-TC-002` | `FederatedAuthServiceTest.java` | Known PHONE identity follows the same session/JWT path | 🔴 Not written |
+| `FED-LOGIN-TC-003` | `FederatedAuthControllerTest.java` | Bad token maps to neutral 401 without credential leakage | 🔴 Not written |
+| `FED-LOGIN-TC-004` | `FederatedAuthServiceTest.java` | Each blocked CareBridge state wins over valid Firebase proof | 🔴 Not written |
+| `FED-LOGIN-TC-005` | `FederatedLoginIntegrationTest.java` | Real PostgreSQL persists hashed refresh reference and owned session | 🔴 Not written |
+| `FED-LOGIN-TC-006` | `FederatedLoginIntegrationTest.java` | Repeated/replayed request never duplicates identity/user | 🔴 Not written |
+| `FED-LOGIN-TC-007-WEB` | `federated-login.spec.ts` | Google/phone success, cancel, collision, offline and keyboard focus | 🔴 Not written |
+| `FED-LOGIN-TC-007-MOB` | `federated_login_test.dart` | Equivalent Flutter states, secure storage and role routing | 🔴 Not written |
+
+### 9.3 Isolation, Red Gate and exit criteria
+
+- Use a fake `FirebaseTokenVerifier` for unit/controller tests and Firebase Auth emulator or signed test tokens only in isolated integration tests.
+- Control clock and token claims; never call production Firebase or send real SMS in CI.
+- Use unique provider subjects per test and clean Testcontainers state after each case.
+- Capture logs in security tests and explicitly assert the submitted ID token is absent.
+- All cases must first fail against an unsupported/no-op federated service before implementation begins.
+
+```powershell
+cd 05_Development/CareBridgeAPI
+.\mvnw.cmd test -Dtest=FederatedAuthServiceTest,FederatedAuthControllerTest,FederatedLoginIntegrationTest
+
+cd ../CareBridgeWebApp
+npm run lint
+npm run build
+npm run test:e2e -- federated-login.spec.ts
+
+cd ../CareBridgeMobileApp
+flutter analyze
+flutter test test/features/auth/federated_login_test.dart
+```
+
+Exit requires every P0/P1 federated case and the full existing UC-03 suite to pass, with no regression in refresh, logout, account-state enforcement or role routing.
+
+### 9.4 Red Gate evidence — 2026-07-16
+
+- `FederatedAuthServiceTest`: 8 tests executed, 8 errors from the intentional `FederatedAuthServiceStub` `UnsupportedOperationException`.
+- Maven test compilation succeeded; no production federated authentication logic exists.
+- Backend service Red Gate: ☑ FAIL ☐ PASS.
+- Controller, PostgreSQL integration, Web, and Mobile Red Gates remain ☐ FAIL ☐ PASS (not written).
+- Overall federated-login Red Gate remains **in progress** until every planned layer has failing evidence.
