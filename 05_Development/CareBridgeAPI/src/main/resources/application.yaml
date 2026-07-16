@@ -101,3 +101,4 @@ ai:
   triage-service:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
     request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:8000}
+    internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:}

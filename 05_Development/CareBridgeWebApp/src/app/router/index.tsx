@@ -12,6 +12,8 @@ import LoginPage from '../../features/auth/pages/LoginPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
+import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
 
 // Expert Portal screens (CB-054, 055, 056, 057, 063)
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
@@ -110,6 +112,8 @@ export const router = createBrowserRouter([
   { path: '/forbidden', element: <ForbiddenPage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
+  { path: '/mother/baby-care', element: <BabyCareHubPage /> },
+  { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 
   // Partner Portal — public pages (no auth required)
   { path: '/partner', element: <PartnerLandingPage /> },

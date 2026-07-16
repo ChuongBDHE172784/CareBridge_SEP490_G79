@@ -36,7 +36,7 @@ public class GrowthMeasurementController {
     private final IGrowthService growthService;
 
     @PostMapping("/{babyId}/growth-measurements")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<GrowthMeasurementResponse>> addGrowthMeasurement(
             @PathVariable UUID babyId,
             @Valid @RequestBody AddGrowthMeasurementRequest request,
@@ -47,7 +47,7 @@ public class GrowthMeasurementController {
     }
 
     @PatchMapping("/{babyId}/growth-measurements/{growthMeasurementId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<GrowthMeasurementResponse>> updateGrowthMeasurement(
             @PathVariable UUID babyId,
             @PathVariable UUID growthMeasurementId,
@@ -60,7 +60,7 @@ public class GrowthMeasurementController {
     }
 
     @DeleteMapping("/{babyId}/growth-measurements/{growthMeasurementId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<Void> deleteGrowthMeasurement(
             @PathVariable UUID babyId,
             @PathVariable UUID growthMeasurementId,
@@ -71,7 +71,7 @@ public class GrowthMeasurementController {
     }
 
     @GetMapping("/{babyId}/growth-measurements")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<Page<GrowthMeasurementHistoryItem>>> getGrowthMeasurementHistory(
             @PathVariable UUID babyId,
             @RequestParam(defaultValue = "0") int page,

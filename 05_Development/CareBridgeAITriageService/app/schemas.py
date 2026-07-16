@@ -6,9 +6,13 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 RiskLevel = Literal["GREEN", "YELLOW", "RED", "NEED_MORE_INFO"]
+TriageStage = Literal["PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER"]
 
 
 class ChildTriageRequest(BaseModel):
+    stage: TriageStage = "INFANT"
+    babyProfileId: str | None = None
+    motherProfileId: str | None = None
     childAgeMonths: int | None = Field(default=None, ge=0, le=216)
     symptomList: list[str] = Field(default_factory=list)
     duration: str | None = None
@@ -44,6 +48,12 @@ class Citation(BaseModel):
     lastReviewed: str | None = None
 
 
+class Claim(BaseModel):
+    claimId: str
+    text: str
+    evidenceIds: list[str] = Field(default_factory=list)
+
+
 class Evidence(BaseModel):
     basis: str = "RULE_ENGINE_AND_OFFICIAL_SOURCES"
     legalSafetyNote: str
@@ -53,6 +63,7 @@ class Evidence(BaseModel):
 
 
 class ChildTriageResponse(BaseModel):
+    stage: TriageStage = "INFANT"
     riskLevel: RiskLevel
     riskColor: str
     summary: str
@@ -62,6 +73,7 @@ class ChildTriageResponse(BaseModel):
     redFlags: list[str] = Field(default_factory=list)
     matchedRules: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
+    claims: list[Claim] = Field(default_factory=list)
     evidence: Evidence
     questions: list[str] = Field(default_factory=list)
     warning: str | None = None
@@ -107,6 +119,7 @@ class SourceDocument(BaseModel):
     ageRange: str
     riskLevels: list[str] = Field(default_factory=list)
     symptoms: list[str] = Field(default_factory=list)
+    applicableStages: list[TriageStage] = Field(default_factory=lambda: ["INFANT", "TODDLER"])
     sourceType: str = "official_guideline"
     sourceVersion: str = "1.0"
     sourceStatus: Literal["DRAFT", "PENDING_REVIEW", "APPROVED", "DEPRECATED", "ARCHIVED"] = "DRAFT"
@@ -154,6 +167,7 @@ class IntakeContinueRequest(BaseModel):
 class IntakeFlowResponse(BaseModel):
     status: IntakeFlowStatus
     intakeSessionId: str = Field(default_factory=lambda: str(uuid4()))
+    stage: TriageStage = "INFANT"
     mergedIntake: ChildTriageRequest
     normalizedSymptomDetails: list[NormalizedSymptom] = Field(default_factory=list)
     assistantMessage: str | None = None

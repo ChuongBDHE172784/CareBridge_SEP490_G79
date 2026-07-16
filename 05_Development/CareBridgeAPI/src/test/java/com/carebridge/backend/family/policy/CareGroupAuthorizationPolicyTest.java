@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,5 +114,19 @@ class CareGroupAuthorizationPolicyTest {
         boolean result = policy.canAssignTasks(GROUP_ID, CALLER_ID);
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void isMember_acceptedExpiredMembership_returnsFalse() {
+        CareGroupMember expired = CareGroupTestFactory.makeCareGroupMember(m -> {
+            m.setCareGroupId(GROUP_ID);
+            m.setUserId(CALLER_ID);
+            m.setInviteStatus(InviteStatus.ACCEPTED);
+            m.setInviteExpiresAt(Instant.now().minusSeconds(60));
+        });
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(expired));
+
+        assertThat(policy.isMember(GROUP_ID, CALLER_ID)).isFalse();
     }
 }

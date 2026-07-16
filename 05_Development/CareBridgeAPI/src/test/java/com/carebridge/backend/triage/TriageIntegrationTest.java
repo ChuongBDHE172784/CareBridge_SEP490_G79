@@ -27,7 +27,7 @@ class TriageIntegrationTest {
     @MockitoBean private SmsService smsService;
 
     @Test
-    void runIntake_fullFlow_shouldPersistToDb() {
+    void runIntake_insufficientLegacyPayload_shouldPersistNeedMoreInfo() {
         // TRIAGE-TC-INT-001
         when(geminiTriageClient.analyzeSymptoms(anyString()))
                 .thenReturn(new GeminiTriageClient.AiTriageResult(RiskLevel.GREEN, "AI guidance only."));
@@ -38,8 +38,8 @@ class TriageIntegrationTest {
         assertThat(response.getSessionId()).isNotNull();
 
         IntakeSession record = intakeSessionRepository.findById(response.getSessionId()).orElseThrow();
-        assertThat(record.getStatus()).isEqualTo(IntakeStatus.COMPLETED);
-        assertThat(record.getRiskLevel()).isEqualTo(RiskLevel.GREEN);
+        assertThat(record.getStatus()).isEqualTo(IntakeStatus.NEED_MORE_INFO);
+        assertThat(record.getRiskLevel()).isNull();
         assertThat(record.getDisclaimer()).isNotBlank();
     }
 }

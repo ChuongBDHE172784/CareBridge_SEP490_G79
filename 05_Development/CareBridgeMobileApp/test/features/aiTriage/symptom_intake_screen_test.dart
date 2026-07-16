@@ -250,6 +250,7 @@ void main() {
       id: 'allowed',
       title: 'WHO guidance',
       source: 'WHO',
+      domain: 'who.int',
       url: 'https://www.who.int/example',
       excerpt: 'Evidence',
       retrievedAt: '2026-07-13',
@@ -258,6 +259,7 @@ void main() {
       id: 'insecure',
       title: 'Insecure',
       source: 'WHO',
+      domain: 'who.int',
       url: 'http://who.int/example',
       excerpt: 'Evidence',
       retrievedAt: '2026-07-13',
@@ -266,6 +268,7 @@ void main() {
       id: 'lookalike',
       title: 'Lookalike',
       source: 'Unknown',
+      domain: 'who.int',
       url: 'https://who.int.attacker.example/e',
       excerpt: 'Evidence',
       retrievedAt: '2026-07-13',
@@ -301,14 +304,16 @@ void main() {
     const first = TriageCitation(
       title: 'MOH guidance one',
       source: 'MOH',
-      url: 'https://moh.gov.vn/',
+      domain: 'moh.gov.vn',
+      url: 'https://moh.gov.vn/evidence-one',
       excerpt: 'Evidence one',
       retrievedAt: '2026-07-13',
     );
     const second = TriageCitation(
       title: 'MOH guidance two',
       source: 'MOH',
-      url: 'https://moh.gov.vn/',
+      domain: 'moh.gov.vn',
+      url: 'https://moh.gov.vn/evidence-two',
       excerpt: 'Evidence two',
       retrievedAt: '2026-07-13',
     );
@@ -322,11 +327,11 @@ void main() {
     await _submitInitial(tester);
 
     expect(
-      find.byKey(const Key('triage-citation-https://moh.gov.vn/-0')),
+      find.byKey(const Key('triage-citation-https://moh.gov.vn/evidence-one-0')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('triage-citation-https://moh.gov.vn/-1')),
+      find.byKey(const Key('triage-citation-https://moh.gov.vn/evidence-two-1')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

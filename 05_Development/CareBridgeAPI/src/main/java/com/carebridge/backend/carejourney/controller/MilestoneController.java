@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/babies/{babyId}/milestones")
@@ -21,6 +22,14 @@ import java.util.UUID;
 public class MilestoneController {
 
     private final IMilestoneService milestoneService;
+
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<MilestoneResponse>> listMilestones(
+            @PathVariable UUID babyId, Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ApiResponse.success(milestoneService.listMilestones(babyId, userId));
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

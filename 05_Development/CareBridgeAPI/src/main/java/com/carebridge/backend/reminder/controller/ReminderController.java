@@ -158,6 +158,26 @@ public class ReminderController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{reminderId}/enable")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<ReminderDetailResponse>> enableReminder(
+            @PathVariable UUID reminderId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = reminderService.enableReminder(reminderId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Reminder enabled successfully"));
+    }
+
+    @DeleteMapping("/{reminderId}/permanent")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<Void> hardDeleteReminder(
+            @PathVariable UUID reminderId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        reminderService.hardDeleteReminder(reminderId, callerId);
+        return ResponseEntity.noContent().build();
+    }
+
     // UC49: View today tasks
     @GetMapping("/today")
     @PreAuthorize("hasRole('MOTHER')")

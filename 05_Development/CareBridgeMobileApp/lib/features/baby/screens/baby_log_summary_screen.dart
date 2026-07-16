@@ -37,7 +37,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({String? babyId}) async {
+    final requestedBabyId = babyId ?? _selectedBaby?.id ?? widget.babyId;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -45,19 +46,21 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     try {
       final results = await Future.wait([
         _babyService.listBabyProfiles(),
-        _logService.getLogSummary(widget.babyId, period: _period),
+        _logService.getLogSummary(requestedBabyId, period: _period),
       ]);
+      if (!mounted) return;
       final babies = results[0] as List<BabyProfile>;
       final summary = results[1] as BabyLogSummaryResponse;
       setState(() {
         _babies = babies;
         _selectedBaby = babies.firstWhere(
-          (b) => b.id == widget.babyId,
+          (b) => b.id == requestedBabyId,
           orElse: () => babies.first,
         );
         _summary = summary;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Không thể tải dữ liệu. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -98,6 +101,178 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     }
   }
 
+  Future<void> _openAddLogSheet() async {
+    final typeController = ValueNotifier<LogType>(LogType.feeding);
+    final quantityController = TextEditingController();
+    final unitController = TextEditingController(text: 'ml');
+    final noteController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
+        decoration: const BoxDecoration(
+          color: _canvas,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _primaryContainer,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Thêm nhật ký',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<LogType>(
+                valueListenable: typeController,
+                builder: (context, value, child) =>
+                    DropdownButtonFormField<LogType>(
+                      initialValue: value,
+                      decoration: const InputDecoration(
+                        labelText: 'Loại nhật ký',
+                      ),
+                      items: LogType.values
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type.displayLabel),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (next) {
+                        if (next != null) {
+                          typeController.value = next;
+                          switch (next) {
+                            case LogType.feeding:
+                              unitController.text = 'ml';
+                            case LogType.sleep:
+                              unitController.text = 'hours';
+                            case LogType.diaper:
+                            case LogType.symptom:
+                              quantityController.clear();
+                              unitController.clear();
+                          }
+                        }
+                      },
+                    ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: quantityController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Số lượng (tuỳ chọn)',
+                ),
+                validator: (value) {
+                  final raw = value?.trim() ?? '';
+                  if (raw.isEmpty) return null;
+                  final parsed = double.tryParse(raw);
+                  if (parsed == null || !parsed.isFinite || parsed <= 0) {
+                    return 'Nhập số dương hợp lệ';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: unitController,
+                decoration: const InputDecoration(labelText: 'Đơn vị'),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Ghi chú'),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                key: const Key('baby-log-save'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _primary,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: () async {
+                  if (saving) return;
+                  if (!(formKey.currentState?.validate() ?? false)) return;
+                  saving = true;
+                  try {
+                    await _logService.addDailyLog(
+                      _selectedBaby?.id ?? widget.babyId,
+                      AddBabyDailyLogRequest(
+                        logType: typeController.value,
+                        quantity: double.tryParse(quantityController.text),
+                        unit: unitController.text.trim().isEmpty
+                            ? null
+                            : unitController.text.trim(),
+                        note: noteController.text.trim().isEmpty
+                            ? null
+                            : noteController.text.trim(),
+                        startedAt: DateTime.now(),
+                      ),
+                    );
+                    if (sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop(true);
+                    }
+                  } catch (_) {
+                    if (sheetContext.mounted) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Không thể lưu nhật ký. Vui lòng thử lại.',
+                          ),
+                        ),
+                      );
+                    }
+                  } finally {
+                    saving = false;
+                  }
+                },
+                child: const Text('Lưu nhật ký'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    typeController.dispose();
+    quantityController.dispose();
+    unitController.dispose();
+    noteController.dispose();
+    if (saved == true && mounted) {
+      await _loadData(babyId: _selectedBaby?.id ?? widget.babyId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,7 +284,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        key: const Key('baby-log-add'),
+        onPressed: _openAddLogSheet,
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
@@ -333,9 +509,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       _BentoItem(
         icon: Icons.bedtime_rounded,
         label: 'Giấc ngủ',
-        value: s?.sleep?.totalQuantity != null
-            ? '${(s!.sleep!.totalQuantity! / 60).toStringAsFixed(1)} h'
-            : '${s?.sleep?.count ?? 0} lần',
+        value: formatSleepDuration(s?.sleep),
         color: const Color(0xFFF3E8FF),
         iconColor: const Color(0xFF9C27B0),
       ),
@@ -611,7 +785,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Dữ liệu được tổng hợp từ nhật ký của mẹ. AI cung cấp gợi ý, không thay thế tư vấn y tế.',
+              'Dữ liệu được tổng hợp từ nhật ký của người chăm sóc. Thông tin mang tính quan sát, không thay thế tư vấn chuyên môn.',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 11,

@@ -45,4 +45,8 @@ public interface IReminderService {
     ReminderDetailResponse skipReminder(UUID reminderId, UUID callerId);
 
     void deleteReminder(UUID reminderId, UUID callerId);
+
+    ReminderDetailResponse enableReminder(UUID reminderId, UUID callerId);
+
+    void hardDeleteReminder(UUID reminderId, UUID callerId);
 }

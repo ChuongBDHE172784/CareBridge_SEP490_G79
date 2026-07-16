@@ -7,15 +7,15 @@ import frontmatter
 from app.config import (
     LEGAL_SAFETY_NOTE,
     MEDICAL_SOURCES_DIR,
-    OFFICIAL_DOMAIN_WHITELIST,
     RULE_SOURCE_MAPPING_FILE,
 )
+from app.evidence_registry_client import approved_sources_for_stage
 from app.schemas import Citation, Evidence, SourceDocument
 from app.source_validator import validate_source
 from app import official_source_searcher
 
 
-def load_sources() -> list[SourceDocument]:
+def load_sources(stage: str = "INFANT") -> list[SourceDocument]:
     if not MEDICAL_SOURCES_DIR.exists():
         return []
     sources: list[SourceDocument] = []
@@ -33,6 +33,7 @@ def load_sources() -> list[SourceDocument]:
                 ageRange=post.metadata.get("ageRange", ""),
                 riskLevels=list(post.metadata.get("riskLevels", [])),
                 symptoms=list(post.metadata.get("symptoms", [])),
+                applicableStages=list(post.metadata.get("applicableStages", ["INFANT", "TODDLER"])),
                 sourceType=post.metadata.get("sourceType", "official_guideline"),
                 sourceStatus=post.metadata.get("sourceStatus", "DRAFT"),
                 sourceVersion=str(post.metadata.get("sourceVersion", "1.0")),
@@ -45,14 +46,11 @@ def load_sources() -> list[SourceDocument]:
                 body=post.content.strip(),
             )
         )
-    return [
-        source for source in sources
-        if is_whitelisted_source(source) and source.sourceStatus == "APPROVED"
-    ]
+    return [source for source in sources if is_approved_source(source, stage) and source.sourceStatus == "APPROVED"]
 
 
-def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str]) -> list[SourceDocument]:
-    sources = load_sources()
+def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT") -> list[SourceDocument]:
+    sources = load_sources(stage)
     source_by_id = {source.id: source for source in sources}
     mapped_source_ids = _source_ids_for_rules(matched_rules)
     mapped_sources = [
@@ -74,11 +72,11 @@ def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str]) -
     return deduped[:4]
 
 
-def retrieve_realtime_sources(normalized_symptoms: list[str], matched_rules: list[str]) -> list[SourceDocument]:
+def retrieve_realtime_sources(normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT") -> list[SourceDocument]:
     return [
         source
-        for source in official_source_searcher.realtime_official_search(normalized_symptoms, matched_rules)
-        if validate_source(source, normalized_symptoms)
+        for source in official_source_searcher.realtime_official_search(normalized_symptoms, matched_rules, stage)
+        if is_approved_source(source, stage) and validate_source(source, normalized_symptoms, approved_domains(stage))
     ][:4]
 
 
@@ -86,13 +84,14 @@ def attach_citations(
     sources: list[SourceDocument],
     normalized_symptoms: list[str] | None = None,
     matched_rules: list[str] | None = None,
+    stage: str = "INFANT",
 ) -> list[Citation]:
     normalized_symptoms = normalized_symptoms or []
     matched_rules = matched_rules or []
     retrieved_at = datetime.now(timezone.utc).isoformat()
     citations: list[Citation] = []
     for source in sources:
-        if not is_whitelisted_source(source) or source.sourceStatus in {"DRAFT", "DEPRECATED", "ARCHIVED"}:
+        if not is_approved_source(source, stage) or source.sourceStatus in {"DRAFT", "PENDING_REVIEW", "DEPRECATED", "ARCHIVED"}:
             continue
         excerpt = " ".join(source.body.split())[:240]
         source_matched_symptoms = _matched_symptoms(source, normalized_symptoms)
@@ -144,13 +143,18 @@ def build_evidence(citations: list[Citation], normalized_symptoms: list[str]) ->
     )
 
 
-def is_whitelisted_source(source: SourceDocument) -> bool:
+def approved_domains(stage: str) -> set[str]:
+    return {source.domain for source in approved_sources_for_stage(stage)}
+
+
+def is_approved_source(source: SourceDocument, stage: str) -> bool:
     domain = (source.domain or "").lower().strip()
     host = urlparse(source.url).hostname or ""
     host = host.lower().removeprefix("www.")
-    if domain and domain in OFFICIAL_DOMAIN_WHITELIST and (not host or host == domain or host.endswith(f".{domain}")):
+    domains = approved_domains(stage)
+    if domain and domain in domains and (not host or host == domain or host.endswith(f".{domain}")):
         return True
-    return any(host == allowed or host.endswith(f".{allowed}") for allowed in OFFICIAL_DOMAIN_WHITELIST)
+    return any(host == allowed or host.endswith(f".{allowed}") for allowed in domains)
 
 
 def _source_ids_for_rules(matched_rules: list[str]) -> list[str]:

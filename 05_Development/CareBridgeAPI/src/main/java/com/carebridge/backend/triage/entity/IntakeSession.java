@@ -2,6 +2,7 @@ package com.carebridge.backend.triage.entity;
 
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
+import com.carebridge.backend.triage.TriageStage;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -21,6 +22,14 @@ public class IntakeSession {
 
     @Column(name = "baby_profile_id")
     private UUID babyProfileId;
+
+    @Column(name = "mother_profile_id")
+    private UUID motherProfileId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage", nullable = false, length = 20)
+    @Builder.Default
+    private TriageStage stage = TriageStage.INFANT;
 
     @Column(name = "client_request_id", length = 64)
     private String clientRequestId;

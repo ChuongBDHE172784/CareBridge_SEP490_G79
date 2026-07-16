@@ -168,14 +168,17 @@ class ReminderService extends ChangeNotifier {
     DateTime? scheduledAt,
     RecurrenceType? recurrenceType,
     DateTime? recurrenceEndDate,
+    bool recurrenceEndDateSet = false,
   }) async {
     final body = <String, dynamic>{
       'title': ?title,
       if (scheduledAt != null)
         'scheduledAt': scheduledAt.toUtc().toIso8601String(),
       if (recurrenceType != null) 'recurrenceType': recurrenceType.toApiValue(),
-      if (recurrenceEndDate != null)
-        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      if (recurrenceEndDateSet) ...{
+        'recurrenceEndDate': recurrenceEndDate?.toUtc().toIso8601String(),
+        'recurrenceEndDateSet': true,
+      },
     };
     final data = await apiPatch('/api/v1/reminders/$reminderId', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -206,5 +209,14 @@ class ReminderService extends ChangeNotifier {
   // UC-215: Delete reminder
   Future<void> deleteReminder(String reminderId) async {
     await apiDelete('/api/v1/reminders/$reminderId');
+  }
+
+  Future<Reminder> enableReminder(String reminderId) async {
+    final data = await apiPatch('/api/v1/reminders/$reminderId/enable', {});
+    return Reminder.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> hardDeleteReminder(String reminderId) async {
+    await apiDelete('/api/v1/reminders/$reminderId/permanent');
   }
 }

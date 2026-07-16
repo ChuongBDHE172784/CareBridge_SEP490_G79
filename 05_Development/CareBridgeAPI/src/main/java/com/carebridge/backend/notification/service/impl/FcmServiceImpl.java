@@ -19,14 +19,21 @@ public class FcmServiceImpl implements FcmService {
 
     @Override
     public String sendToToken(String fcmToken, String title, String body) {
-        log.info("[FCM-STUB] Would send to token={} title='{}' body='{}'",
-                fcmToken.substring(0, Math.min(fcmToken.length(), 12)) + "...", title, body);
+        // Never write device tokens or health-related notification content to logs.
+        log.info("[FCM-STUB] delivery suppressed tokenPresent={} titleLength={} bodyLength={}",
+                fcmToken != null && !fcmToken.isBlank(),
+                title == null ? 0 : title.length(),
+                body == null ? 0 : body.length());
         return null;
     }
 
     @Override
     public int sendToTokens(List<String> fcmTokens, String title, String body) {
-        log.info("[FCM-STUB] Would send to {} token(s) title='{}' body='{}'", fcmTokens.size(), title, body);
+        // Keep fallback logs metadata-only; payloads may contain sensitive care data.
+        log.info("[FCM-STUB] delivery suppressed tokenCount={} titleLength={} bodyLength={}",
+                fcmTokens == null ? 0 : fcmTokens.size(),
+                title == null ? 0 : title.length(),
+                body == null ? 0 : body.length());
         return 0;
     }
 

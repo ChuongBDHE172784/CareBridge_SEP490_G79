@@ -43,6 +43,7 @@ class TodayTask {
   bool get isPending => status == ReminderStatus.pending;
   bool get isCompleted => status == ReminderStatus.done;
   bool get isSnoozed => status == ReminderStatus.snoozed;
+  bool get isSkipped => status == ReminderStatus.skipped;
 
   factory TodayTask.fromJson(Map<String, dynamic> json) {
     final scheduledRaw = json['scheduledAt'] as String?;

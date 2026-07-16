@@ -4,8 +4,8 @@
 | Field              | Value                   |
 | ------------------ | ----------------------- |
 | **Document ID**    | `CB-AUTH-IMP-001`       |
-| **Version**        | `1.0`                   |
-| **Date**           | `2026-06-26`            |
+| **Version**        | `1.1`                   |
+| **Date**           | `2026-07-16`            |
 | **Status**         | `Approved`              |
 | **Document Owner** | `PhuongNT`              |
 | **Author**         | `AI Agent`              |
@@ -22,6 +22,8 @@
 | Ngày       | Người thực hiện | Nội dung thay đổi                               |
 | ---------- | --------------- | ----------------------------------------------- |
 | 2026-06-26 | AI Agent        | Tạo tài liệu lần đầu cho UC-01 Register Account |
+| 2026-07-16 | AI Agent        | Đề xuất mở rộng đăng ký Google và Firebase Phone Auth; chờ phê duyệt |
+| 2026-07-16 | User            | Approved v1.1 federated registration extension |
 
 ---
 
@@ -1123,3 +1125,93 @@ Tests phải cover §13 Test Scenarios.
 | PDPA Compliance        | Legal team                                                                          |
 | OWASP Password Guide   | https://owasp.org/www-project-cheat-sheets/cheatsheets/Password_Storage_Cheat_Sheet |
 | Spring Security BCrypt | https://docs.spring.io/spring-security/reference/                                   |
+
+---
+
+## Amendment v1.1 — Federated Registration (Google and Phone)
+
+This amendment is controlled by `.agents/workflows/create-specs.md`. It extends, and does not replace, the password registration contract above. Status is `In Review`; implementation is blocked until human approval.
+
+### A1. Approved intent and boundaries
+
+| Item | Decision |
+| --- | --- |
+| Function | UC-01 Register Account; UC-02 remains the dependency for the existing CareBridge OTP flow |
+| Platforms | Spring Boot API, React Web Portal, Flutter Mobile App |
+| In scope | First-time account creation after Google sign-in or Firebase Phone Auth; role completion; CareBridge JWT/session creation |
+| Out of scope | MFA, account-merging UI, provider unlinking, replacing password authentication, administrator/staff federated sign-up |
+| Provider | Firebase Authentication for Google and Phone; Firebase Admin SDK verifies provider ID tokens on the backend |
+| Account collision | Never auto-link solely by matching email or phone; return a neutral conflict requiring proof through the existing account method |
+
+### A2. Architecture invariants
+
+1. Firebase owns proof of the external identity only. CareBridge owns `users`, role/status, authorization, audit, sessions, access tokens, and refresh tokens.
+2. Clients never send provider profile fields as trusted identity data. They send only a Firebase ID token over HTTPS.
+3. Backend verification must validate signature, project/audience, issuer, expiry, revocation policy, and provider claims before any database mutation.
+4. `(provider, provider_subject)` is the stable external key. Email and phone are mutable attributes and cannot be the federated primary key.
+5. A first-time federated account is enabled after verified provider proof but remains role-incomplete until UC-01 role selection succeeds. Protected role workspaces remain inaccessible while `role IS NULL`.
+6. Existing password registration and UC-02 OTP behavior remain backward compatible.
+
+### A3. Target components and planned paths
+
+| Layer | Planned artifact/responsibility |
+| --- | --- |
+| Database | `V20260716xxxxxx__create_user_identities.sql`; create `user_identities`, indexes and constraints |
+| Baseline schema | Update `V1__init_schema.sql` with the same accepted table/constraints after migration approval |
+| Backend entity/repository | `security/entity/UserIdentity.java`, `security/repository/UserIdentityRepository.java` |
+| Provider boundary | `security/federation/FirebaseTokenVerifier.java` and production adapter; fake verifier in tests |
+| Application service | Extend `AuthService`/`AuthServiceImpl` with a single transactional federated authentication operation |
+| API | `POST /api/v1/auth/federated`; unauthenticated, rate-limited, JSON body `{idToken, deviceInfo?}` |
+| Web | Firebase bootstrap plus Google/Phone actions in `features/auth`; preserve current auth store and routing |
+| Mobile | Add `firebase_auth` and `google_sign_in`; extend current auth service/screens without changing secure token storage |
+
+### A4. Data contract and migration
+
+```sql
+CREATE TABLE public.user_identities (
+    identity_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+    provider varchar(20) NOT NULL CHECK (provider IN ('GOOGLE','PHONE')),
+    provider_subject varchar(255) NOT NULL,
+    provider_email varchar(255),
+    provider_phone varchar(30),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uk_user_identities_provider_subject UNIQUE (provider, provider_subject),
+    CONSTRAINT uk_user_identities_user_provider UNIQUE (user_id, provider)
+);
+CREATE INDEX idx_user_identities_user_id ON public.user_identities(user_id);
+```
+
+No Firebase token or raw credential is persisted. Provider email/phone are PII and must be masked in logs. Migration must be additive and deployable before application code. Rollback disables the federated endpoint first; the identity table is retained to avoid orphaning sign-in ownership.
+
+### A5. API and state flow
+
+`POST /api/v1/auth/federated` returns the existing `AuthResponse` envelope when the user already has a role. A first-time account without a role also receives CareBridge tokens but `profileCompleted=false`; only profile/role/logout endpoints are authorized until role completion.
+
+| Condition | HTTP/code | Side effect |
+| --- | --- | --- |
+| Valid known identity | `200` | Update `last_used_at`, create CareBridge session/tokens, audit login |
+| Valid new identity | `201` | Create user + identity atomically, create session/tokens, audit registration |
+| Invalid/expired/revoked token | `401 AUTH-FED-001` | No persistence; security event without token content |
+| Unsupported provider | `400 AUTH-FED-002` | No persistence |
+| Email/phone collides with an unlinked account | `409 AUTH-FED-003` | No link and no user creation |
+| Disabled/locked CareBridge account | `403 AUTH-FED-004` | No session/token |
+| Firebase unavailable/timeout | `503 AUTH-FED-005` | No persistence; retry-safe response |
+| Concurrent first login with same subject | `200` or `201` for one logical account | Unique constraint + retry lookup; never duplicate users |
+
+### A6. UI/UX and accessibility
+
+Web and Mobile expose “Continue with Google” and “Continue with phone” alongside the existing form. Buttons use the CareBridge Warm Clay design tokens, 48px minimum touch target, visible keyboard focus, semantic labels, progress state that prevents double submission, and non-enumerating error copy. Phone input uses an explicit country code and stores normalized E.164. Cancellation returns to the login/register screen without showing an error. Loading, offline, provider-unavailable, collision, and role-completion states must be equivalent across platforms.
+
+### A7. Security, privacy, audit, and operations
+
+- Rate-limit by IP/device and verified provider subject after token verification; never log ID tokens.
+- Audit `FEDERATED_REGISTRATION`, `FEDERATED_LOGIN`, and rejected collision/security events with masked identifiers and correlation ID.
+- Firebase service-account credentials are external secrets; startup fails closed when federated auth is enabled but credentials are invalid.
+- Phone consent copy must disclose that the number is processed by the configured identity provider for SMS abuse prevention.
+- Feature flag `AUTH_FEDERATED_ENABLED` supports staged rollout; existing password login remains the rollback path.
+
+### A8. Verification references
+
+Detailed cases are in `UC01_RegisterAccount_Test-Spec.md`, conditions `FED-REG-COND-001` through `FED-REG-COND-008`. Existing UC-01 cases remain regression requirements.

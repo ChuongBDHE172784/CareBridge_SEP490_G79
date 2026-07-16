@@ -26,6 +26,7 @@ import '../../features/baby/screens/baby_log_summary_screen.dart';
 import '../../features/baby/screens/development_milestone_detail_screen.dart';
 import '../../features/baby/screens/record_milestone_screen.dart';
 import '../../features/baby/models/baby_daily_log_model.dart';
+import '../../features/baby/models/milestone_model.dart';
 
 import '../../features/healthRecords/screens/edit_health_record_screen.dart';
 
@@ -43,10 +44,14 @@ import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
 import '../../features/familySync/screens/pending_invitations_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
+import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
+import '../../features/healthRecords/models/vaccination_model.dart';
+import '../../features/healthRecords/screens/growth_measurement_history_screen.dart';
+import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
@@ -327,6 +332,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const BabyProfilesScreen(),
     ),
     GoRoute(
+      path: '/baby-care-hub',
+      builder: (context, state) => const BabyCareHubScreen(),
+    ),
+    GoRoute(
       path: '/babies/add',
       builder: (context, state) {
         final entry = state.uri.queryParameters['entry'];
@@ -380,6 +389,18 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/babies/:babyId/growth',
+      builder: (context, state) => GrowthMeasurementHistoryScreen(
+        babyId: state.pathParameters['babyId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '/babies/:babyId/vaccinations/add',
+      builder: (context, state) => AddVaccinationRecordScreen(
+        babyId: state.pathParameters['babyId'] ?? '',
+      ),
+    ),
+    GoRoute(
       path: '/babies/:babyId/milestones/add',
       builder: (context, state) {
         final babyId = state.pathParameters['babyId'] ?? '';
@@ -394,6 +415,7 @@ final GoRouter appRouter = GoRouter(
         return DevelopmentMilestoneDetailScreen(
           babyId: babyId,
           milestoneId: milestoneId,
+          initialMilestone: state.extra as Milestone?,
         );
       },
     ),
@@ -474,10 +496,26 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/babies/:babyId/vaccinations/:recordId',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        final recordId = state.pathParameters['recordId'] ?? '';
+        return VaccinationDetailScreen(
+          babyId: babyId,
+          vaccinationId: recordId,
+          initialRecord: state.extra as VaccinationRecord?,
+        );
+      },
+    ),
+    GoRoute(
       path: '/vaccination/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return VaccinationDetailScreen(vaccinationId: id);
+        return VaccinationDetailScreen(
+          babyId: state.uri.queryParameters['babyId'] ?? '',
+          vaccinationId: id,
+          initialRecord: state.extra as VaccinationRecord?,
+        );
       },
     ),
     GoRoute(

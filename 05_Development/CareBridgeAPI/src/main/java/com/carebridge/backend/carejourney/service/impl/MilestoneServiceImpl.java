@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -94,6 +95,7 @@ public class MilestoneServiceImpl implements IMilestoneService {
     public MilestoneResponse updateMilestone(UUID babyId, UUID milestoneId,
                                              UpdateDevelopmentMilestoneRequest request, UUID callerId) {
         DevelopmentMilestone milestone = findActiveMilestone(milestoneId);
+        ensurePathBabyMatches(babyId, milestone);
         BabyProfile baby = findActualBabyForMilestone(milestone);
 
         if (!babyAccessPolicy.canManage(baby, callerId)) {
@@ -134,6 +136,7 @@ public class MilestoneServiceImpl implements IMilestoneService {
     @Override
     public void deleteMilestone(UUID babyId, UUID milestoneId, UUID callerId) {
         DevelopmentMilestone milestone = findActiveMilestone(milestoneId);
+        ensurePathBabyMatches(babyId, milestone);
         BabyProfile baby = findActualBabyForMilestone(milestone);
 
         if (!babyAccessPolicy.canManage(baby, callerId)) {
@@ -157,6 +160,27 @@ public class MilestoneServiceImpl implements IMilestoneService {
         return babyProfileRepository.findById(milestone.getBabyId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "MILESTONE-001",
                         "Development milestone not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MilestoneResponse> listMilestones(UUID babyId, UUID callerId) {
+        BabyProfile baby = babyProfileRepository.findById(babyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Baby not found: " + babyId));
+        if (!babyAccessPolicy.canView(baby, callerId)) {
+            throw new AccessDeniedBusinessException("Access denied to baby milestones");
+        }
+        return milestoneRepository.findByBabyIdOrderByAchievedDateDesc(babyId).stream()
+                .filter(milestone -> milestone.getRecordStatus() == MilestoneRecordStatus.ACTIVE)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private void ensurePathBabyMatches(UUID babyId, DevelopmentMilestone milestone) {
+        if (!babyId.equals(milestone.getBabyId())) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "MILESTONE-001",
+                    "Development milestone not found");
+        }
     }
 
     private MilestoneAchievementStatus parseUpdateStatus(UpdateDevelopmentMilestoneRequest request) {

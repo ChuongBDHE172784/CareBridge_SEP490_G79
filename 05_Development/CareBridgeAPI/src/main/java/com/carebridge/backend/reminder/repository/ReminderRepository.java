@@ -19,6 +19,8 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
 
     List<Reminder> findByOwnerUserIdOrderByScheduledAtDesc(UUID ownerUserId);
 
+    List<Reminder> findByOwnerUserIdAndStatusNot(UUID ownerUserId, ReminderStatus status);
+
     Optional<Reminder> findById(UUID id);
 
     List<Reminder> findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
