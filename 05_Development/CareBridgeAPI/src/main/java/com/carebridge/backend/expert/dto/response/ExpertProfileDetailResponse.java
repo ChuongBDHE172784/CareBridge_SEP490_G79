@@ -22,6 +22,7 @@ public class ExpertProfileDetailResponse {
 	private String workplace;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
+	private boolean isConsultationEligible;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;

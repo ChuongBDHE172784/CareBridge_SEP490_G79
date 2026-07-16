@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
+import '../routing/consultation_notification_routing.dart';
 import 'notification_detail_screen.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -240,6 +241,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           context.push('/direct-chat/$conversationId');
           return;
         }
+        final consultationRoute = resolveNotificationRoute(n);
+        if (consultationRoute != null) {
+          context.push(consultationRoute);
+          return;
+        }
         await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => NotificationDetailScreen(notification: n),
@@ -367,6 +373,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         icon = Icons.forum_outlined;
         bgColor = _surfaceContainerLow;
         iconColor = _onSurfaceVariant;
+        break;
+      case 'CONSULTATION':
+        icon = Icons.medical_services_outlined;
+        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
+        iconColor = isUnread ? _primary : _onSurfaceVariant;
         break;
       case 'SYSTEM':
         icon = Icons.update_outlined;

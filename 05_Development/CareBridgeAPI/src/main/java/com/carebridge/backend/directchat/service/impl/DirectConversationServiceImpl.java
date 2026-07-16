@@ -18,7 +18,6 @@ import com.carebridge.backend.directchat.service.FindOrCreateConversationResult;
 import com.carebridge.backend.directchat.service.IDirectConversationService;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
-import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Clock;
@@ -88,11 +87,11 @@ public class DirectConversationServiceImpl implements IDirectConversationService
     @Override
     @Transactional
     public FindOrCreateConversationResult findOrCreate(UUID motherUserId, UUID expertProfileId) {
-        ExpertProfile expertProfile = expertProfileRepository.findById(expertProfileId)
+        ExpertProfile expertProfile = expertProfileRepository.findByIdForUpdate(expertProfileId)
                 .orElseThrow(DirectChatException::expertProfileNotFound);
         // BR-DCC-003: gate creating NEW conversation intent. Existing conversations remain
         // reachable via GET regardless of current Expert status (ADR-DCC-007 — reads are open).
-        policy.assertExpertVerified(expertProfile);
+        policy.assertExpertEligibleForConsultation(expertProfile);
         UUID expertUserId = expertProfile.getUserId();
 
         Optional<DirectConversation> existing =
@@ -169,7 +168,7 @@ public class DirectConversationServiceImpl implements IDirectConversationService
         LastMessageRow lastMessage = lastMessages.get(conversation.getId());
         int unreadCount = unreadCounts.getOrDefault(conversation.getId(), 0);
         boolean expertAvailable = conversationExpert != null
-                && conversationExpert.getVerificationStatus() == VerificationStatus.APPROVED;
+                && conversationExpert.isEligibleForConsultation();
 
         return DirectConversationSummaryResponse.builder()
                 .conversationId(conversation.getId())
@@ -250,7 +249,7 @@ public class DirectConversationServiceImpl implements IDirectConversationService
 
     private boolean isExpertAvailable(UUID expertUserId) {
         return expertProfileRepository.findByUserId(expertUserId)
-                .map(ep -> ep.getVerificationStatus() == VerificationStatus.APPROVED)
+                .map(ExpertProfile::isEligibleForConsultation)
                 .orElse(false);
     }
 }

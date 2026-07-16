@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../network/api_client.dart';
 import '../routes/app_router.dart';
 import '../../features/directChat/services/conversation_refresh_bus.dart';
+import '../../features/consultation/services/consultation_request_refresh_bus.dart';
 
 /// Registers this device's FCM token with the backend
 /// (POST /api/v1/notifications/device-token) so server-side alerts
@@ -46,9 +47,9 @@ class FcmService {
     if (_tapHandlingInitialized) return;
     _tapHandlingInitialized = true;
     FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
-    FirebaseMessaging.onMessage.listen((message) {
-      if (message.data['type'] == 'MESSAGE') ConversationRefreshBus.notify();
-    });
+    FirebaseMessaging.onMessage.listen(
+      (message) => _handleForegroundData(message.data),
+    );
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) _handleTap(initialMessage);
     flushPendingRoute();
@@ -71,7 +72,25 @@ class FcmService {
         _uuidPattern.hasMatch(conversationId)) {
       return '/direct-chat/${Uri.encodeComponent(conversationId)}';
     }
+    final requestId = data['requestId'];
+    if (data['type'] == 'CONSULTATION_REQUEST' &&
+        requestId is String &&
+        _uuidPattern.hasMatch(requestId)) {
+      return '/consultation-requests/${Uri.encodeComponent(requestId)}';
+    }
     return null;
+  }
+
+  static void _handleForegroundData(Map<String, dynamic> data) {
+    if (data['type'] == 'MESSAGE') ConversationRefreshBus.notify();
+    if (data['type'] == 'CONSULTATION_REQUEST') {
+      ConsultationRequestRefreshBus.notify();
+    }
+  }
+
+  @visibleForTesting
+  static void handleForegroundDataForTesting(Map<String, dynamic> data) {
+    _handleForegroundData(data);
   }
 
   void _handleTap(RemoteMessage message) {

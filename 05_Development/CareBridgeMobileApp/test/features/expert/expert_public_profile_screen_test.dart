@@ -10,16 +10,20 @@ class _ScriptedDirectChatService extends DirectChatService {
   String? lastExpertProfileId;
 
   @override
-  Future<Map<String, dynamic>> getExpertProfile(String expertProfileId) async => {
-    'expertProfileId': expertProfileId,
-    'displayName': 'BS. Trần Thị B',
-    'professionalTitle': 'Bác sĩ Nhi khoa',
-    'specialty': 'Nhi khoa',
-    'verificationStatus': 'APPROVED',
-  };
+  Future<Map<String, dynamic>> getExpertProfile(String expertProfileId) async =>
+      {
+        'expertProfileId': expertProfileId,
+        'displayName': 'BS. Trần Thị B',
+        'professionalTitle': 'Bác sĩ Nhi khoa',
+        'specialty': 'Nhi khoa',
+        'verificationStatus': 'APPROVED',
+        'isConsultationEligible': true,
+      };
 
   @override
-  Future<DirectConversation> findOrCreateConversation(String expertProfileId) async {
+  Future<DirectConversation> findOrCreateConversation(
+    String expertProfileId,
+  ) async {
     findOrCreateCallCount++;
     lastExpertProfileId = expertProfileId;
     return DirectConversation(
@@ -57,7 +61,8 @@ void main() {
           ),
           GoRoute(
             path: '/direct-chat/:id',
-            builder: (_, state) => Scaffold(body: Text('chat:${state.pathParameters['id']}')),
+            builder: (_, state) =>
+                Scaffold(body: Text('chat:${state.pathParameters['id']}')),
           ),
         ],
       );

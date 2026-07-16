@@ -21,6 +21,10 @@ import com.carebridge.backend.directchat.repository.ConversationCallRepository;
 import com.carebridge.backend.directchat.repository.DirectConversationRepository;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.integration.zegocloud.ZegoTokenDto;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
+import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -39,6 +43,7 @@ class ConversationCallServiceImplTest {
     @Mock private DirectConversationRepository conversationRepository;
     @Mock private ConversationCallRepository callRepository;
     @Mock private IDirectConversationPolicy policy;
+    @Mock private ExpertProfileRepository expertProfileRepository;
     @Mock private IZegoCloudService zegoCloudService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuditService auditService;
@@ -54,12 +59,24 @@ class ConversationCallServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new ConversationCallServiceImpl(conversationRepository, callRepository, policy,
+                expertProfileRepository,
                 zegoCloudService, eventPublisher, auditService, fixedClock);
+        org.mockito.Mockito.lenient()
+                .when(expertProfileRepository.findByUserIdForUpdate(EXPERT_ID))
+                .thenReturn(Optional.of(eligibleExpert()));
     }
 
     private static DirectConversation conversation() {
         return DirectConversation.builder()
                 .id(CONVERSATION_ID).motherUserId(MOTHER_ID).expertUserId(EXPERT_ID).status("ACTIVE").build();
+    }
+
+    private static ExpertProfile eligibleExpert() {
+        return ExpertProfile.builder()
+                .userId(EXPERT_ID)
+                .verificationStatus(VerificationStatus.APPROVED)
+                .trustStatus(TrustStatus.ACTIVE)
+                .build();
     }
 
     private static ConversationCall call(UUID callerUserId, CallStatus status, Instant initiatedAt, Instant answeredAt) {

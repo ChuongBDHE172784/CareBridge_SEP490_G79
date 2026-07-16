@@ -2,12 +2,14 @@ package com.carebridge.backend.directchat.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.directchat.entity.DirectConversation;
 import com.carebridge.backend.directchat.exception.DirectChatException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,7 +38,12 @@ class DirectConversationPolicyImplTest {
     }
 
     private static ExpertProfile expertProfile(UUID userId, VerificationStatus status) {
-        return ExpertProfile.builder().expertProfileId(UUID.randomUUID()).userId(userId).verificationStatus(status).build();
+        return ExpertProfile.builder()
+                .expertProfileId(UUID.randomUUID())
+                .userId(userId)
+                .verificationStatus(status)
+                .trustStatus(TrustStatus.ACTIVE)
+                .build();
     }
 
     // DCC-TC-005/006 — Mother participant, no expert lookup needed.
@@ -46,7 +53,7 @@ class DirectConversationPolicyImplTest {
         DirectConversation conversation = conversation(motherUserId, UUID.randomUUID());
 
         policy.assertIsParticipant(motherUserId, conversation);
-        // no exception == pass
+        verifyNoInteractions(expertProfileRepository);
     }
 
     // BR-DCC-003 — re-checked on every access, not just creation.
@@ -56,6 +63,19 @@ class DirectConversationPolicyImplTest {
         DirectConversation conversation = conversation(UUID.randomUUID(), expertUserId);
         when(expertProfileRepository.findByUserId(expertUserId))
                 .thenReturn(Optional.of(expertProfile(expertUserId, VerificationStatus.APPROVED)));
+
+        policy.assertIsParticipant(expertUserId, conversation);
+    }
+
+    @Test
+    void assertIsParticipant_expertApprovedStillPassesAfterTrustLoss() {
+        UUID expertUserId = UUID.randomUUID();
+        DirectConversation conversation = conversation(UUID.randomUUID(), expertUserId);
+        ExpertProfile revokedTrust =
+                expertProfile(expertUserId, VerificationStatus.APPROVED);
+        revokedTrust.setTrustStatus(TrustStatus.REVOKED);
+        when(expertProfileRepository.findByUserId(expertUserId))
+                .thenReturn(Optional.of(revokedTrust));
 
         policy.assertIsParticipant(expertUserId, conversation);
     }
@@ -90,15 +110,16 @@ class DirectConversationPolicyImplTest {
 
     // DCC-TC-004 — Expert not APPROVED rejected at creation time (422).
     @Test
-    void assertExpertVerified_approved_passes() {
-        policy.assertExpertVerified(expertProfile(UUID.randomUUID(), VerificationStatus.APPROVED));
+    void assertExpertEligible_approvedAndActive_passes() {
+        policy.assertExpertEligibleForConsultation(
+                expertProfile(UUID.randomUUID(), VerificationStatus.APPROVED));
     }
 
     @Test
-    void assertExpertVerified_notApproved_throws422() {
+    void assertExpertEligible_notApproved_throws422() {
         ExpertProfile pending = expertProfile(UUID.randomUUID(), VerificationStatus.PENDING);
 
-        assertThatThrownBy(() -> policy.assertExpertVerified(pending))
+        assertThatThrownBy(() -> policy.assertExpertEligibleForConsultation(pending))
                 .isInstanceOfSatisfying(DirectChatException.class, ex -> {
                     assertThat(ex.getCode()).isEqualTo("DCC-002");
                     assertThat(ex.getHttpStatus().value()).isEqualTo(422);
@@ -109,25 +130,34 @@ class DirectConversationPolicyImplTest {
     @Test
     void assertConversationWritable_expertApproved_passes() {
         UUID expertUserId = UUID.randomUUID();
-        DirectConversation conversation = conversation(UUID.randomUUID(), expertUserId);
-        when(expertProfileRepository.findByUserId(expertUserId))
-                .thenReturn(Optional.of(expertProfile(expertUserId, VerificationStatus.APPROVED)));
-
-        policy.assertConversationWritable(conversation);
+        policy.assertConversationWritable(
+                expertProfile(expertUserId, VerificationStatus.APPROVED));
     }
 
     @Test
     void assertConversationWritable_expertNotApproved_throws409() {
         UUID expertUserId = UUID.randomUUID();
-        DirectConversation conversation = conversation(UUID.randomUUID(), expertUserId);
-        when(expertProfileRepository.findByUserId(expertUserId))
-                .thenReturn(Optional.of(expertProfile(expertUserId, VerificationStatus.SUSPENDED)));
+        ExpertProfile expert = expertProfile(expertUserId, VerificationStatus.SUSPENDED);
 
-        assertThatThrownBy(() -> policy.assertConversationWritable(conversation))
+        assertThatThrownBy(() -> policy.assertConversationWritable(expert))
                 .isInstanceOfSatisfying(DirectChatException.class, ex -> {
                     assertThat(ex.getCode()).isEqualTo("DCC-010");
                     assertThat(ex.getHttpStatus().value()).isEqualTo(409);
                 });
+    }
+
+    @Test
+    void trustLossAlsoBlocksCreationAndWrites() {
+        ExpertProfile expert = expertProfile(UUID.randomUUID(), VerificationStatus.APPROVED);
+        expert.setTrustStatus(TrustStatus.REVOKED);
+
+        assertThatThrownBy(() -> policy.assertExpertEligibleForConsultation(expert))
+                .isInstanceOfSatisfying(DirectChatException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo("DCC-002"));
+        assertThatThrownBy(() -> policy.assertConversationWritable(expert))
+                .isInstanceOfSatisfying(DirectChatException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo("DCC-010"));
+        verifyNoInteractions(expertProfileRepository);
     }
 
     @Test

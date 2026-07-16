@@ -75,7 +75,7 @@ class DirectConversationServiceImplTest {
     // DCC-TC-001
     @Test
     void findOrCreate_existingConversation_returnsExistingWithoutInsert() {
-        when(expertProfileRepository.findById(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
         DirectConversation existing = DirectConversation.builder()
                 .id(UUID.randomUUID()).motherUserId(MOTHER_ID).expertUserId(EXPERT_USER_ID)
                 .status("ACTIVE").createdAt(fixedNow).build();
@@ -91,7 +91,7 @@ class DirectConversationServiceImplTest {
 
     @Test
     void findOrCreate_noExisting_createsNewConversation() {
-        when(expertProfileRepository.findById(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
         when(conversationRepository.findByMotherUserIdAndExpertUserId(MOTHER_ID, EXPERT_USER_ID))
                 .thenReturn(Optional.empty());
         when(writer.insertIfAbsent(any())).thenReturn(true);
@@ -107,7 +107,7 @@ class DirectConversationServiceImplTest {
     // DCC-TC-002 — concurrent race: atomic insert loses, service reads the winner.
     @Test
     void findOrCreate_concurrentRace_recoversWithoutPropagatingException() {
-        when(expertProfileRepository.findById(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID)).thenReturn(Optional.of(approvedExpert()));
         DirectConversation winner = DirectConversation.builder()
                 .id(UUID.randomUUID()).motherUserId(MOTHER_ID).expertUserId(EXPERT_USER_ID)
                 .status("ACTIVE").createdAt(fixedNow).build();
@@ -128,9 +128,9 @@ class DirectConversationServiceImplTest {
         ExpertProfile pending = ExpertProfile.builder()
                 .expertProfileId(EXPERT_PROFILE_ID).userId(EXPERT_USER_ID)
                 .verificationStatus(VerificationStatus.PENDING).build();
-        when(expertProfileRepository.findById(EXPERT_PROFILE_ID)).thenReturn(Optional.of(pending));
-        Mockito.doThrow(DirectChatException.expertNotApproved())
-                .when(policy).assertExpertVerified(pending);
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID)).thenReturn(Optional.of(pending));
+        Mockito.doThrow(DirectChatException.expertNotEligibleForConsultation())
+                .when(policy).assertExpertEligibleForConsultation(pending);
 
         assertThatThrownBy(() -> service.findOrCreate(MOTHER_ID, EXPERT_PROFILE_ID))
                 .isInstanceOf(DirectChatException.class);

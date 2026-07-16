@@ -33,18 +33,15 @@ public class DirectConversationPolicyImpl implements IDirectConversationPolicy {
     }
 
     @Override
-    public void assertExpertVerified(ExpertProfile expertProfile) {
-        if (expertProfile.getVerificationStatus() != VerificationStatus.APPROVED) {
-            throw DirectChatException.expertNotApproved();
+    public void assertExpertEligibleForConsultation(ExpertProfile expertProfile) {
+        if (!expertProfile.isEligibleForConsultation()) {
+            throw DirectChatException.expertNotEligibleForConsultation();
         }
     }
 
     @Override
-    public void assertConversationWritable(DirectConversation conversation) {
-        // ADR-DCC-007 / BR-DCC-015: blocks BOTH participants' writes, not just the Expert's own.
-        ExpertProfile expertProfile = expertProfileRepository.findByUserId(conversation.getExpertUserId())
-                .orElseThrow(DirectChatException::expertUnavailableForWrite);
-        if (expertProfile.getVerificationStatus() != VerificationStatus.APPROVED) {
+    public void assertConversationWritable(ExpertProfile lockedExpertProfile) {
+        if (!lockedExpertProfile.isEligibleForConsultation()) {
             throw DirectChatException.expertUnavailableForWrite();
         }
     }

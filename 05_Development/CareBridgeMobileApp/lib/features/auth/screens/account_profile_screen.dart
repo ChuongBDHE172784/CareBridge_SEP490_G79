@@ -11,6 +11,7 @@ import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
 import '../../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../../features/fileManager/screens/file_manager_screen.dart';
+import '../../../features/consultation/screens/my_consultation_requests_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key});
@@ -182,6 +183,22 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         expertName: _profile?.name,
                         expertAvatarUrl: _profile?.avatarUrl,
                       ),
+                    ),
+                  );
+                },
+              ),
+            ]),
+          ],
+          if (AuthState.instance.role == 'MOTHER') ...[
+            const SizedBox(height: 16),
+            _buildMenuCard([
+              _menuItem(
+                Icons.medical_services_outlined,
+                'Yêu cầu tư vấn của tôi',
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MyConsultationRequestsScreen(),
                     ),
                   );
                 },

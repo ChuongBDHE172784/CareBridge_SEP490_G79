@@ -20,6 +20,8 @@ import com.carebridge.backend.directchat.repository.DirectConversationRepository
 import com.carebridge.backend.directchat.repository.DirectMessageRepository;
 import com.carebridge.backend.directchat.service.IDirectMessageService;
 import com.carebridge.backend.directchat.service.SendDirectMessageResult;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
     private final ConversationTimelineRepository timelineRepository;
     private final DirectMessageWriter messageWriter;
     private final IDirectConversationPolicy policy;
+    private final ExpertProfileRepository expertProfileRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final Clock clock;
@@ -56,9 +59,11 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             ConversationTimelineRepository timelineRepository,
             DirectMessageWriter messageWriter,
             IDirectConversationPolicy policy,
+            ExpertProfileRepository expertProfileRepository,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService) {
         this(conversationRepository, messageRepository, callRepository, timelineRepository, messageWriter, policy,
+                expertProfileRepository,
                 eventPublisher, auditService, Clock.systemDefaultZone());
     }
 
@@ -70,6 +75,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             ConversationTimelineRepository timelineRepository,
             DirectMessageWriter messageWriter,
             IDirectConversationPolicy policy,
+            ExpertProfileRepository expertProfileRepository,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService,
             Clock clock) {
@@ -79,6 +85,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         this.timelineRepository = timelineRepository;
         this.messageWriter = messageWriter;
         this.policy = policy;
+        this.expertProfileRepository = expertProfileRepository;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
         this.clock = clock;
@@ -90,8 +97,10 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         DirectConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(DirectChatException::conversationNotFound);
         policy.assertIsParticipant(senderUserId, conversation);
-        // ADR-DCC-007: checked BEFORE any persistence, for both actors.
-        policy.assertConversationWritable(conversation);
+        ExpertProfile lockedExpert = expertProfileRepository
+                .findByUserIdForUpdate(conversation.getExpertUserId())
+                .orElseThrow(DirectChatException::expertUnavailableForWrite);
+        policy.assertConversationWritable(lockedExpert);
 
         String trimmedBody = request.getMessageBody() == null ? "" : request.getMessageBody().trim();
         if (trimmedBody.isEmpty() || trimmedBody.length() > MAX_BODY_LENGTH) {

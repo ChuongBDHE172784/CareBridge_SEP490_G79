@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../directChat/services/direct_chat_service.dart';
+import '../../consultation/screens/consultation_request_form_screen.dart';
 
 class ExpertPublicProfileScreen extends StatefulWidget {
   final String expertProfileId;
@@ -82,9 +83,12 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
             return Center(child: Text('Lỗi tải hồ sơ: ${snapshot.error}'));
           }
           final profile = snapshot.data!;
-          final isApproved = profile['verificationStatus'] == 'APPROVED';
+          final isConsultationEligible =
+              profile['isConsultationEligible'] == true;
           final displayName = profile['displayName'] as String?;
           final professionalTitle = profile['professionalTitle'] as String?;
+          final expertDisplayName =
+              displayName ?? professionalTitle ?? 'Chuyên gia';
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Container(
@@ -99,7 +103,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    displayName ?? professionalTitle ?? 'Chuyên gia',
+                    expertDisplayName,
                     style: const TextStyle(
                       color: _onSurface,
                       fontSize: 22,
@@ -139,28 +143,52 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: isApproved && !_startingChat
-                          ? _startChat
-                          : null,
-                      child: _startingChat
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              isApproved
-                                  ? 'Trò chuyện'
-                                  : 'Chuyên gia chưa được xác thực',
-                            ),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: isConsultationEligible && !_startingChat
+                              ? _startChat
+                              : null,
+                          child: _startingChat
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Trò chuyện'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isConsultationEligible
+                              ? () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ConsultationRequestFormScreen(
+                                          expertProfileId:
+                                              widget.expertProfileId,
+                                          expertDisplayName: expertDisplayName,
+                                        ),
+                                  ),
+                                )
+                              : null,
+                          child: const Text('Yêu cầu tư vấn'),
+                        ),
+                      ),
+                    ],
                   ),
+                  if (!isConsultationEligible) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Chuyên gia hiện chưa thể nhận tương tác tư vấn mới.',
+                      style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),

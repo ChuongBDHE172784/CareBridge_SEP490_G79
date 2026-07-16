@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/expert_question_queue_screen.dart';
+import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/services/expert_home_service.dart';
 
 class ExpertAppHomeScreen extends StatefulWidget {
@@ -186,7 +187,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
           children: [
             const Expanded(
               child: Text(
-                'Tư vấn hôm nay',
+                'Yêu cầu tư vấn gần nhất',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 27,
@@ -202,7 +203,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
-                '${snapshot?.consultationCount ?? 0} Lịch',
+                '${snapshot?.requestCount ?? 0} Đang chờ',
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 15,
@@ -233,7 +234,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.video_camera_front_outlined,
+                  Icons.assignment_outlined,
                   color: _primary,
                   size: 30,
                 ),
@@ -316,9 +317,11 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                               minimumSize: const Size.fromHeight(54),
                               shape: const StadiumBorder(),
                             ),
-                            onPressed: consultation == null ? null : () {},
+                            onPressed: consultation == null
+                                ? null
+                                : _openConsultationRequests,
                             child: const Text(
-                              'Vào phòng',
+                              'Xem yêu cầu',
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 18,
@@ -356,9 +359,9 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
           child: _MetricCard(
             icon: Icons.mark_email_unread_outlined,
             count: snapshot?.requestCount ?? 0,
-            title: 'Yêu cầu mới',
-            subtitle: 'Cần xác nhận',
-            onTap: _openQuestions,
+            title: 'Yêu cầu tư vấn',
+            subtitle: 'Đang chờ phản hồi',
+            onTap: _openConsultationRequests,
           ),
         ),
         const SizedBox(width: 18),
@@ -433,9 +436,9 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   // anywhere in the EXPERT shell, BR-MEDI-005); this card is its replacement entry point.
   Widget _buildCommunityCard() {
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CommunityFeedScreen())),
       borderRadius: BorderRadius.circular(28),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -453,7 +456,11 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                 color: _surfaceHighest,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.group_outlined, color: _primary, size: 24),
+              child: const Icon(
+                Icons.group_outlined,
+                color: _primary,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 16),
             const Expanded(
@@ -480,13 +487,19 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     );
   }
 
+  void _openConsultationRequests() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ExpertRequestsTabScreen()));
+  }
+
   static List<BoxShadow> get _softShadow => [
-        BoxShadow(
-          color: const Color(0xFF5A463F).withValues(alpha: 0.06),
-          blurRadius: 22,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: const Color(0xFF5A463F).withValues(alpha: 0.06),
+      blurRadius: 22,
+      offset: const Offset(0, 4),
+    ),
+  ];
 }
 
 class _OnlineToggle extends StatelessWidget {
@@ -730,4 +743,3 @@ class _SupportCard extends StatelessWidget {
     );
   }
 }
-

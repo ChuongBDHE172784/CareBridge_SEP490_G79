@@ -67,4 +67,9 @@ private LocalDateTime createdAt;
 @UpdateTimestamp
 @Column(name = "updated_at", nullable = false)
 private LocalDateTime updatedAt;
+
+public boolean isEligibleForConsultation() {
+return verificationStatus == VerificationStatus.APPROVED
+        && trustStatus == TrustStatus.ACTIVE;
+}
 }

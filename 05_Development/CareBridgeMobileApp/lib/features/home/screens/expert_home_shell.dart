@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'expert_app_home_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
 import '../../community/screens/expert_question_queue_screen.dart';
+import '../../consultation/screens/expert_requests_tab_screen.dart';
+import '../../consultation/services/consultation_request_refresh_bus.dart';
+import '../../consultation/services/consultation_request_service.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../../directChat/services/conversation_refresh_bus.dart';
@@ -27,8 +30,11 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
 
   int _index = 0;
   int _unreadConversationCount = 0;
+  int _pendingConsultationCount = 0;
   StreamSubscription<void>? _refreshSubscription;
+  StreamSubscription<void>? _consultationRefreshSubscription;
   int _unreadLoadGeneration = 0;
+  int _consultationLoadGeneration = 0;
 
   @override
   void initState() {
@@ -38,18 +44,25 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
     _refreshSubscription = ConversationRefreshBus.events.listen(
       (_) => _refreshUnreadCount(),
     );
+    _refreshPendingConsultationCount();
+    _consultationRefreshSubscription = ConsultationRequestRefreshBus.events
+        .listen((_) => _refreshPendingConsultationCount());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshSubscription?.cancel();
+    _consultationRefreshSubscription?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshUnreadCount();
+    if (state == AppLifecycleState.resumed) {
+      _refreshUnreadCount();
+      _refreshPendingConsultationCount();
+    }
   }
 
   Future<void> _refreshUnreadCount() async {
@@ -65,15 +78,27 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
     }
   }
 
+  Future<void> _refreshPendingConsultationCount() async {
+    final generation = ++_consultationLoadGeneration;
+    try {
+      final count = await ConsultationRequestService.instance.pendingCount();
+      if (!mounted || generation != _consultationLoadGeneration) return;
+      setState(() => _pendingConsultationCount = count);
+    } catch (_) {
+      // Best effort: retain the latest known pending count.
+    }
+  }
+
   void _onDestinationSelected(int i) {
     setState(() => _index = i);
     _refreshUnreadCount();
+    _refreshPendingConsultationCount();
   }
 
   static const _pages = <Widget>[
     ExpertAppHomeScreen(), // 0: Tổng quan (unchanged dashboard content)
     ConversationListScreen(), // 1: Trò chuyện (shared with MOTHER)
-    ExpertQuestionQueueScreen(embeddedInShell: true), // 2: Yêu cầu
+    ExpertRequestsTabScreen(), // 2: Tư vấn + Community Q&A
     ExpertCalendarScreen(), // 3: Lịch
     AccountProfileScreen(), // 4: Tài khoản
   ];
@@ -112,10 +137,20 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
                 : const Icon(Icons.chat_bubble, color: _primary),
             label: 'Trò chuyện',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment, color: _primary),
-            label: 'Yêu cầu',
+          NavigationDestination(
+            icon: _pendingConsultationCount > 0
+                ? Badge(
+                    label: Text('$_pendingConsultationCount'),
+                    child: const Icon(Icons.assignment_outlined),
+                  )
+                : const Icon(Icons.assignment_outlined),
+            selectedIcon: _pendingConsultationCount > 0
+                ? Badge(
+                    label: Text('$_pendingConsultationCount'),
+                    child: const Icon(Icons.assignment, color: _primary),
+                  )
+                : const Icon(Icons.assignment, color: _primary),
+            label: 'Yêu cầu tư vấn',
           ),
           const NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

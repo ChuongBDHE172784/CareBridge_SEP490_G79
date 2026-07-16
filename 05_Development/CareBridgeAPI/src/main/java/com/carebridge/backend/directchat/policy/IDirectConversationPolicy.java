@@ -10,10 +10,10 @@ public interface IDirectConversationPolicy {
     void assertIsParticipant(UUID currentUserId, DirectConversation conversation);
 
     /** BR-DCC-003: creation-time gate for find-or-create. */
-    void assertExpertVerified(ExpertProfile expertProfile);
+    void assertExpertEligibleForConsultation(ExpertProfile expertProfile);
 
-    /** ADR-DCC-007 / BR-DCC-015: blocks new writes when the conversation's Expert isn't APPROVED. */
-    void assertConversationWritable(DirectConversation conversation);
+    /** Caller must pass an ExpertProfile locked in the current transaction. */
+    void assertConversationWritable(ExpertProfile lockedExpertProfile);
 
     /** "MOTHER" or "EXPERT" — currentUserId's role within this specific conversation. */
     String resolveRole(UUID currentUserId, DirectConversation conversation);

@@ -5,8 +5,10 @@ import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -16,15 +18,26 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
 
  Optional<ExpertProfile> findByUserId(UUID userId);
 
+ @Lock(LockModeType.PESSIMISTIC_WRITE)
+ @Query("SELECT ep FROM ExpertProfile ep WHERE ep.expertProfileId = :id")
+ Optional<ExpertProfile> findByIdForUpdate(@Param("id") UUID id);
+
+ @Lock(LockModeType.PESSIMISTIC_WRITE)
+ @Query("SELECT ep FROM ExpertProfile ep WHERE ep.userId = :userId")
+ Optional<ExpertProfile> findByUserIdForUpdate(@Param("userId") UUID userId);
+
  boolean existsByUserId(UUID userId);
 
  List<ExpertProfile> findByVerificationStatus(VerificationStatus status);
 
- @Query("SELECT ep FROM ExpertProfile ep WHERE ep.verificationStatus = 'APPROVED' ORDER BY ep.ratingAvg DESC NULLS LAST")
+ @Query("SELECT ep FROM ExpertProfile ep WHERE ep.verificationStatus = 'APPROVED' "
+     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
+     + "ORDER BY ep.ratingAvg DESC NULLS LAST")
  List<ExpertProfile> findVerifiedPublic();
 
  @Query("SELECT ep FROM ExpertProfile ep " +
  "WHERE ep.verificationStatus = 'APPROVED' " +
+ "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE " +
  "AND (:specialty IS NULL OR ep.specialty = :specialty)")
  List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
 
@@ -36,6 +49,7 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
  @Query(value = """
      SELECT ep.* FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
+       AND ep.trust_status = 'ACTIVE'
        AND (:specialty IS NULL OR ep.specialty = :specialty)
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -45,6 +59,7 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      countQuery = """
      SELECT COUNT(*) FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
+       AND ep.trust_status = 'ACTIVE'
        AND (:specialty IS NULL OR ep.specialty = :specialty)
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -54,7 +69,9 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
  Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
 
  @Query("SELECT DISTINCT TRIM(ep.specialty) FROM ExpertProfile ep "
-     + "WHERE ep.verificationStatus = 'APPROVED' AND ep.specialty IS NOT NULL "
+     + "WHERE ep.verificationStatus = 'APPROVED' "
+     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
+     + "AND ep.specialty IS NOT NULL "
      + "AND TRIM(ep.specialty) <> '' ORDER BY TRIM(ep.specialty)")
  List<String> findApprovedSpecialties();
 }

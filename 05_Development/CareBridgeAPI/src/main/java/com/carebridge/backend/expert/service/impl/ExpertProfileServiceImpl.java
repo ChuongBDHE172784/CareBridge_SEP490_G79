@@ -157,7 +157,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
-		if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+		if (!profile.isEligibleForConsultation()) {
 			throw new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-004", "Expert profile not available");
@@ -181,7 +181,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void approveExpert(UUID expertProfileId, UUID adminId) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
@@ -193,7 +193,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void rejectExpert(UUID expertProfileId, UUID adminId, String reason) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
@@ -207,7 +207,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));

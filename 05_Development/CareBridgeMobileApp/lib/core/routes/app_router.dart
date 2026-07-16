@@ -67,6 +67,8 @@ import '../../features/expert/screens/expert_nearby_support_screen.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
 import '../../features/directChat/screens/direct_chat_screen.dart';
+import '../../features/consultation/screens/my_consultation_requests_screen.dart';
+import '../../features/consultation/screens/consultation_request_detail_screen.dart';
 
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
@@ -249,6 +251,16 @@ final GoRouter appRouter = GoRouter(
         final conversationId = state.pathParameters['conversationId'] ?? '';
         return DirectChatScreen(conversationId: conversationId);
       },
+    ),
+    GoRoute(
+      path: '/consultation-requests',
+      builder: (context, state) => const MyConsultationRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/consultation-requests/:requestId',
+      builder: (context, state) => ConsultationRequestDetailScreen(
+        requestId: state.pathParameters['requestId'] ?? '',
+      ),
     ),
     GoRoute(
       path: '/reminders/all',

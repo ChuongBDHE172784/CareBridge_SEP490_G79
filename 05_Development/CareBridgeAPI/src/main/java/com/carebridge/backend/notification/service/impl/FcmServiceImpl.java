@@ -3,6 +3,7 @@ package com.carebridge.backend.notification.service.impl;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.notification.service.FcmService;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -39,5 +40,15 @@ public class FcmServiceImpl implements FcmService {
             }
         }
         return FcmDeliveryResult.failed("FCM_SEND_FAILED", attempts);
+    }
+
+    @Override
+    public FcmDeliveryResult sendWithRetry(
+            String fcmToken,
+            String title,
+            String body,
+            Map<String, String> data,
+            int maxAttempts) {
+        return sendWithRetry(fcmToken, title, body, maxAttempts);
     }
 }

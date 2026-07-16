@@ -25,8 +25,9 @@ public class DirectChatException extends RuntimeException {
         return new DirectChatException("DCC-001", "Only a Mother may start a direct conversation", HttpStatus.FORBIDDEN);
     }
 
-    public static DirectChatException expertNotApproved() {
-        return new DirectChatException("DCC-002", "Expert is not APPROVED", HttpStatus.UNPROCESSABLE_ENTITY);
+    public static DirectChatException expertNotEligibleForConsultation() {
+        return new DirectChatException(
+                "DCC-002", "Expert is not eligible for consultation", HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     public static DirectChatException expertNoLongerApproved() {

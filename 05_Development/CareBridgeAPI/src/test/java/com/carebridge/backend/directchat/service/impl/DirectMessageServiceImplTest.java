@@ -22,6 +22,10 @@ import com.carebridge.backend.directchat.repository.ConversationTimelineReposito
 import com.carebridge.backend.directchat.repository.DirectConversationRepository;
 import com.carebridge.backend.directchat.repository.DirectMessageRepository;
 import com.carebridge.backend.directchat.service.SendDirectMessageResult;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
+import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -44,6 +48,7 @@ class DirectMessageServiceImplTest {
     @Mock private ConversationTimelineRepository timelineRepository;
     @Mock private DirectMessageWriter messageWriter;
     @Mock private IDirectConversationPolicy policy;
+    @Mock private ExpertProfileRepository expertProfileRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuditService auditService;
 
@@ -59,13 +64,25 @@ class DirectMessageServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new DirectMessageServiceImpl(conversationRepository, messageRepository, callRepository,
-                timelineRepository, messageWriter, policy, eventPublisher, auditService, fixedClock);
+                timelineRepository, messageWriter, policy, expertProfileRepository,
+                eventPublisher, auditService, fixedClock);
+        org.mockito.Mockito.lenient()
+                .when(expertProfileRepository.findByUserIdForUpdate(EXPERT_ID))
+                .thenReturn(Optional.of(eligibleExpert()));
     }
 
     private static DirectConversation conversation() {
         return DirectConversation.builder()
                 .id(CONVERSATION_ID).motherUserId(MOTHER_ID).expertUserId(EXPERT_ID)
                 .status("ACTIVE").build();
+    }
+
+    private static ExpertProfile eligibleExpert() {
+        return ExpertProfile.builder()
+                .userId(EXPERT_ID)
+                .verificationStatus(VerificationStatus.APPROVED)
+                .trustStatus(TrustStatus.ACTIVE)
+                .build();
     }
 
     private SendDirectMessageRequest request(String body) {
@@ -174,7 +191,7 @@ class DirectMessageServiceImplTest {
         DirectConversation conv = conversation();
         when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conv));
         org.mockito.Mockito.doThrow(DirectChatException.expertUnavailableForWrite())
-                .when(policy).assertConversationWritable(conv);
+                .when(policy).assertConversationWritable(any(ExpertProfile.class));
 
         assertThatThrownBy(() -> service.sendMessage(CONVERSATION_ID, MOTHER_ID, request("Hello")))
                 .isInstanceOfSatisfying(DirectChatException.class,

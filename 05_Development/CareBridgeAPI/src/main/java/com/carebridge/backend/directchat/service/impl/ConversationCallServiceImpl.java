@@ -16,6 +16,8 @@ import com.carebridge.backend.directchat.service.IConversationCallService;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.integration.zegocloud.ZegoTokenDto;
 import com.carebridge.backend.integration.zegocloud.ZegoTokenGenerationException;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,6 +34,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
     private final DirectConversationRepository conversationRepository;
     private final ConversationCallRepository callRepository;
     private final IDirectConversationPolicy policy;
+    private final ExpertProfileRepository expertProfileRepository;
     private final IZegoCloudService zegoCloudService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -42,10 +45,12 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             DirectConversationRepository conversationRepository,
             ConversationCallRepository callRepository,
             IDirectConversationPolicy policy,
+            ExpertProfileRepository expertProfileRepository,
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService) {
-        this(conversationRepository, callRepository, policy, zegoCloudService, eventPublisher, auditService,
+        this(conversationRepository, callRepository, policy, expertProfileRepository,
+                zegoCloudService, eventPublisher, auditService,
                 Clock.systemDefaultZone());
     }
 
@@ -54,6 +59,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             DirectConversationRepository conversationRepository,
             ConversationCallRepository callRepository,
             IDirectConversationPolicy policy,
+            ExpertProfileRepository expertProfileRepository,
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService,
@@ -61,6 +67,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         this.conversationRepository = conversationRepository;
         this.callRepository = callRepository;
         this.policy = policy;
+        this.expertProfileRepository = expertProfileRepository;
         this.zegoCloudService = zegoCloudService;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
@@ -72,7 +79,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
     public ConversationCallResponse initiateCall(UUID conversationId, UUID callerUserId, CallType type) {
         DirectConversation conversation = loadConversation(conversationId);
         policy.assertIsParticipant(callerUserId, conversation);
-        policy.assertConversationWritable(conversation);
+        assertWritableUnderLock(conversation);
 
         UUID callId = UUID.randomUUID();
         String zegoRoomId = callId.toString();
@@ -105,7 +112,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         DirectConversation conversation = loadCallConversation(conversationId, call);
         requireCallee(call, conversation, currentUserId);
         policy.assertIsParticipant(currentUserId, conversation);
-        policy.assertConversationWritable(conversation);
+        assertWritableUnderLock(conversation);
 
         if (callRepository.conditionallyMarkRinging(callId) != 1) {
             throw DirectChatException.invalidCallTransition();
@@ -123,7 +130,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         DirectConversation conversation = loadCallConversation(conversationId, call);
         requireCallee(call, conversation, currentUserId);
         policy.assertIsParticipant(currentUserId, conversation);
-        policy.assertConversationWritable(conversation);
+        assertWritableUnderLock(conversation);
 
         Instant now = Instant.now(clock);
         // ADR-DCC-005: conditional UPDATE — the sole race oracle against CallTimeoutReconciliationJob.
@@ -149,7 +156,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         DirectConversation conversation = loadCallConversation(conversationId, call);
         requireCallee(call, conversation, currentUserId);
         policy.assertIsParticipant(currentUserId, conversation);
-        policy.assertConversationWritable(conversation);
+        assertWritableUnderLock(conversation);
 
         Instant now = Instant.now(clock);
         if (callRepository.conditionallyDecline(callId, now) != 1) {
@@ -191,7 +198,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
                 throw DirectChatException.wrongCallActor();
             }
             policy.assertIsParticipant(currentUserId, conversation);
-            policy.assertConversationWritable(conversation);
+            assertWritableUnderLock(conversation);
         }
 
         Instant now = Instant.now(clock);
@@ -222,6 +229,13 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         if (!currentUserId.equals(callee)) {
             throw DirectChatException.wrongCallActor();
         }
+    }
+
+    private void assertWritableUnderLock(DirectConversation conversation) {
+        ExpertProfile lockedExpert = expertProfileRepository
+                .findByUserIdForUpdate(conversation.getExpertUserId())
+                .orElseThrow(DirectChatException::expertUnavailableForWrite);
+        policy.assertConversationWritable(lockedExpert);
     }
 
     private static UUID resolveCallee(DirectConversation conversation, UUID callerUserId) {
