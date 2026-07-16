@@ -612,5 +612,9 @@ Exit requires every P0/P1 federated case and the full existing UC-03 suite to pa
 - `FederatedAuthServiceTest`: 8 tests executed, 8 errors from the intentional `FederatedAuthServiceStub` `UnsupportedOperationException`.
 - Maven test compilation succeeded; no production federated authentication logic exists.
 - Backend service Red Gate: ☑ FAIL ☐ PASS.
-- Controller, PostgreSQL integration, Web, and Mobile Red Gates remain ☐ FAIL ☐ PASS (not written).
-- Overall federated-login Red Gate remains **in progress** until every planned layer has failing evidence.
+- `FederatedAuthControllerTest`: 3 tests executed, 3 expected failures because `POST /api/v1/auth/federated` is not mapped (HTTP 404).
+- `federated-login.spec.ts`: 2 Playwright tests executed, both failed because accessible Google/phone login, focus and cancellation states do not exist.
+- `federated_login_test.dart`: 1 Flutter widget test executed and failed because the Google/phone login keys do not exist.
+- `FederatedLoginIntegrationTest`: written with real PostgreSQL/Testcontainers contracts for hashed refresh references and replay uniqueness; execution is blocked because no Docker environment is available.
+- Controller, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS. PostgreSQL integration Red Gate: ☐ FAIL ☐ PASS (environment blocked).
+- Overall federated-login Red Gate remains **in progress** until PostgreSQL failing evidence is captured.

@@ -637,5 +637,9 @@ Exit requires all new P0/P1 cases GREEN, existing UC-01 regression GREEN, no tok
 - `FederatedAuthServiceTest`: 8 tests executed, 8 errors from the intentional `FederatedAuthServiceStub` `UnsupportedOperationException`.
 - Maven test compilation succeeded; the failures are caused by missing federated behavior rather than a broken test contract.
 - Backend service Red Gate: ☑ FAIL ☐ PASS.
-- Controller, PostgreSQL integration, Web, and Mobile Red Gates remain ☐ FAIL ☐ PASS (not written).
-- Overall federated-registration Red Gate remains **in progress** until every planned layer has failing evidence.
+- `FederatedAuthControllerTest`: 3 tests executed, 3 expected failures because `POST /api/v1/auth/federated` is not mapped (HTTP 404).
+- `federated-registration.spec.ts`: 1 Playwright test executed and failed because the accessible Google/phone registration controls and role-completion flow do not exist.
+- `federated_registration_test.dart`: 1 Flutter widget test executed and failed because the Google/phone registration keys do not exist.
+- `FederatedRegistrationIntegrationTest`: written with real PostgreSQL/Testcontainers contracts for collision and provider-subject uniqueness; execution is blocked because no Docker environment is available.
+- Controller, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS. PostgreSQL integration Red Gate: ☐ FAIL ☐ PASS (environment blocked).
+- Overall federated-registration Red Gate remains **in progress** until PostgreSQL failing evidence is captured.
