@@ -4,6 +4,7 @@ import type {
   DirectConversation,
   DirectConversationSummary,
   TimelinePage,
+  ZegoJoinCredentials,
 } from '../models/directConversation';
 import type { TimelineItem } from '../models/timelineItem';
 
@@ -50,6 +51,21 @@ export async function initiateCall(
   return data.data;
 }
 
+export async function getCall(
+  conversationId: string,
+  callId: string
+): Promise<ConversationCall> {
+  const { data } = await apiClient.get(
+    `/api/v1/direct-conversations/${conversationId}/calls/${callId}`
+  );
+  return data.data;
+}
+
+export async function listActiveCalls(): Promise<ConversationCall[]> {
+  const { data } = await apiClient.get('/api/v1/direct-conversations/calls/active');
+  return data.data;
+}
+
 async function patchCall(conversationId: string, callId: string, action: string): Promise<ConversationCall> {
   const { data } = await apiClient.patch(
     `/api/v1/direct-conversations/${conversationId}/calls/${callId}/${action}`
@@ -61,3 +77,13 @@ export const markRinging = (conversationId: string, callId: string) => patchCall
 export const answerCall = (conversationId: string, callId: string) => patchCall(conversationId, callId, 'answer');
 export const declineCall = (conversationId: string, callId: string) => patchCall(conversationId, callId, 'decline');
 export const endCall = (conversationId: string, callId: string) => patchCall(conversationId, callId, 'end');
+
+export async function issueJoinCredentials(
+  conversationId: string,
+  callId: string
+): Promise<ZegoJoinCredentials> {
+  const { data } = await apiClient.post(
+    `/api/v1/direct-conversations/${conversationId}/calls/${callId}/join-credentials`
+  );
+  return data.data;
+}

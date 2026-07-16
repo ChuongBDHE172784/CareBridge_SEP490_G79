@@ -4,9 +4,10 @@ class ConversationCall {
   final String initiatedByUserId;
   final String callType;
   final String callStatus;
+  final DateTime initiatedAt;
+  final DateTime? answeredAt;
+  final DateTime? endedAt;
   final int? durationSeconds;
-  final String? zegoRoomId;
-  final String? zegoToken;
 
   const ConversationCall({
     required this.callId,
@@ -14,9 +15,10 @@ class ConversationCall {
     required this.initiatedByUserId,
     required this.callType,
     required this.callStatus,
+    required this.initiatedAt,
+    this.answeredAt,
+    this.endedAt,
     this.durationSeconds,
-    this.zegoRoomId,
-    this.zegoToken,
   });
 
   factory ConversationCall.fromJson(Map<String, dynamic> json) {
@@ -26,9 +28,14 @@ class ConversationCall {
       initiatedByUserId: json['initiatedByUserId'] as String,
       callType: json['callType'] as String,
       callStatus: json['callStatus'] as String,
+      initiatedAt: DateTime.parse(json['initiatedAt'] as String).toUtc(),
+      answeredAt: json['answeredAt'] == null
+          ? null
+          : DateTime.parse(json['answeredAt'] as String).toUtc(),
+      endedAt: json['endedAt'] == null
+          ? null
+          : DateTime.parse(json['endedAt'] as String).toUtc(),
       durationSeconds: json['durationSeconds'] as int?,
-      zegoRoomId: json['zegoRoomId'] as String?,
-      zegoToken: json['zegoToken'] as String?,
     );
   }
 }

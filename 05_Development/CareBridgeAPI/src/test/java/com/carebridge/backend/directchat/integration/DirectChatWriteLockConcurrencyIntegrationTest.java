@@ -2,9 +2,6 @@ package com.carebridge.backend.directchat.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
 import com.carebridge.backend.directchat.dto.request.SendDirectMessageRequest;
 import com.carebridge.backend.directchat.entity.CallType;
 import com.carebridge.backend.directchat.exception.DirectChatException;
@@ -15,9 +12,7 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
-import com.carebridge.backend.integration.zegocloud.ZegoTokenDto;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
-import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -29,7 +24,6 @@ import java.util.concurrent.TimeoutException;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -53,13 +47,6 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
     @MockitoBean private IZegoCloudService zegoCloudService;
 
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
-
-    @BeforeEach
-    void setUpZego() {
-        when(zegoCloudService.generateToken(anyString(), anyString(), anyString()))
-                .thenReturn(new ZegoTokenDto(
-                        "room", "token", 1L, Instant.now().plusSeconds(3600)));
-    }
 
     @AfterEach
     void tearDown() {
@@ -148,25 +135,14 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
     @Test
     void initiateCall_interactionLockFirstCommitsBeforeTrustMutation() throws Exception {
         Fixture fixture = seedFixture(true);
-        CountDownLatch zegoReached = new CountDownLatch(1);
-        CountDownLatch releaseZego = new CountDownLatch(1);
-        when(zegoCloudService.generateToken(anyString(), anyString(), anyString()))
-                .thenAnswer(invocation -> {
-                    zegoReached.countDown();
-                    await(releaseZego);
-                    return new ZegoTokenDto(
-                            invocation.getArgument(0),
-                            "token",
-                            1L,
-                            Instant.now().plusSeconds(3600));
-                });
+        writeBarrier.enable(WriteKind.CALL);
         Future<?> operation = executor.submit(() -> callService.initiateCall(
                 fixture.conversationId(), fixture.motherId(), CallType.VOICE));
-        assertThat(zegoReached.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(writeBarrier.writerReached.await(10, TimeUnit.SECONDS)).isTrue();
 
         Future<?> trust = revokeInBackground(fixture.expertProfileId());
         assertBlocked(trust);
-        releaseZego.countDown();
+        writeBarrier.releaseWriter.countDown();
         operation.get(10, TimeUnit.SECONDS);
         trust.get(10, TimeUnit.SECONDS);
 
@@ -295,7 +271,8 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
 
     private enum WriteKind {
         CONVERSATION,
-        MESSAGE
+        MESSAGE,
+        CALL
     }
 
     private record Fixture(
@@ -344,6 +321,11 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
         @Before("execution(* com.carebridge.backend.directchat.service.impl.DirectMessageWriter.insertIfAbsent(..))")
         public void beforeMessageInsert() {
             awaitIfEnabled(WriteKind.MESSAGE);
+        }
+
+        @Before("execution(* com.carebridge.backend.directchat.repository.ConversationCallRepository.save(..))")
+        public void beforeCallInsert() {
+            awaitIfEnabled(WriteKind.CALL);
         }
 
         private void awaitIfEnabled(WriteKind kind) {

@@ -28,7 +28,7 @@ export default function ConversationListPage() {
         <ul>
           {conversations.map((c) => (
             <li key={c.conversationId}>
-              <button onClick={() => navigate(`/expert/direct-chats/${c.conversationId}`)}>
+              <button onClick={() => navigate(`/direct-chats/${c.conversationId}`)}>
                 {c.counterpartRole === 'MOTHER' ? 'Mẹ' : 'Chuyên gia'}
                 {!c.expertAvailable && ' — Chuyên gia hiện không khả dụng'}
               </button>

@@ -231,10 +231,18 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
   // ── Top bar: title + search + topic library + article ──
   Widget _buildTopBar() {
+    final canPop = Navigator.of(context).canPop();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
+      padding: EdgeInsets.fromLTRB(canPop ? 12 : 24, 12, 16, 8),
       child: Row(
         children: [
+          if (canPop) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: _primary),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const SizedBox(width: 8),
+          ],
           const Expanded(
             child: Text(
               'Cộng đồng',

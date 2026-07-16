@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.directchat.dto.request.InitiateCallRequest;
 import com.carebridge.backend.directchat.dto.response.ConversationCallResponse;
+import com.carebridge.backend.directchat.dto.response.ZegoJoinCredentialsResponse;
 import com.carebridge.backend.directchat.service.IConversationCallService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +37,15 @@ public class ConversationCallController {
         UUID callerUserId = SecurityUtils.requireCurrentUserId(principal);
         ConversationCallResponse response = callService.initiateCall(conversationId, callerUserId, request.getCallType());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{callId}")
+    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    public ResponseEntity<ApiResponse<ConversationCallResponse>> getCall(
+            @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
+        UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(
+                ApiResponse.success(callService.getCall(conversationId, callId, currentUserId)));
     }
 
     @PatchMapping("/{callId}/ringing")
@@ -67,5 +78,14 @@ public class ConversationCallController {
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(callService.end(conversationId, callId, currentUserId)));
+    }
+
+    @PostMapping("/{callId}/join-credentials")
+    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    public ResponseEntity<ApiResponse<ZegoJoinCredentialsResponse>> issueJoinCredentials(
+            @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
+        UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                callService.issueJoinCredentials(conversationId, callId, currentUserId)));
     }
 }

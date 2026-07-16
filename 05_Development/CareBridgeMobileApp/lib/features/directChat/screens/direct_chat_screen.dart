@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../../integrations/firebaseRealtime/conversation_signaling_port.dart';
-import '../../../integrations/firebaseRealtime/firebase_conversation_signaling_port.dart';
+import '../calls/conversation_signal_hub.dart';
+import '../calls/direct_call_host.dart';
 import '../models/timeline_item.dart';
 import '../services/direct_chat_service.dart';
 import '../services/conversation_refresh_bus.dart';
@@ -36,7 +36,6 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   String? _previousCursor;
   bool _hasMoreOlder = false;
 
-  ConversationSignalingPort? _signalingPort;
   StreamSubscription? _signalSubscription;
   Timer? _markReadRetry;
   String? _scheduledReadMessageId;
@@ -47,7 +46,13 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadInitial();
-    _connectSignaling();
+    _signalSubscription = ConversationSignalHub.instance.events.listen((
+      signal,
+    ) {
+      if (signal.conversationId == widget.conversationId) {
+        _syncNewer();
+      }
+    });
   }
 
   Future<void> _loadInitial() async {
@@ -80,23 +85,6 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           scheduleMicrotask(_syncNewer);
         }
       }
-    }
-  }
-
-  Future<void> _connectSignaling() async {
-    final port = FirebaseConversationSignalingPort();
-    _signalingPort = port;
-    try {
-      _signalSubscription = port.events.listen((signal) {
-        if (signal.conversationId == widget.conversationId) {
-          _syncNewer();
-        }
-      });
-      await port.connect();
-    } catch (_) {
-      // Firebase unavailable/misconfigured — degrade gracefully. Chat delivery is never
-      // gated on Firebase (ADR-DCC-002/BR-DCC-007): reconnect-on-resume + pull-to-refresh
-      // still reconcile via REST regardless of realtime signal availability.
     }
   }
 
@@ -298,30 +286,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   Future<void> _placeCall(String callType) async {
     try {
-      await DirectChatService.instance.initiateCall(
-        widget.conversationId,
-        callType: callType,
-      );
-      if (!mounted) return;
-      // Approved scope (TDS §1.1, CB-CHAT-IMP-144D v1.2): call record + Firebase signaling
-      // only — no live audio/video in this pass. Be explicit with the user, don't imply a
-      // real call is connecting.
-      showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Đã tạo yêu cầu gọi'),
-          content: const Text(
-            'Cuộc gọi đã được ghi nhận và gửi tín hiệu tới người nhận. '
-            'Tính năng đàm thoại trực tiếp (âm thanh/hình ảnh) chưa được hỗ trợ trong bản này.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Đã hiểu'),
-            ),
-          ],
-        ),
-      );
+      await DirectCallScope.of(
+        context,
+      ).initiate(widget.conversationId, callType);
     } catch (e) {
       _showError('Không thể tạo cuộc gọi: $e');
     }
@@ -346,7 +313,6 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     WidgetsBinding.instance.removeObserver(this);
     _signalSubscription?.cancel();
     _markReadRetry?.cancel();
-    _signalingPort?.dispose();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();

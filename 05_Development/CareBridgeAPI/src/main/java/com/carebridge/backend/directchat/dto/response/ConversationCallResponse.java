@@ -19,11 +19,4 @@ public class ConversationCallResponse {
     private final Instant answeredAt;
     private final Instant endedAt;
     private final Integer durationSeconds;
-
-    // Populated only on initiate() (for the caller) and answer() (for the callee) —
-    // ADR-DCC-003: token/room provisioning is in scope, live RTC UI is not (TDS §1.1).
-    private final String zegoRoomId;
-    private final String zegoToken;
-    private final Long zegoAppId;
-    private final Instant tokenExpiresAt;
 }

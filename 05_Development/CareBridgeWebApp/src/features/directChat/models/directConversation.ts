@@ -29,9 +29,19 @@ export interface ConversationCall {
   callId: string;
   conversationId: string;
   initiatedByUserId: string;
-  callType: string;
+  callType: 'VOICE' | 'VIDEO';
   callStatus: string;
+  initiatedAt: string;
+  answeredAt: string | null;
+  endedAt: string | null;
   durationSeconds: number | null;
-  zegoRoomId: string | null;
-  zegoToken: string | null;
+}
+
+export interface ZegoJoinCredentials {
+  appId: number;
+  roomId: string;
+  userId: string;
+  displayName: string;
+  token: string;
+  expiresAt: string;
 }

@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>CareBridge uses the camera for one-to-one video consultations.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CareBridge uses the microphone for one-to-one voice and video consultations.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

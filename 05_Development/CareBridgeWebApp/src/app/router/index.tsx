@@ -119,6 +119,14 @@ export const router = createBrowserRouter([
   { path: '/', element: <RoleAwareRedirect /> },
 
   {
+    element: <ProtectedRoute requiredRoles={['MOTHER', 'EXPERT']} />,
+    children: [
+      { path: '/direct-chats', element: <ConversationListPage /> },
+      { path: '/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+    ],
+  },
+
+  {
     element: (
       <ProtectedRoute
         requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER', 'MODERATOR']}

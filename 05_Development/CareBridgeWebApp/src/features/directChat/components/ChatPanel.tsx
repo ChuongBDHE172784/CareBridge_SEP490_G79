@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './ChatPanel.css';
 import { useAuthStore } from '../../../shared/auth/authStore';
-import { ConversationSignalingPort } from '../../../shared/integrations/firebaseRealtime/conversationSignalingPort';
+import { conversationSignalHub } from '../../../shared/integrations/firebaseRealtime/conversationSignalHub';
 import * as directChatApi from '../services/directChatApi';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
+import { useDirectCall } from '../calls/directCallContext';
 
 interface ChatPanelProps {
   conversationId: string;
@@ -27,6 +28,7 @@ function describeCall(item: TimelineItem): string {
 
 export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const currentUserId = useAuthStore((state) => state.user?.id);
+  const { initiate } = useDirectCall();
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -38,7 +40,6 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
   const nextCursorRef = useRef<string | null>(null);
   const previousCursorRef = useRef<string | null>(null);
-  const signalingRef = useRef<ConversationSignalingPort | null>(null);
   const initialLoadCompleteRef = useRef(false);
   const syncingNewerRef = useRef(false);
   const pendingNewerSyncRef = useRef(false);
@@ -129,15 +130,9 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
       }
     })();
 
-    const port = new ConversationSignalingPort();
-    signalingRef.current = port;
-    void port
-      .connect((signal) => {
-        if (signal.conversationId === conversationId) void syncNewer();
-      })
-      .catch(() => {
-        // Firebase is transport-only. REST reload/resume remains the recovery path.
-      });
+    const unsubscribeSignal = conversationSignalHub.subscribe((signal) => {
+      if (signal.conversationId === conversationId) void syncNewer();
+    });
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') syncNewer();
@@ -147,7 +142,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      port.dispose();
+      unsubscribeSignal();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
@@ -206,12 +201,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
   const handleCall = async (callType: 'VOICE' | 'VIDEO') => {
     try {
-      await directChatApi.initiateCall(conversationId, callType);
-      // Approved scope (TDS §1.1, CB-CHAT-IMP-144D v1.2): record + Firebase signaling only —
-      // no live audio/video in this pass.
-      window.alert(
-        'Cuộc gọi đã được ghi nhận và gửi tín hiệu tới người nhận. Tính năng đàm thoại trực tiếp chưa được hỗ trợ trong bản này.'
-      );
+      await initiate(conversationId, callType);
     } catch (e) {
       setError(`Không thể tạo cuộc gọi: ${e}`);
     }

@@ -35,7 +35,8 @@ public interface ConversationCallRepository extends JpaRepository<ConversationCa
     @Modifying
     @Transactional
     @Query("UPDATE ConversationCall c SET c.callStatus = com.carebridge.backend.directchat.entity.CallStatus.DECLINED, c.endedAt = :endedAt "
-            + "WHERE c.id = :callId AND c.callStatus = com.carebridge.backend.directchat.entity.CallStatus.RINGING")
+            + "WHERE c.id = :callId AND c.callStatus IN (com.carebridge.backend.directchat.entity.CallStatus.INITIATED, "
+            + "com.carebridge.backend.directchat.entity.CallStatus.RINGING)")
     int conditionallyDecline(@Param("callId") UUID callId, @Param("endedAt") Instant endedAt);
 
     @Modifying
@@ -55,4 +56,18 @@ public interface ConversationCallRepository extends JpaRepository<ConversationCa
     @Query("SELECT c FROM ConversationCall c WHERE c.callStatus IN (com.carebridge.backend.directchat.entity.CallStatus.INITIATED, com.carebridge.backend.directchat.entity.CallStatus.RINGING) "
             + "AND c.initiatedAt < :cutoff")
     List<ConversationCall> findRingingCallsInitiatedBefore(@Param("cutoff") Instant cutoff);
+
+    @Query("""
+            SELECT c
+            FROM ConversationCall c, DirectConversation d
+            WHERE c.conversationId = d.id
+              AND (:currentUserId = d.motherUserId OR :currentUserId = d.expertUserId)
+              AND c.callStatus IN (
+                  com.carebridge.backend.directchat.entity.CallStatus.INITIATED,
+                  com.carebridge.backend.directchat.entity.CallStatus.RINGING,
+                  com.carebridge.backend.directchat.entity.CallStatus.ANSWERED
+              )
+            ORDER BY c.initiatedAt DESC
+            """)
+    List<ConversationCall> findActiveForParticipant(@Param("currentUserId") UUID currentUserId);
 }

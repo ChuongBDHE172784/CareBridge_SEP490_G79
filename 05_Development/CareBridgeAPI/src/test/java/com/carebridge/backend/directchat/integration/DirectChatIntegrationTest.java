@@ -3,6 +3,9 @@ package com.carebridge.backend.directchat.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -144,8 +147,22 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"callType\":\"VOICE\"}"))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.zegoRoomId").doesNotExist())
+                .andExpect(jsonPath("$.data.zegoToken").doesNotExist())
+                .andExpect(jsonPath("$.data.zegoAppId").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
         UUID callId = UUID.fromString(extractJsonField(callResponse, "callId"));
+        String roomId = callRepository.findById(callId).orElseThrow().getZegoRoomId();
+        assertThat(roomId).matches("cb_[0-9a-f]{32}");
+
+        mockMvc.perform(get("/api/v1/direct-conversations/calls/active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].callId").value(callId.toString()))
+                .andExpect(jsonPath("$.data[0].zegoRoomId").doesNotExist());
+        mockMvc.perform(get("/api/v1/direct-conversations/" + conversationId + "/calls/" + callId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.callStatus").value("INITIATED"))
+                .andExpect(jsonPath("$.data.zegoRoomId").doesNotExist());
 
         mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + callId + "/ringing")
                         .with(csrf()).with(user2()))
@@ -153,19 +170,46 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
         mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + callId + "/answer")
                         .with(csrf()).with(user2()))
                 .andExpect(status().isOk());
+        String motherZegoUserId = "u_" + MOTHER_ID.toString().replace("-", "");
+        mockMvc.perform(post("/api/v1/direct-conversations/" + conversationId + "/calls/" + callId
+                        + "/join-credentials").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roomId").value(roomId))
+                .andExpect(jsonPath("$.data.userId").value(motherZegoUserId))
+                .andExpect(jsonPath("$.data.displayName").value("Mother Test"))
+                .andExpect(jsonPath("$.data.token").value("tok"));
+        verify(zegoCloudService).generateToken(roomId, motherZegoUserId, "Mother Test");
+
         mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + callId + "/end")
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.callStatus").value("ENDED"))
                 .andExpect(jsonPath("$.data.durationSeconds").exists());
         assertThat(callRepository.findById(callId).orElseThrow().getDurationSeconds()).isNotNull();
+        mockMvc.perform(get("/api/v1/direct-conversations/calls/active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
 
         // Step 9 — GET /timeline reflects both the message and the call, real UNION ALL query
         mockMvc.perform(get("/api/v1/direct-conversations/" + conversationId + "/timeline"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items").isArray());
 
-        // Step 10 — revoke Expert, Mother still reads (200), Mother blocked from writing (409 DCC-010)
+        // Step 10 — prepare an ANSWERED call, then revoke Expert.
+        String cleanupCallResponse = mockMvc.perform(post("/api/v1/direct-conversations/" + conversationId + "/calls")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"callType\":\"VIDEO\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID cleanupCallId = UUID.fromString(extractJsonField(cleanupCallResponse, "callId"));
+        mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + cleanupCallId + "/ringing")
+                        .with(csrf()).with(user2()))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + cleanupCallId + "/answer")
+                        .with(csrf()).with(user2()))
+                .andExpect(status().isOk());
+
         jdbcTemplate.update("UPDATE expert_profiles SET verification_status = 'PENDING' WHERE expert_profile_id = ?",
                 expertProfileId);
         mockMvc.perform(get("/api/v1/direct-conversations/" + conversationId + "/timeline"))
@@ -178,6 +222,22 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("DCC-010"));
         assertThat(countMessages(conversationId)).isEqualTo(messageCountBefore);
+        mockMvc.perform(post("/api/v1/direct-conversations/" + conversationId + "/calls/" + cleanupCallId
+                        + "/join-credentials").with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("DCC-010"));
+        mockMvc.perform(post("/api/v1/direct-conversations/" + conversationId + "/calls")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"callType\":\"VOICE\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("DCC-010"));
+        mockMvc.perform(patch("/api/v1/direct-conversations/" + conversationId + "/calls/" + cleanupCallId + "/end")
+                        .with(csrf()).with(user2()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.callStatus").value("ENDED"));
+
+        verify(zegoCloudService, times(1)).generateToken(anyString(), anyString(), anyString());
     }
 
     private long countMessages(UUID conversationId) {

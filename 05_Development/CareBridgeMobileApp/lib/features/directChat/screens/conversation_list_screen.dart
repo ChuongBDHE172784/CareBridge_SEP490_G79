@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../../integrations/firebaseRealtime/conversation_signaling_port.dart';
-import '../../../integrations/firebaseRealtime/firebase_conversation_signaling_port.dart';
+import '../calls/conversation_signal_hub.dart';
 import '../models/direct_conversation.dart';
 import '../services/direct_chat_service.dart';
 import '../services/conversation_refresh_bus.dart';
@@ -22,7 +21,6 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   bool _loading = true;
   String? _error;
 
-  ConversationSignalingPort? _signalingPort;
   StreamSubscription? _signalSubscription;
   StreamSubscription<void>? _refreshSubscription;
   int _loadGeneration = 0;
@@ -34,7 +32,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _load();
-    _connectSignaling();
+    _signalSubscription = ConversationSignalHub.instance.events.listen((_) {
+      ConversationRefreshBus.notify();
+    });
     _refreshSubscription = ConversationRefreshBus.events.listen((_) => _load());
   }
 
@@ -43,26 +43,12 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     WidgetsBinding.instance.removeObserver(this);
     _signalSubscription?.cancel();
     _refreshSubscription?.cancel();
-    _signalingPort?.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _load();
-  }
-
-  Future<void> _connectSignaling() async {
-    final port = FirebaseConversationSignalingPort();
-    _signalingPort = port;
-    try {
-      _signalSubscription = port.events.listen((_) {
-        ConversationRefreshBus.notify();
-      });
-      await port.connect();
-    } catch (_) {
-      // Firebase unavailable/misconfigured — degrade gracefully, same as DirectChatScreen.
-    }
   }
 
   Future<void> _load() async {

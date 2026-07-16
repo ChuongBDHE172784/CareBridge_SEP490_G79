@@ -6,6 +6,7 @@ import 'core/auth/auth_state.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
+import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 
 void main() async {
@@ -75,6 +76,8 @@ class CareBridgeApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: appRouter,
+      builder: (context, child) =>
+          DirectCallHost(child: child ?? const SizedBox.shrink()),
     );
   }
 }

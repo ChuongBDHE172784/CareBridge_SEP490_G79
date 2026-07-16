@@ -3,6 +3,7 @@ package com.carebridge.backend.directchat.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.directchat.dto.response.ConversationCallResponse;
+import com.carebridge.backend.directchat.dto.response.ZegoJoinCredentialsResponse;
 import com.carebridge.backend.directchat.entity.CallStatus;
 import com.carebridge.backend.directchat.entity.CallType;
 import com.carebridge.backend.directchat.entity.ConversationCall;
@@ -18,9 +19,12 @@ import com.carebridge.backend.integration.zegocloud.ZegoTokenDto;
 import com.carebridge.backend.integration.zegocloud.ZegoTokenGenerationException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +39,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
     private final ConversationCallRepository callRepository;
     private final IDirectConversationPolicy policy;
     private final ExpertProfileRepository expertProfileRepository;
+    private final UserRepository userRepository;
     private final IZegoCloudService zegoCloudService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -46,11 +51,12 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             ConversationCallRepository callRepository,
             IDirectConversationPolicy policy,
             ExpertProfileRepository expertProfileRepository,
+            UserRepository userRepository,
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService) {
         this(conversationRepository, callRepository, policy, expertProfileRepository,
-                zegoCloudService, eventPublisher, auditService,
+                userRepository, zegoCloudService, eventPublisher, auditService,
                 Clock.systemDefaultZone());
     }
 
@@ -60,6 +66,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             ConversationCallRepository callRepository,
             IDirectConversationPolicy policy,
             ExpertProfileRepository expertProfileRepository,
+            UserRepository userRepository,
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService,
@@ -68,6 +75,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         this.callRepository = callRepository;
         this.policy = policy;
         this.expertProfileRepository = expertProfileRepository;
+        this.userRepository = userRepository;
         this.zegoCloudService = zegoCloudService;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
@@ -82,8 +90,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         assertWritableUnderLock(conversation);
 
         UUID callId = UUID.randomUUID();
-        String zegoRoomId = callId.toString();
-        ZegoTokenDto token = generateToken(zegoRoomId, callerUserId);
+        String zegoRoomId = "cb_" + callId.toString().replace("-", "");
 
         Instant now = Instant.now(clock);
         ConversationCall call = ConversationCall.builder()
@@ -102,7 +109,25 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         auditService.log(AuditAction.DIRECT_CALL_INITIATED, callerUserId, "CONVERSATION_CALL", callId.toString(), Map.of());
         eventPublisher.publishEvent(new ConversationEventDomainEvent("CALL_INITIATED", conversationId, callerUserId, callId, now));
 
-        return toResponse(call, token);
+        return toResponse(call);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConversationCallResponse getCall(UUID conversationId, UUID callId, UUID currentUserId) {
+        ConversationCall call = loadCall(callId);
+        DirectConversation conversation = loadCallConversation(conversationId, call);
+        assertReadableParticipant(call, conversation, currentUserId);
+        return toResponse(call);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ConversationCallResponse> listActiveCalls(UUID currentUserId) {
+        return callRepository.findActiveForParticipant(currentUserId).stream()
+                .filter(call -> canReadActiveCall(call, currentUserId))
+                .map(ConversationCallServiceImpl::toResponse)
+                .toList();
     }
 
     @Override
@@ -120,7 +145,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         call.setCallStatus(CallStatus.RINGING);
 
         touchAndPublish(conversation, currentUserId, callId, "CALL_STATE_CHANGED", AuditAction.DIRECT_CALL_STATE_CHANGED);
-        return toResponse(call, null);
+        return toResponse(call);
     }
 
     @Override
@@ -141,12 +166,11 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         call.setCallStatus(CallStatus.ANSWERED);
         call.setAnsweredAt(now);
 
-        ZegoTokenDto token = generateToken(call.getZegoRoomId(), currentUserId);
         conversationRepository.touchActivity(conversation.getId(), now);
         auditService.log(AuditAction.DIRECT_CALL_STATE_CHANGED, currentUserId, "CONVERSATION_CALL", callId.toString(), Map.of());
         eventPublisher.publishEvent(new ConversationEventDomainEvent("CALL_STATE_CHANGED", conversation.getId(), currentUserId, callId, now));
 
-        return toResponse(call, token);
+        return toResponse(call);
     }
 
     @Override
@@ -166,7 +190,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         call.setEndedAt(now);
 
         touchAndPublish(conversation, currentUserId, callId, "CALL_STATE_CHANGED", AuditAction.DIRECT_CALL_STATE_CHANGED);
-        return toResponse(call, null);
+        return toResponse(call);
     }
 
     @Override
@@ -190,7 +214,6 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             if (!currentUserId.equals(caller) && !currentUserId.equals(callee)) {
                 throw DirectChatException.wrongCallActor();
             }
-            policy.assertIsParticipant(currentUserId, conversation);
         } else {
             // Cancelling before the call ever connected is a new-communication attempt, not a
             // cleanup — only the caller may cancel, and the write-block still applies.
@@ -221,7 +244,42 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         auditService.log(AuditAction.DIRECT_CALL_STATE_CHANGED, currentUserId, "CONVERSATION_CALL", callId.toString(), Map.of());
         eventPublisher.publishEvent(new ConversationEventDomainEvent("CALL_STATE_CHANGED", conversation.getId(), currentUserId, callId, now));
 
-        return toResponse(call, null);
+        return toResponse(call);
+    }
+
+    @Override
+    @Transactional
+    public ZegoJoinCredentialsResponse issueJoinCredentials(
+            UUID conversationId, UUID callId, UUID currentUserId) {
+        ConversationCall call = loadCall(callId);
+        DirectConversation conversation = loadCallConversation(conversationId, call);
+        assertIdentityParticipant(currentUserId, conversation);
+        if (call.getCallStatus() != CallStatus.ANSWERED) {
+            throw DirectChatException.invalidCallTransition();
+        }
+        assertWritableUnderLock(conversation);
+
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(DirectChatException::notParticipant);
+        String zegoUserId = toZegoUserId(currentUserId);
+        String displayName = safeDisplayName(user);
+        ZegoTokenDto token = generateToken(call.getZegoRoomId(), zegoUserId, displayName);
+
+        auditService.log(
+                AuditAction.DIRECT_CALL_STATE_CHANGED,
+                currentUserId,
+                "CONVERSATION_CALL",
+                callId.toString(),
+                Map.of("operation", "ZEGO_JOIN_CREDENTIALS_ISSUED"));
+
+        return ZegoJoinCredentialsResponse.builder()
+                .appId(token.getAppId())
+                .roomId(call.getZegoRoomId())
+                .userId(zegoUserId)
+                .displayName(displayName)
+                .token(token.getToken())
+                .expiresAt(token.getExpiresAt())
+                .build();
     }
 
     private void requireCallee(ConversationCall call, DirectConversation conversation, UUID currentUserId) {
@@ -251,12 +309,60 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         eventPublisher.publishEvent(new ConversationEventDomainEvent(eventType, conversation.getId(), actorUserId, callId, now));
     }
 
-    private ZegoTokenDto generateToken(String roomId, UUID userId) {
+    private boolean canReadActiveCall(ConversationCall call, UUID currentUserId) {
+        DirectConversation conversation = conversationRepository.findById(call.getConversationId()).orElse(null);
+        if (conversation == null
+                || (!currentUserId.equals(conversation.getMotherUserId())
+                    && !currentUserId.equals(conversation.getExpertUserId()))) {
+            return false;
+        }
+        if (currentUserId.equals(conversation.getMotherUserId())
+                || call.getCallStatus() == CallStatus.ANSWERED) {
+            return true;
+        }
+        return expertProfileRepository.findByUserId(currentUserId)
+                .map(ExpertProfile::isEligibleForConsultation)
+                .orElse(false);
+    }
+
+    private void assertReadableParticipant(
+            ConversationCall call, DirectConversation conversation, UUID currentUserId) {
+        assertIdentityParticipant(currentUserId, conversation);
+        if (currentUserId.equals(conversation.getExpertUserId())
+                && call.getCallStatus() != CallStatus.ANSWERED) {
+            policy.assertIsParticipant(currentUserId, conversation);
+        }
+    }
+
+    private static void assertIdentityParticipant(UUID currentUserId, DirectConversation conversation) {
+        if (!currentUserId.equals(conversation.getMotherUserId())
+                && !currentUserId.equals(conversation.getExpertUserId())) {
+            throw DirectChatException.notParticipant();
+        }
+    }
+
+    private ZegoTokenDto generateToken(String roomId, String userId, String displayName) {
         try {
-            return zegoCloudService.generateToken(roomId, userId.toString(), userId.toString());
+            return zegoCloudService.generateToken(roomId, userId, displayName);
         } catch (ZegoTokenGenerationException ex) {
             throw DirectChatException.zegoTokenFailure();
         }
+    }
+
+    private static String toZegoUserId(UUID userId) {
+        return "u_" + userId.toString().replace("-", "");
+    }
+
+    private static String safeDisplayName(User user) {
+        String rawName = user.getName();
+        if (rawName == null || rawName.isBlank()) {
+            return "CareBridge User";
+        }
+        String sanitized = rawName.replaceAll("\\p{Cntrl}", "").trim();
+        if (sanitized.isBlank()) {
+            return "CareBridge User";
+        }
+        return sanitized.length() <= 64 ? sanitized : sanitized.substring(0, 64);
     }
 
     private DirectConversation loadConversation(UUID conversationId) {
@@ -274,7 +380,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         return loadConversation(requestedConversationId);
     }
 
-    private static ConversationCallResponse toResponse(ConversationCall call, ZegoTokenDto token) {
+    private static ConversationCallResponse toResponse(ConversationCall call) {
         return ConversationCallResponse.builder()
                 .callId(call.getId())
                 .conversationId(call.getConversationId())
@@ -285,10 +391,6 @@ public class ConversationCallServiceImpl implements IConversationCallService {
                 .answeredAt(call.getAnsweredAt())
                 .endedAt(call.getEndedAt())
                 .durationSeconds(call.getDurationSeconds())
-                .zegoRoomId(call.getZegoRoomId())
-                .zegoToken(token == null ? null : token.getToken())
-                .zegoAppId(token == null ? null : token.getAppId())
-                .tokenExpiresAt(token == null ? null : token.getExpiresAt())
                 .build();
     }
 }
