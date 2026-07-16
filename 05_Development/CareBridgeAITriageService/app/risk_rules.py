@@ -3,6 +3,15 @@ from app.symptom_normalizer import strip_accents
 
 
 def missing_info_questions(intake: ChildTriageRequest) -> list[str]:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+        questions: list[str] = []
+        if not (intake.parentFreeText or "").strip() and not intake.symptomList:
+            questions.append("Bạn đang gặp triệu chứng hoặc muốn được hỗ trợ nội dung nào?")
+        if not intake.duration:
+            questions.append("Triệu chứng hoặc vấn đề này đã xuất hiện bao lâu?")
+        if intake.stage == "PREGNANCY":
+            questions.append("Bạn có ra máu âm đạo nhiều, đau bụng dữ dội, đau đầu dữ dội/hoa mắt hoặc giảm cử động thai không?")
+        return questions[:3]
     questions: list[str] = []
     no_symptom_context = not intake.symptomList and not (intake.parentFreeText or "").strip()
     if intake.childAgeMonths is None:
@@ -16,6 +25,9 @@ def apply_red_flag_rules(
     intake: ChildTriageRequest,
     normalized_symptoms: list[str],
 ) -> tuple[list[str], list[str]]:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+        # Maternal/preconception red thresholds require clinical sign-off before production activation.
+        return [], [f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW"]
     symptoms = set(normalized_symptoms)
     red_flags: list[str] = []
     matched_rules: list[str] = []
@@ -38,6 +50,8 @@ def apply_red_flag_rules(
         add("RED_SEVERE_DEHYDRATION", "Dấu hiệu mất nước nặng")
     if "persistent_vomiting" in symptoms:
         add("RED_PERSISTENT_VOMITING", "Nôn liên tục")
+    if "rash" in symptoms and _has_high_fever(intake):
+        add("RED_RASH_HIGH_FEVER", "Phát ban kèm sốt cao")
     if intake.childAgeMonths is not None and intake.childAgeMonths < 3 and _has_fever(intake):
         add("RED_INFANT_FEVER_UNDER_3_MONTHS", "Trẻ dưới 3 tháng có sốt")
     elif "high_fever" in symptoms or _has_high_fever(intake):
@@ -52,6 +66,10 @@ def score_risk(
     red_flags: list[str],
     matched_rules: list[str],
 ) -> tuple[str, list[str]]:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+        if f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW" not in matched_rules:
+            matched_rules.append(f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW")
+        return "NEED_MORE_INFO", matched_rules
     if red_flags:
         return "RED", matched_rules
 

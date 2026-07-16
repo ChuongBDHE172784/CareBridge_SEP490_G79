@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 from urllib.request import Request, urlopen
 
-from app.config import EVIDENCE_CACHE_TTL_DAYS, OFFICIAL_DOMAIN_WHITELIST, REALTIME_SEARCH_TIMEOUT_SECONDS
+from app.config import EVIDENCE_CACHE_TTL_DAYS, REALTIME_SEARCH_TIMEOUT_SECONDS
+from app.evidence_registry_client import approved_sources_for_stage
 from app.schemas import SourceDocument
 from app.source_validator import domain_from_url, is_whitelisted_url, validate_source
 
@@ -49,6 +50,7 @@ _SYMPTOM_TERMS: dict[str, tuple[str, ...]] = {
 def realtime_official_search(
     symptoms: list[str],
     matched_rules: list[str],
+    stage: str = "INFANT",
     max_results: int = 3,
 ) -> list[SourceDocument]:
     if not symptoms:
@@ -62,14 +64,17 @@ def realtime_official_search(
 
     deadline = time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS
     candidates: list[SourceDocument] = []
-    for query in build_search_queries(symptoms):
+    domains = {source.domain for source in approved_sources_for_stage(stage)}
+    if not domains:
+        return []
+    for query in build_search_queries(symptoms, domains):
         if _remaining(deadline) <= 0:
             break
         for hit in _search_web(query, deadline):
             if _remaining(deadline) <= 0:
                 break
-            source = _source_from_hit(hit, symptoms, matched_rules, deadline)
-            if source and validate_source(source, symptoms):
+            source = _source_from_hit(hit, symptoms, matched_rules, deadline, domains)
+            if source and validate_source(source, symptoms, domains):
                 candidates.append(source)
                 if len(candidates) >= max_results:
                     result = _dedupe(candidates)
@@ -82,11 +87,11 @@ def realtime_official_search(
     return [source.model_copy(deep=True) for source in result]
 
 
-def build_search_queries(symptoms: list[str]) -> list[str]:
+def build_search_queries(symptoms: list[str], approved_domains: set[str] | None = None) -> list[str]:
     symptom_terms = " ".join(symptom.replace("_", " ") for symptom in symptoms[:3])
     return [
         f"site:{domain} child {symptom_terms} official medical source"
-        for domain in sorted(OFFICIAL_DOMAIN_WHITELIST)
+        for domain in sorted(approved_domains or set())
     ]
 
 
@@ -124,27 +129,28 @@ def _search_web(query: str, deadline: float | None = None) -> list[SearchHit]:
         if parsed.query:
             redirect = parse_qs(parsed.query).get("uddg", [""])[0]
             href = unquote(redirect) if redirect else href
-        if is_whitelisted_url(href):
+        if urlparse(href).scheme == "https":
             hits.append(SearchHit(title=title, url=href))
     return hits[:5]
 
 
 def _source_from_hit(
     hit: SearchHit, symptoms: list[str], matched_rules: list[str], deadline: float | None = None,
+    approved_domains: set[str] | None = None,
 ) -> SourceDocument | None:
-    if not is_whitelisted_url(hit.url):
+    if not is_whitelisted_url(hit.url, approved_domains=approved_domains):
         return None
-    fetched = _fetch_page(hit.url, deadline)
+    fetched = _fetch_page(hit.url, deadline, approved_domains)
     if fetched is None:
         return None
     final_url, page_title, fetched_text, etag, last_modified = fetched
-    if not is_whitelisted_url(final_url) or not fetched_text or not page_title:
+    if not is_whitelisted_url(final_url, approved_domains=approved_domains) or not fetched_text or not page_title:
         return None
     support = extract_relevant_excerpt(f"{page_title} {fetched_text}", symptoms)
     if support is None:
         return None
     excerpt, supported_symptoms = support
-    domain = _allowed_domain_for_url(final_url)
+    domain = _allowed_domain_for_url(final_url, approved_domains or set())
     retrieved_at = datetime.now(timezone.utc).isoformat()
     organization = _organization_for_domain(domain)
     risk_levels = sorted({rule.split("_", 1)[0] for rule in matched_rules if "_" in rule})
@@ -173,7 +179,7 @@ def _source_from_hit(
 
 
 def _fetch_page(
-    url: str, deadline: float | None = None,
+    url: str, deadline: float | None = None, approved_domains: set[str] | None = None,
 ) -> tuple[str, str, str, str | None, str | None] | None:
     deadline = deadline or (time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS)
     if _remaining(deadline) <= 0:
@@ -187,7 +193,7 @@ def _fetch_page(
             if not any(value in content_type for value in ("text/html", "text/plain", "application/xhtml+xml")):
                 return None
             final_url = response.geturl()
-            if not is_whitelisted_url(final_url):
+            if not is_whitelisted_url(final_url, approved_domains=approved_domains):
                 return None
             etag = response.headers.get("ETag")
             last_modified = response.headers.get("Last-Modified")
@@ -209,22 +215,19 @@ def _remaining(deadline: float) -> float:
     return deadline - time.monotonic()
 
 
-def _allowed_domain_for_url(url: str) -> str:
+def _allowed_domain_for_url(url: str, approved_domains: set[str]) -> str:
     host = domain_from_url(url)
-    for domain in OFFICIAL_DOMAIN_WHITELIST:
+    for domain in approved_domains:
         if host == domain or host.endswith(f".{domain}"):
             return domain
     return host
 
 
 def _organization_for_domain(domain: str) -> str:
-    organizations = {
-        "who.int": "WHO", "moh.gov.vn": "Bo Y te Viet Nam",
-        "mch.moh.gov.vn": "Bo Y te Viet Nam", "cdc.gov": "CDC",
-        "unicef.org": "UNICEF", "benhviennhitrunguong.gov.vn": "Benh vien Nhi Trung uong",
-        "nhidong.org.vn": "Benh vien Nhi Dong", "bvndtp.org.vn": "Benh vien Nhi Dong Thanh pho",
-    }
-    return organizations.get(domain, "Official Medical Source")
+    for source in approved_sources_for_stage("INFANT"):
+        if source.domain == domain:
+            return source.organization
+    return "Official Medical Source"
 
 
 def _dedupe(sources: list[SourceDocument]) -> list[SourceDocument]:

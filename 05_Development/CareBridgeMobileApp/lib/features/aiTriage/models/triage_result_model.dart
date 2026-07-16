@@ -1,6 +1,7 @@
 /// Response from GET /api/v1/triage/intake/{sessionId} (UC-61)
 class TriageResult {
   final String sessionId;
+  final String stage;
   final String? triageStatus; // COMPLETED | NEED_MORE_INFO
   final String? riskLevel; // GREEN | YELLOW | RED
   final String? riskColor;
@@ -11,6 +12,7 @@ class TriageResult {
   final List<String> redFlags;
   final List<String> matchedRules;
   final List<TriageCitation> citations;
+  final List<TriageClaim> claims;
   final TriageEvidence? evidence;
   final String? disclaimer;
   final List<String> questions;
@@ -21,6 +23,7 @@ class TriageResult {
 
   const TriageResult({
     required this.sessionId,
+    this.stage = 'INFANT',
     required this.status,
     this.triageStatus,
     this.riskLevel,
@@ -32,6 +35,7 @@ class TriageResult {
     this.redFlags = const [],
     this.matchedRules = const [],
     this.citations = const [],
+    this.claims = const [],
     this.evidence,
     this.disclaimer,
     this.questions = const [],
@@ -53,6 +57,7 @@ class TriageResult {
     }
     return TriageResult(
       sessionId: sessionId,
+      stage: json['stage']?.toString() ?? 'INFANT',
       status: status,
       triageStatus: json['triageStatus'] as String?,
       riskLevel: riskLevel,
@@ -72,6 +77,10 @@ class TriageResult {
           .whereType<Map<String, dynamic>>()
           .map(TriageCitation.fromJson)
           .toList(),
+      claims: (json['claims'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(TriageClaim.fromJson)
+          .toList(),
       evidence: json['evidence'] is Map<String, dynamic>
           ? TriageEvidence.fromJson(json['evidence'] as Map<String, dynamic>)
           : null,
@@ -88,6 +97,26 @@ class TriageResult {
           : null,
     );
   }
+}
+
+class TriageClaim {
+  final String claimId;
+  final String text;
+  final List<String> evidenceIds;
+
+  const TriageClaim({
+    required this.claimId,
+    required this.text,
+    this.evidenceIds = const [],
+  });
+
+  factory TriageClaim.fromJson(Map<String, dynamic> json) => TriageClaim(
+        claimId: json['claimId']?.toString() ?? '',
+        text: json['text']?.toString() ?? '',
+        evidenceIds: (json['evidenceIds'] as List<dynamic>? ?? const [])
+            .map((value) => value.toString())
+            .toList(),
+      );
 }
 
 class TriageCitation {

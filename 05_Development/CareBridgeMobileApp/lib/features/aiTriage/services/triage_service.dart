@@ -25,6 +25,7 @@ class TriageService {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) async {
+    final stage = currentIntake['stage']?.toString() ?? 'INFANT';
     final fingerprint = jsonEncode({
       'initialText': initialText,
       'currentIntake': currentIntake,
@@ -36,7 +37,11 @@ class TriageService {
     final requestId = _pendingStartRequestId!;
     final data = await apiPost('/api/v1/triage/intake/conversation/start', {
       'initialText': initialText,
-      'currentIntake': currentIntake,
+      'stage': stage,
+      'currentIntake': {
+        ...currentIntake,
+        'stage': stage,
+      },
       'clientRequestId': requestId,
     }).timeout(_requestTimeout);
     final response = IntakeFlowResponse.fromJson(

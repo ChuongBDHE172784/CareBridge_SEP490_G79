@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Component
-public class PediatricRiskRules {
+public class PediatricRiskRules implements StageRiskRules {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
 

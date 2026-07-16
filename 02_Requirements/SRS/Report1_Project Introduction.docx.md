@@ -185,9 +185,7 @@ A common misconception in maternal healthcare is that the greatest risks to moth
 Ref: [https://www.who.int/news-room/fact-sheets/detail/maternal-mortality](https://www.who.int/news-room/fact-sheets/detail/maternal-mortality)  
 Ref: [https://www.cdc.gov/maternal-mortality/preventing-pregnancy-related-deaths/index.html](https://www.cdc.gov/maternal-mortality/preventing-pregnancy-related-deaths/index.html)
 
-According to the CDC, more than 80% of pregnancy-related deaths are preventable. Many serious conditions, such as preeclampsia, postpartum hemorrhage, infections, and hypertension-related complications, can develop gradually and may not be recognized early without proper monitoring and timely medical support.
-
-In many cases, pregnant women and families rely heavily on personal experience, internet sources, or irregular follow-up visits between scheduled clinical appointments. The lack of continuous health tracking, symptom awareness, and timely communication with healthcare providers can delay medical intervention and increase the risk of severe complications.
+According to the CDC, more than 80% of pregnancy-related deaths are preventable. Many serious conditions, such as preeclampsia, postpartum hemorrhage, infections, and hypertension-related complications, can develop gradually and may not be recognized early without proper monitoring and timely medical support.In many cases, pregnant women and families rely heavily on personal experience, internet sources, or irregular follow-up visits between scheduled clinical appointments. The lack of continuous health tracking, symptom awareness, and timely communication with healthcare providers can delay medical intervention and increase the risk of severe complications.
 
 Therefore, modern maternal healthcare systems are increasingly focusing not only on hospital treatment, but also on continuous prenatal and postpartum care, health education, symptom monitoring, and early-risk detection outside traditional clinical settings.
 

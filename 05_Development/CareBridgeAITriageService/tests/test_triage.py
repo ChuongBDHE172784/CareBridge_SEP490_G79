@@ -231,14 +231,14 @@ def test_yellow_realtime_who_source_attaches_pending_citation(monkeypatch, tmp_p
     cached = []
 
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules: [realtime_source])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage: [realtime_source])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: cached.extend(sources))
 
     response = run_triage(make_request(symptomList=["sot"], temperatureC=38.2))
 
     assert response.riskLevel == "YELLOW"
-    assert response.citations[0].domain == "who.int"
-    assert response.citations[0].sourceStatus == "PENDING_REVIEW"
+    # PENDING_REVIEW sources are never user-facing evidence.
+    assert response.citations == []
     assert cached == [realtime_source]
 
 
@@ -320,18 +320,17 @@ def test_realtime_search_does_not_change_risk(monkeypatch, tmp_path):
         url="https://www.who.int/publications/i/item/978-92-4-154837-3",
     )
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules: [realtime_source])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage: [realtime_source])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: [])
 
     response = run_triage(make_request(symptomList=["ho"], temperatureC=None))
 
     assert response.riskLevel == "YELLOW"
-    assert response.citations
-    assert response.citations[0].sourceStatus == "PENDING_REVIEW"
+    assert response.citations == []
 
 
 def test_build_search_queries_are_site_restricted():
-    queries = official_source_searcher.build_search_queries(["fever"])
+    queries = official_source_searcher.build_search_queries(["fever"], {"who.int", "moh.gov.vn"})
     assert queries
     assert all(query.startswith("site:") for query in queries)
     assert all("child fever official medical source" in query for query in queries)

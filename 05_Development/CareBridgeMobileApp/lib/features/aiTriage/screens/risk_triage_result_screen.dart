@@ -104,28 +104,21 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     }
   }
 
-  Future<void> _openSourceUrl(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !_isAllowedOfficialUri(uri)) return;
+  Future<void> _openSourceUrl(TriageCitation citation) async {
+    final uri = Uri.tryParse(citation.url);
+    if (uri == null || !_isSafeCitationUri(uri, citation.domain)) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  bool _isAllowedOfficialUri(Uri uri) {
-    const allowed = {
-      'who.int',
-      'moh.gov.vn',
-      'mch.moh.gov.vn',
-      'cdc.gov',
-      'unicef.org',
-      'benhviennhitrunguong.gov.vn',
-      'nhidong.org.vn',
-      'bvndtp.org.vn',
-    };
-    final host = uri.host.toLowerCase();
-    return uri.scheme == 'https' &&
-        allowed.any((domain) => host == domain || host.endsWith('.$domain'));
+  bool _isSafeCitationUri(Uri uri, String? approvedDomain) {
+    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final path = uri.path.replaceAll('/', '').trim().toLowerCase();
+    return uri.scheme == 'https' && domain.isNotEmpty && path.isNotEmpty &&
+        path != 'vi' && path != 'en' &&
+        (host == domain || host.endsWith('.$domain'));
   }
 
   @override
@@ -651,7 +644,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             final index = entry.$1;
             final citation = entry.$2;
             final uri = Uri.tryParse(citation.url);
-            final canOpen = uri != null && _isAllowedOfficialUri(uri);
+            final canOpen = uri != null && _isSafeCitationUri(uri, citation.domain);
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
@@ -719,7 +712,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                         'risk-citation-link-${citation.id ?? citation.url}-$index',
                       ),
                       onTap: canOpen
-                          ? () => _openSourceUrl(citation.url)
+                          ? () => _openSourceUrl(citation)
                           : null,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
