@@ -26,6 +26,7 @@ public interface ExpertCredentialRepository extends JpaRepository<ExpertCredenti
 	@Query("SELECT c, p, u FROM ExpertCredential c " +
 		"LEFT JOIN ExpertProfile p ON c.expertProfileId = p.expertProfileId " +
 		"LEFT JOIN User u ON p.userId = u.id " +
+		"WHERE c.reviewStatus = :status " +
 		"ORDER BY c.createdAt DESC")
 	List<Object[]> findPendingWithExpert(@Param("status") ReviewStatus status);
 }

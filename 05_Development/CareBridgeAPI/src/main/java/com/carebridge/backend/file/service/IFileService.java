@@ -16,4 +16,7 @@ public interface IFileService {
 
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     void deleteFile(UUID fileId, UUID callerId);
+
+    /** Internal compensation for a failed atomic workflow. Not exposed by FileController. */
+    void purgeFile(UUID fileId, UUID callerId);
 }

@@ -22,6 +22,7 @@ public class DocumentReviewResponse {
 	private LocalDate issuedDate;
 	private LocalDate expiryDate;
 	private String fileUrl;
+	private UUID fileId;
 	private LocalDateTime createdAt;
 	private ReviewStatus reviewStatus;
 	private String reviewNote;

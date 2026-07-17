@@ -76,14 +76,14 @@ public class FileServiceImpl implements IFileService {
                     "Failed to store file");
         }
 
-        // Capture the real public URL returned by the storage backend (e.g. Cloudinary HTTPS URL).
-        // This is what the frontend uses to display/download the file, so store it in the DB.
-        String publicUrl = storageService.generatePresignedUrl(storageKey, 15);
+        // R2 persists an immutable private object key. The legacy Cloudinary adapter
+        // returns its delivery URL here to keep old non-Expert behavior compatible.
+        String persistedStorageKey = storageService.persistedKey(storageKey);
 
         // C4: accountId from JWT
         UploadedFile saved = fileRepository.save(UploadedFile.builder()
                 .ownerUserId(callerId)
-                .storageKey(publicUrl)
+                .storageKey(persistedStorageKey)
                 .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
                 .mimeType(mimeType)
                 .fileSizeBytes(file.getSize())
@@ -173,6 +173,17 @@ public class FileServiceImpl implements IFileService {
 
         auditService.log(AuditAction.FILE_DELETED, callerId,
                 "UploadedFile", file.getId().toString(), "deleted");
+    }
+
+    @Override
+    public void purgeFile(UUID fileId, UUID callerId) {
+        fileRepository.findById(fileId).ifPresent(file -> {
+            if (!file.getOwnerUserId().equals(callerId)) {
+                throw new AccessDeniedBusinessException("Access denied to file " + fileId);
+            }
+            storageService.delete(file.getStorageKey());
+            fileRepository.delete(file);
+        });
     }
 
     private String getExtension(String filename) {

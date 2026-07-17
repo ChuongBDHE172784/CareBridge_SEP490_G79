@@ -8,9 +8,19 @@ import type {
   RefreshTokenRequest,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
+  ExpertRegisterRequest,
 } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import type { UserProfile } from '../models/user';
+
+export async function registerExpert(request: Omit<ExpertRegisterRequest, 'role'>): Promise<OtpSendResponse> {
+  const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/register', {
+    ...request,
+    phone: request.phone || undefined,
+    role: 'EXPERT',
+  });
+  return data.data;
+}
 
 // UC-03: Login — sends OTP, does NOT return tokens yet
 export async function login(request: LoginRequest): Promise<OtpSendResponse> {

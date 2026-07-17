@@ -1,227 +1,81 @@
-import { useState, useEffect } from 'react';
-import { getMyCredentials, submitCredential, deleteCredential } from '../services/expertApi';
+import { useEffect, useState } from 'react';
+import { deleteCredential, getMyCredentials, submitCredential, type CredentialResponse } from '../services/expertApi';
 
-/* ── Small reusable field components ─────────────────────────────────── */
-
-function Field({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label} {required && '*'}</label>
-      {children}
-    </div>
-  );
-}
-
-  if (!url) return null;
-  const ext = getFileExt(url);
-  const isImage = isImageFile(url);
-  const isPdf = ext === 'pdf';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="material-symbols-outlined text-gray-400">
-              {isImage ? 'image' : isPdf ? 'description' : 'insert_drive_file'}
-            </span>
-            <h3 className="font-semibold text-gray-800 truncate text-sm">{fileName || 'Xem tài liệu'}</h3>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <a href={url} download className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90">
-              <span className="material-symbols-outlined text-[18px]">download</span>
-              Tải về
-            </a>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
-          {isImage ? (
-            <img src={url} alt={fileName || 'Tài liệu'} className="max-w-full max-h-[70vh] object-contain rounded" />
-          ) : isPdf ? (
-            <iframe src={url} className="w-full h-[70vh] rounded" title={fileName || 'PDF'} />
-          ) : (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-gray-500 mb-2">Không thể xem trực tiếp định dạng .{ext}</p>
-              <p className="text-xs text-gray-400 mb-4">Nhấn "Tải về" để mở bằng phần mềm tương ứng</p>
-              <a href={url} download className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">Tải xuống</a>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Main page ────────────────────────────────────────────────────────── */
+const EMPTY_FORM = { credentialType: 'MEDICAL_LICENSE', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' };
 
 export default function VerificationDocumentsPage() {
-  const [credentials, setCredentials] = useState<any[]>([]);
+  const [credentials, setCredentials] = useState<CredentialResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    credentialType: '',
-    credentialNumber: '',
-    issuer: '',
-    issuedDate: '',
-    expiryDate: '',
-  });
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [file, setFile] = useState<File | null>(null);
 
   const load = async () => {
+    try { setCredentials(await getMyCredentials()); }
+    catch (caught: unknown) {
+      const apiError = caught as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message ?? 'Không thể tải chứng chỉ.');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!file) { setError('Vui lòng chọn tệp chứng chỉ.'); return; }
+    setSubmitting(true); setError(null);
     try {
-      const data = await getMyCredentials();
-      setCredentials(data);
-    } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Không thể tải chứng chỉ');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const openUploadForm = () => {
-    setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
-    setSelectedFile(null);
-    setError(null);
-    setShowUpload(true);
-  };
-
-  const cancelUpload = () => {
-    setShowUpload(false);
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-  const body = form;
-      await submitCredential({ body, file: selectedFile! });
-      setForm({ credentialType: '', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
-      setSelectedFile(null);
-      setShowUpload(false);
+      await submitCredential({ body: form, file });
+      setForm(EMPTY_FORM); setFile(null); setShowUpload(false);
       await load();
-    } catch (e: any) {
-      const msg = e.response?.data?.message ?? 'Tải lên thất bại';
-      setError(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (caught: unknown) {
+      const apiError = caught as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message ?? 'Không thể tải chứng chỉ.');
+    } finally { setSubmitting(false); }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setSelectedFile(file);
-    if (file) setError(null);
+  const remove = async (credentialId: string) => {
+    setDeletingId(credentialId); setError(null);
+    try { await deleteCredential(credentialId); setCredentials((items) => items.filter((item) => item.credentialId !== credentialId)); }
+    catch (caught: unknown) {
+      const apiError = caught as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message ?? 'Không thể xóa chứng chỉ.');
+    } finally { setDeletingId(null); }
   };
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
-      await deleteCredential(id);
-      setCredentials((prev) => prev.filter((c) => c.credentialId !== id));
-    } catch {
-      // keep it in the list on error
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  const statusStyles: Record<string, string> = {
-    PENDING: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-    UNDER_REVIEW: 'bg-blue-50 text-blue-700 border-blue-200',
-    APPROVED: 'bg-green-50 text-green-700 border-green-200',
-    REJECTED: 'bg-red-50 text-red-700 border-red-200',
-    EXPIRED: 'bg-gray-50 text-gray-600 border-gray-200',
-  };
-
-  const typeLabels: Record<string, string> = {
-    MEDICAL_LICENSE: 'Giấy phép hành nghề y',
-    DEGREE: 'Bằng cấp chuyên môn',
-    CERTIFICATE: 'Chứng chỉ đào tạo',
-    IDENTITY_DOCUMENT: 'Giấy tờ định danh',
-    PROFESSIONAL_LICENSE: 'Giấy phép hành nghề',
-  };
+  if (loading) return <div className="flex min-h-[400px] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-on-surface">Chứng chỉ &amp; Giấy tờ</h1>
-        <button onClick={openUploadForm} className="px-4 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary/90">
-          Tải lên chứng chỉ
-        </button>
-      </div>
-
-      {error && !showUpload && (
-        <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
-      )}
-
+    <div className="mx-auto max-w-4xl p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold text-on-surface">Chứng chỉ chuyên môn</h1><p className="mt-1 text-sm text-gray-500">Các tệp được lưu riêng tư và URL xem có thời hạn ngắn.</p></div><button onClick={() => setShowUpload(true)} className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white">Thêm chứng chỉ</button></div>
+      {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {showUpload && (
-        <form onSubmit={onSubmit} className="mb-6 p-5 bg-white rounded-lg border border-gray-200 shadow-sm space-y-4">
-          <h3 className="font-medium text-gray-800">Tải lên chứng chỉ mới</h3>
-
-          {error && (
-            <div className="mb-2 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
-          )}
-
-        <Field label="Loại chứng chỉ" required>
-          <select
-            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-            value={form.credentialType}
-            onChange={(e) => setForm({ ...form, credentialType: e.target.value })}
-          >
-            <option value="">-- Chọn loại --</option>
-            <option value="MEDICAL_LICENSE">Giấy phép hành nghề y</option>
-            <option value="DEGREE">Bằng cấp chuyên môn</option>
-            <option value="CERTIFICATE">Chứng chỉ đào tạo</option>
-            <option value="IDENTITY_DOCUMENT">Giấy tờ định danh</option>
-            <option value="PROFESSIONAL_LICENSE">Giấy phép hành nghề</option>
-          </select>
-        </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Số chứng chỉ">
-              <input className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-                value={form.credentialNumber} onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })} />
-        <Field label="Nơi cấp">
-          <input
-            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2"
-            value={form.issuer}
-            onChange={(e) => setForm({ ...form, issuer: e.target.value })}
-            placeholder="T\u00ean c\u01a1\u01a1n / t\u1ed5 ch\u1ee9c c\u1ea5p"
-          />
-        </Field>
-              {deletingId === cred.credentialId && (
-                <div className="flex items-center justify-center py-2 text-sm text-gray-400">
-                  Đang xóa...
-                </div>
-              )}
-            </div>
-          ))}
-      </div>
-
-      {viewFileUrl && (
-        <CredentialFileViewModal url={viewFileUrl} onClose={() => setViewFileUrl(null)} />
+        <form onSubmit={submit} className="mb-6 grid gap-4 rounded-2xl border bg-white p-5 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm font-medium">Loại chứng chỉ *<select className="rounded-lg border p-2.5" value={form.credentialType} onChange={(event) => setForm({ ...form, credentialType: event.target.value })}><option value="MEDICAL_LICENSE">Giấy phép hành nghề y</option><option value="DEGREE">Bằng cấp</option><option value="CERTIFICATE">Chứng chỉ đào tạo</option><option value="PROFESSIONAL_LICENSE">Giấy phép chuyên môn</option></select></label>
+          <Field label="Số chứng chỉ *" value={form.credentialNumber} onChange={(value) => setForm({ ...form, credentialNumber: value })} />
+          <Field label="Đơn vị cấp *" value={form.issuer} onChange={(value) => setForm({ ...form, issuer: value })} />
+          <Field label="Ngày cấp *" type="date" value={form.issuedDate} onChange={(value) => setForm({ ...form, issuedDate: value })} />
+          <Field label="Ngày hết hạn" type="date" value={form.expiryDate} onChange={(value) => setForm({ ...form, expiryDate: value })} />
+          <label className="grid gap-1 text-sm font-medium">Tệp ảnh/PDF *<input required type="file" accept="image/jpeg,image/png,application/pdf" className="rounded-lg border border-dashed p-2" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
+          <div className="flex gap-3 sm:col-span-2"><button disabled={submitting} className="rounded-full bg-primary px-5 py-2.5 font-semibold text-white disabled:opacity-50">{submitting ? 'Đang gửi...' : 'Gửi xét duyệt'}</button><button type="button" className="rounded-full border px-5 py-2.5" onClick={() => setShowUpload(false)}>Hủy</button></div>
+        </form>
       )}
+      <div className="grid gap-4">
+        {credentials.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center text-gray-500">Chưa có chứng chỉ nào.</div>}
+        {credentials.map((credential) => (
+          <article key={credential.credentialId} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5 shadow-sm">
+            <div><p className="font-semibold text-on-surface">{typeLabel(credential.credentialType)}</p><p className="mt-1 text-sm text-gray-500">{credential.credentialNumber || 'Không có số'} · {credential.issuer || 'Không có đơn vị cấp'}</p>{credential.reviewNote && <p className="mt-2 text-sm text-red-700">Phản hồi: {credential.reviewNote}</p>}</div>
+            <div className="flex items-center gap-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(credential.reviewStatus)}`}>{credential.reviewStatus}</span>{credential.fileUrl && <a className="text-sm font-semibold text-primary" href={credential.fileUrl} target="_blank" rel="noreferrer">Xem tệp</a>}<button disabled={deletingId === credential.credentialId} onClick={() => void remove(credential.credentialId)} className="text-sm font-semibold text-red-600 disabled:opacity-50">{deletingId === credential.credentialId ? 'Đang xóa...' : 'Xóa'}</button></div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
+
+function Field({ label, type = 'text', value, onChange }: { label: string; type?: string; value: string; onChange: (value: string) => void }) { return <label className="grid gap-1 text-sm font-medium">{label}<input required={label.includes('*')} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="rounded-lg border p-2.5 font-normal" /></label>; }
+function typeLabel(value: string) { return ({ MEDICAL_LICENSE: 'Giấy phép hành nghề y', DEGREE: 'Bằng cấp chuyên môn', CERTIFICATE: 'Chứng chỉ đào tạo', PROFESSIONAL_LICENSE: 'Giấy phép chuyên môn' } as Record<string, string>)[value] ?? value; }
+function statusClass(value: string) { if (value === 'APPROVED') return 'bg-green-100 text-green-800'; if (value === 'REJECTED') return 'bg-red-100 text-red-800'; return 'bg-amber-100 text-amber-800'; }

@@ -94,6 +94,23 @@ carebridge:
     expiry-hours: ${CONSULTATION_REQUEST_EXPIRY_HOURS:48}
     expiry-job-delay-ms: ${CONSULTATION_REQUEST_EXPIRY_JOB_DELAY_MS:60000}
 
+  storage:
+    provider: ${FILE_STORAGE_PROVIDER:cloudinary}
+    r2:
+      endpoint: ${R2_ENDPOINT:}
+      access-key: ${R2_ACCESS_KEY_ID:}
+      secret-key: ${R2_SECRET_ACCESS_KEY:}
+      bucket: ${R2_BUCKET:carebridge-private}
+      region: ${R2_REGION:auto}
+
+  compreface:
+    enabled: ${COMPREFACE_ENABLED:false}
+    base-url: ${COMPREFACE_BASE_URL:http://localhost:8000}
+    api-key: ${COMPREFACE_API_KEY:}
+    similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}
+    connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
+
   notification:
     consultation-request-outbox-delay-ms: ${CONSULTATION_REQUEST_OUTBOX_DELAY_MS:5000}
 

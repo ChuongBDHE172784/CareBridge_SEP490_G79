@@ -57,6 +57,9 @@ private LocalDateTime verifiedAt;
 @Column(name = "verified_by")
 private UUID verifiedBy;
 
+@Column(name = "verification_rejection_reason", columnDefinition = "text")
+private String verificationRejectionReason;
+
 @Column(name = "rating_avg", precision = 3, scale = 2)
 private BigDecimal ratingAvg;
 

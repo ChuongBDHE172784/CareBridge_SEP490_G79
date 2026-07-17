@@ -4,7 +4,7 @@ import { updateUserProfile } from '../../auth/services/authApi';
 import type { UserProfile } from '../../auth/models/user';
 import './ExpertProfilePage.css';
 
-function getInitials(name: string | null): string {
+function getInitials(name: string | null | undefined): string {
   if (!name) return 'ED';
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();

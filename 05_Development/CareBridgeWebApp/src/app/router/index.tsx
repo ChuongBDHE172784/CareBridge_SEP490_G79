@@ -6,12 +6,14 @@ import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
 import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
+import ExpertOnboardingGuard from '../guards/ExpertOnboardingGuard';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+import ExpertRegisterPage from '../../features/auth/pages/ExpertRegisterPage';
 import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
 import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
 
@@ -21,9 +23,11 @@ import ExpertProfilePage from '../../features/expert/pages/ExpertProfilePage';
 import VerificationDocumentsPage from '../../features/expert/pages/VerificationDocumentsPage';
 import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
+import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
+import AdminExpertIdentityReviewPage from '../../features/expert/pages/AdminExpertIdentityReviewPage';
 
 // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call, Expert Portal side
 import ConversationListPage from '../../features/directChat/pages/ConversationListPage';
@@ -112,6 +116,7 @@ export const router = createBrowserRouter([
   { path: '/forbidden', element: <ForbiddenPage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
+  { path: '/expert/register', element: <ExpertRegisterPage /> },
   { path: '/mother/baby-care', element: <BabyCareHubPage /> },
   { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 
@@ -146,6 +151,7 @@ export const router = createBrowserRouter([
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
+              { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
 { path: '/security/incidents', element: <SecurityIncidentListPage /> },
@@ -201,19 +207,25 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
-              { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
-              { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
-              // CB-055: Expert Profile
-              { path: '/expert/profile', element: <ExpertProfilePage /> },
-              // CB-056: Verification Documents
-              { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
-              // CB-057: Availability Calendar
-              { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
-              // CB-063: Expert Question Queue
-              { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
-              // UC-144D: Direct Consult Chat & Call
-              { path: '/expert/direct-chats', element: <ConversationListPage /> },
-              { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+              { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
+              {
+                element: <ExpertOnboardingGuard />,
+                children: [
+                  { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
+                  { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+                  // CB-055: Expert Profile
+                  { path: '/expert/profile', element: <ExpertProfilePage /> },
+                  // CB-056: Verification Documents
+                  { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
+                  // CB-057: Availability Calendar
+                  { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
+                  // CB-063: Expert Question Queue
+                  { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+                  // UC-144D: Direct Consult Chat & Call
+                  { path: '/expert/direct-chats', element: <ConversationListPage /> },
+                  { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                ],
+              },
             ],
           },
           {

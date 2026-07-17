@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
+import { approveExpert } from '../services/expertApi';
 
 interface CredentialItem {
   credentialId: string;
@@ -162,6 +163,7 @@ export default function ExpertVerificationQueuePage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [viewFileUrl, setViewFileUrl] = useState<string | null>(null);
+  const [finalProfileId, setFinalProfileId] = useState<string | null>(null);
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -184,6 +186,7 @@ export default function ExpertVerificationQueuePage() {
   const reviewCredential = async (credentialId: string, status: 'APPROVED' | 'REJECTED') => {
     setActionId(credentialId);
     try {
+      const item = items.find((candidate) => candidate.credentialId === credentialId);
       await apiClient.put(`/api/v1/expert/credentials/${credentialId}/review`, {
         reviewStatus: status,
         reviewNote: noteText.trim() || undefined,
@@ -191,8 +194,23 @@ export default function ExpertVerificationQueuePage() {
       setItems((prev) => prev.filter((i) => i.credentialId !== credentialId));
       setSelectedId(null);
       setNoteText('');
+      if (status === 'APPROVED' && item?.expertProfileId) setFinalProfileId(item.expertProfileId);
     } catch {
       alert('Thao tác thất bại');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const finalizeExpert = async () => {
+    if (!finalProfileId) return;
+    setActionId(finalProfileId);
+    try {
+      await approveExpert(finalProfileId);
+      setFinalProfileId(null);
+    } catch (caught: unknown) {
+      const apiError = caught as { response?: { data?: { message?: string } } };
+      alert(apiError.response?.data?.message ?? 'Chưa thể phê duyệt cuối. Hãy duyệt định danh trước.');
     } finally {
       setActionId(null);
     }
@@ -206,8 +224,6 @@ export default function ExpertVerificationQueuePage() {
     if (isNaN(date.getTime())) return d;
     return date.toLocaleDateString('vi-VN');
   };
-
-  const openFile = (url: string) => setViewFileUrl(url);
 
   const renderFilePreview = (item: CredentialItem) => {
     if (!item.fileUrl) return null;
@@ -278,6 +294,17 @@ export default function ExpertVerificationQueuePage() {
             </div>
           </div>
         </header>
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+          <span>CCCD/ảnh chân dung được xét duyệt ở hàng đợi định danh riêng.</span>
+          <a className="font-semibold text-primary" href="/admin/expert-identity-queue">Mở hàng đợi định danh →</a>
+        </div>
+        {finalProfileId && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+            <span>Chứng chỉ đã duyệt. Chỉ hoàn tất nếu bộ định danh cũng đã được duyệt.</span>
+            <button disabled={actionId === finalProfileId} onClick={() => void finalizeExpert()} className="rounded-full bg-green-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Phê duyệt chuyên gia cuối cùng</button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div

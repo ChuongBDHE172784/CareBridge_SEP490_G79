@@ -49,6 +49,36 @@ export interface CredentialResponse {
 	createdAt: string;
 }
 
+export type ExpertOnboardingStep = 'PROFILE' | 'IDENTITY' | 'CREDENTIAL' | 'UNDER_REVIEW' | 'COMPLETE';
+
+export interface IdentityAttemptResponse {
+	identityVerificationId?: string;
+	attemptId?: string;
+	expertProfileId?: string;
+	selfieFileId?: string;
+	identityFrontFileId?: string;
+	identityBackFileId?: string;
+	status?: string;
+	reviewStatus?: string;
+	faceStatus?: string;
+	providerStatus?: string | null;
+	faceSimilarity?: number | null;
+	faceThreshold?: number | null;
+	similarity?: number | null;
+	providerErrorCode?: string | null;
+	reviewReason?: string | null;
+	createdAt?: string;
+}
+
+export interface ExpertOnboardingResponse {
+	profileExists: boolean;
+	identityStatus: string | null;
+	credentialStatus: string | null;
+	verificationStatus: string | null;
+	nextStep: ExpertOnboardingStep;
+	latestIdentityAttempt: IdentityAttemptResponse | null;
+}
+
 export interface DocumentReviewResponse {
 	credentialId: string;
 	expertProfileId: string;
@@ -130,6 +160,17 @@ export async function getMyProfile(): Promise<ExpertProfileResponse> {
 	return data.data;
 }
 
+export async function createMyProfile(body: {
+	specialty: string;
+	professionalTitle: string;
+	experienceYears?: number;
+	workplace: string;
+	consultationScope: string;
+}): Promise<ExpertProfileResponse> {
+	const { data } = await apiClient.post('/api/v1/expert/profiles', body);
+	return data.data;
+}
+
 export async function updateMyProfile(body: {
 	specialty?: string;
 	professionalTitle?: string;
@@ -137,7 +178,42 @@ export async function updateMyProfile(body: {
 	workplace?: string;
 	consultationScope?: string;
 }): Promise<ExpertProfileResponse> {
-	const { data } = await apiClient.put('/api/v1/expert/profiles/me', body);
+	const { data } = await apiClient.patch('/api/v1/expert/profiles/me', body);
+	return data.data;
+}
+
+export async function getExpertOnboarding(): Promise<ExpertOnboardingResponse> {
+	const { data } = await apiClient.get('/api/v1/expert/onboarding');
+	return data.data;
+}
+
+export async function submitIdentityEvidence(files: {
+	selfie: File;
+	identityFront: File;
+	identityBack: File;
+}): Promise<IdentityAttemptResponse> {
+	const form = new FormData();
+	form.append('selfie', files.selfie);
+	form.append('identityFront', files.identityFront);
+	form.append('identityBack', files.identityBack);
+	const { data } = await apiClient.post('/api/v1/expert/identity', form, {
+		headers: { 'Content-Type': undefined },
+	});
+	return data.data;
+}
+
+export async function getIdentityFileUrl(fileId: string): Promise<string> {
+	const { data } = await apiClient.get(`/api/v1/expert/identity/files/${fileId}/url`);
+	return typeof data.data === 'string' ? data.data : data.data.presignedUrl;
+}
+
+export async function getPendingIdentityReviews(): Promise<IdentityAttemptResponse[]> {
+	const { data } = await apiClient.get('/api/v1/expert/identity/pending');
+	return data.data;
+}
+
+export async function reviewIdentity(attemptId: string, reviewStatus: 'APPROVED' | 'REJECTED', reason?: string): Promise<IdentityAttemptResponse> {
+	const { data } = await apiClient.put(`/api/v1/expert/identity/${attemptId}/review`, { reviewStatus, reason: reason || undefined });
 	return data.data;
 }
 

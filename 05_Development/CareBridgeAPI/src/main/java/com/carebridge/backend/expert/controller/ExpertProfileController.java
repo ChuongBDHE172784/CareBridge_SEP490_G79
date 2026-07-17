@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.expert.dto.request.CreateExpertProfileRequest;
 import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
+import com.carebridge.backend.expert.dto.request.RejectExpertRequest;
 import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
@@ -80,7 +81,7 @@ public class ExpertProfileController {
 
     // UC-70: Admin approves expert
     @PostMapping("/profiles/{expertProfileId}/approve")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'CONTENT_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> approveExpert(
             @PathVariable UUID expertProfileId,
             Principal principal) {
@@ -91,13 +92,13 @@ public class ExpertProfileController {
 
     // UC-70: Admin rejects expert
     @PostMapping("/profiles/{expertProfileId}/reject")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'CONTENT_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> rejectExpert(
             @PathVariable UUID expertProfileId,
             Principal principal,
-            @RequestBody(required = false) String reason) {
+            @Valid @RequestBody RejectExpertRequest request) {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
-        expertProfileService.rejectExpert(expertProfileId, adminId, reason);
+        expertProfileService.rejectExpert(expertProfileId, adminId, request.getReason());
         return ResponseEntity.ok(ApiResponse.success(null, "Expert rejected"));
     }
 

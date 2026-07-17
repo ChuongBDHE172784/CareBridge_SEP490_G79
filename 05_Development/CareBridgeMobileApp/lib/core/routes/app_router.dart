@@ -69,6 +69,9 @@ import '../../features/expert/screens/expert_public_profile_screen.dart';
 import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
+import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
+import '../../features/expert/screens/expert_identity_capture_screen.dart';
+import '../../features/expert/services/expert_onboarding_store.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
 import '../../features/directChat/screens/direct_chat_screen.dart';
@@ -121,6 +124,13 @@ final GoRouter appRouter = GoRouter(
     final isRestoring = auth.isRestoring;
     final blockedReason = auth.blockedReason;
     final hasAssignedRole = auth.role != null && auth.role!.trim().isNotEmpty;
+    final isExpert = auth.role?.trim().toUpperCase() == 'EXPERT';
+    final isExpertOnboardingRoute =
+        state.matchedLocation == '/expert-onboarding' ||
+        state.matchedLocation == '/expert-profile-setup' ||
+        state.matchedLocation == '/expert/identity' ||
+        state.matchedLocation == '/expert/credentials' ||
+        state.matchedLocation == '/expert-verification-status';
 
     // Do not redirect while restoring state
     if (isRestoring) return null;
@@ -147,15 +157,22 @@ final GoRouter appRouter = GoRouter(
     if (isAuth &&
         hasAssignedRole &&
         state.matchedLocation == '/role-selection') {
-      return auth.role == 'EXPERT'
-          ? '/expert-home'
+      return isExpert
+          ? '/expert-onboarding'
           : (auth.role == 'MOTHER' ? '/mother-stage-selection' : '/');
     }
 
     if (isAuth && isAuthRoute) {
-      return auth.role == 'EXPERT'
-          ? '/expert-home'
+      return isExpert
+          ? '/expert-onboarding'
           : (hasAssignedRole ? '/' : '/role-selection');
+    }
+
+    if (isAuth &&
+        isExpert &&
+        !isExpertOnboardingRoute &&
+        !ExpertOnboardingStore.instance.approvedFor(auth.userId)) {
+      return '/expert-onboarding';
     }
 
     return null;
@@ -569,8 +586,16 @@ final GoRouter appRouter = GoRouter(
     ),
     // CB-033: Expert Profile Setup (UC-87)
     GoRoute(
+      path: '/expert-onboarding',
+      builder: (context, state) => const ExpertOnboardingGateScreen(),
+    ),
+    GoRoute(
       path: '/expert-profile-setup',
       builder: (context, state) => const ExpertProfileSetupScreen(),
+    ),
+    GoRoute(
+      path: '/expert/identity',
+      builder: (context, state) => const ExpertIdentityCaptureScreen(),
     ),
     // CB-034: Upload Verification Documents (UC-89)
     GoRoute(

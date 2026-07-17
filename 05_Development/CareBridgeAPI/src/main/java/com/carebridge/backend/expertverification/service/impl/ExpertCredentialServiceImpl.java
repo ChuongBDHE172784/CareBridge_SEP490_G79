@@ -42,19 +42,27 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                         HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
 
         // Always create a new credential row — never overwrite
-        String fileUrl = null;
-        if (file != null && !file.isEmpty()) {
-            UploadFileResponse uploadResponse = fileService.uploadFile(file, userId);
-            fileUrl = uploadResponse.getPresignedUrl();
+        if (file == null || file.isEmpty()) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPVER-006",
+                    "Professional credential file is required");
         }
-
         LocalDate issuedDate = parseDate(request.getIssuedDate());
         LocalDate expiryDate = parseDate(request.getExpiryDate());
+        UploadFileResponse uploadResponse = fileService.uploadFile(file, userId);
 
         var credential = credentialMapper.toEntity(
-                profile.getExpertProfileId(), request, issuedDate, expiryDate, fileUrl);
-        var saved = credentialRepository.save(credential);
-        return credentialMapper.toResponse(saved);
+                profile.getExpertProfileId(), request, issuedDate, expiryDate, uploadResponse.getFileId());
+        try {
+            var saved = credentialRepository.save(credential);
+            return withAuthorizedUrl(credentialMapper.toResponse(saved), saved, userId);
+        } catch (RuntimeException ex) {
+            try {
+                fileService.purgeFile(uploadResponse.getFileId(), userId);
+            } catch (RuntimeException ignored) {
+                // Keep the persistence error as the primary failure.
+            }
+            throw ex;
+        }
     }
 
     private LocalDate parseDate(String value) {
@@ -75,7 +83,8 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                         HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
 
         return credentialRepository.findByExpertProfileId(profile.getExpertProfileId()).stream()
-                .map(credentialMapper::toResponse)
+                .map(credential -> withAuthorizedUrl(
+                        credentialMapper.toResponse(credential), credential, userId))
                 .collect(Collectors.toList());
     }
 
@@ -95,7 +104,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                     HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
         }
 
-        return credentialMapper.toResponse(credential);
+        return withAuthorizedUrl(credentialMapper.toResponse(credential), credential, userId);
     }
 
     @Override
@@ -113,6 +122,9 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                     HttpStatus.FORBIDDEN, "EXPERT-005", "Insufficient permissions");
         }
 
+        if (credential.getFileId() != null) {
+            fileService.deleteFile(credential.getFileId(), userId);
+        }
         credentialRepository.delete(credential);
     }
 
@@ -124,12 +136,14 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
 
         credentialMapper.applyReview(credential, request, reviewerId);
         var saved = credentialRepository.save(credential);
-        return credentialMapper.toDocumentReviewResponse(saved);
+        var response = credentialMapper.toDocumentReviewResponse(saved);
+        applyAuthorizedUrl(response, saved, reviewerId);
+        return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentReviewResponse> getPendingReviews(String credentialType) {
+    public List<DocumentReviewResponse> getPendingReviews(String credentialType, UUID reviewerId) {
         List<Object[]> rows = credentialRepository.findPendingWithExpert(ReviewStatus.PENDING);
         return rows.stream()
                 .map(row -> {
@@ -137,6 +151,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                     var profile = (com.carebridge.backend.expert.entity.ExpertProfile) row[1];
                     var user = (com.carebridge.backend.security.entity.User) row[2];
                     var res = credentialMapper.toDocumentReviewResponse(cred);
+                    applyAuthorizedUrl(res, cred, reviewerId);
                     if (profile != null) {
                         res.setExpertName(user != null ? user.getName() : null);
                         res.setSpecialty(profile.getSpecialty());
@@ -152,5 +167,20 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                 })
                 .filter(r -> credentialType == null || credentialType.isBlank() || credentialType.equals(r.getCredentialType()))
                 .collect(Collectors.toList());
+    }
+
+    private CredentialResponse withAuthorizedUrl(
+            CredentialResponse response, ExpertCredential credential, UUID callerId) {
+        if (credential.getFileId() != null) {
+            response.setFileUrl(fileService.viewFile(credential.getFileId(), callerId).getPresignedUrl());
+        }
+        return response;
+    }
+
+    private void applyAuthorizedUrl(
+            DocumentReviewResponse response, ExpertCredential credential, UUID callerId) {
+        if (credential.getFileId() != null) {
+            response.setFileUrl(fileService.viewFile(credential.getFileId(), callerId).getPresignedUrl());
+        }
     }
 }

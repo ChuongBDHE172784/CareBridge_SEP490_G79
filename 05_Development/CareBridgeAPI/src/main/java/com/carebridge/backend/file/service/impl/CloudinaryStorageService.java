@@ -5,9 +5,11 @@ import com.cloudinary.utils.ObjectUtils;
 import com.carebridge.backend.file.service.IStorageService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(name = "carebridge.storage.provider", havingValue = "cloudinary", matchIfMissing = true)
 public class CloudinaryStorageService implements IStorageService {
 
     private final Cloudinary cloudinary;
@@ -15,15 +17,25 @@ public class CloudinaryStorageService implements IStorageService {
     private final ThreadLocal<String> lastUrl = new ThreadLocal<>();
 
     public CloudinaryStorageService(
-            @Value("${CLOUDINARY_CLOUD_NAME}") String cloudName,
-            @Value("${CLOUDINARY_API_KEY}") String apiKey,
-            @Value("${CLOUDINARY_API_SECRET}") String apiSecret) {
+            @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
+            @Value("${CLOUDINARY_API_KEY:}") String apiKey,
+            @Value("${CLOUDINARY_API_SECRET:}") String apiSecret) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key", apiKey,
                 "api_secret", apiSecret,
                 "secure", true
         ));
+    }
+
+    @Override
+    public String persistedKey(String requestedKey) {
+        String url = lastUrl.get();
+        if (url != null) {
+            lastUrl.remove();
+            return url;
+        }
+        return requestedKey;
     }
 
     @Override
@@ -43,12 +55,7 @@ public class CloudinaryStorageService implements IStorageService {
     @Override
     public String generatePresignedUrl(String key, int ttlMinutes) {
         // Cloudinary serves files over public HTTPS — return the URL from the last upload
-        String url = lastUrl.get();
-        if (url != null) {
-            lastUrl.remove();
-            return url;
-        }
-        // Fallback: if no upload URL was captured, return the key as-is (shouldn't happen)
+        // Existing Cloudinary records contain their delivery URL as storage_key.
         return key;
     }
 
