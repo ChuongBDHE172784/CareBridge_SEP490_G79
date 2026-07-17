@@ -218,7 +218,10 @@ def apply_deterministic_rules(state: TriageState) -> TriageState:
 
 def retrieve_sources_node(state: TriageState) -> TriageState:
     state["retrievedSources"] = retrieve_sources(
-        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage
+        state.get("normalizedSymptoms", []),
+        state.get("matchedRules", []),
+        state["intake"].stage,
+        state["intake"].childAgeMonths,
     )
     return state
 

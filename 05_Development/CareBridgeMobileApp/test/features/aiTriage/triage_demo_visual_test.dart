@@ -63,14 +63,15 @@ class _RedDemoService extends TriageService {
       redFlags: ['Khó thở', 'Tím môi'],
       citations: [
         TriageCitation(
-          id: 'who-danger-signs',
-          title: 'Dấu hiệu nguy hiểm ở trẻ nhỏ',
-          source: 'WHO',
-          organization: 'WHO',
-          domain: 'who.int',
+          id: 'nch-child-danger-signs',
+          title: 'Một số dấu hiệu cha mẹ cần biết để đưa trẻ đi khám sớm',
+          source: 'Bệnh viện Nhi Trung ương',
+          organization: 'Bệnh viện Nhi Trung ương',
+          domain: 'benhviennhitrunguong.gov.vn',
           url:
-              'https://www.who.int/news-room/fact-sheets/detail/child-mortality-under-5-years',
-          excerpt: 'Nguồn chính thống hỗ trợ hướng dẫn đánh giá khẩn cấp.',
+              'https://benhviennhitrunguong.gov.vn/mot-so-dau-hieu-cha-me-can-biet-de-dua-tre-di-kham-som.html',
+          excerpt:
+              'Trẻ khó thở, rút lõm lồng ngực hoặc tím môi cần được đưa đi khám sớm.',
           retrievedAt: '2026-07-17',
           matchedSymptoms: ['difficulty_breathing', 'cyanosis'],
           matchedRules: ['RED_BREATHING_DISTRESS'],
@@ -152,11 +153,11 @@ void main() {
     expect(find.text('Mức rủi ro: RED'), findsOneWidget);
     expect(find.byKey(const Key('triage-emergency-cta')), findsOneWidget);
     expect(
-      find.byKey(const Key('triage-source-chip-who-danger-signs')),
+      find.byKey(const Key('triage-source-chip-nch-child-danger-signs')),
       findsOneWidget,
     );
     await tester.tap(
-      find.byKey(const Key('triage-source-chip-who-danger-signs')),
+      find.byKey(const Key('triage-source-chip-nch-child-danger-signs')),
     );
     await tester.pumpAndSettle();
     expect(find.text('Xem nguồn gốc'), findsOneWidget);

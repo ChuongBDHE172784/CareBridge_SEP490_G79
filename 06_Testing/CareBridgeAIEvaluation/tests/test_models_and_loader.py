@@ -28,9 +28,12 @@ def _case(case_id: str = "CASE_001") -> dict:
         "forbiddenBehaviors": ["diagnosis"],
         "requiredDisclaimer": True,
         "sourceReferences": [{
-            "organization": "WHO",
-            "title": "Newborn mortality",
-            "url": "https://www.who.int/news-room/fact-sheets/detail/newborn-mortality",
+            "organization": "Benh vien Nhi Trung uong",
+            "title": "Mot so dau hieu cha me can biet de dua tre di kham som",
+            "url": (
+                "https://benhviennhitrunguong.gov.vn/"
+                "mot-so-dau-hieu-cha-me-can-biet-de-dua-tre-di-kham-som.html"
+            ),
         }],
         "notes": "Test fixture",
     }

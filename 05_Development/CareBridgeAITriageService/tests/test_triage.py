@@ -75,7 +75,7 @@ def test_fever_cough_normal_breathing_yellow_has_official_citation():
     assert response.riskLevel == "YELLOW"
     assert "YELLOW_RESPIRATORY_NO_DISTRESS" in response.matchedRules
     assert response.citations
-    assert any(c.source in {"WHO", "Bo Y te Viet Nam"} for c in response.citations)
+    assert any(c.source == "Bệnh viện Nhi Trung ương" for c in response.citations)
     assert response.evidence.basis == "RULE_ENGINE_AND_OFFICIAL_SOURCES"
     assert "fever" in response.evidence.matchedSymptoms
 
@@ -85,7 +85,7 @@ def test_breathing_difficulty_red_has_who_or_moh_citation():
     assert response.riskLevel == "RED"
     assert response.emergencyActionRequired is True
     assert "RED_BREATHING_DISTRESS" in response.matchedRules
-    assert any(c.source in {"WHO", "Bo Y te Viet Nam"} for c in response.citations)
+    assert any(c.source == "Bệnh viện Nhi Trung ương" for c in response.citations)
     assert any("difficulty_breathing" in c.matchedSymptoms for c in response.citations)
 
 
@@ -93,7 +93,7 @@ def test_seizure_red_has_official_citation():
     response = run_triage(make_request(symptomList=["co giat"], seizure=True))
     assert response.riskLevel == "RED"
     assert "RED_SEIZURE" in response.matchedRules
-    assert any(c.source == "WHO" for c in response.citations)
+    assert any(c.source == "Bệnh viện Nhi Trung ương" for c in response.citations)
 
 
 def test_lethargy_red():

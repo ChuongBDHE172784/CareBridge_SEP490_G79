@@ -1,12 +1,13 @@
 ---
-id: WHO_CHILD_FEVER_001
-title: Pocket Book of Hospital Care for Children - Fever Safety Checks
+id: WHO_NEWBORN_DANGER_SIGNS_001
+title: Caring for a newborn
 organization: WHO
-url: https://www.who.int/publications/i/item/978-92-4-154837-3
+url: https://www.who.int/tools/your-life-your-health/life-phase/newborns-and-children-under-5-years/caring-for-newborns
 domain: who.int
 topic: fever
-ageRange: child
+ageRange: 0-0 months
 riskLevels: [YELLOW, RED]
+applicableStages: [INFANT]
 symptoms: [fever, poor_feeding, breathing_difficulty, seizure, lethargy]
 lastReviewed: 2026-07-10
 sourceType: official_guideline
@@ -16,7 +17,6 @@ approvedAt: 2026-07-10
 approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
-Internal evidence seed based on WHO child hospital care guidance. Fever should
-be considered with the child's age, feeding, breathing, alertness, hydration,
-and danger signs. Very young infants with fever and children with fever plus
-danger signs need prompt assessment by health workers.
+WHO advises families caring for a newborn to know danger signs and where to
+seek care, including when the baby is not feeding well, has fast breathing or
+a high temperature.

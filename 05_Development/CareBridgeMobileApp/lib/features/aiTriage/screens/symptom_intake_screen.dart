@@ -233,13 +233,32 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Future<void> _openUrl(TriageCitation citation) async {
     final uri = Uri.tryParse(citation.url);
-    if (uri != null && _isSafeCitationUri(uri, citation.domain) && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri == null || !_isSafeCitationUri(uri, citation.domain)) return;
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể mở nguồn tham khảo trên thiết bị này.'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể mở nguồn tham khảo trên thiết bị này.'),
+          ),
+        );
+      }
     }
   }
 
   bool _isSafeCitationUri(Uri uri, String? approvedDomain) {
-    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(
+      RegExp(r'^www\\.'),
+      '',
+    );
     final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
     final path = uri.path.replaceAll('/', '').trim().toLowerCase();
     return uri.scheme == 'https' &&
@@ -380,9 +399,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             onSelected: _loading
                 ? null
                 : (_) => setState(() {
-                      _selectedStage = entry.key;
-                      _currentIntake = _blankIntake(stage: entry.key);
-                    }),
+                    _selectedStage = entry.key;
+                    _currentIntake = _blankIntake(stage: entry.key);
+                  }),
           );
         }).toList(),
       ),
@@ -596,8 +615,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(citation.organization ?? citation.source,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                citation.organization ?? citation.source,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               Text(citation.title),
               if (citation.excerpt.isNotEmpty) ...[

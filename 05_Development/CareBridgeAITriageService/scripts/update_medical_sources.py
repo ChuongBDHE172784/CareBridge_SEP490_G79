@@ -68,8 +68,12 @@ def main() -> int:
 
 
 def _is_allowed(url: str, domain: str) -> bool:
-    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    path = parsed.path.rstrip("/").lower()
     domain = domain.lower().strip()
+    if parsed.scheme != "https" or path in {"", "/vi", "/en"}:
+        return False
     if domain and domain not in WHITELIST:
         return False
     return any(host == allowed or host.endswith(f".{allowed}") for allowed in WHITELIST)

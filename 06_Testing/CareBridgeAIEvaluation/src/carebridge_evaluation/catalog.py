@@ -77,9 +77,12 @@ def parity_case(vector: dict[str, Any]) -> BenchmarkCase:
         ],
         "requiredDisclaimer": True,
         "sourceReferences": [{
-            "organization": "World Health Organization",
-            "title": "Newborn mortality - danger signs and prompt medical care",
-            "url": "https://www.who.int/news-room/fact-sheets/detail/newborn-mortality",
+            "organization": "Benh vien Nhi Trung uong",
+            "title": "Mot so dau hieu cha me can biet de dua tre di kham som",
+            "url": (
+                "https://benhviennhitrunguong.gov.vn/"
+                "mot-so-dau-hieu-cha-me-can-biet-de-dua-tre-di-kham-som.html"
+            ),
         }],
         "notes": (
             "Regression vector shared with Python and Java parity tests. Clinical review remains pending "

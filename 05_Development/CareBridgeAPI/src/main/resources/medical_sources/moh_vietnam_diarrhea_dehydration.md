@@ -1,11 +1,11 @@
 ---
-title: Tiêu chảy và dấu hiệu mất nước ở trẻ
-organization: Bộ Y tế Việt Nam
-url: https://moh.gov.vn/
+title: Khuyến cáo về tiêu chảy cấp ở trẻ em
+organization: Bệnh viện Nhi Trung ương
+url: https://benhviennhitrunguong.gov.vn/bao-cao-hoi-nghi-dong-thuan-khuyen-cao-ve-chan-doan-va-dieu-tri-tieu-chay-cap-o-tre-em.html
 lastReviewed: 2026-07-10
 topic: diarrhea_dehydration
-ageRange: 0-16 years
+ageRange: 0-59 months
 ---
-Trẻ tiêu chảy cần được theo dõi dấu hiệu mất nước như khát nhiều, môi khô, mắt
-trũng, tiểu ít, khóc không có nước mắt hoặc mệt lả. Tiêu chảy kèm dấu hiệu mất
-nước, nôn nhiều hoặc tình trạng xấu nhanh cần được đánh giá y tế sớm.
+Khuyến cáo của Bệnh viện Nhi Trung ương phân loại mất nước nặng ở trẻ dựa trên
+các dấu hiệu như li bì hoặc khó đánh thức, mắt trũng và nếp véo da mất rất chậm;
+người chăm sóc cần phát hiện sớm để đưa trẻ đến cơ sở y tế kịp thời.
