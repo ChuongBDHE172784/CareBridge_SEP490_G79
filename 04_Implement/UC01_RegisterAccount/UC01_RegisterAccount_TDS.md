@@ -1130,7 +1130,7 @@ Tests phải cover §13 Test Scenarios.
 
 ## Amendment v1.1 — Federated Registration (Google and Phone)
 
-This amendment is controlled by `.agents/workflows/create-specs.md`. It extends, and does not replace, the password registration contract above. Status is `In Review`; implementation is blocked until human approval.
+This amendment is controlled by `.agents/workflows/create-specs.md`. It extends, and does not replace, the password registration contract above. Status is `Approved / Partially Implemented`; the federated target suite is GREEN, while full backend and Web regression gates remain blocked by documented baseline failures.
 
 ### A1. Approved intent and boundaries
 

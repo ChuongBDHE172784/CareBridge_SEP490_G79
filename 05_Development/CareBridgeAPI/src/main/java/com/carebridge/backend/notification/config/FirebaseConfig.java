@@ -1,5 +1,6 @@
 package com.carebridge.backend.notification.config;
 
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.api.client.http.apache.v2.ApacheHttpTransport;
 import com.google.firebase.FirebaseApp;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Date;
 
 /**
  * Initializes the Firebase Admin SDK from either a base64-encoded service account JSON or
@@ -22,7 +24,7 @@ import java.util.Base64;
  * ADC must be explicitly enabled and cannot be combined with the base64 credential.
  */
 @Configuration
-@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.firestore.enabled:false}")
+@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.firestore.enabled:false} or ${carebridge.firebase.auth-emulator-enabled:false}")
 public class FirebaseConfig {
 
     @Value("${carebridge.fcm.credentials-base64:}")
@@ -31,11 +33,17 @@ public class FirebaseConfig {
     @Value("${carebridge.fcm.use-application-default-credentials:false}")
     private boolean useApplicationDefaultCredentials;
 
-    @Value("${carebridge.fcm.project-id:}")
-    private String projectId;
-
     @Value("${carebridge.fcm.service-account-id:}")
     private String serviceAccountId;
+
+    @Value("${carebridge.firebase.auth-emulator-enabled:false}")
+    private boolean authEmulatorEnabled;
+
+    @Value("${carebridge.firebase.auth-emulator-host:}")
+    private String authEmulatorHost;
+
+    @Value("${carebridge.firebase.project-id:}")
+    private String projectId;
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
@@ -46,6 +54,15 @@ public class FirebaseConfig {
     }
 
     FirebaseOptions buildFirebaseOptions() throws IOException {
+        if (authEmulatorEnabled) {
+            validateAuthEmulatorConfiguration();
+            return FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.create(
+                            new AccessToken("firebase-auth-emulator-owner", new Date(Long.MAX_VALUE))))
+                    .setProjectId(projectId.trim())
+                    .build();
+        }
+
         FirebaseOptions.Builder builder = FirebaseOptions.builder();
 
         if (useApplicationDefaultCredentials) {
@@ -70,9 +87,10 @@ public class FirebaseConfig {
 
         if (credentialsBase64.isBlank()) {
             throw new IllegalStateException(
-                    "FIREBASE_CREDENTIALS_BASE64 is required unless Firebase ADC mode is enabled");
+                    "FIREBASE_CREDENTIALS_BASE64 is required unless Firebase ADC mode or Auth Emulator is enabled");
         }
-        builder.setCredentials(loadBase64Credentials());
+        builder.setCredentials(loadBase64Credentials())
+                .setHttpTransport(new ApacheHttpTransport());
         return builder.build();
     }
 
@@ -84,6 +102,21 @@ public class FirebaseConfig {
         byte[] credentialsJson = Base64.getDecoder().decode(credentialsBase64.trim());
         try (ByteArrayInputStream serviceAccount = new ByteArrayInputStream(credentialsJson)) {
             return GoogleCredentials.fromStream(serviceAccount);
+        }
+    }
+
+    private void validateAuthEmulatorConfiguration() {
+        if (projectId == null || projectId.isBlank()) {
+            throw new IllegalStateException(
+                    "FIREBASE_PROJECT_ID is required when Firebase Auth Emulator is enabled");
+        }
+        if (authEmulatorHost == null || authEmulatorHost.isBlank()) {
+            throw new IllegalStateException(
+                    "FIREBASE_AUTH_EMULATOR_HOST is required when Firebase Auth Emulator is enabled");
+        }
+        if (authEmulatorHost.contains("://")) {
+            throw new IllegalStateException(
+                    "FIREBASE_AUTH_EMULATOR_HOST must not include a URL scheme");
         }
     }
 }

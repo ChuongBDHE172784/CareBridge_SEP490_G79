@@ -12,6 +12,7 @@ import 'package:firebase_core_web/firebase_core_web.dart';
 import 'package:firebase_messaging_web/firebase_messaging_web.dart';
 import 'package:flutter_secure_storage_web/flutter_secure_storage_web.dart';
 import 'package:geolocator_web/geolocator_web.dart';
+import 'package:google_sign_in_web/google_sign_in_web.dart';
 import 'package:permission_handler_html/permission_handler_html.dart';
 import 'package:sensors_plus/src/sensors_plus_web.dart';
 import 'package:url_launcher_web/url_launcher_web.dart';
@@ -26,6 +27,7 @@ void registerPlugins([final Registrar? pluginRegistrar]) {
   FirebaseMessagingWeb.registerWith(registrar);
   FlutterSecureStorageWeb.registerWith(registrar);
   GeolocatorPlugin.registerWith(registrar);
+  GoogleSignInPlugin.registerWith(registrar);
   WebPermissionHandler.registerWith(registrar);
   WebSensorsPlugin.registerWith(registrar);
   UrlLauncherPlugin.registerWith(registrar);

@@ -1,0 +1,1461 @@
+<mxfile host="Electron" agent="Codex" pages="14">
+  <diagram id="uc-mf-01-account-trust-access-control" name="D-01. MF-01 Account, Trust &amp; Access Control">
+    <mxGraphModel dx="2060" dy="1320" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="2310" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d01_mf-01_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-01 Account, Trust &amp; Access Control" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Provides account lifecycle, public community identity separated from private care data, consent management, notification preferences, session protection, role-based access, expert trust review and sensitive access audit review." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-01" vertex="1">
+          <mxGeometry height="2000" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_01" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-01 Register Account" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_02" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-02 Verify OTP" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_03" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-03 Log In" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_04" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-04 Log Out" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_05" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-05 Request Password Reset" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_06" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-06 Reset Password" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_07" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-07 Change Password" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_08" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-08 View Account Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_09" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-09 Update Account Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_10" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-10 Manage Community Identity" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1022" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_11" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-11 Manage Notification Preferences" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_12" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-12 View and Mark Notifications" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1232" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_13" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-13 Manage Own Login Sessions" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1337" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_14" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-14 Deactivate or Delete Own Account" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1442" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_15" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-15 Grant Data Permission" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1547" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_16" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-16 Review and Revoke Data Permission" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1652" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_17" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-17 Administer User Accounts and Role Access" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1757" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_uc_18" parent="d01_mf-01_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-18 Review Sensitive Access and Security Events" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1862" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 18 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="2200" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Guest" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="516" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1216" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_actor_3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="System Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1986" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_1" edge="1" parent="1" source="d01_mf-01_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_2" edge="1" parent="1" source="d01_mf-01_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.4;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_3" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.077;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_03" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_4" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.154;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_04" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_5" edge="1" parent="1" source="d01_mf-01_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.6;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_05" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_6" edge="1" parent="1" source="d01_mf-01_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.8;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_06" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_7" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.231;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_8" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.308;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_08" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_9" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.385;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_10" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.462;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_11" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.538;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_12" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.615;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_13" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.692;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_14" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.769;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_15" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.846;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_15" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_16" edge="1" parent="1" source="d01_mf-01_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.923;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_17" edge="1" parent="1" source="d01_mf-01_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_17" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_mf-01_assoc_18" edge="1" parent="1" source="d01_mf-01_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d01_mf-01_uc_18" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_otp" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» OTP / Email Service" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_fcm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» Firebase Cloud Messaging" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_assoc_otp_1" edge="1" parent="1" source="d01_ext_otp" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d01_mf-01_uc_01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_assoc_otp_2" edge="1" parent="1" source="d01_ext_otp" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d01_mf-01_uc_02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_assoc_otp_3" edge="1" parent="1" source="d01_ext_otp" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d01_mf-01_uc_05" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d01_ext_assoc_fcm_1" edge="1" parent="1" source="d01_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d01_mf-01_uc_12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d01_mf-01_actor_3_to_d01_mf-01_actor_2" edge="1" parent="1" source="d01_mf-01_actor_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d01_mf-01_actor_2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="2015" />
+              <mxPoint x="35" y="1245" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-02-mother-care-journey" name="D-02. MF-02 Mother Care Journey">
+    <mxGraphModel dx="1212" dy="776" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d02_mf-02_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-02 Mother Care Journey" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Supports preconception, pregnancy and postpartum recovery with stage tracking, maternal indicators, recovery logs, preparation checklists and reviewed pregnancy exercise support. It does not assess medical fitness or replace professional supervision." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-02" vertex="1">
+          <mxGeometry height="1470" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_19" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-19 Initialize Mother Care Journey" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_20" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-20 Update Mother Journey Stage and Dates" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_21" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-21 View Mother Journey Dashboard" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_22" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-22 Add Maternal Health Metric" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_23" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-23 Update or Delete Maternal Health Metric" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_24" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-24 View Maternal Health Trend" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_25" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-25 Add Postpartum Recovery Log" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_26" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-26 Update or Delete Postpartum Recovery Log" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_27" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-27 Manage Preparation Checklist" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_28" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-28 Browse Pregnancy Exercise Library" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1022" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_29" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-29 Complete Pre-exercise Safety Check" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_30" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-30 Conduct Pregnancy Exercise Session with Optional Posture Feedback" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1232" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_uc_31" parent="d02_mf-02_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-31 View Exercise History and Session Result" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1337" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 13 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1670" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="886" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_1" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.071;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_19" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_2" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.143;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_20" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_3" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.214;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_21" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_4" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.286;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_5" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.357;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_23" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_6" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.429;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_24" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_7" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_25" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_8" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.571;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_26" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_9" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.643;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_27" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_10" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.714;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_28" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_11" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.786;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_29" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_12" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.857;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_30" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_mf-02_assoc_13" edge="1" parent="1" source="d02_mf-02_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.929;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d02_mf-02_uc_31" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_ext_pose" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«on-device service» MediaPipe / Pose Service" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_ext_assoc_pose_1" edge="1" parent="1" source="d02_ext_pose" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d02_mf-02_uc_30" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_rel_include_30_29" edge="1" parent="1" source="d02_mf-02_uc_30" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;strokeColor=#7C3AED;strokeWidth=1.4;fontFamily=Arial;fontSize=10;fontStyle=2;labelBackgroundColor=#FFFFFF;entryDy=0;exitDx=0;entryX=1;exitY=0;exitDy=0;entryY=1;entryDx=0;exitX=1;" target="d02_mf-02_uc_29" value="«include»">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d02_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d02_mf-02_actor_1_to_d02_actor_user" edge="1" parent="1" source="d02_mf-02_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d02_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="915" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-03-baby-care-journey-growth-vaccination" name="D-03. MF-03 Baby Care Journey, Growth &amp; Vaccination">
+    <mxGraphModel dx="2943" dy="1886" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1890" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d03_mf-03_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-03 Baby Care Journey, Growth &amp; Vaccination" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Supports baby profiles, daily care journals, milestones, growth measurements and vaccination records/reference schedules. It supports observation and appointment preparation, not diagnosis." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-03" vertex="1">
+          <mxGeometry height="1580" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_32" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-32 Create Baby Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_33" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-33 Update or Archive Baby Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_34" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-34 Switch Active Baby Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_35" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-35 View Baby Care Overview" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_36" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-36 Add Baby Daily Log" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_37" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-37 Update or Delete Baby Daily Log" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_38" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-38 View Baby Log Summary" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_39" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-39 Record Development Milestone" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_40" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-40 Update or Delete Development Milestone" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_41" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-41 Add Growth Measurement" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1022" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_42" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-42 Update or Delete Growth Measurement" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_43" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-43 View Growth Trend and Measurement History" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1232" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_44" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-44 Manage Vaccination Record" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1337" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_uc_45" parent="d03_mf-03_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-45 View Vaccination Reference Schedule and Reminder Status" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1442" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 14 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="936" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_1" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.067;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_2" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.133;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_33" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_3" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_34" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_4" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.267;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_35" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_5" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_36" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_6" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.4;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_37" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_7" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.467;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_38" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_8" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.533;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_39" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_9" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.6;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_40" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_10" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_41" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_11" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.733;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_42" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_12" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.8;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_43" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_13" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.867;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_44" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_mf-03_assoc_14" edge="1" parent="1" source="d03_mf-03_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.933;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d03_mf-03_uc_45" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d03_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d03_mf-03_actor_1_to_d03_actor_user" edge="1" parent="1" source="d03_mf-03_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d03_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="965" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-04-community-q-a-moderation" name="D-04. MF-04 Community Q&amp;A &amp; Moderation">
+    <mxGraphModel dx="2060" dy="1320" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1890" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d04_mf-04_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-04 Community Q&amp;A &amp; Moderation" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Provides topic-based and optionally anonymous questions, experience sharing, verified expert answers, reports, moderation and topic governance. Search and filters remain embedded in the owning browse screens." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-04" vertex="1">
+          <mxGeometry height="1580" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_46" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-46 Browse Community Feed and Topics" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_47" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-47 View Community Question Detail" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_48" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-48 Create Community Question" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_49" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-49 Edit or Delete Own Community Post" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_50" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-50 Post Community Answer" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_51" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-51 Edit or Delete Own Community Answer" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_52" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-52 React to Community Answer" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_53" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-53 Bookmark Community Post" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_54" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-54 Follow or Unfollow Community Topic" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_55" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-55 Report Unsafe Community Content or Account" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1022" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_56" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-56 View Moderation Queue" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_57" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-57 Moderate Community Content" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1232" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_58" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-58 Resolve Content or Account Report and Apply Enforcement" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1337" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_uc_59" parent="d04_mf-04_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-59 Manage Community Topics and Visibility" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1442" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 14 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1820" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="726" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Moderator" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1466" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_actor_3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="System Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1590" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_actor_4" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Content Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1716" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_1" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.091;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_46" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_2" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.182;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_47" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_3" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.273;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_48" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_4" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.364;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_49" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_5" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.455;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_50" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_6" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.545;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_51" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_7" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.636;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_52" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_8" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.727;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_53" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_9" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.818;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_54" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_10" edge="1" parent="1" source="d04_mf-04_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.909;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_55" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_11" edge="1" parent="1" source="d04_mf-04_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_56" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_12" edge="1" parent="1" source="d04_mf-04_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.4;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d04_mf-04_uc_57" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_13" edge="1" parent="1" source="d04_mf-04_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.6;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d04_mf-04_uc_58" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_14" edge="1" parent="1" source="d04_mf-04_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d04_mf-04_uc_58" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_15" edge="1" parent="1" source="d04_mf-04_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.8;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d04_mf-04_uc_59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d04_mf-04_assoc_16" edge="1" parent="1" source="d04_mf-04_actor_4" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d04_mf-04_uc_59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d04_mf-04_actor_2_to_d04_mf-04_actor_1" edge="1" parent="1" source="d04_mf-04_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d04_mf-04_actor_1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="1495" />
+              <mxPoint x="35" y="755" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d04_mf-04_actor_3_to_d04_mf-04_actor_1" edge="1" parent="1" source="d04_mf-04_actor_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d04_mf-04_actor_1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="1620" />
+              <mxPoint x="35" y="755" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d04_mf-04_actor_4_to_d04_mf-04_actor_1" edge="1" parent="1" source="d04_mf-04_actor_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d04_mf-04_actor_1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="1745" />
+              <mxPoint x="35" y="755" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-05-verified-expert-network-contribution" name="D-05. MF-05 Verified Expert Network &amp; Contribution">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="1680" math="0" shadow="0" dy="1680">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d05_mf-05_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-05 Verified Expert Network &amp; Contribution" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Manages expert profiles, credential review, specialty/service scope, availability, directory visibility, expert contribution, badges and trust restrictions. Contribution points show participation, not clinical competence." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-05" vertex="1">
+          <mxGeometry height="1370" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_60" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-60 Submit Expert Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_61" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-61 Update Expert Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_62" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-62 Submit or Replace Verification Documents" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_63" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-63 View Verification Status and Renew Submission" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_64" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-64 Configure Expert Availability and Service Scope" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_65" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-65 Browse Verified Expert Directory" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_66" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-66 View Verified Expert Profile" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_67" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-67 View Expert Question Queue" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_68" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-68 Post Verified Expert Answer" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_69" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-69 View Contribution Points and Badges" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1022" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_70" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-70 Review Expert Verification Submission" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_uc_71" parent="d05_mf-05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-71 Restrict, Suspend or Reinstate Expert Trust Status" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="1232" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 12 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1570" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Expert Applicant" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="436" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Verified Expert" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_actor_3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_actor_4" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="System Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="1356" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_1" edge="1" parent="1" source="d05_mf-05_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_60" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_2" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.125;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_61" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_3" edge="1" parent="1" source="d05_mf-05_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d05_mf-05_uc_62" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_4" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.25;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d05_mf-05_uc_62" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_5" edge="1" parent="1" source="d05_mf-05_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.75;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d05_mf-05_uc_63" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_6" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.375;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d05_mf-05_uc_63" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_7" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_64" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_8" edge="1" parent="1" source="d05_mf-05_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_65" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_9" edge="1" parent="1" source="d05_mf-05_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_66" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_10" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.625;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_67" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_11" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_68" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_12" edge="1" parent="1" source="d05_mf-05_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.875;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_69" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_13" edge="1" parent="1" source="d05_mf-05_actor_4" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_70" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_mf-05_assoc_14" edge="1" parent="1" source="d05_mf-05_actor_4" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d05_mf-05_uc_71" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_ext_storage" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external storage» Protected Object Storage" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="d05_ext_assoc_storage_1" edge="1" parent="1" source="d05_ext_storage" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d05_mf-05_uc_62" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d05_mf-05_actor_1_to_d05_mf-05_actor_3" edge="1" parent="1" source="d05_mf-05_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d05_mf-05_actor_3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="465" />
+              <mxPoint x="35" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d05_mf-05_actor_2_to_d05_mf-05_actor_3" edge="1" parent="1" source="d05_mf-05_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d05_mf-05_actor_3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="795" />
+              <mxPoint x="35" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d05_mf-05_actor_4_to_d05_mf-05_actor_3" edge="1" parent="1" source="d05_mf-05_actor_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d05_mf-05_actor_3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="1385" />
+              <mxPoint x="35" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-06-ai-nurse-assistant-risk-triage" name="D-06. MF-06 AI Nurse Assistant &amp; Risk Triage">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="940" math="0" shadow="0" dy="940">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d06_mf-06_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-06 AI Nurse Assistant &amp; Risk Triage" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Collects structured symptom context, returns non-diagnostic green/yellow/red risk orientation and safe next-step guidance using approved knowledge and red-flag rules." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-06" vertex="1">
+          <mxGeometry height="630" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_uc_72" parent="d06_mf-06_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-72 Run AI Symptom Intake" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_uc_73" parent="d06_mf-06_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-73 View Risk Triage Result" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_uc_74" parent="d06_mf-06_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-74 Open Emergency Support from a Red Risk Result" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_uc_75" parent="d06_mf-06_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-75 Manage Approved AI Knowledge Sources" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_uc_76" parent="d06_mf-06_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-76 Configure AI Risk and Red-Flag Rules" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 5 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="366" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Content Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="576" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_actor_3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="System Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_1" edge="1" parent="1" source="d06_mf-06_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d06_mf-06_uc_72" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_2" edge="1" parent="1" source="d06_mf-06_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d06_mf-06_uc_73" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_3" edge="1" parent="1" source="d06_mf-06_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d06_mf-06_uc_74" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_4" edge="1" parent="1" source="d06_mf-06_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d06_mf-06_uc_75" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_5" edge="1" parent="1" source="d06_mf-06_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d06_mf-06_uc_75" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_mf-06_assoc_6" edge="1" parent="1" source="d06_mf-06_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d06_mf-06_uc_76" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_ext_gemini" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external AI service» Gemini" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_ext_assoc_gemini_1" edge="1" parent="1" source="d06_ext_gemini" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d06_mf-06_uc_72" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_ext_assoc_gemini_2" edge="1" parent="1" source="d06_ext_gemini" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d06_mf-06_uc_73" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d06_rel_extend_74_73" edge="1" parent="1" source="d06_mf-06_uc_74" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;strokeColor=#7C3AED;strokeWidth=1.4;fontFamily=Arial;fontSize=10;fontStyle=2;labelBackgroundColor=#FFFFFF;entryDy=0;exitDx=0;entryX=1;exitY=0.5;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d06_mf-06_uc_73" value="«extend» [risk = red]">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1390" y="497" />
+              <mxPoint x="1390" y="392" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d06_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d06_mf-06_actor_1_to_d06_actor_user" edge="1" parent="1" source="d06_mf-06_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d06_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="395" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d06_mf-06_actor_2_to_d06_actor_user" edge="1" parent="1" source="d06_mf-06_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d06_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="605" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d06_mf-06_actor_3_to_d06_actor_user" edge="1" parent="1" source="d06_mf-06_actor_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d06_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="730" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-07-emergency-map-nearby-care-support" name="D-07. MF-07 Emergency Map &amp; Nearby Care Support">
+    <mxGraphModel dx="1873" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d07_mf-07_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-07 Emergency Map &amp; Nearby Care Support" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P0 - Core | Current Release Provides emergency map entry, nearby facilities, route/ETA, quick call/navigation, time-limited location alerts and consented nearby-support requests. It does not dispatch ambulances or guarantee expert arrival." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-07" vertex="1">
+          <mxGeometry height="740" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_77" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-77 Open Emergency Map" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_78" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-78 Find Nearby Care Facilities" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_79" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-79 View Route, ETA and Quick Call or Navigate" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_80" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-80 Share Time-Limited Location and Send Family Emergency Alert" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_81" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-81 Create or Cancel Nearby Support Request" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_uc_82" parent="d07_mf-07_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF4FF;strokeColor=#4F81BD;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-82 Manage Expert Nearby Availability and Respond to Nearby Support Request" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 6 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="466" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Verified Expert" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="786" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_1" edge="1" parent="1" source="d07_mf-07_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.167;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_77" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_2" edge="1" parent="1" source="d07_mf-07_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_78" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_3" edge="1" parent="1" source="d07_mf-07_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_79" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_4" edge="1" parent="1" source="d07_mf-07_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_80" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_5" edge="1" parent="1" source="d07_mf-07_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.833;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_81" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_mf-07_assoc_6" edge="1" parent="1" source="d07_mf-07_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d07_mf-07_uc_82" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_map" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external map service» TrackAsia Map Service" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_fcm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» Firebase Cloud Messaging" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="579" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_assoc_map_1" edge="1" parent="1" source="d07_ext_map" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d07_mf-07_uc_77" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_assoc_map_2" edge="1" parent="1" source="d07_ext_map" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.4;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d07_mf-07_uc_78" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_assoc_map_3" edge="1" parent="1" source="d07_ext_map" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.6;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d07_mf-07_uc_79" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_assoc_map_4" edge="1" parent="1" source="d07_ext_map" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.8;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d07_mf-07_uc_82" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_ext_assoc_fcm_1" edge="1" parent="1" source="d07_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d07_mf-07_uc_80" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_rel_extend_79_78" edge="1" parent="1" source="d07_mf-07_uc_79" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;strokeColor=#7C3AED;strokeWidth=1.4;fontFamily=Arial;fontSize=10;fontStyle=2;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;" target="d07_mf-07_uc_78" value="«extend»">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d07_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d07_mf-07_actor_1_to_d07_actor_user" edge="1" parent="1" source="d07_mf-07_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d07_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="495" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d07_mf-07_actor_2_to_d07_actor_user" edge="1" parent="1" source="d07_mf-07_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d07_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="815" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-08-personal-health-records-source-labeling" name="D-08. MF-08 Personal Health Records &amp; Source Labeling">
+    <mxGraphModel dx="1873" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d08_mf-08_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-08 Personal Health Records &amp; Source Labeling" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Stores user-entered maternal and child records, protected attachments, source labels and summaries. Sharing is always controlled by explicit consent." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-08" vertex="1">
+          <mxGeometry height="740" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_83" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-83 Add Personal Health Record and Attachment" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_84" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-84 Update Health Record Metadata" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_85" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-85 Archive or Delete User-entered Health Record" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_86" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-86 View Health Record Timeline and Detail" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_87" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-87 Generate Health Summary" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_uc_88" parent="d08_mf-08_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-88 Share Health Summary or Selected Records Under Consent" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 6 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="516" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_1" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.143;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_83" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_2" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.286;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_84" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_3" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.429;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_85" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_4" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.571;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_86" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_5" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.714;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_87" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_mf-08_assoc_6" edge="1" parent="1" source="d08_mf-08_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.857;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d08_mf-08_uc_88" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_ext_storage" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external storage» Firebase Storage" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_ext_assoc_storage_1" edge="1" parent="1" source="d08_ext_storage" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d08_mf-08_uc_83" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d08_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d08_mf-08_actor_1_to_d08_actor_user" edge="1" parent="1" source="d08_mf-08_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d08_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="545" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-09-reminders-tasks-care-plan" name="D-09. MF-09 Reminders, Tasks &amp; Care Plan">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="940" math="0" shadow="0" dy="940">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d09_mf-09_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-09 Reminders, Tasks &amp; Care Plan" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Organizes appointment, medicine/vitamin and vaccination reminders plus today tasks. It is a personal organization tool, not a prescription or formal treatment plan." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-09" vertex="1">
+          <mxGeometry height="630" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_uc_89" parent="d09_mf-09_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-89 Create Appointment Reminder" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_uc_90" parent="d09_mf-09_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-90 Create Medicine or Vitamin Reminder" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_uc_91" parent="d09_mf-09_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-91 Create Vaccination Reminder" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_uc_92" parent="d09_mf-09_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-92 Update, Snooze, Complete, Skip or Delete Care Reminder" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_uc_93" parent="d09_mf-09_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-93 View Today Tasks and Care Plan" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 5 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="466" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_assoc_1" edge="1" parent="1" source="d09_mf-09_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.167;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d09_mf-09_uc_89" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_assoc_2" edge="1" parent="1" source="d09_mf-09_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d09_mf-09_uc_90" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_assoc_3" edge="1" parent="1" source="d09_mf-09_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d09_mf-09_uc_91" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_assoc_4" edge="1" parent="1" source="d09_mf-09_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d09_mf-09_uc_92" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_mf-09_assoc_5" edge="1" parent="1" source="d09_mf-09_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.833;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d09_mf-09_uc_93" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_ext_fcm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» Firebase Cloud Messaging" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_ext_assoc_fcm_1" edge="1" parent="1" source="d09_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d09_mf-09_uc_89" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_ext_assoc_fcm_2" edge="1" parent="1" source="d09_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d09_mf-09_uc_90" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_ext_assoc_fcm_3" edge="1" parent="1" source="d09_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d09_mf-09_uc_91" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d09_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d09_mf-09_actor_1_to_d09_actor_user" edge="1" parent="1" source="d09_mf-09_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d09_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="495" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-10-family-sync-cooperative-care" name="D-10. MF-10 Family Sync &amp; Cooperative Care">
+    <mxGraphModel dx="1873" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1260" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d10_mf-10_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-10 Family Sync &amp; Cooperative Care" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Supports care groups, invitations, scoped family access, shared calendar/data/alerts and assigned care tasks." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-10" vertex="1">
+          <mxGeometry height="950" width="590" x="600" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_94" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-94 Create Care Group" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_95" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-95 Invite or Revoke Family Member Invitation" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_96" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-96 Accept or Reject Care Group Invitation" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_97" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-97 Manage Care Group Membership" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_98" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-98 Manage Family Permission Scope" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_99" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-99 Create, Update or Cancel Family Care Task" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_100" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-100 Update Assigned Task Status" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_uc_101" parent="d10_mf-10_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-101 View Shared Care Calendar, Data and Alerts" vertex="1">
+          <mxGeometry height="80" width="200" x="270" y="812" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 8 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="536" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Family Member" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="726" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_1" edge="1" parent="1" source="d10_mf-10_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.167;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_94" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_2" edge="1" parent="1" source="d10_mf-10_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_95" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_3" edge="1" parent="1" source="d10_mf-10_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_96" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_4" edge="1" parent="1" source="d10_mf-10_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d10_mf-10_uc_97" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_5" edge="1" parent="1" source="d10_mf-10_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.4;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d10_mf-10_uc_97" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_6" edge="1" parent="1" source="d10_mf-10_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_98" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_7" edge="1" parent="1" source="d10_mf-10_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.833;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_99" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_8" edge="1" parent="1" source="d10_mf-10_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.6;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_100" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_mf-10_assoc_9" edge="1" parent="1" source="d10_mf-10_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.8;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d10_mf-10_uc_101" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_ext_fcm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» Firebase Cloud Messaging" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_ext_assoc_fcm_1" edge="1" parent="1" source="d10_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d10_mf-10_uc_95" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_ext_assoc_fcm_2" edge="1" parent="1" source="d10_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d10_mf-10_uc_99" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d10_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d10_mf-10_actor_1_to_d10_actor_user" edge="1" parent="1" source="d10_mf-10_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d10_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="565" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d10_mf-10_actor_2_to_d10_actor_user" edge="1" parent="1" source="d10_mf-10_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d10_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="755" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-11-verified-content-checklist-hub" name="D-11. MF-11 Verified Content &amp; Checklist Hub">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="1150" math="0" shadow="0" dy="1150">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d11_mf-11_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-11 Verified Content &amp; Checklist Hub" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Provides reviewed stage-based articles, FAQs and actionable checklists with source labels, review status, versioning and content governance." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-11" vertex="1">
+          <mxGeometry height="840" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_102" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-102 Browse Verified Content" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_103" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-103 View Verified Content Detail" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_104" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-104 Create Verified Content" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_105" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-105 Update Verified Content and Sources" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_106" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-106 Review and Publish Content Version" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_107" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-107 Unpublish or Archive Content" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_uc_108" parent="d11_mf-11_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-108 Manage Content Categories and Stage/Topic Mapping" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="707" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 7 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="306" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_actor_2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Content Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="676" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_actor_3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="System Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_1" edge="1" parent="1" source="d11_mf-11_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d11_mf-11_uc_102" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_2" edge="1" parent="1" source="d11_mf-11_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d11_mf-11_uc_103" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_3" edge="1" parent="1" source="d11_mf-11_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.167;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d11_mf-11_uc_104" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_4" edge="1" parent="1" source="d11_mf-11_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d11_mf-11_uc_105" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_5" edge="1" parent="1" source="d11_mf-11_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.333;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d11_mf-11_uc_106" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_6" edge="1" parent="1" source="d11_mf-11_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d11_mf-11_uc_106" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_7" edge="1" parent="1" source="d11_mf-11_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.333;entryDx=0;exitX=1;" target="d11_mf-11_uc_107" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_8" edge="1" parent="1" source="d11_mf-11_actor_3" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.667;entryDy=0;exitDy=0;entryY=0.667;entryDx=0;exitX=1;" target="d11_mf-11_uc_107" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d11_mf-11_assoc_9" edge="1" parent="1" source="d11_mf-11_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.833;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d11_mf-11_uc_108" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d11_mf-11_actor_2_to_d11_mf-11_actor_1" edge="1" parent="1" source="d11_mf-11_actor_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d11_mf-11_actor_1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="705" />
+              <mxPoint x="35" y="335" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gen_d11_mf-11_actor_3_to_d11_mf-11_actor_1" edge="1" parent="1" source="d11_mf-11_actor_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d11_mf-11_actor_1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="830" />
+              <mxPoint x="35" y="335" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-12-expense-preparation-planner" name="D-12. MF-12 Expense &amp; Preparation Planner">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="730" math="0" shadow="0" dy="730">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d12_mf-12_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-12 Expense &amp; Preparation Planner" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Helps households record preparation expenses and view simple summaries. It is not accounting, billing, insurance or financial advice." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-12" vertex="1">
+          <mxGeometry height="420" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_uc_109" parent="d12_mf-12_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-109 Add Expense Entry" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_uc_110" parent="d12_mf-12_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-110 Update or Delete Expense Entry" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_uc_111" parent="d12_mf-12_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-111 View Expense Summary" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 3 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="366" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_assoc_1" edge="1" parent="1" source="d12_mf-12_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d12_mf-12_uc_109" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_assoc_2" edge="1" parent="1" source="d12_mf-12_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d12_mf-12_uc_110" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_mf-12_assoc_3" edge="1" parent="1" source="d12_mf-12_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d12_mf-12_uc_111" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d12_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d12_mf-12_actor_1_to_d12_actor_user" edge="1" parent="1" source="d12_mf-12_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d12_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="395" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-13-connected-device-health-data-integration" name="D-13. MF-13 Connected Device &amp; Health Data Integration">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="840" math="0" shadow="0" dy="840">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d13_mf-13_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-13 Connected Device &amp; Health Data Integration" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Supports opt-in health-platform/device connection, controlled import, source/quality labels, trends and disconnect/deletion management." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-13" vertex="1">
+          <mxGeometry height="530" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_uc_112" parent="d13_mf-13_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-112 Connect Health Device or Platform" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_uc_113" parent="d13_mf-13_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-113 Import or Synchronize Device Observations" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_uc_114" parent="d13_mf-13_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-114 View Device Data Trend and Quality" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_uc_115" parent="d13_mf-13_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-115 Disconnect Device and Delete Imported Data" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 4 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="416" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_assoc_1" edge="1" parent="1" source="d13_mf-13_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.2;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d13_mf-13_uc_112" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_assoc_2" edge="1" parent="1" source="d13_mf-13_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.4;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d13_mf-13_uc_113" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_assoc_3" edge="1" parent="1" source="d13_mf-13_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.6;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d13_mf-13_uc_114" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_mf-13_assoc_4" edge="1" parent="1" source="d13_mf-13_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.8;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d13_mf-13_uc_115" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_ext_health_platform" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external integration» Health Connect / Gadgetbridge" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_ext_assoc_health_1" edge="1" parent="1" source="d13_ext_health_platform" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d13_mf-13_uc_112" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_ext_assoc_health_2" edge="1" parent="1" source="d13_ext_health_platform" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d13_mf-13_uc_113" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d13_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d13_mf-13_actor_1_to_d13_actor_user" edge="1" parent="1" source="d13_mf-13_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d13_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="445" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uc-mf-14-smart-activity-monitoring-safety-support" name="D-14. MF-14 Smart Activity Monitoring &amp; Safety Support">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1950" pageHeight="1050" math="0" shadow="0" dy="1050">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d14_mf-14_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" value="MF-14 Smart Activity Monitoring &amp; Safety Support" vertex="1">
+          <mxGeometry height="44" width="1830" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;" value="P1 - Supporting | Current Release after P0 Uses phone IMU only after consent to detect suspected falls/impacts, request safety confirmation, alert selected contacts and collect false-positive feedback. It is not a certified fall detector or emergency dispatch system." vertex="1">
+          <mxGeometry height="70" width="1830" x="60" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacing=10;pointerEvents=0;collapsible=0;container=1;" value="CareBridge - MF-14" vertex="1">
+          <mxGeometry height="740" width="440" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_116" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-116 Manage Emergency Contacts" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="77" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_117" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-117 Configure Smart Activity Monitoring" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_118" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-118 Enable Smart Activity Monitoring" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="287" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_119" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-119 Disable Smart Activity Monitoring" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_120" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-120 Handle Suspected Fall or Impact and Safety Check" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_uc_121" parent="d14_mf-14_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#EAF7EA;strokeColor=#82B366;strokeWidth=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;" value="UC-121 Review Safety Event History and Report False Positive" vertex="1">
+          <mxGeometry height="80" width="200" x="120" y="602" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontFamily=Arial;fontSize=10.5;align=left;verticalAlign=top;spacing=8;" value="Baseline: 3_Functional_Specification_Detailed_Scope_121UC.docx Revision: 16 July 2026. 6 use cases." vertex="1">
+          <mxGeometry height="70" width="520" x="60" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_actor_1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;" value="Mother" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="516" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_actor_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«device» Phone IMU Sensor" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="579" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_1" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.143;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_116" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_2" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.286;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_117" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_3" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.429;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_118" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_4" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.571;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_119" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_5" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.714;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_120" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_6" edge="1" parent="1" source="d14_mf-14_actor_2" style="endArrow=none;html=1;rounded=0;strokeColor=#64748B;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=1;strokeWidth=1.1;edgeStyle=none;jettySize=auto;exitY=0.75;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d14_mf-14_uc_120" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_mf-14_assoc_7" edge="1" parent="1" source="d14_mf-14_actor_1" style="endArrow=none;html=1;rounded=0;strokeColor=#4B5563;fontFamily=Arial;fontSize=9;exitDx=0;orthogonalLoop=1;entryX=0;strokeWidth=1.2;edgeStyle=none;jettySize=auto;exitY=0.857;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=1;" target="d14_mf-14_uc_121" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_ext_assoc_imu_118" edge="1" parent="1" source="d14_mf-14_actor_2" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.25;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d14_mf-14_uc_118" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_ext_assoc_imu_119" edge="1" parent="1" source="d14_mf-14_actor_2" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.5;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d14_mf-14_uc_119" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_ext_fcm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;dashed=1;fontFamily=Arial;fontSize=10.5;align=center;verticalAlign=middle;spacing=6;" value="«external service» Firebase Cloud Messaging" vertex="1">
+          <mxGeometry height="84" width="190" x="1660" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_ext_assoc_fcm_1" edge="1" parent="1" source="d14_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.333;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d14_mf-14_uc_116" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_ext_assoc_fcm_2" edge="1" parent="1" source="d14_ext_fcm" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#64748B;strokeWidth=1.1;exitDx=0;entryX=1;exitY=0.667;entryDy=0;exitDy=0;entryY=0.5;entryDx=0;exitX=0;" target="d14_mf-14_uc_120" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d14_actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;whiteSpace=wrap;fontFamily=Arial;fontSize=11;align=center;strokeColor=#374151;fillColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="130" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_d14_mf-14_actor_1_to_d14_actor_user" edge="1" parent="1" source="d14_mf-14_actor_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;strokeColor=#4B5563;strokeWidth=1.2;exitDy=0;exitDx=0;entryDx=0;entryY=0.5;exitX=0;exitY=0.5;entryDy=0;entryX=0;" target="d14_actor_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="545" />
+              <mxPoint x="35" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

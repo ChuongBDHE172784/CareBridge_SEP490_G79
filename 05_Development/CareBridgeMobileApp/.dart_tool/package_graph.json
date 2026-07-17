@@ -17,6 +17,7 @@
         "geolocator",
         "go_router",
         "google_fonts",
+        "google_sign_in",
         "http",
         "http_parser",
         "intl",
@@ -81,6 +82,17 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "google_sign_in",
+      "version": "7.2.0",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_android",
+        "google_sign_in_ios",
+        "google_sign_in_platform_interface",
+        "google_sign_in_web"
       ]
     },
     {
@@ -434,6 +446,43 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "google_sign_in_web",
+      "version": "1.1.3",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "google_identity_services_web",
+        "google_sign_in_platform_interface",
+        "http",
+        "web"
+      ]
+    },
+    {
+      "name": "google_sign_in_platform_interface",
+      "version": "3.1.0",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "google_sign_in_ios",
+      "version": "6.3.0",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_platform_interface"
+      ]
+    },
+    {
+      "name": "google_sign_in_android",
+      "version": "7.2.15",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_platform_interface",
+        "meta"
       ]
     },
     {
@@ -852,12 +901,30 @@
       ]
     },
     {
+      "name": "webdriver",
+      "version": "3.1.0",
+      "dependencies": [
+        "matcher",
+        "path",
+        "stack_trace",
+        "sync_http"
+      ]
+    },
+    {
       "name": "fuchsia_remote_debug_protocol",
       "version": "0.0.0",
       "dependencies": [
         "meta",
         "process",
         "vm_service"
+      ]
+    },
+    {
+      "name": "file",
+      "version": "7.0.1",
+      "dependencies": [
+        "meta",
+        "path"
       ]
     },
     {
@@ -891,6 +958,14 @@
       "dependencies": [
         "source_span",
         "string_scanner"
+      ]
+    },
+    {
+      "name": "google_identity_services_web",
+      "version": "0.3.3+1",
+      "dependencies": [
+        "meta",
+        "web"
       ]
     },
     {
@@ -991,6 +1066,20 @@
       ]
     },
     {
+      "name": "sync_http",
+      "version": "0.3.1",
+      "dependencies": []
+    },
+    {
+      "name": "process",
+      "version": "5.0.5",
+      "dependencies": [
+        "file",
+        "path",
+        "platform"
+      ]
+    },
+    {
       "name": "platform",
       "version": "3.1.6",
       "dependencies": []
@@ -1080,38 +1169,6 @@
         "meta",
         "pub_semver"
       ]
-    },
-    {
-      "name": "process",
-      "version": "5.0.5",
-      "dependencies": [
-        "file",
-        "path",
-        "platform"
-      ]
-    },
-    {
-      "name": "file",
-      "version": "7.0.1",
-      "dependencies": [
-        "meta",
-        "path"
-      ]
-    },
-    {
-      "name": "webdriver",
-      "version": "3.1.0",
-      "dependencies": [
-        "matcher",
-        "path",
-        "stack_trace",
-        "sync_http"
-      ]
-    },
-    {
-      "name": "sync_http",
-      "version": "0.3.1",
-      "dependencies": []
     }
   ],
   "configVersion": 1

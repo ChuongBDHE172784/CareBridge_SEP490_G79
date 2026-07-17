@@ -64,8 +64,6 @@ function isImageFile(url: string): boolean {
   return ['jpg','jpeg','png','gif','webp','bmp'].includes(getFileExt(url));
 }
 
-const DOC_EXTS = new Set(['pdf','doc','docx','txt','rtf','odt','xls','xlsx','ppt','pptx']);
-
 /* ── Modal for viewing attachment files ───────────────────────────────── */
 
 function CredentialFileViewModal({ url, fileName, onClose }: { url: string; fileName?: string; onClose: () => void }) {
@@ -223,8 +221,6 @@ export default function VerificationDocumentsPage() {
     IDENTITY_DOCUMENT: 'Giấy tờ định danh',
     PROFESSIONAL_LICENSE: 'Giấy phép hành nghề',
   };
-
-  const isOtherIssuer = form.issuer === 'Khác';
 
   return (
     <div className="max-w-3xl mx-auto p-6">

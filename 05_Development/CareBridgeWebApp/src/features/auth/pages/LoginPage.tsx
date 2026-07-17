@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
-import { login } from '../services/authApi';
+import { federatedAuthenticate, login } from '../services/authApi';
+import { googleIdToken, phoneIdToken } from '../services/firebaseAuth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
 import logo from '../../../assets/logo.png';
@@ -24,6 +25,34 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [federatedLoading, setFederatedLoading] = useState<'google' | 'phone' | null>(null);
+
+  const completeFederated = async (provider: 'google' | 'phone') => {
+    setServerError(null);
+    setFederatedLoading(provider);
+    try {
+      const idToken = provider === 'google'
+        ? await googleIdToken()
+        : await phoneIdToken(window.prompt('Phone number including country code (for example +84)') ?? '');
+      const result = await federatedAuthenticate(idToken);
+      useAuthStore.getState().setTokens(result.accessToken, result.refreshToken);
+      if (result.user.role) {
+        useAuthStore.getState().setUser({
+          id: result.user.id,
+          phone: result.user.phone ?? '',
+          name: result.user.name,
+          avatarUrl: result.user.avatarUrl,
+          role: result.user.role,
+        });
+      }
+      navigate(result.profileCompleted ? getDefaultRouteForRole(result.user.role) : '/account/profile', { replace: true });
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('popup-closed') || error.message === 'AUTH_CANCELLED')) return;
+      setServerError('Unable to sign in. Please try again without sharing your verification code.');
+    } finally {
+      setFederatedLoading(null);
+    }
+  };
 
   const {
     register,
@@ -110,6 +139,19 @@ export default function LoginPage() {
               <p className="m-0">{serverError || fieldError}</p>
             </div>
           )}
+          <p role="status" aria-live="polite" className="sr-only">{serverError ?? ''}</p>
+
+          <div className="flex flex-col gap-3" aria-label="Federated sign in">
+            <button type="button" onClick={() => completeFederated('google')} disabled={federatedLoading !== null}
+              className="h-12 rounded-full border-2 border-transparent bg-[#C98C7B] text-white font-semibold focus:outline-none focus:ring-4 focus:ring-[#C98C7B]/20 active:scale-95 transition-all">
+              {federatedLoading === 'google' ? 'Signing in...' : 'Continue with Google'}
+            </button>
+            <button type="button" onClick={() => completeFederated('phone')} disabled={federatedLoading !== null}
+              className="h-12 rounded-full border-2 border-[#E8DDD6] bg-[#F2EAE4] text-[#5A463F] font-semibold focus:outline-none focus:ring-4 focus:ring-[#C98C7B]/20 active:scale-95 transition-all">
+              {federatedLoading === 'phone' ? 'Sending code...' : 'Continue with phone'}
+            </button>
+            <div id="firebase-recaptcha" />
+          </div>
 
           {/* Login Form */}
           <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)}>

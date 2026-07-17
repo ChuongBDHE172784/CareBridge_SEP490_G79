@@ -12,6 +12,19 @@ import type {
 import { useAuthStore } from '../../../shared/auth/authStore';
 import type { UserProfile } from '../models/user';
 
+export interface FederatedAuthResponse extends AuthResponse {
+  newUser: boolean;
+  profileCompleted: boolean;
+}
+
+export async function federatedAuthenticate(idToken: string, deviceInfo = navigator.userAgent): Promise<FederatedAuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<FederatedAuthResponse>>('/api/v1/auth/federated', {
+    idToken,
+    deviceInfo,
+  });
+  return data.data;
+}
+
 // UC-03: Login — sends OTP, does NOT return tokens yet
 export async function login(request: LoginRequest): Promise<OtpSendResponse> {
   const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/login', request);
