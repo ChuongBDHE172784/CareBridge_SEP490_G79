@@ -10,6 +10,9 @@ public class AuditEligibilityPolicy {
 
     private static final Set<AuditAction> SENSITIVE_ACTIONS = EnumSet.of(
             AuditAction.LOGIN,
+            AuditAction.FEDERATED_LOGIN,
+            AuditAction.FEDERATED_REGISTRATION,
+            AuditAction.FEDERATED_IDENTITY_LINKED,
             AuditAction.LOGOUT,
             AuditAction.OTP_SENT,
             AuditAction.OTP_RESENT,

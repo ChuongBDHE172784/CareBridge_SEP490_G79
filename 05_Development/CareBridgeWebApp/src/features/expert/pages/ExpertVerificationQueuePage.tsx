@@ -207,8 +207,6 @@ export default function ExpertVerificationQueuePage() {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const openFile = (url: string) => setViewFileUrl(url);
-
   const renderFilePreview = (item: CredentialItem) => {
     if (!item.fileUrl) return null;
     const url = item.fileUrl;

@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
 import 'otp_verification_screen.dart';
 import 'login_screen.dart';
+import 'role_selection_screen.dart';
 
 /// CB-002 — Register Account (UC-01)
 /// Collects name, email/phone, password → calls POST /api/v1/auth/register → navigates to OTP screen.
@@ -140,6 +141,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                     ],
                     _buildFormCard(),
+                    const SizedBox(height: 20),
+                    _buildFederatedRegistrationActions(),
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -315,6 +318,114 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _buildTermsCheckbox(),
         ],
       ),
+    );
+  }
+
+  Future<void> _federatedPhoneRegistration() async {
+    final phone = _identifierCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(
+        () =>
+            _errorMessage = 'Enter a phone number including the country code.',
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final verificationId = await AuthService.instance.beginPhoneVerification(
+        phone,
+      );
+      if (!mounted) return;
+      final code = await _requestSmsCode();
+      if (code == null || code.isEmpty) return;
+      await AuthService.instance.confirmPhoneVerification(verificationId, code);
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Unable to verify this phone number.');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<String?> _requestSmsCode() async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter SMS code'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return value;
+  }
+
+  Widget _buildFederatedRegistrationActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton(
+          key: const Key('federated-google-register'),
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  setState(() => _isLoading = true);
+                  try {
+                    await AuthService.instance.federatedGoogle();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const RoleSelectionScreen(),
+                        ),
+                      );
+                    }
+                  } catch (_) {
+                    if (mounted) {
+                      setState(
+                        () => _errorMessage = 'Unable to register with Google.',
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _isLoading = false);
+                  }
+                },
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: const StadiumBorder(),
+          ),
+          child: const Text('Sign up with Google'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          key: const Key('federated-phone-register'),
+          onPressed: _isLoading ? null : _federatedPhoneRegistration,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: const StadiumBorder(),
+          ),
+          child: const Text('Sign up with phone'),
+        ),
+      ],
     );
   }
 

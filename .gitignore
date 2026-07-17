@@ -13,13 +13,13 @@ Desktop.ini
 .env
 .env.*
 !.env.example
-
 # Firebase CLI local artifacts — .firebaserc identifies a specific project, never commit
 # the real one; 05_Development/Firebase/.firebaserc.example is the template to copy from.
 05_Development/Firebase/.firebaserc
 05_Development/Firebase/.firebase/
 firebase-debug.log
 database-debug.log
+!05_Development/CareBridgeWebApp/.env.emulator
 *.local
 *.secret
 carebridge-*.json
@@ -99,6 +99,8 @@ QODER.md
 # Local helper scripts and one-off tools
 scripts/
 tools/
+!05_Development/CareBridgeWebApp/scripts/
+!05_Development/CareBridgeWebApp/scripts/run-federated-emulator-e2e.ps1
 !05_Development/CareBridgeAITriageService/scripts/
 !05_Development/CareBridgeAITriageService/scripts/test_gemini_connection.py
 

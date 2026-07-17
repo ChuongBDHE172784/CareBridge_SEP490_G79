@@ -43,7 +43,10 @@ export const useAuthStore = create<AuthState>()(
         if (!accessToken) return false;
         try {
           const [, payloadB64] = accessToken.split('.');
-          const payload = JSON.parse(atob(payloadB64));
+          if (!payloadB64) return false;
+          const normalized = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+          const payload = JSON.parse(atob(padded));
           return payload.exp * 1000 > Date.now();
         } catch {
           return false;

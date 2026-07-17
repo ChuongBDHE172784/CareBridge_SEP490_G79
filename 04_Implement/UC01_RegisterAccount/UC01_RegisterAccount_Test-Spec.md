@@ -643,3 +643,14 @@ Exit requires all new P0/P1 cases GREEN, existing UC-01 regression GREEN, no tok
 - `FederatedRegistrationIntegrationTest`: 2 tests executed against PostgreSQL 16 through Testcontainers; both failed as intended because `user_identities` and its provider-subject uniqueness constraint do not exist.
 - Controller, PostgreSQL integration, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS.
 - Overall federated-registration Red Gate: **PASS** — every planned layer has failing evidence caused by missing federated behavior.
+
+### 9.5 Green Gate evidence — 2026-07-17
+
+- Backend targeted suite (`FederatedAuthServiceTest`, `FederatedAuthControllerTest`, `FederatedRegistrationIntegrationTest`, `FederatedLoginIntegrationTest`): 16/16 tests PASS; service tests exercise `FederatedAuthServiceImpl` with a fake `FirebaseTokenVerifier`, including the disabled rollout-flag path.
+- `federated-registration.spec.ts`: 1/1 Playwright test PASS.
+- `federated_registration_test.dart`: 1/1 Flutter widget test PASS.
+- Full Flutter regression suite: 71/71 tests PASS.
+- The `CommunityQuestionRepository.lockIfApproved` application-context blocker was corrected with an atomic PostgreSQL native update; `BackendApplicationTests` now passes 1/1.
+- Full backend regression executed 1,979 tests and remains blocked by 3 failures plus 18 errors in unrelated content, family, file, journey, and moderation suites.
+- Full Web production build PASS; targeted ESLint PASS; all 3 federated Playwright cases PASS.
+- Live backend smoke test with configured Firebase Admin verifier rejects a fabricated ID token with `401 AUTH-FED-001` and creates no CareBridge session.

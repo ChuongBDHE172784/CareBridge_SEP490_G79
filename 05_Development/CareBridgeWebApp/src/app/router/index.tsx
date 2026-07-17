@@ -9,9 +9,11 @@ import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
+import FederatedRegisterPage from '../../features/auth/pages/FederatedRegisterPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+import AccountProfilePage from '../../features/auth/pages/AccountProfilePage';
 import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
 import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
 
@@ -101,6 +103,7 @@ const ForbiddenPage = () => (
 );
 
 export const router = createBrowserRouter([
+  { path: '/register', element: <FederatedRegisterPage /> },
   {
     path: '/login',
     element: <AuthLayout />,
@@ -128,6 +131,10 @@ export const router = createBrowserRouter([
       { path: '/direct-chats', element: <ConversationListPage /> },
       { path: '/direct-chats/:conversationId', element: <ConversationRoomPage /> },
     ],
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [{ path: '/account/profile', element: <AccountProfilePage /> }],
   },
 
   {

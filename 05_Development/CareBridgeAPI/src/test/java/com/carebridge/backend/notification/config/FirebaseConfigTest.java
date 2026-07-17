@@ -29,6 +29,7 @@ class FirebaseConfigTest {
         assertThat(config.adcLoaded).isFalse();
         assertThat(options.getProjectId()).isNull();
         assertThat(options.getServiceAccountId()).isNull();
+        assertThat(options.getHttpTransport()).isInstanceOf(ApacheHttpTransport.class);
     }
 
     @Test
