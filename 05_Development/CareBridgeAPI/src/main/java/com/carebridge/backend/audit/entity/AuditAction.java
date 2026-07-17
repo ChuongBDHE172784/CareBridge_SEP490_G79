@@ -2,6 +2,9 @@ package com.carebridge.backend.audit.entity;
 
 public enum AuditAction {
     LOGIN,
+    FEDERATED_LOGIN,
+    FEDERATED_REGISTRATION,
+    FEDERATED_IDENTITY_LINKED,
     LOGOUT,
     OTP_SENT,
     OTP_VERIFIED,

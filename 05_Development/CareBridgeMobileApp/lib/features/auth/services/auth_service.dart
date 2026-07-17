@@ -1,12 +1,171 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/notifications/fcm_service.dart';
 import '../models/auth_model.dart';
+import '../models/federated_auth_failure.dart';
+import '../models/linked_account.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase;
+import 'package:google_sign_in/google_sign_in.dart';
+
+typedef AuthApiGet = Future<dynamic> Function(String path);
+typedef AuthApiPost =
+    Future<dynamic> Function(String path, Map<String, dynamic> body);
+typedef GoogleIdTokenProvider = Future<String> Function();
 
 class AuthService {
   static final AuthService instance = AuthService._();
-  AuthService._();
+
+  AuthService._({
+    AuthApiGet getRequest = apiGet,
+    AuthApiPost postRequest = apiPost,
+    GoogleIdTokenProvider? googleIdTokenProvider,
+  }) : _getRequest = getRequest,
+       _postRequest = postRequest,
+       _googleIdTokenProvider = googleIdTokenProvider;
+
+  @visibleForTesting
+  factory AuthService.forTesting({
+    AuthApiGet getRequest = apiGet,
+    AuthApiPost postRequest = apiPost,
+    GoogleIdTokenProvider? googleIdTokenProvider,
+  }) {
+    return AuthService._(
+      getRequest: getRequest,
+      postRequest: postRequest,
+      googleIdTokenProvider: googleIdTokenProvider,
+    );
+  }
+
+  final AuthApiGet _getRequest;
+  final AuthApiPost _postRequest;
+  final GoogleIdTokenProvider? _googleIdTokenProvider;
+
+  Future<AuthResponse> federatedGoogle() async {
+    try {
+      final idToken = await _acquireGoogleIdToken();
+      return federatedWithIdToken(idToken);
+    } catch (error) {
+      final exception = FederatedSignInException.from(error);
+      debugPrint(
+        'Federated Google sign-in failed: '
+        'category=${exception.failure.kind.name}, cause=${error.runtimeType}',
+      );
+      throw exception;
+    }
+  }
+
+  Future<String> _acquireGoogleIdToken() async {
+    final injectedProvider = _googleIdTokenProvider;
+    if (injectedProvider != null) return injectedProvider();
+
+    await GoogleSignIn.instance.initialize();
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuth = googleUser.authentication;
+    final credential = firebase.GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
+    final firebaseUser =
+        (await firebase.FirebaseAuth.instance.signInWithCredential(
+          credential,
+        )).user;
+    if (firebaseUser == null) {
+      throw StateError('Firebase authentication returned no user');
+    }
+    final idToken = await firebaseUser.getIdToken(true);
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('Firebase authentication returned no ID token');
+    }
+    return idToken;
+  }
+
+  Future<AuthResponse> federatedWithIdToken(String idToken) async {
+    final res = await apiPost('/api/v1/auth/federated', {
+      'idToken': idToken,
+      'deviceInfo': 'CareBridge Flutter',
+    });
+    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    await AuthState.instance.setTokens(
+      accessToken: auth.accessToken,
+      refreshToken: auth.refreshToken,
+      userId: auth.user.id,
+      role: auth.user.role,
+    );
+    return auth;
+  }
+
+  Future<LinkedAccount> getLinkedGoogleAccount() async {
+    final response = await _getRequest('/api/v1/auth/identities/google');
+    final data = _requireLinkedAccountData(response);
+    return LinkedAccount.fromJson(data);
+  }
+
+  Future<LinkedAccount> linkGoogleAccount() async {
+    try {
+      final idToken = await _acquireGoogleIdToken();
+      final response = await _postRequest('/api/v1/auth/identities/google', {
+        'idToken': idToken,
+      });
+      final data = _requireLinkedAccountData(response);
+      final account = LinkedAccount.fromJson(data);
+      if (!account.linked) {
+        throw const FormatException('Google link was not confirmed');
+      }
+      return account;
+    } catch (error) {
+      final exception = LinkedAccountException.from(error);
+      debugPrint(
+        'Google account linking failed: '
+        'category=${exception.failure.kind.name}, cause=${error.runtimeType}',
+      );
+      throw exception;
+    }
+  }
+
+  Map<String, dynamic> _requireLinkedAccountData(dynamic response) {
+    if (response is! Map<String, dynamic> ||
+        response['data'] is! Map<String, dynamic>) {
+      throw const FormatException('Missing linked account data');
+    }
+    return response['data'] as Map<String, dynamic>;
+  }
+
+  Future<String> beginPhoneVerification(String phoneNumber) async {
+    final completer = Completer<String>();
+    await firebase.FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: (credential) async {
+        await firebase.FirebaseAuth.instance.signInWithCredential(credential);
+      },
+      verificationFailed: completer.completeError,
+      codeSent: (verificationId, _) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+    );
+    return completer.future;
+  }
+
+  Future<AuthResponse> confirmPhoneVerification(
+    String verificationId,
+    String smsCode,
+  ) async {
+    final credential = firebase.PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    final user = (await firebase.FirebaseAuth.instance.signInWithCredential(
+      credential,
+    )).user;
+    final idToken = await user?.getIdToken();
+    if (idToken == null) {
+      throw StateError('Firebase phone authentication returned no ID token');
+    }
+    return federatedWithIdToken(idToken);
+  }
 
   // UC-01: Register — sends OTP; tokens not issued until OTP is verified
   Future<OtpSendResponse> register({

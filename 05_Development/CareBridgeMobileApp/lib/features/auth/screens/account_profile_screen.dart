@@ -5,6 +5,7 @@ import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
 import 'logout_confirmation_screen.dart';
 import 'deactivate_account_screen.dart';
+import 'linked_accounts_screen.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
@@ -14,7 +15,9 @@ import '../../../features/fileManager/screens/file_manager_screen.dart';
 import '../../../features/consultation/screens/my_consultation_requests_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
-  const AccountProfileScreen({super.key});
+  const AccountProfileScreen({super.key, this.loadProfile});
+
+  final Future<UserProfile> Function()? loadProfile;
 
   @override
   State<AccountProfileScreen> createState() => _AccountProfileScreenState();
@@ -45,7 +48,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
     try {
-      final profile = await AuthService.instance.getProfile();
+      final loader = widget.loadProfile ?? AuthService.instance.getProfile;
+      final profile = await loader();
       if (mounted) {
         setState(() {
           _profile = profile;
@@ -150,6 +154,18 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
           ]),
           const SizedBox(height: 16),
           _buildMenuCard([
+            _menuItem(
+              Icons.link_rounded,
+              'Tài khoản liên kết',
+              () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LinkedAccountsScreen(),
+                  ),
+                );
+              },
+              key: const Key('linked-accounts-menu-item'),
+            ),
             _menuItem(Icons.devices_outlined, 'Phiên đăng nhập', () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const LoginSessionsScreen()),
@@ -336,8 +352,14 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     );
   }
 
-  Widget _menuItem(IconData icon, String label, VoidCallback onTap) {
+  Widget _menuItem(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    Key? key,
+  }) {
     return InkWell(
+      key: key,
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Padding(

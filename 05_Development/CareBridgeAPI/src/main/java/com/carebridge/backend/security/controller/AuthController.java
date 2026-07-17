@@ -6,6 +6,8 @@ import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
 import com.carebridge.backend.security.dto.request.DeactivateRequest;
 import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
+import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
+import com.carebridge.backend.security.dto.request.LinkGoogleIdentityRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -16,12 +18,15 @@ import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.ForgotPasswordResponse;
+import com.carebridge.backend.security.dto.response.FederatedAuthResponse;
+import com.carebridge.backend.security.dto.response.LinkedGoogleIdentityResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.ResetPasswordResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.service.AuthService;
 import com.carebridge.backend.security.service.ForgotPasswordService;
+import com.carebridge.backend.security.service.FederatedAuthService;
 import com.carebridge.backend.security.service.ResetPasswordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -52,6 +57,39 @@ public class AuthController {
     private final SessionService sessionService;
     private final ForgotPasswordService forgotPasswordService;
     private final ResetPasswordService resetPasswordService;
+    private final FederatedAuthService federatedAuthService;
+
+    @PostMapping("/federated")
+    public ResponseEntity<ApiResponse<FederatedAuthResponse>> federated(
+            @Valid @RequestBody FederatedAuthRequest request) {
+        FederatedAuthResponse response = federatedAuthService.authenticate(request);
+        HttpStatus status = response.newUser() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(ApiResponse.success(response, "Authentication successful"));
+    }
+
+    @GetMapping("/identities/google")
+    @Operation(
+        summary = "Get current user's Google identity link",
+        description = "Returns whether the authenticated CareBridge account is linked to Google."
+    )
+    public ResponseEntity<ApiResponse<LinkedGoogleIdentityResponse>> getGoogleIdentity(Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(federatedAuthService.getGoogleIdentity(userId)));
+    }
+
+    @PostMapping("/identities/google")
+    @Operation(
+        summary = "Link current account to Google",
+        description = "Verifies a fresh Firebase Google ID token and links it to the authenticated CareBridge account."
+    )
+    public ResponseEntity<ApiResponse<LinkedGoogleIdentityResponse>> linkGoogleIdentity(
+            Principal principal,
+            @Valid @RequestBody LinkGoogleIdentityRequest request) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                federatedAuthService.linkGoogleIdentity(userId, request),
+                "Google account linked"));
+    }
 
     @PostMapping("/register")
     @Operation(
