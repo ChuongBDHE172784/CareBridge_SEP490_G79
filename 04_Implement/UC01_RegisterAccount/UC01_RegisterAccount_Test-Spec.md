@@ -5,7 +5,7 @@
 **Document ID:** `CB-AUTH-TEST-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`
-**Status:** `Implemented — 2026-07-04 (10/10 PASS; AUTH-TC-INT-001 now GREEN via Testcontainers PostgreSQL). Tests in AuthServiceRegisterTest (service + DTO Bean-Validation) + PasswordComplexityPolicyTest (AUTH-TC-004) + RegisterAccountIntegrationTest (AUTH-TC-INT-001, real DB).`
+**Status:** `Approved — v1.1 Firebase federated-registration extension; existing 10/10 password-registration tests remain GREEN, new FED-REG tests are Not written.`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent`
 **Reviewed by:** `[ ] [Tech Lead] — Pending`
@@ -577,3 +577,69 @@ git checkout -- src/main/resources/db/migration/V1__*.sql
 
 *TDD Spec CB-AUTH-TEST-001 v1.0 — UC-01 Register Account*
 *Tuân theo EDS v2.0 + CASE 2.0 Anti-Pattern Detection & Red Gate Protocol*
+
+---
+
+## 9. v1.1 Federated Registration Test Extension
+
+### 9.1 Test basis and risks
+
+Oracle: UC-01/FR-001, the v1.1 TDS amendment, approved Fast-path decision dated 2026-07-16, existing CareBridge JWT/session rules, and Firebase token-verification contract. Primary risks are account takeover by unsafe linking, duplicate users under concurrency, acceptance of forged tokens, PII/token leakage, and inconsistent role completion across clients.
+
+| Condition ID | Priority | Test level | Expected oracle |
+| --- | --- | --- | --- |
+| `FED-REG-COND-001` valid new Google identity | P0 | Backend integration | `201`, one user and one GOOGLE identity, CareBridge tokens, audit |
+| `FED-REG-COND-002` valid new phone identity | P0 | Backend integration | `201`, normalized E.164 phone, verified flag, one PHONE identity |
+| `FED-REG-COND-003` forged/expired/revoked token | P0 | Unit + controller | `401 AUTH-FED-001`, zero persistence, no token in logs |
+| `FED-REG-COND-004` existing email/phone without identity link | P0 | Integration | `409 AUTH-FED-003`, no automatic link or duplicate user |
+| `FED-REG-COND-005` concurrent same provider subject | P0 | PostgreSQL integration | one logical user/identity; no unhandled unique violation |
+| `FED-REG-COND-006` provider timeout/unavailable | P1 | Service | `503 AUTH-FED-005`, zero persistence, retry-safe |
+| `FED-REG-COND-007` role incomplete | P1 | API + Web/Flutter | tokens returned, protected workspace blocked, role screen shown |
+| `FED-REG-COND-008` password registration regression | P0 | Existing suite | all existing UC-01 tests remain GREEN |
+
+### 9.2 Planned executable cases
+
+| Test ID | Intended file | Arrange / Act / Assert summary | Initial status |
+| --- | --- | --- | --- |
+| `FED-REG-TC-001` | `FederatedAuthServiceTest.java` | Fake verifier returns GOOGLE uid; assert atomic user/identity creation and token/session issuance | 🔴 Not written |
+| `FED-REG-TC-002` | `FederatedAuthServiceTest.java` | Fake verifier returns PHONE claim; assert E.164 storage and verified phone | 🔴 Not written |
+| `FED-REG-TC-003` | `FederatedAuthControllerTest.java` | Invalid token; assert neutral 401 and verifier error mapping | 🔴 Not written |
+| `FED-REG-TC-004` | `FederatedRegistrationIntegrationTest.java` | Seed password account with same contact; assert 409 and unchanged identity count | 🔴 Not written |
+| `FED-REG-TC-005` | `FederatedRegistrationIntegrationTest.java` | Two transactions with same provider subject; assert one user/identity | 🔴 Not written |
+| `FED-REG-TC-006` | `FederatedAuthServiceTest.java` | Verifier times out; assert no repository save and 503 mapping | 🔴 Not written |
+| `FED-REG-TC-007-WEB` | `federated-registration.spec.ts` | Mock Firebase success; assert loading, role completion and accessible controls | 🔴 Not written |
+| `FED-REG-TC-007-MOB` | `federated_registration_test.dart` | Fake provider success/cancel/offline; assert equivalent navigation/states | 🔴 Not written |
+
+Test data is synthetic. Firebase emulator/fakes are used by default; no real phone numbers, service credentials, or production tokens enter fixtures. Database cases use isolated Testcontainers transactions and deterministic provider subjects. Client tests mock SDK boundaries, not the CareBridge API contract.
+
+### 9.3 Red Gate and commands
+
+Before production code, every new test must fail for the intended missing behavior; a test passing against a no-op/stub fails the Red Gate.
+
+```powershell
+cd 05_Development/CareBridgeAPI
+.\mvnw.cmd test -Dtest=FederatedAuthServiceTest,FederatedAuthControllerTest,FederatedRegistrationIntegrationTest
+
+cd ../CareBridgeWebApp
+npm run lint
+npm run build
+npm run test:e2e -- federated-registration.spec.ts
+
+cd ../CareBridgeMobileApp
+flutter analyze
+flutter test test/features/auth/federated_registration_test.dart
+```
+
+Exit requires all new P0/P1 cases GREEN, existing UC-01 regression GREEN, no token/PII leakage, migration tested from the current baseline, and Web/Mobile accessibility checks passing.
+
+### 9.4 Red Gate evidence — 2026-07-16
+
+- `FederatedAuthServiceTest`: 8 tests executed, 8 errors from the intentional `FederatedAuthServiceStub` `UnsupportedOperationException`.
+- Maven test compilation succeeded; the failures are caused by missing federated behavior rather than a broken test contract.
+- Backend service Red Gate: ☑ FAIL ☐ PASS.
+- `FederatedAuthControllerTest`: 3 tests executed, 3 expected failures because `POST /api/v1/auth/federated` is not mapped (HTTP 404).
+- `federated-registration.spec.ts`: 1 Playwright test executed and failed because the accessible Google/phone registration controls and role-completion flow do not exist.
+- `federated_registration_test.dart`: 1 Flutter widget test executed and failed because the Google/phone registration keys do not exist.
+- `FederatedRegistrationIntegrationTest`: 2 tests executed against PostgreSQL 16 through Testcontainers; both failed as intended because `user_identities` and its provider-subject uniqueness constraint do not exist.
+- Controller, PostgreSQL integration, Web, and Mobile Red Gates: ☑ FAIL ☐ PASS.
+- Overall federated-registration Red Gate: **PASS** — every planned layer has failing evidence caused by missing federated behavior.

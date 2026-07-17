@@ -13,6 +13,7 @@ import com.carebridge.backend.expert.service.IExpertProfileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,14 +59,15 @@ public class ExpertProfileController {
         return ResponseEntity.ok(ApiResponse.success(expertProfileService.updateProfile(userId, request)));
     }
 
-    // UC-65: Public directory of verified experts
+    // UC-65 / ADR-MEDI-001: Public directory of verified experts, now with optional text search.
     @GetMapping("/directory")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ExpertDirectoryResponse>> getDirectory(
             @RequestParam(required = false) String specialty,
+            @RequestParam(required = false) @Size(max = 100) String q,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size) {
-        return ResponseEntity.ok(ApiResponse.success(expertProfileService.getPublicDirectory(specialty, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(expertProfileService.getPublicDirectory(specialty, q, page, size)));
     }
 
     // UC-65: Public profile view

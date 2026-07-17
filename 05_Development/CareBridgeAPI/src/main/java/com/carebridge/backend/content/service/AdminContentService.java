@@ -12,10 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ContentType;
 
 public interface AdminContentService {
 
-    Page<ContentDetailResponse> getStaffContents(ContentStatus status, Pageable pageable);
+    Page<ContentDetailResponse> getStaffContents(ContentStatus status, ContentType type, String keyword, Pageable pageable);
 
     ContentDetailResponse getStaffContent(UUID id);
 

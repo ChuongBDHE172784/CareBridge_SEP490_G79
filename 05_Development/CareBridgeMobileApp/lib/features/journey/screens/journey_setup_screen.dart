@@ -62,6 +62,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   int _cycleLength = 28;
   bool _cycleUnknown = false;
   bool _loading = false;
+  bool _allowRoutePop = false;
   String? _error;
 
   DateTime get _today {
@@ -191,7 +192,19 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       });
       return;
     }
-    Navigator.of(context).maybePop();
+    _leaveSetup();
+  }
+
+  void _leaveSetup() {
+    if (context.canPop()) {
+      setState(() => _allowRoutePop = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).maybePop();
+      });
+      return;
+    }
+
+    context.go('/mother-stage-selection');
   }
 
   void _handleContinue() {
@@ -297,9 +310,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _allowRoutePop,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _handleBack();
+        if (didPop) return;
+        _handleBack();
       },
       child: Scaffold(
         backgroundColor: _canvas,

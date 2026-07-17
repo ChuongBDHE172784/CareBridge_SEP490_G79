@@ -76,10 +76,17 @@ class CommunityService {
 
   /// Private server-side bookmark list. Hidden/deleted/unapproved questions are
   /// filtered by the backend before this client ever receives them.
-  Future<List<CommunityFeedItem>> getBookmarks({int page = 0, int size = 20}) async {
-    final json = await apiGet('/api/v1/community/me/bookmarks?page=$page&size=$size');
-    final content = json['content'] as List? ?? [];
-    return content.map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>)).toList();
+  Future<List<CommunityFeedItem>> getBookmarks({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final json = await apiGet(
+      '/api/v1/community/me/bookmarks?page=$page&size=$size',
+    );
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // Toggle like on a question

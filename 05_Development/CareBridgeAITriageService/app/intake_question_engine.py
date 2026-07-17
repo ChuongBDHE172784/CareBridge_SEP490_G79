@@ -114,6 +114,13 @@ def merge_answers(intake: ChildTriageRequest, new_answers: dict[str, object]) ->
 
 
 def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+        missing: list[str] = []
+        if not intake.symptomList and _empty(intake.parentFreeText):
+            missing.append("parentFreeText")
+        if _empty(intake.duration):
+            missing.append("duration")
+        return missing[:MAX_QUESTIONS_PER_ROUND]
     missing: list[str] = []
     if intake.childAgeMonths is None:
         missing.append("childAgeMonths")
@@ -143,6 +150,21 @@ def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
 
 
 def ask_followup_questions(intake: ChildTriageRequest) -> list[IntakeQuestion]:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+        bank = {
+            "parentFreeText": IntakeQuestion(
+                questionKey="parentFreeText",
+                text="Bạn đang gặp triệu chứng hoặc muốn được hỗ trợ nội dung nào?",
+                answerType="TEXT",
+            ),
+            "duration": IntakeQuestion(
+                questionKey="duration",
+                text="Triệu chứng hoặc vấn đề này đã xuất hiện bao lâu?",
+                answerType="SINGLE_CHOICE",
+                options=["Dưới 1 ngày", "1-3 ngày", "3-7 ngày", "Hơn 1 tuần", "Không chắc"],
+            ),
+        }
+        return [bank[key] for key in determine_missing_information(intake) if key in bank]
     return [QUESTION_BANK[key] for key in determine_missing_information(intake) if key in QUESTION_BANK]
 
 

@@ -8,5 +8,8 @@ package com.carebridge.backend.family.entity;
 public enum PermissionFlag {
     CALENDAR,
     LOGS,
-    ALERTS
+    ALERTS,
+    BABY_VIEW,
+    BABY_JOURNAL_WRITE,
+    BABY_GROWTH_WRITE
 }

@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.carebridge.backend.triage.TriageStage;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RunIntakeRequest {
@@ -28,4 +29,6 @@ public class RunIntakeRequest {
     private List<String> dehydrationSigns;
     private String parentFreeText;
     private UUID babyProfileId;
+    private UUID motherProfileId;
+    private TriageStage stage;
 }

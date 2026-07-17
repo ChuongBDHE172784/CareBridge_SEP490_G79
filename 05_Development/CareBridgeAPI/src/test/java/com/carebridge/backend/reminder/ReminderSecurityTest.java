@@ -58,7 +58,8 @@ class ReminderSecurityTest {
     @ValueSource(strings = {
             "/api/v1/reminders/00000000-0000-0000-0000-000000000001/snooze",
             "/api/v1/reminders/00000000-0000-0000-0000-000000000001/complete",
-            "/api/v1/reminders/00000000-0000-0000-0000-000000000001/skip"
+            "/api/v1/reminders/00000000-0000-0000-0000-000000000001/skip",
+            "/api/v1/reminders/00000000-0000-0000-0000-000000000001/enable"
     })
     void patchReminderEndpoints_unauthenticated_returns401(String path) throws Exception {
         mockMvc.perform(patch(path))
@@ -67,7 +68,8 @@ class ReminderSecurityTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/api/v1/reminders/00000000-0000-0000-0000-000000000001"
+            "/api/v1/reminders/00000000-0000-0000-0000-000000000001",
+            "/api/v1/reminders/00000000-0000-0000-0000-000000000001/permanent"
     })
     void deleteReminderEndpoint_unauthenticated_returns401(String path) throws Exception {
         mockMvc.perform(delete(path))

@@ -35,6 +35,14 @@ public class AuditEligibilityPolicy {
             AuditAction.EXERCISE_UPDATED,
             AuditAction.EXERCISE_ACTIVATED,
             AuditAction.EXERCISE_DISABLED,
+            AuditAction.DIRECT_CONVERSATION_OPENED,
+            AuditAction.DIRECT_MESSAGE_SENT,
+            AuditAction.DIRECT_CHAT_ACCESS_DENIED,
+            AuditAction.DIRECT_CALL_INITIATED,
+            AuditAction.DIRECT_CALL_STATE_CHANGED,
+            AuditAction.DIRECT_CALL_ACCESS_DENIED,
+            AuditAction.DIRECT_CALL_MISSED_BY_TIMEOUT,
+            AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
             AuditAction.VIEW_AUDIT_LOG);
 
     public boolean shouldAudit(AuditAction action) {

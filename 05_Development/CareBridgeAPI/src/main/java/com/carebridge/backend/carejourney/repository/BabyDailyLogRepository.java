@@ -15,6 +15,8 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
 
     List<BabyDailyLog> findByBabyId(UUID babyId);
 
+    List<BabyDailyLog> findByBabyIdAndStatusOrderByCreatedAtDesc(UUID babyId, BabyDailyLogStatus status);
+
     Optional<BabyDailyLog> findByBabyLogIdAndStatus(UUID babyLogId, BabyDailyLogStatus status);
 
     @Query(value = """

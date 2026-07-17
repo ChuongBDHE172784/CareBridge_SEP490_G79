@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
+import '../routing/consultation_notification_routing.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
   final NotificationRecord notification;
@@ -193,8 +195,12 @@ class NotificationDetailScreen extends StatelessWidget {
           height: 52,
           child: FilledButton(
             onPressed: () {
-              // TODO: navigate to relevant detail screen based on referenceType
-              Navigator.of(context).pop();
+              final route = resolveNotificationRoute(notification);
+              if (route != null) {
+                context.push(route);
+              } else {
+                Navigator.of(context).pop();
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: _primaryContainer,
@@ -252,6 +258,8 @@ class NotificationDetailScreen extends StatelessWidget {
       case 'HEALTH':
       case 'HEALTH_ALERT':
         return 'Xem chi tiết';
+      case 'CONSULTATION':
+        return 'Xem yêu cầu tư vấn';
       default:
         return 'Xem chi tiết';
     }
@@ -268,6 +276,8 @@ class NotificationDetailScreen extends StatelessWidget {
       case 'MESSAGE':
       case 'CHAT':
         return 'Tin nhắn';
+      case 'CONSULTATION':
+        return 'Yêu cầu tư vấn';
       default:
         return 'Thông báo';
     }

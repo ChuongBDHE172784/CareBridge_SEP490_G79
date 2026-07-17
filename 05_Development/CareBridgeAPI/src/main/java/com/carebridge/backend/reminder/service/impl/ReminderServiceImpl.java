@@ -12,6 +12,7 @@ import com.carebridge.backend.reminder.dto.ReminderDetailResponse;
 import com.carebridge.backend.reminder.dto.SnoozeReminderRequest;
 import com.carebridge.backend.reminder.dto.UpdateReminderRequest;
 import com.carebridge.backend.reminder.dto.VaccinationSuggestionDto;
+import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
@@ -178,7 +179,8 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse updateReminder(UUID reminderId, UpdateReminderRequest request, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requireMutableState(reminder);
+        requireActionableState(reminder, "REM-007",
+                "Reminder in terminal state " + reminder.getStatus() + " cannot be modified");
 
         if (request.getTitle() != null) {
             reminder.setTitle(request.getTitle());
@@ -200,7 +202,7 @@ public class ReminderServiceImpl implements IReminderService {
             reminder.setRecurrenceType(request.getRecurrenceType());
         }
 
-        if (request.getRecurrenceEndDate() != null) {
+        if (request.getRecurrenceEndDate() != null || Boolean.TRUE.equals(request.getRecurrenceEndDateSet())) {
             reminder.setRecurrenceEndDate(request.getRecurrenceEndDate());
         }
 
@@ -214,7 +216,8 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse snoozeReminder(UUID reminderId, SnoozeReminderRequest request, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requireMutableState(reminder);
+        requireActionableState(reminder, "REM-007",
+                "Reminder in terminal state " + reminder.getStatus() + " cannot be modified");
 
         Instant snoozedUntil = request.getSnoozedUntil();
         Instant now = Instant.now();
@@ -250,7 +253,7 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse completeReminder(UUID reminderId, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requirePendingState(reminder, "REM-007",
+        requireActionableState(reminder, "REM-007",
                 "Reminder is already in a terminal state and cannot be completed");
 
         if (reminder.getFcmJobId() != null) {
@@ -258,6 +261,7 @@ public class ReminderServiceImpl implements IReminderService {
         }
 
         reminder.setStatus(ReminderStatus.COMPLETED);
+        reminder.setSnoozedUntil(null);
         Reminder saved = reminderRepository.save(reminder);
 
         auditService.log(AuditAction.REMINDER_COMPLETED, callerId,
@@ -272,7 +276,7 @@ public class ReminderServiceImpl implements IReminderService {
     public ReminderDetailResponse skipReminder(UUID reminderId, UUID callerId) {
         Reminder reminder = findReminderById(reminderId);
         requireOwnership(reminder, callerId);
-        requirePendingState(reminder, "REM-011",
+        requireActionableState(reminder, "REM-011",
                 "Reminder is not in a skippable state");
 
         if (reminder.getFcmJobId() != null) {
@@ -280,6 +284,7 @@ public class ReminderServiceImpl implements IReminderService {
         }
 
         reminder.setStatus(ReminderStatus.SKIPPED);
+        reminder.setSnoozedUntil(null);
 
         Reminder saved = reminderRepository.save(reminder);
 
@@ -291,33 +296,63 @@ public class ReminderServiceImpl implements IReminderService {
 
     @Override
     public void deleteReminder(UUID reminderId, UUID callerId) {
-        Reminder reminder = reminderRepository.findById(reminderId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "REM-015",
-                        "Reminder not found"));
-
-        if (!reminder.getOwnerUserId().equals(callerId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "REM-016",
-                    "Access denied to reminder");
-        }
+        Reminder reminder = findReminderForDelete(reminderId);
+        requireDeleteOwnership(reminder, callerId);
 
         if (reminder.getStatus() == ReminderStatus.CANCELLED) {
             return;
         }
 
-        if (reminder.getStatus() == ReminderStatus.COMPLETED || reminder.getStatus() == ReminderStatus.SKIPPED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "REM-017",
-                    "Reminder is in a terminal state and cannot be deleted");
+        if (reminder.getFcmJobId() != null) {
+            notificationService.cancelFcmJob(reminder.getFcmJobId());
+            reminder.setFcmJobId(null);
         }
+
+        reminder.setStatus(ReminderStatus.CANCELLED);
+        reminder.setSnoozedUntil(null);
+        reminderRepository.save(reminder);
+
+        auditService.log(AuditAction.REMINDER_CANCELLED, callerId,
+                "Reminder", reminderId.toString(), "cancelled");
+    }
+
+    @Override
+    public ReminderDetailResponse enableReminder(UUID reminderId, UUID callerId) {
+        Reminder reminder = findReminderById(reminderId);
+        requireOwnership(reminder, callerId);
+
+        if (reminder.getStatus() != ReminderStatus.CANCELLED) {
+            return toDetailResponse(reminder);
+        }
+
+        reminder.setStatus(ReminderStatus.PENDING);
+        reminder.setSnoozedUntil(null);
+        reminder.setFcmJobId(null);
+
+        if (reminder.getScheduledAt().isAfter(Instant.now())) {
+            String newJobId = notificationService.scheduleFcmPush(
+                    callerId, reminder.getTitle(), "Reminder: " + reminder.getTitle(), reminder.getScheduledAt());
+            reminder.setFcmJobId(newJobId);
+        }
+
+        Reminder saved = reminderRepository.save(reminder);
+        auditService.log(AuditAction.REMINDER_CREATED, callerId,
+                "Reminder", reminderId.toString(), "enabled");
+        return toDetailResponse(saved);
+    }
+
+    @Override
+    public void hardDeleteReminder(UUID reminderId, UUID callerId) {
+        Reminder reminder = findReminderForDelete(reminderId);
+        requireDeleteOwnership(reminder, callerId);
 
         if (reminder.getFcmJobId() != null) {
             notificationService.cancelFcmJob(reminder.getFcmJobId());
         }
 
-        reminder.setStatus(ReminderStatus.CANCELLED);
-        reminderRepository.save(reminder);
-
         auditService.log(AuditAction.REMINDER_CANCELLED, callerId,
-                "Reminder", reminderId.toString(), "cancelled");
+                "Reminder", reminderId.toString(), "permanently deleted");
+        reminderRepository.delete(reminder);
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
@@ -335,9 +370,22 @@ public class ReminderServiceImpl implements IReminderService {
                         "Reminder not found: " + reminderId));
     }
 
+    private Reminder findReminderForDelete(UUID reminderId) {
+        return reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "REM-015",
+                        "Reminder not found"));
+    }
+
     private void requireOwnership(Reminder reminder, UUID callerId) {
         if (!reminder.getOwnerUserId().equals(callerId)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "REM-004",
+                    "Access denied to reminder");
+        }
+    }
+
+    private void requireDeleteOwnership(Reminder reminder, UUID callerId) {
+        if (!reminder.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "REM-016",
                     "Access denied to reminder");
         }
     }
@@ -348,19 +396,19 @@ public class ReminderServiceImpl implements IReminderService {
                         "Baby profile not found or not owned by caller"));
     }
 
-    /** ADR-REM-STATE-001: cancelled reminders are immutable terminal states. */
-    private void requireMutableState(Reminder reminder) {
+    private void requireActionableState(Reminder reminder, String code, String message) {
         ReminderStatus status = reminder.getStatus();
-        if (status == ReminderStatus.CANCELLED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "REM-007",
-                    "Reminder in terminal state " + status + " cannot be modified");
+        if (isRecurringReminder(reminder) && status != ReminderStatus.CANCELLED) {
+            return;
+        }
+        if (status != ReminderStatus.PENDING && status != ReminderStatus.SNOOZED) {
+            throw new BusinessException(HttpStatus.CONFLICT, code, message);
         }
     }
 
-    private void requirePendingState(Reminder reminder, String code, String message) {
-        if (reminder.getStatus() != ReminderStatus.PENDING) {
-            throw new BusinessException(HttpStatus.CONFLICT, code, message);
-        }
+    private boolean isRecurringReminder(Reminder reminder) {
+        RecurrenceType recurrenceType = reminder.getRecurrenceType();
+        return recurrenceType != null && recurrenceType != RecurrenceType.NONE;
     }
 
     private CreateReminderResponse toCreateResponse(Reminder saved) {
@@ -382,6 +430,7 @@ public class ReminderServiceImpl implements IReminderService {
                 .title(reminder.getTitle())
                 .scheduledAt(reminder.getScheduledAt())
                 .recurrenceType(reminder.getRecurrenceType() != null ? reminder.getRecurrenceType().name() : null)
+                .recurrenceEndDate(reminder.getRecurrenceEndDate())
                 .status(reminder.getStatus().name())
                 .snoozedUntil(reminder.getSnoozedUntil())
                 .createdAt(reminder.getCreatedAt())

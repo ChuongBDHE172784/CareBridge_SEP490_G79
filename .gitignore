@@ -13,6 +13,13 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+# Firebase CLI local artifacts — .firebaserc identifies a specific project, never commit
+# the real one; 05_Development/Firebase/.firebaserc.example is the template to copy from.
+05_Development/Firebase/.firebaserc
+05_Development/Firebase/.firebase/
+firebase-debug.log
+database-debug.log
 *.local
 *.secret
 carebridge-*.json

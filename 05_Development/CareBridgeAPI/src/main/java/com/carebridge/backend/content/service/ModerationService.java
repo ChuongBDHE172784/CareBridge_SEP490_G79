@@ -7,10 +7,12 @@ import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
@@ -37,6 +39,15 @@ public interface ModerationService {
      * (CB-MOD-IMP-004 §16 ADR-007), read directly — no ACCOUNT actions (separate history view).
      */
     ModerationHistoryResponse getModerationHistory(ModerationHistoryFilter filter, Principal principal);
+
+    /**
+     * Lists append-only account enforcement actions only. This is deliberately separate from the
+     * content-only moderation history so account identity projection remains moderator scoped.
+     */
+    AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal);
+
+    /** Lists privacy-safe reports that apply to the exact target of the selected report. */
+    RelatedReportPageResponse getRelatedReports(UUID reportId, int page, int size, Principal principal);
 
     /**
      * Applies an APPROVE/HIDE/LOCK action directly to a community question or answer,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import 'notification_detail_screen.dart';
 import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../../familySync/models/care_group_model.dart';
+import '../routing/consultation_notification_routing.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -290,7 +292,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () {
-          if (notification.type == 'GROUP_INVITE' &&
+          final consultationRoute = resolveNotificationRoute(notification);
+          if (consultationRoute != null) {
+            context.push(consultationRoute);
+          } else if (notification.type == 'GROUP_INVITE' &&
               notification.referenceId != null) {
             final pendingInvite = PendingInvitation(
               groupId: notification.referenceId!,
@@ -442,6 +447,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         bgColor = isUnread ? _surfaceVariant : _surfaceVariant;
         iconColor = _onSurfaceVariant;
         break;
+      case 'CONSULTATION':
+        icon = Icons.medical_services_outlined;
+        bgColor = isUnread ? _primaryFixed : _surfaceVariant;
+        iconColor = isUnread ? _onPrimaryFixed : _onSurfaceVariant;
+        break;
       default:
         icon = Icons.notifications_rounded;
         bgColor = isUnread ? _primaryFixed : _surfaceVariant;
@@ -469,6 +479,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'MESSAGE':
       case 'CHAT':
         return 'Tin nhắn mới';
+      case 'CONSULTATION':
+        return 'Yêu cầu tư vấn';
       default:
         return 'Thông báo';
     }

@@ -2,6 +2,7 @@ package com.carebridge.backend.carejourney.service;
 
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.GrowthChartTestFactory;
 import com.carebridge.backend.carejourney.dto.AddGrowthMeasurementRequest;
@@ -40,7 +41,10 @@ class GrowthServiceTest {
     @Mock private BabyProfileRepository babyProfileRepository;
     @Mock private GrowthMeasurementRepository growthMeasurementRepository;
     @Mock private AuditService auditService;
+    @Mock private BabyAccessPolicy babyAccessPolicy;
     @InjectMocks private GrowthServiceImpl growthService;
+
+    private static final UUID CAREGIVER_ID = UUID.fromString("00000000-0000-0000-0000-000000000242");
 
     // GROWTH-TC-038-001: Happy path with measurements
     @Test
@@ -103,6 +107,20 @@ class GrowthServiceTest {
                 });
     }
 
+    @Test
+    void getGrowthChart_permittedCaregiver_returnsScopedMeasurements() {
+        BabyProfile baby = makeBabyOwnedByOther();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canView(baby, CAREGIVER_ID)).thenReturn(true);
+        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+                .thenReturn(makeMeasurements());
+
+        GrowthChartResponse response = growthService.getGrowthChart(CAREGIVER_ID, BABY_ID);
+
+        assertThat(response.getBabyId()).isEqualTo(BABY_ID);
+        assertThat(response.getMeasurements()).hasSize(2);
+    }
+
     // GROWTH-TC-038-005: Baby not found -> 404 BABY-070
     @Test
     void getGrowthChart_babyNotFound_throwsNotFound() {
@@ -130,6 +148,7 @@ class GrowthServiceTest {
         AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
         request.setMeasuredDate(LocalDate.of(2026, 4, 1));
         request.setWeightKg(new BigDecimal("6.20"));
+        request.setSourceType("HOME");
 
         GrowthMeasurementResponse response = growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request);
 
@@ -139,11 +158,84 @@ class GrowthServiceTest {
     }
 
     @Test
+    void addGrowthMeasurement_permittedCaregiver_recordsMeasurement() {
+        BabyProfile baby = makeBabyOwnedByOther();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canManageGrowth(baby, CAREGIVER_ID)).thenReturn(true);
+        when(growthMeasurementRepository.save(any(GrowthMeasurement.class)))
+                .thenAnswer(invocation -> {
+                    GrowthMeasurement saved = invocation.getArgument(0);
+                    saved.setGrowthMeasurementId(UUID.randomUUID());
+                    return saved;
+                });
+        AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
+        request.setMeasuredDate(LocalDate.of(2026, 7, 15));
+        request.setWeightKg(new BigDecimal("6.2"));
+        request.setSourceType("HOME");
+
+        GrowthMeasurementResponse response = growthService.addGrowthMeasurement(CAREGIVER_ID, BABY_ID, request);
+
+        assertThat(response.getBabyId()).isEqualTo(BABY_ID);
+        verify(auditService).log(any(), eq(CAREGIVER_ID), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void addGrowthMeasurement_revokedCaregiver_doesNotMutate() {
+        BabyProfile baby = makeBabyOwnedByOther();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canManageGrowth(baby, CAREGIVER_ID)).thenReturn(false);
+        AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
+        request.setMeasuredDate(LocalDate.of(2026, 7, 15));
+        request.setWeightKg(new BigDecimal("6.2"));
+
+        assertThatThrownBy(() -> growthService.addGrowthMeasurement(CAREGIVER_ID, BABY_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getHttpStatus())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        verifyNoInteractions(growthMeasurementRepository);
+        verify(auditService).log(eq(com.carebridge.backend.audit.entity.AuditAction.SECURITY_EVENT),
+                eq(CAREGIVER_ID), eq("GROWTH_MEASUREMENT_ACCESS_DENIED"), eq(BABY_ID.toString()), any());
+    }
+
+    @Test
+    void addGrowthMeasurement_futureDate_isRejectedWithoutMutation() {
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
+        AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
+        request.setMeasuredDate(LocalDate.now().plusDays(1));
+        request.setWeightKg(new BigDecimal("6.2"));
+        request.setSourceType("HOME");
+
+        assertThatThrownBy(() -> growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> {
+                    BusinessException exception = (BusinessException) error;
+                    assertThat(exception.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getCode()).isEqualTo("BABY-GROWTH-400");
+                });
+        verifyNoInteractions(growthMeasurementRepository, auditService);
+    }
+
+    @Test
+    void addGrowthMeasurement_missingSource_isRejectedWithoutMutation() {
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
+        AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
+        request.setMeasuredDate(LocalDate.now());
+        request.setWeightKg(new BigDecimal("6.2"));
+
+        assertThatThrownBy(() -> growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode())
+                        .isEqualTo("BABY-GROWTH-400"));
+        verifyNoInteractions(growthMeasurementRepository, auditService);
+    }
+
+    @Test
     void addGrowthMeasurement_noValues_throwsBaby072() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
 
         AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
         request.setMeasuredDate(LocalDate.of(2026, 4, 1));
+        request.setSourceType("HOME");
 
         assertThatThrownBy(() -> growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request))
                 .isInstanceOf(BusinessException.class)
@@ -176,6 +268,7 @@ class GrowthServiceTest {
         AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
         request.setMeasuredDate(LocalDate.of(2026, 4, 1));
         request.setWeightKg(new BigDecimal("-1.00"));
+        request.setSourceType("HOME");
 
         assertThatThrownBy(() -> growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request))
                 .isInstanceOf(BusinessException.class)

@@ -76,6 +76,9 @@ public class NotificationRecord {
     @Column(name = "failed_at")
     private Instant failedAt;
 
+    @Column(name = "processing_started_at")
+    private Instant processingStartedAt;
+
     /** UC-12: Whether the user has read this notification (added via V20260628120000). */
     @Builder.Default
     @Column(name = "is_read", nullable = false)

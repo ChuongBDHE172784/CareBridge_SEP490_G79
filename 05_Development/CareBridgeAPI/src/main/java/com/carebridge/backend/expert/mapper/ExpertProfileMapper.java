@@ -7,24 +7,32 @@ import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.security.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
 public class ExpertProfileMapper {
 
-	public ExpertProfileResponse toResponse(ExpertProfile entity, String avatarUrl) {
+	// ADR-MEDI-001 mục 1 — displayName/avatarUrl always resolved together from the caller
+	// (batch for directory listings, single-row lookup elsewhere). No overload silently
+	// defaults either field to null anymore (that was the source of the avatar=null bug).
+	public ExpertProfileResponse toResponse(ExpertProfile entity, String displayName, String avatarUrl) {
 		return ExpertProfileResponse.builder()
 			.expertProfileId(entity.getExpertProfileId())
 			.userId(entity.getUserId())
+			.displayName(displayName)
 			.specialty(entity.getSpecialty())
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
+			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())
 			.ratingAvg(entity.getRatingAvg())
@@ -34,19 +42,18 @@ public class ExpertProfileMapper {
 			.build();
 	}
 
-	public ExpertProfileResponse toResponse(ExpertProfile entity) {
-		return toResponse(entity, null);
-	}
-
-	public ExpertProfileDetailResponse toDetailResponse(ExpertProfile entity, String avatarUrl) {
+	public ExpertProfileDetailResponse toDetailResponse(ExpertProfile entity, String displayName, String avatarUrl) {
 		return ExpertProfileDetailResponse.builder()
 			.expertProfileId(entity.getExpertProfileId())
 			.userId(entity.getUserId())
+			.displayName(displayName)
 			.specialty(entity.getSpecialty())
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
+			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())
 			.ratingAvg(entity.getRatingAvg())
@@ -54,10 +61,6 @@ public class ExpertProfileMapper {
 			.createdAt(entity.getCreatedAt())
 			.updatedAt(entity.getUpdatedAt())
 			.build();
-	}
-
-	public ExpertProfileDetailResponse toDetailResponse(ExpertProfile entity) {
-		return toDetailResponse(entity, null);
 	}
 
 	public ExpertProfile toEntity(CreateExpertProfileRequest request, UUID userId) {
@@ -82,16 +85,23 @@ public class ExpertProfileMapper {
 		if (request.getRatingAvg() != null) entity.setRatingAvg(request.getRatingAvg());
 	}
 
-	public ExpertDirectoryResponse toDirectoryResponse(Page<ExpertProfile> page) {
+	// ADR-MEDI-001 mục 3 — usersById resolved by the caller via 1 batch userRepository.findAllById(...)
+	// for the whole page; never queried per-row here.
+	public ExpertDirectoryResponse toDirectoryResponse(
+		Page<ExpertProfile> page, Map<UUID, User> usersById, List<String> specialties) {
 		List<ExpertProfileResponse> experts = page.getContent().stream()
-			.map(this::toResponse)
+			.map(ep -> {
+				User u = usersById.get(ep.getUserId());
+				return toResponse(ep, u != null ? u.getName() : null, u != null ? u.getAvatarUrl() : null);
+			})
 			.collect(Collectors.toList());
 		return new ExpertDirectoryResponse(
 			experts,
 			page.getNumber(),
 			page.getSize(),
 			page.getTotalElements(),
-			page.getTotalPages()
+			page.getTotalPages(),
+			specialties
 		);
 	}
 }

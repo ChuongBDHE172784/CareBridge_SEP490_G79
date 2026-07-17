@@ -35,6 +35,19 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     Page<ContentItem> findByStatus(ContentStatus status, Pageable pageable);
 
+    Page<ContentItem> findByType(ContentType type, Pageable pageable);
+
+    @Query("SELECT c FROM ContentItem c WHERE " +
+           "LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(c.body) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<ContentItem> searchStaffByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT c FROM ContentItem c WHERE c.type = :type AND " +
+           "(LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(c.body) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<ContentItem> searchStaffByKeywordAndType(
+            @Param("keyword") String keyword, @Param("type") ContentType type, Pageable pageable);
+
     // UC-113: impact report — published content reach (count only, no view/impression column exists)
     long countByPublishedAtIsNotNull();
 

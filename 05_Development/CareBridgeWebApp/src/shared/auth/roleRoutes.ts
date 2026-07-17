@@ -9,7 +9,8 @@ import type { UserRole } from './authStore';
  * Stale aliases (ADMIN, PARTNER_REPRESENTATIVE) never appear in JWTs — the backend
  * always emits the 7 canonical roles defined in Role.java. No alias handling needed.
  *
- * MOTHER and FAMILY have no web portal access; they land on /no-web-access.
+ * MOTHER web access is intentionally limited to Direct Consult Chat.
+ * FAMILY has no web portal access.
  */
 export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   SYSTEM_ADMIN: '/admin/dashboard',
@@ -19,7 +20,7 @@ export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   CONTENT_ADMIN: '/content/dashboard',
   PARTNER: '/partner/dashboard',
   EXPERT: '/expert/dashboard',
-  MOTHER: '/no-web-access',
+  MOTHER: '/direct-chats',
   FAMILY: '/no-web-access',
 };
 

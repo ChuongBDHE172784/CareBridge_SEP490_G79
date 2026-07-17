@@ -28,6 +28,7 @@ class IntakeQuestion {
 class IntakeFlowResponse {
   final String status;
   final String intakeSessionId;
+  final String stage;
   final Map<String, dynamic> mergedIntake;
   final String? assistantMessage;
   final List<IntakeQuestion> questions;
@@ -37,6 +38,7 @@ class IntakeFlowResponse {
   const IntakeFlowResponse({
     required this.status,
     required this.intakeSessionId,
+    this.stage = 'INFANT',
     required this.mergedIntake,
     this.assistantMessage,
     this.questions = const [],
@@ -62,6 +64,7 @@ class IntakeFlowResponse {
     return IntakeFlowResponse(
       status: json['status']?.toString() ?? '',
       intakeSessionId: sessionId,
+      stage: json['stage']?.toString() ?? 'INFANT',
       mergedIntake: json['mergedIntake'] is Map<String, dynamic>
           ? Map<String, dynamic>.from(
               json['mergedIntake'] as Map<String, dynamic>,

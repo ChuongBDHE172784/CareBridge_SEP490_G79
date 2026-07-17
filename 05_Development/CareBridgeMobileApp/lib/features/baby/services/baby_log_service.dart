@@ -3,6 +3,26 @@ import '../models/baby_daily_log_model.dart';
 import '../models/milestone_model.dart';
 
 class BabyLogService {
+  Future<List<BabyDailyLog>> getDailyLogs(String babyId) async {
+    final data = await apiGet('/api/v1/babies/$babyId/daily-logs');
+    final rows = data['data'] as List<dynamic>? ?? const [];
+    return rows
+        .map((row) => BabyDailyLog.fromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  // UC-36: Add a baby daily log using the canonical backend route.
+  Future<BabyDailyLog> addDailyLog(
+    String babyId,
+    AddBabyDailyLogRequest request,
+  ) async {
+    final data = await apiPost(
+      '/api/v1/babies/$babyId/daily-logs',
+      request.toJson(),
+    );
+    return BabyDailyLog.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
   Future<BabyDailyLog> getDailyLogDetail(String babyId, String logId) async {
     final data = await apiGet('/api/v1/babies/$babyId/daily-logs/$logId');
     return BabyDailyLog.fromJson(data['data'] as Map<String, dynamic>);
@@ -49,6 +69,22 @@ class BabyLogService {
       request.toJson(),
     );
     return Milestone.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<List<Milestone>> getMilestones(String babyId) async {
+    final data = await apiGet('/api/v1/babies/$babyId/milestones');
+    final rows = data['data'] as List<dynamic>? ?? const [];
+    return rows
+        .map((row) => Milestone.fromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Milestone> getMilestone(String babyId, String milestoneId) async {
+    final milestones = await getMilestones(babyId);
+    return milestones.firstWhere(
+      (milestone) => milestone.id == milestoneId,
+      orElse: () => throw StateError('Milestone not found'),
+    );
   }
 
   Future<Milestone> updateMilestone(

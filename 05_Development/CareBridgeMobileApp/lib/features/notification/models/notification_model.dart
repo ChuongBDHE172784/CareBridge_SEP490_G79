@@ -52,6 +52,7 @@ class NotificationRecord {
   final String status;
   final DateTime createdAt;
   final DateTime? sentAt;
+  final Map<String, dynamic>? metadata;
 
   NotificationRecord({
     required this.id,
@@ -64,6 +65,7 @@ class NotificationRecord {
     required this.status,
     required this.createdAt,
     this.sentAt,
+    this.metadata,
   });
 
   factory NotificationRecord.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,7 @@ class NotificationRecord {
       sentAt: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'] as String)
           : null,
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
 

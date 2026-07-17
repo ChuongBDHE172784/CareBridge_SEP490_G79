@@ -6,7 +6,7 @@
 | **Document ID** | `CB-CON-IMP-004` |
 | **Version** | `1.0` |
 | **Date** | `2026-06-26` |
-| **Status** | `Draft` |
+| **Status** | `Draft` *(reverted 2026-07-15 — repurposed for voice/video calls, see CHANGELOG)* |
 | **Author** | `AI Agent` |
 | **Based on EDS** | `v2.0` |
 
@@ -17,6 +17,9 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDS cho UC-154 |
+| 2026-07-15 | AI Agent — Amelia (Dev Agent) | **Implemented & tested:** `IZegoCloudService`/`ZegoCloudServiceImpl`/`ZegoToken04Generator` (`com.carebridge.backend.integration.zegocloud`) — Token04 generation using JDK crypto + Jackson (no new pom dependency; the project's own prior `TokenServerAssistant.java`/`Base64.java` reference was used as the byte-format source of truth and rewritten to remove the `org.json.simple` dependency it required). 10 unit tests passing (`ZegoToken04GeneratorTest` x7, `ZegoCloudServiceImplTest` x3): roomId=sessionId, TTL/appId correctness, validation rejections, no dependency on any repository (pure token generator), token never contains the secret as plaintext. Wired as a collaborator into UC-95's join endpoint (only integration point — this service exposes no HTTP endpoint of its own, per §9). Env config added: `carebridge.zego.app-id`/`server-secret`/`token-ttl-seconds` in `application.yaml`, `ZEGO_APP_ID`/`ZEGO_SERVER_SECRET` in `.env.example` (placeholders only). |
+| 2026-07-15 | AI Agent — Technical Architect | **Schema realignment (blocking correction):** original draft was written against a single `consultations` table with `mother_joined_at`/`expert_joined_at` columns and a `zego_sessions` table — none of which exist in the actual schema (confirmed via `V1__init_schema.sql`). Realigned to the real `consultation_bookings` → `consultation_sessions` split: `roomId` = `consultation_sessions.session_id` (stored in `communication_room_id`), no `zego_sessions` table, no per-participant join timestamps (not modeled in schema — session-level `session_status`/`started_at`/`ended_at` only, owned by UC-95). Narrowed `IZegoCloudService` to token generation only; join/end state mutation moves to UC-95's `ConsultationSessionService` (single owner of `session_status`, avoids two services racing to mutate the same row). Confirmed ZIM (ZegoCloud in-app messaging/signaling) reuses the identical Token04 format as the RTC token already specified here — one token endpoint serves both voice/video (UC-145/146) and chat signaling (UC-144). Resolved per user decision 2026-07-15: build UC-154→UC-95→UC-144 as one vertical slice; ZegoCloud SDK confirmed as transport (not custom WebSocket). |
+| 2026-07-15 | AI Agent — Technical Architect | **REPURPOSED — reverted Approved → Draft.** User decision: ZegoCloud ZIM must **not** be used for chat delivery at all (chat now uses Firebase Realtime Database for the realtime signal, PostgreSQL REST for durable history); ZegoCloud is reserved **exclusively for voice/video calls**, and calls are no longer session-scoped — they belong to a `direct_conversations`/`conversation_calls` model (see `04_Implement/UC144_DirectConsultChat/`), not `consultation_sessions`. `IZegoCloudService.generateToken(roomId, userId, userName)` (the token-generation core built and tested in this pass) is **kept and reused as-is** — its interface is already `sessionId`-agnostic (just a `roomId` string), so it now accepts `conversation_calls.zego_room_id` instead of `consultation_sessions.session_id`. `ZegoZimSignalingPort` (mobile/web ZIM client adapters) is **deleted** — it was chat-signaling code, not call code, and is unused by the RTC-only redesign. This TDS's ADR-ZEGO-001 (roomId format) needs a follow-up ADR update to reference `conversation_calls` once the new TDS is approved; tracked there, not rewritten here. |
 
 ---
 
@@ -69,32 +72,32 @@
 
 ## 3. Architecture Decision Records (ADR)
 
-### ADR-ZEGO-001 — ZegoCloud room lifecycle management
+### ADR-ZEGO-001 — ZegoCloud room lifecycle management (realigned to `consultation_sessions`)
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
-| **Date** | `2026-06-26` |
+| **Status** | `Accepted` (realigned 2026-07-15 — see CHANGELOG) |
+| **Date** | `2026-06-26`, realigned `2026-07-15` |
 
 #### Quyết định
-- `roomId` = consultation UUID (string).
+- `roomId` = `consultation_sessions.session_id` (UUID string) — **not** a separate "consultation" identifier. Persisted into `consultation_sessions.communication_room_id` on first successful token issuance (owned/written by UC-95's `ConsultationSessionService`, not by this service — see ADR-ZEGO-002).
 - Room created lazily on first join — no pre-create room API call.
-- Token: generate using ZegoCloud Server SDK `generateToken04()` with user ID = accountId (UUID string).
+- Token: generate using ZegoCloud Server SDK `generateToken04()` (Token04 format) with user ID = the caller's `users.user_id` (UUID string).
+- **Token04 is shared across ZegoCloud products** — the same `IZegoCloudService.generateToken()` call issues tokens for both the RTC room (UC-145 voice / UC-146 video, via ZegoExpressEngine) and the ZIM (in-app messaging/signaling) login used for chat realtime delivery (UC-144). One token endpoint, two SDK surfaces on the client.
 - Token TTL: 3600 seconds (1 hour).
-- When consultation ends (COMPLETED/CANCELLED): emit `SessionEnded` event; ZegoCloud room auto-expires.
+- When the session reaches a terminal `session_status` (`COMPLETED`/`NO_SHOW`/`CANCELLED`, per UC-95 ADR-SESSION-001): ZegoCloud room simply auto-expires from inactivity; this service does not need to explicitly tear down the room.
 
-### ADR-ZEGO-002 — Session state tracking
+### ADR-ZEGO-002 — Session state tracking (superseded — ownership moved to UC-95)
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` |
-| **Date** | `2026-06-26` |
+| **Status** | `Superseded by UC-95 ADR-SESSION-001/003` (realigned 2026-07-15) |
+| **Date** | `2026-06-26`, superseded `2026-07-15` |
 
-#### Quyết định
-`zego_sessions` table tracks `mother_joined_at`, `expert_joined_at`, `ended_at`. Consultation transitions:
-- First participant joins → `IN_SESSION`.
-- `ended_at` set when consultation status → `COMPLETED` or expert calls end-session.
-- Missing `expert_joined_at` after 15 min grace period → candidate for NO_SHOW.
+#### Quyết định (original, now superseded)
+~~`zego_sessions` table tracks `mother_joined_at`, `expert_joined_at`, `ended_at`.~~ **This table does not exist and will not be created.** The actual schema (`consultation_sessions`) has no per-participant join-timestamp columns — only session-level `session_status`, `started_at`, `ended_at`. Introducing a new `zego_sessions` table purely to track join timestamps would be a new migration for data UC-95 already models at the session level; rejected as unnecessary schema surface.
+
+**Corrected ownership boundary:** `IZegoCloudService` (this TDS) is scoped **strictly to stateless token generation** — it does not read or write `session_status`, `started_at`, or `ended_at`. All session-state transitions (`WAITING → IN_SESSION` on first join, `→ COMPLETED` on explicit end, `→ NO_SHOW` on grace-period timeout) are owned exclusively by UC-95's `ConsultationSessionService`, which **calls** `IZegoCloudService.generateToken()` as a collaborator and then itself updates `consultation_sessions` (see UC-95 TDS §ADR-SESSION-001/003, §6.1 sequence). This prevents two services from racing to mutate the same row.
 
 ---
 
@@ -178,39 +181,41 @@ RealtimeSessionController --> Participant: 200 OK
 ```java
 public interface IZegoCloudService {
     /**
-     * Generates ZegoCloud token for a valid consultation participant.
-     * @param consultationId  the consultation UUID (= roomId)
-     * @param userId          caller's accountId as string
-     * @param userName        display name for UI
-     * @return ZegoToken with roomId and token string
+     * Generates a stateless ZegoCloud Token04 for a valid, already-authorized
+     * consultation-session participant. Does NOT read or write session state —
+     * callers (UC-95 ConsultationSessionService, UC-144 ConsultationChatService)
+     * are responsible for their own authorization checks before calling this.
+     * Same token format serves both RTC (voice/video) and ZIM (chat signaling).
+     * @param sessionId  consultation_sessions.session_id (= roomId, string form)
+     * @param userId     caller's users.user_id as string
+     * @param userName   display name for UI
+     * @return ZegoTokenDto with roomId and token string
      */
-    ZegoTokenDto generateToken(String consultationId, String userId, String userName);
-
-    /**
-     * Records participant join event to zego_sessions.
-     */
-    void recordJoin(UUID consultationId, UUID accountId, boolean isMother);
-
-    /**
-     * Ends the session — updates zego_sessions.ended_at.
-     */
-    void endSession(UUID consultationId);
+    ZegoTokenDto generateToken(String sessionId, String userId, String userName);
 }
 ```
+
+> **Narrowed from the original draft:** `recordJoin()`/`endSession()` are
+> **removed** from this interface (realigned 2026-07-15). Session-state
+> mutation (`session_status`, `started_at`, `ended_at`,
+> `communication_room_id`) is owned exclusively by UC-95's
+> `ConsultationSessionService`. This service is a pure, stateless token
+> generator — this is deliberate (see ADR-ZEGO-002) to avoid two services
+> racing to write the same row.
 
 ---
 
 ## 9. API Specification
 
-| Method | Path | Auth | Notes |
-|--------|------|------|-------|
-| `POST` | `/api/v1/consultations/{id}/join` | JWT Bearer | Delegates to ZegoSessionService |
-| `POST` | `/api/v1/consultations/{id}/end` | JWT Bearer | Expert or timeout |
+This service does not expose its own HTTP endpoint. `generateToken()` is
+called internally as a collaborator by:
+- UC-95's `POST /api/v1/consultations/sessions/{sessionId}/join` (session join → RTC/ZIM token bundle, see UC-95 TDS §9)
+- UC-144's message-send/list flow, when a client requests a fresh chat-signaling token (see UC-144 TDS §9)
 
-**Token structure returned (part of JoinSessionResponse):**
+**Token structure returned (embedded in the caller's response, e.g. UC-95's `JoinSessionResponse`):**
 ```json
 {
-  "consultationId": "uuid",
+  "sessionId": "uuid",
   "roomId": "uuid",
   "zegoToken": "04AAAAAGxxxxxxxx...",
   "tokenExpiresAt": "2026-06-26T11:00:00Z",
@@ -261,28 +266,22 @@ public class ZegoTokenService {
 }
 ```
 
-#### Chặng 2 — Implement join logic
+#### Chặng 2 — Caller-side usage (owned by UC-95/UC-144, shown here for reference only)
+
+`IZegoCloudService` itself does **not** implement join/session logic — that
+is owned by UC-95's `ConsultationSessionService` (RTC join) and UC-144's
+`ConsultationChatService` (chat signaling token). Illustrative caller usage:
 
 ```java
-public JoinSessionResponse joinSession(UUID consultationId, UUID callerAccountId) {
-    Consultation c = consultationRepo.findById(consultationId)
-        .orElseThrow(() -> new NotFoundException("ZEGO-004"));
-    if (!isParticipant(c, callerAccountId)) throw new ForbiddenException("ZEGO-002");
-    if (c.getStatus() == ConsultationStatus.ENDED) throw new ConflictException("ZEGO-003");
-    String roomId = consultationId.toString(); // ADR-ZEGO-001: roomId = consultationId
-    try {
-        String token = zegoTokenService.generateToken(roomId, callerAccountId.toString());
-        // First joiner → IN_SESSION
-        if (c.getStatus() == ConsultationStatus.CONFIRMED) {
-            c.setStatus(ConsultationStatus.IN_SESSION);
-            c.setMotherJoinedAt(Instant.now());
-            consultationRepo.save(c);
-        }
-        return new JoinSessionResponse(consultationId, roomId, token, appId,
-            Instant.now().plus(1, ChronoUnit.HOURS));
-    } catch (Exception e) {
-        throw new ServiceUnavailableException("ZEGO-001"); // status NOT changed
-    }
+// Inside UC-95's ConsultationSessionService.joinSession(sessionId, currentUserId) —
+// authorization + session_status transition are UC-95's own responsibility,
+// this service is called ONLY after that succeeds:
+try {
+    ZegoTokenDto token = zegoCloudService.generateToken(
+        sessionId.toString(), currentUserId.toString(), displayName);
+    // session_status mutation happens in UC-95's own code, not here
+} catch (Exception e) {
+    throw new SessionServiceUnavailableException("SES-005"); // session_status NOT changed
 }
 ```
 
