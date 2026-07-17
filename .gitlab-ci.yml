@@ -18,6 +18,7 @@ variables:
   BACKEND_IMAGE: "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA"
   WEB_IMAGE: "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHORT_SHA"
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  EVALUATION_IMAGE: "$CI_REGISTRY_IMAGE/ai-evaluator:$CI_COMMIT_SHORT_SHA"
 
 .all_rules: &all_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -34,6 +35,11 @@ variables:
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+.evaluation_rules: &evaluation_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["06_Testing/CareBridgeAIEvaluation/**/*", "05_Development/CareBridgeAITriageService/**/*", ".gitlab-ci.yml"]
 
 validate_backend:
   stage: validate
@@ -45,6 +51,16 @@ validate_web:
   image: node:22-alpine
   rules: *web_rules
   script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run lint"]
+validate_ai_evaluation:
+  stage: validate
+  image: python:3.12-slim
+  rules: *evaluation_rules
+  script:
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - python -m pip install --disable-pip-version-check -e ".[dev]"
+    - carebridge-eval validate datasets/benchmark_cases.json
+    - carebridge-eval export-schema /tmp/carebridge-evaluation-case-schema.json
+    - ruff check src tests scripts
 test_backend:
   stage: test
   image: eclipse-temurin:21-jdk
@@ -59,6 +75,63 @@ test_web:
   image: node:22-alpine
   rules: *web_rules
   script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run build", "echo 'No web test script is configured; build is the available verification.'"]
+test_ai_evaluation:
+  stage: test
+  image: python:3.12-slim
+  rules: *evaluation_rules
+  script:
+    - python -m pip install --disable-pip-version-check -r 05_Development/CareBridgeAITriageService/requirements.txt
+    - python -m pip install --disable-pip-version-check -e "06_Testing/CareBridgeAIEvaluation[dev]"
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - pytest --junitxml=reports/evaluation-junit.xml
+    - GEMINI_ENABLED=false carebridge-eval run --mode local --output-dir reports/ci
+  artifacts:
+    when: always
+    paths: ["06_Testing/CareBridgeAIEvaluation/reports/ci/"]
+    reports: {junit: "06_Testing/CareBridgeAIEvaluation/reports/evaluation-junit.xml"}
+
+test_ai_evaluation_api:
+  stage: test
+  image: python:3.12-slim
+  rules:
+    - if: '$CAREBRIDGE_API_BASE_URL && $CAREBRIDGE_TEST_JWT && $CAREBRIDGE_TEST_BABY_PROFILE_ID && $CAREBRIDGE_TEST_MOTHER_PROFILE_ID'
+      changes: ["06_Testing/CareBridgeAIEvaluation/**/*", "05_Development/CareBridgeAPI/**/*", "05_Development/CareBridgeAITriageService/**/*"]
+  script:
+    - python -m pip install --disable-pip-version-check -e "06_Testing/CareBridgeAIEvaluation"
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - python scripts/run_api_preflight.py
+    - carebridge-eval run --mode api --output-dir reports/api-ci
+  artifacts: {when: always, paths: ["06_Testing/CareBridgeAIEvaluation/reports/api-ci/"]}
+
+test_ai_evaluation_promptfoo:
+  stage: test
+  image: node:22-alpine
+  rules: *evaluation_rules
+  script:
+    - apk add --no-cache python3 py3-pip
+    - python3 -m venv .evaluation-venv
+    - . .evaluation-venv/bin/activate
+    - python -m pip install --disable-pip-version-check -r 05_Development/CareBridgeAITriageService/requirements.txt
+    - python -m pip install --disable-pip-version-check -e 06_Testing/CareBridgeAIEvaluation
+    - npm install --global promptfoo
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - node --version
+    - promptfoo --version
+    - python scripts/run_promptfoo.py --output-dir reports/promptfoo-ci
+  artifacts: {when: always, paths: ["06_Testing/CareBridgeAIEvaluation/reports/promptfoo-ci/"]}
+
+test_ai_evaluation_galileo:
+  stage: test
+  image: python:3.12-slim
+  rules:
+    - if: '$GALILEO_ENABLED == "true" && $GALILEO_API_KEY && $GALILEO_PROJECT'
+      changes: ["06_Testing/CareBridgeAIEvaluation/**/*"]
+  script:
+    - python -m pip install --disable-pip-version-check -e "06_Testing/CareBridgeAIEvaluation" galileo
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - carebridge-eval run --mode local --output-dir reports/galileo-input
+    - python scripts/run_galileo.py reports/galileo-input/report.json
+  artifacts: {when: always, paths: ["06_Testing/CareBridgeAIEvaluation/reports/galileo-input/"]}
 
 semgrep_sast:
   stage: security
@@ -83,6 +156,25 @@ trivy_fs_high_advisory:
   allow_failure: true
   script: ["trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
 
+ai_evaluation_security:
+  stage: security
+  image: python:3.12-slim
+  rules: *evaluation_rules
+  script:
+    - cd 06_Testing/CareBridgeAIEvaluation
+    - python -m pip install --disable-pip-version-check -e ".[dev]"
+    - bandit -q -r src scripts
+    - python scripts/run_dependency_audit.py
+
+ai_evaluation_gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:v8.24.2
+    entrypoint: [""]
+  rules: *evaluation_rules
+  script:
+    - gitleaks detect --source 06_Testing/CareBridgeAIEvaluation --no-git --redact --exit-code 1
+
 .docker_build:
   stage: build
   image: docker:27.5.1-cli
@@ -98,6 +190,22 @@ build_web_image:
   rules: *web_rules
   variables: {IMAGE: "$WEB_IMAGE", CONTEXT: 05_Development/CareBridgeWebApp, ARCHIVE: web-image.tar}
   before_script: ["test -n \"$VITE_API_URL\" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }"]
+build_ai_evaluation_image:
+  stage: build
+  image: docker:27.5.1-cli
+  services: [{name: "docker:27.5.1-dind", alias: docker}]
+  rules: *evaluation_rules
+  script:
+    - docker build --pull --build-context ai-service=05_Development/CareBridgeAITriageService --tag "$EVALUATION_IMAGE" 06_Testing/CareBridgeAIEvaluation
+    - docker run --rm --entrypoint python "$EVALUATION_IMAGE" -m pytest -q /opt/carebridge/evaluator/tests
+    - docker save "$EVALUATION_IMAGE" --output ai-evaluation-image.tar
+  artifacts: {paths: [ai-evaluation-image.tar], expire_in: 1 day}
+
+scan_ai_evaluation_image:
+  extends: .image_scan
+  rules: *evaluation_rules
+  needs: [{job: build_ai_evaluation_image, artifacts: true}]
+  variables: {ARCHIVE: ai-evaluation-image.tar}
 
 .image_scan:
   stage: publish

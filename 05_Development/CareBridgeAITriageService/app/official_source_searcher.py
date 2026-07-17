@@ -52,6 +52,7 @@ def realtime_official_search(
     matched_rules: list[str],
     stage: str = "INFANT",
     max_results: int = 3,
+    request_deadline: float | None = None,
 ) -> list[SourceDocument]:
     if not symptoms:
         return []
@@ -62,7 +63,10 @@ def realtime_official_search(
     if cached and time.monotonic() - cached[0] < ttl_seconds:
         return [source.model_copy(deep=True) for source in cached[1]]
 
-    deadline = time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS
+    deadline = min(
+        request_deadline if request_deadline is not None else float("inf"),
+        time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS,
+    )
     candidates: list[SourceDocument] = []
     domains = {source.domain for source in approved_sources_for_stage(stage)}
     if not domains:

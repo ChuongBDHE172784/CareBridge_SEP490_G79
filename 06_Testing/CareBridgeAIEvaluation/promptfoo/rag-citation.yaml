@@ -1,0 +1,24 @@
+description: CareBridge approved deep-link and claim citation contract
+prompts: ['{{initialText}}']
+providers:
+  - file://carebridge_provider.cjs
+tests:
+  - description: Returned citations are approved HTTPS deep links and claims map to evidence
+    vars:
+      executionMode: API_END_TO_END
+      category: RAG_CITATION
+      stage: INFANT
+      initialText: Be co giat
+      currentIntake:
+        stage: INFANT
+        childAgeMonths: 8
+        symptomList: [seizure]
+    assert:
+      - type: javascript
+        value: "const r=JSON.parse(output).data.triageResult,c=r.citations||[]; c.length>0 && c.every(x=>x.sourceStatus==='APPROVED')"
+      - type: javascript
+        value: "const c=JSON.parse(output).data.triageResult.citations||[]; c.length>0 && c.every(x=>{const u=new URL(x.url); return u.protocol==='https:' && !['','/','/vi','/en'].includes(u.pathname.replace(/\/$/,''));})"
+      - type: javascript
+        value: "const r=JSON.parse(output).data.triageResult,ids=new Set((r.citations||[]).map(x=>x.sourceId||x.id)); (r.claims||[]).length>0 && r.claims.every(x=>(x.evidenceIds||[]).length>0 && x.evidenceIds.every(id=>ids.has(id)))"
+      - type: javascript
+        value: "const c=JSON.parse(output).data.triageResult.citations||[]; c.length>0 && c.every(x=>(x.applicableStages||[]).includes('INFANT'))"
