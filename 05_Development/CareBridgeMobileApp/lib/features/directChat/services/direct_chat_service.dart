@@ -15,9 +15,16 @@ class DirectChatService {
     return response['data'] as Map<String, dynamic>;
   }
 
-  Future<DirectConversation> findOrCreateConversation(String expertProfileId) async {
-    final response = await apiPost('/api/v1/direct-conversations/expert/$expertProfileId', {});
-    return DirectConversation.fromJson(response['data'] as Map<String, dynamic>);
+  Future<DirectConversation> findOrCreateConversation(
+    String expertProfileId,
+  ) async {
+    final response = await apiPost(
+      '/api/v1/direct-conversations/expert/$expertProfileId',
+      {},
+    );
+    return DirectConversation.fromJson(
+      response['data'] as Map<String, dynamic>,
+    );
   }
 
   Future<List<DirectConversationSummary>> listMyConversations() async {
@@ -30,8 +37,12 @@ class DirectChatService {
   }
 
   Future<DirectConversation> getConversation(String conversationId) async {
-    final response = await apiGet('/api/v1/direct-conversations/$conversationId');
-    return DirectConversation.fromJson(response['data'] as Map<String, dynamic>);
+    final response = await apiGet(
+      '/api/v1/direct-conversations/$conversationId',
+    );
+    return DirectConversation.fromJson(
+      response['data'] as Map<String, dynamic>,
+    );
   }
 
   /// Idempotent under retry with the same [clientMessageId] (BR-DCC-005) — the response
@@ -56,14 +67,13 @@ class DirectChatService {
     String? before,
     int limit = 30,
   }) async {
-    assert(after == null || before == null, 'after and before are mutually exclusive');
+    assert(
+      after == null || before == null,
+      'after and before are mutually exclusive',
+    );
     final response = await apiGet(
       '/api/v1/direct-conversations/$conversationId/timeline',
-      queryParams: {
-        if (after != null) 'after': after,
-        if (before != null) 'before': before,
-        'limit': limit,
-      },
+      queryParams: {'after': ?after, 'before': ?before, 'limit': limit},
     );
     return TimelinePage.fromJson(response['data'] as Map<String, dynamic>);
   }
@@ -72,14 +82,15 @@ class DirectChatService {
   /// client has actually rendered, never a server-side "latest" guess. Idempotent, safe to
   /// call repeatedly (server-side cursor only ever advances, never regresses).
   Future<void> markRead(String conversationId, String lastSeenMessageId) async {
-    await apiPatch(
-      '/api/v1/direct-conversations/$conversationId/read',
-      {'lastSeenMessageId': lastSeenMessageId},
-    );
+    await apiPatch('/api/v1/direct-conversations/$conversationId/read', {
+      'lastSeenMessageId': lastSeenMessageId,
+    });
   }
 
   Future<UnreadSummary> getUnreadSummary() async {
-    final response = await apiGet('/api/v1/direct-conversations/unread-summary');
+    final response = await apiGet(
+      '/api/v1/direct-conversations/unread-summary',
+    );
     return UnreadSummary.fromJson(response['data'] as Map<String, dynamic>);
   }
 
@@ -99,10 +110,15 @@ class DirectChatService {
         'size': size,
       },
     );
-    return ExpertDirectoryPage.fromJson(response['data'] as Map<String, dynamic>);
+    return ExpertDirectoryPage.fromJson(
+      response['data'] as Map<String, dynamic>,
+    );
   }
 
-  Future<ConversationCall> initiateCall(String conversationId, {required String callType}) async {
+  Future<ConversationCall> initiateCall(
+    String conversationId, {
+    required String callType,
+  }) async {
     final response = await apiPost(
       '/api/v1/direct-conversations/$conversationId/calls',
       {'callType': callType},
@@ -122,7 +138,11 @@ class DirectChatService {
   Future<ConversationCall> endCall(String conversationId, String callId) =>
       _patchCall(conversationId, callId, 'end');
 
-  Future<ConversationCall> _patchCall(String conversationId, String callId, String action) async {
+  Future<ConversationCall> _patchCall(
+    String conversationId,
+    String callId,
+    String action,
+  ) async {
     final response = await apiPatch(
       '/api/v1/direct-conversations/$conversationId/calls/$callId/$action',
       {},

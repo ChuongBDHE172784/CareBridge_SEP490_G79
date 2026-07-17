@@ -23,7 +23,9 @@ class _ScriptedDirectChatService extends DirectChatService {
   }) => onGetDirectory!();
 
   @override
-  Future<DirectConversation> findOrCreateConversation(String expertProfileId) async {
+  Future<DirectConversation> findOrCreateConversation(
+    String expertProfileId,
+  ) async {
     lastConversationExpertProfileId = expertProfileId;
     return DirectConversation(
       conversationId: 'conv-1',
@@ -36,13 +38,14 @@ class _ScriptedDirectChatService extends DirectChatService {
   }
 }
 
-ExpertDirectoryPage _pageWith(List<ExpertDirectoryItem> experts) => ExpertDirectoryPage(
-  experts: experts,
-  currentPage: 0,
-  pageSize: 20,
-  totalElements: experts.length,
-  totalPages: 1,
-);
+ExpertDirectoryPage _pageWith(List<ExpertDirectoryItem> experts) =>
+    ExpertDirectoryPage(
+      experts: experts,
+      currentPage: 0,
+      pageSize: 20,
+      totalElements: experts.length,
+      totalPages: 1,
+    );
 
 const _expert = ExpertDirectoryItem(
   expertProfileId: 'expert-profile-1',
@@ -55,14 +58,19 @@ Future<GoRouter> _pumpWithRouter(WidgetTester tester) async {
   final router = GoRouter(
     initialLocation: '/directory',
     routes: [
-      GoRoute(path: '/directory', builder: (_, __) => const ExpertDirectoryScreen()),
+      GoRoute(
+        path: '/directory',
+        builder: (_, _) => const ExpertDirectoryScreen(),
+      ),
       GoRoute(
         path: '/expert/public/:id',
-        builder: (_, state) => Scaffold(body: Text('profile:${state.pathParameters['id']}')),
+        builder: (_, state) =>
+            Scaffold(body: Text('profile:${state.pathParameters['id']}')),
       ),
       GoRoute(
         path: '/direct-chat/:id',
-        builder: (_, state) => Scaffold(body: Text('chat:${state.pathParameters['id']}')),
+        builder: (_, state) =>
+            Scaffold(body: Text('chat:${state.pathParameters['id']}')),
       ),
     ],
   );
@@ -77,27 +85,35 @@ void main() {
   tearDown(() => DirectChatService.instance = original);
 
   // MEDI-FL-03
-  testWidgets('shows a loading indicator while the directory request is pending', (tester) async {
-    DirectChatService.instance = _ScriptedDirectChatService(
-      onGetDirectory: () => Completer<ExpertDirectoryPage>().future,
-    );
-    await _pumpWithRouter(tester);
-    await tester.pump();
+  testWidgets(
+    'shows a loading indicator while the directory request is pending',
+    (tester) async {
+      DirectChatService.instance = _ScriptedDirectChatService(
+        onGetDirectory: () => Completer<ExpertDirectoryPage>().future,
+      );
+      await _pumpWithRouter(tester);
+      await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
-  });
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+    },
+  );
 
-  testWidgets('shows an error + retry button when the directory request fails', (tester) async {
-    DirectChatService.instance = _ScriptedDirectChatService(
-      onGetDirectory: () async => throw Exception('network down'),
-    );
-    await _pumpWithRouter(tester);
-    await tester.pumpAndSettle();
+  testWidgets(
+    'shows an error + retry button when the directory request fails',
+    (tester) async {
+      DirectChatService.instance = _ScriptedDirectChatService(
+        onGetDirectory: () async => throw Exception('network down'),
+      );
+      await _pumpWithRouter(tester);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Thử lại'), findsOneWidget);
-  });
+      expect(find.text('Thử lại'), findsOneWidget);
+    },
+  );
 
-  testWidgets('shows the empty-state text when the directory has no results', (tester) async {
+  testWidgets('shows the empty-state text when the directory has no results', (
+    tester,
+  ) async {
     DirectChatService.instance = _ScriptedDirectChatService(
       onGetDirectory: () async => _pageWith(const []),
     );
@@ -118,32 +134,38 @@ void main() {
   });
 
   // MEDI-FL-06 (CTA button, distinct from tapping the card itself)
-  testWidgets('tapping the CTA on the first card opens the right conversation', (tester) async {
-    final service = _ScriptedDirectChatService(
-      onGetDirectory: () async => _pageWith(const [_expert]),
-    );
-    DirectChatService.instance = service;
-    await _pumpWithRouter(tester);
-    await tester.pumpAndSettle();
+  testWidgets(
+    'tapping the CTA on the first card opens the right conversation',
+    (tester) async {
+      final service = _ScriptedDirectChatService(
+        onGetDirectory: () async => _pageWith(const [_expert]),
+      );
+      DirectChatService.instance = service;
+      await _pumpWithRouter(tester);
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Trò chuyện'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Trò chuyện'));
+      await tester.pumpAndSettle();
 
-    expect(service.lastConversationExpertProfileId, 'expert-profile-1');
-    expect(find.text('chat:conv-1'), findsOneWidget);
-  });
+      expect(service.lastConversationExpertProfileId, 'expert-profile-1');
+      expect(find.text('chat:conv-1'), findsOneWidget);
+    },
+  );
 
   // MEDI-FL-05
-  testWidgets('tapping the card itself (not the CTA button) opens the right profile', (tester) async {
-    DirectChatService.instance = _ScriptedDirectChatService(
-      onGetDirectory: () async => _pageWith(const [_expert]),
-    );
-    await _pumpWithRouter(tester);
-    await tester.pumpAndSettle();
+  testWidgets(
+    'tapping the card itself (not the CTA button) opens the right profile',
+    (tester) async {
+      DirectChatService.instance = _ScriptedDirectChatService(
+        onGetDirectory: () async => _pageWith(const [_expert]),
+      );
+      await _pumpWithRouter(tester);
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('BS. Nguyễn Văn A'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('BS. Nguyễn Văn A'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('profile:expert-profile-1'), findsOneWidget);
-  });
+      expect(find.text('profile:expert-profile-1'), findsOneWidget);
+    },
+  );
 }
