@@ -52,7 +52,7 @@ public class CompreFaceVerificationAdapter implements FaceVerificationAdapter {
             byte[] identityFront, String identityFrontMimeType) {
         if (!enabled) {
             return new FaceVerificationResult(
-                    FaceVerificationStatus.DISABLED, null, threshold, "PENDING_LINUX_VERIFICATION");
+                    FaceVerificationStatus.DISABLED, null, threshold, "CompreFaceIsDisabled");
         }
         if (apiKey == null || apiKey.isBlank()) {
             return new FaceVerificationResult(
