@@ -14,9 +14,11 @@ This service does not diagnose disease, does not prescribe medication, and does
 not replace doctors or emergency services. LangGraph is used only to orchestrate
 the workflow. Final risk is decided by a deterministic rule engine.
 
-Evidence citations are loaded only from the internal Markdown Knowledge Base in
-`data/medical_sources`. Source URLs must belong to the official whitelist
-defined in `app/config.py`; the service never fabricates citations.
+Evidence citations are loaded from the internal Markdown Knowledge Base in
+`data/medical_sources`, but the source of truth for an approved domain is the
+Spring Boot DB registry (`evidence_sources`). The Python service queries the
+internal approved-source endpoint with a short TTL cache; it has no hardcoded
+production allowlist and never fabricates citations.
 
 When local Knowledge Base citations are not available, the service may perform
 realtime official-source search restricted to whitelisted domains. Realtime
@@ -48,6 +50,15 @@ a Gemini key. When Gemini is enabled but unavailable, times out, is rate
 limited, or returns invalid structured output, each assistant task falls back
 to its deterministic implementation; RED is never lowered or delayed.
 
+## Timeout Budget
+
+The Python request deadline is capped at `7s`; Gemini is capped at `6s`; and
+realtime official-source search is capped at `3.5s` (never more than `4s`) and
+also receives the remaining Python request deadline. Spring Boot keeps a `15s`
+request timeout to the Python service and a separate `2s` connect timeout.
+This separation prevents normal Python responses from being mistaken for a
+timeout and triggering Java fallback.
+
 ## Test
 
 ```powershell
@@ -56,6 +67,32 @@ python -m pytest -q
 
 Tests use fake Gemini clients and do not call the external API. The manual
 connection script is the only opt-in live Gemini smoke test.
+
+## Safety Evaluation Runner
+
+Run deterministic safety/regression seeds locally without Gemini, Spring, or
+external evaluator credentials:
+
+```powershell
+python scripts/run_triage_evaluation.py --mode local --output evaluation-report.json
+```
+
+Every clinical seed is marked `PENDING_MEDICAL_REVIEW`; the report is a
+regression/safety signal and is not clinical validation. API evaluation is
+opt-in and rejects production-looking hosts. It requires a dedicated,
+non-production JWT and base URL:
+
+```powershell
+$env:CAREBRIDGE_API_BASE_URL="http://localhost:8080"
+$env:CAREBRIDGE_TEST_JWT="non-production-jwt-only"
+python scripts/run_triage_evaluation.py --mode api
+```
+
+Set `CAREBRIDGE_TEST_PROFILE_ID` only after provisioning a non-production
+fixture. Cases requiring that fixture are reported as
+`INFRASTRUCTURE_SKIPPED` when it is absent. Promptfoo/Galileo are not invoked
+without their explicit external keys; the JSON report records
+`SKIPPED_NO_EXTERNAL_KEY` instead.
 
 ## Endpoints
 
@@ -100,10 +137,7 @@ fixed disclaimer.
 
 ## Evidence Source Sync
 
-```powershell
-python scripts/update_medical_sources.py
-```
-
-The script reads `data/official_sources.json`, rejects non-whitelisted domains,
-creates draft Markdown source files, logs the update time, and does not
-overwrite files marked `adminReviewed: true`.
+Use the Spring evidence-source admin API to propose, review, approve, or
+deprecate domains. Only DB records with status `APPROVED` and a matching stage
+are eligible for retrieval. Realtime discoveries remain `PENDING_REVIEW` and
+are never served as citations until reviewed.

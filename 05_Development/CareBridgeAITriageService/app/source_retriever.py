@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -72,10 +73,17 @@ def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str], s
     return deduped[:4]
 
 
-def retrieve_realtime_sources(normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT") -> list[SourceDocument]:
+def retrieve_realtime_sources(
+    normalized_symptoms: list[str],
+    matched_rules: list[str],
+    stage: str = "INFANT",
+    request_deadline: Optional[float] = None,
+) -> list[SourceDocument]:
     return [
         source
-        for source in official_source_searcher.realtime_official_search(normalized_symptoms, matched_rules, stage)
+        for source in official_source_searcher.realtime_official_search(
+            normalized_symptoms, matched_rules, stage, request_deadline=request_deadline
+        )
         if is_approved_source(source, stage) and validate_source(source, normalized_symptoms, approved_domains(stage))
     ][:4]
 

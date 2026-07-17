@@ -135,7 +135,7 @@ def test_missing_child_age_need_more_info():
 
 def test_no_source_does_not_fabricate_url(monkeypatch, tmp_path):
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules: [])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage, request_deadline=None: [])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: [])
     response = run_triage(make_request(symptomList=["kho tho"], breathingStatus="kho tho"))
     assert response.riskLevel == "RED"
@@ -161,7 +161,7 @@ def test_non_whitelisted_source_is_filtered(monkeypatch, tmp_path):
     )
     (tmp_path / "bad.md").write_text(frontmatter.dumps(post), encoding="utf-8")
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules: [])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage, request_deadline=None: [])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: [])
 
     assert source_retriever.load_sources() == []
@@ -207,7 +207,7 @@ def test_immediate_red_bypasses_realtime_search(monkeypatch, tmp_path):
         url="https://www.who.int/publications/i/item/978-92-4-154837-3",
     )
 
-    def fake_search(symptoms, rules):
+    def fake_search(symptoms, rules, stage, request_deadline=None):
         calls["count"] += 1
         return [realtime_source]
 
@@ -231,7 +231,7 @@ def test_yellow_realtime_who_source_attaches_pending_citation(monkeypatch, tmp_p
     cached = []
 
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage: [realtime_source])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage, request_deadline=None: [realtime_source])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: cached.extend(sources))
 
     response = run_triage(make_request(symptomList=["sot"], temperatureC=38.2))
@@ -320,7 +320,7 @@ def test_realtime_search_does_not_change_risk(monkeypatch, tmp_path):
         url="https://www.who.int/publications/i/item/978-92-4-154837-3",
     )
     monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
-    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage: [realtime_source])
+    monkeypatch.setattr(graph_module, "retrieve_realtime_sources", lambda symptoms, rules, stage, request_deadline=None: [realtime_source])
     monkeypatch.setattr(graph_module, "cache_pending_sources", lambda sources: [])
 
     response = run_triage(make_request(symptomList=["ho"], temperatureC=None))

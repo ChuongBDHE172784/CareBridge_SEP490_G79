@@ -81,6 +81,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -141,6 +142,7 @@ public class DevDataSeeder implements ApplicationRunner {
     private final ContentRepository contentRepository;
     private final ChecklistTemplateRepository checklistTemplateRepository;
     private final ChecklistItemRepository checklistItemRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;

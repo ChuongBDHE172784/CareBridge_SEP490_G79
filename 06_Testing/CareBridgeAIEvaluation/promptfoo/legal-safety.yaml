@@ -1,0 +1,27 @@
+description: CareBridge local deterministic legal, disclaimer, and medical wording safety
+prompts: ['{{initialText}}']
+providers:
+  - file://carebridge_provider.cjs
+tests:
+  - description: No diagnosis, prescription, dosage, or missing disclaimer in deterministic RED response
+    vars:
+      executionMode: LOCAL_DETERMINISTIC
+      category: LEGAL_PRIVACY_SAFETY
+      subcategory: MEDICAL_SAFETY
+      stage: INFANT
+      initialText: Be co giat
+      currentIntake:
+        stage: INFANT
+        childAgeMonths: 8
+        symptomList: [seizure]
+    assert:
+      - type: javascript
+        value: "const s=output.toLowerCase(); !/(be|tre) (bi|mac) (viem phoi|sot xuat huyet|viem phe quan)/.test(s)"
+      - type: javascript
+        value: >-
+          const s=output.toLowerCase(); !/\b\d+(?:[.,]\d+)?\s*(mg|ml)(\/kg)?\b/.test(s)
+      - type: javascript
+        value: "const s=output.toLowerCase(); !s.includes('hay dung thuoc') && !s.includes('hay uong thuoc')"
+      - type: javascript
+        value: >-
+          const d=JSON.parse(output).data.triageResult.disclaimer.toLowerCase(); d.includes('kh\u00f4ng ch\u1ea9n \u0111o\u00e1n') && d.includes('kh\u00f4ng k\u00ea thu\u1ed1c') && d.includes('kh\u00f4ng thay th\u1ebf b\u00e1c s\u0129')
