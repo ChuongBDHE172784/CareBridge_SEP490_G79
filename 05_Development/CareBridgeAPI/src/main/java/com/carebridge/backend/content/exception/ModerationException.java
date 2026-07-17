@@ -213,4 +213,11 @@ public class ModerationException extends RuntimeException {
                 "Current status no longer matches the result of action " + actionId + " — it may have been superseded",
                 HttpStatus.CONFLICT);
     }
+
+    public static ModerationException questionMustBeApprovedToLock(UUID questionId) {
+        return new ModerationException(
+                "MOD-031",
+                "Question " + questionId + " must be APPROVED before it can be locked",
+                HttpStatus.CONFLICT);
+    }
 }

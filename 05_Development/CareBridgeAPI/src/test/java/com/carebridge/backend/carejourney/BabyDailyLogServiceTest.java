@@ -219,6 +219,37 @@ class BabyDailyLogServiceTest {
                 .isInstanceOf(AccessDeniedBusinessException.class);
     }
 
+    @Test
+    void addDailyLog_permittedCaregiver_usesCallerIdentity() {
+        BabyProfile baby = makeOtherMotherBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canManageJournal(baby, MOTHER_ID)).thenReturn(true);
+        when(babyDailyLogRepository.save(any())).thenAnswer(invocation -> {
+            BabyDailyLog log = invocation.getArgument(0);
+            log.setBabyLogId(LOG_ID);
+            log.setCreatedAt(Instant.now());
+            return log;
+        });
+
+        AddBabyDailyLogResponse response = service.addDailyLog(BABY_ID, makeFeedingRequest(), MOTHER_ID);
+
+        assertThat(response.getRecordedBy()).isEqualTo(MOTHER_ID);
+        verify(auditService).log(any(), eq(MOTHER_ID), anyString(), eq(LOG_ID.toString()), any());
+    }
+
+    @Test
+    void addDailyLog_revokedCaregiver_doesNotMutate() {
+        BabyProfile baby = makeOtherMotherBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canManageJournal(baby, MOTHER_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.addDailyLog(BABY_ID, makeFeedingRequest(), MOTHER_ID))
+                .isInstanceOf(AccessDeniedBusinessException.class);
+        verifyNoInteractions(babyDailyLogRepository);
+        verify(auditService).log(eq(AuditAction.SECURITY_EVENT), eq(MOTHER_ID),
+                eq("BABY_DAILY_LOG_ACCESS_DENIED"), eq(BABY_ID.toString()), any());
+    }
+
     // BABY-TC-034-006: Baby archived -> throws BusinessException BABY-032
     @Test
     void addDailyLog_babyArchived_throwsBadRequest() {
@@ -409,6 +440,18 @@ class BabyDailyLogServiceTest {
         verify(auditService, never()).log(any(), any(), anyString(), anyString(), any());
     }
 
+    @Test
+    void getDailyLogDetail_pathBabyMismatch_throwsNotFound() {
+        UUID otherBabyId = UUID.randomUUID();
+        BabyDailyLog existing = makeRecentLog();
+        when(babyDailyLogRepository.findByBabyLogIdAndStatus(LOG_ID, BabyDailyLogStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.getDailyLogDetail(otherBabyId, LOG_ID, makePrincipal(MOTHER_ID)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(babyProfileRepository, babyAccessPolicy);
+    }
+
     // UC195: Delete writes status and retains row
     @Test
     void deleteLog_savesDeletedStatusAndDoesNotHardDelete() {
@@ -423,5 +466,18 @@ class BabyDailyLogServiceTest {
         verify(babyDailyLogRepository).save(argThat(log -> BabyDailyLogStatus.DELETED.equals(log.getStatus())));
         verify(babyDailyLogRepository, never()).delete(any());
         verify(babyDailyLogRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteLog_pathBabyMismatch_throwsNotFound() {
+        UUID otherBabyId = UUID.randomUUID();
+        BabyDailyLog existing = makeRecentLog();
+        when(babyDailyLogRepository.findByBabyLogIdAndStatus(LOG_ID, BabyDailyLogStatus.ACTIVE))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.deleteLog(otherBabyId, LOG_ID, makePrincipal(MOTHER_ID)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(babyProfileRepository, babyAccessPolicy, auditService);
+        verify(babyDailyLogRepository, never()).save(any());
     }
 }

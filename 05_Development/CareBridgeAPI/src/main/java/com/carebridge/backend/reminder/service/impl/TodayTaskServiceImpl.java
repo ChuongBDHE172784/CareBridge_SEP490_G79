@@ -8,6 +8,7 @@ import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.repository.CareTaskRepository;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.ITodayTaskService;
+import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
 
     private final ReminderRepository reminderRepository;
     private final CareTaskRepository careTaskRepository;
+    private final ReminderRecurrenceService reminderRecurrenceService;
 
     @Override
     public List<TodayTaskItem> getTodayTasks(UUID callerId, ZoneId timezone) {
@@ -37,9 +39,7 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
 
         // ADR-TODAY-001: two separate DB queries, merged in service
         List<Reminder> reminders = reminderRepository
-                .findDueTodayByOwnerAndStatusIn(
-                        callerId, startOfDay, endOfDay,
-                        List.of(ReminderStatus.PENDING, ReminderStatus.SNOOZED, ReminderStatus.COMPLETED));
+                .findByOwnerUserIdAndStatusNot(callerId, ReminderStatus.CANCELLED);
 
         List<CareTask> careTasks = careTaskRepository
                 .findByAssignedToAndStatusInAndDueAtBetween(
@@ -48,19 +48,21 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
         List<TodayTaskItem> items = new ArrayList<>();
 
         for (Reminder r : reminders) {
+            var occurrence = reminderRecurrenceService.occurrenceForDate(r, today, timezone);
+            if (occurrence.isEmpty()) {
+                continue;
+            }
+            var generated = occurrence.get();
             String type = r.getReminderType().name();
-            Instant dueAt = r.getStatus() == ReminderStatus.SNOOZED && r.getSnoozedUntil() != null
-                    ? r.getSnoozedUntil()
-                    : r.getScheduledAt();
             items.add(TodayTaskItem.builder()
                     .id(r.getId())
                     .sourceType("REMINDER")
                     .type(type)
                     .title(r.getTitle())
-                    .scheduledAt(r.getScheduledAt())
-                    .dueAt(dueAt)
-                    .snoozedUntil(r.getSnoozedUntil())
-                    .status(r.getStatus().name())
+                    .scheduledAt(generated.scheduledAt())
+                    .dueAt(generated.dueAt())
+                    .snoozedUntil(generated.snoozedUntil())
+                    .status(generated.status().name())
                     .priority(reminderPriority(type))
                     .build());
         }

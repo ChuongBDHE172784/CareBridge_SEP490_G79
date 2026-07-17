@@ -4,8 +4,8 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-AUTH-IMP-003` |
-| **Version** | `1.0` |
-| **Date** | `2026-06-26` |
+| **Version** | `1.1` |
+| **Date** | `2026-07-16` |
 | **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
 | **Author** | `AI Agent` |
@@ -22,6 +22,8 @@
 | Ngày | Người thực hiện | Nội dung thay đổi |
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-03 Login |
+| 2026-07-16 | AI Agent | Đề xuất mở rộng đăng nhập Google và Firebase Phone Auth; chờ phê duyệt |
+| 2026-07-16 | User | Approved v1.1 federated login extension |
 
 ---
 
@@ -1077,3 +1079,41 @@ Theo TDS CB-AUTH-IMP-003 và ADR-AUTH-006, ADR-AUTH-007, ADR-AUTH-008:
 | Refresh Token | JWT dài hạn (7 ngày) dùng để lấy access token mới |
 | Credential Enumeration | Tấn công phân biệt "user not found" vs "wrong password" để liệt kê users |
 | SHA-256 Hash | Hàm hash một chiều dùng để lưu trữ refresh token reference |
+
+---
+
+## Amendment v1.1 — Federated Login (Google and Phone)
+
+This `In Review` amendment adopts the UC-01 v1.1 federated identity model. UC-03 does not trust Firebase as the CareBridge authorization server: after external proof is verified, CareBridge applies its own account-state, role, session, audit, JWT and refresh-token rules.
+
+### L1. Contract
+
+- Endpoint: `POST /api/v1/auth/federated`, shared with first-time registration to avoid client-side account-existence branching.
+- Request: `{ "idToken": "<Firebase ID token>", "deviceInfo": "optional, bounded" }`.
+- Response: existing `ApiResponse<AuthResponse>` plus `isNewUser` and `profileCompleted` fields.
+- Firebase UID/provider subject is the lookup key through `user_identities`; email/phone lookup is forbidden for normal federated login.
+- Existing `/login`, `/verify-otp`, `/login-direct`, `/refresh`, and `/logout` contracts remain unchanged. `/login-direct` remains dev/test only and must be disabled outside approved profiles.
+
+### L2. Login invariants and failure behavior
+
+1. Invalid provider proof always fails before user lookup and produces no CareBridge token.
+2. Disabled, locked, suspended, or deleted CareBridge accounts remain blocked even when Firebase authentication succeeds.
+3. Every successful federated login creates the same refresh-token and `user_sessions` records as password login, including SHA-256 refresh-token storage.
+4. Provider outage returns `503 AUTH-FED-005`; clients may retry with bounded backoff, but backend processing is idempotent by provider identity.
+5. Successful provider proof does not increment or reset password failure counters.
+6. Role-less users can access only role completion, own profile, refresh and logout until a permitted role is selected.
+
+### L3. Authorization and routing
+
+`SecurityConfig` permits anonymous POST only for `/api/v1/auth/federated`. The returned CareBridge JWT remains the sole credential accepted by protected `/api/v1/**` resources. React and Flutter route `profileCompleted=false` to role completion; otherwise they use the existing role route resolver.
+
+### L4. Observability and rollout
+
+- Metrics: success/failure by provider and reason, verification latency, collision count and provider-unavailable count; no PII labels.
+- Audit: successful login and rejected account state; redact tokens and provider subject.
+- Rollout: backend endpoint behind `AUTH_FEDERATED_ENABLED`, then Web Google, Mobile Google, and Phone Auth by platform.
+- Incident trigger: abnormal verification failures, collision spike, duplicate-identity constraint errors, or token verification latency breaching the approved SLO.
+
+### L5. Verification references
+
+Detailed cases are in `UC03_Login_Test-Spec.md`, conditions `FED-LOGIN-COND-001` through `FED-LOGIN-COND-010`. Existing UC-03 cases remain mandatory regression coverage.

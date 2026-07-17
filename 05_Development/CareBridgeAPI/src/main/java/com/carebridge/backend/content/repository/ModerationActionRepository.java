@@ -20,6 +20,9 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
     Page<ModerationAction> findByTargetTypeInOrderByActionAtDesc(
             Collection<ReportTargetType> targetTypes, Pageable pageable);
 
+    Page<ModerationAction> findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+            ReportTargetType targetType, Collection<ModerationActionType> actionTypes, Pageable pageable);
+
     // Dev seed idempotency (DevDataSeeder) — a given target only gets one seeded action of each type
     boolean existsByTargetIdAndActionType(UUID targetId, ModerationActionType actionType);
 

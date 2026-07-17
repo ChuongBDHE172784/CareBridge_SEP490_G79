@@ -78,6 +78,13 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Query("UPDATE CommunityQuestion q SET q.answerCount = q.answerCount + 1 WHERE q.id = :questionId")
     void incrementAnswerCount(@Param("questionId") UUID questionId);
 
+    // Atomic moderation transition: prevents concurrent moderators from recording duplicate LOCK actions.
+    @Modifying
+    @Query("UPDATE CommunityQuestion q SET q.status = com.carebridge.backend.community.entity.QuestionStatus.LOCKED, "
+            + "q.updatedAt = CURRENT_TIMESTAMP "
+            + "WHERE q.id = :questionId AND q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED")
+    int lockIfApproved(@Param("questionId") UUID questionId);
+
     // UC-111: dashboard aggregation — question count grouped by status
     @Query("SELECT q.status, COUNT(q) FROM CommunityQuestion q GROUP BY q.status")
     List<Object[]> countGroupByStatus();

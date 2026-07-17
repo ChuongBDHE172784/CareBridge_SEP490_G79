@@ -62,6 +62,9 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
 
     private Map<String, Object> toAiPayload(RunIntakeRequest request) {
         Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("stage", request.getStage() == null ? "INFANT" : request.getStage().name());
+        payload.put("babyProfileId", request.getBabyProfileId());
+        payload.put("motherProfileId", request.getMotherProfileId());
         payload.put("childAgeMonths", request.getChildAgeMonths());
         payload.put("symptomList", request.getSymptomList() == null ? List.of() : request.getSymptomList());
         payload.put("duration", request.getDuration());

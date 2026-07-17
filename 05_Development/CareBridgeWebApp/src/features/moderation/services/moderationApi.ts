@@ -1,6 +1,8 @@
 import apiClient from '../../../shared/api/apiClient';
 import type {
   ModerationQueuePage,
+  RelatedReportPage,
+  AccountViolationHistoryPage,
   ModerateContentResult,
   ModerationActionType,
   ModerationContentDetail,
@@ -12,6 +14,26 @@ import type {
   ResolveReportResult,
   UndoModerationActionResult,
 } from '../models/moderation';
+
+export async function fetchAccountViolationHistory(params: {
+  page?: number;
+  size?: number;
+} = {}): Promise<AccountViolationHistoryPage> {
+  const res = await apiClient.get<AccountViolationHistoryPage>('/api/v1/admin/moderation/account-history', {
+    params: { page: params.page ?? 0, size: params.size ?? 20 },
+  });
+  return res.data;
+}
+
+export async function fetchRelatedReports(reportId: string, params: {
+  page?: number;
+  size?: number;
+} = {}): Promise<RelatedReportPage> {
+  const res = await apiClient.get<RelatedReportPage>(`/api/v1/admin/moderation/reports/${reportId}/related`, {
+    params: { page: params.page ?? 0, size: params.size ?? 20 },
+  });
+  return res.data;
+}
 
 // ModerationController returns raw DTOs (no ApiResponse envelope) — unlike content endpoints.
 export async function fetchModerationQueue(params: {

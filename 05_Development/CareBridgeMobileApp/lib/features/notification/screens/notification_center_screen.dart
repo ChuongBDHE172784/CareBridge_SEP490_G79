@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
+import '../routing/consultation_notification_routing.dart';
 import 'notification_detail_screen.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -135,10 +137,18 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Widget _buildHeader() {
+    final canPop = Navigator.of(context).canPop();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      padding: EdgeInsets.fromLTRB(canPop ? 12 : 24, 24, 24, 0),
       child: Row(
         children: [
+          if (canPop) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: _primary),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const SizedBox(width: 8),
+          ],
           const Expanded(
             child: Text(
               'Thông báo của bạn',
@@ -230,6 +240,20 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       onTap: () async {
         await _markAsRead(n);
         if (!mounted) return;
+        // TDS §13.8 — MESSAGE bypasses the generic detail screen and deep-links straight
+        // into the conversation; every other type keeps the existing generic behavior.
+        final conversationId = n.type.toUpperCase() == 'MESSAGE'
+            ? (n.metadata?['conversationId'] as String?)
+            : null;
+        if (conversationId != null) {
+          context.push('/direct-chat/$conversationId');
+          return;
+        }
+        final consultationRoute = resolveNotificationRoute(n);
+        if (consultationRoute != null) {
+          context.push(consultationRoute);
+          return;
+        }
         await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => NotificationDetailScreen(notification: n),
@@ -357,6 +381,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         icon = Icons.forum_outlined;
         bgColor = _surfaceContainerLow;
         iconColor = _onSurfaceVariant;
+        break;
+      case 'CONSULTATION':
+        icon = Icons.medical_services_outlined;
+        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
+        iconColor = isUnread ? _primary : _onSurfaceVariant;
         break;
       case 'SYSTEM':
         icon = Icons.update_outlined;

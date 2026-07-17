@@ -24,7 +24,7 @@ def test_irrelevant_source_rejected():
 
 def test_whitelisted_relevant_source_allowed():
     source = source_doc()
-    assert validate_source(source, ["fever"]) is True
+    assert validate_source(source, ["fever"], {"who.int"}) is True
 
 
 def source_doc(

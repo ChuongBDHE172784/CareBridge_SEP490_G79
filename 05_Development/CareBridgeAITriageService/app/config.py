@@ -90,16 +90,12 @@ RISK_COLORS = {
     "NEED_MORE_INFO": "#9CA3AF",
 }
 
-OFFICIAL_DOMAIN_WHITELIST = {
-    "who.int",
-    "moh.gov.vn",
-    "mch.moh.gov.vn",
-    "cdc.gov",
-    "unicef.org",
-    "benhviennhitrunguong.gov.vn",
-    "nhidong.org.vn",
-    "bvndtp.org.vn",
-}
+# Approved evidence domains are fetched from Spring's DB-managed registry.  Do not
+# restore a static allowlist here: deployment-time code must not become the source
+# of truth for medical evidence approval.
+EVIDENCE_REGISTRY_URL = (os.getenv("AI_TRIAGE_EVIDENCE_REGISTRY_URL") or "").rstrip("/")
+EVIDENCE_REGISTRY_INTERNAL_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
+EVIDENCE_REGISTRY_CACHE_SECONDS = _int_env("AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS", 300, 30, 3600)
 
 GRAPH_VERSION = "tv5-gemini-assisted-triage-1.1"
 RULE_SET_VERSION = "pediatric-risk-rules-1.0"

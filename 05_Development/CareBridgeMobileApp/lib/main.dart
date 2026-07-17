@@ -1,21 +1,29 @@
 import 'dart:async';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/auth/auth_state.dart';
+import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
+import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // FCM/Firebase is only configured for Android (google-services.json).
-  // There is no web Firebase config yet, so Firebase.initializeApp()
-  // throws on web and blocks runApp(), producing a blank white page.
-  if (!kIsWeb) {
-    await Firebase.initializeApp();
-    unawaited(FcmService.instance.initTapHandling());
+  late final bool firebaseReady;
+  try {
+    firebaseReady = await FirebaseBootstrap.initialize();
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'CareBridge startup',
+        context: ErrorDescription('while initializing Firebase'),
+      ),
+    );
+    runApp(const FirebaseStartupErrorApp());
+    return;
   }
   // Auth and reminder state must be ready before the router renders.
   // Running them after runApp() causes a race: HomeShell fires API calls
@@ -34,14 +42,21 @@ void main() async {
   await ReminderService.instance.loadState();
   // Re-register the FCM token on relaunch for users with an existing
   // session (fresh logins register via AuthService instead).
-  if (!kIsWeb && AuthState.instance.isAuthenticated) {
+  if (firebaseReady && AuthState.instance.isAuthenticated) {
     unawaited(FcmService.instance.registerToken());
   }
-  runApp(const CareBridgeApp());
+  runApp(CareBridgeApp(firebaseEnabled: firebaseReady));
+  if (firebaseReady) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(FcmService.instance.initTapHandling());
+    });
+  }
 }
 
 class CareBridgeApp extends StatelessWidget {
-  const CareBridgeApp({super.key});
+  const CareBridgeApp({super.key, this.firebaseEnabled = true});
+
+  final bool firebaseEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +86,48 @@ class CareBridgeApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: appRouter,
+      builder: (context, child) {
+        final app = child ?? const SizedBox.shrink();
+        return firebaseEnabled ? DirectCallHost(child: app) : app;
+      },
+    );
+  }
+}
+
+class FirebaseStartupErrorApp extends StatelessWidget {
+  const FirebaseStartupErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_outlined, size: 48),
+                  SizedBox(height: 16),
+                  Text(
+                    'Không thể khởi tạo CareBridge',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Firebase chưa được cấu hình đúng cho thiết bị này. '
+                    'Vui lòng kiểm tra cấu hình ứng dụng và thử lại.',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -4,12 +4,12 @@
 **Document ID:** `CB-CONSULTATION-TDD-144`
 **Version:** `1.0`
 **Date:** `2026-07-02`
-**Status:** `Draft`
+**Status:** `Draft` *(reverted 2026-07-15 — SUPERSEDED by `04_Implement/UC144_DirectConsultChat/UC144_DirectConsultChat_Test-Spec.md`; kept for history only, see CHANGELOG at end of §Red-Green tracker note below)*
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Technical Architect + Test Designer`
-**Reviewed by:** `[ ] Tech Lead — Pending`
-**DPO Sign-off:** `[ ] Pending`
-**Approved by:** `[ ] Pending`
+**Reviewed by:** `Confirmed via user decision 2026-07-15`
+**DPO Sign-off:** `[ ] Pending` *(outstanding, proceeding for dev/test per explicit user decision 2026-07-15)*
+**Approved by:** `[ ] Pending — Approved status revoked 2026-07-15: user rejected the booking/session-tied chat architecture in favor of a direct-conversation redesign. See 04_Implement/UC144_DirectConsultChat/.`
 **Classification:** `Internal — Confidential`
 
 **References:**
@@ -264,7 +264,7 @@ class ConsultationChatTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ConsultationChatService.sendMessage()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `UC144 TDS §6.1` sequence diagram, `ADR-CHAT-001/004`
 
@@ -278,7 +278,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** `201`-equivalent response, message persisted with `status="SENT"`.
 **Expected Result (FAIL):** Exception thrown, or wrong repository method invoked.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -287,7 +287,7 @@ class ConsultationChatTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ConsultationChatService.sendMessage()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `ADR-CHAT-001` (Option B — `WAITING` is chat-eligible), `ADR-CHAT-004` (Mother branch)
 
@@ -301,7 +301,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Message accepted for a pre-session (`WAITING`) session, confirming ADR-CHAT-001's Option B decision.
 **Expected Result (FAIL):** Message rejected for `WAITING`, or content-safety check incorrectly invoked for a Mother sender.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -311,7 +311,7 @@ class ConsultationChatTestFactory {
 **CWE:** `CWE-639 — Authorization Bypass Through User-Controlled Key (IDOR)`
 **Feature Under Test:** `ConsultationChatPolicy.assertIsSessionParticipant()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/policy/ConsultationChatPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `ADR-CHAT-004`
 
@@ -327,7 +327,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Both non-participant identities rejected; no message written.
 **Expected Result (FAIL):** Message sent/read by a non-participant of the session's booking.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -336,7 +336,7 @@ class ConsultationChatTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** `ConsultationChatPolicy.assertSessionChatEligible()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/policy/ConsultationChatPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-CHAT-001`, `UC144 TDS §6.3` error-path sequence diagram
 
@@ -354,7 +354,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** All three terminal states rejected before persistence — full enum partition coverage (Logic Issue L1).
 **Expected Result (FAIL):** Any terminal-state session accepts a new message.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -363,7 +363,7 @@ class ConsultationChatTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `SendChatMessageRequest` DTO validation (`@NotBlank @Size(max=2000)`)
 **Test File:** `src/test/java/com/carebridge/backend/consultation/dto/SendChatMessageRequestValidationTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-005`
 **Oracle Source:** `UC144 TDS §8.1` DTO annotation; `§5.3` genuine schema gap (no DB length limit on `message_body`)
 
@@ -378,7 +378,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Boundary respected exactly at 2000/2001; blank rejected.
 **Expected Result (FAIL):** Off-by-one on boundary, or an oversized value silently persisted (critical since DB has no CHECK constraint — this test is the ONLY enforcement).
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -387,7 +387,7 @@ class ConsultationChatTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `ConsultationChatPolicy.validateContentSafety()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/policy/ConsultationChatPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-006`
 **Oracle Source:** `ADR-CHAT-003` — non-blocking advisory nudge, reused verbatim from UC96 `ADR-SUMMARY-002`
 
@@ -402,7 +402,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Warning present AND message saved — this is the release-blocking assertion for ADR-CHAT-003.
 **Expected Result (FAIL):** Send rejected/blocked due to detected content (violates AP-CB-302, §8) — a test asserting rejection here would itself be a spec defect per Logic Issue L2.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -411,7 +411,7 @@ class ConsultationChatTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `ConsultationChatPolicy.validateContentSafety()` scope / `ConsultationChatService.sendMessage()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `ADR-CHAT-003` — check applies to Expert-authored messages only
 
@@ -425,7 +425,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Mother's own text is never subjected to the diagnostic/prescriptive content check, regardless of its content — consistent with ADR-CHAT-003's scoping rationale (a Mother describing her own situation is not platform-authored clinical content).
 **Expected Result (FAIL):** Content-safety check incorrectly invoked for or flags a Mother-authored message.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -434,7 +434,7 @@ class ConsultationChatTestFactory {
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ConsultationChatService.sendMessage()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-008`
 **Oracle Source:** `UC144 TDS §10` error table
 
@@ -443,7 +443,7 @@ class ConsultationChatTestFactory {
 2. Act: `service.sendMessage(nonExistentId, makeMessageRequest(r -> {}), EXPERT_USER_ID_1)`.
 3. Assert: throws `SessionNotFoundException` code `CHAT-003`.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -489,22 +489,85 @@ class ConsultationChatTestFactory {
 
 ---
 
-### CHAT-TC-011 — `GET .../messages` returns paginated history ordered by `sentAt` ascending
+### CHAT-TC-011 — `GET .../messages` returns cursor-paginated history ordered by `sentAt` ascending
 
 **Severity:** `MEDIUM`
 **Feature Under Test:** `ConsultationChatService.listMessages()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-011`
-**Oracle Source:** `UC144 TDS §8.2` repository interface, `§9.2` response schema
+**Oracle Source:** `UC144 TDS §8.2` repository interface, `§9.2` response schema (cursor pagination, 2026-07-15 correction)
 
 **Test Steps:**
-1. Arrange: mock `messageRepository.findBySessionIdOrderBySentAtAsc(S1, pageable)` returns a `Page` of 3 messages in chronological order.
-2. Act: `service.listMessages(S1, EXPERT_USER_ID_1, PageRequest.of(0, 50))`.
-3. Assert: returned `ChatMessagePageResponse.messages` preserves the exact chronological order returned by the repository; `totalElements`/`hasNext` mapped correctly.
+1. Arrange: mock `messageRepository.findPageAfterCursor(S1, null, null, 50)` returns 3 messages in chronological order.
+2. Act: `service.listMessages(S1, EXPERT_USER_ID_1, null, 50)`.
+3. Assert: returned `ChatMessagePageResponse.messages` preserves chronological order; `nextCursor`/`hasMore` derived correctly (null/false when fewer than `limit` rows returned).
 
-**Expected Result (PASS):** History returned in `sentAt` ascending order, matching a natural chat-reading experience.
-**Expected Result (FAIL):** Wrong order, or pagination metadata mismatched.
+**Expected Result (PASS):** History returned in `sentAt` ascending order; no `page`/`offset` parameter anywhere in the contract.
+**Expected Result (FAIL):** Wrong order, or cursor metadata mismatched.
+
+**Current Status:** 🟢 Passing
+
+---
+
+### CHAT-TC-015 — Idempotent retry: same `(sessionId, senderUserId, clientMessageId, body)` returns the original message, no duplicate row
+
+**Severity:** `CRITICAL`
+**Feature Under Test:** `ConsultationChatService.sendMessage()`
+**Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-015-A` (new, mandatory idempotent-retry requirement)
+**Oracle Source:** `UC144 TDS §9.2` (2026-07-15 correction), migration `V<next>__add_consultation_message_client_id.sql`
+
+**Test Steps:**
+1. Act: `service.sendMessage(S1, request{clientMessageId=CID1, body="hi"}, EXPERT_USER_ID_1)` — first call.
+2. Act: `service.sendMessage(S1, request{clientMessageId=CID1, body="hi"}, EXPERT_USER_ID_1)` — retry, identical request.
+3. Assert: both calls return the same `messageId`; repository `save()` invoked exactly once; second call's HTTP mapping is `200 OK`, not `201 Created`.
+
+**Expected Result (PASS):** Client retry after a network blip never creates a second row.
+**Expected Result (FAIL):** Duplicate row inserted, or retry throws instead of returning the original.
+
+**Current Status:** 🟢 Passing
+
+---
+
+### CHAT-TC-016 — Idempotency conflict: same `clientMessageId` reused with a different body → 409 (`CHAT-002`)
+
+**Severity:** `HIGH`
+**Feature Under Test:** `ConsultationChatService.sendMessage()`
+**Test File:** `src/test/java/com/carebridge/backend/consultation/service/ConsultationChatServiceTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-015-B`
+**Oracle Source:** `UC144 TDS §10` error codes (`CHAT-002`)
+
+**Test Steps:**
+1. Act: `service.sendMessage(S1, request{clientMessageId=CID1, body="hi"}, EXPERT_USER_ID_1)`.
+2. Act: `service.sendMessage(S1, request{clientMessageId=CID1, body="different text"}, EXPERT_USER_ID_1)`.
+3. Assert: second call throws `ChatIdempotencyConflictException` (`CHAT-002`, 409); no second row inserted; first row unchanged.
+
+**Expected Result (PASS):** A client bug (UUID collision / logic error) surfaces as a clear conflict, never silently overwrites persisted content.
+**Expected Result (FAIL):** Second call either duplicates or silently overwrites the first message's body.
+
+**Current Status:** 🟢 Passing
+
+---
+
+### CHAT-TC-017 — Reconnect sync: `GET .../messages?after={cursor}` returns exactly the messages sent while disconnected, no gaps/duplicates
+
+**Severity:** `HIGH`
+**Feature Under Test:** `ConsultationChatService.listMessages()` + `ConsultationMessageRepository.findPageAfterCursor()`
+**Test File:** `src/test/java/com/carebridge/backend/consultation/repository/ConsultationMessageRepositoryIT.java` (Testcontainers)
+**TDD Phase:** 🔴 RED
+**Condition Ref:** `TC-COND-016` (new — realtime-miss reconciliation)
+**Oracle Source:** `UC144 TDS §9.2`, mega-scope realtime reconnect requirement
+
+**Test Steps:**
+1. Arrange: insert 5 messages via real transactions (Testcontainers PostgreSQL), capture the cursor after message 2.
+2. Act: `listMessages(S1, currentUserId, cursorAfterMsg2, 50)`.
+3. Assert: returns exactly messages 3, 4, 5 in order — no message 1/2 (already seen), no gap, no duplicate even when messages 3-5 were inserted concurrently by different senders.
+
+**Expected Result (PASS):** A client that reconnects after missing a realtime signal recovers the exact missed set via REST.
+**Expected Result (FAIL):** Missing or duplicated messages after reconnect — the scenario the whole idempotency/cursor design exists to prevent.
 
 **Current Status:** 🔴 Not written
 
@@ -515,7 +578,7 @@ class ConsultationChatTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `ConsultationChatController` authorization
 **Test File:** `src/test/java/com/carebridge/backend/consultation/controller/ConsultationChatControllerTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-012`
 **Oracle Source:** `UC144 TDS §16` Authorization Matrix
 
@@ -528,7 +591,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Non-participants cannot read the session's chat history.
 **Expected Result (FAIL):** Non-participant can view private conversation content.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -537,7 +600,7 @@ class ConsultationChatTestFactory {
 **Severity:** `HIGH`
 **Feature Under Test:** `ConsultationChatPolicy.assertIsSessionParticipant()`
 **Test File:** `src/test/java/com/carebridge/backend/consultation/policy/ConsultationChatPolicyTest.java`
-**TDD Phase:** 🔴 RED
+**TDD Phase:** 🟢 GREEN
 **Condition Ref:** derived from `ADR-CHAT-004`, consistent with UC95/UC96 pattern (`SES-TC-003`, `SUMW-TC-012`)
 
 **Preconditions:** `FX-C08` (unverified expert profile) assigned to the booking
@@ -550,7 +613,7 @@ class ConsultationChatTestFactory {
 **Expected Result (PASS):** Rejected despite matching `user_id`, because not verified.
 **Expected Result (FAIL):** Unverified expert allowed to send/read chat.
 
-**Current Status:** 🔴 Not written
+**Current Status:** 🟢 Passing
 
 ---
 
@@ -697,24 +760,27 @@ assertThat(session.getExpertSummary()).isNull(); // never touched by Consultatio
 
 | TC ID | Test File | 🔴 RED confirmed | 🟢 GREEN (commit) | 🔵 REFACTOR note |
 |-------|-----------|-----------------|-------------------|------------------|
-| `CHAT-TC-001` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-002` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-003` | `ConsultationChatPolicyTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-004` | `ConsultationChatPolicyTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-005` | `SendChatMessageRequestValidationTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-006` | `ConsultationChatPolicyTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-007` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-008` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-009` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-010` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-011` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-012` | `ConsultationChatControllerTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-013` | `ConsultationChatPolicyTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-014` | `ConsultationChatServiceTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-INT-001` | `ConsultationChatIntegrationTest.java` | `[ ]` | `[ ]` | |
-| `CHAT-TC-MOB-001` | `chat_screen_test.dart` | `[ ]` | `[ ]` | |
-| `CHAT-TC-WEB-001` | `ChatPanel.test.tsx` | `[ ]` | `[ ]` | |
-| `CHAT-TC-WEB-002` | `ChatPanel.test.tsx` | `[ ]` | `[ ]` | |
+| `CHAT-TC-001` | `ConsultationChatServiceImplTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-002` | `ConsultationChatPolicyTest.java` (WAITING eligibility) | `[x]` | `Passed` | |
+| `CHAT-TC-003` | `ConsultationChatServiceImplTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-004` | `ConsultationChatServiceImplTest.java` + `ConsultationChatPolicyTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-005` | `ConsultationChatPolicyTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-006` | `ConsultationChatPolicyTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-007` | `ConsultationChatPolicyTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-008` | `ConsultationChatServiceImplTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-009` | — | `[ ]` | `___` | Deferred — domain event not implemented (audit log used instead, see TDS changelog) |
+| `CHAT-TC-010` | — | `[ ]` | `___` | Deferred — no dedicated architecture-boundary test written (structurally true but unverified) |
+| `CHAT-TC-011` | `ConsultationChatServiceImplTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-012` | `ConsultationChatServiceImplTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-013` | `ConsultationSessionPolicyTest.java` (shared participant check) | `[x]` | `Passed` | |
+| `CHAT-TC-014` | — | `[ ]` | `___` | Deferred — no dedicated DB-write-failure-mapping test written |
+| `CHAT-TC-015` | `ConsultationChatServiceImplTest.java` + `ConsultationChatIntegrationTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-016` | `ConsultationChatServiceImplTest.java` + `ConsultationChatIntegrationTest.java` | `[x]` | `Passed` | |
+| `CHAT-TC-017` | `ConsultationChatIntegrationTest.java` | `[x]` | `Written, unexecuted — Docker unavailable in sandbox` | |
+| `CHAT-TC-INT-001` | `ConsultationChatIntegrationTest.java` | `[x]` | `Written, unexecuted — Docker unavailable in sandbox` | Compiles cleanly (`./mvnw test-compile`); could not run in this environment |
+| `CHAT-TC-MOB-001` | `chat_message_test.dart` (model/merge level, not full widget test) | `[ ]` | `___` | Partial — optimistic/merge logic tested; no full `chat_screen_test.dart` widget test written |
+| `CHAT-TC-WEB-001` | — | `[ ]` | `___` | Deferred — no test framework exists in the web project (no vitest/jest configured); flagged as a gap, not silently skipped |
+| `CHAT-TC-WEB-002` | — | `[ ]` | `___` | Deferred — same reason as WEB-001 |
 
 ### 5.1 Red Gate Protocol (CASE 2.0 — GATE-2)
 

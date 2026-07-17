@@ -28,7 +28,8 @@ public interface IExpertProfileService {
     void renewVerification(UUID userId);
 
     // ── UC-65 ──────────────────────────────────────────────────────────
-    ExpertDirectoryResponse getPublicDirectory(String specialty, int page, int size);
+    // ADR-MEDI-001 — q is optional free-text search (full_name / professional_title / workplace).
+    ExpertDirectoryResponse getPublicDirectory(String specialty, String q, int page, int size);
 
     ExpertProfileDetailResponse getPublicProfile(UUID expertProfileId);
 

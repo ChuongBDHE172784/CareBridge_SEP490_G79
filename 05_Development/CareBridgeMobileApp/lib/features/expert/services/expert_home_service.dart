@@ -1,8 +1,21 @@
 import '../../../core/network/api_client.dart';
 
+abstract class ExpertHomeApi {
+  Future<dynamic> get(String path);
+}
+
+class _DefaultExpertHomeApi implements ExpertHomeApi {
+  @override
+  Future<dynamic> get(String path) => apiGet(path);
+}
+
 class ExpertHomeService {
-  static final ExpertHomeService instance = ExpertHomeService._();
-  ExpertHomeService._();
+  static ExpertHomeService instance = ExpertHomeService();
+
+  final ExpertHomeApi api;
+
+  ExpertHomeService({ExpertHomeApi? api})
+    : api = api ?? _DefaultExpertHomeApi();
 
   Future<ExpertHomeSnapshot> loadSnapshot() async {
     ExpertHomeProfile profile = const ExpertHomeProfile();
@@ -14,14 +27,14 @@ class ExpertHomeService {
     final supportRequests = <ExpertSupportRequest>[];
 
     try {
-      final profileJson = await apiGet('/api/v1/expert/profiles/me');
+      final profileJson = await api.get('/api/v1/expert/profiles/me');
       profile = ExpertHomeProfile.fromJson(
         profileJson['data'] as Map<String, dynamic>? ?? {},
       );
     } catch (_) {}
 
     try {
-      final availabilityJson = await apiGet('/api/v1/expert/availability/me');
+      final availabilityJson = await api.get('/api/v1/expert/availability/me');
       final rows = availabilityJson['data'] as List? ?? [];
       final now = DateTime.now().toUtc();
       online = rows.cast<Map<String, dynamic>>().any((row) {
@@ -37,64 +50,48 @@ class ExpertHomeService {
     } catch (_) {}
 
     try {
-      // TODO: replace fallback when UC-143 endpoint is implemented in backend.
-      final consultationsJson = await apiGet(
-        '/api/v1/consultations/requests?page=0&size=5',
+      final summaryJson = await api.get(
+        '/api/v1/consultation-requests/pending-summary',
       );
-      final rows = consultationsJson['data'] as List? ?? [];
-      consultationCount = rows.length;
+      requestCount =
+          ((summaryJson['data'] as Map<String, dynamic>?)?['pendingCount']
+                  as num?)
+              ?.toInt() ??
+          0;
+      final requestsJson = await api.get(
+        '/api/v1/consultation-requests/assigned?status=PENDING&page=0&size=5',
+      );
+      final rows =
+          (requestsJson['data'] ?? requestsJson['content']) as List? ?? [];
       if (rows.isNotEmpty) {
         nextConsultation = ExpertConsultation.fromJson(
           rows.first as Map<String, dynamic>,
         );
       }
-    } catch (_) {
-      consultationCount = 3;
-      nextConsultation = const ExpertConsultation(
-        motherName: 'Mẹ bé An Nhiên',
-        topic: 'Tư vấn dinh dưỡng dặm',
-        timeLabel: '14:00',
-      );
-    }
+    } catch (_) {}
 
     try {
-      final nearbyJson = await apiGet('/api/v1/nearbycare/support-requests/open');
+      final nearbyJson = await api.get(
+        '/api/v1/nearbycare/support-requests/open',
+      );
       final rows = nearbyJson['data'] as List? ?? [];
-      requestCount = rows.length;
       supportRequests.addAll(
-        rows.take(2).map(
-              (row) => ExpertSupportRequest.fromJson(
-                row as Map<String, dynamic>,
-              ),
+        rows
+            .take(2)
+            .map(
+              (row) =>
+                  ExpertSupportRequest.fromJson(row as Map<String, dynamic>),
             ),
       );
-    } catch (_) {
-      requestCount = 5;
-    }
+    } catch (_) {}
 
     try {
-      final questionsJson = await apiGet(
+      final questionsJson = await api.get(
         '/api/v1/community/questions?page=0&size=20&hasExpertAnswer=false',
       );
       final rows = questionsJson['data'] as List? ?? [];
       questionCount = rows.length;
-    } catch (_) {
-      questionCount = 12;
-    }
-
-    final supports = supportRequests.isEmpty
-        ? const [
-            ExpertSupportRequest(
-              title: 'Bé sốt cao liên tục',
-              subtitle: 'Mẹ Tín Phát • 15 phút trước',
-              urgent: true,
-            ),
-            ExpertSupportRequest(
-              title: 'Lịch tiêm nhắc lại',
-              subtitle: 'Mẹ Bắp • 1 giờ trước',
-            ),
-          ]
-        : supportRequests;
+    } catch (_) {}
 
     return ExpertHomeSnapshot(
       profile: profile,
@@ -103,7 +100,7 @@ class ExpertHomeService {
       requestCount: requestCount,
       questionCount: questionCount,
       nextConsultation: nextConsultation,
-      supportRequests: supports,
+      supportRequests: supportRequests,
     );
   }
 
@@ -157,8 +154,8 @@ class ExpertHomeProfile {
       subtitle: title?.isNotEmpty == true
           ? title!
           : specialty?.isNotEmpty == true
-              ? specialty!
-              : 'Chuyên gia CareBridge',
+          ? specialty!
+          : 'Chuyên gia CareBridge',
     );
   }
 }
@@ -175,13 +172,12 @@ class ExpertConsultation {
   });
 
   factory ExpertConsultation.fromJson(Map<String, dynamic> json) {
-    final start = DateTime.tryParse(json['scheduledStart'] as String? ?? '');
+    final created = DateTime.tryParse(json['createdAt'] as String? ?? '');
     return ExpertConsultation(
-      motherName: json['motherDisplayName'] as String? ?? 'Người dùng CareBridge',
-      topic: json['reason'] as String? ?? 'Tư vấn sức khỏe',
-      timeLabel: start != null
-          ? '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}'
-          : 'Hôm nay',
+      motherName:
+          json['counterpartDisplayName'] as String? ?? 'Người dùng CareBridge',
+      topic: json['topic'] as String? ?? 'Tư vấn sức khỏe',
+      timeLabel: created == null ? 'Mới' : _timeAgo(created),
     );
   }
 }
@@ -202,7 +198,9 @@ class ExpertSupportRequest {
     return ExpertSupportRequest(
       title: json['description'] as String? ?? 'Yêu cầu hỗ trợ gần đây',
       subtitle: created == null ? 'Vừa cập nhật' : _timeAgo(created),
-      urgent: (json['supportType'] as String? ?? '').toUpperCase().contains('EMERGENCY'),
+      urgent: (json['supportType'] as String? ?? '').toUpperCase().contains(
+        'EMERGENCY',
+      ),
     );
   }
 }

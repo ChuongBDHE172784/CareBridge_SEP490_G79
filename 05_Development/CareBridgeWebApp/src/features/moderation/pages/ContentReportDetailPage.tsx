@@ -2,10 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
+import { fetchModerationQueue, fetchRelatedReports, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
+import type { RelatedReportItem } from '../models/moderation';
 import { formatReportReason, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
 import type { ResolutionOutcome } from '../models/moderation';
+import RelatedReportsCard from '../components/RelatedReportsCard';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -32,6 +34,11 @@ export default function ContentReportDetailPage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [confirmingOutcome, setConfirmingOutcome] = useState<ResolutionOutcome | null>(null);
+  const [relatedReports, setRelatedReports] = useState<RelatedReportItem[]>([]);
+  const [relatedTotal, setRelatedTotal] = useState(0);
+  const [relatedPage, setRelatedPage] = useState(0);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState(false);
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
@@ -54,6 +61,19 @@ export default function ContentReportDetailPage() {
   }, [reportId]);
 
   useEffect(() => { loadItem(); }, [loadItem]);
+
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    setRelatedLoading(true);
+    setRelatedError(false);
+    void fetchRelatedReports(reportId, { page: relatedPage }).then((result) => {
+      if (!active) return;
+      setRelatedReports(result.content);
+      setRelatedTotal(result.totalElements);
+    }).catch(() => { if (active) setRelatedError(true); }).finally(() => { if (active) setRelatedLoading(false); });
+    return () => { active = false; };
+  }, [reportId, relatedPage]);
 
   // Outcomes in CONFIRM_CONFIG open a ConfirmDialog first (misclick protection on destructive
   // actions); the rest (APPROVE/DISMISS) execute immediately as before.
@@ -269,17 +289,7 @@ export default function ContentReportDetailPage() {
                   {actionError && <p className="text-error text-xs mt-2">{actionError}</p>}
                 </div>
 
-                <div className="bg-surface rounded-2xl p-5 shadow-md">
-                  <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
-                    Lịch sử báo cáo
-                  </p>
-                  <p className="text-sm text-outline">
-                    Tổng số lượt báo cáo trên mục tiêu này: <strong>{item.reportCount}</strong>
-                  </p>
-                  <p className="text-xs text-outline mt-2">
-                    Chi tiết từng báo cáo tương tự chưa được backend cung cấp.
-                  </p>
-                </div>
+                <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
               </div>
             </div>
           </>

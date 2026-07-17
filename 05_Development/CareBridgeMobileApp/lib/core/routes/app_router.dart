@@ -8,7 +8,7 @@ import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/home/screens/home_shell.dart';
-import '../../features/home/screens/expert_app_home_screen.dart';
+import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
@@ -26,6 +26,7 @@ import '../../features/baby/screens/baby_log_summary_screen.dart';
 import '../../features/baby/screens/development_milestone_detail_screen.dart';
 import '../../features/baby/screens/record_milestone_screen.dart';
 import '../../features/baby/models/baby_daily_log_model.dart';
+import '../../features/baby/models/milestone_model.dart';
 
 import '../../features/healthRecords/screens/edit_health_record_screen.dart';
 
@@ -43,10 +44,14 @@ import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
 import '../../features/familySync/screens/pending_invitations_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
+import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
+import '../../features/healthRecords/models/vaccination_model.dart';
+import '../../features/healthRecords/screens/growth_measurement_history_screen.dart';
+import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
@@ -61,17 +66,21 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_home_screen.dart';
 import '../../features/expert/screens/expert_contributions_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
+import '../../features/directChat/screens/expert_directory_screen.dart';
+import '../../features/directChat/screens/conversation_list_screen.dart';
+import '../../features/directChat/screens/direct_chat_screen.dart';
+import '../../features/consultation/screens/my_consultation_requests_screen.dart';
+import '../../features/consultation/screens/consultation_request_detail_screen.dart';
 
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
     case 'FAMILY':
       return const FamilyMemberHomeScreen();
     case 'EXPERT':
-      return const ExpertAppHomeScreen();
+      return const ExpertHomeShell();
     case 'MOTHER':
       return HomeShell(initialIndex: initialIndex);
     default:
@@ -188,7 +197,16 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/journey-setup',
-      builder: (context, state) => const JourneySetupScreen(),
+      builder: (context, state) {
+        final journeyId = state.uri.queryParameters['journeyId'];
+        return JourneySetupScreen(
+          journeyId: journeyId,
+          isEditMode:
+              state.uri.queryParameters['mode'] == 'edit' &&
+              journeyId != null &&
+              journeyId.isNotEmpty,
+        );
+      },
     ),
     GoRoute(
       path: '/journey-update',
@@ -221,6 +239,33 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/health-records',
       builder: (context, state) => const HealthRecordTimelineScreen(),
+    ),
+    // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call. Role/authorization
+    // is always resolved server-side from the JWT, never from a client-supplied flag.
+    GoRoute(
+      path: '/experts',
+      builder: (context, state) => const ExpertDirectoryScreen(),
+    ),
+    GoRoute(
+      path: '/direct-chats',
+      builder: (context, state) => const ConversationListScreen(),
+    ),
+    GoRoute(
+      path: '/direct-chat/:conversationId',
+      builder: (context, state) {
+        final conversationId = state.pathParameters['conversationId'] ?? '';
+        return DirectChatScreen(conversationId: conversationId);
+      },
+    ),
+    GoRoute(
+      path: '/consultation-requests',
+      builder: (context, state) => const MyConsultationRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/consultation-requests/:requestId',
+      builder: (context, state) => ConsultationRequestDetailScreen(
+        requestId: state.pathParameters['requestId'] ?? '',
+      ),
     ),
     GoRoute(
       path: '/reminders/all',
@@ -287,6 +332,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const BabyProfilesScreen(),
     ),
     GoRoute(
+      path: '/baby-care-hub',
+      builder: (context, state) => const BabyCareHubScreen(),
+    ),
+    GoRoute(
       path: '/babies/add',
       builder: (context, state) {
         final entry = state.uri.queryParameters['entry'];
@@ -340,6 +389,18 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/babies/:babyId/growth',
+      builder: (context, state) => GrowthMeasurementHistoryScreen(
+        babyId: state.pathParameters['babyId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '/babies/:babyId/vaccinations/add',
+      builder: (context, state) => AddVaccinationRecordScreen(
+        babyId: state.pathParameters['babyId'] ?? '',
+      ),
+    ),
+    GoRoute(
       path: '/babies/:babyId/milestones/add',
       builder: (context, state) {
         final babyId = state.pathParameters['babyId'] ?? '';
@@ -354,6 +415,7 @@ final GoRouter appRouter = GoRouter(
         return DevelopmentMilestoneDetailScreen(
           babyId: babyId,
           milestoneId: milestoneId,
+          initialMilestone: state.extra as Milestone?,
         );
       },
     ),
@@ -434,10 +496,26 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/babies/:babyId/vaccinations/:recordId',
+      builder: (context, state) {
+        final babyId = state.pathParameters['babyId'] ?? '';
+        final recordId = state.pathParameters['recordId'] ?? '';
+        return VaccinationDetailScreen(
+          babyId: babyId,
+          vaccinationId: recordId,
+          initialRecord: state.extra as VaccinationRecord?,
+        );
+      },
+    ),
+    GoRoute(
       path: '/vaccination/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return VaccinationDetailScreen(vaccinationId: id);
+        return VaccinationDetailScreen(
+          babyId: state.uri.queryParameters['babyId'] ?? '',
+          vaccinationId: id,
+          initialRecord: state.extra as VaccinationRecord?,
+        );
       },
     ),
     GoRoute(
@@ -507,7 +585,7 @@ final GoRouter appRouter = GoRouter(
     // CB-036: Expert Home / Dashboard (UC-60)
     GoRoute(
       path: '/expert-home',
-      builder: (context, state) => const ExpertHomeScreen(),
+      builder: (context, state) => const ExpertHomeShell(),
     ),
     // CB-053: Expert Calendar (UC-64)
     GoRoute(

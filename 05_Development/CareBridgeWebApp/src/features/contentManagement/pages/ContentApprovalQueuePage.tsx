@@ -8,7 +8,7 @@ export default function ContentApprovalQueuePage() {
   const [error, setError] = useState('');
   const [working, setWorking] = useState<string | null>(null);
   const load = async () => {
-    try { setItems((await fetchStaffContentList('PENDING_REVIEW')).content); setError(''); }
+    try { setItems((await fetchStaffContentList({ status: 'PENDING_REVIEW' })).content); setError(''); }
     catch { setError('Không tải được hàng đợi phê duyệt.'); }
   };
   useEffect(() => { void load(); }, []);

@@ -41,14 +41,22 @@ dependencies:
   url_launcher: ^6.2.0
   firebase_core: ^3.8.0
   firebase_messaging: ^15.1.6
+  cloud_firestore: ^5.6.12
+  firebase_auth: ^5.3.4
   sensors_plus: ^6.1.2
   geolocator: ^12.0.0
   mime: ^2.0.0
   intl: ^0.20.3
+  permission_handler: 12.0.1
+  zego_express_engine: 3.24.1
 
   http_parser: ^4.1.2
+  uuid: ^4.5.1
+
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -69,6 +77,8 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
+  config:
+    enable-swift-package-manager: false
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

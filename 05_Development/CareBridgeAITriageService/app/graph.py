@@ -29,6 +29,7 @@ from app.risk_rules import apply_red_flag_rules, missing_info_questions, score_r
 from app.schemas import (
     ChildTriageRequest,
     ChildTriageResponse,
+    Claim,
     Citation,
     Evidence,
     ExplainabilityMetrics,
@@ -41,6 +42,7 @@ from app.source_retriever import (
     build_evidence,
     retrieve_realtime_sources,
     retrieve_sources,
+    approved_domains,
 )
 from app.source_validator import validate_source
 from app.symptom_normalizer import (
@@ -73,6 +75,7 @@ class TriageState(TypedDict, total=False):
     redFlags: list[str]
     matchedRules: list[str]
     citations: list[Citation]
+    claims: list[Claim]
     evidence: Evidence
     questions: list[str]
     followupQuestions: list[IntakeQuestion]
@@ -212,7 +215,7 @@ def apply_deterministic_rules(state: TriageState) -> TriageState:
 
 def retrieve_sources_node(state: TriageState) -> TriageState:
     state["retrievedSources"] = retrieve_sources(
-        state.get("normalizedSymptoms", []), state.get("matchedRules", [])
+        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage
     )
     return state
 
@@ -222,11 +225,12 @@ def realtime_official_search_if_needed(state: TriageState) -> TriageState:
         state.get("retrievedSources", []),
         state.get("normalizedSymptoms", []),
         state.get("matchedRules", []),
+        state["intake"].stage,
     )
     if local or state.get("riskLevel") in {"RED", "NEED_MORE_INFO"}:
         return state
     realtime = retrieve_realtime_sources(
-        state.get("normalizedSymptoms", []), state.get("matchedRules", [])
+        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage
     )
     cache_pending_sources(realtime)
     state["retrievedSources"] = realtime
@@ -237,7 +241,7 @@ def validate_sources(state: TriageState) -> TriageState:
     symptoms = state.get("normalizedSymptoms", [])
     state["retrievedSources"] = [
         source for source in state.get("retrievedSources", [])
-        if validate_source(source, symptoms)
+        if validate_source(source, symptoms, approved_domains(state["intake"].stage))
     ]
     return state
 
@@ -247,8 +251,10 @@ def attach_evidence(state: TriageState) -> TriageState:
         state.get("retrievedSources", []),
         state.get("normalizedSymptoms", []),
         state.get("matchedRules", []),
+        state["intake"].stage,
     )
     state["citations"] = citations
+    state["claims"] = build_claims(state.get("riskLevel", "NEED_MORE_INFO"), state.get("redFlags", []), citations)
     state["evidence"] = build_evidence(citations, state.get("normalizedSymptoms", []))
     if citations:
         state["warning"] = None
@@ -297,6 +303,22 @@ def compose_deterministic_response(state: TriageState) -> TriageState:
         )
     state["disclaimer"] = DISCLAIMER
     return state
+
+
+def build_claims(risk: str, red_flags: list[str], citations: list[Citation]) -> list[Claim]:
+    """Claims are deterministic, and may only cite already validated evidence."""
+    evidence_ids = [citation.sourceId or citation.id for citation in citations if citation.sourceId or citation.id]
+    if not evidence_ids:
+        return []
+    if risk == "RED":
+        text = "Các dấu hiệu nguy hiểm đã ghi nhận cần được đánh giá khẩn cấp."
+    elif risk == "NEED_MORE_INFO":
+        text = "Thông tin hiện tại chưa đủ để phân loại rủi ro an toàn."
+    elif risk == "YELLOW":
+        text = "Các dấu hiệu hiện tại cần được theo dõi sát và đánh giá thêm khi diễn tiến thay đổi."
+    else:
+        text = "Chưa ghi nhận dấu hiệu nguy hiểm từ thông tin hiện có; vẫn cần theo dõi diễn tiến."
+    return [Claim(claimId="CLAIM_TRIAGE_001", text=text, evidenceIds=evidence_ids)]
 
 
 def compose_safe_explanation_with_gemini(state: TriageState) -> TriageState:
@@ -465,6 +487,7 @@ def run_triage(
     )
     risk = state["riskLevel"]
     return ChildTriageResponse(
+        stage=intake.stage,
         riskLevel=risk,
         riskColor=state["riskColor"],
         summary=state["summary"],
@@ -474,6 +497,7 @@ def run_triage(
         redFlags=state.get("redFlags", []),
         matchedRules=state.get("matchedRules", []),
         citations=citations,
+        claims=state.get("claims", []),
         evidence=state["evidence"],
         questions=state.get("questions", []),
         warning=state.get("warning"),

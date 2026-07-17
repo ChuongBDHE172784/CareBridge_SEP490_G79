@@ -66,6 +66,8 @@ import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -79,6 +81,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -139,6 +142,7 @@ public class DevDataSeeder implements ApplicationRunner {
     private final ContentRepository contentRepository;
     private final ChecklistTemplateRepository checklistTemplateRepository;
     private final ChecklistItemRepository checklistItemRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;
@@ -222,6 +226,7 @@ public class DevDataSeeder implements ApplicationRunner {
         seedContent(author, "[DEV] Câu hỏi thường gặp sau sinh", ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW);
         seedContent(author, "[DEV] Checklist chuẩn bị sinh", ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.DRAFT);
         seedChecklistTemplate();
+        seedContentLibraryBatch(author);
     }
 
     private void seedContent(User author, String title, ContentType type, ContentStage stage, ContentStatus status) {
@@ -231,6 +236,108 @@ public class DevDataSeeder implements ApplicationRunner {
                 .body("Nội dung mẫu dùng để kiểm thử luồng nội dung đã xác thực.")
                 .stage(stage).status(status).versionNo(1).authorUserId(author.getId())
                 .sourceLabel("WHO").sources(List.of(new ContentSource("WHO maternal health guidance", "https://www.who.int/health-topics/maternal-health", "WHO")))
+                .publishedAt(status == ContentStatus.APPROVED ? now : null).build());
+    }
+
+    /**
+     * 20 additional content items spanning every (type, stage) combination, mostly APPROVED so
+     * GET /api/v1/content (BR-RBAC: always filters status=APPROVED) has real results for the
+     * public /content/list screen, plus a few PENDING_REVIEW/DRAFT/ARCHIVED rows to keep the
+     * content-admin review queue populated. Idempotent via findByTitleIgnoreCaseAndStageAndType.
+     */
+    private void seedContentLibraryBatch(User author) {
+        seedContentItem(author, "Chuẩn bị mang thai: Khám sức khỏe tiền hôn nhân",
+                "Các mốc khám sức khỏe và xét nghiệm nên thực hiện trước khi mang thai để đảm bảo an toàn cho mẹ và bé.",
+                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "Bộ Y tế", "Hướng dẫn khám sức khỏe tiền hôn nhân", "https://moh.gov.vn", "Bộ Y tế");
+        seedContentItem(author, "Bổ sung acid folic trước khi mang thai",
+                "Vai trò của acid folic trong việc phòng ngừa dị tật ống thần kinh và liều dùng khuyến nghị.",
+                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "WHO", "Folic acid supplementation", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Tiêm phòng trước khi mang thai",
+                "Danh sách các mũi tiêm khuyến nghị trước khi mang thai và thời điểm phù hợp.",
+                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.ARCHIVED,
+                "Bộ Y tế", "Lịch tiêm chủng trước mang thai", "https://moh.gov.vn", "Bộ Y tế");
+        seedContentItem(author, "Câu hỏi thường gặp khi lên kế hoạch mang thai",
+                "Giải đáp các thắc mắc phổ biến về thời điểm và cách chuẩn bị mang thai.",
+                ContentType.FAQ, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "WHO", "Preconception health FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Checklist khám sức khỏe tiền sản",
+                "Danh mục các xét nghiệm và mũi tiêm cần hoàn thành trước khi mang thai.",
+                ContentType.CHECKLIST, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "Bộ Y tế", "Checklist tiền sản", "https://moh.gov.vn", "Bộ Y tế");
+
+        seedContentItem(author, "Dinh dưỡng thai kỳ theo từng tam cá nguyệt",
+                "Nhu cầu dinh dưỡng thay đổi theo từng giai đoạn thai kỳ và gợi ý thực đơn tham khảo.",
+                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "WHO", "Nutrition during pregnancy", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Dấu hiệu chuyển dạ cần biết",
+                "Các dấu hiệu chuyển dạ thật và chuyển dạ giả, khi nào cần đến cơ sở y tế ngay.",
+                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "Bộ Y tế", "Dấu hiệu chuyển dạ", "https://moh.gov.vn", "Bộ Y tế");
+        seedContentItem(author, "Tập thể dục an toàn khi mang thai",
+                "Các bài tập được khuyến nghị và những lưu ý an toàn cho từng tam cá nguyệt.",
+                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.PENDING_REVIEW,
+                "WHO", "Exercise during pregnancy", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Câu hỏi thường gặp về ốm nghén",
+                "Nguyên nhân, thời điểm và cách giảm triệu chứng ốm nghén thường gặp.",
+                ContentType.FAQ, ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "WHO", "Morning sickness FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Checklist đồ dùng cho mẹ và bé khi đi sinh",
+                "Danh sách vật dụng cần chuẩn bị trước ngày dự sinh cho cả mẹ và bé.",
+                ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "Bộ Y tế", "Checklist đồ đi sinh", "https://moh.gov.vn", "Bộ Y tế");
+
+        seedContentItem(author, "Chăm sóc vết mổ sau sinh",
+                "Hướng dẫn vệ sinh và theo dõi vết mổ lấy thai để tránh nhiễm trùng.",
+                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "Bộ Y tế", "Chăm sóc sau sinh mổ", "https://moh.gov.vn", "Bộ Y tế");
+        seedContentItem(author, "Trầm cảm sau sinh: Nhận biết và hỗ trợ",
+                "Dấu hiệu cảnh báo trầm cảm sau sinh và các nguồn hỗ trợ tâm lý cho mẹ.",
+                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "WHO", "Postpartum depression", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Dinh dưỡng cho mẹ cho con bú",
+                "Nhu cầu năng lượng và vi chất dinh dưỡng cần thiết trong giai đoạn cho con bú.",
+                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW,
+                "WHO", "Nutrition for breastfeeding mothers", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Câu hỏi thường gặp về sữa mẹ",
+                "Giải đáp các thắc mắc phổ biến về cách cho con bú và duy trì nguồn sữa.",
+                ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "UNICEF", "Breastfeeding FAQ", "https://www.unicef.org/nutrition/breastfeeding", "UNICEF");
+        seedContentItem(author, "Checklist chăm sóc mẹ sau sinh 6 tuần đầu",
+                "Các mốc theo dõi sức khỏe mẹ trong 6 tuần đầu sau sinh.",
+                ContentType.CHECKLIST, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "Bộ Y tế", "Checklist hậu sản", "https://moh.gov.vn", "Bộ Y tế");
+
+        seedContentItem(author, "Lịch tiêm chủng cho trẻ sơ sinh",
+                "Lịch tiêm chủng mở rộng theo độ tuổi cho trẻ từ sơ sinh đến 12 tháng.",
+                ContentType.ARTICLE, ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "Bộ Y tế", "Lịch tiêm chủng mở rộng", "https://moh.gov.vn", "Bộ Y tế");
+        seedContentItem(author, "Chăm sóc rốn cho trẻ sơ sinh",
+                "Hướng dẫn vệ sinh rốn đúng cách và dấu hiệu nhiễm trùng cần lưu ý.",
+                ContentType.ARTICLE, ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "UNICEF", "Newborn cord care", "https://www.unicef.org/nutrition", "UNICEF");
+        seedContentItem(author, "Các mốc phát triển của trẻ trong năm đầu",
+                "Các cột mốc vận động, ngôn ngữ và nhận thức theo từng tháng tuổi.",
+                ContentType.ARTICLE, ContentStage.BABY_CARE, ContentStatus.DRAFT,
+                "WHO", "Child development milestones", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Câu hỏi thường gặp về giấc ngủ của trẻ",
+                "Giải đáp thắc mắc về thói quen ngủ và cách thiết lập lịch ngủ cho trẻ sơ sinh.",
+                ContentType.FAQ, ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "WHO", "Infant sleep FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
+        seedContentItem(author, "Checklist an toàn cho bé tại nhà",
+                "Danh mục kiểm tra an toàn không gian sống để phòng ngừa tai nạn cho trẻ nhỏ.",
+                ContentType.CHECKLIST, ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "UNICEF", "Home safety checklist", "https://www.unicef.org/nutrition", "UNICEF");
+    }
+
+    private void seedContentItem(User author, String title, String body, ContentType type, ContentStage stage,
+            ContentStatus status, String sourceLabel, String sourceTitle, String sourceUrl, String publisher) {
+        if (contentRepository.findByTitleIgnoreCaseAndStageAndType(title, stage, type).isPresent()) return;
+        Instant now = Instant.now();
+        contentRepository.save(ContentItem.builder().type(type).title(title).body(body)
+                .stage(stage).status(status).versionNo(1).authorUserId(author.getId())
+                .sourceLabel(sourceLabel).sources(List.of(new ContentSource(sourceTitle, sourceUrl, publisher)))
                 .publishedAt(status == ContentStatus.APPROVED ? now : null).build());
     }
 
@@ -266,6 +373,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
         BabyProfile mother4Baby = seedBabyProfile(
             savedUsers.get("mother4@carebridge.dev"), mother4Journey);
+        seedBabyJourneyViewData(savedUsers.get("mother4@carebridge.dev"), mother4Baby);
 
         seedAcceptedCareGroup(
             savedUsers.get("mother3@carebridge.dev"), savedUsers.get("family2@carebridge.dev"),
@@ -302,16 +410,121 @@ public class DevDataSeeder implements ApplicationRunner {
         List<BabyProfile> existing = babyProfileRepository
             .findByOwnerUserIdAndStatusOrderByCreatedAtAsc(mother.getId(), BabyProfileStatus.ACTIVE);
         if (!existing.isEmpty()) {
-            return existing.get(0);
+            BabyProfile baby = existing.get(0);
+            jdbcTemplate.update(
+                "UPDATE baby_profiles SET is_active = false WHERE owner_user_id = ? AND baby_id <> ?",
+                mother.getId(), baby.getId());
+            baby.setActive(true);
+            if (baby.getBirthWeightKg() == null) baby.setBirthWeightKg(new BigDecimal("3.40"));
+            if (baby.getBirthLengthCm() == null) baby.setBirthLengthCm(new BigDecimal("50.0"));
+            return babyProfileRepository.save(baby);
         }
         return babyProfileRepository.save(BabyProfile.builder()
             .ownerUserId(mother.getId())
             .relatedJourneyId(journey.getId())
             .nickname("Bé " + mother.getName())
-            .birthDate(journey.getStartDate().plusMonths(1))
+            .birthDate(journey.getDeliveryDate() != null
+                ? journey.getDeliveryDate() : journey.getStartDate().plusMonths(1))
             .gender(Gender.FEMALE)
+            .birthWeightKg(new BigDecimal("3.40"))
+            .birthLengthCm(new BigDecimal("50.0"))
             .status(BabyProfileStatus.ACTIVE)
+            .active(true)
             .build());
+    }
+
+    /**
+     * Seeds deterministic MF-03 data for the official Baby Journey view.
+     * Fixed IDs plus UPSERT keep startup idempotent, while refreshed timestamps keep the
+     * rolling 24-hour summary useful whenever the dev environment is restarted.
+     */
+    private void seedBabyJourneyViewData(User recorder, BabyProfile baby) {
+        Instant now = Instant.now();
+
+        upsertDailyLog("f0300000-0000-0000-0000-000000000001", baby, recorder,
+            "FEEDING", now.minusSeconds(60 * 60), new BigDecimal("90"), "ml", "[DEV][MF-03] Cữ bú 1");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000002", baby, recorder,
+            "FEEDING", now.minusSeconds(4 * 60 * 60), new BigDecimal("100"), "ml", "[DEV][MF-03] Cữ bú 2");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000003", baby, recorder,
+            "FEEDING", now.minusSeconds(7 * 60 * 60), new BigDecimal("85"), "ml", "[DEV][MF-03] Cữ bú 3");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000004", baby, recorder,
+            "FEEDING", now.minusSeconds(10 * 60 * 60), new BigDecimal("95"), "ml", "[DEV][MF-03] Cữ bú 4");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000005", baby, recorder,
+            "FEEDING", now.minusSeconds(14 * 60 * 60), new BigDecimal("90"), "ml", "[DEV][MF-03] Cữ bú 5");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000006", baby, recorder,
+            "FEEDING", now.minusSeconds(19 * 60 * 60), new BigDecimal("80"), "ml", "[DEV][MF-03] Cữ bú 6");
+
+        upsertDailyLog("f0300000-0000-0000-0000-000000000007", baby, recorder,
+            "SLEEP", now.minusSeconds(2 * 60 * 60), new BigDecimal("3.5"), "hours", "[DEV][MF-03] Giấc ngủ sáng");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000008", baby, recorder,
+            "SLEEP", now.minusSeconds(9 * 60 * 60), new BigDecimal("4.0"), "hours", "[DEV][MF-03] Giấc ngủ chiều");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000009", baby, recorder,
+            "SLEEP", now.minusSeconds(17 * 60 * 60), new BigDecimal("5.5"), "hours", "[DEV][MF-03] Giấc ngủ đêm");
+
+        upsertDailyLog("f0300000-0000-0000-0000-000000000010", baby, recorder,
+            "DIAPER", now.minusSeconds(3 * 60 * 60), null, null, "[DEV][MF-03] Tã ướt");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000011", baby, recorder,
+            "DIAPER", now.minusSeconds(8 * 60 * 60), null, null, "[DEV][MF-03] Tã ướt");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000012", baby, recorder,
+            "DIAPER", now.minusSeconds(13 * 60 * 60), null, null, "[DEV][MF-03] Tã bẩn");
+        upsertDailyLog("f0300000-0000-0000-0000-000000000013", baby, recorder,
+            "DIAPER", now.minusSeconds(20 * 60 * 60), null, null, "[DEV][MF-03] Tã ướt");
+
+        upsertGrowthMeasurement("f0310000-0000-0000-0000-000000000001", baby,
+            LocalDate.now().minusDays(56), "3.40", "50.0", "34.0");
+        upsertGrowthMeasurement("f0310000-0000-0000-0000-000000000002", baby,
+            LocalDate.now().minusDays(42), "3.65", "52.0", "35.0");
+        upsertGrowthMeasurement("f0310000-0000-0000-0000-000000000003", baby,
+            LocalDate.now().minusDays(28), "3.90", "54.0", "36.0");
+        upsertGrowthMeasurement("f0310000-0000-0000-0000-000000000004", baby,
+            LocalDate.now().minusDays(14), "4.15", "56.0", "37.0");
+        upsertGrowthMeasurement("f0310000-0000-0000-0000-000000000005", baby,
+            LocalDate.now(), "4.40", "58.0", "38.0");
+    }
+
+    private void upsertDailyLog(String id, BabyProfile baby, User recorder, String logType,
+                                Instant occurredAt, BigDecimal quantity, String unit, String note) {
+        Timestamp timestamp = Timestamp.from(occurredAt);
+        jdbcTemplate.update("""
+            INSERT INTO baby_daily_logs
+                (baby_log_id, baby_id, log_type, started_at, quantity, unit, note,
+                 recorded_by, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
+            ON CONFLICT (baby_log_id) DO UPDATE SET
+                baby_id = EXCLUDED.baby_id,
+                log_type = EXCLUDED.log_type,
+                started_at = EXCLUDED.started_at,
+                quantity = EXCLUDED.quantity,
+                unit = EXCLUDED.unit,
+                note = EXCLUDED.note,
+                recorded_by = EXCLUDED.recorded_by,
+                status = 'ACTIVE',
+                created_at = EXCLUDED.created_at,
+                updated_at = EXCLUDED.updated_at
+            """, UUID.fromString(id), baby.getId(), logType, timestamp, quantity, unit, note,
+            recorder.getId(), timestamp, timestamp);
+    }
+
+    private void upsertGrowthMeasurement(String id, BabyProfile baby, LocalDate measuredDate,
+                                         String weightKg, String heightCm, String headCm) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update("""
+            INSERT INTO growth_measurements
+                (growth_measurement_id, baby_id, measured_date, weight_kg, height_cm,
+                 head_circumference_cm, source_type, note, deleted_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
+            ON CONFLICT (growth_measurement_id) DO UPDATE SET
+                baby_id = EXCLUDED.baby_id,
+                measured_date = EXCLUDED.measured_date,
+                weight_kg = EXCLUDED.weight_kg,
+                height_cm = EXCLUDED.height_cm,
+                head_circumference_cm = EXCLUDED.head_circumference_cm,
+                source_type = EXCLUDED.source_type,
+                note = EXCLUDED.note,
+                deleted_at = NULL,
+                updated_at = EXCLUDED.updated_at
+            """, UUID.fromString(id), baby.getId(), java.sql.Date.valueOf(measuredDate),
+            new BigDecimal(weightKg), new BigDecimal(heightCm), new BigDecimal(headCm), now, now);
     }
 
     private void seedAcceptedCareGroup(User mother, User familyMember, java.util.UUID journeyId,

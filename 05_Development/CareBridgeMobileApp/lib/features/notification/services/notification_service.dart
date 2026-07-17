@@ -2,8 +2,8 @@ import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
-  static final NotificationService instance = NotificationService._();
-  NotificationService._();
+  static NotificationService instance = NotificationService();
+  NotificationService();
 
   Future<List<NotificationRecord>> getNotifications({
     String? type,

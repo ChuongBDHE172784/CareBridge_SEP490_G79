@@ -1,14 +1,14 @@
 package com.carebridge.backend.triage.engine;
 
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
-import lombok.RequiredArgsConstructor;
+import com.carebridge.backend.triage.TriageStage;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.ArrayList;
 
 @Service
-@RequiredArgsConstructor
 public class TriageGraphService {
 
     public static final String DISCLAIMER = "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế bác sĩ. "
@@ -16,13 +16,39 @@ public class TriageGraphService {
 
     private final SymptomNormalizer symptomNormalizer;
     private final SourceRetriever sourceRetriever;
-    private final PediatricRiskRules riskRules;
+    private final RiskRuleFactory riskRuleFactory;
+
+    @Autowired
+    public TriageGraphService(
+            SymptomNormalizer symptomNormalizer,
+            SourceRetriever sourceRetriever,
+            RiskRuleFactory riskRuleFactory) {
+        this.symptomNormalizer = symptomNormalizer;
+        this.sourceRetriever = sourceRetriever;
+        this.riskRuleFactory = riskRuleFactory;
+    }
+
+    public TriageGraphService(
+            SymptomNormalizer symptomNormalizer,
+            SourceRetriever sourceRetriever,
+            PediatricRiskRules pediatricRiskRules) {
+        this(
+                symptomNormalizer,
+                sourceRetriever,
+                new RiskRuleFactory(
+                        new PreconceptionRiskRules(),
+                        new MaternalPregnancyRiskRules(),
+                        new PediatricInfantRiskRules(),
+                        new PediatricToddlerRiskRules()));
+    }
 
     public ChildTriageResult run(RunIntakeRequest request) {
-        List<String> questions = collectIntake(request);
+        TriageStage stage = request.getStage() == null ? TriageStage.INFANT : request.getStage();
+        StageRiskRules riskRules = riskRuleFactory.forStage(stage);
+        List<String> questions = collectIntake(request, riskRules);
         List<String> symptoms = normalizeSymptoms(request);
         List<MedicalSource> sources = retrieveSources(symptoms);
-        PediatricRiskRules.RuleOutcome outcome = applyRules(request, symptoms);
+        PediatricRiskRules.RuleOutcome outcome = applyRules(request, symptoms, riskRules);
         List<TriageCitation> citations = attachCitations(sources);
 
         if (symptoms.isEmpty() && !"RED".equals(outcome.riskLevel())) {
@@ -33,7 +59,7 @@ public class TriageGraphService {
 
         // RED precedence: missing demographic/context fields never downgrade an
         // immediately dangerous structured symptom.
-        if (!questions.isEmpty() && !"RED".equals(outcome.riskLevel())) {
+        if (("NEED_MORE_INFO".equals(outcome.riskLevel()) || !questions.isEmpty()) && !"RED".equals(outcome.riskLevel())) {
             return ChildTriageResult.builder()
                     .status("NEED_MORE_INFO")
                     .summary("CareBridge cần thêm thông tin quan trọng trước khi phân loại rủi ro chắc chắn.")
@@ -41,7 +67,7 @@ public class TriageGraphService {
                     .recommendedAction("Vui lòng trả lời các câu hỏi bổ sung. Nếu trẻ có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay.")
                     .emergencyActionRequired(false)
                     .redFlags(List.of())
-                    .matchedRules(List.of())
+                    .matchedRules(outcome.matchedRules())
                     .normalizedSymptoms(symptoms)
                     .citations(citations)
                     .disclaimer(DISCLAIMER)
@@ -69,7 +95,7 @@ public class TriageGraphService {
                 .build();
     }
 
-    private List<String> collectIntake(RunIntakeRequest request) {
+    private List<String> collectIntake(RunIntakeRequest request, StageRiskRules riskRules) {
         return riskRules.questions(request);
     }
 
@@ -81,7 +107,7 @@ public class TriageGraphService {
         return sourceRetriever.retrieve(symptoms);
     }
 
-    private PediatricRiskRules.RuleOutcome applyRules(RunIntakeRequest request, List<String> symptoms) {
+    private PediatricRiskRules.RuleOutcome applyRules(RunIntakeRequest request, List<String> symptoms, StageRiskRules riskRules) {
         return riskRules.apply(request, symptoms);
     }
 

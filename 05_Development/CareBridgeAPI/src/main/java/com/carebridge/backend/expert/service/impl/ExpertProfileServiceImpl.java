@@ -13,10 +13,10 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,8 +38,14 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final UserRepository userRepository;
 	private final ExpertProfileMapper expertProfileMapper;
 
-	private String getAvatarUrl(UUID userId) {
-		return userRepository.findById(userId).map(u -> u.getAvatarUrl()).orElse(null);
+	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl from the same users row,
+	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
+	private record UserInfo(String displayName, String avatarUrl) {}
+
+	private UserInfo resolveUserInfo(UUID userId) {
+		return userRepository.findById(userId)
+			.map(u -> new UserInfo(u.getName(), u.getAvatarUrl()))
+			.orElse(new UserInfo(null, null));
 	}
 
 	@Override
@@ -50,7 +57,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		}
 		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
 		ExpertProfile saved = expertProfileRepository.save(profile);
-		return expertProfileMapper.toResponse(saved, getAvatarUrl(userId));
+		UserInfo info = resolveUserInfo(userId);
+		return expertProfileMapper.toResponse(saved, info.displayName(), info.avatarUrl());
 	}
 
 	@Override
@@ -58,7 +66,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	public ExpertProfileDetailResponse getMyProfile(UUID userId) {
 		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
 			.orElseGet(() -> new ExpertProfile());
-		return expertProfileMapper.toDetailResponse(profile, getAvatarUrl(userId));
+		UserInfo info = resolveUserInfo(userId);
+		return expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
 	}
 
 	@Override
@@ -69,7 +78,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 				"EXPERT-002", "Expert profile not found"));
 		expertProfileMapper.updateEntity(profile, request);
 		ExpertProfile saved = expertProfileRepository.save(profile);
-		return expertProfileMapper.toDetailResponse(saved, getAvatarUrl(userId));
+		UserInfo info = resolveUserInfo(userId);
+		return expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl());
 	}
 
 	// ── UC-63: View Verification Status & Renew ────────────────────────
@@ -125,31 +135,19 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public ExpertDirectoryResponse getPublicDirectory(String specialty, int page, int size) {
+	public ExpertDirectoryResponse getPublicDirectory(String specialty, String q, int page, int size) {
 		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
-		Page<ExpertProfile> result;
-		if (specialty != null && !specialty.isBlank()) {
-			result = expertProfileRepository.findVerifiedBySpecialty(specialty)
-				.stream()
-				.map(p -> {
-					ExpertProfile ep = new ExpertProfile();
-					ep.setExpertProfileId(p.getExpertProfileId());
-					ep.setUserId(p.getUserId());
-					ep.setSpecialty(p.getSpecialty());
-					ep.setProfessionalTitle(p.getProfessionalTitle());
-					ep.setExperienceYears(p.getExperienceYears());
-					ep.setWorkplace(p.getWorkplace());
-					ep.setVerificationStatus(p.getVerificationStatus());
-					ep.setRatingAvg(p.getRatingAvg());
-					ep.setCreatedAt(p.getCreatedAt());
-					return ep;
-				})
-				.collect(Collectors.collectingAndThen(Collectors.toList(), PageImpl::new));
-		} else {
-			result = new PageImpl<>(
-				expertProfileRepository.findVerifiedPublic(), pageable, 0);
-		}
-		return expertProfileMapper.toDirectoryResponse(result);
+		Page<ExpertProfile> result = expertProfileRepository.searchDirectory(
+				blankToNull(specialty), blankToNull(q), pageable);
+		Set<UUID> userIds = result.getContent().stream().map(ExpertProfile::getUserId).collect(Collectors.toSet());
+		Map<UUID, User> usersById = userIds.isEmpty() ? Map.of()
+				: userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
+		return expertProfileMapper.toDirectoryResponse(
+				result, usersById, expertProfileRepository.findApprovedSpecialties());
+	}
+
+	private static String blankToNull(String s) {
+		return (s == null || s.isBlank()) ? null : s.trim();
 	}
 
 	@Override
@@ -159,19 +157,23 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
-		if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+		if (!profile.isEligibleForConsultation()) {
 			throw new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-004", "Expert profile not available");
 		}
-		return expertProfileMapper.toDetailResponse(profile, getAvatarUrl(profile.getUserId()));
+		UserInfo info = resolveUserInfo(profile.getUserId());
+		return expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<ExpertProfileResponse> getVerifiedExperts() {
 		return expertProfileRepository.findVerifiedPublic().stream()
-			.map(p -> expertProfileMapper.toResponse(p, getAvatarUrl(p.getUserId())))
+			.map(p -> {
+				UserInfo info = resolveUserInfo(p.getUserId());
+				return expertProfileMapper.toResponse(p, info.displayName(), info.avatarUrl());
+			})
 			.toList();
 	}
 
@@ -179,7 +181,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void approveExpert(UUID expertProfileId, UUID adminId) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
@@ -191,7 +193,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void rejectExpert(UUID expertProfileId, UUID adminId, String reason) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
@@ -205,7 +207,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId) {
-		ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
@@ -220,7 +222,10 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	@Override
 	public List<ExpertProfileResponse> getAllExperts() {
 		return expertProfileRepository.findAll().stream()
-			.map(p -> expertProfileMapper.toResponse(p, getAvatarUrl(p.getUserId())))
+			.map(p -> {
+				UserInfo info = resolveUserInfo(p.getUserId());
+				return expertProfileMapper.toResponse(p, info.displayName(), info.avatarUrl());
+			})
 			.toList();
 	}
 

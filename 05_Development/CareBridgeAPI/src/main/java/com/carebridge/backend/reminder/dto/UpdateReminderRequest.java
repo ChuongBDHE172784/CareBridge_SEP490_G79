@@ -17,4 +17,6 @@ public class UpdateReminderRequest {
     private RecurrenceType recurrenceType;
 
     private Instant recurrenceEndDate;
+
+    private Boolean recurrenceEndDateSet;
 }

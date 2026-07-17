@@ -10,6 +10,7 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -73,5 +74,36 @@ public class FirebaseFcmServiceImpl implements FcmService {
             }
         }
         return FcmDeliveryResult.failed("FCM_SEND_FAILED", attempts);
+    }
+
+    @Override
+    public FcmDeliveryResult sendWithRetry(
+            String fcmToken,
+            String title,
+            String body,
+            Map<String, String> data,
+            int maxAttempts) {
+        int attempts = Math.max(1, maxAttempts);
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                Message message = buildDataMessage(fcmToken, title, body, data);
+                String messageId = FirebaseMessaging.getInstance(firebaseApp).send(message);
+                if (messageId != null && !messageId.isBlank()) {
+                    return FcmDeliveryResult.success(messageId, attempt);
+                }
+            } catch (FirebaseMessagingException e) {
+                log.warn("FCM data send failed: {}", e.getMessage());
+            }
+        }
+        return FcmDeliveryResult.failed("FCM_SEND_FAILED", attempts);
+    }
+
+    static Message buildDataMessage(
+            String fcmToken, String title, String body, Map<String, String> data) {
+        return Message.builder()
+                .setToken(fcmToken)
+                .setNotification(Notification.builder().setTitle(title).setBody(body).build())
+                .putAllData(data)
+                .build();
     }
 }

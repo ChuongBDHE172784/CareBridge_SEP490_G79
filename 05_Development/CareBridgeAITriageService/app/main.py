@@ -44,12 +44,16 @@ def health() -> dict[str, object]:
 
 @app.post("/triage/child", response_model=ChildTriageResponse)
 def triage_child(request: ChildTriageRequest) -> ChildTriageResponse:
+    if request.stage is None:
+        request = request.model_copy(update={"stage": "INFANT"})
     return run_triage(request)
 
 
 @app.post("/triage/intake/start", response_model=IntakeFlowResponse)
 def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
     intake = request.currentIntake
+    if intake.stage is None:
+        intake = intake.model_copy(update={"stage": "INFANT"})
     if request.initialText and not intake.parentFreeText:
         intake = intake.model_copy(update={
             "parentFreeText": request.initialText,
@@ -95,6 +99,7 @@ def _build_intake_response(
     persisted_intake = intake.model_copy(update={
         "symptomList": [item.normalizedCode for item in normalized_details],
         "parentFreeText": None,
+        "stage": intake.stage,
     })
     questions = ask_followup_questions(intake)
     if questions and not red_flag and not reached_question_limit(round_number):
@@ -117,6 +122,7 @@ def _build_intake_response(
         return IntakeFlowResponse(
             status="ASK_MORE",
             intakeSessionId=intake_session_id,
+            stage=intake.stage,
             mergedIntake=persisted_intake,
             normalizedSymptomDetails=normalized_details,
             assistantMessage=assistant_message,
@@ -152,6 +158,7 @@ def _build_intake_response(
         return IntakeFlowResponse(
             status="ASK_MORE",
             intakeSessionId=intake_session_id,
+            stage=intake.stage,
             mergedIntake=persisted_intake,
             normalizedSymptomDetails=normalized_details,
             assistantMessage="CareBridge cần bạn mô tả rõ hơn các dấu hiệu đang quan sát được.",
@@ -176,6 +183,7 @@ def _build_intake_response(
     return IntakeFlowResponse(
         status="TRIAGE_COMPLETE",
         intakeSessionId=intake_session_id,
+        stage=intake.stage,
         mergedIntake=persisted_intake,
         normalizedSymptomDetails=normalized_details,
         assistantMessage="CareBridge đã hoàn tất phân loại rủi ro ban đầu.",

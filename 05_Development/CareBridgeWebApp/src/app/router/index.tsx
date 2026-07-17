@@ -12,6 +12,8 @@ import LoginPage from '../../features/auth/pages/LoginPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
+import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
 
 // Expert Portal screens (CB-054, 055, 056, 057, 063)
 import ExpertDashboardPage from '../../features/expert/pages/ExpertDashboardPage';
@@ -22,6 +24,10 @@ import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQ
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
+
+// UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call, Expert Portal side
+import ConversationListPage from '../../features/directChat/pages/ConversationListPage';
+import ConversationRoomPage from '../../features/directChat/pages/ConversationRoomPage';
 import AdminExpertTrustManagementPage from '../../features/expert/pages/AdminExpertTrustManagementPage';
 
 // Admin portal screens
@@ -106,6 +112,8 @@ export const router = createBrowserRouter([
   { path: '/forbidden', element: <ForbiddenPage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
+  { path: '/mother/baby-care', element: <BabyCareHubPage /> },
+  { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 
   // Partner Portal — public pages (no auth required)
   { path: '/partner', element: <PartnerLandingPage /> },
@@ -113,6 +121,14 @@ export const router = createBrowserRouter([
 
   // Role-aware root redirect
   { path: '/', element: <RoleAwareRedirect /> },
+
+  {
+    element: <ProtectedRoute requiredRoles={['MOTHER', 'EXPERT']} />,
+    children: [
+      { path: '/direct-chats', element: <ConversationListPage /> },
+      { path: '/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+    ],
+  },
 
   {
     element: (
@@ -195,6 +211,9 @@ export const router = createBrowserRouter([
               { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
               // CB-063: Expert Question Queue
               { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+              // UC-144D: Direct Consult Chat & Call
+              { path: '/expert/direct-chats', element: <ConversationListPage /> },
+              { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
             ],
           },
           {

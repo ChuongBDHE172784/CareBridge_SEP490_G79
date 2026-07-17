@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,7 +26,7 @@ public class BabyDailyLogController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ApiResponse<AddBabyDailyLogResponse> addDailyLog(
             @PathVariable UUID babyId,
             @Valid @RequestBody AddBabyDailyLogRequest request,
@@ -35,8 +36,16 @@ public class BabyDailyLogController {
         return ApiResponse.success(response);
     }
 
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<BabyDailyLogResponse>> getDailyLogs(
+            @PathVariable UUID babyId,
+            Principal principal) {
+        return ApiResponse.success(babyDailyLogService.getDailyLogs(babyId, principal));
+    }
+
     @PutMapping("/{logId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ApiResponse<BabyDailyLogResponse> updateLog(
             @PathVariable UUID babyId,
             @PathVariable UUID logId,
@@ -57,7 +66,7 @@ public class BabyDailyLogController {
     }
 
     @DeleteMapping("/{logId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ApiResponse<Void> deleteLog(
             @PathVariable UUID babyId,
             @PathVariable UUID logId,

@@ -96,7 +96,8 @@ public class ReminderNotificationService implements IReminderNotificationService
                 record.getReferenceType(),
                 record.getStatus().name(),
                 record.getCreatedAt(),
-                record.getSentAt()
+                record.getSentAt(),
+                record.getMetadata()
         );
     }
 }

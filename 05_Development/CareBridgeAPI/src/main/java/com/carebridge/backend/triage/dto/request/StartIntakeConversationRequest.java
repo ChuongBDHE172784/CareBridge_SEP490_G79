@@ -8,8 +8,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import com.carebridge.backend.triage.TriageStage;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -29,4 +32,8 @@ public class StartIntakeConversationRequest {
 
     @Builder.Default
     private Map<String, Object> currentIntake = new LinkedHashMap<>();
+
+    private TriageStage stage;
+    private UUID babyProfileId;
+    private UUID motherProfileId;
 }

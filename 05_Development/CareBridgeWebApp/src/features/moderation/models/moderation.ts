@@ -2,7 +2,7 @@ export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | '
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
 export type ReportCategory = 'INACCURATE_INFORMATION' | 'DISGUISED_ADVERTISING' | 'HARASSMENT' | 'UNSAFE_ADVICE' | 'SPAM' | 'OTHER';
 export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
-export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'UNDO';
+export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE' | 'UNDO';
 
 // actionType values a moderator can undo from the "Đã xử lý" tab — REQUEST_REVISION/WARN/SUSPEND/
 // RESTRICT/UNDO are excluded server-side too (CB-MOD-IMP-009 ADR-001/ADR-004, MOD-028/MOD-026).
@@ -22,6 +22,22 @@ export interface ModerationQueueItem {
 
 export interface ModerationQueuePage {
   content: ModerationQueueItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
+export interface RelatedReportItem {
+  id: string;
+  category: string | null;
+  reason: string | null;
+  status: ReportStatus;
+  reportSource: 'USER' | 'AUTOMATED';
+  reportedAt: string;
+}
+
+export interface RelatedReportPage {
+  content: RelatedReportItem[];
   totalElements: number;
   page: number;
   size: number;
@@ -71,8 +87,29 @@ export const ACTION_TYPE_LABELS: Record<ModerationActionType, string> = {
   WARN: 'Cảnh cáo',
   SUSPEND: 'Đình chỉ',
   RESTRICT: 'Hạn chế đăng',
+  ESCALATE: 'Chuyển cấp xử lý',
   UNDO: 'Hoàn tác',
 };
+
+export interface AccountViolationHistoryItem {
+  actionId: string;
+  targetUserId: string;
+  targetUserName: string;
+  moderatorUserId: string;
+  moderatorName: string;
+  actionType: Extract<ModerationActionType, 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE'>;
+  reason: string;
+  expiresAt: string | null;
+  reportId: string | null;
+  actionAt: string;
+}
+
+export interface AccountViolationHistoryPage {
+  content: AccountViolationHistoryItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
 
 export interface ResolveReportResult {
   reportId: string;

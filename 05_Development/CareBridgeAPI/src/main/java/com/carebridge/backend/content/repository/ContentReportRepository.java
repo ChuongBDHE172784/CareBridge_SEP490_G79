@@ -25,6 +25,9 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
 
     long countByTargetIdAndStatus(UUID targetId, ReportStatus status);
 
+    Page<ContentReport> findByTargetIdAndTargetTypeOrderByCreatedAtDesc(
+            UUID targetId, ReportTargetType targetType, Pageable pageable);
+
     // UC-111: dashboard aggregation — report count grouped by status
     @Query("SELECT r.status, COUNT(r) FROM ContentReport r GROUP BY r.status")
     List<Object[]> countGroupByStatus();

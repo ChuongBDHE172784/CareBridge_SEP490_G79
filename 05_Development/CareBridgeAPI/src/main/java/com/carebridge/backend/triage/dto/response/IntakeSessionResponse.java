@@ -7,6 +7,7 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class IntakeSessionResponse {
     private UUID sessionId;
+    private String stage;
     private String status;
     private String riskLevel;
     private String disclaimer;

@@ -12,6 +12,7 @@ import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.entity.ContentSource;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
@@ -37,9 +38,20 @@ public class AdminContentServiceImpl implements AdminContentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ContentDetailResponse> getStaffContents(ContentStatus status, Pageable pageable) {
-        Page<ContentItem> items = status == null ? contentRepository.findAll(pageable)
-                : contentRepository.findByStatus(status, pageable);
+    public Page<ContentDetailResponse> getStaffContents(ContentStatus status, ContentType type, String keyword, Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<ContentItem> items;
+        if (status != null) {
+            items = contentRepository.findByStatus(status, pageable);
+        } else if (normalizedKeyword != null && type != null) {
+            items = contentRepository.searchStaffByKeywordAndType(normalizedKeyword, type, pageable);
+        } else if (normalizedKeyword != null) {
+            items = contentRepository.searchStaffByKeyword(normalizedKeyword, pageable);
+        } else if (type != null) {
+            items = contentRepository.findByType(type, pageable);
+        } else {
+            items = contentRepository.findAll(pageable);
+        }
         return items.map(contentMapper::toDetailResponse);
     }
 

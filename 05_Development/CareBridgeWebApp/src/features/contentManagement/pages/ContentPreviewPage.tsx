@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { ContentDetail } from "../models/content";
-import { fetchContentDetail } from "../services/contentApi";
+import { fetchStaffContentDetail } from "../services/contentApi";
 
 export default function ContentPreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +20,7 @@ export default function ContentPreviewPage() {
     setIsLoading(true);
     setError(null);
     try {
-      setDetail(await fetchContentDetail(id));
+      setDetail(await fetchStaffContentDetail(id));
     } catch {
       setDetail(null);
       setError("Không thể tải nội dung để xem trước.");

@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { fetchModerationQueue, resolveReport } from '../services/moderationApi';
+import { fetchModerationQueue, fetchRelatedReports, resolveReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
+import type { RelatedReportItem } from '../models/moderation';
 import { formatReportReason } from '../models/moderation';
+import RelatedReportsCard from '../components/RelatedReportsCard';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -37,6 +39,11 @@ export default function AccountReportDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [relatedReports, setRelatedReports] = useState<RelatedReportItem[]>([]);
+  const [relatedTotal, setRelatedTotal] = useState(0);
+  const [relatedPage, setRelatedPage] = useState(0);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState(false);
 
   const loadItem = useCallback(async () => {
     if (!reportId) return;
@@ -55,6 +62,19 @@ export default function AccountReportDetailPage() {
   }, [reportId]);
 
   useEffect(() => { loadItem(); }, [loadItem]);
+
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    setRelatedLoading(true);
+    setRelatedError(false);
+    void fetchRelatedReports(reportId, { page: relatedPage }).then((result) => {
+      if (!active) return;
+      setRelatedReports(result.content);
+      setRelatedTotal(result.totalElements);
+    }).catch(() => { if (active) setRelatedError(true); }).finally(() => { if (active) setRelatedLoading(false); });
+    return () => { active = false; };
+  }, [reportId, relatedPage]);
 
   const expiresAtFor = (action: ActionChoice) => {
     if (action === 'WARN') return undefined;
@@ -152,6 +172,7 @@ export default function AccountReportDetailPage() {
               </div>
 
               <div className="flex flex-col gap-4">
+                <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
                 <div className="bg-surface rounded-2xl p-5 shadow-md">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">gavel</span>

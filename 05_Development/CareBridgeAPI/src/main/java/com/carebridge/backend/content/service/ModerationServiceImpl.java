@@ -17,6 +17,8 @@ import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
@@ -24,6 +26,8 @@ import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportItemResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
@@ -202,6 +206,57 @@ public class ModerationServiceImpl implements ModerationService {
         return new ModerationHistoryResponse(items, page.getTotalElements(), page.getNumber(), page.getSize());
     }
 
+    @Override
+    public AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal) {
+        Page<ModerationAction> actionPage = moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                ReportTargetType.ACCOUNT,
+                ACCOUNT_ACTION_TYPES,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "actionAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))));
+
+        List<UUID> userIds = actionPage.getContent().stream()
+                .flatMap(action -> java.util.stream.Stream.of(action.getTargetId(), action.getModeratorUserId()))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, String> names = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+
+        List<AccountViolationHistoryItemResponse> items = actionPage.getContent().stream()
+                .map(action -> new AccountViolationHistoryItemResponse(
+                        action.getId(),
+                        action.getTargetId(),
+                        names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
+                        action.getModeratorUserId(),
+                        names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
+                        action.getActionType(),
+                        action.getReason(),
+                        action.getExpiresAt(),
+                        action.getReportId(),
+                        action.getActionAt()))
+                .toList();
+        return new AccountViolationHistoryResponse(
+                items, actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    }
+
+    @Override
+    public RelatedReportPageResponse getRelatedReports(UUID reportId, int page, int size, Principal principal) {
+        ContentReport selectedReport = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
+        Page<ContentReport> relatedReports = contentReportRepository
+                .findByTargetIdAndTargetTypeOrderByCreatedAtDesc(selectedReport.getTargetId(),
+                        selectedReport.getTargetType(),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")
+                                .and(Sort.by(Sort.Direction.DESC, "id"))));
+        List<RelatedReportItemResponse> items = relatedReports.getContent().stream()
+                .map(report -> new RelatedReportItemResponse(
+                        report.getId(), report.getCategory(), report.getDescription(),
+                        report.getStatus(), report.getReportSource(), report.getCreatedAt()))
+                .toList();
+        return new RelatedReportPageResponse(items, relatedReports.getTotalElements(),
+                relatedReports.getNumber(), relatedReports.getSize());
+    }
+
     private Map<UUID, String> batchPreviewsFor(List<ModerationAction> actions, ReportTargetType targetType) {
         List<UUID> targetIds = actions.stream()
                 .filter(a -> a.getTargetType() == targetType)
@@ -297,13 +352,19 @@ public class ModerationServiceImpl implements ModerationService {
 
     // C5: action-targetType compatibility per TDS §6.4 — QUESTION supports APPROVE/HIDE/LOCK/REQUEST_REVISION
     private String moderateQuestion(UUID targetId, ModerationActionType actionType) {
+        if (actionType == ModerationActionType.LOCK) {
+            if (communityQuestionRepository.lockIfApproved(targetId) == 0) {
+                throw ModerationException.questionMustBeApprovedToLock(targetId);
+            }
+            return QuestionStatus.LOCKED.name();
+        }
+
         CommunityQuestion question = communityQuestionRepository.findById(targetId)
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.QUESTION));
 
         QuestionStatus newStatus = switch (actionType) {
             case APPROVE -> QuestionStatus.APPROVED;
             case HIDE -> QuestionStatus.HIDDEN;
-            case LOCK -> QuestionStatus.LOCKED;
             case REQUEST_REVISION -> QuestionStatus.PENDING;
             // A label records a safety warning without changing visibility or discussion state.
             case LABEL -> question.getStatus();

@@ -6,6 +6,7 @@ import com.carebridge.backend.carejourney.dto.BabyDailyLogResponse;
 import com.carebridge.backend.carejourney.dto.UpdateBabyDailyLogRequest;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 public interface IBabyDailyLogService {
@@ -19,6 +20,8 @@ public interface IBabyDailyLogService {
      * @throws com.carebridge.backend.common.exception.BusinessException (BABY-032) when baby is ARCHIVED
      */
     AddBabyDailyLogResponse addDailyLog(UUID babyId, AddBabyDailyLogRequest request, UUID userId);
+
+    List<BabyDailyLogResponse> getDailyLogs(UUID babyId, Principal principal);
 
     BabyDailyLogResponse getDailyLogDetail(UUID babyId, UUID logId, Principal principal);
 

@@ -1,6 +1,7 @@
 package com.carebridge.backend.carejourney.dto;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class AddGrowthMeasurementRequest {
     @DecimalMin("0")
     private BigDecimal headCircumferenceCm;
 
+    @NotBlank
     @Size(max = 30)
     private String sourceType;
 

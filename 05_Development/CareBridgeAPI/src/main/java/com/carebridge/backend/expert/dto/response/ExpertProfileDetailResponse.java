@@ -15,12 +15,14 @@ public class ExpertProfileDetailResponse {
 
 	private UUID expertProfileId;
 	private UUID userId;
+	private String displayName;
 	private String specialty;
 	private String professionalTitle;
 	private Integer experienceYears;
 	private String workplace;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
+	private boolean isConsultationEligible;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;

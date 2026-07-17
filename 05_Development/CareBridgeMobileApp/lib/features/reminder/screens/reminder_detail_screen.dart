@@ -133,15 +133,6 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
     });
   }
 
-  Future<void> _snooze() async {
-    await _runAction(() async {
-      await _service.snoozeReminder(
-        widget.reminderId,
-        DateTime.now().add(const Duration(hours: 1)),
-      );
-    });
-  }
-
   Future<void> _delete() async {
     final ok = await _confirm(
       title: 'Tắt nhắc lịch?',
@@ -183,12 +174,15 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
               reminder: _reminder!,
               processing: _processing,
               onComplete: _complete,
-              onSnooze: _snooze,
               onEdit: () async {
                 final changed = await context.push(
                   '/reminders/${_reminder!.id}/manage',
                   extra: _reminder,
                 );
+                if (changed == 'deleted') {
+                  if (mounted) Navigator.pop(context, true);
+                  return;
+                }
                 if (changed == true && mounted) _load();
               },
               onDelete: _delete,
@@ -202,7 +196,6 @@ class _ReminderContent extends StatelessWidget {
   final Reminder reminder;
   final bool processing;
   final VoidCallback onComplete;
-  final VoidCallback onSnooze;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSkip;
@@ -211,7 +204,6 @@ class _ReminderContent extends StatelessWidget {
     required this.reminder,
     required this.processing,
     required this.onComplete,
-    required this.onSnooze,
     required this.onEdit,
     required this.onDelete,
     required this.onSkip,
@@ -285,16 +277,19 @@ class _ReminderContent extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               _InfoRow(
+                icon: Icons.calendar_month_rounded,
+                label: 'Ngày bắt đầu',
+                value: _formatDateOnly(reminder.scheduledAt),
+              ),
+              _InfoRow(
                 icon: Icons.schedule_rounded,
-                label: 'Bắt đầu',
-                value: _formatDateTime(reminder.scheduledAt),
+                label: 'Giờ nhắc',
+                value: _formatTimeOnly(reminder.scheduledAt),
               ),
               _InfoRow(
                 icon: Icons.event_available_rounded,
-                label: 'Kết thúc',
-                value: reminder.recurrenceEndDate != null
-                    ? _formatDateTime(reminder.recurrenceEndDate!)
-                    : 'Không giới hạn',
+                label: 'Ngày kết thúc',
+                value: _formatEndDate(reminder),
               ),
               _InfoRow(
                 icon: Icons.repeat_rounded,
@@ -334,57 +329,6 @@ class _ReminderContent extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-              const Text(
-                'Bảng lịch theo dõi',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: _onSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                ),
-                itemCount: 30, // Mock 30 days
-                itemBuilder: (context, index) {
-                  final day = index + 1;
-                  // Mock logic: some green, some yellow
-                  Color bgColor = Colors.white;
-                  Color textColor = _onSurfaceVariant;
-                  if (day < 10) {
-                    bgColor = const Color(0xFFE2F3E7); // Hoàn thành - xanh
-                    textColor = const Color(0xFF1E8E3E);
-                  } else if (day == 10 || day == 12) {
-                    bgColor = const Color(0xFFFFF3E0); // Bỏ qua - vàng
-                    textColor = const Color(0xFFF57C00);
-                  }
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _primary.withAlpha(20)),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$day',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                  );
-                },
-              ),
             ],
           ),
         ),
@@ -419,26 +363,6 @@ class _ReminderContent extends StatelessWidget {
             icon: const Icon(Icons.check_circle_outline_rounded),
             label: const Text(
               'Hoàn thành',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: processing ? null : onSnooze,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _primaryContainer),
-              minimumSize: const Size.fromHeight(54),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            icon: const Icon(Icons.snooze_rounded),
-            label: const Text(
-              'Hoãn 1 giờ',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w700,
@@ -529,13 +453,29 @@ class _ReminderContent extends StatelessWidget {
     }
   }
 
-  static String _formatDateTime(DateTime value) {
+  static String _formatDateOnly(DateTime value) {
     final local = value.toLocal();
     final d = local.day.toString().padLeft(2, '0');
     final m = local.month.toString().padLeft(2, '0');
+    return '$d/$m/${local.year}';
+  }
+
+  static String _formatTimeOnly(DateTime value) {
+    final local = value.toLocal();
     final h = local.hour.toString().padLeft(2, '0');
     final min = local.minute.toString().padLeft(2, '0');
-    return '$d/$m/${local.year} $h:$min';
+    return '$h:$min';
+  }
+
+  static String _formatEndDate(Reminder reminder) {
+    if (reminder.recurrenceType == RecurrenceType.none) {
+      return 'Không áp dụng';
+    }
+    final endDate = reminder.recurrenceEndDate;
+    if (endDate == null) {
+      return 'Không giới hạn';
+    }
+    return _formatDateOnly(endDate);
   }
 }
 

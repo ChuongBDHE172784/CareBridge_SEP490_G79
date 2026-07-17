@@ -1,0 +1,13 @@
+{
+  "name": "carebridge-firestore-rules-test",
+  "private": true,
+  "type": "module",
+  "description": "DCC-TC-020 — verifies owner-only Firestore inbox rules against the Firestore + Auth emulators.",
+  "scripts": {
+    "test": "node firestore-rules.test.mjs"
+  },
+  "devDependencies": {
+    "firebase": "^11.1.0",
+    "firebase-admin": "^13.0.0"
+  }
+}

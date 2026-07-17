@@ -7,11 +7,13 @@ import 'post_answer_screen.dart';
 class ExpertQuestionQueueScreen extends StatefulWidget {
   final String? expertName;
   final String? expertAvatarUrl;
+  final bool embeddedInShell;
 
   const ExpertQuestionQueueScreen({
     super.key,
     this.expertName,
     this.expertAvatarUrl,
+    this.embeddedInShell = false,
   });
 
   @override
@@ -118,12 +120,15 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
       appBar: AppBar(
         backgroundColor: _surface,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _primary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        automaticallyImplyLeading: !widget.embeddedInShell,
+        leading: widget.embeddedInShell
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: _primary),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: const Text(
-          'Hỏi đáp Cộng đồng',
+          'Yêu cầu tư vấn',
           style: TextStyle(
             color: _primary,
             fontWeight: FontWeight.bold,
@@ -267,7 +272,7 @@ class _ExpertQuestionQueueScreenState extends State<ExpertQuestionQueueScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: widget.embeddedInShell ? null : _buildBottomNav(),
     );
   }
 

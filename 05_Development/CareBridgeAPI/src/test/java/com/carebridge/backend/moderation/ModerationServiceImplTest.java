@@ -23,9 +23,11 @@ import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
+import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ModerationAction;
@@ -392,6 +394,113 @@ class ModerationServiceImplTest {
         ModerationHistoryResponse response = moderationService.getModerationHistory(filter, mockPrincipal);
 
         assertThat(response.content().get(0).reason()).isEqualTo("Nội dung không phù hợp");
+    }
+
+    @Test
+    void getAccountViolationHistory_returnsAccountActionsNewestFirstWithSafeNameFallbacks() {
+        UUID missingTargetId = UUID.randomUUID();
+        UUID moderatorId = UUID.randomUUID();
+        ModerationAction latest = makeAction(UUID.randomUUID(), missingTargetId, ReportTargetType.ACCOUNT,
+                ModerationActionType.SUSPEND, moderatorId, "Vi phạm quy tắc");
+        latest.setExpiresAt(Instant.now().plusSeconds(3600));
+        Page<ModerationAction> actionPage = new PageImpl<>(List.of(latest),
+                org.springframework.data.domain.PageRequest.of(0, 20), 1);
+        ArgumentCaptor<Pageable> pageableCaptor = forClass(Pageable.class);
+        when(moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                eq(ReportTargetType.ACCOUNT), any(), pageableCaptor.capture())).thenReturn(actionPage);
+        when(userRepository.findAllById(any())).thenReturn(List.of(User.builder()
+                .id(moderatorId).name("Moderator Test").build()));
+
+        AccountViolationHistoryResponse response = moderationService.getAccountViolationHistory(0, 20, mockPrincipal);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).targetUserName()).isEqualTo("Tài khoản không còn tồn tại");
+        assertThat(response.content().get(0).moderatorName()).isEqualTo("Moderator Test");
+        assertThat(response.content().get(0).expiresAt()).isEqualTo(latest.getExpiresAt());
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("actionAt").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void getAccountViolationHistory_withNoActions_returnsEmptyPage() {
+        when(moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+                eq(ReportTargetType.ACCOUNT), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        AccountViolationHistoryResponse response = moderationService.getAccountViolationHistory(0, 20, mockPrincipal);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+    }
+
+    @Test
+    void getRelatedReports_returnsOnlyReportsForTheSelectedTargetNewestFirst() {
+        ContentReport selected = makeReport(REPORT_ID_1, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.PENDING);
+        ContentReport related = makeReport(REPORT_ID_2, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.RESOLVED);
+        related.setCategory("SPAM");
+        related.setCreatedAt(Instant.now().plusSeconds(60));
+        ArgumentCaptor<Pageable> pageableCaptor = forClass(Pageable.class);
+        when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(selected));
+        when(contentReportRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(
+                eq(TARGET_ID_1), eq(ReportTargetType.QUESTION), pageableCaptor.capture()))
+                .thenReturn(new PageImpl<>(List.of(related), org.springframework.data.domain.PageRequest.of(0, 20), 1));
+
+        RelatedReportPageResponse response = moderationService.getRelatedReports(REPORT_ID_1, 0, 20, mockPrincipal);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).id()).isEqualTo(REPORT_ID_2);
+        assertThat(response.content().get(0).category()).isEqualTo("SPAM");
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void getRelatedReports_withNoMatchingReports_returnsEmptyPage() {
+        ContentReport selected = makeReport(REPORT_ID_1, TARGET_ID_1, ReportTargetType.QUESTION, ReportStatus.PENDING);
+        when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(selected));
+        when(contentReportRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(
+                eq(TARGET_ID_1), eq(ReportTargetType.QUESTION), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        RelatedReportPageResponse response = moderationService.getRelatedReports(REPORT_ID_1, 0, 20, mockPrincipal);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+    }
+
+    @Test
+    void moderateContent_lockHiddenQuestion_throwsConflictWithoutPersistingAction() {
+        when(communityQuestionRepository.lockIfApproved(TARGET_ID_1)).thenReturn(0);
+
+        ModerationException ex = assertThrows(ModerationException.class, () -> moderationService.moderateContent(
+                new com.carebridge.backend.content.dto.request.ModerateContentRequest(
+                        TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.LOCK, "Đã xử lý xong"),
+                moderatorPrincipal));
+
+        assertThat(ex.getCode()).isEqualTo("MOD-031");
+        verify(moderationActionRepository, times(0)).save(any());
+    }
+
+    @Test
+    void moderateContent_lockApprovedQuestion_recordsActionAfterAtomicTransition() {
+        UUID moderatorId = UUID.fromString(moderatorPrincipal.getName());
+        ModerationAction savedAction = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
+                ModerationActionType.LOCK, moderatorId, "Đóng thảo luận sau khi đã được xử lý");
+        when(communityQuestionRepository.lockIfApproved(TARGET_ID_1)).thenReturn(1);
+        when(moderationActionRepository.save(any())).thenReturn(savedAction);
+
+        var response = moderationService.moderateContent(
+                new com.carebridge.backend.content.dto.request.ModerateContentRequest(
+                        TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.LOCK,
+                        "Đóng thảo luận sau khi đã được xử lý"),
+                moderatorPrincipal);
+
+        assertThat(response.resultingStatus()).isEqualTo("LOCKED");
+        verify(communityQuestionRepository, times(1)).lockIfApproved(TARGET_ID_1);
+        verify(moderationActionRepository, times(1)).save(any());
+        verify(auditService, times(1)).log(eq(AuditAction.MODERATION_ACTION), eq(moderatorId),
+                eq("QUESTION"), eq(TARGET_ID_1.toString()), any());
     }
 
     private CommunityQuestion makeQuestion(UUID id, QuestionStatus status, UUID authorId, boolean anonymous, int bodyLength) {

@@ -69,7 +69,7 @@ class _AllRemindersScreenState extends State<AllRemindersScreen> {
       '/reminders/${task.id}/manage',
       extra: task,
     );
-    if (result == true) {
+    if (result == true || result == 'deleted') {
       _load();
     }
   }
@@ -303,12 +303,43 @@ class _TaskCard extends StatelessWidget {
     return task.reminderType.displayLabel;
   }
 
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    return '$day/$month/${local.year}';
+  }
+
   String _formatTime(DateTime dt) {
-    final date =
-        '${dt.toLocal().day.toString().padLeft(2, '0')}/${dt.toLocal().month.toString().padLeft(2, '0')}';
-    final h = dt.toLocal().hour.toString().padLeft(2, '0');
-    final m = dt.toLocal().minute.toString().padLeft(2, '0');
-    return '$date - $h:$m';
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String _formatEndDate() {
+    if (task.recurrenceType == RecurrenceType.none) {
+      return 'Không áp dụng';
+    }
+    final endDate = task.recurrenceEndDate;
+    if (endDate == null) {
+      return 'Không giới hạn';
+    }
+    return _formatDate(endDate);
+  }
+
+  Widget _scheduleLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 3),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          color: Color(0xFF524440),
+        ),
+      ),
+    );
   }
 
   @override
@@ -358,14 +389,9 @@ class _TaskCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _formatTime(task.scheduledAt),
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: Color(0xFF524440),
-                    ),
-                  ),
+                  _scheduleLine('Ngày bắt đầu', _formatDate(task.scheduledAt)),
+                  _scheduleLine('Ngày kết thúc', _formatEndDate()),
+                  _scheduleLine('Giờ', _formatTime(task.scheduledAt)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
