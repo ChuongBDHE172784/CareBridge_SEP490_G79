@@ -27,6 +27,10 @@ class SecureTokenStorage implements TokenStorage {
     required String userId,
     required String role,
   }) async {
+    final previousUserId = await _store.read(key: _keyUserId);
+    if (previousUserId != null && previousUserId != userId) {
+      await _store.delete(key: _onboardingDraftKey(previousUserId));
+    }
     await Future.wait([
       _store.write(key: _keyAccess, value: accessToken),
       _store.write(key: _keyRefresh, value: refreshToken),
@@ -52,10 +56,17 @@ class SecureTokenStorage implements TokenStorage {
   }
 
   @override
-  Future<void> clear() => Future.wait([
-    _store.delete(key: _keyAccess),
-    _store.delete(key: _keyRefresh),
-    _store.delete(key: _keyUserId),
-    _store.delete(key: _keyRole),
-  ]);
+  Future<void> clear() async {
+    final userId = await _store.read(key: _keyUserId);
+    await Future.wait([
+      _store.delete(key: _keyAccess),
+      _store.delete(key: _keyRefresh),
+      _store.delete(key: _keyUserId),
+      _store.delete(key: _keyRole),
+      if (userId != null) _store.delete(key: _onboardingDraftKey(userId)),
+    ]);
+  }
+
+  static String _onboardingDraftKey(String userId) =>
+      'cb_journey_onboarding_draft_$userId';
 }

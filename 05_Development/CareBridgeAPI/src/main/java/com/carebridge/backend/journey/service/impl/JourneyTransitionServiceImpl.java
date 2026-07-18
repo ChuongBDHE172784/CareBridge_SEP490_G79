@@ -22,6 +22,7 @@ import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
+import com.carebridge.backend.journey.service.IJourneyOnboardingService;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.rbac.Role;
 import org.springframework.context.ApplicationEventPublisher;
@@ -54,6 +55,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     private final AuditService auditService;
     private final JourneyTransitionPolicy transitionPolicy;
     private final ApplicationEventPublisher eventPublisher;
+    private final IJourneyOnboardingService onboardingService;
     private final Clock clock;
 
     @Autowired
@@ -63,9 +65,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             UserRepository userRepository,
             AuditService auditService,
             JourneyTransitionPolicy transitionPolicy,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            IJourneyOnboardingService onboardingService) {
         this(journeyRepository, transitionRepository, userRepository, auditService,
-                transitionPolicy, eventPublisher, Clock.systemUTC());
+                transitionPolicy, eventPublisher, onboardingService, Clock.systemUTC());
     }
 
     public JourneyTransitionServiceImpl(
@@ -75,6 +78,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             AuditService auditService,
             JourneyTransitionPolicy transitionPolicy,
             ApplicationEventPublisher eventPublisher,
+            IJourneyOnboardingService onboardingService,
             Clock clock) {
         this.journeyRepository = journeyRepository;
         this.transitionRepository = transitionRepository;
@@ -82,6 +86,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         this.auditService = auditService;
         this.transitionPolicy = transitionPolicy;
         this.eventPublisher = eventPublisher;
+        this.onboardingService = onboardingService;
         this.clock = clock;
     }
 
@@ -97,6 +102,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             throw new BusinessException(
                     HttpStatus.FORBIDDEN, "JOURNEY-003", "Mother role required");
         }
+
+        onboardingService.ensureEligible(callerId);
 
         transitionPolicy.validateCreate(request);
         Instant effectiveAt = effectiveAtOrNow(request.getEffectiveAt());

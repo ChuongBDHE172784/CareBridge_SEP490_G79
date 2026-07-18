@@ -39,7 +39,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       await AuthService.instance.refreshSession();
       if (!mounted) return;
       if (role == 'MOTHER') {
-        context.go('/mother-stage-selection');
+        context.go('/journey-onboarding');
       } else {
         context.go('/');
       }

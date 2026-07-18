@@ -10,8 +10,9 @@
 | Client đề xuất | Postman |
 | URL API cơ sở | `http://localhost:8080` |
 | Phân loại dữ liệu kiểm thử | Chỉ sử dụng dữ liệu giả lập (Synthetic only) |
-| Phiên bản hướng dẫn | 1.0 |
+| Phiên bản hướng dẫn | 1.1 |
 | Ngày | 2026-07-18 |
+| Trạng thái Story | `done`; review gate sạch, Journey suite `45/45 PASS` |
 
 ## 1. Bản ghi Đợt kiểm thử (Test Run Record)
 
@@ -44,7 +45,7 @@ Hướng dẫn này thực hiện xác minh thủ công các nội dung sau:
 - Hành vi vòng đời kết thúc (terminal lifecycle behavior);
 - Migration cơ sở dữ liệu và kiểm soát tính duy nhất (uniqueness controls).
 
-API hiện tại trả về tối đa 20 bản ghi lịch sử mới nhất, sắp xếp theo thứ tự mới nhất trước.
+API history hỗ trợ phân trang bằng `page`/`size`, trả metadata `totalElements`/`totalPages` và sắp xếp mới nhất trước. Client phải tiếp tục tải cho đến trang cuối; không được giả định history chỉ có tối đa 20 bản ghi.
 
 ## 3. Các Giới hạn Quan trọng
 
@@ -66,7 +67,10 @@ Không cố ý chèn lỗi cơ sở dữ liệu hoặc tạo các bản ghi gi�
 
 1. Đã cài đặt Java 21 và backend CareBridge đang sẵn sàng.
 2. Cơ sở dữ liệu kiểm thử PostgreSQL đang chạy.
-3. File migration `V20260718090000__canonical_mother_lifecycle_history.sql` đã được thực thi.
+3. Hai migration Story 6.1 đã được thực thi:
+
+   - `V20260718090000__canonical_mother_lifecycle_history.sql`
+   - `V20260718091000__enforce_mother_journey_transition_immutability.sql`
 4. API có thể kết nối tại `{{baseUrl}}`.
 5. Chuẩn bị ba tài khoản giả lập (synthetic):
 
@@ -96,7 +100,8 @@ Chạy các truy vấn chỉ đọc này trước khi kiểm thử API:
 ```sql
 SELECT version, description, success
 FROM flyway_schema_history
-WHERE version = '20260718090000';
+WHERE version IN ('20260718090000', '20260718091000')
+ORDER BY version;
 
 SELECT column_name, data_type
 FROM information_schema.columns
@@ -111,14 +116,21 @@ WHERE schemaname = 'public'
   AND indexname = 'uq_mother_journeys_one_canonical_active';
 
 SELECT to_regclass('public.mother_journey_transitions') AS transition_table;
+
+SELECT trigger_name
+FROM information_schema.triggers
+WHERE event_object_schema = 'public'
+  AND event_object_table = 'mother_journey_transitions'
+  AND trigger_name = 'trg_mother_journey_transitions_append_only';
 ```
 
 Kết quả kỳ vọng:
 
-- Flyway báo cáo migration thành công.
+- Flyway báo cáo cả hai migration thành công.
 - Cả 3 cột mới đều tồn tại.
 - Partial unique index tồn tại.
 - `transition_table` là `public.mother_journey_transitions`.
+- Trigger `trg_mother_journey_transitions_append_only` tồn tại.
 
 Nếu thiếu bất kỳ mục nào, dừng kiểm thử và đánh dấu đợt chạy là `BLOCKED`.
 
@@ -227,8 +239,15 @@ Cấu trúc response lỗi nghiệp vụ chuẩn (standard business-error envelo
 | MF01-6.1-MAN-011 | Quy tắc hoàn thành và kết thúc vòng đời | P1 | `[ ]` | `[nhập]` |
 | MF01-6.1-MAN-012 | Dashboard sử dụng vòng đời chuẩn hoá | P1 | `[ ]` | `[nhập]` |
 | MF01-6.1-MAN-013 | Tạo đồng thời tạo ra duy nhất 1 kết quả thành công | P0 | `[ ]` | `[nhập]` |
+| MF01-6.1-MAN-014 | History phân trang đầy đủ và giữ provenance | P1 | `[ ]` | `[nhập]` |
+| MF01-6.1-MAN-015 | No-op, notes-only và status không hỗ trợ | P1 | `[ ]` | `[nhập]` |
+| MF01-6.1-MAN-016 | Giới hạn thời gian hiệu lực do client cung cấp | P0 | `[ ]` | `[nhập]` |
+| MF01-6.1-MAN-017 | User chưa gán role được onboarding thành MOTHER | P0 | `[ ]` | `[nhập]` |
+| MF01-6.1-MAN-018 | Legacy BABY_CARE vẫn đọc được trên dashboard | P1 | `[ ]` | `[nhập]` |
 | MF01-6.1-AUTO-001 | Rollback nguyên tử khi ghi lịch sử thất bại | P0 | `AUTOMATED EVIDENCE` | `[nhập bằng chứng build]` |
 | MF01-6.1-AUTO-002 | Xung đột lạc quan ngăn chặn ghi đè mất dữ liệu | P0 | `AUTOMATED EVIDENCE` | `[nhập bằng chứng build]` |
+| MF01-6.1-AUTO-003 | UPDATE/DELETE transition bị chặn ở repository và PostgreSQL | P0 | `AUTOMATED EVIDENCE` | `[nhập bằng chứng build]` |
+| MF01-6.1-AUTO-004 | Audit JOURNEY_CREATED/UPDATED cùng transaction nghiệp vụ | P0 | `AUTOMATED EVIDENCE` | `[nhập bằng chứng build]` |
 
 Sử dụng:
 
@@ -741,6 +760,55 @@ Bất biến kỳ vọng (Expected invariants):
 - request bị từ chối không thêm chuyển đổi nào;
 - các chuyển đổi đã tồn tại không bao giờ bị cập nhật hoặc xóa.
 
+### 9.1 Regression bổ sung sau Code Review
+
+Các mục này bổ sung cho 13 ca chi tiết ở Mục 8 và phải được đưa vào lần chạy regression mới.
+
+#### MF01-6.1-MAN-014 — History phân trang đầy đủ và giữ provenance
+
+1. Dùng fixture synthetic có số transition lớn hơn `size` (ví dụ 21 event với `size=10`).
+2. Gọi `GET /api/v1/journeys/{{journeyAId}}/history?page=0&size=10`, sau đó gọi lần lượt đến `totalPages - 1`.
+3. Ghép các page theo thứ tự trả về và kiểm tra không trùng/mất event.
+
+Kỳ vọng: `totalElements` và `totalPages` đúng; mọi page mới nhất trước; thay đổi ngày/provenance dùng shape `{previous,new}` và chỉ chứa field allow-list.
+
+#### MF01-6.1-MAN-015 — No-op, notes-only và status không hỗ trợ
+
+1. Gửi PUT không làm thay đổi field nghiệp vụ; kỳ vọng HTTP `400`, `JOURNEY-020`, không tăng version/history.
+2. Gửi PUT chỉ thay đổi `notes`; kỳ vọng thành công, tăng version một lần và thêm `DETAILS_CHANGED` mà không lộ notes trong history response tối thiểu.
+3. Gửi status ngoài allow-list; kỳ vọng HTTP `400`, `JOURNEY-021`, không có side effect.
+
+#### MF01-6.1-MAN-016 — Giới hạn `effectiveAt`
+
+1. Gửi một update có `effectiveAt` backdated hợp lệ; kỳ vọng thành công và `recordedAt` vẫn là thời điểm server ghi nhận.
+2. Gửi `effectiveAt` trong phạm vi server time cộng tối đa 5 phút; kỳ vọng được chấp nhận.
+3. Gửi `effectiveAt` lớn hơn server time cộng 5 phút; kỳ vọng HTTP `400`, `JOURNEY-019`, không tăng version/history.
+
+Ghi lại server time dùng để đối chiếu nhằm tránh false failure do lệch đồng hồ client.
+
+#### MF01-6.1-MAN-017 — Onboarding user chưa gán role
+
+1. Dùng user synthetic có role `null`/chưa gán và chưa có journey.
+2. Tạo canonical lifecycle đầu tiên bằng request hợp lệ.
+3. Đọc lại user và journey.
+
+Kỳ vọng: request thành công; user được gán `MOTHER` cùng transaction; tài khoản có role khác như `EXPERT` vẫn bị từ chối và không có journey/audit dang dở.
+
+#### MF01-6.1-MAN-018 — Legacy BABY_CARE vẫn đọc được
+
+Chỉ dùng fixture legacy được phê duyệt; không tạo BABY_CARE mới qua canonical API. Gọi dashboard của owner có một `BABY_CARE ACTIVE` legacy và không có maternal canonical active.
+
+Kỳ vọng: dashboard vẫn đọc được legacy row; create canonical `BABY_CARE` mới vẫn bị từ chối; dữ liệu owner khác không xuất hiện.
+
+### 9.2 Bằng chứng tự động hóa bắt buộc
+
+Không chạy UPDATE/DELETE trực tiếp trên transition table ở shared/staging. Liên kết kết quả `JourneyCanonicalLifecycleIntegrationTest` xác nhận:
+
+- PostgreSQL trigger chặn cả UPDATE và DELETE trên `mother_journey_transitions`;
+- repository/entity không cung cấp đường mutation hợp lệ;
+- audit `JOURNEY_CREATED`/`JOURNEY_UPDATED` được persist nguyên tử cùng thay đổi journey;
+- rollback và optimistic-lock race không để current/history/audit lệch nhau.
+
 ## 10. Mẫu Báo cáo Lỗi (Defect Reporting Template)
 
 ```text
@@ -772,6 +840,8 @@ Bất kỳ hành vi vượt quyền sở hữu (ownership bypass), tồn tại n
 
 ## 11. Cổng Hoàn thành (Completion Gate)
 
+Trạng thái Story ngày 2026-07-18: `done`. Automated backend Story/contract suite `45/45 PASS`; code review sạch. Full backend baseline còn lỗi ngoài Journey đã được waive riêng và không được dùng để waive bất kỳ failure nào của Story 6.1.
+
 Đợt kiểm thử thủ công vượt qua (PASS) khi:
 
 - tất cả các kịch bản P0 có thể thực thi đều PASS;
@@ -783,12 +853,16 @@ Bất kỳ hành vi vượt quyền sở hữu (ownership bypass), tồn tại n
 - các trường hợp kiểm thử đồng thời / chèn lỗi không thể thực thi thủ công được liên kết với bằng chứng tự động hóa đã PASS;
 - tất cả token và giá trị ngữ cảnh sức khỏe giả lập đều đã được ẩn khỏi bằng chứng.
 
-Story 6.1 không được phép chuyển sang `done` chỉ dựa trên đợt kiểm thử thủ công này. Phê duyệt DPO/quyền riêng tư, preflight cơ sở dữ liệu đích, code review, độ phủ kiểm thử và cổng kiểm thử hồi quy đã thỏa thuận vẫn là các yêu cầu phát hành riêng biệt.
+Một lần chạy mới không được kết luận PASS chỉ dựa trên manual result. Phê duyệt DPO/quyền riêng tư, preflight cơ sở dữ liệu đích, code review, độ phủ kiểm thử và cổng regression vẫn là các yêu cầu phát hành riêng biệt.
 
 ## 12. Tài liệu Tham khảo
 
 - `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_TDS.md`
 - `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_Test-Spec.md`
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260718090000__canonical_mother_lifecycle_history.sql`
+- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260718091000__enforce_mother_journey_transition_immutability.sql`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/controller/JourneyController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/service/impl/JourneyTransitionServiceImpl.java`
+- `06_Testing/TestResults/epic-6/story-6-1/code-review-2026-07-18.md`
+- `06_Testing/TestResults/epic-6/story-6-1/backend-coverage-2026-07-18.md`
+- `06_Testing/TestResults/epic-6/story-6-1/backend-baseline-waiver-2026-07-18.md`

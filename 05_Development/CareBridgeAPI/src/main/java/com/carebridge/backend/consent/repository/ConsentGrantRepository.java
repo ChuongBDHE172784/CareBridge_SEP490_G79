@@ -14,9 +14,53 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ConsentGrantRepository extends JpaRepository<ConsentGrant, Long> {
 
+    @Query(value = """
+            SELECT 1
+            FROM pg_advisory_xact_lock(
+                hashtextextended(CAST(:userId AS text), 0))
+            """, nativeQuery = true)
+    Integer acquireLifecycleOwnerLock(@Param("userId") java.util.UUID userId);
+
     List<ConsentGrant> findByUserIdOrderByConsentGivenAtDesc(java.util.UUID userId);
 
     Optional<ConsentGrant> findByIdAndUserId(Long id, java.util.UUID userId);
+
+    @Query("""
+            select c from ConsentGrant c
+            where c.userId = :userId
+              and c.evidenceKey = :evidenceKey
+              and c.dataType = com.carebridge.backend.consent.entity.ConsentDataType.MOTHER_BASELINE
+              and c.purpose = com.carebridge.backend.consent.entity.ConsentPurpose.PERSONALIZE
+            """)
+    Optional<ConsentGrant> findLifecycleEvidenceByKey(
+            @Param("userId") java.util.UUID userId,
+            @Param("evidenceKey") java.util.UUID evidenceKey);
+
+    @Query("""
+            select c from ConsentGrant c
+            where c.userId = :userId
+              and c.dataType = com.carebridge.backend.consent.entity.ConsentDataType.MOTHER_BASELINE
+              and c.purpose = com.carebridge.backend.consent.entity.ConsentPurpose.PERSONALIZE
+              and c.policyVersion = :policyVersion
+              and c.scope = :scope
+              and c.revokedAt is null
+              and c.expiryAt > :now
+            order by c.consentGivenAt desc
+            """)
+    List<ConsentGrant> findValidLifecycleEvidence(
+            @Param("userId") java.util.UUID userId,
+            @Param("policyVersion") String policyVersion,
+            @Param("scope") String scope,
+            @Param("now") Instant now);
+
+    @Query("""
+            select count(c) > 0
+            from ConsentGrant c
+            where c.userId = :userId
+              and c.evidenceKey is not null
+              and c.policyVersion is not null
+            """)
+    boolean existsLifecycleEvidence(@Param("userId") java.util.UUID userId);
 
     @Query("""
             select count(c) > 0

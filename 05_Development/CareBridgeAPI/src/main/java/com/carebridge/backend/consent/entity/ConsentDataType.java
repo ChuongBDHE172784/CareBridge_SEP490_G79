@@ -7,5 +7,6 @@ public enum ConsentDataType {
     COMMUNITY_POST,
     SENSITIVE_DATA,
     RAG_CONTEXT,
-    EXPERT_SHARED_DATA
+    EXPERT_SHARED_DATA,
+    MOTHER_BASELINE
 }
