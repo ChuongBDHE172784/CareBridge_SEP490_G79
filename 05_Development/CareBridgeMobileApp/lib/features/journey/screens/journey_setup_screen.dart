@@ -16,10 +16,12 @@ class JourneySetupScreen extends StatefulWidget {
     super.key,
     this.journeyId,
     this.isEditMode = false,
+    this.isPrePregnancyTransition = false,
   });
 
   final String? journeyId;
   final bool isEditMode;
+  final bool isPrePregnancyTransition;
 
   @override
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
@@ -51,6 +53,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   final _service = JourneyService();
   final List<_SetupStep> _history = [];
+  final ScrollController _scrollController = ScrollController();
 
   _SetupStep _step = _SetupStep.method;
   _DatingMethod? _selectedMethod;
@@ -64,6 +67,19 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   bool _loading = false;
   bool _allowRoutePop = false;
   String? _error;
+
+  String get _dateSource => _selectedMethod == _DatingMethod.dueDate
+      ? 'CLINICIAN_CONFIRMED'
+      : 'SELF_REPORTED';
+
+  String get _dateConfidence =>
+      _selectedMethod == _DatingMethod.dueDate ? 'CONFIRMED' : 'ESTIMATED';
+
+  String get _changeReason {
+    if (widget.isPrePregnancyTransition) return 'PREGNANCY_CONFIRMED';
+    if (widget.isEditMode) return 'DATE_CORRECTION';
+    return 'INITIAL_SETUP';
+  }
 
   DateTime get _today {
     final now = DateTime.now();
@@ -181,6 +197,33 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       _step = next;
       _error = null;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  void _selectMethod(_DatingMethod method) {
+    setState(() {
+      _selectedMethod = method;
+      _error = null;
+      if (method != _DatingMethod.lmp) {
+        _lmpDate = null;
+        _cycleLength = 28;
+        _cycleUnknown = false;
+      }
+      if (method != _DatingMethod.conception) {
+        _conceptionDate = null;
+      }
+      if (method != _DatingMethod.dueDate) {
+        _dueDate = null;
+      }
+      if (method != _DatingMethod.gestationalAge) {
+        _gestationalWeeks = 4;
+        _gestationalDays = 0;
+      }
+    });
   }
 
   void _handleBack() {
@@ -241,6 +284,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   Future<void> _submitJourney() async {
     final dueDate = _calculatedDueDate;
     if (dueDate == null) return;
+    final lastMenstrualDate =
+        _selectedMethod == _DatingMethod.lmp && _lmpDate != null
+        ? _formatApiDate(_lmpDate!)
+        : null;
     final journeyId = widget.journeyId;
     final isUpdate = widget.isEditMode && journeyId != null;
     setState(() {
@@ -257,10 +304,11 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           journeyId,
           UpdateJourneyRequest(
             journeyType: JourneyType.pregnancy,
-            lastMenstrualDate: _lmpDate != null
-                ? _formatApiDate(_lmpDate!)
-                : null,
+            lastMenstrualDate: lastMenstrualDate,
             estimatedDueDate: _formatApiDate(dueDate),
+            dateSource: _dateSource,
+            dateConfidence: _dateConfidence,
+            changeReason: _changeReason,
             notes: _notes(),
           ),
         );
@@ -269,10 +317,11 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           CreateJourneyRequest(
             journeyType: JourneyType.pregnancy,
             startDate: _formatApiDate(_today),
-            lastMenstrualDate: _lmpDate != null
-                ? _formatApiDate(_lmpDate!)
-                : null,
+            lastMenstrualDate: lastMenstrualDate,
             estimatedDueDate: _formatApiDate(dueDate),
+            dateSource: _dateSource,
+            dateConfidence: _dateConfidence,
+            changeReason: _changeReason,
             notes: _notes(),
           ),
         );
@@ -308,6 +357,12 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: _allowRoutePop,
@@ -318,35 +373,27 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       child: Scaffold(
         backgroundColor: _canvas,
         body: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              Column(
-                children: [
-                  _buildTopBar(),
-                  _buildProgressBar(),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 260),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: SingleChildScrollView(
-                        key: ValueKey(_step),
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 170),
-                        child: _buildStepContent(),
-                      ),
-                    ),
+              _buildTopBar(),
+              _buildProgressBar(),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    key: ValueKey(_step),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                    child: _buildStepContent(),
                   ),
-                ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildBottomBar(),
+                ),
               ),
             ],
           ),
         ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }
@@ -359,6 +406,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           const SizedBox(width: 8),
           IconButton(
             onPressed: _loading ? null : _handleBack,
+            tooltip: 'Quay lại',
             icon: const Icon(Icons.arrow_back_rounded),
             color: _text,
           ),
@@ -457,37 +505,39 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         ),
         const SizedBox(height: 34),
         _MethodCard(
+          key: const Key('dating-method-lmp'),
           title: 'Tôi nhớ ngày đầu tiên của chu kỳ',
           subtitle: 'CareBridge sẽ tính dự sinh từ kỳ kinh cuối.',
           icon: Icons.event_note_rounded,
           selected: _selectedMethod == _DatingMethod.lmp,
-          onTap: () => setState(() => _selectedMethod = _DatingMethod.lmp),
+          onTap: () => _selectMethod(_DatingMethod.lmp),
         ),
         const SizedBox(height: 14),
         _MethodCard(
+          key: const Key('dating-method-conception'),
           title: 'Tôi có thể chỉ định ngày thụ thai',
           subtitle: 'Phù hợp khi bạn nhớ mốc rụng trứng hoặc IVF.',
           icon: Icons.favorite_rounded,
           selected: _selectedMethod == _DatingMethod.conception,
-          onTap: () =>
-              setState(() => _selectedMethod = _DatingMethod.conception),
+          onTap: () => _selectMethod(_DatingMethod.conception),
         ),
         const SizedBox(height: 14),
         _MethodCard(
+          key: const Key('dating-method-gestational-age'),
           title: 'Tôi đã biết thời gian sản khoa của mình',
           subtitle: 'Nhập số tuần và số ngày thai hiện tại.',
           icon: Icons.timeline_rounded,
           selected: _selectedMethod == _DatingMethod.gestationalAge,
-          onTap: () =>
-              setState(() => _selectedMethod = _DatingMethod.gestationalAge),
+          onTap: () => _selectMethod(_DatingMethod.gestationalAge),
         ),
         const SizedBox(height: 14),
         _MethodCard(
+          key: const Key('dating-method-due-date'),
           title: 'Bác sĩ đã nói cho tôi ngày dự sinh dự kiến',
           subtitle: 'Dùng ngày dự sinh đã được tư vấn.',
           icon: Icons.medical_information_rounded,
           selected: _selectedMethod == _DatingMethod.dueDate,
-          onTap: () => setState(() => _selectedMethod = _DatingMethod.dueDate),
+          onTap: () => _selectMethod(_DatingMethod.dueDate),
         ),
       ],
     );
@@ -863,82 +913,84 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   Widget _buildBottomBar() {
     if (_step == _SetupStep.loading) return const SizedBox.shrink();
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [_canvas, _canvas, Color(0x00F6F1EC)],
-          stops: [0.0, 0.72, 1.0],
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _canvas,
+          border: Border(top: BorderSide(color: _border)),
         ),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 44, 24, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_error != null) ...[
-            Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_error != null) ...[
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _errorBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _errorText,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+            if (_step == _SetupStep.dueDateResult) ...[
+              TextButton(
+                onPressed: () => _goTo(_SetupStep.method),
+                child: const Text(
+                  'TÍNH LẠI',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: _primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            SizedBox(
               width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: _errorBg,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: _errorText,
-                  height: 1.4,
+              height: 56,
+              child: FilledButton(
+                onPressed: _canContinue ? _handleContinue : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: _primary.withAlpha(115),
+                  shape: const StadiumBorder(),
+                  elevation: 0,
+                ),
+                child: Text(
+                  _step == _SetupStep.dueDateResult
+                      ? 'Tạo hành trình'
+                      : 'Tiếp theo',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.9,
+                  ),
                 ),
               ),
             ),
           ],
-          if (_step == _SetupStep.dueDateResult) ...[
-            TextButton(
-              onPressed: () => _goTo(_SetupStep.method),
-              child: const Text(
-                'TÍNH LẠI',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                  color: _primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
-              onPressed: _canContinue ? _handleContinue : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: _primary.withAlpha(115),
-                shape: const StadiumBorder(),
-                elevation: 0,
-              ),
-              child: Text(
-                _step == _SetupStep.dueDateResult
-                    ? 'Tạo hành trình'
-                    : 'Tiếp theo',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.9,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -946,6 +998,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
 class _MethodCard extends StatelessWidget {
   const _MethodCard({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,
@@ -968,77 +1021,88 @@ class _MethodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      decoration: BoxDecoration(
-        color: selected ? _surfaceLow : _surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: selected ? _primary : _border, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: _text.withAlpha(14),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: '$title. $subtitle',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          decoration: BoxDecoration(
+            color: selected ? _surfaceLow : _surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: selected ? _primary : _border, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: _text.withAlpha(14),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: selected ? _primary : _surfaceLow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: selected ? Colors.white : _primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: _text,
-                          height: 1.35,
-                        ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: selected ? _primary : _surfaceLow,
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          color: _muted,
-                          height: 1.35,
-                        ),
+                      child: Icon(
+                        icon,
+                        color: selected ? Colors.white : _primary,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: _text,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: _muted,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 160),
+                      opacity: selected ? 1 : 0,
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: _primary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 160),
-                  opacity: selected ? 1 : 0,
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: _primary,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

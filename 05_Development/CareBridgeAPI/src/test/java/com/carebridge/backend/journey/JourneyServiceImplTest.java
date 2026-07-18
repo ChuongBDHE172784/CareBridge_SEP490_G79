@@ -142,9 +142,11 @@ class JourneyServiceImplTest {
         req.setStartDate(LocalDate.of(2026, 2, 1));
         req.setLastMenstrualDate(LocalDate.of(2026, 1, 10));
 
+        when(userRepository.findById(CALLER_ID))
+                .thenReturn(Optional.of(User.builder().id(CALLER_ID).role(Role.MOTHER).build()));
         when(journeyRepository.existsByOwnerUserIdAndJourneyTypeAndStatus(
                 CALLER_ID, JourneyType.PREGNANCY, JourneyStatus.ACTIVE)).thenReturn(false);
-        when(journeyRepository.save(any())).thenAnswer(inv -> {
+        when(journeyRepository.saveAndFlush(any())).thenAnswer(inv -> {
             MotherJourney journey = inv.getArgument(0);
             journey.setId(UUID.randomUUID());
             return journey;
@@ -152,7 +154,7 @@ class JourneyServiceImplTest {
 
         journeyService.createJourney(req, CALLER_ID);
 
-        verify(journeyRepository).save(argThat(j ->
+        verify(journeyRepository).saveAndFlush(argThat(j ->
                 LocalDate.of(2026, 1, 10).equals(j.getLastMenstrualDate()) &&
                 LocalDate.of(2026, 10, 17).equals(j.getEstimatedDueDate())));
     }

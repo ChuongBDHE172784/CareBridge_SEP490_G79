@@ -1,0 +1,5 @@
+               email                | status | revoked | token_rotated 
+------------------------------------+--------+---------+---------------
+ mf01.story61.other@carebridge.test | active | f       | t
+(1 row)
+

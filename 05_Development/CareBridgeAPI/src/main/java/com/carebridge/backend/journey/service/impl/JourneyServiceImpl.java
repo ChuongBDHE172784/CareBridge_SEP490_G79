@@ -7,17 +7,22 @@ import com.carebridge.backend.journey.dto.CreateJourneyRequest;
 import com.carebridge.backend.journey.dto.CreateJourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
 import com.carebridge.backend.journey.dto.JourneyResponse;
+import com.carebridge.backend.journey.dto.JourneyTransitionPageResponse;
 import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
+import com.carebridge.backend.journey.dto.JourneyTransitionResponse;
 import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.IJourneyService;
+import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,18 +39,45 @@ public class JourneyServiceImpl implements IJourneyService {
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final Clock clock;
+    private final IJourneyTransitionService transitionService;
 
     @Autowired
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService) {
-        this(journeyRepository, userRepository, auditService, Clock.systemDefaultZone());
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            IJourneyTransitionService transitionService) {
+        this(
+                journeyRepository,
+                userRepository,
+                auditService,
+                Clock.systemDefaultZone(),
+                transitionService);
+    }
+
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService) {
+        this(journeyRepository, userRepository, auditService, Clock.systemDefaultZone(), null);
     }
 
     /** Test constructor — allows injecting a fixed Clock for deterministic time calculations. */
     public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, Clock clock) {
+        this(journeyRepository, userRepository, auditService, clock, null);
+    }
+
+    private JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            Clock clock,
+            IJourneyTransitionService transitionService) {
         this.journeyRepository = journeyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
         this.clock = clock;
+        this.transitionService = transitionService;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -54,6 +86,9 @@ public class JourneyServiceImpl implements IJourneyService {
 
     @Override
     public CreateJourneyResponse createJourney(CreateJourneyRequest request, UUID callerId) {
+        if (transitionService != null) {
+            return transitionService.createJourney(request, callerId);
+        }
         var user = userRepository.findById(callerId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "JOURNEY-001",
                         "User not found: " + callerId));
@@ -111,6 +146,9 @@ public class JourneyServiceImpl implements IJourneyService {
 
     @Override
     public JourneyResponse updateJourney(UUID ownerId, UUID journeyId, UpdateJourneyRequest request) {
+        if (transitionService != null) {
+            return transitionService.updateJourney(ownerId, journeyId, request);
+        }
         // C1 — load journey
         MotherJourney journey = journeyRepository.findById(journeyId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "JOURNEY-010",
@@ -170,6 +208,16 @@ public class JourneyServiceImpl implements IJourneyService {
         return toJourneyResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public JourneyTransitionPageResponse getHistory(
+            UUID ownerId, UUID journeyId, Pageable pageable) {
+        if (transitionService == null) {
+            throw new IllegalStateException("Journey transition service is unavailable");
+        }
+        return transitionService.getHistory(ownerId, journeyId, pageable);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // UC24 — View Mother Journey Dashboard
     // ─────────────────────────────────────────────────────────────
@@ -177,8 +225,14 @@ public class JourneyServiceImpl implements IJourneyService {
     @Override
     @Transactional(readOnly = true)
     public JourneyDashboardResponse getDashboard(UUID userId) {
-        var activeJourney = journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
-                userId, JourneyStatus.ACTIVE);
+        var activeJourney = journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                userId, JourneyStatus.ACTIVE, JourneyTransitionPolicy.CANONICAL_STAGES);
+
+        if (activeJourney.isEmpty()) {
+            activeJourney = journeyRepository
+                    .findFirstByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtDesc(
+                            userId, JourneyType.BABY_CARE, JourneyStatus.ACTIVE);
+        }
 
         // No active journey → 200 OK with NO_JOURNEY (never 404 — mobile onboarding rule)
         if (activeJourney.isEmpty()) {
@@ -222,6 +276,9 @@ public class JourneyServiceImpl implements IJourneyService {
                 .estimatedDueDate(journey.getEstimatedDueDate())
                 .lastMenstrualDate(journey.getLastMenstrualDate())
                 .startDate(journey.getStartDate())
+                .version(journey.getVersion())
+                .dateSource(journey.getDateSource())
+                .dateConfidence(journey.getDateConfidence())
                 .build();
     }
 

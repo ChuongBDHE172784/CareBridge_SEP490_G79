@@ -1,0 +1,11 @@
+               email                |              journey_id              | journey_type | status | version |     date_source     | date_confidence | transition_count 
+------------------------------------+--------------------------------------+--------------+--------+---------+---------------------+-----------------+------------------
+ mf01.story61.new-a@carebridge.test | fdb63726-7a6c-43b5-bfe2-06fe15b6f905 | PREGNANCY    | ACTIVE |       1 | CLINICIAN_CONFIRMED | CONFIRMED       |                2
+(1 row)
+
+  event_type   |  from_stage   |   to_stage    |       source        | confidence |       reason        | journey_version 
+---------------+---------------+---------------+---------------------+------------+---------------------+-----------------
+ CREATED       |               | PRE_PREGNANCY | UNKNOWN             |            |                     |               0
+ STAGE_CHANGED | PRE_PREGNANCY | PREGNANCY     | CLINICIAN_CONFIRMED | CONFIRMED  | PREGNANCY_CONFIRMED |               1
+(2 rows)
+
