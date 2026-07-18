@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
  * Log nội dung email thay vì gửi thật.
  */
 @Service
-@Profile({ "dev", "supabase", "test" })
+@Profile({ "dev", "test" })
 @Primary
 public class MockEmailService implements EmailService {
 

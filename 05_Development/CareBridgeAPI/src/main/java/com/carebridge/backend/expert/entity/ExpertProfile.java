@@ -27,6 +27,9 @@ private UUID expertProfileId;
 @Column(name = "user_id", nullable = false, unique = true)
 private UUID userId;
 
+@Column(name = "display_name", length = 150)
+private String displayName;
+
 @Column(name = "specialty", length = 100)
 private String specialty;
 

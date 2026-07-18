@@ -27,7 +27,7 @@ public class IntakeSession {
     private UUID motherProfileId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "stage", nullable = false, length = 20)
+    @Column(name = "stage", nullable = true, length = 20)
     @Builder.Default
     private TriageStage stage = TriageStage.INFANT;
 
