@@ -4,6 +4,10 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
 import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
+import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -48,8 +52,10 @@ class JourneyDashboardServiceImplTest {
     @Test
     void getDashboard_activePregnancy_returnsCalculatedWeekAndTrimester() {
         var journey = JourneyDashboardTestFactory.makePregnancyJourney(20); // 20 weeks pregnant
-        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
-                JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
                 .thenReturn(Optional.of(journey));
 
         JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
@@ -66,8 +72,10 @@ class JourneyDashboardServiceImplTest {
     @Test
     void getDashboard_activePostpartum_returnsPostpartumStatus() {
         var journey = JourneyDashboardTestFactory.makePostpartumJourney();
-        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
-                JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
                 .thenReturn(Optional.of(journey));
 
         JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
@@ -77,14 +85,60 @@ class JourneyDashboardServiceImplTest {
         assertThat(dashboard.getTrimester()).isNull();
     }
 
+    @Test
+    void getDashboard_legacyBabyCareRemainsReadableWhenNoCanonicalJourneyExists() {
+        var journey = JourneyLifecycleTestFactory.babyCareJourney();
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.empty());
+        when(journeyRepository
+                .findFirstByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtDesc(
+                        JourneyDashboardTestFactory.MOTHER_ID,
+                        JourneyType.BABY_CARE,
+                        JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(journey));
+
+        JourneyDashboardResponse dashboard =
+                journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.getStatus()).isEqualTo(DashboardStatus.BABY_CARE);
+        assertThat(dashboard.getJourneyType()).isEqualTo("BABY_CARE");
+    }
+
+    @Test
+    void getDashboard_includesVersionAndDateProvenance() {
+        var journey = JourneyDashboardTestFactory.makePregnancyJourney(20);
+        journey.setVersion(4L);
+        journey.setDateSource(JourneyDateSource.CLINICIAN_CONFIRMED);
+        journey.setDateConfidence(JourneyDateConfidence.CONFIRMED);
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.of(journey));
+
+        JourneyDashboardResponse dashboard =
+                journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.getVersion()).isEqualTo(4L);
+        assertThat(dashboard.getDateSource())
+                .isEqualTo(JourneyDateSource.CLINICIAN_CONFIRMED);
+        assertThat(dashboard.getDateConfidence())
+                .isEqualTo(JourneyDateConfidence.CONFIRMED);
+    }
+
     /**
      * TC-024-003: CRITICAL (Mobile onboarding) — No active journey must return
      * HTTP 200 with status=NO_JOURNEY (never throw a 404 exception).
      */
     @Test
     void getDashboard_noActiveJourney_returnsNoJourneyStatus_never404() {
-        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
-                JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
                 .thenReturn(Optional.empty());
 
         // MUST NOT throw — assertThatNoException
@@ -113,8 +167,10 @@ class JourneyDashboardServiceImplTest {
     })
     void getDashboard_pregnancyWeekTrimesterBoundaries(int weeksPregnant, int expectedTrimester) {
         var journey = JourneyDashboardTestFactory.makePregnancyJourney(weeksPregnant);
-        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
-                JourneyDashboardTestFactory.MOTHER_ID, JourneyStatus.ACTIVE))
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
                 .thenReturn(Optional.of(journey));
 
         JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);

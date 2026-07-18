@@ -2,6 +2,8 @@ package com.carebridge.backend.journey.dto;
 
 import lombok.Builder;
 import lombok.Data;
+import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,5 +20,8 @@ public class CreateJourneyResponse {
     private LocalDate lastMenstrualDate;
     private LocalDate estimatedDueDate;
     private String notes;
+    private long version;
+    private JourneyDateSource dateSource;
+    private JourneyDateConfidence dateConfidence;
     private Instant createdAt;
 }

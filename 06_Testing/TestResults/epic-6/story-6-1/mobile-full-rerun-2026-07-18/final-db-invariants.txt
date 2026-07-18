@@ -1,0 +1,22 @@
+               email                | active_count | journey_types | transitions 
+------------------------------------+--------------+---------------+-------------
+ mf01.story61.empty@carebridge.test |            0 |               |           0
+ mf01.story61.new-a@carebridge.test |            1 | PREGNANCY     |           2
+ mf01.story61.new-b@carebridge.test |            0 |               |           0
+ mf01.story61.new-c@carebridge.test |            1 | PREGNANCY     |           1
+ mf01.story61.new-d@carebridge.test |            1 | PRE_PREGNANCY |           1
+ mf01.story61.new-e@carebridge.test |            1 | PRE_PREGNANCY |           1
+ mf01.story61.other@carebridge.test |            0 |               |           0
+ mf01.story61.preg@carebridge.test  |            1 | PREGNANCY     |           3
+(8 rows)
+
+ invalid_multiple_active 
+-------------------------
+                       0
+(1 row)
+
+ canonical_baby_care 
+---------------------
+                   0
+(1 row)
+

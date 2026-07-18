@@ -152,10 +152,20 @@ final GoRouter appRouter = GoRouter(
           : (auth.role == 'MOTHER' ? '/mother-stage-selection' : '/');
     }
 
-    if (isAuth && isAuthRoute) {
+    if (isAuth && isAuthRoute && state.matchedLocation != '/auth-landing') {
       return auth.role == 'EXPERT'
           ? '/expert-home'
-          : (hasAssignedRole ? '/' : '/role-selection');
+          : (auth.role == 'MOTHER'
+                ? '/auth-landing'
+                : (hasAssignedRole ? '/' : '/role-selection'));
+    }
+
+    if (isAuth && state.matchedLocation == '/auth-landing') {
+      return auth.role == 'MOTHER'
+          ? null
+          : (auth.role == 'EXPERT'
+                ? '/expert-home'
+                : (hasAssignedRole ? '/' : '/role-selection'));
     }
 
     return null;
@@ -205,6 +215,8 @@ final GoRouter appRouter = GoRouter(
               state.uri.queryParameters['mode'] == 'edit' &&
               journeyId != null &&
               journeyId.isNotEmpty,
+          isPrePregnancyTransition:
+              state.uri.queryParameters['transition'] == 'pre-pregnancy',
         );
       },
     ),

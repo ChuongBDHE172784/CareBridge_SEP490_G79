@@ -9,22 +9,33 @@ import '../../journey/services/journey_service.dart';
 /// Mothers without an active journey choose their current stage before setup.
 /// Once a journey type exists in the dashboard, they can land directly on CB-008.
 class AuthLandingScreen extends StatefulWidget {
-  const AuthLandingScreen({super.key});
+  const AuthLandingScreen({super.key, this.journeyService});
+
+  final JourneyService? journeyService;
 
   @override
   State<AuthLandingScreen> createState() => _AuthLandingScreenState();
 }
 
 class _AuthLandingScreenState extends State<AuthLandingScreen> {
-  final _journeyService = JourneyService();
+  late final JourneyService _journeyService;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
+    _journeyService = widget.journeyService ?? JourneyService();
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeAfterLogin());
   }
 
   Future<void> _routeAfterLogin() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     final auth = AuthState.instance;
     if (!auth.isAuthenticated) {
       if (mounted) context.go('/welcome');
@@ -42,15 +53,87 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
       context.go(dashboard.hasActiveJourney ? '/' : '/mother-stage-selection');
     } catch (_) {
       if (!mounted) return;
-      context.go('/mother-stage-selection');
+      setState(() {
+        _loading = false;
+        _error =
+            'Không thể kiểm tra hành trình hiện tại. Vui lòng thử lại để tránh tạo trùng dữ liệu.';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF6F1EC),
-      body: Center(child: CircularProgressIndicator(color: Color(0xFFC98C7B))),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F1EC),
+      body: SafeArea(
+        child: Center(
+          child: _loading
+              ? const CircularProgressIndicator(color: Color(0xFFC98C7B))
+              : Semantics(
+                  liveRegion: true,
+                  label: _error,
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFE8DDD6)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0F5A463F),
+                          blurRadius: 32,
+                          offset: Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF2EAE4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.cloud_off_rounded,
+                            color: Color(0xFFC98C7B),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          _error ?? 'Không thể tải hành trình.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
+                            color: Color(0xFF5A463F),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          key: const Key('auth-landing-retry'),
+                          onPressed: _routeAfterLogin,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Thử lại'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            backgroundColor: const Color(0xFFC98C7B),
+                            foregroundColor: Colors.white,
+                            shape: const StadiumBorder(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }
