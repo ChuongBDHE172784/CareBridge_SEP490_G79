@@ -1,0 +1,18 @@
+package com.carebridge.backend.journey.event;
+
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.JourneyType;
+
+import java.time.Instant;
+import java.util.UUID;
+
+public record MotherJourneyCreated(
+        UUID eventId,
+        UUID journeyId,
+        UUID ownerUserId,
+        JourneyType journeyType,
+        JourneyStatus status,
+        long journeyVersion,
+        Instant occurredAt,
+        UUID correlationId) {
+}

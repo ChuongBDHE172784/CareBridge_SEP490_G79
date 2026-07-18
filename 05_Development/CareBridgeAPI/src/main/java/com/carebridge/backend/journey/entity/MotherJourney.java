@@ -50,6 +50,19 @@ public class MotherJourney {
     @Column(name = "status", nullable = false, length = 20)
     private JourneyStatus status = JourneyStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "date_source", length = 30)
+    private JourneyDateSource dateSource;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "date_confidence", length = 20)
+    private JourneyDateConfidence dateConfidence;
+
+    @Version
+    @Builder.Default
+    @Column(name = "version", nullable = false)
+    private long version = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
