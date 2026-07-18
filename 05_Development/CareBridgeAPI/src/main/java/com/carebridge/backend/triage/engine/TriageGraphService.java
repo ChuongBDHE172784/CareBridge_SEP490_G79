@@ -47,7 +47,7 @@ public class TriageGraphService {
         StageRiskRules riskRules = riskRuleFactory.forStage(stage);
         List<String> questions = collectIntake(request, riskRules);
         List<String> symptoms = normalizeSymptoms(request);
-        List<MedicalSource> sources = retrieveSources(symptoms);
+        List<MedicalSource> sources = retrieveSources(symptoms, request.getChildAgeMonths());
         PediatricRiskRules.RuleOutcome outcome = applyRules(request, symptoms, riskRules);
         List<TriageCitation> citations = attachCitations(sources);
 
@@ -103,8 +103,8 @@ public class TriageGraphService {
         return symptomNormalizer.normalize(request);
     }
 
-    private List<MedicalSource> retrieveSources(List<String> symptoms) {
-        return sourceRetriever.retrieve(symptoms);
+    private List<MedicalSource> retrieveSources(List<String> symptoms, Integer childAgeMonths) {
+        return sourceRetriever.retrieve(symptoms, childAgeMonths);
     }
 
     private PediatricRiskRules.RuleOutcome applyRules(RunIntakeRequest request, List<String> symptoms, StageRiskRules riskRules) {

@@ -2,6 +2,12 @@ package com.carebridge.backend.triage;
 
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.engine.PediatricRiskRules;
+import com.carebridge.backend.triage.engine.PediatricInfantRiskRules;
+import com.carebridge.backend.triage.engine.PediatricToddlerRiskRules;
+import com.carebridge.backend.triage.engine.MaternalPregnancyRiskRules;
+import com.carebridge.backend.triage.engine.PreconceptionRiskRules;
+import com.carebridge.backend.triage.engine.RiskRuleFactory;
+import com.carebridge.backend.triage.engine.StageRiskRules;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -14,10 +20,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PediatricRedParityTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final PediatricRiskRules rules = new PediatricRiskRules();
+    private final StageRiskRules rules = new RiskRuleFactory(
+            new PreconceptionRiskRules(),
+            new MaternalPregnancyRiskRules(),
+            new PediatricInfantRiskRules(),
+            new PediatricToddlerRiskRules())
+            .forStage(TriageStage.INFANT);
 
     @Test
     void allPediatricRedVectorsMatchSharedContract() throws Exception {
+        assertThat(rules).isInstanceOf(PediatricInfantRiskRules.class);
         try (InputStream input = getClass().getResourceAsStream("/triage/pediatric_red_parity_vectors.json")) {
             List<Map<String, Object>> vectors = objectMapper.readValue(input, new TypeReference<>() {});
             for (Map<String, Object> vector : vectors) {
@@ -32,6 +44,9 @@ class PediatricRedParityTest {
                 assertThat(outcome.riskLevel()).as((String) vector.get("name")).isEqualTo("RED");
                 assertThat(outcome.matchedRules()).as((String) vector.get("name"))
                         .contains((String) vector.get("expectedRule"));
+                assertThat(TriageRecommendationCode.forRisk(outcome.riskLevel()))
+                        .as((String) vector.get("name"))
+                        .isEqualTo("SEEK_EMERGENCY_CARE");
             }
         }
     }

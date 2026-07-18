@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'expert_app_home_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
-import '../../community/screens/expert_question_queue_screen.dart';
 import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../consultation/services/consultation_request_refresh_bus.dart';
 import '../../consultation/services/consultation_request_service.dart';

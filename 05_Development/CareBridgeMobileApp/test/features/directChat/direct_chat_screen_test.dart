@@ -17,14 +17,15 @@ class _ScriptedDirectChatService extends DirectChatService {
   String? lastMarkReadMessageId;
 
   @override
-  Future<DirectConversation> getConversation(String conversationId) async => DirectConversation(
-    conversationId: conversationId,
-    motherUserId: 'mother-1',
-    expertUserId: 'expert-1',
-    status: 'ACTIVE',
-    createdAt: DateTime.utc(2026, 1, 1),
-    expertAvailable: true,
-  );
+  Future<DirectConversation> getConversation(String conversationId) async =>
+      DirectConversation(
+        conversationId: conversationId,
+        motherUserId: 'mother-1',
+        expertUserId: 'expert-1',
+        status: 'ACTIVE',
+        createdAt: DateTime.utc(2026, 1, 1),
+        expertAvailable: true,
+      );
 
   @override
   Future<TimelinePage> getTimeline(
@@ -86,7 +87,10 @@ void main() {
       final router = GoRouter(
         initialLocation: '/conversations',
         routes: [
-          GoRoute(path: '/conversations', builder: (_, __) => const ConversationListScreen()),
+          GoRoute(
+            path: '/conversations',
+            builder: (_, _) => const ConversationListScreen(),
+          ),
           GoRoute(
             path: '/direct-chat/:id',
             builder: (_, state) =>
@@ -97,7 +101,10 @@ void main() {
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      expect(find.text('2'), findsOneWidget); // initial unread badge on the list row
+      expect(
+        find.text('2'),
+        findsOneWidget,
+      ); // initial unread badge on the list row
 
       // Tap the row itself (ConversationListScreen._openConversation), not router.push
       // directly — its `await push(...); _load();` is what drives the reload-on-return.

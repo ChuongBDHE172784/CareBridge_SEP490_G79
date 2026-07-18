@@ -139,8 +139,9 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       if (!mounted ||
           generation != _requestGeneration ||
           !_hasMore ||
-          _loadingMore)
+          _loadingMore) {
         return;
+      }
       if (_scrollController.hasClients &&
           _scrollController.position.maxScrollExtent <= 0) {
         _loadMore();
@@ -248,7 +249,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     return ListView.separated(
       controller: _scrollController,
       itemCount: _experts.length + (_hasMore ? 1 : 0),
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         if (index >= _experts.length) {
           return Padding(

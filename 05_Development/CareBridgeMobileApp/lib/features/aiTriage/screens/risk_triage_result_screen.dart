@@ -107,17 +107,38 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   Future<void> _openSourceUrl(TriageCitation citation) async {
     final uri = Uri.tryParse(citation.url);
     if (uri == null || !_isSafeCitationUri(uri, citation.domain)) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể mở nguồn tham khảo trên thiết bị này.'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể mở nguồn tham khảo trên thiết bị này.'),
+          ),
+        );
+      }
     }
   }
 
   bool _isSafeCitationUri(Uri uri, String? approvedDomain) {
-    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
+    final domain = (approvedDomain ?? '').toLowerCase().replaceFirst(
+      RegExp(r'^www\\.'),
+      '',
+    );
     final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
     final path = uri.path.replaceAll('/', '').trim().toLowerCase();
-    return uri.scheme == 'https' && domain.isNotEmpty && path.isNotEmpty &&
-        path != 'vi' && path != 'en' &&
+    return uri.scheme == 'https' &&
+        domain.isNotEmpty &&
+        path.isNotEmpty &&
+        path != 'vi' &&
+        path != 'en' &&
         (host == domain || host.endsWith('.$domain'));
   }
 
@@ -644,7 +665,8 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
             final index = entry.$1;
             final citation = entry.$2;
             final uri = Uri.tryParse(citation.url);
-            final canOpen = uri != null && _isSafeCitationUri(uri, citation.domain);
+            final canOpen =
+                uri != null && _isSafeCitationUri(uri, citation.domain);
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
@@ -711,9 +733,7 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                       key: Key(
                         'risk-citation-link-${citation.id ?? citation.url}-$index',
                       ),
-                      onTap: canOpen
-                          ? () => _openSourceUrl(citation)
-                          : null,
+                      onTap: canOpen ? () => _openSourceUrl(citation) : null,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

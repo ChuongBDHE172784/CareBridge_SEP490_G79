@@ -1,11 +1,12 @@
 ---
-id: MOH_CHILD_FEVER_001
-title: Bo Y te Viet Nam - Child Fever Safety Reference
-organization: Bo Y te Viet Nam
-url: https://moh.gov.vn
-domain: moh.gov.vn
+id: NCH_CHILD_FEVER_001
+title: Các triệu chứng chớ coi thường ở trẻ em
+organization: Bệnh viện Nhi Trung ương
+url: https://benhviennhitrunguong.gov.vn/cac-trieu-chung-cho-coi-thuong-o-tre-em-2.html
+domain: benhviennhitrunguong.gov.vn
 topic: fever
-ageRange: child
+ageRange: 0-59 months
+applicableStages: [INFANT, TODDLER]
 riskLevels: [YELLOW, RED]
 symptoms: [fever, lethargy, seizure, poor_feeding, breathing_difficulty]
 lastReviewed: 2026-07-10
@@ -16,7 +17,6 @@ approvedAt: 2026-07-10
 approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
-Internal evidence seed for Vietnamese Ministry of Health aligned triage. Fever
-in children should be monitored with hydration, feeding, breathing and alertness.
-High fever, fever in very young infants, or fever with warning signs should be
-assessed by health workers. This reference is for risk classification only.
+Bệnh viện Nhi Trung ương lưu ý sốt cao ở trẻ nhỏ, đặc biệt trẻ dưới 3 tháng,
+cần được chú ý và đưa trẻ đi khám để xác định nguyên nhân. Nội dung nguồn chỉ
+minh họa cho kết quả phân loại đã khóa, không dùng để chẩn đoán.
