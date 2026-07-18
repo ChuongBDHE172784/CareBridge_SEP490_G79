@@ -3,15 +3,21 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/auth_state.dart';
 import '../../journey/services/journey_service.dart';
+import '../../journey/services/journey_onboarding_service.dart';
 
 /// Routes authenticated users to the right first screen after login.
 ///
 /// Mothers without an active journey choose their current stage before setup.
 /// Once a journey type exists in the dashboard, they can land directly on CB-008.
 class AuthLandingScreen extends StatefulWidget {
-  const AuthLandingScreen({super.key, this.journeyService});
+  const AuthLandingScreen({
+    super.key,
+    this.journeyService,
+    this.onboardingService,
+  });
 
   final JourneyService? journeyService;
+  final JourneyOnboardingService? onboardingService;
 
   @override
   State<AuthLandingScreen> createState() => _AuthLandingScreenState();
@@ -19,6 +25,7 @@ class AuthLandingScreen extends StatefulWidget {
 
 class _AuthLandingScreenState extends State<AuthLandingScreen> {
   late final JourneyService _journeyService;
+  late final JourneyOnboardingService _onboardingService;
   bool _loading = true;
   String? _error;
 
@@ -26,6 +33,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
   void initState() {
     super.initState();
     _journeyService = widget.journeyService ?? JourneyService();
+    _onboardingService = widget.onboardingService ?? JourneyOnboardingService();
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeAfterLogin());
   }
 
@@ -50,7 +58,17 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
     try {
       final dashboard = await _journeyService.getDashboard();
       if (!mounted) return;
-      context.go(dashboard.hasActiveJourney ? '/' : '/mother-stage-selection');
+      if (dashboard.hasActiveJourney) {
+        context.go('/mother-home');
+        return;
+      }
+      final onboarding = await _onboardingService.getStatus();
+      if (!mounted) return;
+      context.go(
+        onboarding.canStartJourney
+            ? '/mother-stage-selection'
+            : '/journey-onboarding',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {

@@ -3,6 +3,7 @@ package com.carebridge.backend.journey;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
+import com.carebridge.backend.consent.service.ConsentService;
 import com.carebridge.backend.journey.entity.*;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
@@ -29,6 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -38,12 +40,16 @@ import static org.assertj.core.api.Assertions.*;
 })
 class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrationTest {
 
+    private static final java.util.UUID ELIGIBILITY_SUBMISSION_ID =
+            java.util.UUID.fromString("00000000-0000-0000-0000-000000610200");
+
     @Autowired IJourneyTransitionService transitionService;
     @Autowired MotherJourneyRepository journeyRepository;
     @Autowired MotherJourneyTransitionRepository transitionRepository;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired AuditLogRepository auditLogRepository;
+    @Autowired ConsentService consentService;
 
     @BeforeEach
     void seedMother() {
@@ -63,6 +69,12 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
         jdbcTemplate.update(
                 "DELETE FROM public.mother_journeys WHERE owner_user_id = ?",
                 JourneyLifecycleTestFactory.MOTHER_ID);
+        jdbcTemplate.update(
+                "DELETE FROM public.mother_baseline_contexts WHERE owner_user_id = ?",
+                JourneyLifecycleTestFactory.MOTHER_ID);
+        jdbcTemplate.update(
+                "DELETE FROM public.consent_grants WHERE user_id = ? AND data_type = 'MOTHER_BASELINE'",
+                JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update("""
                 INSERT INTO public.users (
                     user_id, email, role, account_status, enabled, locked,
@@ -72,6 +84,30 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 """,
                 JourneyLifecycleTestFactory.MOTHER_ID,
                 "story61.mother@test.carebridge.local");
+        jdbcTemplate.update("""
+                INSERT INTO public.mother_baseline_contexts (
+                    baseline_id, owner_user_id, submission_id, revision,
+                    schema_version, lifecycle_goal, locale, time_zone,
+                    preferences, recorded_at, source
+                ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
+                    'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
+                    'NUTRITION', now(), 'SELF_REPORTED')
+                """,
+                java.util.UUID.randomUUID(),
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                ELIGIBILITY_SUBMISSION_ID);
+        jdbcTemplate.update("""
+                INSERT INTO public.consent_grants (
+                    user_id, data_type, purpose, scope_text, policy_version,
+                    evidence_key, locale, consent_given_at, expiry_at,
+                    version, created_at, updated_at
+                ) VALUES (?, 'MOTHER_BASELINE', 'PERSONALIZE',
+                    'STORE_BASELINE_AND_PERSONALIZE_MOTHER_LIFECYCLE',
+                    'MOTHER_LIFECYCLE_V1', ?, 'vi-VN', now(),
+                    now() + interval '30 days', 1, now(), now())
+                """,
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                ELIGIBILITY_SUBMISSION_ID);
     }
 
     @Test
@@ -85,6 +121,61 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
         assertThat(response.getVersion()).isZero();
         assertThat(auditLogRepository.findByEntityIdAndAction(
                 response.getId(), AuditAction.JOURNEY_CREATED)).hasSize(1);
+    }
+
+    @Test
+    void concurrentRevocationCommitsBeforeCreateEligibilityAndPreventsInitialization()
+            throws Exception {
+        Long consentId = jdbcTemplate.queryForObject("""
+                SELECT id FROM public.consent_grants
+                WHERE user_id = ? AND evidence_key = ?
+                """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID,
+                ELIGIBILITY_SUBMISSION_ID);
+        CountDownLatch revokedButUncommitted = new CountDownLatch(1);
+        CountDownLatch allowRevocationCommit = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            Future<?> revocation = executor.submit(() -> {
+                TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+                return transaction.execute(status -> {
+                    consentService.revokeConsent(
+                            JourneyLifecycleTestFactory.MOTHER_ID, consentId);
+                    revokedButUncommitted.countDown();
+                    try {
+                        if (!allowRevocationCommit.await(5, TimeUnit.SECONDS)) {
+                            throw new IllegalStateException("revocation commit barrier timed out");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(exception);
+                    }
+                    return null;
+                });
+            });
+
+            assertThat(revokedButUncommitted.await(5, TimeUnit.SECONDS)).isTrue();
+            Future<Object> creation = executor.submit(() -> createAfterBarrier(
+                    JourneyType.PREGNANCY, new CountDownLatch(0), new CountDownLatch(0)));
+
+            assertThatThrownBy(() -> creation.get(300, TimeUnit.MILLISECONDS))
+                    .isInstanceOf(TimeoutException.class);
+            allowRevocationCommit.countDown();
+            revocation.get(5, TimeUnit.SECONDS);
+
+            Object result = creation.get(5, TimeUnit.SECONDS);
+            assertThat(result).isInstanceOf(BusinessException.class);
+            assertThat(((BusinessException) result).getCode())
+                    .isEqualTo("LIFECYCLE_CONSENT_INVALID");
+        }
+
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM public.mother_journeys WHERE owner_user_id = ?
+                """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM public.mother_journey_transitions t
+                JOIN public.mother_journeys j ON j.journey_id = t.journey_id
+                WHERE j.owner_user_id = ?
+                """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
     }
 
     @Test

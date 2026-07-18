@@ -60,6 +60,7 @@ public class ConsentServiceImpl implements ConsentService {
 
     @Override
     public ConsentGrantResponse revokeConsent(java.util.UUID userId, Long consentId) {
+        consentGrantRepository.acquireLifecycleOwnerLock(userId);
         ConsentGrant grant = consentGrantRepository.findByIdAndUserId(consentId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Consent grant not found"));
         if (grant.getRevokedAt() != null) {
