@@ -7,6 +7,7 @@ import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.impl.JourneyTransitionServiceImpl;
+import com.carebridge.backend.journey.service.IJourneyOnboardingService;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ class JourneyCanonicalLifecycleServiceTest {
     @Mock UserRepository userRepository;
     @Mock AuditService auditService;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock IJourneyOnboardingService onboardingService;
 
     private JourneyTransitionPolicy policy;
     private JourneyTransitionServiceImpl service;
@@ -53,6 +55,7 @@ class JourneyCanonicalLifecycleServiceTest {
                 auditService,
                 policy,
                 eventPublisher,
+                onboardingService,
                 clock);
     }
 

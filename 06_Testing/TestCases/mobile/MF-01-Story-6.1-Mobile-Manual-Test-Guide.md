@@ -8,9 +8,9 @@
 | Phạm vi | Tích hợp Flutter với canonical Mother lifecycle |
 | Nền tảng | Android emulator hoặc thiết bị Android thật |
 | Dữ liệu | Chỉ dùng dữ liệu tổng hợp |
-| Phiên bản hướng dẫn | 1.0 |
-| Ngày | 2026-07-18 |
-| Trạng thái | Đã thực thi 16/16 ca; đợt closure rerun 7/7 ca từng không đạt/một phần đều PASS |
+| Phiên bản hướng dẫn | 1.2 |
+| Cập nhật lần cuối | 2026-07-18 |
+| Trạng thái | Story `done`; mobile manual trên thiết bị thật `16/16 ĐẠT` |
 
 ## 1. Mục tiêu
 
@@ -30,118 +30,67 @@ Các tiêu chí chính:
 - loading, lỗi mạng, retry và accessibility;
 - khả năng xem lịch sử chuyển đổi trên mobile.
 
-Đây là hướng dẫn kiểm thử tích hợp. Backend Story 6.1 đã có API và automated tests, nhưng mobile hiện chưa tích hợp đầy đủ contract mới.
+Đây là hướng dẫn kiểm thử tích hợp có thể tái sử dụng. Backend và mobile đã tích hợp contract Story 6.1. Mục 3 và Mục 7 ghi kết quả closure cuối; Mục 8 là checklist để chạy lại về sau.
 
-## 2. Các gap mobile đã biết trước khi test
+## 2. Trạng thái các gap mobile
 
-Không đánh dấu các mục dưới đây là `ĐẠT` chỉ vì ứng dụng hiển thị đúng hành vi hiện tại. Nếu hành vi mục tiêu không đạt, ghi nhận `KHÔNG ĐẠT — GAP ĐÃ BIẾT`.
+Các gap phát hiện trước đây đã được sửa và đóng. Nếu hành vi xuất hiện lại trong lần chạy mới, ghi `KHÔNG ĐẠT — REGRESSION`; không waive bằng nhãn “gap đã biết”.
 
-| Gap | Bằng chứng trong mobile hiện tại | Hệ quả dự kiến |
+| Gap | Trạng thái | Regression cần phát hiện |
 | --- | --- | --- |
-| `MOB-GAP-01` | `CreateJourneyRequest` không gửi `dateSource` và `dateConfidence` | Tạo `PREGNANCY` có ngày thai kỳ bị backend từ chối bằng `JOURNEY-018` |
-| `MOB-GAP-02` | `UpdateJourneyRequest` không gửi provenance | Chỉnh sửa ngày dự sinh bị backend từ chối bằng `JOURNEY-018` |
-| `MOB-GAP-03` | Nhánh `Đang nuôi bé` gửi `journeyType: BABY_CARE` | Backend Story 6.1 trả `JOURNEY-016`; UI hiện diễn giải mọi lỗi 409 thành đã có hành trình |
-| `MOB-GAP-04` | `JourneyService` không gọi `GET /api/v1/journeys/{id}/history` | Chưa có màn hình lịch sử chuyển đổi trên mobile |
-| `MOB-GAP-05` | Tab Hành trình chỉ xem `PREGNANCY` là pregnancy dashboard | `PRE_PREGNANCY` đã tạo có thể bị hiển thị như chưa có hành trình mang thai |
-| `MOB-GAP-06` | Mobile response models chưa chứa `version`, `dateSource`, `dateConfidence` | Không thể kiểm tra version/provenance đầy đủ chỉ từ UI |
-| `MOB-GAP-07` | Router chuyển assigned Mother từ auth route thẳng về `/` trước khi `AuthLandingScreen` kiểm tra dashboard | Mẹ đã có role nhưng chưa có journey có thể không được đưa đến màn hình chọn giai đoạn sau đăng nhập |
+| `MOB-GAP-01` | `ĐÃ ĐÓNG` | Create PREGNANCY thiếu provenance hoặc giữ LMP của phương pháp trước |
+| `MOB-GAP-02` | `ĐÃ ĐÓNG` | Update EDD thiếu provenance, không refresh tức thời hoặc giữ LMP stale |
+| `MOB-GAP-03` | `ĐÃ ĐÓNG` | Nhánh nuôi bé tạo `BABY_CARE` canonical hoặc báo lỗi sai |
+| `MOB-GAP-04` | `ĐÃ ĐÓNG` | History thiếu trang, bị xóa khi lỗi hoặc không có retry |
+| `MOB-GAP-05` | `ĐÃ ĐÓNG` | PRE/POSTPARTUM bị coi là chưa có maternal lifecycle hoặc bị cache PREGNANCY che |
+| `MOB-GAP-06` | `ĐÃ ĐÓNG` | Model/cache làm mất `version`, `dateSource`, `dateConfidence` |
+| `MOB-GAP-07` | `ĐÃ ĐÓNG` | `NO_JOURNEY` không vào stage selection hoặc lỗi transport bị điều hướng nhầm sang onboarding |
 
-## 3. Ghi nhận lần kiểm thử
+## 3. Biên bản closure cuối
 
-| Trường | Người test điền |
+| Trường | Kết quả cuối |
 | --- | --- |
 | Người test | Codex qua ADB, có người dùng phê duyệt thao tác trực tiếp |
 | Ngày test | 2026-07-18 |
-| Commit / bản dựng | Repository `e07bc25f`; APK debug được build lại từ current worktree với `API_BASE_URL=http://127.0.0.1:8080` |
-| Môi trường API | Spring Boot local cổng 8080 + PostgreSQL 16 disposable local cổng 5434; 86 Flyway migrations; seed tổng hợp riêng |
-| Thiết bị | Samsung SM-N986N — thiết bị thật, serial đã lược bỏ khỏi tài liệu |
-| Android version | 13 |
-| Kích thước màn hình | Physical `1440x3088`; override `1080x2316`; density `420 dpi` |
-| API base URL | `http://127.0.0.1:8080` qua `adb reverse tcp:8080 tcp:8080` |
-| Kết quả tổng thể | `KHÔNG ĐẠT` — 5 đạt, 3 một phần, 8 không đạt, 0 bị chặn |
-| Defect links | Chưa tạo ticket; đã tái hiện `MOB-GAP-01..05`, `MOB-GAP-07` và lỗi accessibility MF01-MOB-015 |
+| Bản dựng | APK debug từ Story 6.1 worktree, `API_BASE_URL=http://127.0.0.1:8080` |
+| Môi trường API | Spring Boot local + PostgreSQL disposable với dữ liệu synthetic |
+| Thiết bị | Samsung SM-N986N, Android 13 |
+| Kết nối | `adb reverse tcp:8080 tcp:8080` |
+| Kết quả manual | `16/16 ĐẠT`, `0 KHÔNG ĐẠT`, `0 BỊ CHẶN` |
+| Quality gate | `ĐẠT` |
+| Defect | `MOB-GAP-01..07` và lỗi accessibility đã đóng |
 
 Không đưa mật khẩu, access token, refresh token, OTP thật, email/số điện thoại thật hoặc dữ liệu sức khỏe thật vào tài liệu và ảnh chụp.
 
-### 3.1. Fix verification — 2026-07-18
+### 3.1 Bằng chứng xác nhận
 
-Kết quả ở mục 3 là biên bản lịch sử của lần chạy trước fix và không bị ghi đè. Đợt triển khai này đã sửa các ca `MF01-MOB-001`, `004`, `006`, `007`, `008`, `010`, `011`, `015`.
-
-| Phạm vi | Trạng thái sau fix | Bằng chứng |
-| --- | --- | --- |
-| Contract create/update, provenance, PRE transition, BABY_CARE boundary, history, routing, accessibility/font 150% | `PASS — automated` | `test/features/journey/story_6_1_mobile_gap_test.dart`: 10/10 |
-| Toàn bộ Flutter test suite | `PASS — regression` | 182/182 |
-| Static analysis phần thay đổi | `PASS` | `flutter analyze lib/core/routes/app_router.dart lib/features/journey test/features/journey/story_6_1_mobile_gap_test.dart` |
-| APK debug kết nối local API | `PASS` | Build với `API_BASE_URL=http://127.0.0.1:8080`, cài thành công lên Samsung SM-N986N |
-| `MF01-MOB-001` — Mother đã có role nhưng chưa có journey | `PASS — device smoke` | `mobile-fix-verification-2026-07-18/01-empty-routing-fixed.*` |
-| `MF01-MOB-011` — lịch sử transition và provenance | `PASS — device smoke` | `mobile-fix-verification-2026-07-18/02-preg-history-fixed.*` |
-| `MF01-MOB-015` — nhãn accessibility nút quay lại | `PASS — device smoke`; font 150% `PASS — widget` | `mobile-fix-verification-2026-07-18/03-back-accessibility-fixed.*` |
-
-Các ca còn lại đã có regression contract xanh nhưng vẫn phải chạy lại toàn bộ bước manual trong tài liệu này trước khi đổi biên bản tổng thể sang `ĐẠT`. Story tiếp tục ở trạng thái `review`.
-
-### 3.2. Full manual rerun trên thiết bị thật — 2026-07-18
-
-Đã chạy lại đầy đủ 16/16 ca trên Samsung SM-N986N, Android 13, với backend local và PostgreSQL disposable.
-
-| Kết quả | Số ca |
-| --- | ---: |
-| `ĐẠT` | 9 |
-| `MỘT PHẦN` | 4 |
-| `KHÔNG ĐẠT` | 3 |
-| `BỊ CHẶN` | 0 |
-
-Quality gate vẫn là `KHÔNG ĐẠT`. Lỗi nghiêm trọng nhất là MF01-MOB-014: sau khi đăng xuất `MOTHER_PREG` và đăng nhập `MOTHER_OTHER`, Home/Hành trình hiển thị tuần thai và EDD của tài khoản trước cho đến khi relaunch, dù DB của tài khoản sau có 0 journey.
-
-Các gap còn lại gồm selected semantics cho TalkBack, current journey không refresh sau create/update/transition hoặc resume, state của phương pháp tính thai bị giữ chéo, và nội dung/control bị che ở font 150% + landscape.
-
-Biên bản chi tiết và toàn bộ evidence: `06_Testing/TestResults/epic-6/story-6-1/mobile-full-rerun-2026-07-18/README.md`.
-
-### 3.3. Gap-fix closure rerun trên thiết bị thật — 2026-07-18
-
-Sau khi sửa optimistic cache theo owner, refresh/revision signal, stale-load race, wizard state, selected semantics và responsive layout, đã chạy lại đúng 7 ca chưa đạt hoàn toàn trong biên bản 3.2.
-
-| ID | Trạng thái cuối | Bằng chứng chính |
-| --- | --- | --- |
-| `MF01-MOB-002` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/002-stage-initial.*`, `002-planning-selected.*` |
-| `MF01-MOB-006` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/006-created-immediate.*` |
-| `MF01-MOB-008` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/008-pre.*`, `008-preg-immediate.*` |
-| `MF01-MOB-010` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/010-update-immediate-fixed.*` |
-| `MF01-MOB-014` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/014-account-a-preg.*`, `014-account-b-isolated.*` |
-| `MF01-MOB-015` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/015-wizard-landscape-*`, `015-result-landscape-*` |
-| `MF01-MOB-016` | `ĐẠT` | `mobile-gap-fix-rerun-2026-07-18/016-selected.*`, `016-resumed.*` |
-
-Kết quả closure: `7/7 ĐẠT`, gồm đủ 4 ca `MỘT PHẦN` và 3 ca `KHÔNG ĐẠT` trước đó. Kết hợp với 9 ca không đổi đã đạt ở lần full rerun, quality gate mobile tổng hợp là `16/16 ĐẠT`.
-
-Automated verification sau bản sửa cuối:
-
-- Story 6.1 mobile gap regression: `18/18 PASS`;
-- full Flutter regression: `190/190 PASS`;
-- targeted Dart analysis: không có lỗi;
-- format và diff whitespace check: PASS.
-
-Biên bản closure và toàn bộ evidence: `06_Testing/TestResults/epic-6/story-6-1/mobile-gap-fix-rerun-2026-07-18/README.md`.
+- Full device rerun trước gap-fix: `06_Testing/TestResults/epic-6/story-6-1/mobile-full-rerun-2026-07-18/README.md`.
+- Gap-fix closure: `7/7 ĐẠT`; kết hợp 9 ca không đổi thành composite `16/16 ĐẠT` tại `06_Testing/TestResults/epic-6/story-6-1/mobile-gap-fix-rerun-2026-07-18/README.md`.
+- Final code-review verification: Story behavior `15/15 PASS`, full Flutter regression `187/187 PASS`, targeted analyzer không có issue tại `06_Testing/TestResults/epic-6/story-6-1/code-review-2026-07-18.md`.
+- Các số `18/18` và `190/190` trong closure report là kết quả trước lần tái cấu trúc test cuối; kết quả code-review ở trên là trạng thái cuối cùng.
 
 ## 4. Điều kiện tiên quyết
 
 1. Backend đang chạy và truy cập được từ thiết bị.
-2. PostgreSQL test database đã áp dụng migration:
+2. PostgreSQL test database đã áp dụng đủ hai migration:
 
-   `V20260718090000__canonical_mother_lifecycle_history.sql`
-
+   - `V20260718090000__canonical_mother_lifecycle_history.sql`
+   - `V20260718091000__enforce_mother_journey_transition_immutability.sql`
 3. Mobile app được build từ cùng commit với backend cần test.
 4. Chuẩn bị các tài khoản tổng hợp:
 
-   | Bí danh | Dữ liệu yêu cầu |
-   | --- | --- |
-   | `MOTHER_NEW_A` | Tài khoản mới chưa chọn role; dùng tạo PRE_PREGNANCY |
-   | `MOTHER_NEW_B` | Tài khoản mới chưa chọn role; dùng test nhánh nuôi bé |
-   | `MOTHER_NEW_C` | Tài khoản mới chưa chọn role; dùng test tạo PREGNANCY |
-   | `MOTHER_NEW_D` | Tài khoản mới chưa chọn role; dùng test mất mạng/retry |
-   | `MOTHER_NEW_E` | Tài khoản mới chưa chọn role; dùng test background/resume khi create |
+   | Bí danh                  | Dữ liệu yêu cầu                                                                              |
+   | ------------------------- | ------------------------------------------------------------------------------------------------ |
+   | `MOTHER_NEW_A`          | Tài khoản mới chưa chọn role; dùng tạo PRE_PREGNANCY                                      |
+   | `MOTHER_NEW_B`          | Tài khoản mới chưa chọn role; dùng test nhánh nuôi bé                                   |
+   | `MOTHER_NEW_C`          | Tài khoản mới chưa chọn role; dùng test tạo PREGNANCY                                     |
+   | `MOTHER_NEW_D`          | Tài khoản mới chưa chọn role; dùng test mất mạng/retry                                   |
+   | `MOTHER_NEW_E`          | Tài khoản mới chưa chọn role; dùng test background/resume khi create                       |
    | `MOTHER_EMPTY_EXISTING` | Đã có role Mẹ nhưng chưa có canonical lifecycle; dùng kiểm tra routing sau đăng nhập |
    | `MOTHER_PREG` | Có sẵn một `PREGNANCY ACTIVE` hợp lệ với provenance; dùng test dashboard/edit |
-   | `MOTHER_OTHER` | Mẹ khác để kiểm tra cache và cô lập dữ liệu |
-
+   | `MOTHER_POSTPARTUM` | Có `POSTPARTUM ACTIVE` và history; dùng kiểm tra maternal lifecycle sau sinh |
+   | `MOTHER_HISTORY` | Có số transition lớn hơn page size; dùng kiểm tra pagination/error retry |
+   | `MOTHER_OTHER`          | Mẹ khác để kiểm tra cache và cô lập dữ liệu                                            |
 5. Không dùng `mother3@carebridge.dev` hoặc `mother4@carebridge.dev` cho happy path tạo mới vì dev seeder đã tạo journey cho các tài khoản này.
 6. `MOTHER_PREG` nên được chuẩn bị qua API/Postman với:
 
@@ -149,7 +98,6 @@ Biên bản closure và toàn bộ evidence: `06_Testing/TestResults/epic-6/stor
    - ngày thai kỳ hợp lệ;
    - `dateSource`;
    - `dateConfidence`.
-
 7. Không xóa hoặc sửa trực tiếp dữ liệu trên shared/staging database để tái sử dụng tài khoản.
 8. Mỗi test case làm thay đổi lifecycle phải dùng đúng tài khoản riêng ở bảng trên. Nếu không đủ tài khoản, chỉ reset trong disposable local database theo quy trình đã được phê duyệt.
 
@@ -194,7 +142,7 @@ flutter run --dart-define=API_BASE_URL=http://<IP-MAY-TINH>:8080
 - **ĐẠT:** Toàn bộ kết quả mong đợi của sản phẩm được quan sát và có bằng chứng.
 - **KHÔNG ĐẠT:** Hành vi khác kết quả mong đợi, có side effect sai hoặc thông báo gây hiểu nhầm.
 - **BỊ CHẶN:** Không thể chạy do môi trường, tài khoản hoặc fixture.
-- **KHÔNG ĐẠT — GAP ĐÃ BIẾT:** Lỗi khớp với bảng gap ở mục 2. Vẫn phải ghi defect/evidence; không chuyển thành `ĐẠT`.
+- **KHÔNG ĐẠT — REGRESSION:** Một gap đã đóng ở Mục 2 xuất hiện lại; phải tạo defect/evidence mới.
 
 Mọi trường hợp tạo hai canonical lifecycle ACTIVE, hiển thị journey của tài khoản khác hoặc làm mất history đều là lỗi chặn phát hành.
 
@@ -209,38 +157,32 @@ Sau mỗi ca:
 
 ## 7. Bảng tổng hợp
 
-| ID | Kịch bản | Ưu tiên | Kết quả | Bằng chứng / lỗi |
+Kết quả cuối trên thiết bị thật ngày 2026-07-18:
+
+| ID | Kịch bản | Ưu tiên | Kết quả cuối | Bằng chứng chính |
 | --- | --- | --- | --- | --- |
-| MF01-MOB-001 | Mẹ chưa có journey được chuyển đến chọn giai đoạn | P0 | `KHÔNG ĐẠT — MOB-GAP-07` | Tài khoản mới đi đúng role → stage selection; Mother đã có role nhưng chưa có journey bị đưa thẳng về Home. Evidence local `03..05`, `15` |
-| MF01-MOB-002 | Chọn card, trạng thái nút và khả năng đọc màn hình | P1 | `MỘT PHẦN — ĐẠT` | Ba card chọn loại trừ nhau, toàn card có thể chạm, CTA đổi đúng; chưa chạy TalkBack trực tiếp. Evidence local `05..08` |
-| MF01-MOB-003 | Tạo hành trình `PRE_PREGNANCY` | P0 | `ĐẠT` | Double tap chỉ tạo 1 `PRE_PREGNANCY ACTIVE`, version 0 và 1 CREATED. Evidence local `09` + DB |
-| MF01-MOB-004 | Hiển thị PRE_PREGNANCY sau khi tạo | P0 | `KHÔNG ĐẠT — MOB-GAP-05` | Home hiển thị `Chuẩn bị mang thai`, nhưng tab Hành trình vẫn báo chưa có hành trình mang thai. Evidence local `09`, `10` |
-| MF01-MOB-005 | Wizard tính thai kỳ theo bốn phương pháp | P1 | `MỘT PHẦN` | Đã chạy phương pháp tuổi thai hiện tại: 4 tuần 0 ngày → EDD 27/03/2027; chưa chạy đủ bốn phương pháp |
-| MF01-MOB-006 | Tạo PREGNANCY từ mobile | P0 | `KHÔNG ĐẠT — MOB-GAP-01` | UI báo không thể tạo; DB giữ 0 journey/0 transition cho tài khoản mới. Evidence local `16`, `17` |
-| MF01-MOB-007 | Nhánh Đang nuôi bé không tạo BABY_CARE canonical | P0 | `KHÔNG ĐẠT — MOB-GAP-03` | DB đúng là không tạo row, nhưng UI báo sai rằng đã có hành trình hoạt động. Evidence local `18` |
-| MF01-MOB-008 | Không tạo lifecycle thứ hai | P0 | `KHÔNG ĐẠT` | Invariant DB được giữ ở 1 active + 1 transition, nhưng mobile gọi create mới thay vì transition và chỉ báo lỗi chung. Evidence local `11..14` |
-| MF01-MOB-009 | Dashboard của fixture PREGNANCY | P0 | `ĐẠT` | Dashboard hiển thị tuần 15, tam cá nguyệt 2, LMP 01/04/2026, EDD 08/01/2027. Evidence local `19`, `20` |
-| MF01-MOB-010 | Chỉnh ngày dự sinh từ mobile | P0 | `KHÔNG ĐẠT — MOB-GAP-02` | Chọn EDD 09/01/2027 nhưng update bị từ chối; DB vẫn EDD 08/01/2027, version 1, 2 transitions. Evidence local `21..24` |
-| MF01-MOB-011 | Lịch sử chuyển đổi trên mobile | P1 | `KHÔNG ĐẠT — MOB-GAP-04` | Không có điểm truy cập history ở Trang chủ, Hành trình hoặc toàn bộ Hồ sơ |
-| MF01-MOB-012 | Lỗi mạng và retry không tạo bản ghi trùng | P0 | `ĐẠT` | Gỡ `adb reverse` cho lỗi mạng, khôi phục và retry một lần; DB có đúng 1 PRE_PREGNANCY + 1 CREATED. Evidence local `25..27` |
-| MF01-MOB-013 | Access token hết hạn được refresh an toàn | P1 | `ĐẠT` | TTL test 2 giây: refresh hợp lệ giữ dashboard và xoay token; revoke refresh rồi relaunch đưa app về welcome/login. Evidence local `32`, `33` |
-| MF01-MOB-014 | Đổi tài khoản không rò rỉ journey/cache | P0 | `ĐẠT` | Đăng xuất đúng luồng rồi đăng nhập Mother khác; Home/Journey không hiển thị PRE/EDD của tài khoản trước. Evidence local `28..31` |
-| MF01-MOB-015 | Text scale, xoay màn hình và touch target | P1 | `KHÔNG ĐẠT` | 150% làm tiêu đề `Kết quả` bị cắt/che; nút back có `NAF=true` và không có nhãn accessibility |
-| MF01-MOB-016 | Chạy nền/khôi phục trong lúc thiết lập | P2 | `MỘT PHẦN — ĐẠT` | Resume sau 30 giây giữ bước 2 và màn kết quả; phần resume ngay sau create bị chặn |
+| MF01-MOB-001 | Mother chưa có journey vào chọn giai đoạn | P0 | `ĐẠT` | Full rerun: `001-newa-stage.*`, `001-empty-routing.*` |
+| MF01-MOB-002 | Card selection và accessibility semantics | P1 | `ĐẠT` | Closure: `002-stage-initial.*`, `002-planning-selected.*` |
+| MF01-MOB-003 | Tạo `PRE_PREGNANCY` không trùng | P0 | `ĐẠT` | Full rerun: `003-pre-created.*`, `003-pre-db.txt` |
+| MF01-MOB-004 | Hiển thị PRE sau khi tạo | P0 | `ĐẠT` | Full rerun: `004-pre-journey.*` |
+| MF01-MOB-005 | Bốn phương pháp tính thai kỳ | P1 | `ĐẠT` | Full rerun: `005-*-result.*`, cycle 28/29/unknown |
+| MF01-MOB-006 | Tạo PREGNANCY với provenance | P0 | `ĐẠT` | Closure: `006-created-immediate.*` |
+| MF01-MOB-007 | Nhánh nuôi bé không tạo BABY_CARE canonical | P0 | `ĐẠT` | Full rerun: `007-baby-route.*`, `007-baby-db.txt` |
+| MF01-MOB-008 | PRE chuyển PREG tại chỗ | P0 | `ĐẠT` | Closure: `008-pre.*`, `008-preg-immediate.*` |
+| MF01-MOB-009 | Dashboard PREGNANCY | P0 | `ĐẠT` | Full rerun: `009-preg-dashboard.*` |
+| MF01-MOB-010 | Cập nhật EDD và refresh tức thời | P0 | `ĐẠT` | Closure: `010-update-immediate-fixed.*` |
+| MF01-MOB-011 | Lịch sử chuyển đổi | P1 | `ĐẠT` | Full rerun: `011-history.*`; automated pagination/retry regression |
+| MF01-MOB-012 | Lỗi mạng/retry không tạo trùng | P0 | `ĐẠT` | Full rerun: `012-network-error.*`, `012-retry-success.*` |
+| MF01-MOB-013 | Refresh/revoke token an toàn | P1 | `ĐẠT` | Full rerun: `013-valid-refresh*`, `013-invalid-refresh*` |
+| MF01-MOB-014 | Đổi tài khoản không rò cache | P0 | `ĐẠT` | Closure: `014-account-a-preg.*`, `014-account-b-isolated.*` |
+| MF01-MOB-015 | Font scale, landscape, touch target | P1 | `ĐẠT` | Closure: `015-wizard-landscape-*`, `015-result-landscape-*` |
+| MF01-MOB-016 | Background/resume | P2 | `ĐẠT` | Closure: `016-selected.*`, `016-resumed.*` |
 
-### 7.1 Nhật ký thực thi ADB
+### 7.1 Vị trí evidence
 
-- Thiết bị kết nối ổn định; package `com.carebridge.app`, activity `com.carebridge.app.MainActivity`.
-- Phiên ban đầu vào thẳng Trang chủ, hiển thị `Chào Mẹ`, thẻ `Nuôi con`; Hồ sơ hiển thị `Người dùng` và `Chưa có email`, nên không thể ánh xạ phiên này với fixture tổng hợp nào.
-- Tab `Hành trình → Mang thai` hiển thị `Chưa có hành trình mang thai` và nút `Thêm hành trình`.
-- Wizard mở được đủ bốn lựa chọn. Nút `Tiếp theo` vô hiệu khi chưa chọn phương pháp.
-- Đã chọn phương pháp `Tôi đã biết thời gian sản khoa của mình`, giữ giá trị mặc định `4 tuần 0 ngày`; kết quả tính EDD là `27 tháng 3, 2027`.
-- Đưa app xuống background 30 giây ở bước 2 và ở màn kết quả: cả hai lượt đều resume đúng màn, giữ nguyên dữ liệu, không crash.
-- Ở font scale `1.5`, tiêu đề `Kết quả` bị cắt/che phía dưới progress bar. Font scale đã được khôi phục về `1.0`.
-- Đã xoay landscape và khôi phục `accelerometer_rotation=1`, `user_rotation=0`.
-- Accessibility hierarchy của nút back ghi `NAF=true`, `content-desc=""`; chưa bật TalkBack để tránh thay đổi sâu thiết bị khi không có fixture.
-- Không có `adb reverse`; máy tính không listen cổng 8080. Do API endpoint và tài khoản hiện tại không xác định, không bấm các nút tạo/cập nhật lifecycle.
-- Bằng chứng nằm tại `06_Testing/TestResults/epic-6/story-6-1/mobile-manual-2026-07-18/`.
+- 9 ca không đổi đã đạt: `06_Testing/TestResults/epic-6/story-6-1/mobile-full-rerun-2026-07-18/`.
+- 7 ca gap-fix closure: `06_Testing/TestResults/epic-6/story-6-1/mobile-gap-fix-rerun-2026-07-18/`.
+- Nhật ký lần chạy đầu trước fix chỉ là historical evidence tại `06_Testing/TestResults/epic-6/story-6-1/mobile-manual-2026-07-18/`; không dùng để kết luận trạng thái hiện tại.
 
 ## 8. Chi tiết ca kiểm thử
 
@@ -270,20 +212,16 @@ Chạy phần routing cho existing Mother ở một lượt độc lập sau đ�
   - `Muốn mang thai`
   - `Đang mang thai`
   - `Đang nuôi bé`
-
 - Không tự chọn sẵn một giai đoạn.
 - Nút `Tiếp tục` bị vô hiệu khi chưa chọn.
 - Không có dữ liệu của tài khoản đã đăng nhập trước đó.
 - Cả Mẹ vừa chọn role và Mẹ đã có role nhưng chưa có journey đều được đưa tới màn hình này.
 
-**Dự kiến theo router hiện tại:**
+**Regression trọng tâm:** Sau khi tài khoản trước có journey, response `NO_JOURNEY` có thẩm quyền phải xóa cache không-pending cũ và đưa đúng tài khoản hiện tại tới stage selection. Lỗi transport phải hiển thị retry, không giả làm `NO_JOURNEY`.
 
-- `MOTHER_NEW_A` đi đúng sau khi chọn role.
-- `MOTHER_EMPTY_EXISTING` có thể bị đưa thẳng về Trang chủ trước khi dashboard được kiểm tra.
+**Closure 2026-07-18:** `ĐẠT` — `001-newa-stage.*`, `001-empty-routing.*`.
 
-Nếu `MOTHER_EMPTY_EXISTING` không đến màn hình chọn giai đoạn, ghi `KHÔNG ĐẠT — MOB-GAP-07`.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-002 — Trạng thái chọn và khả năng đọc màn hình
 
@@ -305,14 +243,15 @@ Nếu `MOTHER_EMPTY_EXISTING` không đến màn hình chọn giai đoạn, ghi 
   - `Tạo hành trình chuẩn bị`
   - `Tiếp tục tính thai kỳ`
   - `Thiết lập hồ sơ bé`
-
 - Nút/card có vùng chạm tối thiểu khoảng 48dp.
 - Nội dung không bị cắt, chồng hoặc tràn khỏi màn hình.
 - Focus và trạng thái chọn có thể nhận biết bằng nhiều dấu hiệu, không chỉ màu sắc.
 
 **Lưu ý accessibility:** Nếu TalkBack chỉ đọc text rời rạc mà không thông báo card đang được chọn, ghi `KHÔNG ĐẠT`.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — selected semantics, mutual exclusion và CTA đã được xác nhận bằng `002-stage-initial.*`, `002-planning-selected.*`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-003 — Tạo hành trình PRE_PREGNANCY
 
@@ -337,7 +276,9 @@ Nếu `MOTHER_EMPTY_EXISTING` không đến màn hình chọn giai đoạn, ghi 
 - Backend có đúng một `PRE_PREGNANCY ACTIVE` cho `MOTHER_NEW_A`.
 - Có một history event `CREATED`, version `0` — xác nhận bằng backend guide hoặc API vì mobile chưa có history UI.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — đúng một PRE active và một CREATED tại `003-pre-created.*`, `003-pre-db.txt`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-004 — Hiển thị PRE_PREGNANCY sau khi tạo
 
@@ -356,13 +297,11 @@ Nếu `MOTHER_EMPTY_EXISTING` không đến màn hình chọn giai đoạn, ghi 
 - Không hiển thị lời kêu gọi tạo một canonical journey mới.
 - Không làm người dùng hiểu rằng journey vừa tạo đã mất.
 
-**Dự kiến theo code hiện tại:**
+**Regression trọng tâm:** PRE_PREGNANCY là canonical maternal lifecycle hợp lệ và không được hiển thị như trạng thái chưa thiết lập.
 
-- Có thể hiển thị `Chưa có hành trình mang thai` vì màn hình chỉ render pregnancy dashboard cho `PREGNANCY`.
+**Closure 2026-07-18:** `ĐẠT` — `004-pre-journey.*`.
 
-Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-05`.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-005 — Wizard tính thai kỳ theo bốn phương pháp
 
@@ -379,14 +318,12 @@ Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-
    - ngày thụ thai;
    - tuổi thai hiện tại;
    - ngày sinh dự kiến.
-
 5. Với phương pháp kỳ kinh cuối:
 
    - chọn một ngày dễ nhận biết;
    - thử chu kỳ 28 ngày;
    - thử một độ dài chu kỳ khác;
    - thử `KHÔNG BIẾT`.
-
 6. Kiểm tra màn hình kết quả.
 
 **Kết quả mong đợi:**
@@ -402,7 +339,9 @@ Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-
 
 Chưa bấm `Tạo hành trình` cho đến MF01-MOB-006.
 
-**Kết quả thực tế / bằng chứng:** `MỘT PHẦN` — Đã xác nhận bốn phương pháp xuất hiện, nút `Tiếp theo` vô hiệu trước khi chọn và chạy phương pháp tuổi thai hiện tại với `4 tuần 0 ngày`. Kết quả hiển thị EDD `27 tháng 3, 2027`; `TÍNH LẠI` xuất hiện. Chưa chạy ba phương pháp còn lại vì phiên hiện tại không phải `MOTHER_NEW_C`. Evidence: `04-setup-step1.png`, `05-setup-step2.png`, `07-setup-result.png`.
+**Closure 2026-07-18:** `ĐẠT` — đã chạy đủ LMP, conception, gestational age, clinician EDD và cycle 28/29/unknown; xem `005-*-result.*`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-006 — Tạo PREGNANCY từ mobile
 
@@ -410,10 +349,11 @@ Chưa bấm `Tạo hành trình` cho đến MF01-MOB-006.
 
 **Bước thực hiện:**
 
-1. Hoàn thành wizard bằng một trong bốn phương pháp.
-2. Tại màn hình kết quả, chạm `Tạo hành trình`.
-3. Quan sát loading, thông báo lỗi và điều hướng.
-4. Kiểm tra backend không tạo current/history dang dở khi request thất bại.
+1. Tính thử bằng LMP để wizard có dữ liệu LMP.
+2. Chọn `TÍNH LẠI`, đổi sang clinician EDD và chọn ngày dễ nhận biết.
+3. Chạm `Tạo hành trình`.
+4. Quan sát loading và điều hướng.
+5. Đối chiếu payload/current row để chắc chắn không giữ LMP của phương pháp trước.
 
 **Kết quả mong đợi của sản phẩm:**
 
@@ -423,18 +363,12 @@ Chưa bấm `Tạo hành trình` cho đến MF01-MOB-006.
   - nguồn ngày;
   - độ tin cậy;
   - lý do/effective time nếu contract yêu cầu.
-
 - App về Trang chủ và dashboard hiển thị tuần thai/ngày dự sinh.
+- Clinician EDD tạo journey với LMP `null`; `dateSource`/`dateConfidence` phản ánh nguồn clinician-confirmed.
 
-**Dự kiến theo code hiện tại:**
+**Closure 2026-07-18:** `ĐẠT` — `006-created-immediate.*`; DB không giữ LMP stale.
 
-- Mobile gửi ngày nhưng không gửi `dateSource`/`dateConfidence`.
-- Backend trả HTTP 400 `JOURNEY-018`.
-- UI hiển thị thông báo chung `Không thể tạo hành trình. Vui lòng thử lại.`
-
-Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-01`.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-007 — Nhánh Đang nuôi bé không tạo BABY_CARE canonical
 
@@ -455,15 +389,11 @@ Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-
 - App chuyển sang luồng hồ sơ bé tương thích hoặc giải thích rõ bước tiếp theo.
 - Không hiển thị thông báo sai rằng người dùng đã có active journey nếu thực tế chưa có.
 
-**Dự kiến theo code hiện tại:**
+**Regression trọng tâm:** Nhánh này phải đi tới luồng hồ sơ bé và tuyệt đối không gọi create canonical `BABY_CARE`.
 
-- Mobile gửi `BABY_CARE`.
-- Backend trả HTTP 409 `JOURNEY-016`.
-- UI có thể hiển thị `Bạn đã có hành trình đang hoạt động cho lựa chọn này.`
+**Closure 2026-07-18:** `ĐẠT` — `007-baby-route.*`, `007-baby-db.txt`.
 
-Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-03`.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-008 — Không tạo lifecycle thứ hai
 
@@ -472,26 +402,20 @@ Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-
 **Bước thực hiện:**
 
 1. Mở tab `Hành trình`.
-2. Nếu màn hình hiển thị `Thêm hành trình`, chạm nút đó.
-3. Hoàn thành pregnancy wizard và chạm `Tạo hành trình`.
-4. Thử lại một lần sau khi lỗi xuất hiện.
+2. Chọn CTA chuyển sang thai kỳ.
+3. Hoàn thành pregnancy wizard và xác nhận.
+4. Refresh Hành trình ngay, không relaunch app.
 
 **Kết quả mong đợi:**
 
 - Không tạo current row thứ hai.
-- Mobile nên chuyển `PRE_PREGNANCY → PREGNANCY` bằng update/transition, không gọi create mới.
-- Nếu không hỗ trợ transition, phải hiển thị lỗi rõ ràng và giữ nguyên current/history.
-- Không có loading vô hạn hoặc tạo trùng khi retry.
+- Mobile chuyển `PRE_PREGNANCY → PREGNANCY` bằng update/transition.
+- UI refresh tức thời, giữ cùng journey ID, tăng version một lần và thêm `STAGE_CHANGED`.
+- Cache giữ `version`, `dateSource`, `dateConfidence`.
 
-**Dự kiến theo code hiện tại:**
+**Closure 2026-07-18:** `ĐẠT` — `008-pre.*`, `008-preg-immediate.*`.
 
-- Wizard gọi create mới.
-- Vì request thiếu provenance, backend có thể trả `JOURNEY-018` trước khi kiểm tra duplicate.
-- UI hiển thị lỗi chung, không hướng dẫn người dùng chuyển giai đoạn.
-
-Data integrity vẫn phải giữ đúng một active canonical row; UX/transition vẫn là `KHÔNG ĐẠT` nếu không thể tiếp tục.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-009 — Dashboard của fixture PREGNANCY
 
@@ -510,8 +434,8 @@ Data integrity vẫn phải giữ đúng một active canonical row; UX/transiti
    - ngày dự sinh;
    - số ngày còn lại;
    - journey ID khi mở các chức năng liên quan.
-
 6. Chuyển sang `Nuôi con`, sau đó quay lại `Mang thai`.
+7. Lặp lại với `MOTHER_POSTPARTUM` sau khi tài khoản trước đã cache PREGNANCY.
 
 **Kết quả mong đợi:**
 
@@ -520,8 +444,11 @@ Data integrity vẫn phải giữ đúng một active canonical row; UX/transiti
 - Tuần thai/EDD khớp fixture hoặc phép tính từ LMP.
 - Chuyển tab không làm mất dashboard.
 - Không hiển thị dữ liệu optimistic cache cũ thay cho response mới.
+- POSTPARTUM vẫn được nhận diện là maternal lifecycle, hiển thị history và không bị cache PREGNANCY cũ che.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — dashboard PREGNANCY tại `009-preg-dashboard.*`; POSTPARTUM/cache behavior được xác nhận trong final Story regression.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-010 — Chỉnh ngày dự sinh từ mobile
 
@@ -530,7 +457,7 @@ Data integrity vẫn phải giữ đúng một active canonical row; UX/transiti
 **Bước thực hiện:**
 
 1. Trong tab `Hành trình → Mang thai`, chạm icon chỉnh sửa tại thẻ ngày dự sinh.
-2. Chọn một phương pháp/mốc ngày mới có thể nhận biết.
+2. Chọn phương pháp EDD-only và một ngày mới dễ nhận biết.
 3. Hoàn thành wizard và lưu.
 4. Quan sát lỗi hoặc dashboard được refresh.
 5. Đóng/mở lại app và đối chiếu ngày.
@@ -540,41 +467,36 @@ Data integrity vẫn phải giữ đúng một active canonical row; UX/transiti
 - Request update có date provenance.
 - Current journey tăng version đúng một lần.
 - History thêm `DATES_CHANGED` với previous/new values.
-- Dashboard hiển thị dữ liệu mới sau refresh và relaunch.
+- Dashboard hiển thị EDD mới ngay sau lưu, không cần relaunch.
+- EDD-only update xóa LMP cũ khỏi response/cache.
 
-**Dự kiến theo code hiện tại:**
+**Closure 2026-07-18:** `ĐẠT` — `010-update-immediate-fixed.*`; DB version `2`, ba transition.
 
-- Mobile update gửi ngày nhưng không gửi provenance.
-- Backend trả HTTP 400 `JOURNEY-018`.
-- UI hiển thị `Không thể cập nhật hành trình. Vui lòng thử lại.`
-
-Nếu quan sát đúng dự kiến hiện tại, ghi `KHÔNG ĐẠT — MOB-GAP-02`.
-
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-011 — Lịch sử chuyển đổi trên mobile
 
-**Tài khoản:** Một Mother có ít nhất hai transition.
+**Tài khoản:** `MOTHER_HISTORY`, có nhiều transition hơn page size và đã từng tải history thành công.
 
 **Bước thực hiện:**
 
 1. Mở Trang chủ, tab Hành trình và Hồ sơ.
 2. Tìm mục `Lịch sử hành trình`, `Lịch sử chuyển đổi` hoặc tương đương.
-3. Tìm khả năng mở CREATED/STAGE_CHANGED/DATES_CHANGED.
+3. Mở history và cuộn đến cuối để tải đủ các trang.
+4. Đối chiếu bản ghi đầu/cuối và tổng số event với API.
+5. Ngắt backend, refresh history, sau đó khôi phục backend và chạm `Thử lại`.
 
 **Kết quả mong đợi của sản phẩm:**
 
 - Người dùng có điểm truy cập lịch sử của journey thuộc sở hữu.
 - History mới nhất hiển thị trước.
+- Tải đủ mọi trang, không trùng/mất event.
+- Khi refresh lỗi, history cũ vẫn còn và UI có error/retry rõ ràng.
 - Chỉ hiển thị các field tối thiểu, không lộ token, contact data, actor ID hoặc raw JSON.
 
-**Dự kiến theo code hiện tại:**
+**Closure 2026-07-18:** `ĐẠT` — UI history tại `011-history.*`; pagination và retry được xác nhận trong final Story behavior regression.
 
-- Không có API call/history screen trên mobile.
-
-Nếu không tìm thấy lịch sử, ghi `KHÔNG ĐẠT — MOB-GAP-04`, không ghi `BỊ CHẶN`.
-
-**Kết quả thực tế / bằng chứng:** `KHÔNG ĐẠT — MOB-GAP-04` — Không có mục lịch sử ở Trang chủ, cả hai phần của tab Hành trình hoặc toàn bộ Hồ sơ sau khi cuộn đến cuối. Evidence: `01-initial-screen.png`, `02-journey-screen.png`, `03-pregnancy-tab.png`, `11-profile.png` đến `13-profile-end.png`.
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-012 — Lỗi mạng và retry không tạo bản ghi trùng
 
@@ -590,6 +512,7 @@ Nếu không tìm thấy lịch sử, ghi `KHÔNG ĐẠT — MOB-GAP-04`, không
 6. Bật lại kết nối/backend.
 7. Chạm lại đúng một lần.
 8. Mở lại app.
+9. Ở lượt độc lập, gây lỗi transport khi dashboard đang được xác định ngay sau đăng nhập.
 
 **Kết quả mong đợi:**
 
@@ -598,8 +521,11 @@ Nếu không tìm thấy lịch sử, ghi `KHÔNG ĐẠT — MOB-GAP-04`, không
 - Phiên đăng nhập không bị xóa vì lỗi mạng tạm thời.
 - Sau khôi phục, chỉ một canonical current row và một CREATED history tồn tại.
 - Không có snackbar/banner che nút hoặc bị cắt bởi bàn phím/system bar.
+- Dashboard transport failure giữ người dùng ở error card có `Thử lại`, không điều hướng sang stage selection.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — `012-network-error.*`, `012-retry-success.*`, `012-retry-db.txt`; transport routing có automated regression.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-013 — Access token hết hạn được refresh an toàn
 
@@ -632,7 +558,9 @@ Lượt B — refresh token không hợp lệ:
 
 Nếu không có fixture token, ghi `BỊ CHẶN — thiếu fixture`, không tự sửa storage production.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — `013-valid-refresh*`, `013-invalid-refresh*`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-014 — Đổi tài khoản không rò rỉ journey/cache
 
@@ -642,7 +570,8 @@ Nếu không có fixture token, ghi `BỊ CHẶN — thiếu fixture`, không t�
 2. Đăng xuất đúng luồng.
 3. Đăng nhập `MOTHER_OTHER`.
 4. Mở Trang chủ và Hành trình ngay sau đăng nhập.
-5. Đóng/mở lại app.
+5. Trong lượt có network delay, để request tài khoản A hoàn tất sau khi đã login tài khoản B.
+6. Đóng/mở lại app.
 
 **Kết quả mong đợi:**
 
@@ -650,10 +579,13 @@ Nếu không có fixture token, ghi `BỊ CHẶN — thiếu fixture`, không t�
 - Optimistic dashboard cache được ràng buộc theo user ID.
 - `MOTHER_OTHER` chỉ thấy dữ liệu của chính mình.
 - Không có request update nào dùng journey ID của tài khoản cũ.
+- Async response/write của tài khoản A bị từ chối sau account switch.
 
 Bất kỳ dữ liệu chéo tài khoản nào cũng là lỗi P0/security.
 
-**Kết quả thực tế / bằng chứng:** `[điền]`
+**Closure 2026-07-18:** `ĐẠT` — `014-account-a-preg.*`, `014-account-b-isolated.*`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-015 — Text scale, xoay màn hình và touch target
 
@@ -666,7 +598,6 @@ Bất kỳ dữ liệu chéo tài khoản nào cũng là lỗi P0/security.
    - từng bước pregnancy wizard;
    - màn hình kết quả;
    - tab Hành trình và thẻ EDD.
-
 3. Xoay portrait ↔ landscape tại mỗi nhóm màn hình.
 4. Kiểm tra bằng TalkBack.
 5. Sau khi ghi nhận, tắt TalkBack, đưa font size về mặc định và xoay lại portrait.
@@ -681,7 +612,9 @@ Bất kỳ dữ liệu chéo tài khoản nào cũng là lỗi P0/security.
 - Focus order đi từ tiêu đề → lựa chọn → nút hành động.
 - TalkBack đọc được nhãn có ý nghĩa cho icon back/edit.
 
-**Kết quả thực tế / bằng chứng:** `KHÔNG ĐẠT` — Ở font scale `1.5`, tiêu đề `Kết quả` bị cắt/che phía dưới progress bar. UI hierarchy của nút back ghi `NAF=true`, `content-desc=""`, nên không có nhãn accessibility có ý nghĩa. Đã kiểm tra landscape và khôi phục font/orientation về trạng thái ban đầu. Evidence: `09-result-font150.png`, `09-result-font150-window.xml`, `10-result-landscape.png`.
+**Closure 2026-07-18:** `ĐẠT` — `015-wizard-landscape-*`, `015-method-selected.xml`, `015-result-landscape-*`.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ### MF01-MOB-016 — Chạy nền/khôi phục trong lúc thiết lập
 
@@ -701,11 +634,13 @@ Bất kỳ dữ liệu chéo tài khoản nào cũng là lỗi P0/security.
 - Sau create thành công, app hiển thị trạng thái nhất quán với backend.
 - Back navigation không thoát app bất ngờ hoặc bỏ lại loading overlay.
 
-**Kết quả thực tế / bằng chứng:** `MỘT PHẦN — ĐẠT` — App resume đúng bước 2 sau 30 giây và giữ `4 tuần 0 ngày`; lần thứ hai resume đúng màn kết quả và giữ EDD `27 tháng 3, 2027`. Không crash, không đổi tài khoản. Phần background ngay sau create bị chặn vì không có `MOTHER_NEW_E` và backend isolated. Evidence: `06-wizard-resume.png`, `08-result-resume.png`.
+**Closure 2026-07-18:** `ĐẠT` — `016-selected.*`, `016-resumed.*`; create hoàn tất khi background và UI refresh đúng khi resume.
+
+**Lần chạy mới:** `[điền kết quả và evidence]`
 
 ## 9. Đối chiếu backend tối thiểu
 
-Mobile hiện chưa hiển thị history/version/provenance, vì vậy dùng backend manual guide hoặc truy vấn read-only để xác nhận các invariant sau:
+Mobile đã hiển thị history và giữ version/provenance trong model/cache. Vẫn dùng backend manual guide hoặc truy vấn read-only để đối soát các invariant không thể chứng minh hoàn toàn bằng UI:
 
 - mỗi Mother có tối đa một canonical lifecycle ACTIVE;
 - create thành công có đúng một CREATED transition;
@@ -719,11 +654,12 @@ Không chạy câu lệnh DELETE/UPDATE trực tiếp trên shared/staging datab
 
 | Mobile case | Bằng chứng backend cần dùng |
 | --- | --- |
-| MF01-MOB-003 | Backend guide `MF01-6.1-MAN-004` và mục 9 |
-| MF01-MOB-006 | Backend guide `MF01-6.1-MAN-003`/mục 9 để xác nhận `JOURNEY-018` và không có side effect |
-| MF01-MOB-007 | Backend guide `MF01-6.1-MAN-007`/mục 9 để xác nhận không có BABY_CARE canonical |
-| MF01-MOB-008 | Backend guide `MF01-6.1-MAN-005..007` để xác nhận đúng một active canonical row |
-| MF01-MOB-010 | Backend guide `MF01-6.1-MAN-006`/mục 9 để đối chiếu current/version/history |
+| MF01-MOB-003 | Backend guide `MF01-6.1-MAN-004` và Mục 9: một PRE active, một CREATED |
+| MF01-MOB-006 | HTTP `201`; current/history có provenance đúng và clinician EDD không giữ LMP stale |
+| MF01-MOB-007 | Backend guide `MF01-6.1-MAN-007`: không tạo BABY_CARE canonical |
+| MF01-MOB-008 | Backend guide `MF01-6.1-MAN-005..007`: cùng journey ID, tăng version, thêm STAGE_CHANGED |
+| MF01-MOB-010 | Backend guide `MF01-6.1-MAN-006`: current/version/history và nullable LMP |
+| MF01-MOB-011 | API history `page`/`size`: đủ trang, đúng thứ tự, không trùng event |
 
 ### 9.2 Kiểm tra request từ Flutter
 
@@ -745,6 +681,8 @@ SELECT
     journey_type,
     status,
     version,
+    last_menstrual_date,
+    estimated_due_date,
     date_source,
     date_confidence
 FROM public.mother_journeys
@@ -797,18 +735,22 @@ Known gap liên quan:
 
 ## 11. Completion Gate
 
-Mobile integration chỉ đạt Story 6.1 khi:
+Trạng thái closure ngày 2026-07-18: `ĐẠT`.
 
-- tạo PRE_PREGNANCY hoạt động và được hiển thị đúng;
-- tạo PREGNANCY gửi đầy đủ provenance và thành công;
-- PRE_PREGNANCY có thể chuyển sang PREGNANCY thay vì create row thứ hai;
-- nhánh nuôi bé không tạo BABY_CARE canonical;
-- chỉnh ngày gửi provenance, tăng version và ghi history;
-- người dùng xem được transition history tối thiểu trên mobile;
-- không có cache/data leakage khi đổi tài khoản;
-- lỗi mạng, token expiry và double tap không tạo trùng;
-- các kiểm tra accessibility P1 đạt;
-- mọi P0 đạt và không còn `MOB-GAP-01..07` chưa xử lý.
+- [x] Tạo và hiển thị PRE_PREGNANCY đúng.
+- [x] Tạo PREGNANCY với provenance đầy đủ; không giữ state phương pháp cũ.
+- [x] PRE chuyển sang PREGNANCY tại chỗ, không tạo lifecycle thứ hai.
+- [x] Nhánh nuôi bé không tạo BABY_CARE canonical.
+- [x] Update EDD tăng version, ghi history và refresh tức thời.
+- [x] POSTPARTUM được nhận diện là maternal lifecycle.
+- [x] History hiển thị tối thiểu, tải đủ pagination và giữ dữ liệu khi retry.
+- [x] Không rò cache/dữ liệu khi đổi tài khoản hoặc request cũ hoàn tất muộn.
+- [x] Lỗi mạng, token expiry và double tap không tạo trùng.
+- [x] Accessibility, font scale 150% và landscape đạt.
+- [x] Composite device manual `16/16 ĐẠT`.
+- [x] Final Story behavior `15/15 PASS`; full Flutter regression `187/187 PASS`.
+
+`16/16` là số ca manual trên thiết bị; `15/15` là số automated Story behavior tests sau lần tái cấu trúc test cuối. Với lần rerun mới, dùng checklist Mục 8 và không sửa kết quả closure lịch sử ở Mục 3/Mục 7.
 
 ## 12. Tài liệu liên quan
 
@@ -820,3 +762,6 @@ Mobile integration chỉ đạt Story 6.1 khi:
 - `05_Development/CareBridgeMobileApp/lib/features/journey/screens/mother_journey_screen.dart`
 - `05_Development/CareBridgeMobileApp/lib/features/journey/services/journey_service.dart`
 - `05_Development/CareBridgeMobileApp/lib/features/journey/models/journey_model.dart`
+- `06_Testing/TestResults/epic-6/story-6-1/mobile-full-rerun-2026-07-18/README.md` — kết quả full rerun trước gap-fix, lưu làm lịch sử
+- `06_Testing/TestResults/epic-6/story-6-1/mobile-gap-fix-rerun-2026-07-18/README.md` — closure 7/7 và composite 16/16
+- `06_Testing/TestResults/epic-6/story-6-1/code-review-2026-07-18.md` — verification cuối sau code review
