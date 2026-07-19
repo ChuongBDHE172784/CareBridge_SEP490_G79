@@ -15,6 +15,7 @@ import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
+import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemResponse;
@@ -29,6 +30,7 @@ import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportItemResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
+import com.carebridge.backend.content.dto.response.RevertReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ContentReport;
@@ -46,6 +48,7 @@ import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -759,6 +762,132 @@ public class ModerationServiceImpl implements ModerationService {
 
         // Mirrors moderateAnswer()'s exact condition (line ~332): only APPROVED<->non-APPROVED
         // transitions touch the counter.
+        if (expectedCurrentStatus == AnswerStatus.APPROVED) {
+            communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
+        }
+        return AnswerStatus.PENDING.name();
+    }
+
+    // CB-MOD-IMP-015 ADR-002: revertReport() is a code path fully separate from
+    // undoModerationAction() — it is never blocked by MOD-027, and does not call undo internally.
+    @Override
+    @Transactional
+    public RevertReportResponse revertReport(UUID reportId, RevertReportRequest request, Principal principal) {
+        UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
+
+        ContentReport report = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
+
+        // BR-MOD-015: only RESOLVED/DISMISSED reports can be reverted
+        if (report.getStatus() == ReportStatus.PENDING) {
+            throw ModerationException.reportNotYetResolved(reportId);
+        }
+
+        UUID undoActionId = null;
+        String resultingStatus = null;
+
+        // BR-MOD-010: DISMISS never created a ModerationAction — nothing to revert on the target
+        Optional<ModerationAction> linkedAction = moderationActionRepository.findTopByReportIdOrderByActionAtDesc(reportId);
+        if (linkedAction.isPresent()) {
+            ModerationAction action = linkedAction.get();
+
+            // BR-MOD-016/ADR-001: account-level (and any other non-content) outcome is out of scope
+            if (!UNDOABLE_ACTION_TYPES.contains(action.getActionType())) {
+                throw ModerationException.revertNotSupportedForAccountAction(action.getId());
+            }
+
+            resultingStatus = revertContentAction(action);
+
+            ModerationAction undoAction = ModerationAction.builder()
+                    .reportId(reportId)
+                    .targetId(action.getTargetId())
+                    .targetType(action.getTargetType())
+                    .actionType(ModerationActionType.UNDO)
+                    .moderatorUserId(moderatorUserId)
+                    .reason(request.reason() != null ? request.reason() : "Hoàn tác báo cáo đã xử lý")
+                    .actionAt(Instant.now())
+                    .build();
+            undoActionId = moderationActionRepository.save(undoAction).getId();
+        }
+
+        // ADR-005: resolvedAt/assignedModeratorId are NEVER touched here — only revertedAt/revertedBy
+        report.setStatus(ReportStatus.PENDING);
+        report.setRevertedAt(Instant.now());
+        report.setRevertedBy(moderatorUserId);
+        ContentReport savedReport = contentReportRepository.save(report);
+
+        auditService.log(AuditAction.MODERATION_ACTION, moderatorUserId,
+                savedReport.getTargetType() != null ? savedReport.getTargetType().name() : null,
+                savedReport.getTargetId() != null ? savedReport.getTargetId().toString() : null,
+                "revert reportId=" + reportId + " undoActionId=" + undoActionId + " reason=" + request.reason());
+
+        return new RevertReportResponse(
+                savedReport.getId(),
+                savedReport.getStatus(),
+                moderatorUserId,
+                savedReport.getRevertedAt(),
+                undoActionId,
+                savedReport.getTargetType(),
+                savedReport.getTargetId(),
+                resultingStatus);
+    }
+
+    // ADR-004 guard 1 ("most recent") — mirrors CB-MOD-IMP-009 ADR-002, applied before mutating.
+    private void requireMostRecentAction(ModerationAction action) {
+        ModerationAction mostRecent = moderationActionRepository
+                .findTopByTargetIdAndTargetTypeOrderByActionAtDesc(action.getTargetId(), action.getTargetType())
+                .orElseThrow(() -> ModerationException.revertNotMostRecentAction(action.getId()));
+        if (!mostRecent.getId().equals(action.getId())) {
+            throw ModerationException.revertNotMostRecentAction(action.getId());
+        }
+    }
+
+    private String revertContentAction(ModerationAction action) {
+        requireMostRecentAction(action);
+        return switch (action.getTargetType()) {
+            case QUESTION -> revertQuestionAction(action);
+            case ANSWER -> revertAnswerAction(action);
+            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
+        };
+    }
+
+    // ADR-004 guard 2 ("status khớp") + mutation to PENDING for a QUESTION target.
+    private String revertQuestionAction(ModerationAction action) {
+        CommunityQuestion question = communityQuestionRepository.findById(action.getTargetId())
+                .orElseThrow(() -> ModerationException.targetNotFound(action.getTargetId(), ReportTargetType.QUESTION));
+
+        QuestionStatus expectedCurrentStatus = switch (action.getActionType()) {
+            case APPROVE -> QuestionStatus.APPROVED;
+            case HIDE -> QuestionStatus.HIDDEN;
+            case LOCK -> QuestionStatus.LOCKED;
+            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
+        };
+        if (question.getStatus() != expectedCurrentStatus) {
+            throw ModerationException.revertStatusSuperseded(action.getId());
+        }
+
+        question.setStatus(QuestionStatus.PENDING);
+        communityQuestionRepository.save(question);
+        return QuestionStatus.PENDING.name();
+    }
+
+    // ADR-004 guard 2 ("status khớp") + mutation to PENDING + answer_count mirror for an ANSWER target.
+    private String revertAnswerAction(ModerationAction action) {
+        CommunityAnswer answer = communityAnswerRepository.findById(action.getTargetId())
+                .orElseThrow(() -> ModerationException.targetNotFound(action.getTargetId(), ReportTargetType.ANSWER));
+
+        AnswerStatus expectedCurrentStatus = switch (action.getActionType()) {
+            case APPROVE -> AnswerStatus.APPROVED;
+            case HIDE -> AnswerStatus.HIDDEN;
+            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
+        };
+        if (answer.getStatus() != expectedCurrentStatus) {
+            throw ModerationException.revertStatusSuperseded(action.getId());
+        }
+
+        answer.setStatus(AnswerStatus.PENDING);
+        communityAnswerRepository.save(answer);
+
         if (expectedCurrentStatus == AnswerStatus.APPROVED) {
             communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
         }
