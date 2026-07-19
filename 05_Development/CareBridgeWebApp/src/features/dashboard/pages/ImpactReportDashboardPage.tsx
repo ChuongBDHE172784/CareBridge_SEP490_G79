@@ -61,40 +61,42 @@ export default function ImpactReportDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F1EC]">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8 font-sans">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <main className="portal-content">
+        <div className="portal-contained">
+        <div className="portal-header">
           <div>
-            <h2 className="text-3xl font-bold text-[#271812]">Tác động &amp; vận hành</h2>
-            <p className="text-[#524440] mt-1">Tổng hợp số liệu tác động của nền tảng theo khoảng thời gian</p>
+            <p className="portal-eyebrow">ModPortal</p>
+            <h2 className="portal-title">Tác động &amp; vận hành</h2>
+            <p className="portal-subtitle">Tổng hợp số liệu tác động của nền tảng theo khoảng thời gian.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <input
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="bg-white border border-[#D6C2BD] rounded-lg px-4 py-2 text-sm h-[48px]"
+              className="portal-field"
             />
-            <span className="text-[#84736F] text-sm">đến</span>
+            <span className="text-xs text-outline">đến</span>
             <input
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="bg-white border border-[#D6C2BD] rounded-lg px-4 py-2 text-sm h-[48px]"
+              className="portal-field"
             />
             <button
               onClick={load}
-              className="h-[48px] px-4 rounded-lg bg-white border border-[#D6C2BD] text-[#524440] text-sm font-medium hover:bg-[#FFF1EC] transition-colors"
+              className="portal-secondary-button"
             >
               Áp dụng
             </button>
             <button
               onClick={handleExport}
               disabled={!data}
-              className="bg-[#F6DACF] text-[#735E56] rounded-lg px-4 h-[48px] font-semibold flex items-center gap-2 hover:bg-[#FFE2D9] transition-colors disabled:opacity-50"
+              className="portal-primary-button"
             >
-              <span className="material-symbols-outlined text-[20px]">download</span>
+              <span className="material-symbols-outlined text-base">download</span>
               Xuất báo cáo
             </button>
           </div>
@@ -102,58 +104,59 @@ export default function ImpactReportDashboardPage() {
 
         {loading ? (
           <div className="flex justify-center py-24">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#845143] border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : error || !data ? (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-600 text-sm">{error}</div>
+          <div className="portal-error">{error}</div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FFE2D9]">
-                <div className="w-10 h-10 rounded-full bg-[#FFDBD1] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#341006]">favorite</span>
+            <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="portal-stat-card">
+                <div className="portal-icon mb-3">
+                  <span className="material-symbols-outlined text-lg">favorite</span>
                 </div>
-                <p className="text-[#84736F] text-xs uppercase tracking-wider mb-1">Mẹ được hỗ trợ</p>
-                <h3 className="text-3xl font-bold text-[#271812]">{formatNumber(data.mothersServed)}</h3>
+                <p className="mb-1 text-xs font-medium text-on-surface-variant">Mẹ được hỗ trợ</p>
+                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.mothersServed)}</h3>
               </div>
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FFE2D9]">
-                <div className="w-10 h-10 rounded-full bg-[#F8DDD2] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#271812]">stethoscope</span>
+              <div className="portal-stat-card">
+                <div className="portal-icon mb-3">
+                  <span className="material-symbols-outlined text-lg">stethoscope</span>
                 </div>
-                <p className="text-[#84736F] text-xs uppercase tracking-wider mb-1">Buổi tư vấn đã thực hiện</p>
-                <h3 className="text-3xl font-bold text-[#271812]">{formatNumber(data.consultationsDelivered)}</h3>
+                <p className="mb-1 text-xs font-medium text-on-surface-variant">Buổi tư vấn đã thực hiện</p>
+                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.consultationsDelivered)}</h3>
               </div>
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FFE2D9]">
-                <div className="w-10 h-10 rounded-full bg-[#E9E1DB] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#1E1B18]">handshake</span>
+              <div className="portal-stat-card">
+                <div className="portal-icon mb-3">
+                  <span className="material-symbols-outlined text-lg">handshake</span>
                 </div>
-                <p className="text-[#84736F] text-xs uppercase tracking-wider mb-1">Đối tác đang hoạt động</p>
-                <h3 className="text-3xl font-bold text-[#271812]">{formatNumber(data.activePartnerOrganizations)}</h3>
+                <p className="mb-1 text-xs font-medium text-on-surface-variant">Đối tác đang hoạt động</p>
+                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.activePartnerOrganizations)}</h3>
               </div>
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FFE2D9]">
-                <div className="w-10 h-10 rounded-full bg-[#FFE2D9] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#845143]">menu_book</span>
+              <div className="portal-stat-card">
+                <div className="portal-icon mb-3">
+                  <span className="material-symbols-outlined text-lg">menu_book</span>
                 </div>
-                <p className="text-[#84736F] text-xs uppercase tracking-wider mb-1">Nội dung đã xuất bản</p>
-                <h3 className="text-3xl font-bold text-[#271812]">{formatNumber(data.publishedContentItems)}</h3>
+                <p className="mb-1 text-xs font-medium text-on-surface-variant">Nội dung đã xuất bản</p>
+                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.publishedContentItems)}</h3>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FFE2D9]">
-              <div className="flex items-center gap-2 text-[#84736F] text-sm mb-2">
+            <div className="portal-card-padded">
+              <div className="mb-2 flex items-center gap-2 text-sm text-on-surface-variant">
                 <span className="material-symbols-outlined text-[18px]">info</span>
                 <span>
                   Kỳ báo cáo: {formatDate(data.periodFrom)} — {formatDate(data.periodTo)}
                 </span>
               </div>
-              <p className="text-xs text-[#84736F]">{data.anonymizationNote}</p>
-              <p className="text-xs text-[#84736F] mt-1">
+              <p className="text-xs text-outline">{data.anonymizationNote}</p>
+              <p className="mt-1 text-xs text-outline">
                 Cập nhật lúc {new Date(data.generatedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
               </p>
             </div>
           </>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

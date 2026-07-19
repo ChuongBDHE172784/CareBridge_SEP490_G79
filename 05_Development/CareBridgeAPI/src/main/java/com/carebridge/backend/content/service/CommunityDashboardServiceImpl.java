@@ -91,12 +91,20 @@ public class CommunityDashboardServiceImpl implements CommunityDashboardService 
         Double avgHandlingTimeSeconds = null;
         if (!resolvedTimestamps.isEmpty()) {
             double totalSeconds = 0;
+            int validSamples = 0;
             for (Object[] row : resolvedTimestamps) {
                 Instant createdAt = (Instant) row[0];
                 Instant resolvedAt = (Instant) row[1];
-                totalSeconds += Duration.between(createdAt, resolvedAt).getSeconds();
+                long seconds = Duration.between(createdAt, resolvedAt).getSeconds();
+                if (seconds < 0) {
+                    continue;
+                }
+                totalSeconds += seconds;
+                validSamples++;
             }
-            avgHandlingTimeSeconds = totalSeconds / resolvedTimestamps.size();
+            if (validSamples > 0) {
+                avgHandlingTimeSeconds = totalSeconds / validSamples;
+            }
         }
 
         return new ReportMetrics(byStatus, avgHandlingTimeSeconds);
@@ -113,7 +121,9 @@ public class CommunityDashboardServiceImpl implements CommunityDashboardService 
     private Map<String, Long> groupCountsToMap(List<Object[]> rows) {
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : rows) {
-            result.put(row[0].toString(), (Long) row[1]);
+            String key = row[0] == null ? "UNASSIGNED" : row[0].toString();
+            long count = ((Number) row[1]).longValue();
+            result.put(key, count);
         }
         return result;
     }
