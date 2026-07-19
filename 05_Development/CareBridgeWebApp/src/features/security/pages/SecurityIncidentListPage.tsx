@@ -52,21 +52,27 @@ export default function SecurityIncidentListPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
-    <div className="mx-auto max-w-7xl p-6 md:p-10">
-      <h1 className="text-[28px] font-bold text-on-surface m-0">Danh sách Sự cố Bảo mật</h1>
-      <p className="text-on-surface-variant text-sm mt-1 mb-6">Theo dõi và quản lý các cảnh báo an toàn hệ thống (CB-151).</p>
+    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
+      <div className="portal-contained">
+      <div className="portal-header">
+        <div>
+          <p className="portal-eyebrow">CB-151</p>
+          <h1 className="portal-title">Danh sách sự cố bảo mật</h1>
+          <p className="portal-subtitle">Theo dõi và quản lý các cảnh báo an toàn hệ thống.</p>
+        </div>
+      </div>
 
-      <div className="flex gap-3 flex-wrap mb-5">
+      <div className="portal-toolbar mb-4">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Tìm theo Case ID, Loại..."
-          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm w-64"
+          className="portal-field w-full sm:w-64"
         />
         <select
           value={severity}
           onChange={e => { setSeverity(e.target.value); setPage(0); }}
-          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm bg-surface cursor-pointer"
+          className="portal-field w-full sm:w-auto"
         >
           <option value="">Mức độ: Tất cả</option>
           <option value="HIGH">Cao</option>
@@ -76,7 +82,7 @@ export default function SecurityIncidentListPage() {
         <select
           value={status}
           onChange={e => { setStatus(e.target.value); setPage(0); }}
-          className="px-4 py-2.5 rounded-lg border border-outline-variant text-sm bg-surface cursor-pointer"
+          className="portal-field w-full sm:w-auto"
         >
           <option value="">Trạng thái: Tất cả</option>
           <option value="DETECTED">Đang mở</option>
@@ -85,16 +91,16 @@ export default function SecurityIncidentListPage() {
         </select>
       </div>
 
-      <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
+      <div className="portal-table-card">
         {isLoading ? (
-          <div className="p-12 text-center text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : (
           <>
-            <table className="w-full border-collapse">
+            <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-surface-container-highest text-left">
+                <tr>
                   {['Case ID', 'Mức độ', 'Loại sự cố', 'Trạng thái', 'Phạm vi', 'Thời gian mở', 'SLA'].map(h => (
-                    <th key={h} className="px-4 py-3.5 text-[13px] font-semibold text-outline uppercase tracking-[0.04em]">{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -102,23 +108,23 @@ export default function SecurityIncidentListPage() {
                 {events.map(e => {
                   const sev = SEVERITY_BADGE[e.severity] ?? SEVERITY_BADGE.LOW;
                   return (
-                    <tr key={e.id} className="border-b border-surface-container-highest cursor-pointer">
-                      <td className="p-4 text-sm text-primary font-semibold">SEC-{e.id}</td>
-                      <td className="p-4 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${sev.cls}`}>
+                    <tr key={e.id} className="cursor-pointer">
+                      <td className="font-semibold text-primary">SEC-{e.id}</td>
+                      <td>
+                        <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${sev.cls}`}>
                           {sev.label}
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-on-surface">{e.eventType}</td>
-                      <td className="p-4 text-sm text-on-surface">
+                      <td>{e.eventType}</td>
+                      <td>
                         <span className="inline-flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${e.status === 'RESOLVED' ? 'bg-outline' : 'bg-error'}`} />
+                          <span className={`h-2 w-2 rounded-full ${e.status === 'RESOLVED' ? 'bg-outline' : 'bg-error'}`} />
                           {STATUS_LABELS[e.status] ?? e.status}
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-on-surface">{e.ipAddress || '—'}</td>
-                      <td className="p-4 text-sm text-on-surface">{formatDateTime(e.occurredAt)}</td>
-                      <td className={`p-4 text-sm ${e.severity === 'HIGH' ? 'text-error font-semibold' : 'text-on-surface-variant'}`}>
+                      <td>{e.ipAddress || '—'}</td>
+                      <td>{formatDateTime(e.occurredAt)}</td>
+                      <td className={e.severity === 'HIGH' ? 'font-semibold text-error' : 'text-on-surface-variant'}>
                         {e.status === 'RESOLVED' ? '—' : '—'}
                       </td>
                     </tr>
@@ -126,23 +132,24 @@ export default function SecurityIncidentListPage() {
                 })}
               </tbody>
             </table>
-            <div className="flex justify-between items-center px-6 py-4 text-sm text-on-surface-variant">
+            <div className="flex items-center justify-between border-t border-outline-variant px-4 py-3 text-sm text-on-surface-variant">
               <span>Hiển thị {page * 10 + 1}-{Math.min((page + 1) * 10, total)} trên tổng số {total} sự cố</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className={`w-9 h-9 rounded-lg border border-outline-variant text-base ${page === 0 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'}`}
+                  className={`h-8 w-8 rounded-md border border-outline-variant text-base ${page === 0 ? 'cursor-default bg-surface-container-low text-outline-variant' : 'cursor-pointer bg-surface text-on-surface-variant'}`}
                 >&lt;</button>
                 <button
                   onClick={() => setPage(p => p + 1)}
                   disabled={(page + 1) * 10 >= total}
-                  className={`w-9 h-9 rounded-lg border border-outline-variant text-base ${(page + 1) * 10 >= total ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'}`}
+                  className={`h-8 w-8 rounded-md border border-outline-variant text-base ${(page + 1) * 10 >= total ? 'cursor-default bg-surface-container-low text-outline-variant' : 'cursor-pointer bg-surface text-on-surface-variant'}`}
                 >&gt;</button>
               </div>
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default function ModPortalSidebar() {
   );
 
   return (
-    <aside className="fixed left-0 top-0 z-20 flex h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface">
+    <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
       <div className="border-b border-outline-variant/70 p-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="material-symbols-outlined text-xl text-primary">shield</span>

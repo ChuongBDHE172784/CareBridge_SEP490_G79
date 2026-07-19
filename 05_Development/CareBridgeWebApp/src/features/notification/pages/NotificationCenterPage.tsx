@@ -80,40 +80,42 @@ export default function NotificationCenterPage() {
       : notifications;
 
   return (
-    <div className="mx-auto max-w-7xl p-6 md:p-10">
-      <div className="flex justify-between items-start mb-6">
+    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
+      <div className="portal-contained">
+      <div className="portal-header">
         <div>
-          <h1 className="text-[28px] font-bold text-on-surface m-0">Trung tâm thông báo</h1>
-          <p className="text-on-surface-variant text-sm mt-1">
+          <p className="portal-eyebrow">Thông báo</p>
+          <h1 className="portal-title">Trung tâm thông báo</h1>
+          <p className="portal-subtitle">
             Quản lý và theo dõi các cảnh báo hệ thống và cập nhật trạng thái.
           </p>
         </div>
         <button
           onClick={handleMarkAllRead}
-          className="flex items-center gap-1 bg-transparent border-none text-primary text-sm font-semibold cursor-pointer"
+          className="portal-secondary-button"
         >
           <span className="material-symbols-outlined text-lg">done_all</span>
           Đánh dấu tất cả đã đọc
         </button>
       </div>
 
-      <div className="bg-surface rounded-2xl p-6 shadow-sm">
-        <div className="flex justify-between items-center mb-5">
-          <div className="flex gap-2">
+      <div className="portal-table-card">
+        <div className="portal-toolbar border-b border-outline-variant p-4">
+          <div className="flex flex-wrap gap-2">
             {FILTERS.map((f, i) => (
               <button
                 key={f}
                 onClick={() => setActiveFilter(i)}
-                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
+                className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                   activeFilter === i
-                    ? 'bg-primary text-on-primary border-none'
-                    : 'bg-surface text-on-surface-variant border border-outline-variant'
+                    ? 'border border-transparent bg-primary text-on-primary'
+                    : 'border border-outline-variant bg-surface text-on-surface-variant'
                 }`}
               >
                 {f}
                 {i === 1 && unreadCount > 0 && (
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                       activeFilter === 1 ? 'bg-surface text-primary' : 'bg-primary text-on-primary'
                     }`}
                   >
@@ -131,7 +133,7 @@ export default function NotificationCenterPage() {
                 setTypeFilter(e.target.value);
                 setPage(0);
               }}
-              className="px-4 py-2 rounded-lg border border-outline-variant text-sm text-on-surface bg-surface cursor-pointer"
+              className="portal-field"
             >
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -143,20 +145,20 @@ export default function NotificationCenterPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-center p-12 text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : error ? (
-          <div className="text-center p-12 text-error">{error}</div>
+          <div className="portal-error m-4">{error}</div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="text-center p-12 text-outline">Không có thông báo nào.</div>
+          <div className="portal-empty">Không có thông báo nào.</div>
         ) : (
           <>
-            <table className="w-full border-collapse">
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-surface-container-highest text-left">
-                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Thông báo</th>
-                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Thời gian</th>
-                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em]">Tài nguyên liên quan</th>
-                  <th className="px-2 py-3 text-[13px] font-semibold text-outline uppercase tracking-[0.05em] text-center">Thao tác</th>
+                <tr>
+                  <th>Thông báo</th>
+                  <th>Thời gian</th>
+                  <th>Tài nguyên liên quan</th>
+                  <th className="text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,7 +167,7 @@ export default function NotificationCenterPage() {
                 ))}
               </tbody>
             </table>
-            <div className="flex justify-between items-center mt-4 text-sm text-on-surface-variant">
+            <div className="flex items-center justify-between border-t border-outline-variant px-4 py-3 text-sm text-on-surface-variant">
               <span>
                 Hiển thị {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalElements)} của{' '}
                 {totalElements} thông báo
@@ -174,7 +176,7 @@ export default function NotificationCenterPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className={`w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border border-outline-variant ${
                     page === 0 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
                   }`}
                 >
@@ -183,7 +185,7 @@ export default function NotificationCenterPage() {
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= totalPages - 1}
-                  className={`w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border border-outline-variant ${
                     page >= totalPages - 1 ? 'bg-surface-container-low text-outline-variant cursor-default' : 'bg-surface text-on-surface-variant cursor-pointer'
                   }`}
                 >
@@ -193,6 +195,7 @@ export default function NotificationCenterPage() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   );
@@ -204,13 +207,13 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
   const badgeCls = getTypeBadgeClass(n.referenceType || n.type);
 
   return (
-    <tr className="border-b border-surface-container-highest cursor-pointer">
-      <td className="px-2 py-4 flex items-start gap-3">
+    <tr className="cursor-pointer">
+      <td className="flex items-start gap-3">
         {isUnread && (
-          <span className="w-2 h-2 rounded-full bg-error mt-2 shrink-0" />
+          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-error" />
         )}
         <span
-          className="material-symbols-outlined text-primary bg-surface-container-high rounded-full w-9 h-9 flex items-center justify-center shrink-0 text-xl"
+          className="material-symbols-outlined portal-icon"
         >
           {getTypeIcon(n.referenceType || n.type)}
         </span>
@@ -223,18 +226,18 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
           </div>
         </div>
       </td>
-      <td className="px-2 py-4 text-sm text-on-surface-variant whitespace-nowrap">
+      <td className="whitespace-nowrap text-on-surface-variant">
         {formatTime(n.createdAt)}
       </td>
-      <td className="px-2 py-4">
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${badgeCls}`}>
+      <td>
+        <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${badgeCls}`}>
           <span className="material-symbols-outlined text-sm">
             {getTypeIcon(n.referenceType || n.type)}
           </span>
           {typeLabel}
         </span>
       </td>
-      <td className="px-2 py-4 text-center">
+      <td className="text-center">
         <button className="bg-transparent border-none cursor-pointer text-primary">
           <span className="material-symbols-outlined text-xl">open_in_new</span>
         </button>

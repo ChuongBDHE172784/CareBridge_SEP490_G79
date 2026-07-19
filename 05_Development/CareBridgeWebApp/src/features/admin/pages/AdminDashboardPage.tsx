@@ -35,32 +35,27 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background p-5 font-sans text-on-surface md:p-6">
-      <div className="mx-auto max-w-5xl">
-        <section className="rounded-lg border border-outline-variant/70 bg-surface p-5">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-primary-container text-primary">
-                <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.02em] text-outline">CareBridge Admin</p>
-              <h1 className="mt-1 text-xl font-semibold">Trung tâm điều hành hệ thống</h1>
-              <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
-                Truy cập nhanh các tác vụ cần quyền System Admin. Số liệu cộng đồng và chỉ số vận hành được xem trong Hệ thống kiểm duyệt.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/moderator/dashboard')}
-              className="flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-xs font-semibold text-on-primary hover:bg-primary/90"
-            >
-              <span className="material-symbols-outlined text-lg">monitoring</span>
-              Xem tổng quan vận hành
-            </button>
+    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
+      <div className="portal-contained">
+        <header className="portal-header">
+          <div>
+            <p className="portal-eyebrow">CareBridge Admin</p>
+            <h1 className="portal-title">Trung tâm điều hành hệ thống</h1>
+            <p className="portal-subtitle">
+              Truy cập nhanh các tác vụ cần quyền System Admin. Số liệu cộng đồng và chỉ số vận hành được xem trong Hệ thống kiểm duyệt.
+            </p>
           </div>
-        </section>
+          <button
+            type="button"
+            onClick={() => navigate('/moderator/dashboard')}
+            className="portal-primary-button"
+          >
+            <span className="material-symbols-outlined text-base">monitoring</span>
+            Xem tổng quan vận hành
+          </button>
+        </header>
 
-        <section className="mt-6">
+        <section>
           <div className="mb-3 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-primary" />
             <h2 className="text-xs font-semibold uppercase tracking-[0.02em] text-on-surface-variant">Tác vụ ưu tiên</h2>
@@ -71,7 +66,7 @@ export default function AdminDashboardPage() {
                 key={action.title}
                 type="button"
                 onClick={() => navigate(action.href)}
-                className="group rounded-lg border border-outline-variant/70 bg-surface p-4 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-surface-container-lowest"
+                className="group portal-card-padded text-left transition-colors duration-150 hover:border-primary/40 hover:bg-surface-container-lowest"
               >
                 <div className={`flex h-9 w-9 items-center justify-center rounded-md ${action.tone}`}>
                   <span className="material-symbols-outlined text-lg">{action.icon}</span>
@@ -86,7 +81,7 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="mt-6 rounded-lg border border-outline-variant/70 bg-surface p-5">
+        <section className="mt-5 portal-card-padded">
           <div className="flex flex-col gap-2 border-b border-outline-variant/60 pb-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-on-surface">Khu vực quản trị</h2>

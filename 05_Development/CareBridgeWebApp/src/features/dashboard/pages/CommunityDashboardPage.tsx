@@ -88,7 +88,7 @@ export default function CommunityDashboardPage() {
                   <span className="material-symbols-outlined text-lg">group</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Tổng người dùng</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.userMetrics.total)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.userMetrics.total)}</h3>
                 <p className="mt-1 text-xs text-outline">{formatNumber(data.userMetrics.active)} đang hoạt động</p>
               </div>
               <div className="portal-stat-card">
@@ -96,7 +96,7 @@ export default function CommunityDashboardPage() {
                   <span className="material-symbols-outlined text-lg">forum</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Câu hỏi cộng đồng</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.questionMetrics.total)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.questionMetrics.total)}</h3>
                 <p className="mt-1 text-xs text-outline">+{formatNumber(data.questionMetrics.newInPeriod)} trong kỳ</p>
               </div>
               <div className="portal-stat-card">
@@ -104,7 +104,7 @@ export default function CommunityDashboardPage() {
                   <span className="material-symbols-outlined text-lg">chat_bubble</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Câu trả lời</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.answerMetrics.total)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.answerMetrics.total)}</h3>
                 <p className="mt-1 text-xs text-outline">+{formatNumber(data.answerMetrics.newInPeriod)} trong kỳ</p>
               </div>
               <div className="portal-stat-card">
@@ -112,7 +112,7 @@ export default function CommunityDashboardPage() {
                   <span className="material-symbols-outlined text-lg">report</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Báo cáo chờ xử lý</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(pendingReports)}</h3>
+                <h3 className="portal-metric">{formatNumber(pendingReports)}</h3>
                 <p className="mt-1 text-xs text-outline">TB xử lý: {formatSeconds(data.reportMetrics.avgHandlingTimeSeconds)}</p>
               </div>
             </div>

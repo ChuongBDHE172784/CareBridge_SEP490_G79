@@ -83,17 +83,12 @@ export default function AdminExpertTrustManagementPage() {
 
   return (
     <main className="portal-page px-5 py-5 md:px-6 md:py-6">
-      <div className="portal-contained space-y-5">
+      <div className="portal-contained">
         <header className="portal-header">
-          <div className="flex items-start gap-3">
-            <span className="portal-icon">
-              <span className="material-symbols-outlined text-lg">verified_user</span>
-            </span>
-            <div>
-              <p className="portal-eyebrow">Quản trị chuyên gia</p>
-              <h1 className="portal-title">Quản lý trạng thái tin cậy</h1>
-              <p className="portal-subtitle">Theo dõi trạng thái xác minh và cập nhật quyền tin cậy của chuyên gia.</p>
-            </div>
+          <div>
+            <p className="portal-eyebrow">Quản trị chuyên gia</p>
+            <h1 className="portal-title">Quản lý trạng thái tin cậy</h1>
+            <p className="portal-subtitle">Theo dõi trạng thái xác minh và cập nhật quyền tin cậy của chuyên gia.</p>
           </div>
         </header>
 

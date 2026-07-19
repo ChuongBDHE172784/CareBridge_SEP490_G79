@@ -267,15 +267,10 @@ export default function ExpertVerificationQueuePage() {
     <main className="portal-page px-5 py-5 md:px-6 md:py-6">
       <div className="portal-contained">
         <header className="portal-header">
-          <div className="flex items-start gap-3">
-            <span className="portal-icon">
-              <span className="material-symbols-outlined text-lg">fact_check</span>
-            </span>
-            <div>
-              <p className="portal-eyebrow">Quản trị chuyên gia</p>
-              <h1 className="portal-title">Hàng đợi xác minh chuyên gia</h1>
-              <p className="portal-subtitle">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
-            </div>
+          <div>
+            <p className="portal-eyebrow">Quản trị chuyên gia</p>
+            <h1 className="portal-title">Hàng đợi xác minh chuyên gia</h1>
+            <p className="portal-subtitle">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
           </div>
         </header>
 

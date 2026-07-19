@@ -209,7 +209,7 @@ export default function SafetyRuleManagementPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-on-surface">Đang hoạt động</h3>
               </div>
-              <p className="text-2xl font-semibold text-primary">{stats.activeCount}</p>
+              <p className="portal-metric text-primary">{stats.activeCount}</p>
               <p className="mt-1 text-xs text-outline">/ {totalElements} quy tắc</p>
             </div>
             <div className="portal-stat-card">
@@ -219,7 +219,7 @@ export default function SafetyRuleManagementPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-on-surface">Mức nghiêm trọng</h3>
               </div>
-              <p className="text-2xl font-semibold text-on-surface">{stats.criticalCount}</p>
+              <p className="portal-metric">{stats.criticalCount}</p>
               <p className="mt-1 text-xs text-outline">Cần xem xét đánh giá</p>
             </div>
             <div className="portal-stat-card">
@@ -229,7 +229,7 @@ export default function SafetyRuleManagementPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-on-surface">Mặc định hệ thống</h3>
               </div>
-              <p className="text-2xl font-semibold text-on-surface">{stats.systemDefaultCount}</p>
+              <p className="portal-metric">{stats.systemDefaultCount}</p>
               <p className="mt-1 text-xs text-outline">Không thể xóa/tắt</p>
             </div>
           </div>

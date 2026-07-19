@@ -110,43 +110,49 @@ export default function AccountReportDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8 font-sans">
-        <div className="flex items-center gap-2 text-[13px] text-outline mb-4">
-          <span className="cursor-pointer" onClick={() => navigate('/moderator/reports')}>Báo cáo</span>
-          <span className="material-symbols-outlined text-base">chevron_right</span>
-          <span className="text-on-surface-variant">Chi tiết Báo cáo Tài khoản</span>
-        </div>
-
+      <main className="portal-content">
+        <div className="portal-contained">
         {isLoading ? (
-          <div className="py-16 text-center text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : error || !item ? (
-          <div className="bg-error-container rounded-2xl p-6 text-error text-sm">
+          <div className="portal-error">
             {error || 'Không tìm thấy báo cáo.'}
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="portal-header">
               <div>
-                <h1 className="text-2xl font-bold text-on-surface m-0">
+                <p className="portal-eyebrow">
+                  <span className="cursor-pointer" onClick={() => navigate('/moderator/reports')}>Báo cáo</span>
+                  <span className="mx-1">/</span>
+                  Chi tiết báo cáo tài khoản
+                </p>
+                <h1 className="portal-title">
                   Chi tiết Báo cáo #{item.id.slice(0, 8).toUpperCase()}
                 </h1>
-                <p className="text-sm text-outline mt-1">Được tạo lúc {formatDateTime(item.reportedAt)}.</p>
+                <p className="portal-subtitle">Được tạo lúc {formatDateTime(item.reportedAt)}.</p>
               </div>
-              <span className="py-1.5 px-3.5 rounded-full bg-error-container text-error text-xs font-semibold">
-                Ưu tiên cao
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
+                  Ưu tiên cao
+                </span>
+                <button onClick={() => navigate('/moderator/reports')} className="portal-secondary-button">
+                  <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  Trở lại
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_360px] gap-6">
+            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
               <div className="flex flex-col gap-5">
-                <div className="bg-surface rounded-2xl p-6 shadow-md">
+                <div className="portal-card-padded">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-primary text-xl">person</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Thông tin Tài khoản Bị báo cáo</h2>
                   </div>
-	                  <div className="bg-surface-container-low rounded-2xl p-4 text-sm text-outline">
+	                  <div className="rounded-md bg-surface-container-low p-4 text-sm text-outline">
 	                    <p className="m-0 text-on-surface-variant">
 	                      Mục tiêu: <strong>{item.contentPreview || item.targetId || '—'}</strong>
 	                    </p>
@@ -155,17 +161,17 @@ export default function AccountReportDetailPage() {
 	                  </div>
                 </div>
 
-                <div className="bg-surface rounded-2xl p-6 shadow-md">
+                <div className="portal-card-padded">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-primary text-xl">description</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Chi tiết Báo cáo & Bằng chứng</h2>
                   </div>
                   <p className="text-sm font-semibold text-on-surface mb-1">Lý do báo cáo:</p>
-                  <div className="bg-surface-container-low rounded-2xl p-4 mb-4">
+                  <div className="mb-4 rounded-md bg-surface-container-low p-4">
                     <p className="text-sm text-on-surface-variant">{formatReportReason(item.reportReason)}</p>
                   </div>
                   <p className="text-sm font-semibold text-on-surface mb-2">Nội dung liên quan:</p>
-                  <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant">
+                  <div className="rounded-md border border-outline-variant bg-surface-container-low p-4">
                     <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
                   </div>
                 </div>
@@ -173,7 +179,7 @@ export default function AccountReportDetailPage() {
 
               <div className="flex flex-col gap-4">
                 <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
-                <div className="bg-surface rounded-2xl p-5 shadow-md">
+                <div className="portal-card-padded">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">gavel</span>
                     <p className="text-sm font-bold text-on-surface m-0">Hành động Xử lý</p>
@@ -221,21 +227,21 @@ export default function AccountReportDetailPage() {
 	                    placeholder="Nhập lý do xử lý chi tiết..."
 	                    rows={3}
 	                    disabled={submitting}
-	                    className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans mb-2"
+                    className="mb-2 w-full resize-none rounded-md border border-outline-variant p-3 font-sans text-sm outline-none"
 	                  />
 	                  {actionError && <p className="text-error text-xs mb-3">{actionError}</p>}
 
 	                  <button
 	                    disabled={submitting}
 	                    onClick={handleApply}
-	                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+	                    className="mb-2.5 h-9 w-full rounded-md border-0 bg-primary px-3.5 text-xs font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    {submitting ? 'Đang xử lý...' : 'Áp dụng Xử lý'}
 	                  </button>
                   <button
                     disabled
                     title="Backend chưa có endpoint chuyển tuyến báo cáo lên cấp trên"
-                    className="w-full py-3 rounded-2xl bg-transparent border border-outline-variant text-on-surface-variant text-sm font-semibold opacity-40 cursor-not-allowed"
+                    className="h-9 w-full cursor-not-allowed rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface-variant opacity-40"
                   >
                     Báo cáo Cấp trên
                   </button>
@@ -244,7 +250,8 @@ export default function AccountReportDetailPage() {
             </div>
           </>
         )}
-      </div>
+        </div>
+      </main>
 
       <ConfirmDialog
         open={confirming}

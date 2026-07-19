@@ -116,28 +116,28 @@ export default function ImpactReportDashboardPage() {
                   <span className="material-symbols-outlined text-lg">favorite</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Mẹ được hỗ trợ</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.mothersServed)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.mothersServed)}</h3>
               </div>
               <div className="portal-stat-card">
                 <div className="portal-icon mb-3">
                   <span className="material-symbols-outlined text-lg">stethoscope</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Buổi tư vấn đã thực hiện</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.consultationsDelivered)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.consultationsDelivered)}</h3>
               </div>
               <div className="portal-stat-card">
                 <div className="portal-icon mb-3">
                   <span className="material-symbols-outlined text-lg">handshake</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Đối tác đang hoạt động</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.activePartnerOrganizations)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.activePartnerOrganizations)}</h3>
               </div>
               <div className="portal-stat-card">
                 <div className="portal-icon mb-3">
                   <span className="material-symbols-outlined text-lg">menu_book</span>
                 </div>
                 <p className="mb-1 text-xs font-medium text-on-surface-variant">Nội dung đã xuất bản</p>
-                <h3 className="text-2xl font-semibold text-on-surface">{formatNumber(data.publishedContentItems)}</h3>
+                <h3 className="portal-metric">{formatNumber(data.publishedContentItems)}</h3>
               </div>
             </div>
 

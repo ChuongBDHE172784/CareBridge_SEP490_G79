@@ -30,33 +30,35 @@ export default function SecurityEventsPage() {
   const highCount = events.filter(e => e.severity === 'HIGH').length;
 
   return (
-    <div className="mx-auto max-w-7xl p-6 md:p-10">
-      <div className="flex justify-between items-center mb-6">
+    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
+      <div className="portal-contained">
+      <div className="portal-header">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface m-0">Sự kiện Bảo mật (CB-142)</h1>
-          <p className="text-on-surface-variant text-sm mt-1">Theo dõi và giám sát các hoạt động bảo mật hệ thống CareBridge.</p>
+          <p className="portal-eyebrow">CB-142</p>
+          <h1 className="portal-title">Sự kiện bảo mật</h1>
+          <p className="portal-subtitle">Theo dõi và giám sát các hoạt động bảo mật hệ thống CareBridge.</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-on-primary border-none text-sm font-semibold cursor-pointer">
+        <button className="portal-primary-button">
           <span className="material-symbols-outlined text-lg">download</span> Xuất báo cáo (CSV)
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard icon="error" label="Sự cố High Severity" value={String(highCount)} accentClass="text-error" />
         <StatCard icon="shield" label="Đã xử lý" value={String(total)} accentClass="text-primary" />
         <StatCard icon="group" label="Admin hoạt động" value="—" accentClass="text-on-surface-variant" />
         <StatCard icon="monitor_heart" label="Sức khỏe hệ thống" value="Ổn định" accentClass="text-primary" />
       </div>
 
-      <div className="bg-surface rounded-2xl p-6 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-on-surface m-0">Log sự kiện</h2>
-          <div className="flex gap-2">
+      <div className="portal-table-card">
+        <div className="portal-toolbar border-b border-outline-variant p-4">
+          <h2 className="m-0 text-base font-semibold text-on-surface">Log sự kiện</h2>
+          <div className="flex flex-wrap gap-2">
             {['HIGH', 'MEDIUM', 'LOW'].map(s => (
               <button
                 key={s}
                 onClick={() => { setSeverityFilter(severityFilter === s ? '' : s); setPage(0); }}
-                className={`px-4 py-1.5 rounded-full border text-[13px] font-semibold cursor-pointer transition-colors ${severityFilter === s ? 'bg-primary text-on-primary border-transparent' : 'bg-surface border-outline-variant text-on-surface-variant'}`}
+                className={`rounded-md border px-3 py-1.5 text-[13px] font-semibold transition-colors ${severityFilter === s ? 'border-transparent bg-primary text-on-primary' : 'border-outline-variant bg-surface text-on-surface-variant'}`}
               >
                 {s === 'HIGH' ? 'High' : s === 'MEDIUM' ? 'Medium' : 'Low'}
               </button>
@@ -65,33 +67,33 @@ export default function SecurityEventsPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : (
-          <table className="w-full border-collapse">
+          <table className="w-full">
             <thead>
-              <tr className="border-b-2 border-surface-container-highest text-left">
+              <tr>
                 {['MỨC ĐỘ', 'LOẠI SỰ KIỆN', 'TÁC NHÂN (ACTOR)', 'ĐỐI TƯỢNG (TARGET)', 'THỜI GIAN', 'TRẠNG THÁI'].map(h => (
-                  <th key={h} className="px-2 py-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                  <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {events.map(e => (
-                <tr key={e.id} className="border-b border-surface-container-highest cursor-pointer">
-                  <td className="px-2 py-3.5 text-[13px]">
+                <tr key={e.id} className="cursor-pointer">
+                  <td>
                     <span className={`font-semibold text-xs ${e.severity === 'HIGH' ? 'text-error' : e.severity === 'MEDIUM' ? 'text-primary' : 'text-on-surface-variant'}`}>
                       {e.severity}
                     </span>
                   </td>
-                  <td className="px-2 py-3.5">
+                  <td>
                     <div className="font-semibold text-sm text-on-surface">{e.eventType}</div>
                     <div className="text-xs text-on-surface-variant mt-0.5">{e.details?.substring(0, 50)}</div>
                   </td>
-                  <td className="px-2 py-3.5 text-[13px] text-on-surface">{e.userId || '—'}</td>
-                  <td className="px-2 py-3.5 text-xs text-outline font-mono">{e.ipAddress}</td>
-                  <td className="px-2 py-3.5 text-[13px] text-on-surface-variant">{formatTime(e.occurredAt)}</td>
-                  <td className="px-2 py-3.5">
-                    <span className={`px-3 py-1 rounded-full border border-outline-variant text-xs font-medium ${e.status === 'RESOLVED' ? 'text-on-surface-variant' : 'text-primary'}`}>
+                  <td>{e.userId || '—'}</td>
+                  <td className="font-mono text-xs text-outline">{e.ipAddress}</td>
+                  <td className="text-on-surface-variant">{formatTime(e.occurredAt)}</td>
+                  <td>
+                    <span className={`rounded-md border border-outline-variant px-2.5 py-1 text-xs font-medium ${e.status === 'RESOLVED' ? 'text-on-surface-variant' : 'text-primary'}`}>
                       {e.status === 'DETECTED' ? 'Detected' : e.status === 'INVESTIGATING' ? 'Investigating' : 'Resolved'}
                     </span>
                   </td>
@@ -101,18 +103,19 @@ export default function SecurityEventsPage() {
           </table>
         )}
       </div>
+      </div>
     </div>
   );
 }
 
 function StatCard({ icon, label, value, accentClass }: { icon: string; label: string; value: string; accentClass: string }) {
   return (
-    <div className="bg-surface rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`material-symbols-outlined text-xl ${accentClass}`}>{icon}</span>
+    <div className="portal-stat-card">
+      <div className="mb-2 flex items-center gap-2">
+        <span className={`material-symbols-outlined text-lg ${accentClass}`}>{icon}</span>
         <span className="text-[13px] text-on-surface-variant">{label}</span>
       </div>
-      <div className="text-3xl font-bold text-on-surface">{value}</div>
+      <div className="portal-metric">{value}</div>
     </div>
   );
 }

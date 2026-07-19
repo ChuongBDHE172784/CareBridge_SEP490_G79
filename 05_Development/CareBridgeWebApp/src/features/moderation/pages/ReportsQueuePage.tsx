@@ -40,26 +40,29 @@ export default function ReportsQueuePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8 font-sans">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="material-symbols-outlined text-primary text-2xl">flag</span>
-          <h1 className="text-2xl font-bold text-on-surface m-0">Báo cáo</h1>
+      <main className="portal-content">
+        <div className="portal-contained">
+        <div className="portal-header">
+          <div>
+            <p className="portal-eyebrow">Kiểm duyệt</p>
+            <h1 className="portal-title">Báo cáo</h1>
+            <p className="portal-subtitle">Theo dõi các báo cáo nội dung và hoạt động cần kiểm duyệt.</p>
+          </div>
         </div>
-        <p className="text-sm text-outline ml-8 mb-6">Theo dõi các báo cáo nội dung và hoạt động cần kiểm duyệt.</p>
 
         {isLoading ? (
-          <div className="py-16 text-center text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : error ? (
-          <div className="bg-error-container rounded-2xl p-6 text-error text-sm">{error}</div>
+          <div className="portal-error">{error}</div>
         ) : (
-          <div className="bg-surface rounded-2xl shadow-md overflow-hidden">
-            <table className="w-full border-collapse">
+          <div className="portal-table-card">
+            <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-surface-container-highest text-left bg-surface-container-low">
+                <tr>
                   {['LÝ DO', 'LOẠI', 'NỘI DUNG XEM TRƯỚC', 'SỐ LƯỢT', 'THỜI GIAN', ''].map((h) => (
-                    <th key={h} className="py-3 px-4 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -68,28 +71,29 @@ export default function ReportsQueuePage() {
                   <tr
                     key={item.id}
                     onClick={() => goToDetail(item)}
-                    className="border-b border-surface-container-highest hover:bg-surface-container-low cursor-pointer"
+                    className="cursor-pointer"
                   >
-                    <td className="py-3.5 px-4">
-                      <span className="py-1 px-3 rounded-full bg-error-container text-error text-xs font-semibold">
+                    <td>
+                      <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
                         {formatReportReason(item.reportReason)}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface max-w-[360px] truncate">{item.contentPreview}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant">{item.reportCount}</td>
-                    <td className="py-3.5 px-4 text-sm text-on-surface-variant whitespace-nowrap">{formatDateTime(item.reportedAt)}</td>
-                    <td className="py-3.5 px-4 text-primary text-sm font-semibold">Xem chi tiết</td>
+                    <td className="text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                    <td className="max-w-[360px] truncate text-on-surface">{item.contentPreview}</td>
+                    <td className="text-on-surface-variant">{item.reportCount}</td>
+                    <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.reportedAt)}</td>
+                    <td className="font-semibold text-primary">Xem chi tiết</td>
                   </tr>
                 ))}
                 {items.length === 0 && (
-                  <tr><td colSpan={6} className="py-12 text-center text-outline">Không có báo cáo nào đang chờ xử lý.</td></tr>
+                  <tr><td colSpan={6} className="text-center text-outline">Không có báo cáo nào đang chờ xử lý.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

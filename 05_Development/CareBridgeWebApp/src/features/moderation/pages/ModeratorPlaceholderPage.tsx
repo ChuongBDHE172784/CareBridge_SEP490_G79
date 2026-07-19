@@ -12,25 +12,27 @@ export default function ModeratorPlaceholderPage({
   description,
 }: ModeratorPlaceholderPageProps) {
   return (
-    <div className="min-h-screen bg-[#F6F1EC]">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-[#845143] text-2xl">{icon}</span>
-            <h1 className="text-2xl font-bold text-[#271812]">{title}</h1>
+      <main className="portal-content">
+        <div className="portal-contained">
+          <div className="portal-header">
+            <div>
+              <p className="portal-eyebrow">Kiểm duyệt</p>
+              <h1 className="portal-title">{title}</h1>
+              <p className="portal-subtitle">{description}</p>
+            </div>
           </div>
-          <p className="text-sm text-[#84736F] ml-8">{description}</p>
-        </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-[#FFE9E3] p-12 text-center">
-          <span className="material-symbols-outlined text-[#845143] text-5xl mb-3">{icon}</span>
-          <p className="font-semibold text-[#271812]">Màn hình này đang được chuẩn bị.</p>
-          <p className="text-sm text-[#84736F] mt-1">
+          <div className="portal-card-padded text-center">
+          <span className="material-symbols-outlined mb-3 text-5xl text-outline">{icon}</span>
+          <p className="font-semibold text-on-surface">Màn hình này đang được chuẩn bị.</p>
+          <p className="mt-1 text-sm text-on-surface-variant">
             Bạn vẫn đang ở trong ModPortal và có thể chuyển sang các mục khác từ thanh bên.
           </p>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

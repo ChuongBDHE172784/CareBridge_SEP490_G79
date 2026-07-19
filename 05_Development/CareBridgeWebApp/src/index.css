@@ -67,7 +67,7 @@
   }
 
   .portal-content {
-    @apply ml-64 min-h-screen px-5 py-5 md:px-6 md:py-6;
+    @apply min-h-screen px-5 py-5 md:ml-64 md:px-6 md:py-6;
   }
 
   .portal-contained {
@@ -104,6 +104,10 @@
 
   .portal-stat-card {
     @apply portal-card p-4;
+  }
+
+  .portal-metric {
+    @apply text-2xl font-semibold leading-8 text-on-surface;
   }
 
   .portal-icon {
