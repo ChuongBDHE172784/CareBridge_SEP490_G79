@@ -43,19 +43,50 @@ class ExpertOnboardingService {
   }
 
   Future<void> createProfile({
-    required String specialty,
+    required String specialtyId,
     required String professionalTitle,
     required int experienceYears,
-    required String workplace,
+    required String hospitalId,
     required String consultationScope,
   }) async {
     await api.post('/api/v1/expert/profiles', {
-      'specialty': specialty,
+      'specialtyId': specialtyId,
       'professionalTitle': professionalTitle,
       'experienceYears': experienceYears,
-      'workplace': workplace,
+      'hospitalId': hospitalId,
       'consultationScope': consultationScope,
     });
+  }
+
+  Future<List<ExpertMasterOption>> loadSpecialties() async {
+    final response = await api.get('/api/v1/master-data/specialties');
+    final data = _unwrapList(response);
+    return data
+        .map((item) => ExpertMasterOption(
+              id: item['specialtyId'] as String,
+              name: item['name'] as String,
+            ))
+        .toList();
+  }
+
+  Future<List<ExpertMasterOption>> loadHospitals() async {
+    final response = await api.get('/api/v1/master-data/hospitals');
+    final data = _unwrapList(response);
+    return data
+        .map((item) => ExpertMasterOption(
+              id: item['hospitalId'] as String,
+              name: item['name'] as String,
+            ))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _unwrapList(dynamic response) {
+    final envelope = response as Map<String, dynamic>? ?? const {};
+    final raw = envelope['data'] ?? const [];
+    return (raw as List)
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   Future<void> submitIdentity({
@@ -122,4 +153,11 @@ class ExpertOnboardingService {
       throw ArgumentError('Giấy tờ phải có dung lượng tối đa 10 MB.');
     }
   }
+}
+
+class ExpertMasterOption {
+  const ExpertMasterOption({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }

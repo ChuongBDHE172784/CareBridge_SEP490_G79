@@ -16,20 +16,50 @@ class ExpertProfileSetupScreen extends StatefulWidget {
 
 class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _specialty = TextEditingController();
   final _title = TextEditingController();
   final _experience = TextEditingController();
-  final _workplace = TextEditingController();
   final _scope = TextEditingController();
+  List<ExpertMasterOption> _specialties = const [];
+  List<ExpertMasterOption> _hospitals = const [];
+  String? _specialtyId;
+  String? _hospitalId;
+  bool _loadingMasterData = true;
   bool _loading = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _loadMasterData();
+  }
+
+  Future<void> _loadMasterData() async {
+    try {
+      final service = widget.service ?? ExpertOnboardingService.instance;
+      final values = await Future.wait([
+        service.loadSpecialties(),
+        service.loadHospitals(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _specialties = values[0];
+        _hospitals = values[1];
+        _loadingMasterData = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadingMasterData = false;
+          _error = 'Không thể tải danh mục chuyên khoa và cơ sở y tế.';
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
-    _specialty.dispose();
     _title.dispose();
     _experience.dispose();
-    _workplace.dispose();
     _scope.dispose();
     super.dispose();
   }
@@ -42,10 +72,10 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
     });
     try {
       await (widget.service ?? ExpertOnboardingService.instance).createProfile(
-        specialty: _specialty.text.trim(),
+        specialtyId: _specialtyId!,
         professionalTitle: _title.text.trim(),
         experienceYears: int.parse(_experience.text.trim()),
-        workplace: _workplace.text.trim(),
+        hospitalId: _hospitalId!,
         consultationScope: _scope.text.trim(),
       );
       ExpertOnboardingStore.instance.invalidate();
@@ -81,7 +111,12 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
               const SizedBox(height: 8),
               const Text('Thông tin này giúp hội đồng xác minh và hiển thị hồ sơ sau khi được duyệt.', style: TextStyle(height: 1.5, color: Color(0xFF75635C))),
               const SizedBox(height: 24),
-              _field(_specialty, 'Chuyên khoa', 'Ví dụ: Sản khoa', validator: _required),
+              _masterDropdown(
+                label: 'Chuyên khoa',
+                value: _specialtyId,
+                options: _specialties,
+                onChanged: (value) => setState(() => _specialtyId = value),
+              ),
               _field(_title, 'Chức danh chuyên môn', 'Ví dụ: Bác sĩ chuyên khoa I', validator: _required),
               _field(
                 _experience,
@@ -93,7 +128,12 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
                   return years == null || years < 0 || years > 80 ? 'Nhập số năm từ 0 đến 80' : null;
                 },
               ),
-              _field(_workplace, 'Nơi công tác', 'Bệnh viện hoặc cơ sở y tế', validator: _required),
+              _masterDropdown(
+                label: 'Nơi công tác',
+                value: _hospitalId,
+                options: _hospitals,
+                onChanged: (value) => setState(() => _hospitalId = value),
+              ),
               _field(_scope, 'Phạm vi tư vấn', 'Mô tả chủ đề bạn có thể hỗ trợ', maxLines: 4, validator: _required),
               if (_error != null) ...[
                 Container(
@@ -106,7 +146,7 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
               SizedBox(
                 height: 54,
                 child: FilledButton(
-                  onPressed: _loading ? null : _submit,
+                  onPressed: _loading || _loadingMasterData ? null : _submit,
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC98C7B), shape: const StadiumBorder()),
                   child: _loading
                       ? const CircularProgressIndicator(color: Colors.white)
@@ -137,6 +177,33 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      );
+
+  Widget _masterDropdown({
+    required String label,
+    required String? value,
+    required List<ExpertMasterOption> options,
+    required ValueChanged<String?> onChanged,
+  }) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          items: options
+              .map((option) => DropdownMenuItem(
+                    value: option.id,
+                    child: Text(option.name, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          onChanged: _loadingMasterData ? null : onChanged,
+          validator: (selected) => selected == null ? 'Thông tin này là bắt buộc' : null,
+          decoration: InputDecoration(
+            labelText: label,
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
