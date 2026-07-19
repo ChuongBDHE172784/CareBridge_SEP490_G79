@@ -35,7 +35,7 @@ Future<GoRouter> _pumpWithRouter(WidgetTester tester) async {
     routes: [
       GoRoute(
         path: '/conversations',
-        builder: (_, __) => const ConversationListScreen(),
+        builder: (_, _) => const ConversationListScreen(),
       ),
       GoRoute(
         path: '/direct-chat/:id',
@@ -44,7 +44,7 @@ Future<GoRouter> _pumpWithRouter(WidgetTester tester) async {
       ),
       GoRoute(
         path: '/experts',
-        builder: (_, __) => const Scaffold(body: Text('directory')),
+        builder: (_, _) => const Scaffold(body: Text('directory')),
       ),
     ],
   );

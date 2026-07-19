@@ -24,4 +24,10 @@ class AuditEligibilityPolicyTest {
         assertThat(policy.shouldAudit(AuditAction.LOGIN)).isTrue();
         assertThat(policy.shouldAudit(AuditAction.PROFILE_VIEWED)).isTrue();
     }
+
+    @Test
+    void shouldAudit_journeyLifecycleMutations_returnsTrue() {
+        assertThat(policy.shouldAudit(AuditAction.JOURNEY_CREATED)).isTrue();
+        assertThat(policy.shouldAudit(AuditAction.JOURNEY_UPDATED)).isTrue();
+    }
 }

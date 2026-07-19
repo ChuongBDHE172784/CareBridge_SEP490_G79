@@ -22,10 +22,18 @@ class MotherJourneyScreen extends StatefulWidget {
     super.key,
     this.loadData = true,
     this.initialBabyProfiles = const [],
+    this.initialDashboard,
+    this.initialJourneyHistory = const [],
+    this.journeyService,
+    this.loadSupportingData = true,
   });
 
   final bool loadData;
   final List<BabyProfile> initialBabyProfiles;
+  final JourneyDashboard? initialDashboard;
+  final List<JourneyTransition> initialJourneyHistory;
+  final JourneyService? journeyService;
+  final bool loadSupportingData;
 
   @override
   State<MotherJourneyScreen> createState() => _MotherJourneyScreenState();
@@ -33,7 +41,8 @@ class MotherJourneyScreen extends StatefulWidget {
 
 enum _JourneySection { pregnancy, babyCare }
 
-class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
+class _MotherJourneyScreenState extends State<MotherJourneyScreen>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _surfaceContainerHigh = Color(0xFFFFE2D9);
@@ -42,12 +51,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outlineVariant = Color(0xFFD6C2BD);
 
-  final _journeyService = JourneyService();
+  late final JourneyService _journeyService;
   final _babyService = BabyService();
   final _babySelectionStorage = BabyProfileSelectionStorage();
   final _reminderService = ReminderService.instance;
   final _healthMetricService = HealthMetricService();
   JourneyDashboard? _dashboard;
+  List<JourneyTransition> _journeyHistory = [];
   List<BabyProfile> _babyProfiles = [];
   String? _selectedBabyProfileId;
   List<Reminder> _reminders = [];
@@ -57,22 +67,52 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   bool _didChooseInitialSection = false;
   bool _loading = true;
   String? _error;
+  String? _historyError;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
+    _journeyService = widget.journeyService ?? JourneyService();
+    WidgetsBinding.instance.addObserver(this);
+    _dashboard = widget.initialDashboard;
+    _journeyHistory = widget.initialJourneyHistory;
+    _babyProfiles = widget.initialBabyProfiles;
     if (widget.loadData) {
+      JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);
       _load();
     } else {
-      _babyProfiles = widget.initialBabyProfiles;
       _selectedBabyProfileId = _resolveSelectedBabyProfileId(_babyProfiles);
-      _selectedSection = _JourneySection.babyCare;
+      _selectedSection = widget.initialDashboard?.isMaternalLifecycle == true
+          ? _JourneySection.pregnancy
+          : _JourneySection.babyCare;
       _didChooseInitialSection = true;
       _loading = false;
     }
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    JourneyService.dashboardRevision.removeListener(_onJourneyDashboardChanged);
+    super.dispose();
+  }
+
+  void _onJourneyDashboardChanged() {
+    if (mounted && widget.loadData) {
+      _load();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.loadData) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
     setState(() {
       _loading = true;
       _error = null;
@@ -80,24 +120,52 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
 
     try {
       final dashboard = await _journeyService.getDashboard();
-      final babyProfiles = await _loadBabyProfiles();
-      final lastOpenedBabyProfileId = await _babySelectionStorage
-          .readLastOpenedBabyProfileId();
-      final reminders = await _loadReminders();
-      final hasPregnancyJourney =
-          dashboard.hasActiveJourney && dashboard.isPregnancy;
+      final babyProfiles = widget.loadSupportingData
+          ? await _loadBabyProfiles()
+          : _babyProfiles;
+      final lastOpenedBabyProfileId = widget.loadSupportingData
+          ? await _babySelectionStorage.readLastOpenedBabyProfileId()
+          : _selectedBabyProfileId;
+      final reminders = widget.loadSupportingData
+          ? await _loadReminders()
+          : _reminders;
+      final hasMaternalJourney =
+          dashboard.hasActiveJourney && dashboard.isMaternalLifecycle;
+      final hasPregnancyJourney = hasMaternalJourney && dashboard.isPregnancy;
       final shouldShowBabyCare =
-          !hasPregnancyJourney &&
+          !hasMaternalJourney &&
           (dashboard.journeyType == 'BABY_CARE' || babyProfiles.isNotEmpty);
-      final weightTrend = hasPregnancyJourney && dashboard.journeyId != null
+      var journeyHistory = _journeyHistory;
+      String? historyError;
+      if (hasMaternalJourney && dashboard.journeyId != null) {
+        try {
+          journeyHistory = await _journeyService.getHistory(
+            dashboard.journeyId!,
+          );
+        } catch (_) {
+          historyError =
+              'Không thể tải lịch sử hành trình. Dữ liệu đã tải trước đó vẫn được giữ lại.';
+        }
+      } else {
+        journeyHistory = const <JourneyTransition>[];
+      }
+      final weightTrend =
+          widget.loadSupportingData &&
+              hasPregnancyJourney &&
+              dashboard.journeyId != null
           ? await _loadWeightTrend(dashboard.journeyId!)
-          : null;
-      final heartRateTrend = hasPregnancyJourney && dashboard.journeyId != null
+          : _weightTrend;
+      final heartRateTrend =
+          widget.loadSupportingData &&
+              hasPregnancyJourney &&
+              dashboard.journeyId != null
           ? await _loadHeartRateTrend(dashboard.journeyId!)
-          : null;
-      if (!mounted) return;
+          : _heartRateTrend;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _dashboard = dashboard;
+        _journeyHistory = journeyHistory;
+        _historyError = historyError;
         _babyProfiles = babyProfiles;
         _selectedBabyProfileId = _resolveSelectedBabyProfileId(
           babyProfiles,
@@ -113,7 +181,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
         _loading = false;
       });
     } on ApiException catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _dashboard = null;
         _babyProfiles = [];
@@ -121,7 +189,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _dashboard = null;
         _babyProfiles = [];
@@ -223,7 +291,23 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   }
 
   Future<void> _openPregnancySetup() async {
-    await context.push('/journey-setup');
+    final dashboard = _dashboard;
+    final journeyId = dashboard?.journeyId;
+    final isPrePregnancyTransition =
+        dashboard?.hasActiveJourney == true &&
+        dashboard?.isPrePregnancy == true &&
+        journeyId != null;
+    final route = isPrePregnancyTransition
+        ? Uri(
+            path: '/journey-setup',
+            queryParameters: {
+              'mode': 'edit',
+              'journeyId': journeyId,
+              'transition': 'pre-pregnancy',
+            },
+          ).toString()
+        : '/journey-setup';
+    await context.push(route);
     if (mounted) await _load();
   }
 
@@ -351,7 +435,9 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
   JourneyDashboard? get _pregnancyDashboard {
     final dashboard = _dashboard;
     if (dashboard == null) return null;
-    if (!dashboard.hasActiveJourney || !dashboard.isPregnancy) return null;
+    if (!dashboard.hasActiveJourney || !dashboard.isMaternalLifecycle) {
+      return null;
+    }
     return dashboard;
   }
 
@@ -370,6 +456,34 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
       ];
     }
 
+    if (dashboard.isPrePregnancy) {
+      return [
+        _buildPrePregnancyCard(dashboard),
+        if (_historyError != null) ...[
+          const SizedBox(height: 16),
+          _buildHistoryErrorCard(),
+        ],
+        if (_journeyHistory.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildJourneyHistoryCard(),
+        ],
+      ];
+    }
+
+    if (dashboard.isPostpartum) {
+      return [
+        _buildPostpartumCard(dashboard),
+        if (_historyError != null) ...[
+          const SizedBox(height: 16),
+          _buildHistoryErrorCard(),
+        ],
+        if (_journeyHistory.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildJourneyHistoryCard(),
+        ],
+      ];
+    }
+
     return [
       _buildHeroCard(dashboard),
       const SizedBox(height: 16),
@@ -384,7 +498,378 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen> {
       _buildMetricButtons(),
       const SizedBox(height: 24),
       _buildBentoSummary(),
+      if (_historyError != null) ...[
+        const SizedBox(height: 24),
+        _buildHistoryErrorCard(),
+      ],
+      if (_journeyHistory.isNotEmpty) ...[
+        const SizedBox(height: 24),
+        _buildJourneyHistoryCard(),
+      ],
     ];
+  }
+
+  Widget _buildPostpartumCard(JourneyDashboard dashboard) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: _surfaceContainerHigh,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.self_improvement_rounded,
+              color: _primary,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Hành trình sau sinh',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: _onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            dashboard.startDate == null
+                ? 'CareBridge đang đồng hành cùng mẹ trong giai đoạn phục hồi sau sinh.'
+                : 'Giai đoạn sau sinh bắt đầu từ ${_formatDate(dashboard.startDate)}.',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              height: 1.5,
+              color: _onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryErrorCard() {
+    return Semantics(
+      liveRegion: true,
+      label: _historyError,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(20),
+          border: const Border(
+            left: BorderSide(color: _primaryContainer, width: 4),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.history_toggle_off_rounded, color: _primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _historyError!,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  height: 1.45,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            TextButton(
+              key: const Key('journey-history-retry'),
+              onPressed: _load,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrePregnancyCard(JourneyDashboard dashboard) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: _surfaceContainerHigh,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.spa_rounded, color: _primary, size: 28),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Chuẩn bị mang thai',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: _onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            dashboard.startDate == null
+                ? 'CareBridge đang đồng hành cùng kế hoạch mang thai của mẹ.'
+                : 'Bắt đầu từ ${_formatDate(dashboard.startDate)}. Khi đã xác nhận mang thai, hãy cập nhật hành trình hiện tại.',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              height: 1.5,
+              color: _onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            key: const Key('pre-pregnancy-transition-action'),
+            onPressed: _openPregnancySetup,
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Bắt đầu hành trình thai kỳ'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              backgroundColor: _primaryContainer,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJourneyHistoryCard() {
+    final transitions = [..._journeyHistory]
+      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.history_rounded, color: _primary),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Lịch sử hành trình',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (var index = 0; index < transitions.length; index++) ...[
+            _buildJourneyHistoryItem(transitions[index]),
+            if (index < transitions.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(color: _outlineVariant, height: 1),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJourneyHistoryItem(JourneyTransition transition) {
+    final stageChange =
+        transition.fromStage != null && transition.toStage != null
+        ? '${_stageLabel(transition.fromStage!)} → ${_stageLabel(transition.toStage!)}'
+        : null;
+    final details = <String>[
+      ?stageChange,
+      if (transition.reason != null && transition.reason!.trim().isNotEmpty)
+        _reasonLabel(transition.reason!.trim()),
+      [
+        if (transition.source != null) _sourceLabel(transition.source!),
+        if (transition.confidence != null)
+          _confidenceLabel(transition.confidence!),
+      ].where((value) => value.isNotEmpty).join(' • '),
+    ].where((value) => value.isNotEmpty).toList(growable: false);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
+            color: _surfaceContainerHigh,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            _historyIcon(transition.eventType),
+            size: 19,
+            color: _primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _eventLabel(transition.eventType),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              if (details.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  details.join('\n'),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    height: 1.45,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 4),
+              Text(
+                _formatDateTime(transition.effectiveAt.toLocal()),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _eventLabel(String eventType) {
+    switch (eventType) {
+      case 'CREATED':
+        return 'Khởi tạo hành trình';
+      case 'STAGE_CHANGED':
+        return 'Chuyển giai đoạn';
+      case 'DATES_CHANGED':
+        return 'Cập nhật mốc thời gian';
+      case 'STATUS_CHANGED':
+        return 'Cập nhật trạng thái';
+      case 'MIGRATED':
+        return 'Đồng bộ dữ liệu cũ';
+      default:
+        return 'Cập nhật hành trình';
+    }
+  }
+
+  IconData _historyIcon(String eventType) {
+    switch (eventType) {
+      case 'STAGE_CHANGED':
+        return Icons.swap_horiz_rounded;
+      case 'DATES_CHANGED':
+        return Icons.event_available_rounded;
+      case 'STATUS_CHANGED':
+        return Icons.toggle_on_rounded;
+      default:
+        return Icons.flag_rounded;
+    }
+  }
+
+  String _stageLabel(String stage) {
+    switch (stage) {
+      case 'PRE_PREGNANCY':
+        return 'Chuẩn bị mang thai';
+      case 'PREGNANCY':
+        return 'Mang thai';
+      case 'POSTPARTUM':
+        return 'Sau sinh';
+      case 'BABY_CARE':
+        return 'Nuôi con';
+      default:
+        return 'Hành trình';
+    }
+  }
+
+  String _sourceLabel(String source) {
+    switch (source) {
+      case 'CLINICIAN_CONFIRMED':
+        return 'Bác sĩ xác nhận';
+      case 'SELF_REPORTED':
+        return 'Mẹ cung cấp';
+      case 'SYSTEM_DERIVED':
+        return 'Hệ thống tính';
+      default:
+        return '';
+    }
+  }
+
+  String _confidenceLabel(String confidence) {
+    switch (confidence) {
+      case 'CONFIRMED':
+        return 'Đã xác nhận';
+      case 'ESTIMATED':
+        return 'Ước tính';
+      default:
+        return '';
+    }
+  }
+
+  String _reasonLabel(String reason) {
+    switch (reason) {
+      case 'INITIAL_SETUP':
+      case 'MF01_FIXTURE_CREATED':
+        return 'Thiết lập ban đầu';
+      case 'PREGNANCY_CONFIRMED':
+        return 'Đã xác nhận mang thai';
+      case 'DATE_CORRECTION':
+        return 'Điều chỉnh mốc thời gian';
+      case 'MF01_FIXTURE_CLINICIAN_CONFIRMATION':
+        return 'Bác sĩ xác nhận ngày dự sinh';
+      default:
+        return reason;
+    }
   }
 
   List<Widget> _buildBabyCareSection() {

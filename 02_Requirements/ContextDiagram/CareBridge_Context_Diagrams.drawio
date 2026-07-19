@@ -1,6 +1,6 @@
 <mxfile host="Electron" pages="2">
   <diagram id="web-context" name="Web App Context">
-    <mxGraphModel dx="3173" dy="1650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1450" math="0" shadow="0">
+    <mxGraphModel dx="1144" dy="733" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1450" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -54,7 +54,7 @@
             <mxPoint x="860" y="480" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-102" edge="1" parent="1" source="w-expert" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Expert profile, verification docs, availability, answers, consultation summaries">
+        <mxCell id="w-edge-102" edge="1" parent="1" source="w-expert" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Expert profile, credentials, availability and expert answers">
           <mxGeometry relative="1" x="0.1333" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -64,15 +64,15 @@
             <mxPoint x="818.4000000000001" y="486.79999999999995" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-103" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-expert" value="Question queue, bookings, shared summaries, earnings, verification/renewal status">
-          <mxGeometry relative="1" x="0.039" as="geometry">
+        <mxCell id="w-edge-103" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-expert" value="Question queue, contribution status and verification/renewal status">
+          <mxGeometry relative="1" x="0.0403" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="290" y="570" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-104" edge="1" parent="1" source="w-moderator" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Report lifecycle, moderation decisions, warnings/suspensions, topic governance">
+        <mxCell id="w-edge-104" edge="1" parent="1" source="w-moderator" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Reports, moderation decisions, warnings/suspensions and topic governance">
           <mxGeometry relative="1" x="0.129" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -80,7 +80,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-105" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-moderator" value="Moderation queue, reports, flagged content, account enforcement history">
+        <mxCell id="w-edge-105" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-moderator" value="Moderation queue, reports, flagged content and enforcement history">
           <mxGeometry relative="1" x="-0.1516" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -174,7 +174,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-116" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-ai" value="Gemini prompts for intake, RAG and red-flag support">
+        <mxCell id="w-edge-116" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-ai" value="Structured intake, approved-context RAG and red-flag prompts">
           <mxGeometry relative="1" x="-0.126" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -182,7 +182,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-117" edge="1" parent="1" source="w-ai" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Structured intake, RAG answer and triage support output">
+        <mxCell id="w-edge-117" edge="1" parent="1" source="w-ai" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Standardized intake, RAG response and non-diagnostic triage output">
           <mxGeometry relative="1" x="0.0969" as="geometry">
             <mxPoint x="-1" as="offset" />
             <Array as="points">
@@ -272,8 +272,8 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-126" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-new-knowledge" value="Publish approved content, FAQ,&amp;nbsp;&lt;div&gt;checklist and exercise knowledge&lt;/div&gt;">
-          <mxGeometry relative="1" x="-0.1765" as="geometry">
+        <mxCell id="w-edge-126" edge="1" parent="1" source="w-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-new-knowledge" value="Publish approved triage&lt;div&gt;&amp;nbsp;knowledge and red-flag rules&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.1373" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="960" y="410" />
@@ -281,7 +281,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-edge-127" edge="1" parent="1" source="w-new-knowledge" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Approved knowledge for&amp;nbsp;&lt;div&gt;RAG and content discovery&lt;/div&gt;">
+        <mxCell id="w-edge-127" edge="1" parent="1" source="w-new-knowledge" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="w-system" value="Approved knowledge and&amp;nbsp;&lt;div&gt;red-flag rules for RAG/triage&lt;/div&gt;">
           <mxGeometry relative="1" x="0.0134" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -312,7 +312,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="mobile-context" name="Mobile App Context">
-    <mxGraphModel dx="3626" dy="3436" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1550" math="0" shadow="0">
+    <mxGraphModel dx="2060" dy="2870" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1550" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -367,7 +367,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-204" edge="1" parent="1" source="m-expert-app" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Availability, consultation response, chat/call/video, location visibility">
+        <mxCell id="m-edge-204" edge="1" parent="1" source="m-expert-app" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Profile/credentials, availability, expert contributions and location visibility">
           <mxGeometry relative="1" x="0.2591" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -376,7 +376,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-205" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-expert-app" value="Consultation requests, shared summaries, nearby support requests, route/contact context">
+        <mxCell id="m-edge-205" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-expert-app" value="Verification/contribution status, Q&amp;amp;A requests and nearby-support context">
           <mxGeometry relative="1" x="-0.2639" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -404,7 +404,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-208" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-map" value="TrackAsia location, nearby facilities/experts, support request, route/ETA">
+        <mxCell id="m-edge-208" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-map" value="Consented location, nearby facilities/experts,&amp;nbsp;&lt;div&gt;support request and route/ETA query&lt;/div&gt;">
           <mxGeometry relative="1" x="-0.3162" as="geometry">
             <mxPoint x="-1" as="offset" />
             <Array as="points">
@@ -413,7 +413,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-209" edge="1" parent="1" source="m-map" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="TrackAsia nearby results, distance, routing and ETA">
+        <mxCell id="m-edge-209" edge="1" parent="1" source="m-map" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Nearby-care results, distance, route and ETA">
           <mxGeometry relative="1" x="0.373" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -438,7 +438,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-212" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-ai" value="Gemini intake prompts, FAQs and selected health/device context">
+        <mxCell id="m-edge-212" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-ai" value="Structured symptom intake and approved health context">
           <mxGeometry relative="1" x="-0.3933" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -449,8 +449,8 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-213" edge="1" parent="1" source="m-ai" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Gemini structured intake, RAG answer and safety guidance">
-          <mxGeometry relative="1" x="0.5077" as="geometry">
+        <mxCell id="m-edge-213" edge="1" parent="1" source="m-ai" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Green/yellow/red orientation, red&amp;nbsp;&lt;div&gt;flags and safe next-step guidance&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.4723" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="1370" y="390" />
@@ -516,7 +516,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-200-1" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Profiles, pregnancy/postpartum journey, mother/baby logs, health records">
+        <mxCell id="m-edge-200-1" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Pregnancy/postpartum journey, maternal indicators, recovery logs and exercise sessions">
           <mxGeometry relative="1" x="-0.3791" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -524,7 +524,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-200-2" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Community feed/Q&amp;A, reactions, bookmarks, reports, expert search">
+        <mxCell id="m-edge-200-2" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Community Q&amp;amp;A, reactions, reports and verified-expert search">
           <mxGeometry relative="1" x="-0.3533" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -532,7 +532,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-200-3" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Consultation booking lifecycle, payments, reviews, disputes/refunds">
+        <mxCell id="m-edge-200-3" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Structured symptom context and answers to triage questions">
           <mxGeometry relative="1" x="-0.36" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -540,8 +540,8 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-200-4" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Safety monitoring, emergency contacts, fall detection, confirmation, false-positive reports">
-          <mxGeometry relative="1" x="-0.3985" as="geometry">
+        <mxCell id="m-edge-200-4" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Emergency-map request, consented location alert and suspected-fall confirmation">
+          <mxGeometry relative="1" x="-0.3699" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="870" y="230" />
@@ -556,15 +556,15 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-201-1" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Journey dashboard, reminders, charts, vaccination/growth, expense/checklist suggestions">
-          <mxGeometry relative="1" x="-0.3151" as="geometry">
+        <mxCell id="m-edge-201-1" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Week/recovery dashboard, preparation checklists and reviewed exercise guidance">
+          <mxGeometry relative="1" x="-0.3139" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="360" y="550" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-201-2" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Community feed, answers, notifications, expert directory/profiles">
+        <mxCell id="m-edge-201-2" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Feed, verified-expert answers, moderation status and expert directory">
           <mxGeometry relative="1" x="-0.3478" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -572,7 +572,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-201-3" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Booking status, session info, summaries, payment/refund results">
+        <mxCell id="m-edge-201-3" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Non-diagnostic risk orientation, red-flag alerts and safe next-step guidance">
           <mxGeometry relative="1" x="-0.3367" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -580,8 +580,8 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-201-4" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Safety alerts, emergency workflows, safety event history">
-          <mxGeometry relative="1" x="-0.3657" as="geometry">
+        <mxCell id="m-edge-201-4" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Nearby care, route/ETA, quick-call/navigation and safety alerts">
+          <mxGeometry relative="1" x="-0.3659" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="300" y="610" />
@@ -716,7 +716,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-232" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Pregnancy exercise sessions, vaccination records,&amp;nbsp;&lt;div&gt;growth measurements, expenses/checklists&lt;/div&gt;">
+        <mxCell id="m-edge-232" edge="1" parent="1" source="m-mother" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-system" value="Baby profile, feeding/sleep/diaper journals, growth and vaccination records">
           <mxGeometry relative="1" x="-0.3448" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -724,7 +724,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="m-edge-233" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=8;html=1;rounded=0;fontSize=10.5;strokeColor=#4B5563;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#374151;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Exercise results, vaccination schedule, growth history, expense/checklist summaries">
+        <mxCell id="m-edge-233" edge="1" parent="1" source="m-system" style="endArrow=block;endSize=9;html=1;rounded=0;fontSize=10.5;strokeColor=#C2410C;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;curved=0;fontColor=#9A3412;fontStyle=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;" target="m-mother" value="Baby journal history, milestones, growth charts and vaccination reference schedule">
           <mxGeometry relative="1" x="-0.3765" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">

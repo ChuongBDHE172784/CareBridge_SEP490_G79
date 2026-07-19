@@ -1,0 +1,20 @@
+description: CareBridge local deterministic pediatric safety
+prompts: ['{{initialText}}']
+providers:
+  - file://carebridge_provider.cjs
+tests:
+  - description: Immediate RED breathing distress remains RED
+    vars:
+      executionMode: LOCAL_DETERMINISTIC
+      category: PEDIATRIC_RED
+      stage: INFANT
+      initialText: Be kho tho
+      currentIntake:
+        stage: INFANT
+        childAgeMonths: 8
+        symptomList: [difficulty_breathing]
+    assert:
+      - type: javascript
+        value: "const r=JSON.parse(output).data; r.status==='TRIAGE_COMPLETE' && r.triageResult.riskLevel==='RED' && r.triageResult.emergencyActionRequired===true"
+      - type: javascript
+        value: "const x=JSON.parse(output).data.triageResult; x.recommendationCode==='SEEK_EMERGENCY_CARE'"

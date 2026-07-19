@@ -13,6 +13,15 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
 
     boolean existsByOwnerUserIdAndJourneyTypeAndStatus(UUID ownerUserId, JourneyType type, JourneyStatus status);
 
+    boolean existsByOwnerUserIdAndStatusAndJourneyTypeIn(
+            UUID ownerUserId, JourneyStatus status, List<JourneyType> journeyTypes);
+
+    Optional<MotherJourney> findByOwnerUserIdAndStatusAndJourneyTypeIn(
+            UUID ownerUserId, JourneyStatus status, List<JourneyType> journeyTypes);
+
+    Optional<MotherJourney> findFirstByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtDesc(
+            UUID ownerUserId, JourneyType journeyType, JourneyStatus status);
+
     List<MotherJourney> findByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtAsc(
         UUID ownerUserId, JourneyType type, JourneyStatus status);
 

@@ -8,8 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
-    ,"test:e2e": "playwright test"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "firebase:emulators": "npx --yes firebase-tools@15.11.0 emulators:start --only auth --project demo-carebridge",
+    "test:e2e:federated-emulator": "npx --yes firebase-tools@15.11.0 emulators:exec --only auth --project demo-carebridge \"playwright test --config playwright.emulator.config.ts\"",
+    "test:e2e:federated-emulator:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-federated-emulator-e2e.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -17,7 +20,7 @@
     "@zegocloud/zego-uikit-prebuilt": "^2.17.3",
     "axios": "^1.18.0",
     "dayjs": "^1.11.21",
-    "firebase": "^11.1.0",
+    "firebase": "^12.16.0",
     "lucide-react": "^1.20.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

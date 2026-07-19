@@ -11,11 +11,7 @@ class ConsultationRequestService {
   }) async {
     final response = await apiGet(
       '/api/v1/consultation-requests/mine',
-      queryParams: {
-        if (status != null) 'status': status,
-        'page': page,
-        'size': size,
-      },
+      queryParams: {'status': ?status, 'page': page, 'size': size},
     );
     return ConsultationRequestPage.fromJson(response as Map<String, dynamic>);
   }
@@ -27,11 +23,7 @@ class ConsultationRequestService {
   }) async {
     final response = await apiGet(
       '/api/v1/consultation-requests/assigned',
-      queryParams: {
-        if (status != null) 'status': status,
-        'page': page,
-        'size': size,
-      },
+      queryParams: {'status': ?status, 'page': page, 'size': size},
     );
     return ConsultationRequestPage.fromJson(response as Map<String, dynamic>);
   }

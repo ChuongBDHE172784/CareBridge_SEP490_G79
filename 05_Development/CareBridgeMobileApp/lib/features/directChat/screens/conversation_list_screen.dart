@@ -126,7 +126,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     }
     return ListView.separated(
       itemCount: _conversations.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final conversation = _conversations[index];
         return _ConversationTile(

@@ -29,8 +29,9 @@ class _BookmarkedQuestionsScreenState extends State<BookmarkedQuestionsScreen> {
   }
 
   void _onScroll() {
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 160)
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 160) {
       _loadMore();
+    }
   }
 
   Future<void> _reload() async {
@@ -41,7 +42,7 @@ class _BookmarkedQuestionsScreenState extends State<BookmarkedQuestionsScreen> {
     });
     try {
       final page = await CommunityService.instance.getBookmarks(page: 0);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items
             ..clear()
@@ -49,6 +50,7 @@ class _BookmarkedQuestionsScreenState extends State<BookmarkedQuestionsScreen> {
           _page = 1;
           _hasMore = page.length >= 20;
         });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -59,12 +61,13 @@ class _BookmarkedQuestionsScreenState extends State<BookmarkedQuestionsScreen> {
     setState(() => _loadingMore = true);
     try {
       final page = await CommunityService.instance.getBookmarks(page: _page);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items.addAll(page);
           _page++;
           _hasMore = page.length >= 20;
         });
+      }
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
@@ -151,7 +154,7 @@ class _BookmarkedQuestionsScreenState extends State<BookmarkedQuestionsScreen> {
                 controller: _scroll,
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                 itemCount: _items.length + (_loadingMore ? 1 : 0),
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   if (index == _items.length) {
                     return const Padding(

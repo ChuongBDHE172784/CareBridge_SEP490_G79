@@ -1084,7 +1084,7 @@ Theo TDS CB-AUTH-IMP-003 và ADR-AUTH-006, ADR-AUTH-007, ADR-AUTH-008:
 
 ## Amendment v1.1 — Federated Login (Google and Phone)
 
-This `In Review` amendment adopts the UC-01 v1.1 federated identity model. UC-03 does not trust Firebase as the CareBridge authorization server: after external proof is verified, CareBridge applies its own account-state, role, session, audit, JWT and refresh-token rules.
+This `Approved / Partially Implemented` amendment adopts the UC-01 v1.1 federated identity model. The federated target suite is GREEN, while full backend and Web regression gates remain blocked by documented baseline failures. UC-03 does not trust Firebase as the CareBridge authorization server: after external proof is verified, CareBridge applies its own account-state, role, session, audit, JWT and refresh-token rules.
 
 ### L1. Contract
 

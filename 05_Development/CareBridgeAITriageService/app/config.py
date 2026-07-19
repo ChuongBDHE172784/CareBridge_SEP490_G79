@@ -65,7 +65,7 @@ def load_gemini_settings() -> GeminiSettings:
         enabled=enabled,
         api_key=api_key,
         model=model,
-        timeout_seconds=_float_env("GEMINI_TIMEOUT_SECONDS", 8.0, 0.5, 30.0),
+        timeout_seconds=_float_env("GEMINI_TIMEOUT_SECONDS", 6.0, 0.5, 6.0),
         max_retries=_int_env("GEMINI_MAX_RETRIES", 1, 0, 3),
         temperature=_float_env("GEMINI_TEMPERATURE", 0.2, 0.0, 0.3),
     )
@@ -101,11 +101,12 @@ GRAPH_VERSION = "tv5-gemini-assisted-triage-1.1"
 RULE_SET_VERSION = "pediatric-risk-rules-1.0"
 ONTOLOGY_VERSION = "child-symptoms-1.0"
 RESPONSE_SCHEMA_VERSION = "2.1"
-PYTHON_SERVICE_TIMEOUT_SECONDS = _float_env("AI_TRIAGE_SERVICE_TIMEOUT_SECONDS", 8.0, 0.5)
+PYTHON_SERVICE_TIMEOUT_SECONDS = _float_env("AI_TRIAGE_SERVICE_TIMEOUT_SECONDS", 7.0, 0.5, 7.0)
 REALTIME_SEARCH_TIMEOUT_SECONDS = min(
-    _float_env("AI_TRIAGE_REALTIME_TIMEOUT_SECONDS", 4.0, 0.1),
+    _float_env("AI_TRIAGE_REALTIME_TIMEOUT_SECONDS", 3.5, 0.1, 4.0),
     max(0.1, PYTHON_SERVICE_TIMEOUT_SECONDS - 0.5),
 )
+MIN_REALTIME_SEARCH_REMAINING_SECONDS = 1.0
 EVIDENCE_CACHE_TTL_DAYS = _int_env("AI_TRIAGE_EVIDENCE_CACHE_TTL_DAYS", 30, 1)
 
 OFFICIAL_SOURCE_WARNING = (
@@ -115,6 +116,10 @@ OFFICIAL_SOURCE_WARNING = (
 NO_SOURCE_WARNING = "Không tìm thấy nguồn phù hợp trong knowledge base."
 NO_OFFICIAL_REALTIME_SOURCE_WARNING = (
     "Không tìm thấy nguồn chính thống phù hợp trong Knowledge Base và realtime official search."
+)
+REALTIME_SEARCH_SKIPPED_DEADLINE_WARNING = (
+    "KhÃ´ng Ä‘á»§ thá»i gian cÃ²n láº¡i Ä‘á»ƒ truy xuáº¥t nguá»“n chÃ­nh thá»©c; "
+    "phÃ¢n loáº¡i rá»§i ro váº«n do bá»™ quy táº¯c quyáº¿t Ä‘á»‹nh."
 )
 RED_LOCAL_EVIDENCE_GAP_WARNING = (
     "Không tìm thấy nguồn local đã duyệt phù hợp. Kết quả RED được trả ngay và không chờ realtime search."

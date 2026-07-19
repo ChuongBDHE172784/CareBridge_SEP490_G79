@@ -5,6 +5,9 @@ import com.carebridge.backend.journey.dto.CreateJourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
 import com.carebridge.backend.journey.dto.JourneyResponse;
 import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
+import com.carebridge.backend.journey.dto.JourneyTransitionPageResponse;
+import com.carebridge.backend.journey.dto.JourneyTransitionResponse;
+import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
@@ -23,6 +26,10 @@ public interface IJourneyService {
      * @throws com.carebridge.backend.common.exception.BusinessException JOURNEY-014 (400) ARCHIVED status attempted
      */
     JourneyResponse updateJourney(UUID ownerId, UUID journeyId, UpdateJourneyRequest request);
+
+    /** Returns minimum-necessary paginated history for an owned journey. */
+    JourneyTransitionPageResponse getHistory(
+            UUID ownerId, UUID journeyId, Pageable pageable);
 
     /**
      * UC24 — Return dashboard for the authenticated mother.

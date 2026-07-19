@@ -179,11 +179,12 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
                   '/reminders/${_reminder!.id}/manage',
                   extra: _reminder,
                 );
+                if (!context.mounted) return;
                 if (changed == 'deleted') {
-                  if (mounted) Navigator.pop(context, true);
+                  Navigator.pop(context, true);
                   return;
                 }
-                if (changed == true && mounted) _load();
+                if (changed == true) _load();
               },
               onDelete: _delete,
               onSkip: _skip,

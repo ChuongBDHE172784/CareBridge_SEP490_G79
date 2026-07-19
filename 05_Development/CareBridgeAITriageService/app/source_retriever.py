@@ -1,4 +1,6 @@
 import json
+import re
+from typing import Optional
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -15,7 +17,10 @@ from app.source_validator import validate_source
 from app import official_source_searcher
 
 
-def load_sources(stage: str = "INFANT") -> list[SourceDocument]:
+_AGE_RANGE_PATTERN = re.compile(r"^(\d+)\s*-\s*(\d+)\s*(months|years)$", re.IGNORECASE)
+
+
+def load_sources(stage: str = "INFANT", child_age_months: int | None = None) -> list[SourceDocument]:
     if not MEDICAL_SOURCES_DIR.exists():
         return []
     sources: list[SourceDocument] = []
@@ -46,11 +51,19 @@ def load_sources(stage: str = "INFANT") -> list[SourceDocument]:
                 body=post.content.strip(),
             )
         )
-    return [source for source in sources if is_approved_source(source, stage) and source.sourceStatus == "APPROVED"]
+    return [
+        source for source in sources
+        if is_approved_source(source, stage)
+        and source.sourceStatus == "APPROVED"
+        and _applies_to_age(source, child_age_months)
+    ]
 
 
-def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT") -> list[SourceDocument]:
-    sources = load_sources(stage)
+def retrieve_sources(
+    normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT",
+    child_age_months: int | None = None,
+) -> list[SourceDocument]:
+    sources = load_sources(stage, child_age_months)
     source_by_id = {source.id: source for source in sources}
     mapped_source_ids = _source_ids_for_rules(matched_rules)
     mapped_sources = [
@@ -64,18 +77,25 @@ def retrieve_sources(normalized_symptoms: list[str], matched_rules: list[str], s
     ]
     combined = mapped_sources + fallback_sources
     deduped: list[SourceDocument] = []
-    seen: set[str] = set()
+    seen_urls: set[str] = set()
     for source in combined:
-        if source.id not in seen:
-            seen.add(source.id)
+        if source.url not in seen_urls:
+            seen_urls.add(source.url)
             deduped.append(source)
     return deduped[:4]
 
 
-def retrieve_realtime_sources(normalized_symptoms: list[str], matched_rules: list[str], stage: str = "INFANT") -> list[SourceDocument]:
+def retrieve_realtime_sources(
+    normalized_symptoms: list[str],
+    matched_rules: list[str],
+    stage: str = "INFANT",
+    request_deadline: Optional[float] = None,
+) -> list[SourceDocument]:
     return [
         source
-        for source in official_source_searcher.realtime_official_search(normalized_symptoms, matched_rules, stage)
+        for source in official_source_searcher.realtime_official_search(
+            normalized_symptoms, matched_rules, stage, request_deadline=request_deadline
+        )
         if is_approved_source(source, stage) and validate_source(source, normalized_symptoms, approved_domains(stage))
     ][:4]
 
@@ -193,3 +213,17 @@ def _matched_symptoms(source: SourceDocument, normalized_symptoms: list[str]) ->
     }
     source_codes = {aliases.get(code, code) for code in source.symptoms}
     return sorted(source_codes & set(normalized_symptoms))
+
+
+def _applies_to_age(source: SourceDocument, child_age_months: int | None) -> bool:
+    if child_age_months is None or child_age_months < 0:
+        return False
+    match = _AGE_RANGE_PATTERN.fullmatch(source.ageRange.strip())
+    if not match:
+        return False
+    minimum = int(match.group(1))
+    maximum = int(match.group(2))
+    if match.group(3).lower() == "years":
+        minimum *= 12
+        maximum *= 12
+    return minimum <= child_age_months <= maximum

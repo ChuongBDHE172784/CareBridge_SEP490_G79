@@ -27,55 +27,55 @@ export default function ContentPortalSidebar() {
   };
 
   return (
-    <aside className="w-64 fixed left-0 top-0 h-screen bg-white border-r border-[#FFE2D9] flex flex-col z-20">
-      <div className="p-6 border-b border-[#FFE2D9]">
+    <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
+      <div className="border-b border-outline-variant/70 p-4">
         <div className="flex items-center gap-2 mb-1">
-          <span className="material-symbols-outlined text-[#845143] text-2xl">article</span>
-          <span className="font-bold text-[#845143] text-lg leading-none">ContentPortal</span>
+          <span className="material-symbols-outlined text-xl text-primary">article</span>
+          <span className="text-sm font-semibold leading-none text-on-surface">ContentPortal</span>
         </div>
-        <p className="text-xs text-[#84736F] ml-8">Quản lý nội dung</p>
+        <p className="ml-7 text-[11px] text-outline">Quản lý nội dung</p>
       </div>
       {hasRole('MODERATOR') && (
         <NavLink
           to="/moderator"
-          className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-[#845143] border-b border-[#FFE2D9] hover:bg-[#FFF8F6] transition-colors"
+          className="flex items-center gap-2 border-b border-outline-variant/70 px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-container-low"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Về Kiểm duyệt
         </NavLink>
       )}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
         {visibleItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              `flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                 isActive
-                  ? 'bg-[#FFF1EC] text-[#845143]'
-                  : 'text-[#524440] hover:bg-[#FFF8F6] hover:text-[#845143]'
+                  ? 'bg-primary-container text-primary'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
               }`
             }
           >
-            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+            <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
       </nav>
-      <div className="p-4 border-t border-[#FFE2D9] space-y-3">
-        <div className="text-xs text-[#84736F]">
-          <p className="truncate font-medium text-[#524440]">{user?.name ?? user?.phone ?? 'Content Admin'}</p>
+      <div className="space-y-2.5 border-t border-outline-variant/70 p-3">
+        <div className="px-1 text-[11px] text-outline">
+          <p className="truncate font-semibold text-on-surface-variant">{user?.name ?? user?.phone ?? 'Content Admin'}</p>
           <p>{user?.role ?? 'CONTENT_ADMIN'}</p>
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#FFD5C9] bg-white px-3 py-2 text-sm font-semibold text-[#845143] transition-colors hover:bg-[#FFF1EC]"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
         >
-          <span className="material-symbols-outlined text-[18px]">logout</span>
+          <span className="material-symbols-outlined text-[16px]">logout</span>
           Đăng xuất
         </button>
-        <p className="text-xs text-[#84736F] text-center">CareBridge © 2025</p>
+        <p className="text-center text-[10px] text-outline">CareBridge © 2025</p>
       </div>
     </aside>
   );

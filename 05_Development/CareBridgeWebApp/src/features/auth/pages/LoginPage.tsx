@@ -110,6 +110,7 @@ export default function LoginPage() {
               <p className="m-0">{serverError || fieldError}</p>
             </div>
           )}
+          <p role="status" aria-live="polite" className="sr-only">{serverError ?? ''}</p>
 
           {/* Login Form */}
           <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)}>

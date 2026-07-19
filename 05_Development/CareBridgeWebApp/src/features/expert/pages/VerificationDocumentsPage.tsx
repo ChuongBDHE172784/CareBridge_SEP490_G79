@@ -12,6 +12,21 @@ function Field({ label, children, required = false }: { label: string; children:
   );
 }
 
+/* ── File type helpers ───────────────────────────────────────────────── */
+
+function getFileExt(url: string): string {
+  const clean = url.split('?')[0];
+  const dot = clean.lastIndexOf('.');
+  return dot >= 0 ? clean.substring(dot + 1).toLowerCase() : '';
+}
+
+function isImageFile(url: string): boolean {
+  return ['jpg','jpeg','png','gif','webp','bmp'].includes(getFileExt(url));
+}
+
+/* ── Modal for viewing attachment files ───────────────────────────────── */
+
+function CredentialFileViewModal({ url, fileName, onClose }: { url: string; fileName?: string; onClose: () => void }) {
   if (!url) return null;
   const ext = getFileExt(url);
   const isImage = isImageFile(url);

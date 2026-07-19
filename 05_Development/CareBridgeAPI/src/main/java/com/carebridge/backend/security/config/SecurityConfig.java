@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/login-direct",
+                                "/api/v1/auth/federated",
                                 "/api/v1/auth/verify-otp",
                                 "/api/v1/auth/resend-otp",
                                 "/api/v1/auth/refresh",
