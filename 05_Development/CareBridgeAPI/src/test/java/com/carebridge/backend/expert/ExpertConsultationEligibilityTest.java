@@ -23,6 +23,8 @@ import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
 import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
+import com.carebridge.backend.masterdata.repository.HospitalRepository;
+import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,8 @@ class ExpertConsultationEligibilityTest {
 
     @Mock private ExpertProfileRepository repository;
     @Mock private UserRepository userRepository;
+    @Mock private SpecialtyRepository specialtyRepository;
+    @Mock private HospitalRepository hospitalRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -66,7 +70,8 @@ class ExpertConsultationEligibilityTest {
                 .thenReturn(Optional.of(suspended));
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
-                        identityRepository, credentialRepository, auditService);
+                        identityRepository, credentialRepository, auditService,
+                        specialtyRepository, hospitalRepository);
 
         assertThatThrownBy(() -> service.getPublicProfile(suspended.getExpertProfileId()))
                 .isInstanceOfSatisfying(ExpertException.class,
@@ -96,7 +101,8 @@ class ExpertConsultationEligibilityTest {
                         .build()));
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
-                        identityRepository, credentialRepository, auditService);
+                        identityRepository, credentialRepository, auditService,
+                        specialtyRepository, hospitalRepository);
 
         service.approveExpert(profileId, adminId);
         service.rejectExpert(profileId, adminId, "reason");

@@ -52,13 +52,28 @@ class ExpertIdentityVerificationServiceTest {
     }
 
     @Test
+    void missingImageRejectsBeforeFaceOrStorageCalls() {
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
+        when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.submit(userId, null, image("front"), image("back")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode())
+                        .isEqualTo("EXPIDENT-001"));
+
+        verifyNoInteractions(faceVerificationAdapter, fileService);
+        verify(identityRepository).findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId);
+    }
+
+    @Test
     void disabledCompreFaceStoresAllEvidenceForManualReview() {
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile()));
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
         when(faceVerificationAdapter.verify(any(), any(), any(), any()))
                 .thenReturn(new FaceVerificationResult(
                         FaceVerificationStatus.DISABLED, null, BigDecimal.valueOf(.75),
                         "PENDING_LINUX_VERIFICATION"));
-        when(fileService.uploadFile(any(), eq(userId)))
+        when(fileService.uploadPrivateFile(any(), eq(userId)))
                 .thenReturn(upload(), upload(), upload());
         when(identityRepository.save(any())).thenAnswer(invocation -> {
             ExpertIdentityVerification value = invocation.getArgument(0);
@@ -70,20 +85,8 @@ class ExpertIdentityVerificationServiceTest {
 
         assertThat(response.getReviewStatus()).isEqualTo(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED);
         assertThat(response.getFaceStatus()).isEqualTo(FaceVerificationStatus.DISABLED);
-        verify(fileService, times(3)).uploadFile(any(), eq(userId));
+        verify(fileService, times(3)).uploadPrivateFile(any(), eq(userId));
         verify(identityRepository).save(any());
-    }
-
-    @Test
-    void missingImageRejectsBeforeFaceOrStorageCalls() {
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile()));
-
-        assertThatThrownBy(() -> service.submit(userId, null, image("front"), image("back")))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(error -> assertThat(((BusinessException) error).getCode())
-                        .isEqualTo("EXPIDENT-001"));
-
-        verifyNoInteractions(faceVerificationAdapter, fileService, identityRepository);
     }
 
     @Test

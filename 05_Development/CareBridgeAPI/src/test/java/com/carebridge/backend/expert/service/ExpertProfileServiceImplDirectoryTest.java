@@ -18,6 +18,8 @@ import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
+import com.carebridge.backend.masterdata.repository.HospitalRepository;
+import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,8 @@ class ExpertProfileServiceImplDirectoryTest {
 
     @Mock private ExpertProfileRepository expertProfileRepository;
     @Mock private UserRepository userRepository;
+    @Mock private SpecialtyRepository specialtyRepository;
+    @Mock private HospitalRepository hospitalRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -47,7 +51,8 @@ class ExpertProfileServiceImplDirectoryTest {
     @BeforeEach
     void setUp() {
         service = new ExpertProfileServiceImpl(expertProfileRepository, userRepository, mapper,
-                identityRepository, credentialRepository, auditService);
+                identityRepository, credentialRepository, auditService,
+                specialtyRepository, hospitalRepository);
     }
 
     private static ExpertProfile approvedExpert(UUID userId) {

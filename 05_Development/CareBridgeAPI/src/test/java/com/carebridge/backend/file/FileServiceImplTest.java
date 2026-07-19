@@ -7,18 +7,22 @@ import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
+import com.carebridge.backend.file.service.impl.CloudinaryStorageService;
+import com.carebridge.backend.file.service.impl.R2StorageService;
 import com.carebridge.backend.file.service.IStorageService;
 import com.carebridge.backend.file.service.impl.FileServiceImpl;
+import com.carebridge.backend.file.policy.FileAccessPolicy;
+import com.carebridge.backend.file.policy.FileDeletePolicy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,12 +33,31 @@ import static org.mockito.Mockito.*;
 class FileServiceImplTest {
 
     @Mock private UploadedFileRepository fileRepository;
-    @Mock private IStorageService storageService;
+    @Mock private CloudinaryStorageService cloudinaryStorageService;
+    @Mock private R2StorageService r2StorageService;
+    @Mock private ObjectProvider<R2StorageService> r2StorageServiceProvider;
     @Mock private AuditService auditService;
-    @InjectMocks private FileServiceImpl fileService;
+    @Mock private FileAccessPolicy fileAccessPolicy;
+    @Mock private FileDeletePolicy fileDeletePolicy;
+
+    private FileServiceImpl fileService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID FILE_ID   = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(r2StorageServiceProvider.getIfAvailable()).thenReturn(r2StorageService);
+        fileService = new FileServiceImpl(
+                fileRepository,
+                cloudinaryStorageService,
+                r2StorageServiceProvider,
+                auditService,
+                fileAccessPolicy,
+                fileDeletePolicy,
+                "cloudinary" // default provider
+        );
+    }
 
     private MultipartFile makeFile(String contentType, int sizeBytes) {
         byte[] content = new byte[sizeBytes];
@@ -62,7 +85,7 @@ class FileServiceImplTest {
     void uploadFile_validJpeg_returnsPresignedUrl() {
         when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
         when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
-        when(storageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/file");
+        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/file");
 
         UploadFileResponse resp = fileService.uploadFile(makeFile("image/jpeg", 1000), CALLER_ID);
 
@@ -75,11 +98,11 @@ class FileServiceImplTest {
     void uploadFile_presignedUrlTtlIs15Minutes() {
         when(fileRepository.countByOwnerUserIdAndStatus(any(), any())).thenReturn(0L);
         when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
-        when(storageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/file");
+        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/file");
 
         fileService.uploadFile(makeFile("image/jpeg", 1000), CALLER_ID);
 
-        verify(storageService).generatePresignedUrl(any(), eq(15));
+        verify(cloudinaryStorageService).generatePresignedUrl(any(), eq(15));
     }
 
     // FILE-TC-003: File > 20MB → FILE-002 / 413
@@ -96,7 +119,7 @@ class FileServiceImplTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
                 });
 
-        verify(storageService, never()).store(any(), any(), any());
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
     }
 
     // FILE-TC-004: C4 — storage quota check before write
@@ -109,25 +132,45 @@ class FileServiceImplTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getHttpStatus())
                         .isEqualTo(HttpStatus.CONFLICT));
 
-        verify(storageService, never()).store(any(), any(), any());
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
     }
 
-    // FILE-TC-002: Valid PDF upload (magic bytes %PDF) — upload completes, no exception thrown
+    // FILE-TC-002: Valid PDF upload (magic bytes %PDF) — routes to R2, no fallback to Cloudinary
     @Test
-    void uploadFile_validPdf_returnsPresignedUrl() {
+    void uploadFile_validPdf_routesToR2() {
         byte[] pdfBytes = new byte[100];
         pdfBytes[0] = 0x25; pdfBytes[1] = 0x50; pdfBytes[2] = 0x44; pdfBytes[3] = 0x46; // %PDF
         MockMultipartFile pdfFile = new MockMultipartFile("file", "report.pdf", "application/pdf", pdfBytes);
         when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
         when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
-        when(storageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
+        when(r2StorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
 
         UploadFileResponse resp = fileService.uploadFile(pdfFile, CALLER_ID);
 
         // PDF magic bytes detected — upload succeeds (no exception, fileId returned)
         assertThat(resp.getFileId()).isEqualTo(FILE_ID);
         assertThat(resp.getPresignedUrl()).isNotBlank();
-        verify(storageService).store(anyString(), any(), eq("application/pdf"));
+        verify(r2StorageService).store(anyString(), any(), eq("application/pdf"));
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
+    }
+
+    // FILE-TC-002b: uploadPublicFile() forces Cloudinary even for documents (backward compat)
+// This test verifies the legacy behavior - use uploadFile() for proper routing
+    @Test
+    void uploadPublicFile_forcesCloudinaryEvenForPdf() {
+        byte[] pdfBytes = new byte[100];
+        pdfBytes[0] = 0x25; pdfBytes[1] = 0x50; pdfBytes[2] = 0x44; pdfBytes[3] = 0x46; // %PDF
+        MockMultipartFile pdfFile = new MockMultipartFile("file", "report.pdf", "application/pdf", pdfBytes);
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
+        when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
+        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
+
+        UploadFileResponse resp = fileService.uploadPublicFile(pdfFile, CALLER_ID);
+
+        assertThat(resp.getFileId()).isEqualTo(FILE_ID);
+        assertThat(resp.getPresignedUrl()).isNotBlank();
+        verify(cloudinaryStorageService).store(anyString(), any(), eq("application/pdf"));
+        verify(r2StorageService, never()).store(any(), any(), any());
     }
 
     // FILE-TC-004: C1 — invalid MIME type → FILE-001 / 415
@@ -145,7 +188,7 @@ class FileServiceImplTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
                 });
 
-        verify(storageService, never()).store(any(), any(), any());
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
     }
 
     // FILE-TC-005: C2 — storageKey must be UUID-based (not originalName)
@@ -153,11 +196,11 @@ class FileServiceImplTest {
     void uploadFile_storageKeyIsUuidBased() {
         when(fileRepository.countByOwnerUserIdAndStatus(any(), any())).thenReturn(0L);
         when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
-        when(storageService.generatePresignedUrl(any(), anyInt())).thenReturn("https://url");
+        when(cloudinaryStorageService.generatePresignedUrl(any(), anyInt())).thenReturn("https://url");
 
         fileService.uploadFile(makeFile("image/jpeg", 1000), CALLER_ID);
 
-        verify(storageService).store(argThat(key ->
+        verify(cloudinaryStorageService).store(argThat(key ->
                 !key.contains("photo.jpg") && key.length() > 10), any(), any());
     }
 }
