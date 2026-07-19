@@ -66,10 +66,10 @@ function DocViewModal({ url, fileName, onClose }: { url: string; fileName?: stri
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-lg border border-outline-variant/80 bg-surface shadow-[0_16px_40px_rgba(15,23,42,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b">
+        <div className="flex items-center justify-between border-b border-outline-variant/70 px-5 py-3">
           <div className="flex items-center gap-2 min-w-0">
             <span className="material-symbols-outlined text-primary">
               {isImage ? 'image' : isPdf ? 'description' : 'insert_drive_file'}
@@ -81,7 +81,7 @@ function DocViewModal({ url, fileName, onClose }: { url: string; fileName?: stri
               <a
                 href={url}
                 download
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
+                className="portal-primary-button"
               >
                 <span className="material-symbols-outlined text-[18px]">download</span>
                 Tải về
@@ -89,14 +89,14 @@ function DocViewModal({ url, fileName, onClose }: { url: string; fileName?: stri
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-700 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-xl leading-none text-outline hover:bg-surface-container-low hover:text-on-surface"
             >
               ×
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-1 items-center justify-center overflow-auto bg-surface-container-low p-4">
           {isImage && !imgError ? (
             <img
               src={url}
@@ -139,13 +139,13 @@ function DocViewModal({ url, fileName, onClose }: { url: string; fileName?: stri
 function InlineImage({ url, alt }: { url: string; alt: string }) {
   const [err, setErr] = useState(false);
   if (err) {
-    return <p className="text-xs text-red-500 py-4">Không thể tải ảnh</p>;
+    return <p className="py-4 text-xs text-error">Không thể tải ảnh</p>;
   }
   return (
     <img
       src={url}
       alt={alt}
-      className="max-w-full max-h-[55vh] object-contain rounded-lg border border-outline-variant cursor-pointer"
+      className="max-h-[55vh] max-w-full cursor-pointer rounded-lg border border-outline-variant object-contain"
       onClick={() => {}}
       onError={() => setErr(true)}
     />
@@ -253,7 +253,7 @@ export default function ExpertVerificationQueuePage() {
     }
 
     return (
-      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+      <div className="flex items-center gap-3 rounded-md border border-outline-variant/60 bg-surface-container-low p-3">
         <span className="material-symbols-outlined text-[32px] text-gray-400 uppercase">
           description
         </span>
@@ -264,14 +264,14 @@ export default function ExpertVerificationQueuePage() {
         <div className="flex gap-2">
           <button
             onClick={() => setViewFileUrl(url)}
-            className="px-3 py-1.5 text-xs rounded-lg border border-primary text-primary font-medium hover:bg-primary-container/40"
+          className="portal-secondary-button"
           >
             Xem trước
           </button>
           <a
             href={url}
             download
-            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary/90"
+            className="portal-primary-button"
           >
             <span className="material-symbols-outlined text-[14px]">download</span>
             Tải về
@@ -282,16 +282,13 @@ export default function ExpertVerificationQueuePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F6F1EC] p-5 md:p-10">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 rounded-3xl border border-outline-variant/40 bg-surface px-6 py-6 shadow-sm md:px-8">
-          <div className="flex items-start gap-4">
-            <span className="material-symbols-outlined rounded-2xl bg-primary-container p-3 text-primary">fact_check</span>
-            <div>
-              <p className="text-sm font-semibold text-primary">Quản trị chuyên gia</p>
-              <h1 className="mt-1 text-2xl font-bold text-on-surface">Hàng đợi xác minh chuyên gia</h1>
-              <p className="mt-2 text-sm leading-6 text-on-surface-variant">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
-            </div>
+    <main className="portal-page px-5 py-5 md:px-6 md:py-6">
+      <div className="portal-contained">
+        <header className="portal-header">
+          <div>
+            <p className="portal-eyebrow">Quản trị chuyên gia</p>
+            <h1 className="portal-title">Hàng đợi xác minh chuyên gia</h1>
+            <p className="portal-subtitle">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
           </div>
         </header>
 
@@ -308,10 +305,10 @@ export default function ExpertVerificationQueuePage() {
 
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div
-            className={`flex flex-col rounded-3xl border border-outline-variant/40 bg-surface shadow-sm ${selectedId ? 'w-full lg:w-1/2' : 'w-full'}`}
+            className={`flex flex-col rounded-lg border border-outline-variant/70 bg-surface ${selectedId ? 'w-full lg:w-1/2' : 'w-full'}`}
           >
             <div className="p-4 pb-3 space-y-3">
-              <h2 className="text-xl font-bold text-on-surface">Hồ sơ chờ xử lý</h2>
+              <h2 className="text-sm font-semibold text-on-surface">Hồ sơ chờ xử lý</h2>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -319,11 +316,11 @@ export default function ExpertVerificationQueuePage() {
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchQueue()}
-                  className="flex-1 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="portal-field flex-1"
                 />
                 <button
                   onClick={fetchQueue}
-                  className="rounded-full px-4 py-2 text-sm font-medium bg-primary text-white hover:brightness-110 transition"
+                  className="portal-primary-button"
                 >
                   Tìm
                 </button>
@@ -338,7 +335,7 @@ export default function ExpertVerificationQueuePage() {
                 </div>
               )}
               {error && (
-                <div className="p-4 rounded-2xl bg-red-100 text-red-800 text-sm">
+                <div className="rounded-lg border border-error-container bg-error-container/60 p-4 text-sm text-error">
                   {error}
                   <button onClick={fetchQueue} className="ml-3 underline font-semibold">Thử lại</button>
                 </div>
@@ -349,10 +346,10 @@ export default function ExpertVerificationQueuePage() {
                   <button
                     key={item.credentialId}
                     onClick={() => { setSelectedId(item.credentialId); setNoteText(''); }}
-                    className={`w-full rounded-2xl p-4 text-left border transition-shadow ${
+                    className={`w-full rounded-md border p-3 text-left transition-colors ${
                       active
-                        ? 'border-primary bg-primary-container/30 shadow-md'
-                        : 'border-outline-variant/60 bg-surface hover:border-primary/30 hover:shadow-sm'
+                        ? 'border-primary bg-primary-container/30'
+                        : 'border-outline-variant/60 bg-surface hover:border-primary/30 hover:bg-surface-container-low'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -363,16 +360,16 @@ export default function ExpertVerificationQueuePage() {
                         )}
                         <div className="flex flex-wrap gap-2 mt-2">
                           {item.issuer && (
-                            <span className="rounded-full px-2 py-0.5 bg-surface-container-low text-xs text-on-surface-variant">
+                            <span className="rounded px-2 py-0.5 bg-surface-container-low text-xs text-on-surface-variant">
                               {item.issuer}
                             </span>
                           )}
                           {item.specialty && (
-                            <span className="rounded-full px-2 py-0.5 bg-blue-50 text-xs text-blue-700 font-medium">
+                            <span className="rounded px-2 py-0.5 bg-sky-50 text-xs text-sky-700 font-medium">
                               {item.specialty}
                             </span>
                           )}
-                          <span className="rounded-full px-2 py-0.5 bg-amber-100 text-xs text-amber-700 font-bold">
+                          <span className="rounded px-2 py-0.5 bg-amber-100 text-xs font-semibold text-amber-700">
                             Chờ xác minh
                           </span>
                         </div>
@@ -383,7 +380,7 @@ export default function ExpertVerificationQueuePage() {
                 );
               })}
               {items.length === 0 && !loading && !error && (
-                <div className="py-16 text-center text-on-surface-variant">
+                <div className="portal-empty m-4">
                   <span className="material-symbols-outlined text-[48px] block mb-3 opacity-40">verified</span>
                   <p className="text-base font-medium">Không có hồ sơ chờ xác minh</p>
                 </div>
@@ -392,20 +389,20 @@ export default function ExpertVerificationQueuePage() {
           </div>
 
           {selected && (
-            <div className="flex w-full flex-col rounded-3xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm lg:w-1/2">
-              <div className="p-5 border-b border-outline-variant/50 bg-surface flex items-center justify-between">
-                <h3 className="text-base font-semibold text-on-surface leading-snug">Chi tiết hồ sơ xác minh</h3>
+            <div className="flex w-full flex-col rounded-lg border border-outline-variant/70 bg-surface-container-lowest lg:w-1/2">
+              <div className="flex items-center justify-between border-b border-outline-variant/70 bg-surface p-4">
+                <h3 className="text-sm font-semibold leading-snug text-on-surface">Chi tiết hồ sơ xác minh</h3>
                 <button
                   onClick={() => { setSelectedId(null); setNoteText(''); }}
-                  className="text-on-surface-variant hover:text-on-surface text-xl leading-none"
+                  className="rounded-md px-2 text-xl leading-none text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
                 >
                   ×
                 </button>
               </div>
 
               <div className="flex-1 p-5 space-y-4 overflow-y-auto">
-                <div className="rounded-2xl border border-outline-variant/60 bg-surface p-4 space-y-3">
-                  <h4 className="text-sm font-bold text-primary mb-2">Thông tin chuyên gia</h4>
+                <div className="space-y-3 rounded-md border border-outline-variant/60 bg-surface p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-primary">Thông tin chuyên gia</h4>
                   {selected.avatarUrl && (
                     <img
                       src={selected.avatarUrl}
@@ -422,8 +419,8 @@ export default function ExpertVerificationQueuePage() {
                   {selected.email && <p className="text-sm"><strong>Email:</strong> {selected.email}</p>}
                 </div>
 
-                <div className="rounded-2xl border border-outline-variant/60 bg-surface p-4 space-y-2">
-                  <h4 className="text-sm font-bold text-primary mb-2">Thông tin chứng chỉ</h4>
+                <div className="space-y-2 rounded-md border border-outline-variant/60 bg-surface p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-primary">Thông tin chứng chỉ</h4>
                   <p className="text-sm"><strong>Loại:</strong> {credentialTypeLabel(selected.credentialType)}</p>
                   {selected.credentialNumber && <p className="text-sm"><strong>Số hiệu:</strong> {selected.credentialNumber}</p>}
                   {selected.issuer && <p className="text-sm"><strong>Cơ quan cấp:</strong> {selected.issuer}</p>}
@@ -432,43 +429,43 @@ export default function ExpertVerificationQueuePage() {
                 </div>
 
                 {selected.fileUrl && (
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface p-4 space-y-2">
-                    <h4 className="text-sm font-bold text-primary mb-2">Tài liệu đính kèm</h4>
+                  <div className="space-y-2 rounded-md border border-outline-variant/60 bg-surface p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-primary">Tài liệu đính kèm</h4>
                     {renderFilePreview(selected)}
                   </div>
                 )}
 
                 {selected.reviewNote && (
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface p-4 space-y-2">
+                  <div className="space-y-2 rounded-md border border-outline-variant/60 bg-surface p-4">
                     <p className="text-sm"><strong>Ghi chú đánh giá trước:</strong></p>
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">{selected.reviewNote}</p>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-semibold text-on-surface mb-2">Ghi chú (tuỳ chọn)</label>
+                  <label className="portal-label">Ghi chú (tuỳ chọn)</label>
                   <textarea
                     rows={3}
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
                     placeholder="Nhập ghi chú cho quyết định…"
-                    className="w-full rounded-2xl border border-outline-variant bg-surface p-4 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    className="w-full resize-none rounded-md border border-outline-variant bg-surface p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/10"
                   />
                 </div>
               </div>
 
-              <div className="p-4 border-t border-outline-variant/50 bg-surface flex gap-3">
+              <div className="flex gap-3 border-t border-outline-variant/70 bg-surface p-4">
                 <button
                   onClick={() => reviewCredential(selected.credentialId, 'APPROVED')}
                   disabled={actionId === selected.credentialId}
-                  className="flex-1 h-12 rounded-full bg-green-600 text-white font-semibold text-base hover:brightness-110 transition disabled:opacity-50"
+                  className="flex-1 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {actionId === selected.credentialId ? 'Đang xử lý…' : 'Duyệt'}
                 </button>
                 <button
                   onClick={() => reviewCredential(selected.credentialId, 'REJECTED')}
                   disabled={actionId === selected.credentialId}
-                  className="flex-1 h-12 rounded-full bg-red-600 text-white font-semibold text-base hover:brightness-110 transition disabled:opacity-50"
+                  className="flex-1 rounded-md bg-error px-3 py-2 text-sm font-semibold text-on-error hover:bg-error/90 disabled:opacity-50"
                 >
                   Từ chối
                 </button>

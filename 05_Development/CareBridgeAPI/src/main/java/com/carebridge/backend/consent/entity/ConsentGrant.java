@@ -47,6 +47,15 @@ public class ConsentGrant {
     @Column(name = "scope_text", columnDefinition = "TEXT")
     private String scope;
 
+    @Column(name = "policy_version", length = 60)
+    private String policyVersion;
+
+    @Column(name = "evidence_key")
+    private java.util.UUID evidenceKey;
+
+    @Column(length = 20)
+    private String locale;
+
     @Column(name = "consent_given_at", nullable = false)
     private Instant consentGivenAt;
 

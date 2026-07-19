@@ -1,0 +1,5 @@
+               email                | journey_count 
+------------------------------------+---------------
+ mf01.story61.other@carebridge.test |             0
+(1 row)
+

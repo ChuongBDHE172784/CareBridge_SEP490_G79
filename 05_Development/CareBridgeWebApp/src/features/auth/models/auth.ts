@@ -38,7 +38,7 @@ export interface AuthUserProfile {
   email: string | null;
   phone: string | null;
   avatarUrl: string | null;
-  role: string;
+  role: UserRole | null;
   accountStatus: string;
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -57,3 +57,4 @@ export interface ForgotPasswordRequest {
 export interface ForgotPasswordResponse {
   message: string;
 }
+import type { UserRole } from '../../../shared/auth/authStore';

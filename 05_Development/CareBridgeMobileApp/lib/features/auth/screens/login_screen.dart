@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/network/api_client.dart';
+import '../models/federated_auth_failure.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -10,7 +11,9 @@ import 'register_screen.dart';
 /// CB-004 — Login (UC-03)
 /// Collects email/phone + password, calls POST /api/v1/auth/login → navigates to OTP screen.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.onGoogleSignIn});
+
+  final Future<void> Function()? onGoogleSignIn;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -82,6 +85,34 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _federatedGoogleLogin() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final callback = widget.onGoogleSignIn;
+      if (callback != null) {
+        await callback();
+      } else {
+        await AuthService.instance.federatedGoogle();
+      }
+      if (mounted) context.go('/auth-landing');
+    } on FederatedSignInException catch (error) {
+      if (mounted && !error.failure.isCanceled) {
+        setState(() => _errorMessage = error.failure.userMessage);
+      }
+    } catch (error) {
+      final failure = FederatedAuthFailure.from(error);
+      if (mounted && !failure.isCanceled) {
+        setState(() => _errorMessage = failure.userMessage);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,6 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                     ],
                     _buildForm(),
+                    const SizedBox(height: 20),
+                    _buildFederatedActions(),
                     const SizedBox(height: 32),
                     _buildInfoCard(),
                     const SizedBox(height: 32),
@@ -312,6 +345,88 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _federatedPhone() async {
+    final phone = _identifierCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(
+        () =>
+            _errorMessage = 'Enter a phone number including the country code.',
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final verificationId = await AuthService.instance.beginPhoneVerification(
+        phone,
+      );
+      if (!mounted) return;
+      final code = await _requestSmsCode();
+      if (code == null || code.isEmpty) return;
+      await AuthService.instance.confirmPhoneVerification(verificationId, code);
+      if (mounted) context.go('/auth-landing');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Unable to verify this phone number.');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<String?> _requestSmsCode() async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter SMS code'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return value;
+  }
+
+  Widget _buildFederatedActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton(
+          key: const Key('federated-google-login'),
+          onPressed: _isLoading ? null : _federatedGoogleLogin,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: const StadiumBorder(),
+          ),
+          child: const Text('Continue with Google'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          key: const Key('federated-phone-login'),
+          onPressed: _isLoading ? null : _federatedPhone,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: const StadiumBorder(),
+          ),
+          child: const Text('Continue with phone'),
         ),
       ],
     );

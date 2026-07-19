@@ -21,7 +21,8 @@ class MotherHomeScreen extends StatefulWidget {
   State<MotherHomeScreen> createState() => _MotherHomeScreenState();
 }
 
-class _MotherHomeScreenState extends State<MotherHomeScreen> {
+class _MotherHomeScreenState extends State<MotherHomeScreen>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -42,22 +43,40 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   List<Reminder> _tasks = [];
   bool _loading = true;
   bool _hasUnread = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);
     _reminderService.addListener(_onServiceChanged);
     _load();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    JourneyService.dashboardRevision.removeListener(_onJourneyDashboardChanged);
     _reminderService.removeListener(_onServiceChanged);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
+  }
+
   void _onServiceChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onJourneyDashboardChanged() {
+    if (mounted) {
+      _load();
+    }
   }
 
   Future<void> _checkUnread() async {
@@ -72,6 +91,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
   }
 
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
     setState(() => _loading = true);
     _checkUnread();
     try {
@@ -82,7 +102,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
       } catch (_) {
         tasks = [];
       }
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _dashboard = dashboard;
           _tasks = tasks.take(3).toList();
@@ -90,11 +110,11 @@ class _MotherHomeScreenState extends State<MotherHomeScreen> {
         });
       }
     } on ApiException {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() => _loading = false);
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() => _loading = false);
       }
     }

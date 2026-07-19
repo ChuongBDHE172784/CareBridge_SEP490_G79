@@ -57,6 +57,17 @@ carebridge:
     otp:
       expiration-seconds: 300
       max-attempts: 5
+  auth:
+    federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:}
+    auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
+    auth-emulator-host: ${FIREBASE_AUTH_EMULATOR_HOST:}
+    # UC-144D Direct Consult Chat & Call — Cloud Firestore signaling (ADR-DCC-004).
+    # Shares the Firebase credentials configured under fcm; enable explicitly because
+    # Firestore signaling is a hard requirement of this feature, unlike FCM.
+    firestore:
+      enabled: ${CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED:false}
   gemini:
     api-key: ${GEMINI_API_KEY:}
     timeout-ms: 5000
@@ -83,13 +94,6 @@ carebridge:
     use-application-default-credentials: ${FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS:false}
     project-id: ${FIREBASE_PROJECT_ID:}
     service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
-
-  # UC-144D Direct Consult Chat & Call — Cloud Firestore signaling (ADR-DCC-004).
-  # Shares the same Firebase credentials configured under fcm above; independent
-  # Enable explicitly because Firestore signaling is a hard requirement of this feature, unlike FCM.
-  firebase:
-    firestore:
-      enabled: ${CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED:false}
 
   directchat:
     call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}
@@ -123,5 +127,5 @@ carebridge:
 ai:
   triage-service:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
-    request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:8000}
+    request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:15000}
     internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:}

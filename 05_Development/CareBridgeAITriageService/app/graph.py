@@ -10,10 +10,12 @@ from app.config import (
     DISCLAIMER,
     GRAPH_VERSION,
     NO_OFFICIAL_REALTIME_SOURCE_WARNING,
+    MIN_REALTIME_SEARCH_REMAINING_SECONDS,
     NO_SOURCE_WARNING,
     ONTOLOGY_VERSION,
     PYTHON_SERVICE_TIMEOUT_SECONDS,
     RED_LOCAL_EVIDENCE_GAP_WARNING,
+    REALTIME_SEARCH_SKIPPED_DEADLINE_WARNING,
     RESPONSE_SCHEMA_VERSION,
     RISK_COLORS,
     RULE_SET_VERSION,
@@ -86,6 +88,7 @@ class TriageState(TypedDict, total=False):
     disclaimer: str
     forceCautiousYellow: bool
     forcedWarning: str | None
+    realtimeSearchSkippedForDeadline: bool
 
 
 def collect_intake(state: TriageState) -> TriageState:
@@ -215,7 +218,10 @@ def apply_deterministic_rules(state: TriageState) -> TriageState:
 
 def retrieve_sources_node(state: TriageState) -> TriageState:
     state["retrievedSources"] = retrieve_sources(
-        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage
+        state.get("normalizedSymptoms", []),
+        state.get("matchedRules", []),
+        state["intake"].stage,
+        state["intake"].childAgeMonths,
     )
     return state
 
@@ -229,8 +235,13 @@ def realtime_official_search_if_needed(state: TriageState) -> TriageState:
     )
     if local or state.get("riskLevel") in {"RED", "NEED_MORE_INFO"}:
         return state
+    request_deadline = state.get("requestDeadline")
+    if request_deadline is not None and request_deadline - time.monotonic() < MIN_REALTIME_SEARCH_REMAINING_SECONDS:
+        state["realtimeSearchSkippedForDeadline"] = True
+        return state
     realtime = retrieve_realtime_sources(
-        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage
+        state.get("normalizedSymptoms", []), state.get("matchedRules", []), state["intake"].stage,
+        request_deadline=request_deadline,
     )
     cache_pending_sources(realtime)
     state["retrievedSources"] = realtime
@@ -261,7 +272,11 @@ def attach_evidence(state: TriageState) -> TriageState:
     elif state.get("riskLevel") == "RED":
         state["warning"] = RED_LOCAL_EVIDENCE_GAP_WARNING
     elif state.get("riskLevel") in {"YELLOW", "GREEN"}:
-        state["warning"] = NO_OFFICIAL_REALTIME_SOURCE_WARNING
+        state["warning"] = (
+            REALTIME_SEARCH_SKIPPED_DEADLINE_WARNING
+            if state.get("realtimeSearchSkippedForDeadline")
+            else NO_OFFICIAL_REALTIME_SOURCE_WARNING
+        )
     else:
         state["warning"] = NO_SOURCE_WARNING
     if state.get("forcedWarning"):
@@ -449,8 +464,9 @@ def run_triage(
     normalized_details: list[NormalizedSymptom] | None = None,
     normalization_gemini_used: bool = False,
     request_deadline: float | None = None,
+    deterministic_only: bool = False,
 ) -> ChildTriageResponse:
-    client = gemini_client if gemini_client is not None else get_gemini_client()
+    client = None if deterministic_only else (gemini_client if gemini_client is not None else get_gemini_client())
     initial: TriageState = {
         "intake": intake,
         "geminiClient": client,

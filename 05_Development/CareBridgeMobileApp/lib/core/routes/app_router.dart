@@ -11,6 +11,7 @@ import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
+import '../../features/journey/screens/journey_onboarding_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
@@ -114,16 +115,62 @@ class _UnsupportedRoleHome extends StatelessWidget {
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
+@visibleForTesting
+String? resolveAppRedirect({
+  required bool isAuthenticated,
+  required bool isRestoring,
+  required String? blockedReason,
+  required String? role,
+  required String location,
+}) {
+  final hasAssignedRole = role != null && role.trim().isNotEmpty;
+
+  if (isRestoring) return null;
+
+  final isAuthRoute =
+      location.startsWith('/welcome') ||
+      location.startsWith('/login') ||
+      location == '/auth-landing';
+
+  if (blockedReason != null && location != '/blocked') return '/blocked';
+  if (!isAuthenticated && !isAuthRoute) return '/welcome';
+  if (isAuthenticated && !hasAssignedRole && location != '/role-selection') {
+    return '/role-selection';
+  }
+  if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
+    return role == 'EXPERT'
+        ? '/expert-onboarding'
+        : (role == 'MOTHER' ? '/journey-onboarding' : '/');
+  }
+  if (isAuthenticated && isAuthRoute && location != '/auth-landing') {
+    return role == 'EXPERT'
+        ? '/expert-onboarding'
+        : (role == 'MOTHER'
+              ? '/auth-landing'
+              : (hasAssignedRole ? '/' : '/role-selection'));
+  }
+  if (isAuthenticated && location == '/auth-landing') {
+    return role == 'MOTHER'
+        ? null
+        : (role == 'EXPERT'
+              ? '/expert-onboarding'
+              : (hasAssignedRole ? '/' : '/role-selection'));
+  }
+
+  // `/` is the app-start dispatcher for mothers. The landing screen verifies
+  // both the journey and the required consent before opening the real home.
+  if (isAuthenticated && role == 'MOTHER' && location == '/') {
+    return '/auth-landing';
+  }
+  return null;
+}
+
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   refreshListenable: AuthState.instance,
   redirect: (context, state) {
     final auth = AuthState.instance;
-    final isAuth = auth.isAuthenticated;
-    final isRestoring = auth.isRestoring;
-    final blockedReason = auth.blockedReason;
-    final hasAssignedRole = auth.role != null && auth.role!.trim().isNotEmpty;
     final isExpert = auth.role?.trim().toUpperCase() == 'EXPERT';
     final isExpertOnboardingRoute =
         state.matchedLocation == '/expert-onboarding' ||
@@ -132,43 +179,16 @@ final GoRouter appRouter = GoRouter(
         state.matchedLocation == '/expert/credentials' ||
         state.matchedLocation == '/expert-verification-status';
 
-    // Do not redirect while restoring state
-    if (isRestoring) return null;
+    final baseRedirect = resolveAppRedirect(
+      isAuthenticated: auth.isAuthenticated,
+      isRestoring: auth.isRestoring,
+      blockedReason: auth.blockedReason,
+      role: auth.role,
+      location: state.matchedLocation,
+    );
+    if (baseRedirect != null) return baseRedirect;
 
-    final isAuthRoute =
-        state.matchedLocation.startsWith('/welcome') ||
-        state.matchedLocation.startsWith('/login') ||
-        state.matchedLocation == '/auth-landing';
-
-    if (blockedReason != null && state.matchedLocation != '/blocked') {
-      return '/blocked';
-    }
-
-    if (!isAuth && !isAuthRoute) {
-      return '/welcome';
-    }
-
-    if (isAuth &&
-        !hasAssignedRole &&
-        state.matchedLocation != '/role-selection') {
-      return '/role-selection';
-    }
-
-    if (isAuth &&
-        hasAssignedRole &&
-        state.matchedLocation == '/role-selection') {
-      return isExpert
-          ? '/expert-onboarding'
-          : (auth.role == 'MOTHER' ? '/mother-stage-selection' : '/');
-    }
-
-    if (isAuth && isAuthRoute) {
-      return isExpert
-          ? '/expert-onboarding'
-          : (hasAssignedRole ? '/' : '/role-selection');
-    }
-
-    if (isAuth &&
+    if (auth.isAuthenticated &&
         isExpert &&
         !isExpertOnboardingRoute &&
         !ExpertOnboardingStore.instance.approvedFor(auth.userId)) {
@@ -196,6 +216,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
+      path: '/journey-onboarding',
+      builder: (context, state) => const JourneyOnboardingScreen(),
+    ),
+    GoRoute(
       path: '/mother-stage-selection',
       builder: (context, state) => const MotherStageSelectionScreen(),
     ),
@@ -213,6 +237,13 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/mother-home',
+      builder: (context, state) {
+        final tabParam = state.uri.queryParameters['tab'];
+        return HomeShell(initialIndex: int.tryParse(tabParam ?? '') ?? 0);
+      },
+    ),
+    GoRoute(
       path: '/journey-setup',
       builder: (context, state) {
         final journeyId = state.uri.queryParameters['journeyId'];
@@ -222,6 +253,8 @@ final GoRouter appRouter = GoRouter(
               state.uri.queryParameters['mode'] == 'edit' &&
               journeyId != null &&
               journeyId.isNotEmpty,
+          isPrePregnancyTransition:
+              state.uri.queryParameters['transition'] == 'pre-pregnancy',
         );
       },
     ),

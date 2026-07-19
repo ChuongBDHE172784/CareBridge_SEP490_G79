@@ -111,42 +111,46 @@ export default function ContentReportDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8 font-sans">
-        <button
-          onClick={() => navigate('/moderator/reports')}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-on-surface cursor-pointer mb-4"
-        >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
-          Trở lại danh sách
-        </button>
-
+      <main className="portal-content">
+        <div className="portal-contained">
         {isLoading ? (
-          <div className="py-16 text-center text-outline">Đang tải...</div>
+          <div className="portal-empty">Đang tải...</div>
         ) : error || !item ? (
-          <div className="bg-error-container rounded-2xl p-6 text-error text-sm">
+          <div className="portal-error">
             {error || 'Không tìm thấy báo cáo.'}
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 mb-1">
-              <span className="py-1 px-3 rounded-full bg-error-container text-error text-xs font-semibold">
-                {formatReportReason(item.reportReason)}
-              </span>
-              <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
-            </div>
-            <h1 className="text-2xl font-bold text-on-surface mt-1 mb-6">Chi tiết báo cáo</h1>
-
-            <div className="grid grid-cols-[1fr_360px] gap-6">
+            <div className="portal-header">
               <div>
-                <div className="bg-surface rounded-2xl p-6 shadow-md mb-5">
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
+                    {formatReportReason(item.reportReason)}
+                  </span>
+                  <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
+                </div>
+                <h1 className="portal-title">Chi tiết báo cáo</h1>
+              </div>
+              <button
+                onClick={() => navigate('/moderator/reports')}
+                className="portal-secondary-button"
+              >
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                Trở lại danh sách
+              </button>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+              <div>
+                <div className="portal-card-padded mb-5">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">flag</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Lý do báo cáo</h2>
                   </div>
                   <p className="text-sm text-on-surface-variant mb-4">{formatReportReason(item.reportReason)}</p>
-                  <div className="bg-surface-container-low rounded-2xl p-4">
+                  <div className="rounded-md bg-surface-container-low p-4">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">
                       Chi tiết từ người dùng
                     </p>
@@ -158,12 +162,12 @@ export default function ContentReportDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-surface rounded-2xl p-6 shadow-md">
+                <div className="portal-card-padded">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">article</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Nội dung bị báo cáo</h2>
                   </div>
-                  <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant">
+                  <div className="rounded-md border border-outline-variant bg-surface-container-low p-4">
                     <p className="text-sm text-outline mb-1">{TARGET_TYPE_LABELS[item.targetType]}</p>
                     <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
                   </div>
@@ -171,7 +175,7 @@ export default function ContentReportDetailPage() {
               </div>
 
               <div className="flex flex-col gap-4">
-                <div className="bg-surface rounded-2xl p-5 shadow-md">
+                <div className="portal-card-padded">
                   <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                     Xử lý vi phạm
                   </p>
@@ -184,7 +188,7 @@ export default function ContentReportDetailPage() {
                         ? `Backend không hỗ trợ duyệt cho loại ${TARGET_TYPE_LABELS[item.targetType]}`
                         : 'Duyệt nội dung — nội dung sẽ hiển thị công khai (status = APPROVED) và báo cáo được đóng'
                     }
-                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-emerald-600 text-white border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-emerald-600 px-3.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">task_alt</span>
                     {submitting === 'APPROVE' ? 'Đang xử lý...' : 'Duyệt nội dung'}
@@ -194,7 +198,7 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('HIDE')}
                     disabled={!canHideTarget(item.targetType) || submitting !== null}
                     title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ xoá cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Xoá khỏi hệ thống (thực thi qua outcome HIDE)'}
-                    className="w-full py-3.5 mb-2.5 rounded-2xl bg-error text-on-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error px-3.5 text-xs font-semibold text-on-error disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                     {submitting === 'HIDE' ? 'Đang xử lý...' : 'Xóa bài viết'}
@@ -204,7 +208,7 @@ export default function ContentReportDetailPage() {
                     onClick={() => handleAction('HIDE')}
                     disabled={!canHideTarget(item.targetType) || submitting !== null}
                     title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ ẩn cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Ẩn khỏi hệ thống (thực thi qua outcome HIDE — cùng hành động với Xóa bài viết)'}
-                    className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-primary-container px-3.5 text-xs font-semibold text-on-primary-container disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">visibility_off</span>
 	                    Ẩn nội dung
@@ -214,7 +218,7 @@ export default function ContentReportDetailPage() {
 		                    onClick={() => handleAction('LOCK')}
 	                    disabled={item.targetType !== 'QUESTION' || submitting !== null}
 	                    title={item.targetType !== 'QUESTION' ? 'Chỉ câu hỏi cộng đồng hỗ trợ khóa thảo luận' : 'Khóa câu hỏi và đóng báo cáo'}
-	                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-highest border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">lock</span>
 		                    {submitting === 'LOCK' ? 'Đang xử lý...' : 'Khóa thảo luận'}
@@ -224,7 +228,7 @@ export default function ContentReportDetailPage() {
 		                    onClick={() => handleAction('REQUEST_REVISION')}
 		                    disabled={!canHideTarget(item.targetType) || submitting !== null}
 		                    title={!canHideTarget(item.targetType) ? `Backend không hỗ trợ yêu cầu sửa cho loại ${TARGET_TYPE_LABELS[item.targetType]}` : 'Yêu cầu tác giả sửa lại; nội dung giữ/chuyển về trạng thái PENDING'}
-		                    className="w-full py-3 mb-2.5 rounded-2xl bg-surface-container-high border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+		                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface-container-high px-3.5 text-xs font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
 		                  >
 		                    <span className="material-symbols-outlined text-lg">edit_note</span>
 		                    {submitting === 'REQUEST_REVISION' ? 'Đang xử lý...' : 'Yêu cầu sửa'}
@@ -234,7 +238,7 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('WARN')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Cảnh cáo tài khoản liên quan và đóng báo cáo'}
-	                    className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-on-surface text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">warning</span>
 	                    {submitting === 'WARN' ? 'Đang xử lý...' : 'Cảnh cáo người dùng'}
@@ -244,7 +248,7 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('RESTRICT')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Hạn chế đăng cộng đồng trong 7 ngày'}
-	                    className="w-full py-3 mb-2.5 rounded-2xl bg-primary-container text-on-primary-container border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-primary-container px-3.5 text-xs font-semibold text-on-primary-container disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">speaker_notes_off</span>
 	                    {submitting === 'RESTRICT' ? 'Đang xử lý...' : 'Hạn chế đăng 7 ngày'}
@@ -254,7 +258,7 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('SUSPEND')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
-	                    className="w-full py-3 mb-2.5 rounded-2xl bg-error-container text-error border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">person_off</span>
 	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
@@ -264,7 +268,7 @@ export default function ContentReportDetailPage() {
                     onClick={() => handleAction('DISMISS')}
                     disabled={submitting !== null}
                     title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"
-                    className="w-full py-3 mb-2.5 rounded-2xl bg-transparent border border-outline-variant text-primary text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">block</span>
                     {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua báo cáo (không đổi trạng thái)'}
@@ -273,7 +277,7 @@ export default function ContentReportDetailPage() {
                   <button
                     disabled
                     title="Backend chưa có outcome chuyển tuyến (escalate)"
-                    className="w-full py-3 mb-4 rounded-2xl bg-transparent border border-outline-variant text-on-surface-variant text-sm font-semibold flex items-center justify-center gap-2 opacity-40 cursor-not-allowed"
+                    className="mb-4 flex h-9 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface-variant opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">forward</span>
                     Chuyển tuyến
@@ -284,7 +288,7 @@ export default function ContentReportDetailPage() {
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Ghi chú xử lý (tuỳ chọn)..."
                     rows={3}
-                    className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans"
+                    className="w-full resize-none rounded-md border border-outline-variant p-3 font-sans text-sm outline-none"
                   />
                   {actionError && <p className="text-error text-xs mt-2">{actionError}</p>}
                 </div>
@@ -294,7 +298,8 @@ export default function ContentReportDetailPage() {
             </div>
           </>
         )}
-      </div>
+        </div>
+      </main>
 
       <ConfirmDialog
         open={confirmingOutcome !== null}

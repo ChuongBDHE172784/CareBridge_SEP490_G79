@@ -1,6 +1,8 @@
 package com.carebridge.backend.journey.dto;
 
 import com.carebridge.backend.journey.entity.DashboardStatus;
+import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
@@ -38,4 +40,10 @@ public class JourneyDashboardResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
+
+    private Long version;
+
+    private JourneyDateSource dateSource;
+
+    private JourneyDateConfidence dateConfidence;
 }

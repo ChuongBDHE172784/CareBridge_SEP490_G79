@@ -6,23 +6,35 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 public class SourceRetriever {
+    private static final Pattern AGE_RANGE_PATTERN = Pattern.compile("^(\\d+)\\s*-\\s*(\\d+)\\s*(months|years)$");
+
+    public List<MedicalSource> retrieve(List<String> symptoms, Integer childAgeMonths) {
+        List<MedicalSource> sources = loadSources();
+        List<MedicalSource> matched = sources.stream()
+                .filter(this::hasDeepLink)
+                .filter(source -> appliesToAge(source, childAgeMonths))
+                .filter(source -> matches(source, symptoms))
+                .toList();
+        Map<String, MedicalSource> byUrl = new LinkedHashMap<>();
+        matched.forEach(source -> byUrl.putIfAbsent(source.getUrl(), source));
+        return byUrl.values().stream().limit(4).toList();
+    }
 
     public List<MedicalSource> retrieve(List<String> symptoms) {
-        List<MedicalSource> sources = loadSources();
-        return sources.stream()
-                .filter(source -> matches(source, symptoms))
-                .limit(4)
-                .toList();
+        return retrieve(symptoms, null);
     }
 
     public List<TriageCitation> citations(List<MedicalSource> sources) {
@@ -82,14 +94,60 @@ public class SourceRetriever {
         String haystack = (source.getTopic() + " " + source.getTitle() + " " + source.getBody()).toLowerCase();
         for (String symptom : symptoms) {
             if (haystack.contains(symptom)) return true;
-            if ("fever".equals(symptom) && "fever".equals(source.getTopic())) return true;
+            if (List.of("fever", "high_fever").contains(symptom) && "fever".equals(source.getTopic())) return true;
             if ("diarrhea".equals(symptom) && source.getTopic().contains("diarrhea")) return true;
-            if ("dehydration".equals(symptom) && source.getTopic().contains("dehydration")) return true;
-            if (("cough".equals(symptom) || "breathing_difficulty".equals(symptom)) && "respiratory".equals(source.getTopic())) return true;
-            if (List.of("seizure", "lethargy", "poor_feeding", "cyanosis").contains(symptom)
+            if (List.of("mild_dehydration", "severe_dehydration").contains(symptom)
+                    && source.getTopic().contains("dehydration")) return true;
+            if (("cough".equals(symptom) || "difficulty_breathing".equals(symptom))
+                    && List.of("respiratory", "danger_signs").contains(source.getTopic())) return true;
+            if ("cyanosis".equals(symptom)
+                    && List.of("respiratory", "danger_signs").contains(source.getTopic())) return true;
+            if (List.of("vomiting", "persistent_vomiting").contains(symptom) && "vomiting".equals(source.getTopic())) return true;
+            if (List.of("seizure", "lethargy", "difficult_to_wake", "poor_feeding", "unable_to_drink").contains(symptom)
                     && "danger_signs".equals(source.getTopic())) return true;
         }
         return false;
+    }
+
+    private boolean hasDeepLink(MedicalSource source) {
+        try {
+            URI uri = URI.create(source.getUrl());
+            String path = uri.getPath() == null ? "" : uri.getPath().replace("/", "").trim();
+            boolean valid = "https".equalsIgnoreCase(uri.getScheme())
+                    && uri.getHost() != null
+                    && !uri.getHost().isBlank()
+                    && !path.isBlank()
+                    && !List.of("vi", "en").contains(path.toLowerCase());
+            if (!valid) {
+                log.warn("Skipping triage source without a content deep-link: {}", source.getTitle());
+            }
+            return valid;
+        } catch (IllegalArgumentException exception) {
+            log.warn("Skipping triage source with an invalid URL: {}", source.getTitle());
+            return false;
+        }
+    }
+
+    private boolean appliesToAge(MedicalSource source, Integer childAgeMonths) {
+        if (childAgeMonths == null || childAgeMonths < 0) {
+            return false;
+        }
+        if (source.getAgeRange() == null || source.getAgeRange().isBlank()) {
+            log.warn("Skipping triage source without an age range: {}", source.getTitle());
+            return false;
+        }
+        Matcher matcher = AGE_RANGE_PATTERN.matcher(source.getAgeRange().toLowerCase().trim());
+        if (!matcher.matches()) {
+            log.warn("Skipping triage source with an invalid age range: {}", source.getTitle());
+            return false;
+        }
+        int minimum = Integer.parseInt(matcher.group(1));
+        int maximum = Integer.parseInt(matcher.group(2));
+        if ("years".equals(matcher.group(3))) {
+            minimum *= 12;
+            maximum *= 12;
+        }
+        return childAgeMonths >= minimum && childAgeMonths <= maximum;
     }
 
     private String excerpt(String body) {

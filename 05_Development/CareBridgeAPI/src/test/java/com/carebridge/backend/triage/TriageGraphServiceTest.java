@@ -54,6 +54,37 @@ class TriageGraphServiceTest {
     }
 
     @Test
+    void breathingDifficultyAndCyanosis_shouldAttachAgeMatchedContentDeepLink() {
+        ChildTriageResult result = graph.run(base()
+                .childAgeMonths(8)
+                .symptomList(List.of("kho tho", "moi tim"))
+                .breathingStatus("kho tho")
+                .build());
+
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.getCitations())
+                .anySatisfy(citation -> {
+                    assertThat(citation.getTitle()).isEqualTo("Một số dấu hiệu cha mẹ cần biết để đưa trẻ đi khám sớm");
+                    assertThat(citation.getUrl()).isEqualTo(
+                            "https://benhviennhitrunguong.gov.vn/mot-so-dau-hieu-cha-me-can-biet-de-dua-tre-di-kham-som.html");
+                })
+                .allSatisfy(citation -> assertThat(citation.getUrl()).contains("/"));
+    }
+
+    @Test
+    void pediatricEvidence_shouldNotBeAttachedOutsideDeclaredAgeRange() {
+        ChildTriageResult result = graph.run(base()
+                .childAgeMonths(60)
+                .symptomList(List.of("kho tho", "moi tim"))
+                .breathingStatus("kho tho")
+                .build());
+
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.getCitations()).isEmpty();
+        assertThat(result.getWarning()).isNotBlank();
+    }
+
+    @Test
     void seizure_shouldReturnRed() {
         ChildTriageResult result = graph.run(base()
                 .symptomList(List.of("co giật"))

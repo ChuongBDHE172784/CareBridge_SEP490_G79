@@ -1,11 +1,12 @@
 ---
-id: MOH_DIARRHEA_DEHYDRATION_001
-title: Bo Y te Viet Nam - Diarrhea and Dehydration Warning Signs
-organization: Bo Y te Viet Nam
-url: https://mch.moh.gov.vn
-domain: mch.moh.gov.vn
+id: NCH_DIARRHEA_DEHYDRATION_001
+title: Khuyến cáo về tiêu chảy cấp ở trẻ em
+organization: Bệnh viện Nhi Trung ương
+url: https://benhviennhitrunguong.gov.vn/bao-cao-hoi-nghi-dong-thuan-khuyen-cao-ve-chan-doan-va-dieu-tri-tieu-chay-cap-o-tre-em.html
+domain: benhviennhitrunguong.gov.vn
 topic: diarrhea_dehydration
-ageRange: child
+ageRange: 0-59 months
+applicableStages: [INFANT, TODDLER]
 riskLevels: [YELLOW, RED]
 symptoms: [diarrhea, dehydration, severe_dehydration, poor_feeding, vomiting]
 lastReviewed: 2026-07-10
@@ -16,7 +17,6 @@ approvedAt: 2026-07-10
 approvedBy: CareBridge clinical review
 adminReviewed: true
 ---
-Internal evidence seed for diarrhea and dehydration risk classification.
-Children with diarrhea need monitoring for dehydration signs. Diarrhea together
-with signs of dehydration, inability to drink, lethargy, or worsening condition
-supports urgent medical assessment rather than home-only monitoring.
+Khuyến cáo của Bệnh viện Nhi Trung ương phân loại mất nước nặng ở trẻ dựa trên
+các dấu hiệu như li bì hoặc khó đánh thức, mắt trũng và nếp véo da mất rất chậm;
+người chăm sóc cần phát hiện sớm để đưa trẻ đến cơ sở y tế kịp thời.

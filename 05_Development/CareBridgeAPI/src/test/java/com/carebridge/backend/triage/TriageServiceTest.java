@@ -12,8 +12,11 @@ import com.carebridge.backend.triage.entity.IntakeSession;
 import com.carebridge.backend.triage.engine.ChildTriageResult;
 import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.event.IntakeSessionCompleted;
+import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
+import com.carebridge.backend.triage.service.TriageFallbackMetrics;
+import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
 import com.carebridge.backend.triage.service.impl.TriageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -23,10 +26,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import java.util.UUID;
 import java.util.Map;
 import java.util.Optional;
 import java.time.Instant;
+import java.net.http.HttpTimeoutException;
 import org.mockito.ArgumentCaptor;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,6 +91,38 @@ class TriageServiceTest {
         assertThat(result.getStatus()).isEqualTo("COMPLETED");
         assertThat(result.getRiskLevel()).isEqualTo("GREEN");
         verify(triageGraphService).run(any());
+    }
+
+    @Test
+    void runIntake_normalPythonResponse_shouldNotFallbackWithinConfiguredSpringBudget() {
+        TriageFallbackMetrics metrics = new TriageFallbackMetrics();
+        when(childTriageAiClient.triageChild(any())).thenReturn(greenJson());
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        IntakeSessionResponse result = new TriageService(
+                intakeSessionRepository, childTriageAiClient, triageGraphService,
+                objectMapper, eventPublisher, metrics)
+                .runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(metrics.totalCount()).isZero();
+        verify(triageGraphService, never()).run(any());
+    }
+
+    @Test
+    void runIntake_pythonTimeout_shouldRecordTimeoutFallbackSeparately() {
+        TriageFallbackMetrics metrics = new TriageFallbackMetrics();
+        when(childTriageAiClient.triageChild(any()))
+                .thenThrow(new IllegalStateException("AI triage service unavailable", new HttpTimeoutException("timed out")));
+        when(triageGraphService.run(any())).thenReturn(greenResult());
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                objectMapper, eventPublisher, metrics)
+                .runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+
+        assertThat(metrics.totalCount()).isEqualTo(1);
+        assertThat(metrics.count(TriageFallbackMetrics.Reason.TIMEOUT)).isEqualTo(1);
     }
 
     @Test
@@ -153,17 +190,94 @@ class TriageServiceTest {
     }
 
     @Test
-    void continueConversation_ownerMismatch_shouldRejectBeforePython() {
+    void ownershipMismatch_shouldNotExposeSessionThroughGetOrContinue() {
         UUID sessionId = UUID.randomUUID();
         when(intakeSessionRepository.findForUpdateByIdAndUserId(sessionId, USER_ID)).thenReturn(Optional.empty());
+        when(intakeSessionRepository.findByIdAndUserId(sessionId, USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service().continueConversation(
+        TriageException continueException = catchThrowableOfType(() -> service().continueConversation(
                 ContinueIntakeConversationRequest.builder()
                         .intakeSessionId(sessionId.toString())
                         .newAnswers(Map.of("childAgeMonths", 8))
-                        .build(), USER_ID))
-                .isInstanceOf(Exception.class);
+                        .build(), USER_ID), TriageException.class);
+        TriageException getException = catchThrowableOfType(
+                () -> service().getResult(sessionId, USER_ID), TriageException.class);
+
+        assertThat(continueException).isNotNull();
+        assertThat(continueException.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(continueException.getCode()).isEqualTo("TRIAGE-003");
+        assertThat(getException).isNotNull();
+        assertThat(getException.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(getException.getCode()).isEqualTo("TRIAGE-003");
         verify(childTriageAiClient, never()).continueIntake(any());
+        verify(childTriageAiClient, never()).startIntake(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void startConversation_missingStageAndProfiles_shouldDefaultInfantAndRecordLegacyMetric() {
+        TriageStageLegacyDefaultMetrics stageMetrics = new TriageStageLegacyDefaultMetrics();
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","assistantMessage":"Need age","mergedIntake":{},"questions":[{"questionKey":"childAgeMonths","text":"Age?","answerType":"NUMBER","options":[]}],"round":1}
+                """);
+
+        IntakeConversationResponse response = new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                objectMapper, eventPublisher, new TriageFallbackMetrics(), stageMetrics)
+                .startConversation(StartIntakeConversationRequest.builder().initialText("be sot").build(), USER_ID);
+
+        assertThat(response.getStage()).isEqualTo(TriageStage.INFANT.name());
+        assertThat(stageMetrics.legacyDefaultTotal()).isEqualTo(1);
+    }
+
+    @Test
+    void startConversation_maternalProfileWithoutStage_shouldInferPregnancyWithoutLegacyMetric() {
+        TriageStageLegacyDefaultMetrics stageMetrics = new TriageStageLegacyDefaultMetrics();
+        UUID motherProfileId = UUID.randomUUID();
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","assistantMessage":"Need age","mergedIntake":{},"questions":[{"questionKey":"childAgeMonths","text":"Age?","answerType":"NUMBER","options":[]}],"round":1}
+                """);
+
+        IntakeConversationResponse response = new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                objectMapper, eventPublisher, new TriageFallbackMetrics(), stageMetrics)
+                .startConversation(StartIntakeConversationRequest.builder()
+                        .initialText("toi can tu van")
+                        .motherProfileId(motherProfileId)
+                        .build(), USER_ID);
+
+        assertThat(response.getStage()).isEqualTo(TriageStage.PREGNANCY.name());
+        assertThat(stageMetrics.legacyDefaultTotal()).isZero();
+    }
+
+    @Test
+    void startConversation_duplicateClientRequestId_shouldReplayOriginalSessionWithoutSideEffects() {
+        String clientRequestId = "idempotency-key-1234";
+        IntakeSession existing = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","intakeSessionId":"00000000-0000-0000-0000-000000000001",
+                 "mergedIntake":{},"questions":[{"questionKey":"childAgeMonths","text":"Age?","answerType":"NUMBER","options":[]}],"round":1}
+                """);
+        existing.setClientRequestId(clientRequestId);
+        when(intakeSessionRepository.findByUserIdAndClientRequestId(USER_ID, clientRequestId))
+                .thenReturn(Optional.of(existing));
+
+        IntakeConversationResponse response = service().startConversation(StartIntakeConversationRequest.builder()
+                .initialText("be sot")
+                .clientRequestId(clientRequestId)
+                .build(), USER_ID);
+
+        assertThat(response.getIntakeSessionId()).isEqualTo(existing.getId().toString());
+        assertThat(response.getStatus()).isEqualTo("ASK_MORE");
+        verify(intakeSessionRepository, never()).save(any());
+        verifyNoInteractions(childTriageAiClient, eventPublisher);
     }
 
     @Test
@@ -322,11 +436,47 @@ class TriageServiceTest {
         when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service().continueConversation(ContinueIntakeConversationRequest.builder()
-                .intakeSessionId(session.getId().toString()).newAnswers(Map.of("duration", "2 ngay")).build(), USER_ID));
+                .intakeSessionId(session.getId().toString()).newAnswers(Map.of("duration", "2 ngay")).build(), USER_ID))
+                .isInstanceOf(TriageException.class)
+                .extracting(exception -> ((TriageException) exception).getHttpStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
 
         verify(childTriageAiClient, never()).continueIntake(any());
         verify(intakeSessionRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void failedTerminalContinue_shouldRejectWithoutReprocessing() {
+        IntakeSession session = conversationSession(IntakeStatus.FAILED, "{\"status\":\"FAILED\"}");
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service().continueConversation(ContinueIntakeConversationRequest.builder()
+                .intakeSessionId(session.getId().toString()).newAnswers(Map.of("duration", "2 ngay")).build(), USER_ID))
+                .isInstanceOf(TriageException.class)
+                .extracting(exception -> ((TriageException) exception).getHttpStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void duplicateCompletedContinue_shouldNeverPublishASecondCompletionEvent() {
+        IntakeSession session = conversationSession(IntakeStatus.COMPLETED, "{\"status\":\"TRIAGE_COMPLETE\"}");
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+        ContinueIntakeConversationRequest duplicate = ContinueIntakeConversationRequest.builder()
+                .intakeSessionId(session.getId().toString())
+                .newAnswers(Map.of("duration", "2 ngay"))
+                .build();
+
+        assertThatThrownBy(() -> service().continueConversation(duplicate, USER_ID)).isInstanceOf(TriageException.class);
+        assertThatThrownBy(() -> service().continueConversation(duplicate, USER_ID)).isInstanceOf(TriageException.class);
+
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(IntakeSessionCompleted.class));
     }
 
     @Test
@@ -357,6 +507,21 @@ class TriageServiceTest {
         assertThat(response.getRiskLevel()).isEqualTo("GREEN");
         assertThat(response.getResponseSchemaVersion()).isEqualTo("1.0");
         assertThat(response.getGraphVersion()).isNull();
+    }
+
+    @Test
+    void getResult_legacySessionWithoutStageOrMotherProfile_shouldRemainReadable() {
+        IntakeSession session = conversationSession(IntakeStatus.COMPLETED,
+                "{\"riskLevel\":\"GREEN\",\"summary\":\"legacy\",\"citations\":[]}");
+        session.setRiskLevel(RiskLevel.GREEN);
+        session.setStage(null);
+        session.setMotherProfileId(null);
+        when(intakeSessionRepository.findByIdAndUserId(session.getId(), USER_ID)).thenReturn(Optional.of(session));
+
+        TriageResultResponse response = service().getResult(session.getId(), USER_ID);
+
+        assertThat(response.getStage()).isEqualTo(TriageStage.INFANT.name());
+        assertThat(response.getRiskLevel()).isEqualTo("GREEN");
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.carebridge.backend.triage.service.impl;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.TriageStage;
+import com.carebridge.backend.triage.TriageRecommendationCode;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationRequest;
@@ -21,6 +22,8 @@ import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.EvidenceSourceService;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.service.TriageFallbackMetrics;
+import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.net.URI;
+import java.net.http.HttpTimeoutException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -55,6 +60,8 @@ public class TriageService implements ITriageService {
     private final EvidenceSourceService evidenceSourceService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final TriageFallbackMetrics triageFallbackMetrics;
+    private final TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics;
 
     @Autowired
     public TriageService(
@@ -63,13 +70,17 @@ public class TriageService implements ITriageService {
             TriageGraphService triageGraphService,
             EvidenceSourceService evidenceSourceService,
             ObjectMapper objectMapper,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            TriageFallbackMetrics triageFallbackMetrics,
+            TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics) {
         this.intakeSessionRepository = intakeSessionRepository;
         this.childTriageAiClient = childTriageAiClient;
         this.triageGraphService = triageGraphService;
         this.evidenceSourceService = evidenceSourceService;
         this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
+        this.triageFallbackMetrics = triageFallbackMetrics;
+        this.triageStageLegacyDefaultMetrics = triageStageLegacyDefaultMetrics;
     }
 
     public TriageService(
@@ -79,7 +90,33 @@ public class TriageService implements ITriageService {
             ObjectMapper objectMapper,
             ApplicationEventPublisher eventPublisher) {
         this(intakeSessionRepository, childTriageAiClient, triageGraphService,
-                legacyEvidenceSourceService(), objectMapper, eventPublisher);
+                legacyEvidenceSourceService(), objectMapper, eventPublisher, new TriageFallbackMetrics(),
+                new TriageStageLegacyDefaultMetrics());
+    }
+
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
+            TriageFallbackMetrics triageFallbackMetrics) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                legacyEvidenceSourceService(), objectMapper, eventPublisher, triageFallbackMetrics,
+                new TriageStageLegacyDefaultMetrics());
+    }
+
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
+            TriageFallbackMetrics triageFallbackMetrics,
+            TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                legacyEvidenceSourceService(), objectMapper, eventPublisher, triageFallbackMetrics,
+                triageStageLegacyDefaultMetrics);
     }
 
     private static EvidenceSourceService legacyEvidenceSourceService() {
@@ -124,7 +161,8 @@ public class TriageService implements ITriageService {
     @Override
     public synchronized IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
         validateBoundedPayload(request.getCurrentIntake(), "currentIntake");
-        TriageStage stage = resolveStage(request.getStage(), request.getCurrentIntake(), request.getBabyProfileId(), request.getMotherProfileId());
+        TriageStage stage = resolveStartStage(request.getStage(), request.getCurrentIntake(),
+                request.getBabyProfileId(), request.getMotherProfileId(), userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         String clientRequestId = normalizeClientRequestId(request.getClientRequestId());
         IntakeSession existing = clientRequestId == null ? null : intakeSessionRepository
@@ -158,6 +196,7 @@ public class TriageService implements ITriageService {
         try {
             envelope = readJsonObject(childTriageAiClient.startIntake(canonicalRequest));
         } catch (Exception exception) {
+            triageFallbackMetrics.record(fallbackReason(exception), "conversation_start");
             log.warn("AI triage conversation start unavailable for session [{}], using Java fallback: {}",
                     session.getId(), exception.getClass().getSimpleName());
             envelope = fallbackConversation(canonicalRequest, true);
@@ -178,6 +217,7 @@ public class TriageService implements ITriageService {
         if (!"CONVERSATION_INTAKE".equals(session.getSymptoms())) {
             throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-009", "Session is not a conversation intake");
         }
+        TriageStage stage = requireCanonicalSessionStage(session);
 
         Map<String, Object> previous = readJsonObject(session.getRawAiResponse());
         Map<String, Object> normalizedAnswers = coerceConversationAnswers(request.getNewAnswers());
@@ -185,11 +225,11 @@ public class TriageService implements ITriageService {
         canonical.put("intakeSessionId", session.getId().toString());
         canonical.put("currentIntake", withCanonicalStage(
                 previous.getOrDefault("mergedIntake", Map.of()),
-                session.getStage(), session.getBabyProfileId(), session.getMotherProfileId()));
+                stage, session.getBabyProfileId(), session.getMotherProfileId()));
         canonical.put("messages", List.of());
         canonical.put("newAnswers", normalizedAnswers);
         canonical.put("round", number(previous.get("round"), 1));
-        canonical.put("stage", session.getStage().name());
+        canonical.put("stage", stage.name());
 
         if (session.getStatus() == IntakeStatus.COMPLETED) {
             if (answersAlreadyApplied(canonical)) {
@@ -216,13 +256,14 @@ public class TriageService implements ITriageService {
         try {
             envelope = readJsonObject(childTriageAiClient.continueIntake(canonical));
         } catch (Exception exception) {
+            triageFallbackMetrics.record(fallbackReason(exception), "conversation_continue");
             log.warn("AI triage conversation continue unavailable for session [{}], using Java fallback: {}",
                     session.getId(), exception.getClass().getSimpleName());
             envelope = fallbackConversation(canonical, false);
         }
         envelope = ensureSafeEnvelope(envelope, canonical, false);
         envelope.put("intakeSessionId", session.getId().toString());
-        envelope.put("stage", session.getStage().name());
+        envelope.put("stage", stage.name());
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope);
     }
@@ -295,6 +336,7 @@ public class TriageService implements ITriageService {
             }
             return response;
         } catch (Exception e) {
+            triageFallbackMetrics.record(fallbackReason(e), "one_shot");
             log.warn("AI triage service unavailable for session [{}], falling back to Java rule engine: {}",
                     sessionId, e.getClass().getSimpleName());
             ChildTriageResult graphResult = triageGraphService.run(request);
@@ -303,6 +345,25 @@ public class TriageService implements ITriageService {
             addJavaFallbackMetadata(result);
             return objectMapper.writeValueAsString(result);
         }
+    }
+
+    private TriageFallbackMetrics.Reason fallbackReason(Exception exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof HttpTimeoutException || cause instanceof java.util.concurrent.TimeoutException) {
+                return TriageFallbackMetrics.Reason.TIMEOUT;
+            }
+            if (cause instanceof IOException) {
+                return TriageFallbackMetrics.Reason.NETWORK_ERROR;
+            }
+        }
+        String message = String.valueOf(exception.getMessage()).toLowerCase(java.util.Locale.ROOT);
+        if (message.contains("http 5")) {
+            return TriageFallbackMetrics.Reason.PYTHON_5XX;
+        }
+        if (message.contains("invalid risk contract") || exception instanceof JsonProcessingException) {
+            return TriageFallbackMetrics.Reason.MALFORMED_RESPONSE;
+        }
+        return TriageFallbackMetrics.Reason.OTHER;
     }
 
     @Override
@@ -321,7 +382,7 @@ public class TriageService implements ITriageService {
 
         return TriageResultResponse.builder()
                 .sessionId(session.getId())
-                .stage(session.getStage().name())
+                .stage(sessionStage(session).name())
                 .triageStatus(readText(session, "status", session.getStatus().name()))
                 .riskLevel(readText(session, "riskLevel"))
                 .riskColor(readText(session, "riskColor"))
@@ -365,13 +426,21 @@ public class TriageService implements ITriageService {
     private IntakeSessionResponse toResponse(IntakeSession session) {
         return IntakeSessionResponse.builder()
                 .sessionId(session.getId())
-                .stage(session.getStage().name())
+                .stage(sessionStage(session).name())
                 .status(session.getStatus().name())
                 .riskLevel(session.getRiskLevel() != null ? session.getRiskLevel().name() : null)
                 .disclaimer(session.getDisclaimer())
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
                 .build();
+    }
+
+    /**
+     * Sessions created before the multi-stage migration have no persisted stage.
+     * They are pediatric sessions, so preserve the legacy contract as INFANT.
+     */
+    private TriageStage sessionStage(IntakeSession session) {
+        return session.getStage() == null ? TriageStage.INFANT : session.getStage();
     }
 
     private String snapshotRequest(RunIntakeRequest request) {
@@ -517,12 +586,7 @@ public class TriageService implements ITriageService {
         Map<String, Object> result = objectMapper.convertValue(graphResult, new TypeReference<Map<String, Object>>() {});
         addJavaFallbackMetadata(result);
         String fallbackRisk = result.get("riskLevel") == null ? null : String.valueOf(result.get("riskLevel"));
-        result.putIfAbsent("recommendationCode", switch (String.valueOf(fallbackRisk)) {
-            case "RED" -> "SEEK_EMERGENCY_CARE";
-            case "YELLOW" -> "CONTACT_HEALTHCARE_PROVIDER";
-            case "GREEN" -> "MONITOR_AT_HOME";
-            default -> "PROVIDE_MORE_INFORMATION";
-        });
+        result.putIfAbsent("recommendationCode", TriageRecommendationCode.forRisk(fallbackRisk));
         Map<String, Object> envelope = new LinkedHashMap<>();
         boolean needMore = "NEED_MORE_INFO".equals(result.get("status"));
         boolean questionLimitReached = number(request.get("round"), 1) >= 3;
@@ -610,12 +674,7 @@ public class TriageService implements ITriageService {
         result.putIfAbsent("normalizedSymptoms", List.of());
         result.putIfAbsent("evidenceIds", List.of());
         result.putIfAbsent("claims", List.of());
-        result.putIfAbsent("recommendationCode", switch (String.valueOf(fallbackRisk)) {
-            case "RED" -> "SEEK_EMERGENCY_CARE";
-            case "YELLOW" -> "CONTACT_HEALTHCARE_PROVIDER";
-            case "GREEN" -> "MONITOR_AT_HOME";
-            default -> "PROVIDE_MORE_INFORMATION";
-        });
+        result.putIfAbsent("recommendationCode", TriageRecommendationCode.forRisk(fallbackRisk));
     }
 
     @SuppressWarnings("unchecked")
@@ -665,6 +724,26 @@ public class TriageService implements ITriageService {
             }
         }
         return motherProfileId != null && babyProfileId == null ? TriageStage.PREGNANCY : TriageStage.INFANT;
+    }
+
+    private TriageStage resolveStartStage(
+            TriageStage requested, Map<String, Object> currentIntake, UUID babyProfileId, UUID motherProfileId, UUID userId) {
+        TriageStage stage = resolveStage(requested, currentIntake, babyProfileId, motherProfileId);
+        boolean hasIntakeStage = currentIntake != null && currentIntake.get("stage") != null;
+        if (requested == null && !hasIntakeStage && babyProfileId == null && motherProfileId == null) {
+            // LEGACY: default INFANT when stage is absent. Observe triage_stage_legacy_default_total;
+            // reject this in the next API version after the Flutter stage selector is fully deployed and the metric is zero.
+            triageStageLegacyDefaultMetrics.record(userId, false, false);
+        }
+        return stage;
+    }
+
+    private TriageStage requireCanonicalSessionStage(IntakeSession session) {
+        if (session.getStage() == null) {
+            throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-014",
+                    "Active intake session is missing its canonical triage stage");
+        }
+        return session.getStage();
     }
 
     private void validateStageProfile(TriageStage stage, UUID babyProfileId, UUID motherProfileId, boolean requireProfile) {

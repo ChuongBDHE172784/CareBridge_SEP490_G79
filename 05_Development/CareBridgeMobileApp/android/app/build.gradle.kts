@@ -6,6 +6,21 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (
+            requested.group == "androidx.test.espresso" &&
+                requested.name in setOf("espresso-core", "espresso-idling-resource") &&
+                requested.version?.startsWith("3.2") == true
+        ) {
+            // Flutter 3.38's integration_test requests Espresso 3.2.x, whose
+            // artifacts use the same namespace and are rejected by AGP 9.
+            useVersion("3.7.0")
+            because("Espresso 3.7.0 provides AGP 9-compatible Android namespaces")
+        }
+    }
+}
+
 android {
     namespace = "com.carebridge.app"
     compileSdk = flutter.compileSdkVersion

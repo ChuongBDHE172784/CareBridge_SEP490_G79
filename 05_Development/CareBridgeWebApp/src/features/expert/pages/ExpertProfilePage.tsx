@@ -130,7 +130,7 @@ export default function ExpertProfilePage() {
               />
             ) : (
               <div className="expert-avatar-placeholder">
-                {getInitials(user?.name)}
+                {getInitials(user?.name ?? null)}
               </div>
             )}
             <button

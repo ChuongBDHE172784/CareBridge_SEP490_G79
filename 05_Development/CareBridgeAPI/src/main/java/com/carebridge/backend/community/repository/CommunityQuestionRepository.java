@@ -80,9 +80,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
 
     // Atomic moderation transition: prevents concurrent moderators from recording duplicate LOCK actions.
     @Modifying
-    @Query("UPDATE CommunityQuestion q SET q.status = com.carebridge.backend.community.entity.QuestionStatus.LOCKED, "
-            + "q.updatedAt = CURRENT_TIMESTAMP "
-            + "WHERE q.id = :questionId AND q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED")
+    @Query(value = "UPDATE public.community_questions "
+            + "SET status = 'LOCKED', updated_at = CURRENT_TIMESTAMP "
+            + "WHERE id = :questionId AND status = 'APPROVED'", nativeQuery = true)
     int lockIfApproved(@Param("questionId") UUID questionId);
 
     // UC-111: dashboard aggregation — question count grouped by status

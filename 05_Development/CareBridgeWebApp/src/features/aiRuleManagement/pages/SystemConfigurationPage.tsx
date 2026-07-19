@@ -6,12 +6,12 @@ import {
   type SystemConfiguration,
 } from '../services/systemConfigurationApi';
 
-const inputClass = 'mt-2 h-14 w-full rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+const inputClass = 'portal-field mt-2 w-full';
 
 function Toggle({ checked, disabled, label, description, onChange }: { checked: boolean; disabled?: boolean; label: string; description: string; onChange: (value: boolean) => void }) {
-  return <div className="flex items-center justify-between gap-5 rounded-3xl bg-surface-container-low p-5">
-    <div><h3 className="font-semibold text-on-surface">{label}</h3><p className="mt-1 text-sm text-on-surface-variant">{description}</p>{label.includes('bảo trì') && <p className="mt-2 text-xs font-semibold text-error">⚠ Rủi ro cao</p>}</div>
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`relative h-8 w-14 rounded-full transition ${checked ? 'bg-primary' : 'bg-primary-container/50'} disabled:cursor-not-allowed disabled:opacity-50`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-surface-container-lowest shadow transition ${checked ? 'left-7' : 'left-1'}`} /></button>
+  return <div className="flex items-center justify-between gap-4 rounded-md border border-outline-variant bg-surface-container-lowest p-4">
+    <div><h3 className="m-0 text-sm font-semibold text-on-surface">{label}</h3><p className="mt-1 text-sm text-on-surface-variant">{description}</p>{label.includes('bảo trì') && <p className="mt-2 text-xs font-semibold text-error">Rủi ro cao</p>}</div>
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`relative h-7 w-12 rounded-full transition ${checked ? 'bg-primary' : 'bg-outline-variant'} disabled:cursor-not-allowed disabled:opacity-50`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-surface shadow transition ${checked ? 'left-6' : 'left-1'}`} /></button>
   </div>;
 }
 
@@ -22,12 +22,85 @@ export default function SystemConfigurationPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchSystemConfiguration().then(setConfiguration).catch(() => setError('Không thể tải cấu hình hệ thống.')); }, []);
-  if (!configuration) return <div className="min-h-screen bg-background"><ModPortalSidebar /><main className="ml-64 grid min-h-screen place-items-center">{error ? <p className="rounded-xl bg-error-container p-4 text-error">{error}</p> : <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />}</main></div>;
+  if (!configuration) return <div className="portal-page"><ModPortalSidebar /><main className="portal-content grid place-items-center">{error ? <p className="portal-error">{error}</p> : <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />}</main></div>;
 
   const update = <K extends keyof SystemConfiguration>(key: K, value: SystemConfiguration[K]) => setConfiguration((current) => current ? { ...current, [key]: value } : current);
   const submit = async () => { setSaving(true); setSaved(false); setError(''); try { const savedConfiguration = await saveSystemConfiguration(configuration); setConfiguration(savedConfiguration); setSaved(true); } catch { setError('Không thể lưu cấu hình hệ thống. Vui lòng thử lại.'); } finally { setSaving(false); } };
   const reset = async () => { try { setConfiguration(await fetchSystemConfiguration()); setSaved(false); setError(''); } catch { setError('Không thể tải lại cấu hình hệ thống.'); } };
   const updateMaintenanceMode = (value: boolean) => { if (value && !window.confirm('Bật chế độ bảo trì sẽ chặn truy cập người dùng cuối. Bạn có chắc chắn muốn tiếp tục?')) return; update('maintenanceModeEnabled', value); };
 
-  return <div className="min-h-screen bg-background font-sans text-on-surface"><ModPortalSidebar /><main className="ml-0 min-h-screen pb-28 md:ml-64"><header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-outline-variant/50 bg-surface/95 px-6 backdrop-blur"><div className="relative hidden w-full max-w-xl md:block"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span><input className="h-10 w-full rounded-full border border-outline-variant bg-surface-container-low pl-10 pr-4 text-sm outline-none focus:border-primary" placeholder="Tìm kiếm cài đặt..." /></div><span className="material-symbols-outlined text-on-surface-variant">settings</span></header><div className="mx-auto max-w-6xl p-6 md:p-10"><h1 className="text-3xl font-bold text-on-surface">Cấu hình hệ thống</h1><p className="mt-2 text-on-surface-variant">Quản lý giới hạn hệ thống, tính năng và thông báo mặc định. <span className="font-semibold text-error">Cảnh báo: Thay đổi có thể ảnh hưởng đến toàn bộ hệ thống.</span></p>{error && <p className="mt-3 rounded-xl bg-error-container px-4 py-3 text-sm text-error">{error}</p>}<div className="mt-6 grid gap-6 lg:grid-cols-3"><div className="space-y-6 lg:col-span-2"><section className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm"><h2 className="flex items-center gap-3 text-xl font-semibold"><span className="material-symbols-outlined rounded-full bg-primary-container/20 p-2 text-primary">speed</span>Giới hạn hệ thống</h2><div className="mt-6 grid gap-5 md:grid-cols-2"><label className="text-sm font-medium text-on-surface-variant">Tải trọng tối đa API (req/s)<input type="number" min="1" value={configuration.apiRateLimit} onChange={(event) => update('apiRateLimit', Number(event.target.value))} className={inputClass} /></label><label className="text-sm font-medium text-on-surface-variant">Thời gian chờ kết nối (ms)<input type="number" min="1" value={configuration.connectionTimeoutMs} onChange={(event) => update('connectionTimeoutMs', Number(event.target.value))} className={inputClass} /></label><label className="text-sm font-medium text-on-surface-variant md:col-span-2">Giới hạn kích thước tệp tải lên (MB)<input type="number" min="1" value={configuration.maxUploadSizeMb} onChange={(event) => update('maxUploadSizeMb', Number(event.target.value))} className={inputClass} /></label></div></section><section className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm"><h2 className="flex items-center gap-3 text-xl font-semibold"><span className="material-symbols-outlined rounded-full bg-primary-container/20 p-2 text-primary">toggle_on</span>Cờ tính năng</h2><div className="mt-6 space-y-4"><Toggle label="Kiểm duyệt tự động AI" description="Bật/tắt hệ thống phân loại AI bước 1." checked={configuration.aiModerationEnabled} onChange={(value) => update('aiModerationEnabled', value)} /><Toggle label="Chế độ bảo trì hệ thống" description="Chặn truy cập người dùng cuối, hiển thị trang bảo trì." checked={configuration.maintenanceModeEnabled} onChange={updateMaintenanceMode} /></div></section></div><aside className="space-y-6"><section className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm"><h2 className="flex items-center gap-3 text-xl font-semibold"><span className="material-symbols-outlined rounded-full bg-primary-container/20 p-2 text-primary">notifications</span>Thông báo mặc định</h2><label className="mt-6 block text-sm font-medium text-on-surface-variant">Email quản trị viên chính<input type="email" value={configuration.administratorEmail} onChange={(event) => update('administratorEmail', event.target.value)} className={inputClass} /></label><div className="mt-6 space-y-4 text-sm"><label className="flex items-center gap-3"><input checked={configuration.emailAlerts} onChange={(event) => update('emailAlerts', event.target.checked)} type="checkbox" className="h-5 w-5 accent-primary" />Email</label><label className="flex items-center gap-3"><input checked={configuration.smsAlerts} onChange={(event) => update('smsAlerts', event.target.checked)} type="checkbox" className="h-5 w-5 accent-primary" />SMS (Việt Nam)</label><label className="flex items-center gap-3"><input checked={configuration.webhookAlerts} onChange={(event) => update('webhookAlerts', event.target.checked)} type="checkbox" className="h-5 w-5 accent-primary" />Slack / Teams Webhook</label></div></section><section className="rounded-2xl bg-primary p-6 text-on-primary shadow-sm"><h2 className="text-xl font-semibold">Trạng thái cấu hình</h2><p className="mt-3 text-sm text-primary-fixed">Cấu hình được lưu và đồng bộ qua API hệ thống.</p><p className="mt-5 flex items-center gap-2 text-sm"><span className="material-symbols-outlined text-base">verified</span>Chỉ System Admin được phép thay đổi</p></section></aside></div></div><footer className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-end gap-4 border-t border-outline-variant/50 bg-surface/95 px-6 py-4 md:left-64"><span className="mr-auto text-sm text-primary">{saved ? 'Đã lưu cấu hình hệ thống.' : ''}</span><button onClick={reset} className="rounded-full bg-primary-container/30 px-6 py-3 font-semibold text-on-primary-container">Hủy</button><button onClick={submit} disabled={saving} className="rounded-full bg-primary px-6 py-3 font-semibold text-on-primary disabled:opacity-50"><span className="material-symbols-outlined mr-2 align-middle text-base">save</span>{saving ? 'Đang lưu...' : 'Lưu toàn bộ cấu hình'}</button></footer></main></div>;
+  return (
+    <div className="portal-page">
+      <ModPortalSidebar />
+      <main className="portal-content pb-28">
+        <div className="portal-contained">
+          <div className="portal-header">
+            <div>
+              <p className="portal-eyebrow">System Admin</p>
+              <h1 className="portal-title">Cấu hình hệ thống</h1>
+              <p className="portal-subtitle">
+                Quản lý giới hạn hệ thống, tính năng và thông báo mặc định.
+                <span className="font-semibold text-error"> Thay đổi có thể ảnh hưởng đến toàn bộ hệ thống.</span>
+              </p>
+            </div>
+          </div>
+          {error && <p className="portal-error mb-4">{error}</p>}
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            <div className="space-y-5 lg:col-span-2">
+              <section className="portal-card-padded">
+                <h2 className="m-0 flex items-center gap-2 text-base font-semibold text-on-surface">
+                  <span className="material-symbols-outlined portal-icon">speed</span>
+                  Giới hạn hệ thống
+                </h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <label className="portal-label">Tải trọng tối đa API (req/s)<input type="number" min="1" value={configuration.apiRateLimit} onChange={(event) => update('apiRateLimit', Number(event.target.value))} className={inputClass} /></label>
+                  <label className="portal-label">Thời gian chờ kết nối (ms)<input type="number" min="1" value={configuration.connectionTimeoutMs} onChange={(event) => update('connectionTimeoutMs', Number(event.target.value))} className={inputClass} /></label>
+                  <label className="portal-label md:col-span-2">Giới hạn kích thước tệp tải lên (MB)<input type="number" min="1" value={configuration.maxUploadSizeMb} onChange={(event) => update('maxUploadSizeMb', Number(event.target.value))} className={inputClass} /></label>
+                </div>
+              </section>
+
+              <section className="portal-card-padded">
+                <h2 className="m-0 flex items-center gap-2 text-base font-semibold text-on-surface">
+                  <span className="material-symbols-outlined portal-icon">toggle_on</span>
+                  Cờ tính năng
+                </h2>
+                <div className="mt-5 space-y-3">
+                  <Toggle label="Kiểm duyệt tự động AI" description="Bật/tắt hệ thống phân loại AI bước 1." checked={configuration.aiModerationEnabled} onChange={(value) => update('aiModerationEnabled', value)} />
+                  <Toggle label="Chế độ bảo trì hệ thống" description="Chặn truy cập người dùng cuối, hiển thị trang bảo trì." checked={configuration.maintenanceModeEnabled} onChange={updateMaintenanceMode} />
+                </div>
+              </section>
+            </div>
+
+            <aside className="space-y-5">
+              <section className="portal-card-padded">
+                <h2 className="m-0 flex items-center gap-2 text-base font-semibold text-on-surface">
+                  <span className="material-symbols-outlined portal-icon">notifications</span>
+                  Thông báo mặc định
+                </h2>
+                <label className="portal-label mt-5 block">Email quản trị viên chính<input type="email" value={configuration.administratorEmail} onChange={(event) => update('administratorEmail', event.target.value)} className={inputClass} /></label>
+                <div className="mt-5 space-y-3 text-sm">
+                  <label className="flex items-center gap-3"><input checked={configuration.emailAlerts} onChange={(event) => update('emailAlerts', event.target.checked)} type="checkbox" className="h-4 w-4 accent-primary" />Email</label>
+                  <label className="flex items-center gap-3"><input checked={configuration.smsAlerts} onChange={(event) => update('smsAlerts', event.target.checked)} type="checkbox" className="h-4 w-4 accent-primary" />SMS (Việt Nam)</label>
+                  <label className="flex items-center gap-3"><input checked={configuration.webhookAlerts} onChange={(event) => update('webhookAlerts', event.target.checked)} type="checkbox" className="h-4 w-4 accent-primary" />Slack / Teams Webhook</label>
+                </div>
+              </section>
+
+              <section className="portal-card-padded border-primary/25 bg-primary/95 text-on-primary">
+                <h2 className="m-0 text-base font-semibold">Trạng thái cấu hình</h2>
+                <p className="mt-3 text-sm text-primary-fixed">Cấu hình được lưu và đồng bộ qua API hệ thống.</p>
+                <p className="mt-5 flex items-center gap-2 text-sm"><span className="material-symbols-outlined text-base">verified</span>Chỉ System Admin được phép thay đổi</p>
+              </section>
+            </aside>
+          </div>
+        </div>
+
+        <footer className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-end gap-3 border-t border-outline-variant bg-surface/95 px-5 py-3 md:left-64 md:px-6">
+          <span className="mr-auto text-sm text-primary">{saved ? 'Đã lưu cấu hình hệ thống.' : ''}</span>
+          <button onClick={reset} className="portal-secondary-button">Hủy</button>
+          <button onClick={submit} disabled={saving} className="portal-primary-button disabled:opacity-50"><span className="material-symbols-outlined mr-2 align-middle text-base">save</span>{saving ? 'Đang lưu...' : 'Lưu toàn bộ cấu hình'}</button>
+        </footer>
+      </main>
+    </div>
+  );
 }

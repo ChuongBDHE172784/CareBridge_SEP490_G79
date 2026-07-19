@@ -154,8 +154,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     if (latestMessage == null) return;
     final messageId = latestMessage.messageId!;
     if (messageId == _lastMarkedReadMessageId ||
-        messageId == _scheduledReadMessageId)
+        messageId == _scheduledReadMessageId) {
       return;
+    }
     _scheduledReadMessageId = messageId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _scheduledReadMessageId != messageId) return;
@@ -264,8 +265,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _retry(TimelineItem failedItem) async {
-    if (failedItem.clientMessageId == null || failedItem.messageBody == null)
+    if (failedItem.clientMessageId == null || failedItem.messageBody == null) {
       return;
+    }
     setState(() {
       final index = _items.indexWhere(
         (i) => i.clientMessageId == failedItem.clientMessageId,

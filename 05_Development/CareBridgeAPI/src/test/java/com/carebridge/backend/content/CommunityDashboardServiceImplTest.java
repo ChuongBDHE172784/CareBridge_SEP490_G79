@@ -93,6 +93,20 @@ class CommunityDashboardServiceImplTest {
         assertEquals(CommunityDashboardTestFactory.expectedRoleMap(), response.userMetrics().byRole());
     }
 
+    @Test
+    void getDashboard_nullRoleGroup_isReportedAsUnassigned() {
+        stubAllEmpty();
+        when(userRepository.countGroupByRole()).thenReturn(List.of(
+                new Object[] {null, 10L},
+                new Object[] {com.carebridge.backend.security.rbac.Role.SYSTEM_ADMIN, 2L}));
+
+        CommunityDashboardResponse response = service.getDashboard(CommunityDashboardTestFactory.makeFilter());
+
+        assertEquals(12L, response.userMetrics().total());
+        assertEquals(10L, response.userMetrics().byRole().get("UNASSIGNED"));
+        assertEquals(2L, response.userMetrics().byRole().get("SYSTEM_ADMIN"));
+    }
+
     // DASH-TC-103
     @Test
     void getDashboard_activeUsers_excludesSuspendedLockedDisabled() {
@@ -142,6 +156,20 @@ class CommunityDashboardServiceImplTest {
         CommunityDashboardResponse response = service.getDashboard(CommunityDashboardTestFactory.makeFilter());
 
         assertEquals(7200.0, response.reportMetrics().avgHandlingTimeSeconds(), 0.001);
+    }
+
+    @Test
+    void getDashboard_negativeReportDurations_areIgnored() {
+        stubAllEmpty();
+        Instant base = Instant.parse("2026-06-01T00:00:00Z");
+        List<Object[]> timestamps = List.of(
+                new Object[] {base, base.minusSeconds(3600)},
+                new Object[] {base, base.plusSeconds(1800)});
+        when(contentReportRepository.findResolvedTimestamps()).thenReturn(timestamps);
+
+        CommunityDashboardResponse response = service.getDashboard(CommunityDashboardTestFactory.makeFilter());
+
+        assertEquals(1800.0, response.reportMetrics().avgHandlingTimeSeconds(), 0.001);
     }
 
     // DASH-TC-107

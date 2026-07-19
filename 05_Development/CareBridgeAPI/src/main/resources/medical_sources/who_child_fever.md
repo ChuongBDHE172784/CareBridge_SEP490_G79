@@ -1,13 +1,11 @@
 ---
-title: Fever in young children - safety checks
+title: Caring for a newborn
 organization: WHO
-url: https://www.who.int/
+url: https://www.who.int/tools/your-life-your-health/life-phase/newborns-and-children-under-5-years/caring-for-newborns
 lastReviewed: 2026-07-10
 topic: fever
-ageRange: 0-60 months
+ageRange: 0-0 months
 ---
-Fever in children should be assessed together with age, feeding, breathing,
-alertness, hydration, and other danger signs. Very young infants with fever need
-prompt medical assessment. Caregivers should seek urgent care if fever is
-associated with poor feeding, unusual sleepiness, breathing difficulty, seizure,
-or rapid deterioration.
+WHO advises families caring for a newborn to know danger signs and where to
+seek care, including when the baby is not feeding well, has fast breathing or
+a high temperature.

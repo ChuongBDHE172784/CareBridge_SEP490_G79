@@ -10,6 +10,9 @@ public class AuditEligibilityPolicy {
 
     private static final Set<AuditAction> SENSITIVE_ACTIONS = EnumSet.of(
             AuditAction.LOGIN,
+            AuditAction.FEDERATED_LOGIN,
+            AuditAction.FEDERATED_REGISTRATION,
+            AuditAction.FEDERATED_IDENTITY_LINKED,
             AuditAction.LOGOUT,
             AuditAction.OTP_SENT,
             AuditAction.OTP_RESENT,
@@ -18,6 +21,8 @@ public class AuditEligibilityPolicy {
             AuditAction.CONSENT_REVOKED,
             AuditAction.CREATE_HEALTH_RECORD,
             AuditAction.VIEW_HEALTH_RECORD,
+            AuditAction.JOURNEY_CREATED,
+            AuditAction.JOURNEY_UPDATED,
             AuditAction.EXPERT_VERIFICATION,
             AuditAction.MODERATION_ACTION,
             AuditAction.AI_TRIAGE,
