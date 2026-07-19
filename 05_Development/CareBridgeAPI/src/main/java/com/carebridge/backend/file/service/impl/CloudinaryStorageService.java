@@ -5,11 +5,9 @@ import com.cloudinary.utils.ObjectUtils;
 import com.carebridge.backend.file.service.IStorageService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(name = "carebridge.storage.provider", havingValue = "cloudinary", matchIfMissing = true)
 public class CloudinaryStorageService implements IStorageService {
 
     private final Cloudinary cloudinary;

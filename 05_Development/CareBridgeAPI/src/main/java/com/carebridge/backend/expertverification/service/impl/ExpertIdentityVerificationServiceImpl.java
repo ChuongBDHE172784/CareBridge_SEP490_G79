@@ -51,9 +51,16 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     @Override
     public IdentityVerificationResponse submit(
             UUID userId, MultipartFile selfie, MultipartFile identityFront, MultipartFile identityBack) {
-        var profile = profileRepository.findByUserId(userId)
+        var profile = profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPERT-002", "Expert profile not found"));
+
+        var existingAttempt = identityRepository
+                .findFirstByExpertProfileIdOrderByCreatedAtDesc(profile.getExpertProfileId());
+        if (existingAttempt.isPresent()
+                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED) {
+            return toResponse(existingAttempt.get());
+        }
 
         byte[] selfieBytes = validateIdentityImage(selfie, "selfie");
         byte[] frontBytes = validateIdentityImage(identityFront, "identityFront");
@@ -69,11 +76,11 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
         List<UUID> uploaded = new ArrayList<>();
         try {
-            UploadFileResponse selfieUpload = fileService.uploadFile(selfie, userId);
+            UploadFileResponse selfieUpload = fileService.uploadPrivateFile(selfie, userId);
             uploaded.add(selfieUpload.getFileId());
-            UploadFileResponse frontUpload = fileService.uploadFile(identityFront, userId);
+            UploadFileResponse frontUpload = fileService.uploadPrivateFile(identityFront, userId);
             uploaded.add(frontUpload.getFileId());
-            UploadFileResponse backUpload = fileService.uploadFile(identityBack, userId);
+            UploadFileResponse backUpload = fileService.uploadPrivateFile(identityBack, userId);
             uploaded.add(backUpload.getFileId());
 
             IdentityReviewStatus reviewStatus = switch (faceResult.status()) {
@@ -169,7 +176,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                     "A rejection reason is required");
         }
 
-        ExpertIdentityVerification attempt = identityRepository.findById(attemptId)
+        ExpertIdentityVerification attempt = identityRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPIDENT-404", "Identity verification not found"));
         if (attempt.getReviewStatus() == request.getReviewStatus()) {
@@ -233,7 +240,10 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         List<ExpertCredential> professional = credentials.stream()
                 .filter(c -> !"IDENTITY_DOCUMENT".equals(c.getCredentialType()))
                 .toList();
-        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED)) return "APPROVED";
+        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED
+                && (c.getExpiryDate() == null || !c.getExpiryDate().isBefore(java.time.LocalDate.now())))) {
+            return "APPROVED";
+        }
         if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) return "PENDING";
         if (!professional.isEmpty()) return "REJECTED";
         return "MISSING";

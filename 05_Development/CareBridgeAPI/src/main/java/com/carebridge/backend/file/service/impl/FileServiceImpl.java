@@ -14,7 +14,8 @@ import com.carebridge.backend.file.policy.FileDeletePolicy;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
 import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.file.service.IStorageService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,7 +30,6 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-@RequiredArgsConstructor
 public class FileServiceImpl implements IFileService {
 
     private static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
@@ -38,13 +38,47 @@ public class FileServiceImpl implements IFileService {
             "image/jpeg", "image/png", "image/heic", "application/pdf", "image/gif");
 
     private final UploadedFileRepository fileRepository;
-    private final IStorageService storageService;
+    private final CloudinaryStorageService cloudinaryStorageService;
+    private final ObjectProvider<R2StorageService> r2StorageService;
+    private final String configuredProvider;
     private final AuditService auditService;
     private final FileAccessPolicy fileAccessPolicy;
     private final FileDeletePolicy fileDeletePolicy;
 
+    public FileServiceImpl(
+            UploadedFileRepository fileRepository,
+            CloudinaryStorageService cloudinaryStorageService,
+            ObjectProvider<R2StorageService> r2StorageService,
+            AuditService auditService,
+            FileAccessPolicy fileAccessPolicy,
+            FileDeletePolicy fileDeletePolicy,
+            @Value("${carebridge.storage.provider:cloudinary}") String configuredProvider) {
+        this.fileRepository = fileRepository;
+        this.cloudinaryStorageService = cloudinaryStorageService;
+        this.r2StorageService = r2StorageService;
+        this.auditService = auditService;
+        this.fileAccessPolicy = fileAccessPolicy;
+        this.fileDeletePolicy = fileDeletePolicy;
+        this.configuredProvider = configuredProvider;
+    }
+
     @Override
     public UploadFileResponse uploadFile(MultipartFile file, UUID callerId) {
+        String provider = "r2".equalsIgnoreCase(configuredProvider) ? "r2" : "cloudinary";
+        return uploadUsing(file, callerId, provider);
+    }
+
+    @Override
+    public UploadFileResponse uploadPublicFile(MultipartFile file, UUID callerId) {
+        return uploadUsing(file, callerId, "cloudinary");
+    }
+
+    @Override
+    public UploadFileResponse uploadPrivateFile(MultipartFile file, UUID callerId) {
+        return uploadUsing(file, callerId, "r2");
+    }
+
+    private UploadFileResponse uploadUsing(MultipartFile file, UUID callerId, String provider) {
         // C5: size check (FILE-002)
         if (file.getSize() > MAX_SIZE_BYTES) {
             throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "FILE-002",
@@ -69,42 +103,45 @@ public class FileServiceImpl implements IFileService {
         String fileExt = getExtension(file.getOriginalFilename());
         String storageKey = "files/" + UUID.randomUUID() + fileExt;
 
+        IStorageService storageService = storageFor(provider);
+        String persistedStorageKey;
         try {
             storageService.store(storageKey, file.getBytes(), mimeType);
+            persistedStorageKey = storageService.persistedKey(storageKey);
         } catch (IOException e) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-004",
                     "Failed to store file");
         }
 
-        // R2 persists an immutable private object key. The legacy Cloudinary adapter
-        // returns its delivery URL here to keep old non-Expert behavior compatible.
-        String persistedStorageKey = storageService.persistedKey(storageKey);
-
-        // C4: accountId from JWT
-        UploadedFile saved = fileRepository.save(UploadedFile.builder()
-                .ownerUserId(callerId)
-                .storageKey(persistedStorageKey)
-                .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
-                .mimeType(mimeType)
-                .fileSizeBytes(file.getSize())
-                .status(FileStatus.ACTIVE)
-                .build());
-
-        // C3: presigned URL TTL = 15 minutes (ADR-FILE-004)
-        String presignedUrl = storageService.generatePresignedUrl(saved.getStorageKey(), 15);
-
-        // C5: emit audit event
-        auditService.log(AuditAction.FILE_UPLOADED, callerId,
-                "UploadedFile", saved.getId().toString(), "uploaded");
-
-        return UploadFileResponse.builder()
-                .fileId(saved.getId())
-                .originalName(saved.getOriginalName())
-                .mimeType(saved.getMimeType())
-                .fileSizeBytes(saved.getFileSizeBytes())
-                .presignedUrl(presignedUrl)
-                .createdAt(saved.getCreatedAt())
-                .build();
+        try {
+            UploadedFile saved = fileRepository.save(UploadedFile.builder()
+                    .ownerUserId(callerId)
+                    .storageKey(persistedStorageKey)
+                    .storageProvider(provider)
+                    .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
+                    .mimeType(mimeType)
+                    .fileSizeBytes(file.getSize())
+                    .status(FileStatus.ACTIVE)
+                    .build());
+            String presignedUrl = storageService.generatePresignedUrl(saved.getStorageKey(), 15);
+            auditService.log(AuditAction.FILE_UPLOADED, callerId,
+                    "UploadedFile", saved.getId().toString(), "uploaded");
+            return UploadFileResponse.builder()
+                    .fileId(saved.getId())
+                    .originalName(saved.getOriginalName())
+                    .mimeType(saved.getMimeType())
+                    .fileSizeBytes(saved.getFileSizeBytes())
+                    .presignedUrl(presignedUrl)
+                    .createdAt(saved.getCreatedAt())
+                    .build();
+        } catch (RuntimeException ex) {
+            try {
+                storageService.delete(persistedStorageKey);
+            } catch (RuntimeException cleanupFailure) {
+                ex.addSuppressed(cleanupFailure);
+            }
+            throw ex;
+        }
     }
 
     private String detectMimeType(MultipartFile file) {
@@ -144,7 +181,8 @@ public class FileServiceImpl implements IFileService {
         fileAccessPolicy.assertViewable(file, callerId, authorities);
 
         // Generate fresh presigned URL from the stored public URL
-        String presignedUrl = storageService.generatePresignedUrl(file.getStorageKey(), 15);
+        String presignedUrl = storageFor(file.getStorageProvider())
+                .generatePresignedUrl(file.getStorageKey(), 15);
 
         auditService.log(AuditAction.FILE_VIEWED, callerId,
                 "UploadedFile", file.getId().toString(), "viewed");
@@ -181,9 +219,23 @@ public class FileServiceImpl implements IFileService {
             if (!file.getOwnerUserId().equals(callerId)) {
                 throw new AccessDeniedBusinessException("Access denied to file " + fileId);
             }
-            storageService.delete(file.getStorageKey());
+            storageFor(file.getStorageProvider()).delete(file.getStorageKey());
             fileRepository.delete(file);
         });
+    }
+
+    private IStorageService storageFor(String provider) {
+        if ("cloudinary".equalsIgnoreCase(provider)) {
+            return cloudinaryStorageService;
+        }
+        if ("r2".equalsIgnoreCase(provider)) {
+            R2StorageService service = r2StorageService.getIfAvailable();
+            if (service != null) return service;
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
+                    "Private R2 storage is not configured");
+        }
+        throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-006",
+                "Unknown storage provider: " + provider);
     }
 
     private String getExtension(String filename) {

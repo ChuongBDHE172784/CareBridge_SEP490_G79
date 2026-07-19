@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "carebridge.storage.provider", havingValue = "r2")
+@ConditionalOnProperty(name = "carebridge.storage.private-provider", havingValue = "r2")
 public class R2StorageService implements IStorageService {
 
     private final S3Client r2S3Client;

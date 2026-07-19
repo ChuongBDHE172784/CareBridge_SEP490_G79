@@ -6,10 +6,12 @@ import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.security.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 
 public interface ExpertCredentialRepository extends JpaRepository<ExpertCredential, UUID> {
 
@@ -20,6 +22,10 @@ public interface ExpertCredentialRepository extends JpaRepository<ExpertCredenti
 	List<ExpertCredential> findByReviewStatus(ReviewStatus reviewStatus);
 
 	Optional<ExpertCredential> findByCredentialId(UUID credentialId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT credential FROM ExpertCredential credential WHERE credential.credentialId = :credentialId")
+	Optional<ExpertCredential> findByCredentialIdForUpdate(@Param("credentialId") UUID credentialId);
 
 	boolean existsByExpertProfileIdAndCredentialType(UUID expertProfileId, String credentialType);
 

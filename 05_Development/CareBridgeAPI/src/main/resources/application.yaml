@@ -40,6 +40,11 @@ spring:
             required: true
         debug: false
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 16MB
+
 carebridge:
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
@@ -96,11 +101,12 @@ carebridge:
 
   storage:
     provider: ${FILE_STORAGE_PROVIDER:cloudinary}
+    private-provider: ${PRIVATE_FILE_STORAGE_PROVIDER:r2}
     r2:
       endpoint: ${R2_ENDPOINT:}
       access-key: ${R2_ACCESS_KEY_ID:}
       secret-key: ${R2_SECRET_ACCESS_KEY:}
-      bucket: ${R2_BUCKET:carebridge-private}
+      bucket: ${R2_BUCKET:${R2_BUCKET_NAME:carebridge-private}}
       region: ${R2_REGION:auto}
 
   compreface:

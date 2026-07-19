@@ -28,6 +28,10 @@ public class UploadedFile {
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
 
+    @Column(name = "storage_provider", nullable = false, length = 20)
+    @Builder.Default
+    private String storageProvider = "cloudinary";
+
     @Column(name = "original_name", nullable = false, length = 255)
     private String originalName;
 

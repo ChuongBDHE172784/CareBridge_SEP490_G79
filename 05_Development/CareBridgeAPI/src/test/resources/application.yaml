@@ -25,6 +25,8 @@ logging:
     com.carebridge.backend: DEBUG
 
 carebridge:
+  storage:
+    private-provider: cloudinary
   security:
     jwt:
       secret: test-secret-key-must-be-at-least-32-characters-long

@@ -15,6 +15,8 @@ import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.masterdata.repository.HospitalRepository;
+import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
@@ -46,6 +48,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final ExpertIdentityVerificationRepository identityVerificationRepository;
 	private final ExpertCredentialRepository credentialRepository;
 	private final AuditService auditService;
+	private final SpecialtyRepository specialtyRepository;
+	private final HospitalRepository hospitalRepository;
 
 	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
@@ -64,6 +68,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			UserInfo info = resolveUserInfo(userId);
 			return expertProfileMapper.toResponse(existing.get(), info.displayName(), info.avatarUrl());
 		}
+		normalizeMasterData(request);
 		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
 		ExpertProfile saved = expertProfileRepository.save(profile);
 		UserInfo info = resolveUserInfo(userId);
@@ -85,6 +90,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-002", "Expert profile not found"));
+		normalizeMasterData(request);
 		expertProfileMapper.updateEntity(profile, request);
 		ExpertProfile saved = expertProfileRepository.save(profile);
 		UserInfo info = resolveUserInfo(userId);
@@ -158,6 +164,36 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	private static String blankToNull(String s) {
 		return (s == null || s.isBlank()) ? null : s.trim();
+	}
+
+	private void normalizeMasterData(CreateExpertProfileRequest request) {
+		var specialty = specialtyRepository.findById(request.getSpecialtyId())
+			.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+				"EXPERT-SPECIALTY-INVALID", "Chuyên khoa không hợp lệ hoặc đã ngừng sử dụng"));
+		var hospital = hospitalRepository.findById(request.getHospitalId())
+			.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+				"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+		request.setSpecialty(specialty.getName());
+		request.setWorkplace(hospital.getName());
+	}
+
+	private void normalizeMasterData(UpdateExpertProfileRequest request) {
+		if (request.getSpecialtyId() != null) {
+			var specialty = specialtyRepository.findById(request.getSpecialtyId())
+				.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+					"EXPERT-SPECIALTY-INVALID", "Chuyên khoa không hợp lệ hoặc đã ngừng sử dụng"));
+			request.setSpecialty(specialty.getName());
+		}
+		if (request.getHospitalId() != null) {
+			var hospital = hospitalRepository.findById(request.getHospitalId())
+				.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+					"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+			request.setWorkplace(hospital.getName());
+		}
 	}
 
 	@Override

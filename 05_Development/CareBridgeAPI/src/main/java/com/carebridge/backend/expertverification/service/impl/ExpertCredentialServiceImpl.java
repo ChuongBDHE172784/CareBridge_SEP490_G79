@@ -13,6 +13,8 @@ import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.service.IExpertCredentialService;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +37,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
     private final ExpertProfileRepository expertProfileRepository;
     private final ExpertCredentialMapper credentialMapper;
     private final IFileService fileService;
+    private final AuditService auditService;
 
     @Override
     public CredentialResponse submitCredential(UUID userId, SubmitCredentialRequest request, MultipartFile file) {
@@ -48,12 +52,15 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
         }
         LocalDate issuedDate = parseDate(request.getIssuedDate());
         LocalDate expiryDate = parseDate(request.getExpiryDate());
-        UploadFileResponse uploadResponse = fileService.uploadFile(file, userId);
+        UploadFileResponse uploadResponse = fileService.uploadPrivateFile(file, userId);
 
         var credential = credentialMapper.toEntity(
                 profile.getExpertProfileId(), request, issuedDate, expiryDate, uploadResponse.getFileId());
         try {
             var saved = credentialRepository.save(credential);
+            auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
+                    "ExpertCredential", saved.getCredentialId().toString(),
+                    Map.of("event", "CREDENTIAL_SUBMITTED", "type", saved.getCredentialType()));
             return withAuthorizedUrl(credentialMapper.toResponse(saved), saved, userId);
         } catch (RuntimeException ex) {
             try {
@@ -130,12 +137,35 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
 
     @Override
     public DocumentReviewResponse reviewCredential(UUID credentialId, ReviewCredentialRequest request, UUID reviewerId) {
-        var credential = credentialRepository.findByCredentialId(credentialId)
+        var credential = credentialRepository.findByCredentialIdForUpdate(credentialId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
 
+        if (request.getReviewStatus() != ReviewStatus.APPROVED
+                && request.getReviewStatus() != ReviewStatus.REJECTED) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPVER-007",
+                    "Review decision must be APPROVED or REJECTED");
+        }
+        if (request.getReviewStatus() == ReviewStatus.REJECTED
+                && (request.getReviewNote() == null || request.getReviewNote().isBlank())) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPVER-008",
+                    "A rejection reason is required");
+        }
+        if (credential.getReviewStatus() == request.getReviewStatus()) {
+            var existing = credentialMapper.toDocumentReviewResponse(credential);
+            applyAuthorizedUrl(existing, credential, reviewerId);
+            return existing;
+        }
+        if (credential.getReviewStatus() != ReviewStatus.PENDING) {
+            throw new ExpertException(HttpStatus.CONFLICT, "EXPVER-009",
+                    "Credential already has a final decision");
+        }
+
         credentialMapper.applyReview(credential, request, reviewerId);
         var saved = credentialRepository.save(credential);
+        auditService.log(AuditAction.EXPERT_VERIFICATION, reviewerId,
+                "ExpertCredential", saved.getCredentialId().toString(),
+                Map.of("event", "CREDENTIAL_REVIEWED", "decision", saved.getReviewStatus().name()));
         var response = credentialMapper.toDocumentReviewResponse(saved);
         applyAuthorizedUrl(response, saved, reviewerId);
         return response;
