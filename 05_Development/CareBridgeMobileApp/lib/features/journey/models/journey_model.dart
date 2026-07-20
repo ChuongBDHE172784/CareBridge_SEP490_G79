@@ -11,6 +11,9 @@ class JourneyDashboard {
   final DateTime? estimatedDueDate;
   final DateTime? lastMenstrualDate;
   final DateTime? startDate;
+  final int? version;
+  final String? dateSource;
+  final String? dateConfidence;
 
   const JourneyDashboard({
     this.journeyId,
@@ -22,6 +25,9 @@ class JourneyDashboard {
     this.estimatedDueDate,
     this.lastMenstrualDate,
     this.startDate,
+    this.version,
+    this.dateSource,
+    this.dateConfidence,
   });
 
   static int? calculatePregnancyWeek({
@@ -59,6 +65,9 @@ class JourneyDashboard {
 
   bool get hasActiveJourney => journeyId != null && status != 'NO_JOURNEY';
   bool get isPregnancy => journeyType == 'PREGNANCY';
+  bool get isPrePregnancy => journeyType == 'PRE_PREGNANCY';
+  bool get isPostpartum => journeyType == 'POSTPARTUM';
+  bool get isMaternalLifecycle => isPregnancy || isPrePregnancy || isPostpartum;
 
   DateTime get _today {
     final now = DateTime.now();
@@ -162,6 +171,9 @@ class JourneyDashboard {
       startDate: json['startDate'] != null
           ? DateTime.parse(json['startDate'] as String)
           : null,
+      version: (json['version'] as num?)?.toInt(),
+      dateSource: json['dateSource'] as String?,
+      dateConfidence: json['dateConfidence'] as String?,
     );
   }
 }
@@ -171,6 +183,11 @@ enum JourneyType {
   pregnancy,
   postpartum,
   babyCare;
+
+  bool get isMaternalLifecycle =>
+      this == JourneyType.prePregnancy ||
+      this == JourneyType.pregnancy ||
+      this == JourneyType.postpartum;
 
   String toApiValue() {
     switch (this) {
@@ -191,6 +208,10 @@ class CreateJourneyRequest {
   final String startDate;
   final String? lastMenstrualDate;
   final String? estimatedDueDate;
+  final String? dateSource;
+  final String? dateConfidence;
+  final String? changeReason;
+  final String? effectiveAt;
   final String? notes;
 
   const CreateJourneyRequest({
@@ -198,16 +219,37 @@ class CreateJourneyRequest {
     required this.startDate,
     this.lastMenstrualDate,
     this.estimatedDueDate,
+    this.dateSource,
+    this.dateConfidence,
+    this.changeReason,
+    this.effectiveAt,
     this.notes,
   });
 
-  Map<String, dynamic> toJson() => {
-    'journeyType': journeyType.toApiValue(),
-    'startDate': startDate,
-    if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
-    if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
-    if (notes != null) 'notes': notes,
-  };
+  Map<String, dynamic> toJson() {
+    final hasDatingDate = lastMenstrualDate != null || estimatedDueDate != null;
+    return {
+      'journeyType': journeyType.toApiValue(),
+      'startDate': startDate,
+      if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
+      if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
+      if (hasDatingDate)
+        'dateSource': dateSource ?? 'SELF_REPORTED'
+      else if (dateSource != null)
+        'dateSource': dateSource,
+      if (hasDatingDate)
+        'dateConfidence': dateConfidence ?? 'ESTIMATED'
+      else if (dateConfidence != null)
+        'dateConfidence': dateConfidence,
+      if (hasDatingDate)
+        'changeReason': changeReason ?? 'INITIAL_SETUP'
+      else if (changeReason != null)
+        'changeReason': changeReason,
+      if (hasDatingDate || effectiveAt != null)
+        'effectiveAt': effectiveAt ?? DateTime.now().toUtc().toIso8601String(),
+      if (notes != null) 'notes': notes,
+    };
+  }
 }
 
 class CreateJourneyResponse {
@@ -219,6 +261,9 @@ class CreateJourneyResponse {
   final String? estimatedDueDate;
   final String? notes;
   final String createdAt;
+  final int? version;
+  final String? dateSource;
+  final String? dateConfidence;
 
   const CreateJourneyResponse({
     required this.id,
@@ -229,6 +274,9 @@ class CreateJourneyResponse {
     this.estimatedDueDate,
     this.notes,
     required this.createdAt,
+    this.version,
+    this.dateSource,
+    this.dateConfidence,
   });
 
   factory CreateJourneyResponse.fromJson(Map<String, dynamic> json) {
@@ -241,6 +289,9 @@ class CreateJourneyResponse {
       estimatedDueDate: json['estimatedDueDate'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] as String? ?? '',
+      version: (json['version'] as num?)?.toInt(),
+      dateSource: json['dateSource'] as String?,
+      dateConfidence: json['dateConfidence'] as String?,
     );
   }
 }
@@ -250,6 +301,10 @@ class UpdateJourneyRequest {
   final String? startDate;
   final String? lastMenstrualDate;
   final String? estimatedDueDate;
+  final String? dateSource;
+  final String? dateConfidence;
+  final String? changeReason;
+  final String? effectiveAt;
   final String? notes;
 
   const UpdateJourneyRequest({
@@ -257,14 +312,83 @@ class UpdateJourneyRequest {
     this.startDate,
     this.lastMenstrualDate,
     this.estimatedDueDate,
+    this.dateSource,
+    this.dateConfidence,
+    this.changeReason,
+    this.effectiveAt,
     this.notes,
   });
 
-  Map<String, dynamic> toJson() => {
-    if (journeyType != null) 'journeyType': journeyType!.toApiValue(),
-    if (startDate != null) 'startDate': startDate,
-    if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
-    if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
-    if (notes != null) 'notes': notes,
-  };
+  Map<String, dynamic> toJson() {
+    final hasDatingDate = lastMenstrualDate != null || estimatedDueDate != null;
+    return {
+      if (journeyType != null) 'journeyType': journeyType!.toApiValue(),
+      if (startDate != null) 'startDate': startDate,
+      if (lastMenstrualDate != null) 'lastMenstrualDate': lastMenstrualDate,
+      if (estimatedDueDate != null) 'estimatedDueDate': estimatedDueDate,
+      if (hasDatingDate)
+        'dateSource': dateSource ?? 'SELF_REPORTED'
+      else if (dateSource != null)
+        'dateSource': dateSource,
+      if (hasDatingDate)
+        'dateConfidence': dateConfidence ?? 'ESTIMATED'
+      else if (dateConfidence != null)
+        'dateConfidence': dateConfidence,
+      if (hasDatingDate)
+        'changeReason': changeReason ?? 'DATE_CORRECTION'
+      else if (changeReason != null)
+        'changeReason': changeReason,
+      if (hasDatingDate || effectiveAt != null)
+        'effectiveAt': effectiveAt ?? DateTime.now().toUtc().toIso8601String(),
+      if (notes != null) 'notes': notes,
+    };
+  }
+}
+
+class JourneyTransition {
+  final String transitionId;
+  final String eventType;
+  final String? fromStage;
+  final String? toStage;
+  final List<String> changedFields;
+  final String? source;
+  final String? confidence;
+  final String? reason;
+  final DateTime effectiveAt;
+  final DateTime recordedAt;
+  final int journeyVersion;
+
+  const JourneyTransition({
+    required this.transitionId,
+    required this.eventType,
+    this.fromStage,
+    this.toStage,
+    required this.changedFields,
+    this.source,
+    this.confidence,
+    this.reason,
+    required this.effectiveAt,
+    required this.recordedAt,
+    required this.journeyVersion,
+  });
+
+  factory JourneyTransition.fromJson(Map<String, dynamic> json) {
+    return JourneyTransition(
+      transitionId: json['transitionId'] as String,
+      eventType: json['eventType'] as String,
+      fromStage: json['fromStage'] as String?,
+      toStage: json['toStage'] as String?,
+      changedFields:
+          (json['changedFields'] as List<dynamic>?)
+              ?.map((field) => field.toString())
+              .toList(growable: false) ??
+          const [],
+      source: json['source'] as String?,
+      confidence: json['confidence'] as String?,
+      reason: json['reason'] as String?,
+      effectiveAt: DateTime.parse(json['effectiveAt'] as String),
+      recordedAt: DateTime.parse(json['recordedAt'] as String),
+      journeyVersion: (json['journeyVersion'] as num).toInt(),
+    );
+  }
 }

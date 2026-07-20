@@ -5,5 +5,6 @@ public enum ConsentPurpose {
     CREATE,
     UPDATE,
     SHARE,
-    DELETE
+    DELETE,
+    PERSONALIZE
 }

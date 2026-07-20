@@ -56,27 +56,27 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center font-sans">
       <div
-        className="absolute inset-0 bg-[rgba(39,24,18,0.4)] backdrop-blur-[4px]"
+        className="absolute inset-0 bg-slate-950/35 backdrop-blur-[3px]"
         onClick={submitting ? undefined : onCancel}
       />
-      <div className="relative w-full max-w-md mx-4 bg-surface rounded-3xl shadow-[0_8px_40px_rgba(90,70,63,0.25)] p-6">
+      <div className="relative mx-4 w-full max-w-sm rounded-lg border border-outline-variant/80 bg-surface p-4 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
         <div className="flex items-start gap-3 mb-2">
           <span
-            className={`material-symbols-outlined text-2xl rounded-full p-2 ${
-              tone === 'danger' ? 'bg-error-container text-error' : 'bg-primary-container text-on-primary-container'
+            className={`material-symbols-outlined rounded-md p-1.5 text-xl ${
+              tone === 'danger' ? 'bg-error-container text-error' : 'bg-primary-container text-primary'
             }`}
           >
             {icon}
           </span>
-          <div className="flex-1 pt-1">
-            <h2 className="text-base font-bold text-on-surface m-0">{title}</h2>
-            {description && <p className="text-sm text-on-surface-variant mt-1 mb-0">{description}</p>}
+          <div className="flex-1 pt-0.5">
+            <h2 className="m-0 text-sm font-semibold text-on-surface">{title}</h2>
+            {description && <p className="mb-0 mt-1 text-xs leading-relaxed text-on-surface-variant">{description}</p>}
           </div>
         </div>
 
         {reasonLabel !== undefined && (
           <div className="mt-4">
-            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
+            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.02em] text-outline">
               {reasonLabel}
             </label>
             <textarea
@@ -89,20 +89,20 @@ export default function ConfirmDialog({
               placeholder={reasonPlaceholder}
               rows={3}
               disabled={submitting}
-              className="w-full text-sm border border-outline-variant rounded-2xl p-3 resize-none outline-none font-sans focus:border-primary"
+              className="w-full resize-none rounded-md border border-outline-variant p-2 font-sans text-xs outline-none focus:border-primary"
             />
-            {reasonError && <p className="text-error text-xs mt-1.5">{reasonError}</p>}
+            {reasonError && <p className="mt-1 text-[11px] text-error">{reasonError}</p>}
           </div>
         )}
 
-        {errorText && <p className="text-error text-xs mt-3">{errorText}</p>}
+        {errorText && <p className="mt-3 text-[11px] text-error">{errorText}</p>}
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={submitting}
-            className="px-4 py-2.5 rounded-2xl bg-transparent border border-outline-variant text-on-surface text-sm font-semibold disabled:opacity-40"
+            className="rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40"
           >
             {cancelLabel}
           </button>
@@ -110,7 +110,7 @@ export default function ConfirmDialog({
             type="button"
             onClick={handleConfirm}
             disabled={submitting}
-            className={`px-4 py-2.5 rounded-2xl border-0 text-sm font-semibold disabled:opacity-50 ${
+            className={`rounded-md border-0 px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
               tone === 'danger' ? 'bg-error text-on-error' : 'bg-primary text-on-primary'
             }`}
           >

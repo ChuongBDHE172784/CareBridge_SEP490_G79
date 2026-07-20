@@ -48,54 +48,59 @@ export default function ViolationHistoryPage() {
   const hasNext = (page + 1) * PAGE_SIZE < totalElements;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="portal-page">
       <ModPortalSidebar />
-      <div className="ml-64 min-h-screen p-8 font-sans">
-        <button onClick={() => navigate(-1)} className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-on-surface">
-          <span className="material-symbols-outlined text-lg">arrow_back</span>Quay lại
-        </button>
-        <div className="mb-5">
-          <h1 className="m-0 text-2xl font-bold text-on-surface">Lịch sử vi phạm</h1>
-          <p className="mt-1 text-sm text-outline">Ghi nhận các hành động kỷ luật đối với tài khoản.</p>
+      <main className="portal-content">
+        <div className="portal-contained">
+        <div className="portal-header">
+          <div>
+            <p className="portal-eyebrow">Kiểm duyệt</p>
+            <h1 className="portal-title">Lịch sử vi phạm</h1>
+            <p className="portal-subtitle">Ghi nhận các hành động kỷ luật đối với tài khoản.</p>
+          </div>
+          <button onClick={() => navigate(-1)} className="portal-secondary-button">
+            <span className="material-symbols-outlined text-lg">arrow_back</span>Quay lại
+          </button>
         </div>
 
         {loading ? (
-          <div className="rounded-2xl bg-surface p-10 text-center text-outline shadow-md">Đang tải lịch sử vi phạm...</div>
+          <div className="portal-empty">Đang tải lịch sử vi phạm...</div>
         ) : error ? (
-          <div className="rounded-2xl bg-error-container p-8 text-center shadow-md">
+          <div className="portal-error text-center">
             <p className="text-sm text-error">{error}</p>
-            <button type="button" onClick={() => void load()} className="mt-3 rounded-xl bg-error px-4 py-2 text-sm font-semibold text-on-error">Thử lại</button>
+            <button type="button" onClick={() => void load()} className="mt-3 rounded-md bg-error px-4 py-2 text-sm font-semibold text-on-error">Thử lại</button>
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-2xl bg-surface p-10 text-center shadow-md">
+          <div className="portal-card-padded text-center">
             <span className="material-symbols-outlined text-5xl text-outline">gavel</span>
-            <h2 className="mt-4 text-xl font-bold text-on-surface">Chưa có dữ liệu lịch sử vi phạm</h2>
+            <h2 className="mt-4 text-base font-semibold text-on-surface">Chưa có dữ liệu lịch sử vi phạm</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm text-on-surface-variant">Chưa ghi nhận hành động kỷ luật nào đối với tài khoản.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-surface shadow-md">
+          <div className="portal-table-card">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px] border-collapse">
-                <thead><tr className="border-b-2 border-surface-container-highest bg-surface-container-low text-left">
-                  {['TÀI KHOẢN', 'HÀNH ĐỘNG', 'LÝ DO', 'TRẠNG THÁI', 'NGƯỜI XỬ LÝ', 'THỜI GIAN'].map((heading) => <th key={heading} className="px-4 py-3 text-[11px] font-semibold tracking-[.05em] text-outline">{heading}</th>)}
+              <table className="w-full min-w-[1000px]">
+                <thead><tr>
+                  {['TÀI KHOẢN', 'HÀNH ĐỘNG', 'LÝ DO', 'TRẠNG THÁI', 'NGƯỜI XỬ LÝ', 'THỜI GIAN'].map((heading) => <th key={heading}>{heading}</th>)}
                 </tr></thead>
-                <tbody>{items.map((item) => <tr key={item.actionId} className="border-b border-surface-container-highest last:border-0 hover:bg-surface-container-low">
-                  <td className="px-4 py-3.5 text-sm font-medium text-on-surface">{item.targetUserName}</td>
-                  <td className="px-4 py-3.5"><span className="rounded-full bg-error-container px-3 py-1 text-xs font-semibold text-error">{ACTION_TYPE_LABELS[item.actionType]}</span></td>
-                  <td className="max-w-[260px] px-4 py-3.5 text-sm text-on-surface-variant">{item.reason}</td>
-                  <td className={`px-4 py-3.5 text-sm ${enforcementStatus(item) === 'Đã hết hiệu lực' ? 'text-outline' : 'text-on-surface-variant'}`}>{enforcementStatus(item)}</td>
-                  <td className="px-4 py-3.5 text-sm text-on-surface-variant">{item.moderatorName}</td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm text-on-surface-variant">{formatDateTime(item.actionAt)}</td>
+                <tbody>{items.map((item) => <tr key={item.actionId}>
+                  <td className="font-medium text-on-surface">{item.targetUserName}</td>
+                  <td><span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">{ACTION_TYPE_LABELS[item.actionType]}</span></td>
+                  <td className="max-w-[260px] text-on-surface-variant">{item.reason}</td>
+                  <td className={enforcementStatus(item) === 'Đã hết hiệu lực' ? 'text-outline' : 'text-on-surface-variant'}>{enforcementStatus(item)}</td>
+                  <td className="text-on-surface-variant">{item.moderatorName}</td>
+                  <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.actionAt)}</td>
                 </tr>)}</tbody>
               </table>
             </div>
             <div className="flex items-center justify-between border-t border-surface-container-highest px-4 py-3 text-sm text-on-surface-variant">
               <span>{totalElements} bản ghi</span>
-              <div className="flex gap-2"><button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)} className="rounded-lg px-3 py-1.5 disabled:opacity-40">Trước</button><button type="button" disabled={!hasNext} onClick={() => setPage((current) => current + 1)} className="rounded-lg px-3 py-1.5 disabled:opacity-40">Sau</button></div>
+              <div className="flex gap-2"><button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)} className="rounded-md px-3 py-1.5 disabled:opacity-40">Trước</button><button type="button" disabled={!hasNext} onClick={() => setPage((current) => current + 1)} className="rounded-md px-3 py-1.5 disabled:opacity-40">Sau</button></div>
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

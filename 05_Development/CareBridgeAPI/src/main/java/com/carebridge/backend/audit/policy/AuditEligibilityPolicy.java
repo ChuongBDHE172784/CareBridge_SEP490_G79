@@ -21,6 +21,8 @@ public class AuditEligibilityPolicy {
             AuditAction.CONSENT_REVOKED,
             AuditAction.CREATE_HEALTH_RECORD,
             AuditAction.VIEW_HEALTH_RECORD,
+            AuditAction.JOURNEY_CREATED,
+            AuditAction.JOURNEY_UPDATED,
             AuditAction.EXPERT_VERIFICATION,
             AuditAction.MODERATION_ACTION,
             AuditAction.AI_TRIAGE,

@@ -1,0 +1,10 @@
+               email                |  role  | journey_type | status 
+------------------------------------+--------+--------------+--------
+ mf01.story61.new-b@carebridge.test | MOTHER |              | 
+(1 row)
+
+ baby_profiles 
+---------------
+             0
+(1 row)
+
