@@ -11,6 +11,10 @@
         android:label="untitled"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+        <!-- Temporary local-device manual-test override; remove after Story 6.5 evidence capture. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

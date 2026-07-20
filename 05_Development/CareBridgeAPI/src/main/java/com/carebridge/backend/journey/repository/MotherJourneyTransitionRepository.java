@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.Repository;
 
 import java.util.UUID;
+import java.util.Optional;
 
 public interface MotherJourneyTransitionRepository
         extends Repository<MotherJourneyTransition, UUID> {
@@ -16,6 +17,9 @@ public interface MotherJourneyTransitionRepository
             UUID journeyId, Pageable pageable);
 
     long countByJourneyId(UUID journeyId);
+
+    Optional<MotherJourneyTransition> findFirstByJourneyIdAndJourneyVersionOrderByRecordedAtDesc(
+            UUID journeyId, long journeyVersion);
 
     long count();
 }

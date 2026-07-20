@@ -1,8 +1,11 @@
 package com.carebridge.backend.security.config;
 
 import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
+import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +31,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectProvider<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditFilterProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -86,7 +90,22 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
+        if (boundaryAuditFilter != null) {
+            http.addFilterAfter(boundaryAuditFilter, JwtAuthenticationFilter.class);
+        }
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditRegistration() {
+        FilterRegistrationBean<BabyLinkBoundaryAuditFilter> registration = new FilterRegistrationBean<>();
+        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
+        if (boundaryAuditFilter != null) {
+            registration.setFilter(boundaryAuditFilter);
+        }
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

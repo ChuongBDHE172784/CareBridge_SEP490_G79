@@ -14,6 +14,9 @@ class JourneyDashboard {
   final int? version;
   final String? dateSource;
   final String? dateConfidence;
+  final PregnancyOutcome? pregnancyOutcome;
+  final DateTime? pregnancyOutcomeDate;
+  final bool babyActionsEligible;
 
   const JourneyDashboard({
     this.journeyId,
@@ -28,6 +31,9 @@ class JourneyDashboard {
     this.version,
     this.dateSource,
     this.dateConfidence,
+    this.pregnancyOutcome,
+    this.pregnancyOutcomeDate,
+    this.babyActionsEligible = false,
   });
 
   static int? calculatePregnancyWeek({
@@ -174,6 +180,13 @@ class JourneyDashboard {
       version: (json['version'] as num?)?.toInt(),
       dateSource: json['dateSource'] as String?,
       dateConfidence: json['dateConfidence'] as String?,
+      pregnancyOutcome: json['pregnancyOutcome'] == null
+          ? null
+          : PregnancyOutcome.fromApiValue(json['pregnancyOutcome'] as String),
+      pregnancyOutcomeDate: json['pregnancyOutcomeDate'] == null
+          ? null
+          : DateTime.parse(json['pregnancyOutcomeDate'] as String),
+      babyActionsEligible: json['babyActionsEligible'] as bool? ?? false,
     );
   }
 }
@@ -389,6 +402,126 @@ class JourneyTransition {
       effectiveAt: DateTime.parse(json['effectiveAt'] as String),
       recordedAt: DateTime.parse(json['recordedAt'] as String),
       journeyVersion: (json['journeyVersion'] as num).toInt(),
+    );
+  }
+}
+
+enum PregnancyOutcome {
+  ongoing,
+  unknown,
+  liveBirth,
+  pregnancyLoss,
+  stillbirth;
+
+  String get apiValue => switch (this) {
+    PregnancyOutcome.ongoing => 'ONGOING',
+    PregnancyOutcome.unknown => 'UNKNOWN',
+    PregnancyOutcome.liveBirth => 'LIVE_BIRTH',
+    PregnancyOutcome.pregnancyLoss => 'PREGNANCY_LOSS',
+    PregnancyOutcome.stillbirth => 'STILLBIRTH',
+  };
+
+  String get displayLabel => switch (this) {
+    PregnancyOutcome.ongoing => 'Thai kỳ vẫn đang tiếp diễn',
+    PregnancyOutcome.unknown => 'Tôi chưa chắc chắn',
+    PregnancyOutcome.liveBirth => 'Em bé đã chào đời',
+    PregnancyOutcome.pregnancyLoss => 'Thai kỳ đã kết thúc',
+    PregnancyOutcome.stillbirth => 'Thai kỳ đã kết thúc do thai lưu',
+  };
+
+  bool get requiresDate => this == PregnancyOutcome.liveBirth;
+
+  bool get transitionsToPostpartum =>
+      this == PregnancyOutcome.liveBirth ||
+      this == PregnancyOutcome.pregnancyLoss ||
+      this == PregnancyOutcome.stillbirth;
+
+  static PregnancyOutcome fromApiValue(String value) => switch (value) {
+    'ONGOING' => PregnancyOutcome.ongoing,
+    'UNKNOWN' => PregnancyOutcome.unknown,
+    'LIVE_BIRTH' => PregnancyOutcome.liveBirth,
+    'PREGNANCY_LOSS' => PregnancyOutcome.pregnancyLoss,
+    'STILLBIRTH' => PregnancyOutcome.stillbirth,
+    _ => throw FormatException('Unsupported pregnancy outcome: $value'),
+  };
+}
+
+class RecordPregnancyOutcomeRequest {
+  const RecordPregnancyOutcomeRequest({
+    required this.submissionId,
+    required this.expectedJourneyVersion,
+    required this.outcomeType,
+    this.outcomeDate,
+    required this.source,
+    required this.reason,
+    required this.effectiveAt,
+    this.correction = false,
+  });
+
+  final String submissionId;
+  final int expectedJourneyVersion;
+  final PregnancyOutcome outcomeType;
+  final DateTime? outcomeDate;
+  final String source;
+  final String reason;
+  final DateTime effectiveAt;
+  final bool correction;
+
+  Map<String, dynamic> toJson() => {
+    'submissionId': submissionId,
+    'expectedJourneyVersion': expectedJourneyVersion,
+    'outcomeType': outcomeType.apiValue,
+    if (outcomeDate != null) 'outcomeDate': _formatOutcomeDate(outcomeDate!),
+    'source': source,
+    'reason': reason,
+    'effectiveAt': effectiveAt.toUtc().toIso8601String(),
+    'correction': correction,
+  };
+
+  static String _formatOutcomeDate(DateTime value) {
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+}
+
+class PregnancyOutcomeResult {
+  const PregnancyOutcomeResult({
+    required this.evidenceId,
+    required this.journeyId,
+    required this.outcomeType,
+    this.outcomeDate,
+    required this.journeyType,
+    required this.journeyVersion,
+    this.transitionId,
+    required this.revisionNumber,
+    required this.babyActionsEligible,
+  });
+
+  final String evidenceId;
+  final String journeyId;
+  final PregnancyOutcome outcomeType;
+  final DateTime? outcomeDate;
+  final String journeyType;
+  final int journeyVersion;
+  final String? transitionId;
+  final int revisionNumber;
+  final bool babyActionsEligible;
+
+  factory PregnancyOutcomeResult.fromJson(Map<String, dynamic> json) {
+    return PregnancyOutcomeResult(
+      evidenceId: json['evidenceId'] as String,
+      journeyId: json['journeyId'] as String,
+      outcomeType: PregnancyOutcome.fromApiValue(json['outcomeType'] as String),
+      outcomeDate: json['outcomeDate'] == null
+          ? null
+          : DateTime.parse(json['outcomeDate'] as String),
+      journeyType: json['journeyType'] as String,
+      journeyVersion: (json['journeyVersion'] as num).toInt(),
+      transitionId: json['transitionId'] as String?,
+      revisionNumber: (json['revisionNumber'] as num).toInt(),
+      babyActionsEligible: json['babyActionsEligible'] as bool? ?? false,
     );
   }
 }

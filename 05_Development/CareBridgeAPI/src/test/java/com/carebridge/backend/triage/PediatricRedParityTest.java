@@ -6,6 +6,7 @@ import com.carebridge.backend.triage.engine.PediatricInfantRiskRules;
 import com.carebridge.backend.triage.engine.PediatricToddlerRiskRules;
 import com.carebridge.backend.triage.engine.MaternalPregnancyRiskRules;
 import com.carebridge.backend.triage.engine.PreconceptionRiskRules;
+import com.carebridge.backend.triage.engine.PostpartumRiskRules;
 import com.carebridge.backend.triage.engine.RiskRuleFactory;
 import com.carebridge.backend.triage.engine.StageRiskRules;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,6 +24,7 @@ class PediatricRedParityTest {
     private final StageRiskRules rules = new RiskRuleFactory(
             new PreconceptionRiskRules(),
             new MaternalPregnancyRiskRules(),
+            new PostpartumRiskRules(),
             new PediatricInfantRiskRules(),
             new PediatricToddlerRiskRules())
             .forStage(TriageStage.INFANT);

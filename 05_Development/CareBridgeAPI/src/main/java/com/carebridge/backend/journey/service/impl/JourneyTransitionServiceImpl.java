@@ -9,6 +9,8 @@ import com.carebridge.backend.journey.dto.JourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyTransitionPageResponse;
 import com.carebridge.backend.journey.dto.JourneyTransitionResponse;
 import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
+import com.carebridge.backend.journey.dto.RecordPregnancyOutcomeRequest;
+import com.carebridge.backend.journey.dto.PregnancyOutcomeResponse;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyStatus;
@@ -16,11 +18,14 @@ import com.carebridge.backend.journey.entity.JourneyTransitionType;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.entity.MotherJourneyTransition;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeEvidence;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 import com.carebridge.backend.journey.event.MotherJourneyCreated;
 import com.carebridge.backend.journey.event.MotherJourneyTransitioned;
 import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
+import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.journey.service.IJourneyOnboardingService;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -39,6 +44,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +58,12 @@ import java.util.UUID;
 @Transactional
 public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
+    private static final ZoneId CAREBRIDGE_BUSINESS_ZONE =
+            ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final MotherJourneyRepository journeyRepository;
     private final MotherJourneyTransitionRepository transitionRepository;
+    private final PregnancyOutcomeEvidenceRepository outcomeRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final JourneyTransitionPolicy transitionPolicy;
@@ -62,12 +75,13 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     public JourneyTransitionServiceImpl(
             MotherJourneyRepository journeyRepository,
             MotherJourneyTransitionRepository transitionRepository,
+            PregnancyOutcomeEvidenceRepository outcomeRepository,
             UserRepository userRepository,
             AuditService auditService,
             JourneyTransitionPolicy transitionPolicy,
             ApplicationEventPublisher eventPublisher,
             IJourneyOnboardingService onboardingService) {
-        this(journeyRepository, transitionRepository, userRepository, auditService,
+        this(journeyRepository, transitionRepository, outcomeRepository, userRepository, auditService,
                 transitionPolicy, eventPublisher, onboardingService, Clock.systemUTC());
     }
 
@@ -80,14 +94,190 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             ApplicationEventPublisher eventPublisher,
             IJourneyOnboardingService onboardingService,
             Clock clock) {
+        this(journeyRepository, transitionRepository, null, userRepository, auditService,
+                transitionPolicy, eventPublisher, onboardingService, clock);
+    }
+
+    public JourneyTransitionServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            MotherJourneyTransitionRepository transitionRepository,
+            PregnancyOutcomeEvidenceRepository outcomeRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            JourneyTransitionPolicy transitionPolicy,
+            ApplicationEventPublisher eventPublisher,
+            IJourneyOnboardingService onboardingService,
+            Clock clock) {
         this.journeyRepository = journeyRepository;
         this.transitionRepository = transitionRepository;
+        this.outcomeRepository = outcomeRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
         this.transitionPolicy = transitionPolicy;
         this.eventPublisher = eventPublisher;
         this.onboardingService = onboardingService;
         this.clock = clock;
+    }
+
+    @Override
+    public PregnancyOutcomeResponse recordPregnancyOutcome(
+            UUID ownerId, UUID journeyId, RecordPregnancyOutcomeRequest request) {
+        if (outcomeRepository == null) {
+            throw new IllegalStateException("Pregnancy outcome repository is unavailable");
+        }
+        MotherJourney current = journeyRepository.findByIdForUpdate(journeyId)
+                .orElseThrow(() -> new BusinessException(
+                        HttpStatus.NOT_FOUND, "JOURNEY-010", "Journey not found"));
+        if (!current.getOwnerUserId().equals(ownerId)) {
+            throw new BusinessException(
+                    HttpStatus.FORBIDDEN, "JOURNEY_ACCESS_DENIED", "Access denied");
+        }
+        if (current.getStatus() != JourneyStatus.ACTIVE) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT, "OUTCOME_STAGE_CONFLICT", "Journey is not active");
+        }
+
+        String semanticHash = outcomeSemanticHash(request);
+        var priorSubmission = outcomeRepository.findByJourneyIdAndSubmissionId(
+                journeyId, request.getSubmissionId());
+        if (priorSubmission.isPresent()) {
+            PregnancyOutcomeEvidence prior = priorSubmission.get();
+            if (!prior.getSemanticHash().equals(semanticHash)) {
+                throw new BusinessException(
+                        HttpStatus.CONFLICT,
+                        "OUTCOME_SUBMISSION_CONFLICT",
+                        "Submission identity was already used with different outcome data");
+            }
+            UUID transitionId = transitionRepository
+                    .findFirstByJourneyIdAndJourneyVersionOrderByRecordedAtDesc(
+                            journeyId, prior.getJourneyVersion())
+                    .map(MotherJourneyTransition::getId)
+                    .orElse(null);
+            return toOutcomeResponse(prior, current, transitionId);
+        }
+
+        if (current.getVersion() != request.getExpectedJourneyVersion()) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "JOURNEY_VERSION_CONFLICT",
+                    "Journey version is stale");
+        }
+        validateOutcomeRequest(current, request);
+
+        var previous = outcomeRepository
+                .findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId);
+        boolean requiresCorrection = current.getJourneyType() == JourneyType.POSTPARTUM
+                || previous.map(value -> value.getOutcomeType().transitionsToPostpartum())
+                        .orElse(false);
+        if (requiresCorrection && !request.isCorrection()) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "OUTCOME_CORRECTION_REQUIRED",
+                    "Changing an existing outcome requires correction=true");
+        }
+
+        JourneyType fromStage = current.getJourneyType();
+        LocalDate oldDeliveryDate = current.getDeliveryDate();
+        JourneyType targetStage = transitionPolicy.outcomeTargetStage(
+                current.getJourneyType(), request.getOutcomeType(), request.isCorrection());
+        boolean transitionsToPostpartum = targetStage == JourneyType.POSTPARTUM
+                && current.getJourneyType() == JourneyType.PREGNANCY;
+        current.setPregnancyOutcome(request.getOutcomeType());
+        current.setPregnancyOutcomeDate(request.getOutcomeDate());
+        if (transitionsToPostpartum) {
+            current.setJourneyType(targetStage);
+        }
+        if (request.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH) {
+            current.setDeliveryDate(request.getOutcomeDate());
+        } else {
+            current.setDeliveryDate(null);
+        }
+
+        MotherJourney saved;
+        try {
+            saved = journeyRepository.saveAndFlush(current);
+        } catch (ObjectOptimisticLockingFailureException exception) {
+            throw optimisticConflict();
+        }
+
+        int revisionNumber = previous.map(PregnancyOutcomeEvidence::getRevisionNumber)
+                .orElse(0) + 1;
+        PregnancyOutcomeEvidence evidence = PregnancyOutcomeEvidence.builder()
+                .journeyId(journeyId)
+                .ownerUserId(ownerId)
+                .submissionId(request.getSubmissionId())
+                .outcomeType(request.getOutcomeType())
+                .outcomeDate(request.getOutcomeDate())
+                .source(request.getSource())
+                .actorUserId(ownerId)
+                .reason(request.getReason().trim())
+                .effectiveAt(request.getEffectiveAt())
+                .revisionNumber(revisionNumber)
+                .supersedesEvidenceId(previous.map(PregnancyOutcomeEvidence::getId).orElse(null))
+                .journeyVersion(saved.getVersion())
+                .semanticHash(semanticHash)
+                .correction(request.isCorrection())
+                .build();
+        try {
+            evidence = outcomeRepository.saveAndFlush(evidence);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "OUTCOME_SUBMISSION_CONFLICT",
+                    "Outcome submission conflicted with another request");
+        }
+
+        Map<String, Object> changes = new LinkedHashMap<>();
+        addChange(
+                changes,
+                "pregnancyOutcome",
+                previous.map(PregnancyOutcomeEvidence::getOutcomeType).orElse(null),
+                request.getOutcomeType());
+        addChange(
+                changes,
+                "outcomeDate",
+                previous.map(PregnancyOutcomeEvidence::getOutcomeDate).orElse(null),
+                request.getOutcomeDate());
+        addIfChanged(changes, "journeyType", fromStage, saved.getJourneyType());
+        addIfChanged(changes, "deliveryDate", oldDeliveryDate, saved.getDeliveryDate());
+
+        JourneyTransitionType eventType = previous.isPresent()
+                ? JourneyTransitionType.OUTCOME_CORRECTED
+                : JourneyTransitionType.OUTCOME_RECORDED;
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .journeyId(journeyId)
+                .eventType(eventType)
+                .fromStage(fromStage)
+                .toStage(saved.getJourneyType())
+                .changes(changes)
+                .source(request.getSource())
+                .reason(request.getReason().trim())
+                .actorUserId(ownerId)
+                .effectiveAt(request.getEffectiveAt())
+                .journeyVersion(saved.getVersion())
+                .build();
+        transition = transitionRepository.saveAndFlush(transition);
+
+        auditService.log(
+                AuditAction.PREGNANCY_OUTCOME_RECORDED,
+                ownerId,
+                "MotherJourney",
+                journeyId.toString(),
+                Map.of(
+                        "outcomeType", request.getOutcomeType().name(),
+                        "revisionNumber", revisionNumber,
+                        "journeyVersion", saved.getVersion()));
+        publishAfterCommit(new MotherJourneyTransitioned(
+                UUID.randomUUID(),
+                journeyId,
+                ownerId,
+                eventType,
+                saved.getJourneyType(),
+                saved.getStatus(),
+                saved.getVersion(),
+                Instant.now(clock),
+                UUID.randomUUID()));
+        return toOutcomeResponse(evidence, saved, transition.getId());
     }
 
     @Override
@@ -105,6 +295,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         onboardingService.ensureEligible(callerId);
 
+        validateDirectPostpartumCreate(request);
         transitionPolicy.validateCreate(request);
         Instant effectiveAt = effectiveAtOrNow(request.getEffectiveAt());
         if (journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
@@ -175,6 +366,33 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         return toCreateResponse(saved);
     }
 
+    private void validateDirectPostpartumCreate(CreateJourneyRequest request) {
+        if (request.getJourneyType() != JourneyType.POSTPARTUM) {
+            return;
+        }
+        if (request.getStartDate() == null) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "POSTPARTUM_START_DATE_REQUIRED",
+                    "Recovery start date is required");
+        }
+        if (request.getStartDate().isAfter(
+                LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE)))) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "POSTPARTUM_START_DATE_FUTURE",
+                    "Recovery start date cannot be in the future");
+        }
+        boolean validConfidence = request.getDateConfidence() == JourneyDateConfidence.CONFIRMED
+                || request.getDateConfidence() == JourneyDateConfidence.ESTIMATED;
+        if (request.getDateSource() != JourneyDateSource.SELF_REPORTED || !validConfidence) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "POSTPARTUM_PROVENANCE_INVALID",
+                    "Direct postpartum recovery requires self-reported exact or estimated provenance");
+        }
+    }
+
     @Override
     public JourneyResponse updateJourney(
             UUID ownerId, UUID journeyId, UpdateJourneyRequest request) {
@@ -191,7 +409,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                     "Status ARCHIVED can only be set by the system");
         }
         if ("COMPLETED".equalsIgnoreCase(request.getStatus())
-                && request.getDeliveryDate() == null) {
+                && request.getDeliveryDate() == null
+                && current.getDeliveryDate() == null
+                && (current.getPregnancyOutcome() == null
+                        || current.getPregnancyOutcome() == PregnancyOutcomeType.LIVE_BIRTH)) {
             throw new BusinessException(
                     HttpStatus.BAD_REQUEST,
                     "JOURNEY-013",
@@ -438,6 +659,72 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         return source == null ? JourneyDateSource.UNKNOWN : source;
     }
 
+    private void validateOutcomeRequest(
+            MotherJourney journey, RecordPregnancyOutcomeRequest request) {
+        if (request.getOutcomeType() == null) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "PREGNANCY_OUTCOME_INVALID",
+                    "Pregnancy outcome is required");
+        }
+        if (request.getSource() == null
+                || request.getReason() == null
+                || request.getReason().isBlank()
+                || request.getEffectiveAt() == null) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "OUTCOME_PROVENANCE_REQUIRED",
+                    "Outcome source, reason, and effective time are required");
+        }
+        effectiveAtOrNow(request.getEffectiveAt());
+        if (request.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH
+                && request.getOutcomeDate() == null) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "OUTCOME_DATE_REQUIRED",
+                    "Live birth outcome date is required");
+        }
+        transitionPolicy.outcomeTargetStage(
+                journey.getJourneyType(), request.getOutcomeType(), request.isCorrection());
+    }
+
+    private String outcomeSemanticHash(RecordPregnancyOutcomeRequest request) {
+        String canonical = String.join(
+                "|",
+                request.getOutcomeType() == null ? "" : request.getOutcomeType().name(),
+                request.getOutcomeDate() == null ? "" : request.getOutcomeDate().toString(),
+                request.getSource() == null ? "" : request.getSource().name(),
+                request.getReason() == null ? "" : request.getReason().trim(),
+                request.getEffectiveAt() == null ? "" : request.getEffectiveAt().toString(),
+                Boolean.toString(request.isCorrection()));
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
+    private PregnancyOutcomeResponse toOutcomeResponse(
+            PregnancyOutcomeEvidence evidence,
+            MotherJourney journey,
+            UUID transitionId) {
+        return PregnancyOutcomeResponse.builder()
+                .evidenceId(evidence.getId())
+                .journeyId(evidence.getJourneyId())
+                .outcomeType(evidence.getOutcomeType())
+                .outcomeDate(evidence.getOutcomeDate())
+                .journeyType(journey.getJourneyType())
+                .journeyVersion(evidence.getJourneyVersion())
+                .transitionId(transitionId)
+                .revisionNumber(evidence.getRevisionNumber())
+                .effectiveAt(evidence.getEffectiveAt())
+                .recordedAt(evidence.getRecordedAt())
+                .babyActionsEligible(evidence.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH)
+                .build();
+    }
+
     private BusinessException canonicalConflict() {
         return new BusinessException(
                 HttpStatus.CONFLICT,
@@ -489,6 +776,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .lastMenstrualDate(journey.getLastMenstrualDate())
                 .estimatedDueDate(journey.getEstimatedDueDate())
                 .deliveryDate(journey.getDeliveryDate())
+                .pregnancyOutcome(journey.getPregnancyOutcome())
+                .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .status(journey.getStatus().name())
                 .notes(journey.getNotes())
                 .version(journey.getVersion())

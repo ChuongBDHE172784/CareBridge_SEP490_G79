@@ -21,6 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.RoundingMode;
+import java.util.Map;
+import com.carebridge.backend.baby.dto.LinkBabyJourneyRequest;
+import com.carebridge.backend.baby.dto.LinkBabyJourneyResponse;
+import com.carebridge.backend.baby.entity.BabyLinkOperation;
+import com.carebridge.backend.baby.entity.BabyLinkSubmission;
+import com.carebridge.backend.baby.policy.BabyJourneyLinkagePolicy;
+import com.carebridge.backend.baby.repository.BabyLinkSubmissionRepository;
+import com.carebridge.backend.baby.service.BabyLinkRejectionAuditService;
+import com.carebridge.backend.common.response.PaginatedResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 @Transactional
@@ -30,9 +42,20 @@ public class BabyServiceImpl implements IBabyService {
     private final BabyProfileRepository babyRepository;
     private final BabyAccessPolicy accessPolicy;
     private final AuditService auditService;
+    private final BabyJourneyLinkagePolicy linkagePolicy;
+    private final BabyLinkSubmissionRepository linkSubmissionRepository;
+    private final BabyLinkRejectionAuditService rejectionAuditService;
 
     @Override
     public CreateBabyProfileResponse createBabyProfile(CreateBabyProfileRequest request, UUID callerId) {
+        if (request.getRelatedJourneyId() != null) {
+            try {
+                return createBabyWithLink(request, callerId);
+            } catch (BusinessException ex) {
+                rejectionAuditService.record(callerId, request.getRelatedJourneyId(), ex.getCode());
+                throw ex;
+            }
+        }
         // C4: accountId from JWT (callerId)
         BabyProfile profile = BabyProfile.builder()
                 .ownerUserId(callerId)
@@ -59,7 +82,30 @@ public class BabyServiceImpl implements IBabyService {
                 .birthLengthCm(saved.getBirthLengthCm())
                 .status(saved.getStatus().name())
                 .createdAt(saved.getCreatedAt())
+                .relatedJourneyId(saved.getRelatedJourneyId())
                 .build();
+    }
+
+    private CreateBabyProfileResponse createBabyWithLink(CreateBabyProfileRequest request, UUID callerId) {
+        linkagePolicy.requireEligibleJourney(request.getRelatedJourneyId(), callerId);
+        String intent = createIntent(request);
+        acquireSubmissionLock(callerId, BabyLinkOperation.CREATE_WITH_LINK, request.getSubmissionId());
+        var prior = linkSubmissionRepository.findForUpdate(callerId, BabyLinkOperation.CREATE_WITH_LINK, request.getSubmissionId());
+        if (prior.isPresent()) {
+            ensureSameIntent(prior.get(), intent);
+            return toCreateResponse(babyRepository.findByIdAndOwnerUserId(prior.get().getBabyId(), callerId)
+                    .orElseThrow(BabyJourneyLinkagePolicy::notEligible));
+        }
+        BabyProfile saved = babyRepository.save(BabyProfile.builder()
+                .ownerUserId(callerId).nickname(request.getNickname().trim()).birthDate(request.getBirthDate())
+                .gender(request.getGender()).birthWeightKg(request.getBirthWeightKg()).birthLengthCm(request.getBirthLengthCm())
+                .relatedJourneyId(request.getRelatedJourneyId()).build());
+        linkSubmissionRepository.save(BabyLinkSubmission.builder().ownerUserId(callerId)
+                .operationType(BabyLinkOperation.CREATE_WITH_LINK).submissionId(request.getSubmissionId())
+                .semanticIntent(intent).babyId(saved.getId()).journeyId(request.getRelatedJourneyId()).build());
+        auditService.log(AuditAction.BABY_JOURNEY_LINK_ACCEPTED, callerId, "BabyJourneyLink", saved.getId().toString(),
+                Map.of("journeyId", request.getRelatedJourneyId(), "operation", "CREATE_WITH_LINK"));
+        return toCreateResponse(saved);
     }
 
     @Override
@@ -79,6 +125,7 @@ public class BabyServiceImpl implements IBabyService {
                         .active(Boolean.TRUE.equals(p.getActive()))
                         .createdAt(p.getCreatedAt())
                         .updatedAt(p.getUpdatedAt())
+                        .relatedJourneyId(p.getRelatedJourneyId())
                         .build())
                 .toList();
     }
@@ -108,6 +155,7 @@ public class BabyServiceImpl implements IBabyService {
                 .active(Boolean.TRUE.equals(profile.getActive()))
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
+                .relatedJourneyId(profile.getRelatedJourneyId())
                 .build();
     }
 
@@ -144,6 +192,7 @@ public class BabyServiceImpl implements IBabyService {
                 .active(Boolean.TRUE.equals(saved.getActive()))
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
+                .relatedJourneyId(saved.getRelatedJourneyId())
                 .build();
     }
 
@@ -223,5 +272,78 @@ public class BabyServiceImpl implements IBabyService {
                 .status(saved.getStatus().name())
                 .archivedAt(saved.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    public LinkBabyJourneyResponse linkExistingBaby(UUID babyId, LinkBabyJourneyRequest request, UUID callerId) {
+        try {
+            linkagePolicy.requireEligibleJourney(request.getRelatedJourneyId(), callerId);
+            BabyProfile baby = babyRepository.findOwnedByIdForUpdate(babyId, callerId)
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "LINK_RESOURCE_NOT_FOUND", "Resource not found"));
+            if (baby.getStatus() != BabyProfileStatus.ACTIVE) throw BabyJourneyLinkagePolicy.notEligible();
+            String intent = babyId + "|" + request.getRelatedJourneyId();
+            acquireSubmissionLock(callerId, BabyLinkOperation.LINK_EXISTING, request.getSubmissionId());
+            var prior = linkSubmissionRepository.findForUpdate(callerId, BabyLinkOperation.LINK_EXISTING, request.getSubmissionId());
+            if (prior.isPresent()) {
+                ensureSameIntent(prior.get(), intent);
+                return LinkBabyJourneyResponse.builder().babyId(prior.get().getBabyId()).relatedJourneyId(prior.get().getJourneyId()).build();
+            }
+            if (baby.getRelatedJourneyId() != null && !baby.getRelatedJourneyId().equals(request.getRelatedJourneyId())) {
+                throw new BusinessException(HttpStatus.CONFLICT, "BABY_ALREADY_LINKED", "Baby is already linked");
+            }
+            boolean newlyLinked = baby.getRelatedJourneyId() == null;
+            baby.setRelatedJourneyId(request.getRelatedJourneyId());
+            babyRepository.save(baby);
+            linkSubmissionRepository.save(BabyLinkSubmission.builder().ownerUserId(callerId)
+                    .operationType(BabyLinkOperation.LINK_EXISTING).submissionId(request.getSubmissionId())
+                    .semanticIntent(intent).babyId(babyId).journeyId(request.getRelatedJourneyId()).build());
+            if (newlyLinked) auditService.log(AuditAction.BABY_JOURNEY_LINK_ACCEPTED, callerId, "BabyJourneyLink", babyId.toString(),
+                    Map.of("journeyId", request.getRelatedJourneyId(), "operation", "LINK_EXISTING"));
+            return LinkBabyJourneyResponse.builder().babyId(babyId).relatedJourneyId(request.getRelatedJourneyId()).build();
+        } catch (BusinessException ex) {
+            rejectionAuditService.record(callerId, babyId, ex.getCode());
+            throw ex;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly=true)
+    public PaginatedResponse<BabyProfileDetailResponse> listJourneyBabies(UUID journeyId, int page, int size, UUID callerId) {
+        linkagePolicy.requireEligibleJourneyForRead(journeyId, callerId);
+        var pageable=PageRequest.of(page,size,Sort.by(Sort.Order.asc("createdAt"),Sort.Order.asc("id")));
+        return PaginatedResponse.of(babyRepository.findByOwnerUserIdAndRelatedJourneyIdAndStatus(callerId, journeyId, BabyProfileStatus.ACTIVE, pageable)
+                .map(this::toDetailResponse));
+    }
+
+    private void acquireSubmissionLock(UUID owner, BabyLinkOperation operation, UUID submission) {
+        linkSubmissionRepository.acquireTransactionLock(owner+":"+operation+":"+submission);
+    }
+
+    private void ensureSameIntent(BabyLinkSubmission prior, String intent) {
+        if (!prior.getSemanticIntent().equals(intent))
+            throw new BusinessException(HttpStatus.CONFLICT, "LINK_SUBMISSION_CONFLICT", "Submission conflicts with an earlier request");
+    }
+
+    private String createIntent(CreateBabyProfileRequest r) {
+        return String.join("|", r.getRelatedJourneyId().toString(), r.getNickname().trim(), r.getBirthDate().toString(),
+                String.valueOf(r.getGender()), decimal(r.getBirthWeightKg(),2), decimal(r.getBirthLengthCm(),1));
+    }
+
+    private String decimal(java.math.BigDecimal value, int scale) {
+        return value == null ? "" : value.setScale(scale, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private CreateBabyProfileResponse toCreateResponse(BabyProfile p) {
+        return CreateBabyProfileResponse.builder().id(p.getId()).nickname(p.getNickname()).birthDate(p.getBirthDate())
+                .gender(p.getGender()==null?null:p.getGender().name()).birthWeightKg(p.getBirthWeightKg())
+                .birthLengthCm(p.getBirthLengthCm()).status(p.getStatus().name()).createdAt(p.getCreatedAt())
+                .relatedJourneyId(p.getRelatedJourneyId()).build();
+    }
+
+    private BabyProfileDetailResponse toDetailResponse(BabyProfile p) {
+        return BabyProfileDetailResponse.builder().id(p.getId()).nickname(p.getNickname()).birthDate(p.getBirthDate())
+                .gender(p.getGender()==null?null:p.getGender().name()).birthWeightKg(p.getBirthWeightKg())
+                .birthLengthCm(p.getBirthLengthCm()).status(p.getStatus().name()).active(Boolean.TRUE.equals(p.getActive()))
+                .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).relatedJourneyId(p.getRelatedJourneyId()).build();
     }
 }

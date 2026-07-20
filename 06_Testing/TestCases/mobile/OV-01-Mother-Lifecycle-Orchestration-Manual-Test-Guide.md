@@ -141,13 +141,13 @@ Không đưa access token, refresh token, mật khẩu, OTP, email/số điện 
 | OV01-MAN-008 | Tài khoản khác không đọc/sửa journey | 6.1 | P0 | READY | `[điền]` |
 | OV01-MAN-009 | Preconception dashboard và vòng lặp “chưa” | 6.2/6.9 | P1 | DEFERRED | APPROVED WAIVER — execute with Story 6.9 |
 | OV01-MAN-010 | PRE xác nhận mang thai trên cùng journey | 6.1/6.2 | P1 | READY | PASS — physical device + PostgreSQL evidence |
-| OV01-MAN-011 | Dating thai kỳ từ LMP | 6.2/6.3 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-012 | EDD/unknown/revision bảo toàn provenance | 6.3 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-013 | Thai kỳ đang tiếp diễn quay lại dashboard | 6.3 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-014 | Live birth chuyển sang postpartum | 6.3 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-015 | Pregnancy loss vào recovery, không tạo baby | 6.3 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-016 | Vào postpartum trực tiếp với zero baby | 6.4 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-017 | Recovery độc lập dữ liệu baby | 6.4 | P1 | BLOCKED | `[điền]` |
+| OV01-MAN-011 | Dating thai kỳ từ LMP | 6.2/6.3 | P1 | READY | PASS — physical device + PostgreSQL evidence |
+| OV01-MAN-012 | EDD/unknown/revision bảo toàn provenance | 6.3 | P1 | READY | PASS — clinician EDD revision + automated unknown-date coverage |
+| OV01-MAN-013 | Thai kỳ đang tiếp diễn quay lại dashboard | 6.3 | P1 | READY | PASS — physical device + PostgreSQL evidence |
+| OV01-MAN-014 | Live birth chuyển sang postpartum | 6.3 | P0 | READY | PASS — physical device + PostgreSQL evidence |
+| OV01-MAN-015 | Pregnancy loss vào recovery, không tạo baby | 6.3 | P0 | READY | PASS — physical device + PostgreSQL evidence |
+| OV01-MAN-016 | Vào postpartum trực tiếp với zero baby | 6.4 | P1 | READY | PASS — physical Android device + PostgreSQL evidence |
+| OV01-MAN-017 | Recovery độc lập dữ liệu baby | 6.4 | P1 | READY | PASS — physical Android device + PostgreSQL evidence |
 | OV01-MAN-018 | Hoãn tạo baby | 6.5 | P1 | BLOCKED | `[điền]` |
 | OV01-MAN-019 | Tạo và liên kết baby mới | 6.5 | P1 | BLOCKED | `[điền]` |
 | OV01-MAN-020 | Liên kết baby có sẵn cùng tài khoản | 6.5 | P1 | BLOCKED | `[điền]` |
@@ -160,7 +160,7 @@ Không đưa access token, refresh token, mật khẩu, OTP, email/số điện 
 | OV01-MAN-027 | AI unavailable dùng safe fallback | 6.6 | P0 | BLOCKED | `[điền]` |
 | OV01-MAN-028 | Safety outcome exactly-once và đúng origin | 6.7 | P0 | BLOCKED | `[điền]` |
 | OV01-MAN-029 | Chỉ dùng APPROVED content/checklist | 6.9 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-030 | Continue/complete/archive giữ history | 6.3/6.10 | P1 | BLOCKED | `[điền]` |
+| OV01-MAN-030 | Continue/complete/archive giữ history | 6.3/6.10 | P1 | DEFERRED | PASS phần continue của 6.3; complete/archive execute với Story 6.10 |
 | OV01-MAN-031 | Offline/retry không mất input hoặc ghi trùng | 6.2–6.10 | P1 | READY | PASS for Story 6.2 onboarding phase |
 | OV01-MAN-032 | Đổi tài khoản xóa cache chéo | 6.10 | P0 | BLOCKED | `[điền]` |
 | OV01-MAN-033 | TalkBack/font/risk cue accessibility | 6.10 | P1 | BLOCKED | `[điền]` |
@@ -214,35 +214,35 @@ Content-Type: application/json
 
 Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.  
 **Mong đợi:** create HTTP 201; `ACTIVE`, version 0, UUID hợp lệ; history có đúng một `CREATED`, `toStage=PRE_PREGNANCY`, reason/effective time đúng và không lộ notes/token/actor nội bộ.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên SM-N986N với LMP synthetic `01/07/2026`, chu kỳ 28 ngày. Review hiển thị tuổi thai `2 tuần 4 ngày`, EDD `07/04/2027`; dashboard reload giữ tuần thai/EDD. PostgreSQL lưu `SELF_REPORTED` + `ESTIMATED`. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-011-review.png`, `ov01-man-011-dashboard.png`, `story63-lmp-review.xml`, `story63-preg-dashboard.xml`.
 
 ### OV01-MAN-005 — Retry/concurrent create không tạo trùng
 
 **Fixture:** tài khoản mới chưa có lifecycle; hai request create đồng thời hoặc retry cùng ý định.  
 **Thực hiện:** Gửi gần đồng thời hai `POST /api/v1/journeys` với PRE và POSTPARTUM; sau đó gọi dashboard/history và chạy truy vấn canonical ở Mục 10.  
 **Mong đợi:** chỉ một request thành công; request còn lại nhận conflict an toàn (`JOURNEY-015` hoặc contract đã duyệt); đúng một canonical `ACTIVE`, một `CREATED`; không có partial/duplicate row.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS cho clinician EDD revision trên physical device; EDD đổi `08/03/2027 → 15/03/2027`, version `0→1`, transition `DATES_CHANGED` giữ previous/new values, source `CLINICIAN_CONFIRMED`, confidence `CONFIRMED`, reason `DATE_CORRECTION`, và `last_menstrual_date` vẫn null nên không có stale field. Nhánh unknown-date được giữ bởi automated contract coverage. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-012-review.png`, `story63-edd-review.xml`, `story63-edd-result.xml`, `ov01-man-012-db.txt`.
 
 ### OV01-MAN-006 — Transition hợp lệ và append-only history
 
 **Fixture:** kết quả OV01-MAN-004.  
 **Thực hiện:** Gửi `PUT /api/v1/journeys/{{journeyAId}}` chuyển PRE sang PREG với LMP, `dateSource`, `dateConfidence`, reason và effective time; tải lại history.  
 **Mong đợi:** HTTP 200; cùng `journeyAId`; version tăng đúng một; EDD/date context nhất quán; history mới có `STAGE_CHANGED` từ PRE sang PREG; bản ghi `CREATED` không đổi; provenance đầy đủ.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên physical device. Xác nhận ongoing giữ canonical stage `PREGNANCY`, version tăng đúng một lần, tạo `OUTCOME_RECORDED PREGNANCY→PREGNANCY`; refresh/cold navigation giữ dating và không tạo baby. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-013-dashboard.png`, `story63-after-ongoing.xml`.
 
 ### OV01-MAN-007 — No-op, stale và illegal transition bị từ chối
 
 **Fixture:** một PREG journey version hiện tại đã biết.  
 **Thực hiện:** Lần lượt gửi update không thay đổi dữ liệu, update với version cũ theo contract, và chuyển ngược PREG → PRE. Sau mỗi request, tải lại journey/history.  
 **Mong đợi:** mỗi request bị từ chối bằng business/conflict response đã duyệt; stage/version/history không đổi; không có audit giả hoặc partial write; app hiển thị lỗi có thể retry thay vì crash.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS sau khi manual gate phát hiện và sửa lỗi UI thiếu `correction=true` khi đổi outcome đã tồn tại. APK fixed ghi `OUTCOME_CORRECTED PREGNANCY→POSTPARTUM`, version `1→2`, outcome/date/delivery date `LIVE_BIRTH/19-07-2026`; `baby_count=0` và UI nêu hồ sơ baby là tùy chọn. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-014-pass.png`, `story63-live-pass.xml`, `ov01-man-014-db.txt`.
 
 ### OV01-MAN-008 — Tài khoản khác không đọc hoặc sửa journey
 
 **Fixture:** `journeyAId` của Mother A và token Mother B.  
 **Thực hiện:** Dùng token B gọi history, dashboard-by-ID nếu có và update journey A; sau đó dùng token A kiểm tra lại dữ liệu.  
 **Mong đợi:** B nhận 403 hoặc 404 theo contract; response không lộ stage, dates, notes hoặc history của A; không có thay đổi; A vẫn đọc được dữ liệu nguyên vẹn; audit bảo mật có correlation ID nếu được hỗ trợ.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên physical device với fixture synthetic độc lập. UI dùng copy trung lập và xác nhận chuyển sang hỗ trợ hồi phục; PostgreSQL ghi `PREGNANCY_LOSS`, chuyển `PREGNANCY→POSTPARTUM`, để `pregnancy_outcome_date` và `delivery_date` null, `baby_count=0`. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-015-pass2.png`, `story63-loss-pass2.xml`, `ov01-man-015-db.txt`.
 
 ### OV01-MAN-009 — Preconception dashboard và vòng lặp “chưa”
 
@@ -263,7 +263,7 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** Mẹ đi vào PREG trực tiếp hoặc từ PRE; LMP synthetic hợp lệ.  
 **Thực hiện:** Chọn phương pháp LMP → nhập ngày và độ dài chu kỳ theo UI → xác nhận → mở pregnancy dashboard.  
 **Mong đợi:** week/trimester/EDD được tính nhất quán với quy tắc đã duyệt; UI nêu đây là ước tính, không chẩn đoán; source/confidence được lưu; reload không thay đổi dữ liệu.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS phần áp dụng cho Story 6.3: ongoing/continue quay lại active pregnancy dashboard; live birth/loss hoàn tất outcome và giữ append-only history khi vào recovery. Biến thể lifecycle `complete/archive` là ownership của Story 6.10 và được DEFERRED tới runtime của Story 6.10, không dùng waiver cho phần 6.3. Evidence dùng chung: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-013-dashboard.png`, `ov01-man-014-db.txt`, `ov01-man-015-db.txt`.
 
 ### OV01-MAN-012 — EDD, unknown dates và revision bảo toàn provenance
 
@@ -298,14 +298,14 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** `MOTHER_NEW` có baseline/consent hợp lệ.  
 **Thực hiện:** Chọn giai đoạn postpartum/parenting → nhập birth date hoặc pregnancy-end/recovery-start theo nhánh phù hợp → chọn chưa tạo baby.  
 **Mong đợi:** tạo POSTPARTUM canonical và mở recovery dashboard; zero baby là trạng thái hợp lệ; không ép dữ liệu live birth cho loss; không chuyển sang màn hình lỗi/trống vô hạn.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-20 trên Samsung SM-N986N. Tài khoản synthetic có baseline/consent hợp lệ đã chọn nhánh “Đang hồi phục sau sinh”, nhập recovery start 2026-07-19 với nguồn self-reported/confirmed và đi thẳng tới recovery dashboard, không qua baby creation. Probe PostgreSQL xác nhận đúng một canonical `POSTPARTUM/ACTIVE`, đúng một `POSTPARTUM_CREATED` transition và `active_babies=0`. Bằng chứng: `_bmad-output/test-artifacts/story-6-4-manual/ov01-man-016-stage.png`, `ov01-man-016-setup.png`, `ov01-man-016-dashboard.png`, `db-final-verification.txt`.
 
 ### OV01-MAN-017 — Recovery độc lập dữ liệu baby
 
 **Fixture:** `MOTHER_POST_ZERO`.  
 **Thực hiện:** Tạo/cập nhật một postpartum recovery log → refresh → mở lại app → xác nhận vẫn không có baby profile.  
 **Mong đợi:** recovery log được lưu đúng Mother lifecycle; không cần baby ID; zero-baby dashboard hoạt động; không tạo baby ngầm; cảnh báo có thể gọi safety flow.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-20 trên Samsung SM-N986N. Tạo recovery log qua UI với pain 3, bleeding LIGHT, mood 4, sleep 6.5 và symptom note synthetic; log xuất hiện sau save/refresh và vẫn còn sau force-stop/cold-start. Safety action mở intake trung lập dành cho postpartum, truyền typed `POSTPARTUM` và không hiển thị infant fields. Probe PostgreSQL xác nhận `active_postpartum_logs=1`, `matching_manual_logs=1`, `active_babies=0`. Bằng chứng: `_bmad-output/test-artifacts/story-6-4-manual/ov01-man-017-form.png`, `ov01-man-017-saved.png`, `ov01-man-017-safety.png`, `ov01-man-017-postpartum-intake.png`, `ov01-man-017-cold-start.png`, `db-final-verification.txt`.
 
 ### OV01-MAN-018 — Hoãn tạo baby
 

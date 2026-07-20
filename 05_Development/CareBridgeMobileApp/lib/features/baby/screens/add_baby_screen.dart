@@ -3,9 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
+import '../services/baby_create_intent_store.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/auth/auth_state.dart';
+import '../../journey/services/journey_service.dart';
 
 /// Add Baby Profile screen — UC-31
 /// Collects nickname, birthDate, gender, birthWeightKg, birthLengthCm.
@@ -19,10 +23,20 @@ enum AddBabyEntryPoint {
 
 class AddBabyScreen extends StatefulWidget {
   final AddBabyEntryPoint entryPoint;
+  final String? relatedJourneyId;
+  final BabyService? service;
+  final BabyCreateIntentStore? intentStore;
+  final String? accountId;
+  final Future<bool> Function(String journeyId)? eligibilityCheck;
 
   const AddBabyScreen({
     super.key,
     this.entryPoint = AddBabyEntryPoint.profileList,
+    this.relatedJourneyId,
+    this.service,
+    this.intentStore,
+    this.accountId,
+    this.eligibilityCheck,
   });
 
   @override
@@ -52,7 +66,73 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   bool _loading = false;
   String? _errorMsg;
 
-  final _service = BabyService();
+  late final BabyService _service;
+  late final BabyCreateIntentStore _intentStore;
+  String? _submissionId;
+  String? _accountId;
+  int? _intentGeneration;
+  bool _restoringIntent = false;
+  bool? _linkEligible;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = widget.service ?? BabyService();
+    _intentStore = widget.intentStore ?? BabyCreateIntentStore();
+    _accountId = widget.accountId ?? AuthState.instance.userId;
+    if (_accountId != null) {
+      _intentGeneration = _intentStore.generationFor(_accountId!);
+    }
+    _submissionId = widget.relatedJourneyId == null ? null : const Uuid().v4();
+    if (widget.relatedJourneyId != null) _restoreLinkIntent();
+  }
+
+  Future<void> _restoreLinkIntent() async {
+    final accountId = _accountId;
+    final journeyId = widget.relatedJourneyId;
+    if (accountId == null || journeyId == null) {
+      if (mounted) setState(() => _linkEligible = false);
+      return;
+    }
+    setState(() => _restoringIntent = true);
+    try {
+      final eligible = widget.eligibilityCheck != null
+          ? await widget.eligibilityCheck!(journeyId)
+          : await _serverEligibility(journeyId);
+      if (!mounted ||
+          accountId != (widget.accountId ?? AuthState.instance.userId)) {
+        return;
+      }
+      if (!eligible) {
+        setState(() => _linkEligible = false);
+        return;
+      }
+      final intent = await _intentStore.read(accountId, journeyId);
+      if (!mounted ||
+          accountId != (widget.accountId ?? AuthState.instance.userId)) {
+        return;
+      }
+      if (intent != null) {
+        _submissionId = intent.submissionId;
+        _nicknameCtrl.text = intent.nickname;
+        _birthDate = DateTime.tryParse(intent.birthDate);
+        if (_birthDate != null) _dateCtrl.text = _displayDate(_birthDate!);
+        _gender = intent.gender;
+        _weightCtrl.text = intent.birthWeightKg?.toString() ?? '';
+        _lengthCtrl.text = intent.birthLengthCm?.toString() ?? '';
+      }
+      setState(() => _linkEligible = true);
+    } catch (_) {
+      if (mounted) setState(() => _linkEligible = false);
+    } finally {
+      if (mounted) setState(() => _restoringIntent = false);
+    }
+  }
+
+  Future<bool> _serverEligibility(String journeyId) async {
+    final dashboard = await JourneyService().getDashboard();
+    return dashboard.babyActionsEligible && dashboard.journeyId == journeyId;
+  }
 
   @override
   void dispose() {
@@ -97,6 +177,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   }
 
   Future<void> _submit() async {
+    if (widget.relatedJourneyId != null && _linkEligible != true) return;
     if (!_formKey.currentState!.validate()) return;
     if (_birthDate == null) {
       setState(() => _errorMsg = 'Vui lòng chọn ngày sinh của bé.');
@@ -122,6 +203,38 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       _loading = true;
       _errorMsg = null;
     });
+    final accountId = _accountId;
+    final journeyId = widget.relatedJourneyId;
+    var submissionId = _submissionId;
+    if (accountId != null && journeyId != null && submissionId != null) {
+      var intent = BabyCreateIntent(
+        submissionId: submissionId,
+        nickname: _nicknameCtrl.text.trim(),
+        birthDate: _formatDate(_birthDate!),
+        gender: _gender,
+        birthWeightKg: birthWeightKg,
+        birthLengthCm: birthLengthCm,
+      );
+      final persisted = await _intentStore.read(accountId, journeyId);
+      if (persisted != null && !persisted.hasSamePayload(intent)) {
+        submissionId = const Uuid().v4();
+        _submissionId = submissionId;
+        intent = BabyCreateIntent(
+          submissionId: submissionId,
+          nickname: intent.nickname,
+          birthDate: intent.birthDate,
+          gender: intent.gender,
+          birthWeightKg: intent.birthWeightKg,
+          birthLengthCm: intent.birthLengthCm,
+        );
+      }
+      await _intentStore.write(
+        accountId,
+        journeyId,
+        intent,
+        expectedGeneration: _intentGeneration,
+      );
+    }
     try {
       await _service.createBabyProfile(
         CreateBabyRequest(
@@ -130,9 +243,18 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
           gender: _gender,
           birthWeightKg: birthWeightKg,
           birthLengthCm: birthLengthCm,
+          relatedJourneyId: widget.relatedJourneyId,
+          submissionId: submissionId,
         ),
       );
       if (!mounted) return;
+      if (accountId != null && journeyId != null) {
+        await _intentStore.clear(accountId, journeyId);
+      }
+      if (!mounted ||
+          accountId != (widget.accountId ?? AuthState.instance.userId)) {
+        return;
+      }
 
       if (widget.entryPoint.returnsHome) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -215,6 +337,27 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_restoringIntent) {
+      return const Scaffold(
+        backgroundColor: _canvas,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (widget.relatedJourneyId != null && _linkEligible == false) {
+      return Scaffold(
+        backgroundColor: _canvas,
+        appBar: AppBar(backgroundColor: _canvas),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Không thể tạo và liên kết hồ sơ bé cho hành trình này. Vui lòng quay lại bảng điều khiển để làm mới trạng thái.',
+              style: TextStyle(fontSize: 16, color: _onSurface),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
