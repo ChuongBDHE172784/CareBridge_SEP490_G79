@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/family_task_model.dart';
-import '../services/family_task_service.dart';
-import 'assign_care_task_screen.dart';
-import 'family_task_detail_screen.dart';
+import '../../reminder/models/reminder_model.dart';
+import '../../reminder/models/today_task_model.dart';
+import '../../reminder/services/reminder_service.dart';
 
+/// CB-028 — Assigned / Group Tasks Screen (Read-Only)
+/// Displays tasks synced from "Việc hôm nay" (ReminderService).
+/// Read-only view with filter tabs (Cần làm, Đang làm, Đã xong, Quá hạn).
 class AssignedTasksScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -19,10 +21,10 @@ class AssignedTasksScreen extends StatefulWidget {
 }
 
 class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
-  final _service = FamilyTaskService();
+  final _reminderService = ReminderService.instance;
   bool _isLoading = true;
-  List<FamilyTask> _allTasks = [];
-  String _currentFilter = 'TODO'; // TODO, IN_PROGRESS, COMPLETED, CANCELLED
+  List<TodayTask> _allTasks = [];
+  String _currentFilter = 'TODO'; // TODO, IN_PROGRESS, COMPLETED, OVERDUE
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final tasks = await _service.listTasks(widget.groupId);
+      final tasks = await _reminderService.listTodayTasks();
       if (mounted) {
         setState(() {
           _allTasks = tasks;
@@ -43,36 +45,29 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-      }
-    }
-  }
-
-  Future<void> _updateStatus(FamilyTask task, String newStatus) async {
-    try {
-      await _service.updateTaskStatus(widget.groupId, task.taskId, newStatus);
-      _loadData();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    List<FamilyTask> filteredTasks = _allTasks.where((t) {
+    final now = DateTime.now();
+    List<TodayTask> filteredTasks = _allTasks.where((t) {
+      final isOverdue = !t.isCompleted && !t.isSkipped && t.dueAt.isBefore(now);
       if (_currentFilter == 'OVERDUE') {
-        return t.status != 'COMPLETED' &&
-            t.status != 'CANCELLED' &&
-            t.dueAt.isBefore(DateTime.now());
+        return isOverdue;
       }
-      return t.status == _currentFilter &&
-          !(_currentFilter == 'TODO' && t.dueAt.isBefore(DateTime.now()));
+      if (_currentFilter == 'COMPLETED') {
+        return t.isCompleted;
+      }
+      if (_currentFilter == 'IN_PROGRESS') {
+        return t.isSnoozed;
+      }
+      // TODO filter
+      return t.isPending && !isOverdue;
     }).toList();
 
     return Scaffold(
@@ -91,7 +86,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
             color: Color(0xFF845143),
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
+            fontFamily: 'Lexend',
           ),
         ),
       ),
@@ -112,16 +107,16 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF271812),
-                    fontFamily: 'Quicksand',
+                    fontFamily: 'Lexend',
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Hôm nay, ${DateTime.now().day} tháng ${DateTime.now().month}',
+                  'Hôm nay, ${now.day} tháng ${now.month}',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF524440),
-                    fontFamily: 'Quicksand',
+                    fontFamily: 'Lexend',
                   ),
                 ),
               ],
@@ -175,7 +170,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                                         'Không có nhiệm vụ nào',
                                         style: TextStyle(
                                           color: Color(0xFF524440),
-                                          fontFamily: 'Quicksand',
+                                          fontFamily: 'Lexend',
                                         ),
                                       ),
                                     ],
@@ -194,33 +189,6 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFC98C7B),
-        foregroundColor: Colors.white,
-        shape: const StadiumBorder(),
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AssignCareTaskScreen(
-                groupId: widget.groupId,
-                groupName: widget.groupName,
-              ),
-            ),
-          );
-          if (result == true) {
-            _loadData();
-          }
-        },
-        icon: const Icon(Icons.add_task),
-        label: const Text(
-          'Giao việc mới',
-          style: TextStyle(
-            fontFamily: 'Quicksand',
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ),
     );
   }
@@ -250,18 +218,18 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
           style: TextStyle(
             color: isActive ? Colors.white : const Color(0xFF524440),
             fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
+            fontFamily: 'Lexend',
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTaskCard(FamilyTask task) {
+  Widget _buildTaskCard(TodayTask task) {
     Color indicatorColor;
-    if (task.status == 'COMPLETED') {
+    if (task.isCompleted) {
       indicatorColor = Colors.green;
-    } else if (task.status == 'IN_PROGRESS') {
+    } else if (task.isSnoozed) {
       indicatorColor = const Color(0xFF845143);
     } else if (task.dueAt.isBefore(DateTime.now())) {
       indicatorColor = const Color(0xFFBA1A1A);
@@ -269,15 +237,18 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
       indicatorColor = const Color(0xFFA09A95);
     }
 
+    String statusText = 'Cần làm';
+    if (task.isCompleted) {
+      statusText = 'Đã xong';
+    } else if (task.isSnoozed) {
+      statusText = 'Đang làm';
+    } else if (task.dueAt.isBefore(DateTime.now())) {
+      statusText = 'Quá hạn';
+    }
+
     return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => FamilyTaskDetailScreen(task: task)),
-        );
-        if (result == true) {
-          _loadData();
-        }
+      onTap: () {
+        _showReadOnlyTaskDetails(task);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -328,17 +299,18 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              task.status,
+                              statusText,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF524440),
-                                fontFamily: 'Quicksand',
+                                fontFamily: 'Lexend',
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const Icon(Icons.remove_red_eye_outlined, size: 18, color: Color(0xFF84736F)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -348,79 +320,32 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF271812),
-                      fontFamily: 'Quicksand',
+                      fontFamily: 'Lexend',
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule,
-                        size: 16,
-                        color: Color(0xFF524440),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${task.dueAt.hour.toString().padLeft(2, '0')}:${task.dueAt.minute.toString().padLeft(2, '0')} - ${task.dueAt.day}/${task.dueAt.month}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF524440),
-                          fontFamily: 'Quicksand',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(color: Color(0xFFFFE2D9)),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (task.status == 'TODO')
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _updateStatus(task, 'IN_PROGRESS'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFADCD3),
-                              foregroundColor: const Color(0xFF524440),
-                              minimumSize: const Size(0, 48),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text(
-                              'Bắt đầu làm',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Quicksand',
-                              ),
+                  Builder(
+                    builder: (context) {
+                      final dueLocal = task.dueAt.toLocal();
+                      return Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule,
+                            size: 16,
+                            color: Color(0xFF524440),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF524440),
+                              fontFamily: 'Lexend',
                             ),
                           ),
-                        ),
-                      if (task.status == 'IN_PROGRESS')
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _updateStatus(task, 'COMPLETED'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC98C7B),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(0, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            icon: const Icon(Icons.check_circle),
-                            label: const Text(
-                              'Đã xong',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -428,6 +353,119 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showReadOnlyTaskDetails(TodayTask task) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Chi tiết nhiệm vụ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF271812),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFADCD3),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'Chỉ xem',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF845143),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                task.title,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF271812),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final dueLocal = task.dueAt.toLocal();
+                  return Row(
+                    children: [
+                      const Icon(Icons.event, color: Color(0xFF845143), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Hạn chót: ${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}/${dueLocal.year}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          color: Color(0xFF524440),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFF845143), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Loại: ${task.type.displayLabel}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: Color(0xFF524440),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Đóng',
+                    style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF845143)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

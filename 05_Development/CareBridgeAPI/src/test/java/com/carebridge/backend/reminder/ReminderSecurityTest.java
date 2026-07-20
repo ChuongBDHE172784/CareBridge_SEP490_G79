@@ -87,9 +87,9 @@ class ReminderSecurityTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/reminders/today"})
-    @WithMockUser(roles = "FAMILY")
-    void todayTasks_familyRole_returns403(String path) throws Exception {
+    @WithMockUser(username = "00000000-0000-0000-0002-000000000001", roles = "FAMILY")
+    void todayTasks_familyRole_returns200(String path) throws Exception {
         mockMvc.perform(get(path))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 }

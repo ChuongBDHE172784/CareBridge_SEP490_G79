@@ -51,7 +51,7 @@ public class JourneyController {
 
     // UC24: View mother journey dashboard — /me pattern prevents IDOR (ADR-JOURNEY-003-003)
     @GetMapping("/me/dashboard")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'MEMBER')")
     public ResponseEntity<ApiResponse<JourneyDashboardResponse>> getDashboard(Principal principal) {
         var userId = SecurityUtils.requireCurrentUserId(principal);
         var dashboard = journeyService.getDashboard(userId);

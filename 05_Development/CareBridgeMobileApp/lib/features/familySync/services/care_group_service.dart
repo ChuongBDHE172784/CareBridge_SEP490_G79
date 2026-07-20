@@ -29,17 +29,25 @@ class CareGroupService {
         .toList();
   }
 
-  // UC-83: Owner invites a member by email. memberRole omitted -> backend defaults to MEMBER.
-  Future<CareGroupMember> inviteMember(
-    String groupId,
-    String email, {
+  // UC-71: Owner invites a member via LINK or PHONE channel
+  Future<Map<String, dynamic>> inviteMember(
+    String groupId, {
+    required String channel,
+    String? phone,
     String? memberRole,
   }) async {
-    final data = await apiPost('/api/v1/care-groups/$groupId/invitations', {
-      'email': email,
-      'memberRole': ?memberRole,
-    });
-    return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
+    final body = <String, dynamic>{
+      'channel': channel,
+    };
+    if (phone != null && phone.isNotEmpty) {
+      body['phone'] = phone;
+    }
+    if (memberRole != null) {
+      body['memberRole'] = memberRole;
+    }
+    
+    final data = await apiPost('/api/v1/care-groups/$groupId/invitations', body);
+    return data['data'] as Map<String, dynamic>;
   }
 
   // UC-83: The caller's own pending invitations across all groups.
@@ -64,9 +72,23 @@ class CareGroupService {
     await apiPost('/api/v1/care-groups/$groupId/invitations/decline', const {});
   }
 
+  // Join care group by invite code (or groupId UUID)
+  Future<Map<String, dynamic>> joinGroupByCode(String code) async {
+    final data = await apiPost(
+      '/api/v1/care-groups/join',
+      {'code': code},
+    );
+    return data['data'] as Map<String, dynamic>;
+  }
+
   // UC220: Leave care group
   Future<void> leaveGroup(String groupId) async {
     await apiPost('/api/v1/care-groups/$groupId/leave', const {});
+  }
+
+  // Delete care group (owner only, hard delete from DB)
+  Future<void> deleteCareGroup(String groupId) async {
+    await apiDelete('/api/v1/care-groups/$groupId');
   }
 
   // UC217: Revoke pending invitation

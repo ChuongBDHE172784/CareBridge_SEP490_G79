@@ -3,6 +3,9 @@ package com.carebridge.backend.journey.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.dto.CreateJourneyRequest;
 import com.carebridge.backend.journey.dto.CreateJourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
@@ -33,18 +36,22 @@ public class JourneyServiceImpl implements IJourneyService {
     private final MotherJourneyRepository journeyRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final CareGroupMemberRepository careGroupMemberRepository;
+    private final CareGroupRepository careGroupRepository;
     private final Clock clock;
 
     @Autowired
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService) {
-        this(journeyRepository, userRepository, auditService, Clock.systemDefaultZone());
+    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, CareGroupMemberRepository careGroupMemberRepository, CareGroupRepository careGroupRepository) {
+        this(journeyRepository, userRepository, auditService, careGroupMemberRepository, careGroupRepository, Clock.systemDefaultZone());
     }
 
     /** Test constructor — allows injecting a fixed Clock for deterministic time calculations. */
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, Clock clock) {
+    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, CareGroupMemberRepository careGroupMemberRepository, CareGroupRepository careGroupRepository, Clock clock) {
         this.journeyRepository = journeyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
+        this.careGroupMemberRepository = careGroupMemberRepository;
+        this.careGroupRepository = careGroupRepository;
         this.clock = clock;
     }
 
@@ -179,6 +186,21 @@ public class JourneyServiceImpl implements IJourneyService {
     public JourneyDashboardResponse getDashboard(UUID userId) {
         var activeJourney = journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
                 userId, JourneyStatus.ACTIVE);
+
+        if (activeJourney.isEmpty() && careGroupMemberRepository != null && careGroupRepository != null) {
+            var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED);
+            for (var member : memberships) {
+                var groupOpt = careGroupRepository.findById(member.getCareGroupId());
+                if (groupOpt.isPresent()) {
+                    var motherId = groupOpt.get().getOwnerUserId();
+                    activeJourney = journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                            motherId, JourneyStatus.ACTIVE);
+                    if (activeJourney.isPresent()) {
+                        break;
+                    }
+                }
+            }
+        }
 
         // No active journey → 200 OK with NO_JOURNEY (never 404 — mobile onboarding rule)
         if (activeJourney.isEmpty()) {

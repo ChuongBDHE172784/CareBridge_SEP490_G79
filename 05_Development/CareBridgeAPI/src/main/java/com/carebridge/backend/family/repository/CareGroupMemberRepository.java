@@ -20,7 +20,14 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
 
     long countByCareGroupId(UUID careGroupId);
 
-    Optional<CareGroupMember> findByCareGroupIdAndUserId(UUID careGroupId, UUID userId);
+    void deleteByCareGroupId(UUID careGroupId);
+
+    List<CareGroupMember> findAllByCareGroupIdAndUserId(UUID careGroupId, UUID userId);
+
+    default Optional<CareGroupMember> findByCareGroupIdAndUserId(UUID careGroupId, UUID userId) {
+        List<CareGroupMember> list = findAllByCareGroupIdAndUserId(careGroupId, userId);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+    }
 
     List<CareGroupMember> findByUserIdAndInviteStatus(UUID userId, InviteStatus status);
 

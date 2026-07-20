@@ -1,5 +1,6 @@
 class CareGroupMember {
   final String memberId;
+  final String? userId;
   final String displayName;
   final String memberRole;
   final String inviteStatus;
@@ -7,6 +8,7 @@ class CareGroupMember {
 
   const CareGroupMember({
     required this.memberId,
+    this.userId,
     required this.displayName,
     required this.memberRole,
     required this.inviteStatus,
@@ -16,6 +18,7 @@ class CareGroupMember {
   factory CareGroupMember.fromJson(Map<String, dynamic> json) {
     return CareGroupMember(
       memberId: json['memberId'] as String,
+      userId: json['userId'] as String?,
       displayName: json['displayName'] as String,
       memberRole: json['memberRole'] as String? ?? 'MEMBER',
       inviteStatus: json['inviteStatus'] as String? ?? 'ACCEPTED',

@@ -48,7 +48,7 @@ class TodayTask {
   factory TodayTask.fromJson(Map<String, dynamic> json) {
     final scheduledRaw = json['scheduledAt'] as String?;
     final dueRaw = json['dueAt'] as String?;
-    final scheduledAt = DateTime.parse(scheduledRaw ?? dueRaw!);
+    final scheduledAt = DateTime.parse(scheduledRaw ?? dueRaw!).toLocal();
     return TodayTask(
       id: json['id'] as String,
       sourceType: TodayTaskSourceTypeExtension.fromApi(
@@ -59,10 +59,10 @@ class TodayTask {
       ),
       title: json['title'] as String,
       scheduledAt: scheduledAt,
-      dueAt: DateTime.parse(dueRaw ?? scheduledRaw!),
+      dueAt: DateTime.parse(dueRaw ?? scheduledRaw!).toLocal(),
       snoozedUntil: json['snoozedUntil'] == null
           ? null
-          : DateTime.parse(json['snoozedUntil'] as String),
+          : DateTime.parse(json['snoozedUntil'] as String).toLocal(),
       status: ReminderStatusExtension.fromApi(json['status'] as String?),
       priority: (json['priority'] as num?)?.toInt() ?? 99,
     );

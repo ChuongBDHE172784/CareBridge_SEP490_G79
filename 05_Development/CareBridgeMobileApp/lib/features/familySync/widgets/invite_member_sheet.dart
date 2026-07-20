@@ -32,35 +32,35 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
   static const _errorColor = Color(0xFFBA1A1A);
 
   final _service = CareGroupService();
-  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   String _role = 'MEMBER';
   bool _submitting = false;
   String? _errorText;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
-  bool get _emailValid {
-    final v = _emailCtrl.text.trim();
-    return v.contains('@') &&
-        v.contains('.') &&
-        !v.contains(' ') &&
-        v.length > 4;
+  bool get _phoneValid {
+    final v = _phoneCtrl.text.trim();
+    return v.length >= 8 && v.length <= 15 && RegExp(r'^\+?[0-9]+$').hasMatch(v);
   }
 
   Future<void> _submit() async {
-    if (!_emailValid || _submitting) return;
+    if (!_phoneValid || _submitting) return;
     setState(() {
       _submitting = true;
       _errorText = null;
     });
     try {
+      final contact = _phoneCtrl.text.trim();
+      
       await _service.inviteMember(
         widget.groupId,
-        _emailCtrl.text.trim(),
+        channel: 'PHONE',
+        phone: contact,
         memberRole: _role,
       );
       if (mounted) Navigator.of(context).pop(true);
@@ -68,7 +68,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
       String message;
       switch (e.statusCode) {
         case 404:
-          message = 'Không tìm thấy tài khoản CareBridge với email này.';
+          message = 'Không tìm thấy tài khoản CareBridge với số điện thoại này.';
           break;
         case 409:
           message = 'Người này đã là thành viên hoặc đã được mời.';
@@ -134,7 +134,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Nhập email tài khoản CareBridge của người bạn muốn mời.',
+                'Nhập số điện thoại tài khoản CareBridge của người bạn muốn mời.',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
@@ -143,13 +143,13 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
               ),
               const SizedBox(height: 20),
               TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
                 onChanged: (_) => setState(() {}),
                 style: const TextStyle(fontFamily: 'Lexend'),
                 decoration: InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'ten@vidu.com',
+                  labelText: 'Số điện thoại',
+                  hintText: '0987654321',
                   filled: true,
                   fillColor: _surfaceContainerLow,
                   border: OutlineInputBorder(
@@ -204,7 +204,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: (_emailValid && !_submitting) ? _submit : null,
+                  onPressed: (_phoneValid && !_submitting) ? _submit : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryContainer,
                     foregroundColor: Colors.white,

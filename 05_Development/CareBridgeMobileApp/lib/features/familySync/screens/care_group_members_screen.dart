@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../models/care_group_model.dart';
-import '../widgets/invite_member_sheet.dart';
+import '../services/care_group_service.dart';
 import 'manage_family_permission_screen.dart';
 
-/// CB-168 — Care Group Members (UC-216, UC-71)
-/// Full member list with avatar, role badge, permission chips, invite FAB.
+/// CB-168 — Care Group Members (UC-216, UC-71, UC-219)
+/// Full member list with avatar, role badge, permission chips, delete member option.
 /// Navigated to from CareGroupDetailScreen.
-class CareGroupMembersScreen extends StatelessWidget {
+class CareGroupMembersScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
   final List<CareGroupMember> members;
@@ -18,10 +19,87 @@ class CareGroupMembersScreen extends StatelessWidget {
     required this.members,
   });
 
-  static const _primaryContainer = Color(0xFFC98C7B);
+  @override
+  State<CareGroupMembersScreen> createState() => _CareGroupMembersScreenState();
+}
+
+class _CareGroupMembersScreenState extends State<CareGroupMembersScreen> {
   static const _canvas = Color(0xFFFFF8F6);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
+
+  final _service = CareGroupService();
+  late List<CareGroupMember> _members;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _members = List.from(widget.members);
+    _reloadMembers();
+  }
+
+  Future<void> _reloadMembers() async {
+    try {
+      final g = await _service.getGroupMembers(widget.groupId);
+      if (mounted) {
+        setState(() {
+          _members = g.members;
+        });
+      }
+    } catch (_) {
+      // Keep initial list if offline/failed
+    }
+  }
+
+  Future<void> _removeMember(CareGroupMember member) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Xóa thành viên?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa "${member.displayName}" khỏi nhóm chăm sóc? '
+          'Thành viên sẽ bị xóa vĩnh viễn khỏi nhóm!',
+          style: const TextStyle(fontFamily: 'Lexend'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
+            child: const Text('Xóa vĩnh viễn', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final targetUserId = member.userId ?? member.memberId;
+    try {
+      setState(() => _loading = true);
+      await _service.removeMember(widget.groupId, targetUserId);
+      await _reloadMembers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đã xóa ${member.displayName} khỏi nhóm.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể xóa thành viên: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +109,10 @@ class CareGroupMembersScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(context),
+            if (_loading)
+              const LinearProgressIndicator(color: Color(0xFFC98C7B)),
             Expanded(
-              child: members.isEmpty
+              child: _members.isEmpty
                   ? const Center(
                       child: Text(
                         'Chưa có thành viên.',
@@ -44,31 +124,17 @@ class CareGroupMembersScreen extends StatelessWidget {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      itemCount: members.length,
+                      itemCount: _members.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) =>
-                          _MemberCard(member: members[i], groupId: groupId),
+                      itemBuilder: (_, i) => _MemberCard(
+                        member: _members[i],
+                        groupId: widget.groupId,
+                        onDelete: () => _removeMember(_members[i]),
+                        onReload: _reloadMembers,
+                      ),
                     ),
             ),
           ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primaryContainer,
-        foregroundColor: Colors.white,
-        shape: const StadiumBorder(),
-        onPressed: () async {
-          final sent = await showInviteMemberSheet(context, groupId: groupId);
-          if (sent == true && context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Đã gửi lời mời.')));
-          }
-        },
-        icon: const Icon(Icons.person_add),
-        label: const Text(
-          'Mời thành viên',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -95,7 +161,7 @@ class CareGroupMembersScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  groupName,
+                  widget.groupName,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Lexend',
@@ -120,8 +186,15 @@ class CareGroupMembersScreen extends StatelessWidget {
 class _MemberCard extends StatelessWidget {
   final CareGroupMember member;
   final String groupId;
+  final VoidCallback onDelete;
+  final VoidCallback onReload;
 
-  const _MemberCard({required this.member, required this.groupId});
+  const _MemberCard({
+    required this.member,
+    required this.groupId,
+    required this.onDelete,
+    required this.onReload,
+  });
 
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -239,14 +312,12 @@ class _MemberCard extends StatelessWidget {
               ],
             ),
           ),
-          if (isAdmin)
-            const SizedBox.shrink()
-          else
+          if (AuthState.instance.role == 'MOTHER' && !isAdmin)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
-              onSelected: (val) {
+              onSelected: (val) async {
                 if (val == 'manage') {
-                  Navigator.push(
+                  final result = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ManageFamilyPermissionScreen(
@@ -255,10 +326,15 @@ class _MemberCard extends StatelessWidget {
                       ),
                     ),
                   );
+                  if (result == true) {
+                    onReload();
+                  }
+                } else if (val == 'delete') {
+                  onDelete();
                 }
               },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
+              itemBuilder: (_) => const [
+                PopupMenuItem(
                   value: 'manage',
                   child: Row(
                     children: [
@@ -271,8 +347,26 @@ class _MemberCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Xóa thành viên',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: Color(0xFFBA1A1A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
+            )
+          else
+            const SizedBox.shrink(),
         ],
       ),
     );
