@@ -148,13 +148,13 @@ DB --> SessionRepo : 5. saved
 deactivate DB
 SessionRepo --> Service : 6. IntakeSession
 deactivate SessionRepo
-alt 7. AI triage service phản hồi bình thường
+alt 7. AI triage service responds normally
   Service -> AiClient : 7. startIntake(canonicalRequest)
   activate AiClient
   AiClient --> Service : 8. envelope JSON\n{status=ASK_MORE|TRIAGE_COMPLETE, questions[] | triageResult}
   deactivate AiClient
-else 7. AI service lỗi/timeout (network/5xx) → fallback nội bộ
-  Service -> Service : 7a. fallbackConversation()\nsinh câu hỏi/risk bảo thủ cục bộ (không gọi AI ngoài)
+else 7. AI service error/timeout (network/5xx) → internal fallback
+  Service -> Service : 7a. fallbackConversation()\ngenerate questions/conservative risk locally (no external AI call)
 end
 Service -> SessionRepo : 9. save(session{rawAiResponse=envelope,\nstatus=NEED_MORE_INFO|COMPLETED})
 activate SessionRepo
@@ -164,15 +164,15 @@ DB --> SessionRepo : 11. updated
 deactivate DB
 SessionRepo --> Service : 12. IntakeSession
 deactivate SessionRepo
-opt 13. status vừa chuyển COMPLETED && riskLevel != null
-  Service -> Service : 13a. publishEvent(IntakeSessionCompleted) [async, subscribers khác module nếu có]
+opt 13. status just transitioned to COMPLETED && riskLevel != null
+  Service -> Service : 13a. publishEvent(IntakeSessionCompleted) [async, other module subscribers if any]
 end
 Service --> Controller : 14. IntakeConversationResponse{questions[] | riskLevel}
 deactivate Service
 Controller --> M : 15. HTTP 200 OK
 deactivate Controller
 
-loop 16-30. mỗi lượt hội thoại tiếp theo cho tới khi đủ ngữ cảnh (status=COMPLETED)
+loop 16-30. each subsequent conversation turn until sufficient context (status=COMPLETED)
   M -> Controller : 16. POST /api/v1/triage/intake/conversation/continue\n{intakeSessionId, newAnswers}
   activate Controller
   Controller -> Service : 17. continueConversation(request, userId)
@@ -185,13 +185,13 @@ loop 16-30. mỗi lượt hội thoại tiếp theo cho tới khi đủ ngữ c�
   deactivate DB
   SessionRepo --> Service : 21. IntakeSession
   deactivate SessionRepo
-  alt 22. AI triage service phản hồi bình thường
+  alt 22. AI triage service responds normally
     Service -> AiClient : 22. continueIntake(canonical)
     activate AiClient
     AiClient --> Service : 23. envelope JSON\n{status=TRIAGE_COMPLETE, triageResult{riskLevel, disclaimer, redFlags[]}}
     deactivate AiClient
-  else 22. AI service lỗi/timeout → fallback nội bộ
-    Service -> Service : 22a. fallbackConversation()\nsinh câu hỏi/risk bảo thủ cục bộ
+  else 22. AI service error/timeout → internal fallback
+    Service -> Service : 22a. fallbackConversation()\ngenerate questions/conservative risk locally
   end
   Service -> SessionRepo : 24. save(session{rawAiResponse=envelope, riskLevel, status})
   activate SessionRepo
@@ -201,10 +201,10 @@ loop 16-30. mỗi lượt hội thoại tiếp theo cho tới khi đủ ngữ c�
   deactivate DB
   SessionRepo --> Service : 27. IntakeSession
   deactivate SessionRepo
-  opt 28. status vừa chuyển COMPLETED && riskLevel != null
+  opt 28. status just transitioned to COMPLETED && riskLevel != null
     Service -> Service : 28a. publishEvent(IntakeSessionCompleted) [async]
   end
-  Service --> Controller : 29. IntakeConversationResponse{riskLevel nếu COMPLETED | questions[] tiếp theo}
+  Service --> Controller : 29. IntakeConversationResponse{riskLevel if COMPLETED | next questions[]}
   deactivate Service
   Controller --> M : 30. HTTP 200 OK
   deactivate Controller
@@ -223,12 +223,12 @@ DB --> SessionRepo : 35. session row
 deactivate DB
 SessionRepo --> Service : 36. IntakeSession
 deactivate SessionRepo
-loop 37-39. với mỗi citation đọc được từ rawAiResponse
+loop 37-39. for each citation read from rawAiResponse
   Service -> Evidence : 37. isApprovedDeepLink(citationUrl)
   activate Evidence
   Evidence --> Service : 38. boolean approved
   deactivate Evidence
-  Service -> Service : 39. loại citation nếu domain\nkhông thuộc nguồn đã duyệt (spec 02)
+  Service -> Service : 39. exclude citation if domain\nis not in the approved sources (spec 02)
 end
 Service --> Controller : 40. TriageResultResponse{riskLevel, disclaimer,\ncitations[], recommendedAction, redFlags[]}
 deactivate Service
@@ -241,10 +241,10 @@ activate HandoffController
 HandoffController -> HandoffService : 43. createHandoff(userId, request)
 activate HandoffService
 HandoffService -> HandoffService : 44. map request → EmergencyMapHandoff{status=OPEN}\n(handoffMapper.toEntity)
-alt 45. riskLevel == RED (auto-accept khẩn cấp)
+alt 45. riskLevel == RED (auto-accept emergency)
   HandoffService -> HandoffService : 46. set status=ACCEPTED
-else 45. riskLevel != RED (hiếm gặp — UI chỉ hiện lối tắt khi RED)
-  HandoffService -> HandoffService : 45a. giữ nguyên status=OPEN
+else 45. riskLevel != RED (rare — UI only shows shortcut when RED)
+  HandoffService -> HandoffService : 45a. keep status=OPEN
 end
 HandoffService -> HandoffRepo : 47. save(handoff)
 activate HandoffRepo
@@ -256,7 +256,7 @@ HandoffRepo --> HandoffService : 50. EmergencyMapHandoff
 deactivate HandoffRepo
 HandoffService --> HandoffController : 51. EmergencyHandoffResponse{status}
 deactivate HandoffService
-HandoffController --> M : 52. HTTP 201 Created\n→ điều hướng sang Emergency Map (MF-07)
+HandoffController --> M : 52. HTTP 201 Created\n→ navigate to Emergency Map (MF-07)
 deactivate HandoffController
 
 @enduml

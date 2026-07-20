@@ -190,7 +190,7 @@ M -> EmController : 1. POST /api/v1/emergency/sessions\n{userLatitude, userLongi
 activate EmController
 EmController -> EmService : 2. openFlow(request, userId)
 activate EmService
-EmService -> SessionRepo : 3. findActiveByUserId(userId)\n[idempotent — trả session ACTIVE cũ nếu có]
+EmService -> SessionRepo : 3. findActiveByUserId(userId)\n[idempotent — return old ACTIVE session if any]
 activate SessionRepo
 SessionRepo -> DB : 4. SELECT * FROM emergency_sessions\nWHERE user_id=? AND status='ACTIVE'
 activate DB
@@ -206,7 +206,7 @@ DB --> SessionRepo : 9. saved
 deactivate DB
 SessionRepo --> EmService : 10. EmergencySession
 deactivate SessionRepo
-EmService -> Handler : 11. publishEvent(EmergencySessionOpened)\n→ onEmergencySessionOpened(event)\n[Spring @EventListener đồng bộ, cùng transaction]
+EmService -> Handler : 11. publishEvent(EmergencySessionOpened)\n→ onEmergencySessionOpened(event)\n[Spring @EventListener synchronous, same transaction]
 activate Handler
 Handler -> FamilyAlertSvc : 12. sendAlert(event)
 activate FamilyAlertSvc
@@ -218,21 +218,21 @@ DB --> AlertLogRepo : 15. false
 deactivate DB
 AlertLogRepo --> FamilyAlertSvc : 16. boolean
 deactivate AlertLogRepo
-FamilyAlertSvc -> FamMember : 17. getFamilyFcmTokens(userId)\n[CareGroup ACTIVE → CareGroupMember ACCEPTED\n→ DeviceToken active, KHÔNG dùng EmergencyContact]
+FamilyAlertSvc -> FamMember : 17. getFamilyFcmTokens(userId)\n[CareGroup ACTIVE → CareGroupMember ACCEPTED\n→ DeviceToken active, DO NOT use EmergencyContact]
 activate FamMember
 FamMember --> FamilyAlertSvc : 18. fcmTokens[]
 deactivate FamMember
-FamilyAlertSvc -> Consent : 19. hasLocationConsent(userId)\n[ConsentGrantRepository: LOCATION/SHARE còn hiệu lực?]
+FamilyAlertSvc -> Consent : 19. hasLocationConsent(userId)\n[ConsentGrantRepository: LOCATION/SHARE still valid?]
 activate Consent
 Consent --> FamilyAlertSvc : 20. boolean hasConsent
 deactivate Consent
-FamilyAlertSvc -> FamilyAlertSvc : 21. build payload\n(kèm latitude/longitude CHỈ khi hasConsent=true — PDPA)
-alt 22. FCM gửi thành công
+FamilyAlertSvc -> FamilyAlertSvc : 21. build payload\n(include latitude/longitude ONLY when hasConsent=true — PDPA)
+alt 22. FCM sent successfully
   FamilyAlertSvc -> Fcm : 22. sendBatch(fcmTokens, payload)
   activate Fcm
   Fcm --> FamilyAlertSvc : 23. void
   deactivate Fcm
-else 22. FCM lỗi → fallback SMS (không được chặn service)
+else 22. FCM error → fallback SMS (must not block service)
   FamilyAlertSvc -> Sms : 22a. sendFallback(userId, sessionId,\n"Emergency alert fallback triggered...")
   activate Sms
   Sms --> FamilyAlertSvc : 22b. void
@@ -246,10 +246,10 @@ DB --> AlertLogRepo : 26. saved
 deactivate DB
 AlertLogRepo --> FamilyAlertSvc : 27. FamilyAlertLog
 deactivate AlertLogRepo
-FamilyAlertSvc -> FamilyAlertSvc : 28. publishEvent(FamilyAlertSent) [nội bộ, không có UC nào subscribe hiện tại]
+FamilyAlertSvc -> FamilyAlertSvc : 28. publishEvent(FamilyAlertSent) [internal, no UC currently subscribed]
 FamilyAlertSvc --> Handler : 29. void
 deactivate FamilyAlertSvc
-Handler --> EmService : 30. void (listener hoàn tất, cùng thread/transaction)
+Handler --> EmService : 30. void (listener completed, same thread/transaction)
 deactivate Handler
 EmService --> EmController : 31. EmergencySessionResponse{status=ACTIVE}
 deactivate EmService
@@ -287,7 +287,7 @@ DB --> ReqRepo : 46. request row
 deactivate DB
 ReqRepo --> NearService : 47. NearbySupportRequest
 deactivate ReqRepo
-NearService -> NearService : 48. kiểm tra requesterUserId khớp\n&& status==OPEN (nếu không → 403/400)
+NearService -> NearService : 48. check requesterUserId matches\n&& status==OPEN (if not → 403/400)
 NearService -> ReqRepo : 49. save(request{status=CANCELLED})
 activate ReqRepo
 ReqRepo -> DB : 50. UPDATE nearby_support_requests SET status='CANCELLED'
@@ -304,7 +304,7 @@ deactivate NearController
 == UC-82 Manage Expert Nearby Availability and Respond to Nearby Support Request ==
 Exp -> NearController : 55. GET /api/v1/nearbycare/support-requests/open
 activate NearController
-NearController -> ExpertRepo : 56. findByUserId(expertUserId)\n[chỉ để lấy expertProfileId — không dùng để lọc kết quả]
+NearController -> ExpertRepo : 56. findByUserId(expertUserId)\n[only to retrieve expertProfileId — not used to filter results]
 activate ExpertRepo
 ExpertRepo -> DB : 57. SELECT * FROM expert_profiles WHERE user_id=?
 activate DB
@@ -322,7 +322,7 @@ DB --> ReqRepo : 63. rows[]
 deactivate DB
 ReqRepo --> NearService : 64. requests[]
 deactivate ReqRepo
-NearService --> NearController : 65. requests[] (toàn bộ request OPEN hệ thống)
+NearService --> NearController : 65. requests[] (all OPEN requests in system)
 deactivate NearService
 NearController --> Exp : 66. HTTP 200 OK {requests[]}
 deactivate NearController
@@ -343,7 +343,7 @@ NearService -> ReqRepo : 73. findById(requestId)
 activate ReqRepo
 ReqRepo -> DB : 74. SELECT * FROM nearby_support_requests WHERE id=?
 activate DB
-DB --> ReqRepo : 75. request row (status phải == OPEN)
+DB --> ReqRepo : 75. request row (status must be == OPEN)
 deactivate DB
 ReqRepo --> NearService : 76. NearbySupportRequest
 deactivate ReqRepo
@@ -378,7 +378,7 @@ alt 81. verificationStatus == APPROVED (verified expert)
   deactivate NearService
   NearController --> Exp : 87. HTTP 200 OK
   deactivate NearController
-else 81. verificationStatus != APPROVED → chặn
+else 81. verificationStatus != APPROVED → block
   NearService --> NearController : 81a. throw ExpertException(FORBIDDEN,\n"Only verified experts can respond")
   deactivate NearService
   NearController --> Exp : 81b. HTTP 403 Forbidden

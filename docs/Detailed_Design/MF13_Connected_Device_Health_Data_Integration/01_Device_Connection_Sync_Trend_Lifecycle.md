@@ -148,7 +148,7 @@ M -> ConnController : 1. POST /api/v1/health/devices/connections\n{providerName,
 activate ConnController
 ConnController -> ConnService : 2. connect(request, userId)
 activate ConnService
-ConnService -> ConnService : 3. kiểm tra consentAccepted=true (400 DEVICE-002 nếu không)
+ConnService -> ConnService : 3. check consentAccepted=true (400 DEVICE-002 if not)
 ConnService -> ConnRepo : 4. findFirstByUserIdAndProviderNameAndStatusOrderByCreatedAtDesc\n(userId, providerName, ACTIVE)
 activate ConnRepo
 ConnRepo -> DB : 5. SELECT * FROM health_device_connections\nWHERE user_id=? AND provider_name=? AND status='ACTIVE'\nORDER BY created_at DESC LIMIT 1
@@ -157,7 +157,7 @@ DB --> ConnRepo : 6. existing | none
 deactivate DB
 ConnRepo --> ConnService : 7. Optional<HealthDeviceConnection>
 deactivate ConnRepo
-alt 8. chưa có kết nối ACTIVE cho provider này
+alt 8. no ACTIVE connection for this provider yet
   ConnService -> ConnRepo : 8. save(HealthDeviceConnection{status=ACTIVE,\nconsentGrantedAt=now()})
   activate ConnRepo
   ConnRepo -> DB : 9. INSERT INTO health_device_connections ...
@@ -171,8 +171,8 @@ alt 8. chưa có kết nối ACTIVE cho provider này
   deactivate ConnService
   ConnController --> M : 14. HTTP 201 Created
   deactivate ConnController
-else 8. đã có kết nối ACTIVE cho provider này → idempotent, trả lại bản ghi cũ
-  ConnService --> ConnController : 8a. HealthDeviceConnection đã có (KHÔNG tạo mới)
+else 8. ACTIVE connection already exists for this provider → idempotent, return old record
+  ConnService --> ConnController : 8a. HealthDeviceConnection already exists (DO NOT create new)
   deactivate ConnService
   ConnController --> M : 8b. HTTP 201 Created (idempotent)
   deactivate ConnController
@@ -187,25 +187,25 @@ SyncService -> ConnRepo : 17. findByConnectionIdAndUserId(connectionId, userId)
 activate ConnRepo
 ConnRepo -> DB : 18. SELECT * FROM health_device_connections\nWHERE connection_id=? AND user_id=?
 activate DB
-DB --> ConnRepo : 19. connection row (404 SYNC-001 nếu không có)
+DB --> ConnRepo : 19. connection row (404 SYNC-001 if not found)
 deactivate DB
 ConnRepo --> SyncService : 20. HealthDeviceConnection
 deactivate ConnRepo
-SyncService -> SyncService : 21. kiểm tra status==ACTIVE && consentGrantedAt != null\n(409 SYNC-002 nếu không)
-SyncService -> ProviderClient : 22. fetchMeasurements(connection)\n[gọi API nhà cung cấp thiết bị thật — ví dụ Fitbit/Google Fit]
+SyncService -> SyncService : 21. check status==ACTIVE && consentGrantedAt != null\n(409 SYNC-002 if not)
+SyncService -> ProviderClient : 22. fetchMeasurements(connection)\n[call real device provider API — e.g. Fitbit/Google Fit]
 activate ProviderClient
-ProviderClient --> SyncService : 23. RawMeasurement[]\n(502 SYNC-003 nếu provider lỗi — lastSyncedAt vẫn được cập nhật)
+ProviderClient --> SyncService : 23. RawMeasurement[]\n(502 SYNC-003 if provider error — lastSyncedAt is still updated)
 deactivate ProviderClient
-loop 24-28. với mỗi RawMeasurement trả về
-  SyncService -> MeasurementRepo : 24. existsByConnectionIdAndSourceRecordId\n(connectionId, sourceRecordId) [chống nhập trùng]
+loop 24-28. for each RawMeasurement returned
+  SyncService -> MeasurementRepo : 24. existsByConnectionIdAndSourceRecordId\n(connectionId, sourceRecordId) [prevent duplicate import]
   activate MeasurementRepo
   MeasurementRepo -> DB : 25. SELECT EXISTS(...) FROM device_measurements\nWHERE connection_id=? AND source_record_id=?
   activate DB
   DB --> MeasurementRepo : 26. boolean
   deactivate DB
-  MeasurementRepo --> SyncService : 27. boolean\n(bỏ qua nếu true — "Duplicate source record skipped")
+  MeasurementRepo --> SyncService : 27. boolean\n(skip if true — "Duplicate source record skipped")
   deactivate MeasurementRepo
-  opt 28. chưa từng nhập (không trùng)
+  opt 28. never imported (no duplicate)
     SyncService -> MeasurementRepo : 28a. save(DeviceMeasurement{qualityLabel, rawMetadataJson})
     activate MeasurementRepo
     MeasurementRepo -> DB : 28b. INSERT INTO device_measurements ...
@@ -216,7 +216,7 @@ loop 24-28. với mỗi RawMeasurement trả về
     deactivate MeasurementRepo
   end
 end
-SyncService -> ConnRepo : 29. save(connection{lastSyncedAt=now()})\n[luôn cập nhật, kể cả khi có bản ghi bị skip]
+SyncService -> ConnRepo : 29. save(connection{lastSyncedAt=now()})\n[always update, even when records are skipped]
 activate ConnRepo
 ConnRepo -> DB : 30. UPDATE health_device_connections SET last_synced_at=now()
 activate DB
@@ -234,7 +234,7 @@ M -> MetricController : 36. POST /api/v1/health/metrics/device-import\n{journeyI
 activate MetricController
 MetricController -> ImportService : 37. importMetric(request, userId)
 activate ImportService
-ImportService -> JourneyRepo : 38. existsByIdAndOwnerUserId(journeyId, userId)\n(403 DEVICE-004 nếu không phải chủ journey)
+ImportService -> JourneyRepo : 38. existsByIdAndOwnerUserId(journeyId, userId)\n(403 DEVICE-004 if not owner of journey)
 activate JourneyRepo
 JourneyRepo -> DB : 39. SELECT EXISTS(...) FROM mother_journeys\nWHERE id=? AND owner_user_id=?
 activate DB
@@ -242,9 +242,9 @@ DB --> JourneyRepo : 40. boolean
 deactivate DB
 JourneyRepo --> ImportService : 41. boolean
 deactivate JourneyRepo
-ImportService -> ImportService : 42. kiểm tra valueNumeric trong khoảng cho phép theo metricType\n(400 DEVICE-100 nếu metricType không có range định nghĩa,\n400 DEVICE-101 nếu ngoài khoảng)
+ImportService -> ImportService : 42. check valueNumeric is in allowable range according to metricType\n(400 DEVICE-100 if metricType has no range defined,\n400 DEVICE-101 if out of range)
 alt 43. sourceType == DEVICE
-  ImportService -> ConnRepo : 43. findByConnectionIdAndUserId(deviceConnectionId, userId)\n[phải đang ACTIVE — 409 DEVICE-102 nếu không]
+  ImportService -> ConnRepo : 43. findByConnectionIdAndUserId(deviceConnectionId, userId)\n[must be ACTIVE — 409 DEVICE-102 if not]
   activate ConnRepo
   ConnRepo -> DB : 44. SELECT * FROM health_device_connections\nWHERE connection_id=? AND user_id=? AND status='ACTIVE'
   activate DB
@@ -252,7 +252,7 @@ alt 43. sourceType == DEVICE
   deactivate DB
   ConnRepo --> ImportService : 46. HealthDeviceConnection (sourceReferenceId = connectionId)
   deactivate ConnRepo
-else 43. sourceType == MANUAL (không qua thiết bị)
+else 43. sourceType == MANUAL (not via device)
   ImportService -> ImportService : 43a. sourceReferenceId = null
 end
 ImportService -> MetricRepo : 47. save(MaternalHealthMetric{sourceType, sourceReferenceId, status=ACTIVE})
@@ -274,8 +274,8 @@ M -> MetricController : 54. GET /api/v1/health/metrics/trend?journeyId=&metricTy
 activate MetricController
 MetricController -> TrendService : 55. getTrend(query, userId)
 activate TrendService
-TrendService -> TrendService : 56. kiểm tra from <= to (400 DEVICE-301 nếu ngược)
-TrendService -> JourneyRepo : 57. existsById(journeyId) (404 DEVICE-302 nếu không tồn tại)
+TrendService -> TrendService : 56. check from <= to (400 DEVICE-301 if reversed)
+TrendService -> JourneyRepo : 57. existsById(journeyId) (404 DEVICE-302 if not exists)
 activate JourneyRepo
 JourneyRepo -> DB : 58. SELECT EXISTS(...) FROM mother_journeys WHERE id=?
 activate DB
@@ -283,7 +283,7 @@ DB --> JourneyRepo : 59. boolean
 deactivate DB
 JourneyRepo --> TrendService : 60. boolean
 deactivate JourneyRepo
-TrendService -> JourneyRepo : 61. existsByIdAndOwnerUserId(journeyId, userId)\n(403 DEVICE-304 nếu không phải chủ journey)
+TrendService -> JourneyRepo : 61. existsByIdAndOwnerUserId(journeyId, userId)\n(403 DEVICE-304 if not owner of journey)
 activate JourneyRepo
 JourneyRepo -> DB : 62. SELECT EXISTS(...) FROM mother_journeys\nWHERE id=? AND owner_user_id=?
 activate DB
@@ -291,7 +291,7 @@ DB --> JourneyRepo : 63. boolean
 deactivate DB
 JourneyRepo --> TrendService : 64. boolean
 deactivate JourneyRepo
-TrendService -> MetricRepo : 65. findByJourneyIdAndMetricTypeAndMeasuredAtBetweenAndStatus\nOrderByMeasuredAtAsc(journeyId, metricType, from, to, ACTIVE)\n[đọc từ MaternalHealthMetric — KHÔNG phải DeviceMeasurement trực tiếp]
+TrendService -> MetricRepo : 65. findByJourneyIdAndMetricTypeAndMeasuredAtBetweenAndStatus\nOrderByMeasuredAtAsc(journeyId, metricType, from, to, ACTIVE)\n[read from MaternalHealthMetric — NOT directly from DeviceMeasurement]
 activate MetricRepo
 MetricRepo -> DB : 66. SELECT * FROM maternal_health_metrics\nWHERE journey_id=? AND metric_type=? AND measured_at BETWEEN ?\nAND status='ACTIVE' ORDER BY measured_at ASC
 activate DB
@@ -299,7 +299,7 @@ DB --> MetricRepo : 67. metrics[]
 deactivate DB
 MetricRepo --> TrendService : 68. metrics[]
 deactivate MetricRepo
-TrendService -> TrendService : 69. map → DeviceTrendPointResponse[]\n(sourceLabel suy ra từ HealthDeviceConnection nếu sourceType=DEVICE;\naccuracyWarning LUÔN hard-code false — xem ghi chú grounding)
+TrendService -> TrendService : 69. map → DeviceTrendPointResponse[]\n(sourceLabel inferred from HealthDeviceConnection if sourceType=DEVICE;\naccuracyWarning ALWAYS hard-coded false — see grounding notes)
 TrendService --> MetricController : 70. DeviceTrendResponse{points[], hasAnyData}
 deactivate TrendService
 MetricController --> M : 71. HTTP 200 OK {trend}
@@ -314,11 +314,11 @@ ConnService -> ConnRepo : 74. findById(connectionId)
 activate ConnRepo
 ConnRepo -> DB : 75. SELECT * FROM health_device_connections WHERE connection_id=?
 activate DB
-DB --> ConnRepo : 76. connection row (409 DEVICE-203 nếu không có)
+DB --> ConnRepo : 76. connection row (409 DEVICE-203 if not found)
 deactivate DB
 ConnRepo --> ConnService : 77. HealthDeviceConnection
 deactivate ConnRepo
-ConnService -> ConnService : 78. kiểm tra userId khớp (403 DEVICE-204 nếu không)\n&& status==ACTIVE (409 DEVICE-203 nếu đã REVOKED/INACTIVE)
+ConnService -> ConnService : 78. check matching userId (403 DEVICE-204 if not)\n&& status==ACTIVE (409 DEVICE-203 if REVOKED/INACTIVE)
 ConnService -> ConnRepo : 79. save(connection{status=REVOKED})
 activate ConnRepo
 ConnRepo -> DB : 80. UPDATE health_device_connections SET status='REVOKED'
@@ -333,10 +333,10 @@ deactivate ConnService
 ConnController --> M : 85. HTTP 200 OK
 deactivate ConnController
 note right of ConnService
-  Chỉ đổi status → ngăn đồng bộ mới (SyncService kiểm tra ACTIVE
-  trước khi sync). "Delete imported data" (xoá DeviceMeasurement/
-  MaternalHealthMetric đã nhập) KHÔNG được thực thi tự động ở
-  bước này — xem ghi chú mục 1.
+  Only change status → prevent new sync (SyncService checks ACTIVE
+  before sync). "Delete imported data" (delete imported DeviceMeasurement/
+  MaternalHealthMetric) is NOT executed automatically at
+  this step — see notes under section 1.
 end note
 
 @enduml

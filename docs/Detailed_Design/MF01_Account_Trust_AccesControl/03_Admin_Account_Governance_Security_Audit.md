@@ -217,7 +217,7 @@ Admin -> AdminController : 19. PATCH /api/v1/admin/users/{targetUserId}/status\n
 activate AdminController
 AdminController -> AdminService : 20. updateStatus(callerUserId, targetUserId, request)
 activate AdminService
-AdminService -> AdminService : 21. check targetUserId != callerUserId\n[separation-of-duties — 403 nếu vi phạm]
+AdminService -> AdminService : 21. check targetUserId != callerUserId\n[separation-of-duties — 403 if violated]
 AdminService -> UserRepo : 22. save(user{accountStatus="DEACTIVATED"})
 activate UserRepo
 UserRepo -> DB : 23. UPDATE users SET account_status='DEACTIVATED'

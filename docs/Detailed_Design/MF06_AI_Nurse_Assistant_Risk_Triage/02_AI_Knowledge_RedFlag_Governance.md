@@ -151,7 +151,7 @@ CA -> EvController : 1. POST /admin/api/v1/evidence-sources\n{baseUrl, organizat
 activate EvController
 EvController -> EvService : 2. propose(baseUrl, organization, category,\napplicableStages, notes, actorId)
 activate EvService
-EvService -> EvService : 3. parse HTTPS URL → derive domain;\nchặn nếu domain thuộc blocklist (facebook/tiktok/reddit/...)
+EvService -> EvService : 3. parse HTTPS URL → derive domain;\nblock if domain is in blocklist (facebook/tiktok/reddit/...)
 EvService -> EvSourceRepo : 4. findByDomainIgnoreCase(domain)
 activate EvSourceRepo
 EvSourceRepo -> DB : 5. SELECT * FROM evidence_sources WHERE domain=?
@@ -216,7 +216,7 @@ deactivate EvController
 
 AiSvc -> InternalEvController : 34. GET /internal/api/v1/triage/evidence-sources/approved?stage=PREGNANCY\nHeader: X-CareBridge-Internal-Key
 activate InternalEvController
-InternalEvController -> InternalEvController : 35. xác thực internalApiKey header (deployment secret,\nkhông cấp quyền admin cho AI service)
+InternalEvController -> InternalEvController : 35. verify internalApiKey header (deployment secret,\nno admin permission granted to AI service)
 InternalEvController -> EvService : 36. approvedForStage(stage)
 activate EvService
 EvService -> EvSourceRepo : 37. findByStatus("APPROVED")
@@ -227,7 +227,7 @@ DB --> EvSourceRepo : 39. rows[]
 deactivate DB
 EvSourceRepo --> EvService : 40. sources[]
 deactivate EvSourceRepo
-EvService -> EvService : 41. lọc theo applicableStages chứa stage
+EvService -> EvService : 41. filter by applicableStages containing stage
 EvService --> InternalEvController : 42. approvedSources[]
 deactivate EvService
 InternalEvController --> AiSvc : 43. HTTP 200 OK {approvedSources[]}
@@ -275,8 +275,8 @@ DB --> RFRepo : 62. rule row
 deactivate DB
 RFRepo --> RFService : 63. RedFlagRule
 deactivate RFRepo
-RFService -> RFService : 64. kiểm tra rule.systemDefault && attemptsDeactivate\n(guard BR-SAFETY-RFR-003, chạy trước mọi thay đổi)
-alt 64. không vi phạm guard → tiếp tục cập nhật
+RFService -> RFService : 64. check rule.systemDefault && attemptsDeactivate\n(guard BR-SAFETY-RFR-003, runs before any changes)
+alt 64. no guard violation → proceed with update
   RFService -> RFRepo : 65. save(rule{active=false, updatedBy})
   activate RFRepo
   RFRepo -> DB : 66. UPDATE red_flag_rules\nSET active=false, updated_by=?
@@ -293,7 +293,7 @@ alt 64. không vi phạm guard → tiếp tục cập nhật
   deactivate RFService
   RFController --> SA : 72. HTTP 200 OK
   deactivate RFController
-else 64. rule.systemDefault && attemptsDeactivate → chặn\n[BR-SAFETY-RFR-003: rule nền tảng không thể vô hiệu qua API]
+else 64. rule.systemDefault && attemptsDeactivate → block\n[BR-SAFETY-RFR-003: platform rule cannot be disabled via API]
   RFService --> RFController : 64a. throw RedFlagRuleException.systemDefaultProtected()
   deactivate RFService
   RFController --> SA : 64b. HTTP 409 Conflict

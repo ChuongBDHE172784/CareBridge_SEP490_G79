@@ -153,12 +153,12 @@ deactivate Service
 Controller --> U : 9. HTTP 200 OK {items[], totalElements}
 deactivate Controller
 
-U -> Controller : 10. GET /api/v1/content/search?keyword=...&type=&stage=&topicId=\n[endpoint riêng — /content KHÔNG nhận tham số keyword]
+U -> Controller : 10. GET /api/v1/content/search?keyword=...&type=&stage=&topicId=\n[separate endpoint — /content DOES NOT accept keyword parameter]
 activate Controller
-Controller -> Controller : 11. validate keyword bắt buộc, tối đa 100 ký tự (400 nếu vi phạm)
+Controller -> Controller : 11. validate keyword is required, maximum 100 characters (400 if violates)
 Controller -> Service : 12. searchContent(request, pageable)
 activate Service
-Service -> Service : 13. sanitizeKeyword() [trim + escape ký tự LIKE % và _]
+Service -> Service : 13. sanitizeKeyword() [trim + escape LIKE characters % and _]
 Service -> ContentRepo : 14. searchByFilters(sanitizedKeyword, type, stage,\ntopicId, status=APPROVED, pageable)
 activate ContentRepo
 ContentRepo -> DB : 15. SELECT * FROM content_items\nWHERE status='APPROVED' AND title/body ILIKE ? AND ...
@@ -176,15 +176,15 @@ U -> Controller : 20. GET /api/v1/content/checklists?stage=PREGNANCY
 activate Controller
 Controller -> Service : 21. getChecklists(stage)
 activate Service
-Service -> ChecklistTemplateRepo : 22. findByStage(stage) [hoặc findAll() nếu stage=null]
+Service -> ChecklistTemplateRepo : 22. findByStage(stage) [or findAll() if stage=null]
 activate ChecklistTemplateRepo
-ChecklistTemplateRepo -> DB : 23. SELECT * FROM checklist_templates WHERE stage=?\n[KHÔNG lọc theo status — xem ghi chú grounding]
+ChecklistTemplateRepo -> DB : 23. SELECT * FROM checklist_templates WHERE stage=?\n[DO NOT filter by status — see grounding notes]
 activate DB
 DB --> ChecklistTemplateRepo : 24. templates[]
 deactivate DB
 ChecklistTemplateRepo --> Service : 25. templates[]
 deactivate ChecklistTemplateRepo
-loop 26-29. với mỗi ChecklistTemplate
+loop 26-29. for each ChecklistTemplate
   Service -> ChecklistItemRepo : 26. findByTemplate_IdOrderByOrder(templateId)
   activate ChecklistItemRepo
   ChecklistItemRepo -> DB : 27. SELECT * FROM checklist_items\nWHERE template_id=? ORDER BY "order"
@@ -208,7 +208,7 @@ Service -> ContentRepo : 34. findByIdAndStatus(id, APPROVED)
 activate ContentRepo
 ContentRepo -> DB : 35. SELECT * FROM content_items\nWHERE id=? AND status='APPROVED'
 activate DB
-alt 36. tìm thấy item APPROVED
+alt 36. found APPROVED item
   DB --> ContentRepo : 36. item row
   deactivate DB
   ContentRepo --> Service : 37. ContentItem
@@ -218,12 +218,12 @@ alt 36. tìm thấy item APPROVED
   deactivate Service
   Controller --> U : 40. HTTP 200 OK {content detail}
   deactivate Controller
-else 36. không có (không tồn tại HOẶC chưa APPROVED)
+else 36. none found (does not exist OR not APPROVED)
   DB --> ContentRepo : 36a. none
   deactivate DB
   ContentRepo --> Service : 36b. Optional.empty()
   deactivate ContentRepo
-  Service --> Controller : 36c. throw ContentException.contentNotFound()\n(không phân biệt "không tồn tại" và "chưa duyệt")
+  Service --> Controller : 36c. throw ContentException.contentNotFound()\n(no distinction between "does not exist" and "not approved")
   deactivate Service
   Controller --> U : 36d. HTTP 404 Not Found
   deactivate Controller

@@ -151,12 +151,12 @@ participant "ReminderRecurrenceService" as RecurrenceService
 participant "CareTaskRepository" as CareTaskRepo
 database "PostgreSQL" as DB
 
-== UC-89/90/91 Create Reminder (Appointment / Medication / Vaccination — cùng entity) ==
+== UC-89/90/91 Create Reminder (Appointment / Medication / Vaccination — same entity) ==
 M -> Controller : 1. POST /api/v1/reminders\n{reminderType=APPOINTMENT, title, scheduledAt, recurrenceType}
 activate Controller
 Controller -> Service : 2. createReminder(request, callerId)
 activate Service
-Service -> Service : 3. validateScheduledAt(scheduledAt) [phải ở tương lai]
+Service -> Service : 3. validateScheduledAt(scheduledAt) [must be in the future]
 Service -> ReminderRepo : 4. save(Reminder{status=PENDING})
 activate ReminderRepo
 ReminderRepo -> DB : 5. INSERT INTO reminders ...
@@ -169,7 +169,7 @@ Service -> Notif : 8. scheduleFcmPush(callerId, title, body, scheduledAt)
 activate Notif
 Notif --> Service : 9. fcmJobId
 deactivate Notif
-Service -> ReminderRepo : 10. save(reminder{fcmJobId})\n[ghi lần 2 sau khi có jobId]
+Service -> ReminderRepo : 10. save(reminder{fcmJobId})\n[second write after having jobId]
 activate ReminderRepo
 ReminderRepo -> DB : 11. UPDATE reminders SET fcm_job_id=?
 activate DB
@@ -187,9 +187,9 @@ Controller --> M : 17. HTTP 201 Created
 deactivate Controller
 
 note over Service
-  createMedicationReminder / createVaccinationReminder theo đúng
-  luồng trên, chỉ khác reminderType cố định (MEDICATION/VACCINATION)
-  và createVaccinationReminder có thêm requireBabyOwnership(babyId) trước bước 3.
+  createMedicationReminder / createVaccinationReminder follow the exact same
+  flow above, only with fixed reminderType (MEDICATION/VACCINATION)
+  and createVaccinationReminder adds requireBabyOwnership(babyId) before step 3.
 end note
 
 == UC-92 Update, Snooze, Complete, Skip or Delete Care Reminder ==
@@ -205,9 +205,9 @@ DB --> ReminderRepo : 22. reminder row
 deactivate DB
 ReminderRepo --> Service : 23. Reminder
 deactivate ReminderRepo
-Service -> Service : 24. kiểm tra ownership + trạng thái chưa terminal (REM-007)
-alt 25. snoozedUntil hợp lệ (tương lai VÀ ≤ 24 giờ tới — REM-005/REM-008)
-  Service -> Notif : 25. cancelFcmJob(oldFcmJobId) [nếu có]
+Service -> Service : 24. check ownership + non-terminal status (REM-007)
+alt 25. snoozedUntil valid (future AND ≤ 24 hours from now — REM-005/REM-008)
+  Service -> Notif : 25. cancelFcmJob(oldFcmJobId) [if exists]
   activate Notif
   Notif --> Service : 26. void
   deactivate Notif
@@ -223,11 +223,11 @@ alt 25. snoozedUntil hợp lệ (tương lai VÀ ≤ 24 giờ tới — REM-005/
   deactivate DB
   ReminderRepo --> Service : 32. Reminder
   deactivate ReminderRepo
-  Service --> Controller : 33. ReminderDetailResponse{status=SNOOZED}\n(KHÔNG ghi audit log cho snooze)
+  Service --> Controller : 33. ReminderDetailResponse{status=SNOOZED}\n(DO NOT log audit for snooze)
   deactivate Service
   Controller --> M : 34. HTTP 200 OK
   deactivate Controller
-else 25. snoozedUntil không hợp lệ (quá khứ, hoặc > 24 giờ tới)
+else 25. snoozedUntil invalid (past, or > 24 hours from now)
   Service --> Controller : 25a. throw 400 REM-005/REM-008\n"snoozedUntil must be in the future / within 24h"
   deactivate Service
   Controller --> M : 25b. HTTP 400 Bad Request
@@ -246,8 +246,8 @@ DB --> ReminderRepo : 39. reminder row
 deactivate DB
 ReminderRepo --> Service : 40. Reminder
 deactivate ReminderRepo
-Service -> Service : 41. kiểm tra ownership + trạng thái chưa terminal (REM-007)
-Service -> Notif : 42. cancelFcmJob(fcmJobId) [nếu có]
+Service -> Service : 41. check ownership + non-terminal status (REM-007)
+Service -> Notif : 42. cancelFcmJob(fcmJobId) [if exists]
 activate Notif
 Notif --> Service : 43. void
 deactivate Notif
@@ -271,14 +271,14 @@ deactivate Controller
 == UC-93 View Today Tasks and Care Plan ==
 M -> Controller : 52. GET /api/v1/reminders/today\nHeader: X-User-Timezone
 activate Controller
-Controller -> Controller : 53. resolveTimezone(header)\n[mặc định Asia/Ho_Chi_Minh nếu thiếu/không hợp lệ]
+Controller -> Controller : 53. resolveTimezone(header)\n[default to Asia/Ho_Chi_Minh if missing/invalid]
 Controller -> TodayService : 54. getTodayTasks(callerId, timezone)
 activate TodayService
 TodayService -> ReminderRepo : 55. findByOwnerUserIdAndStatusNot(callerId, CANCELLED)
 activate ReminderRepo
 ReminderRepo -> DB : 56. SELECT * FROM reminders\nWHERE owner_user_id=? AND status<>'CANCELLED'
 activate DB
-DB --> ReminderRepo : 57. reminders[] (mọi ngày — chưa lọc theo hôm nay)
+DB --> ReminderRepo : 57. reminders[] (all days — not filtered by today yet)
 deactivate DB
 ReminderRepo --> TodayService : 58. reminders[]
 deactivate ReminderRepo
@@ -290,13 +290,13 @@ DB --> CareTaskRepo : 61. careTasks[]
 deactivate DB
 CareTaskRepo --> TodayService : 62. careTasks[]
 deactivate CareTaskRepo
-loop 63-64. với mỗi Reminder (kể cả recurring)
-  TodayService -> RecurrenceService : 63. occurrenceForDate(reminder, today, timezone)\n[tính occurrence hôm nay — hỗ trợ DAILY/WEEKLY/MONTHLY]
+loop 63-64. for each Reminder (including recurring)
+  TodayService -> RecurrenceService : 63. occurrenceForDate(reminder, today, timezone)\n[calculate occurrence today — support DAILY/WEEKLY/MONTHLY]
   activate RecurrenceService
-  RecurrenceService --> TodayService : 64. Optional<Occurrence>\n(rỗng nếu hôm nay không đến hạn)
+  RecurrenceService --> TodayService : 64. Optional<Occurrence>\n(empty if not due today)
   deactivate RecurrenceService
 end
-TodayService -> TodayService : 65. gộp reminder-occurrences + careTasks, sắp xếp theo\npriority (VACCINATION=1 > MEDICATION=2 > APPOINTMENT=3 > CARE_TASK=4), rồi dueAt
+TodayService -> TodayService : 65. combine reminder-occurrences + careTasks, sort by\npriority (VACCINATION=1 > MEDICATION=2 > APPOINTMENT=3 > CARE_TASK=4), then dueAt
 TodayService --> Controller : 66. TodayTaskItem[]
 deactivate TodayService
 Controller --> M : 67. HTTP 200 OK {todayTasks[]}

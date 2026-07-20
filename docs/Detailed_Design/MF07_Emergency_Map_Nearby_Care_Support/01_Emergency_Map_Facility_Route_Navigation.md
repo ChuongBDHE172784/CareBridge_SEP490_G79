@@ -117,28 +117,28 @@ database "PostgreSQL" as DB
 participant "Device Capability\n(Dialer / Maps)" as Device
 
 == UC-77 Open Emergency Map ==
-M -> App : 1. Mở Emergency Map
+M -> App : 1. Open Emergency Map
 activate App
-App -> App : 2. Xin quyền vị trí thiết bị + hiển thị\ndisclaimer "không phải dịch vụ cấp cứu"
-App -> App : 3. Guard — chỉ tiếp tục khi permission granted
+App -> App : 2. Request device location permission + display\ndisclaimer "not an emergency service"
+App -> App : 3. Guard — only proceed when permission granted
 
 == UC-78 Find Nearby Care Facilities ==
 App -> Controller : 4. GET /api/v1/map/nearby-facilities?lat=&lng=&radiusMeters=&type=
 activate Controller
 Controller -> Service : 5. searchNearby(lat, lng, radiusMeters, type)
 activate Service
-alt 6. TrackAsia trả kết quả hợp lệ (nguồn ưu tiên)
+alt 6. TrackAsia returns valid result (preferred source)
   Service -> TrackAsia : 6. searchNearby(lat, lng, radiusMeters, type)
   activate TrackAsia
-  TrackAsia --> Service : 7. GeoJSON features[] (POI gần đây)
+  TrackAsia --> Service : 7. GeoJSON features[] (nearby POIs)
   deactivate TrackAsia
-  Service -> Service : 8. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" mặc định)
-else 6. TrackAsia lỗi/timeout/rỗng → fallback dữ liệu nội bộ
+  Service -> Service : 8. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" by default)
+else 6. TrackAsia error/timeout/empty → fallback internal data
   Service -> FacilityRepo : 6a. findNearby(lat, lng, radiusMeters)
   activate FacilityRepo
   FacilityRepo -> DB : 6b. SELECT * FROM care_facilities\nWHERE lat/lng NOT NULL AND earth_distance(...) <= radiusMeters*1000
   activate DB
-  DB --> FacilityRepo : 6c. rows[] (không lọc theo verification_status)
+  DB --> FacilityRepo : 6c. rows[] (do not filter by verification_status)
   deactivate DB
   FacilityRepo --> Service : 6d. facilities[]
   deactivate FacilityRepo
@@ -147,11 +147,11 @@ Service --> Controller : 9. NearbyResponse{facilities[], totalCount}
 deactivate Service
 Controller --> App : 10. HTTP 200 OK {facilities[]}
 deactivate Controller
-App --> M : 11. Hiển thị facility trên bản đồ
+App --> M : 11. Display facilities on map
 deactivate App
 
 == UC-79 View Route, ETA and Quick Call or Navigate ==
-M -> App : 12. Chọn 1 facility
+M -> App : 12. Select 1 facility
 activate App
 App -> Controller : 13. POST /api/v1/map/route\n{fromLat, fromLng, toLat, toLng, transportMode}
 activate Controller
@@ -161,18 +161,18 @@ Service -> TrackAsia : 15. route(fromLat, fromLng, toLat, toLng, transportMode)
 activate TrackAsia
 TrackAsia --> Service : 16. GeoJSON route{routes: [{distance, duration, steps[]}]}
 deactivate TrackAsia
-Service -> Service : 17. parse leg đầu tiên → distanceMeters, etaMinutes,\ndanh sách RoutePoint từ steps[].maneuver
+Service -> Service : 17. parse first leg → distanceMeters, etaMinutes,\nRoutePoint list from steps[].maneuver
 Service --> Controller : 18. RouteResponse{distanceMeters, etaMinutes, points[]}
 deactivate Service
 Controller --> App : 19. HTTP 200 OK {route}
 deactivate Controller
-App --> M : 20. Hiển thị route + ETA
+App --> M : 20. Display route + ETA
 deactivate App
 
-alt 21. Mother chọn Gọi nhanh
-  M -> Device : 21. gọi facilityPhone (native dialer)
-else 21. Mother chọn Chỉ đường
-  M -> Device : 21a. mở app bản đồ native với toạ độ đích (maps intent)
+alt 21. Mother selects Quick Call
+  M -> Device : 21. call facilityPhone (native dialer)
+else 21. Mother selects Directions
+  M -> Device : 21a. open native map app with destination coordinates (maps intent)
 end
 
 @enduml

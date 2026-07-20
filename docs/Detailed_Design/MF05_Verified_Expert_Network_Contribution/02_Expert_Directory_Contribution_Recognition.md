@@ -210,8 +210,8 @@ deactivate ProfileService
 ProfileController --> U : 24. HTTP 200 OK {profile, ratingAvg, availability}
 deactivate ProfileController
 
-== UC-67 View Expert Question Queue (tái sử dụng feed MF-04, lọc theo specialty) ==
-Exp -> ProfileController : 25. GET /api/v1/community/feed?topic=<specialty của expert>
+== UC-67 View Expert Question Queue (reuse feed MF-04, filter by specialty) ==
+Exp -> ProfileController : 25. GET /api/v1/community/feed?topic=<expert specialty>
 activate ProfileController
 ProfileController --> Exp : 26. HTTP 200 OK {matchedQuestions[]}
 deactivate ProfileController
@@ -256,7 +256,7 @@ DB --> PointRepo : 44. rows[]
 deactivate DB
 PointRepo --> PointService : 45. rows[]
 deactivate PointRepo
-PointService -> PointService : 46. derive badge level từ totalPoints\n(ngưỡng cấu hình, không phải bảng riêng)
+PointService -> PointService : 46. derive badge level from totalPoints\n(configured threshold, not a separate table)
 PointService --> PointController : 47. ContributionSummaryResponse
 deactivate PointService
 PointController --> Exp : 48. HTTP 200 OK {totalPoints, breakdown, derivedBadgeLevel}

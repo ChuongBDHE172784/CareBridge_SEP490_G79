@@ -141,7 +141,7 @@ M -> MilestoneController : 1. POST /api/v1/babies/{babyId}/milestones\n{mileston
 activate MilestoneController
 MilestoneController -> MilestoneService : 2. record(ownerId, babyId, request)
 activate MilestoneService
-MilestoneService -> MilestoneService : 3. check ownership của babyId
+MilestoneService -> MilestoneService : 3. check ownership of babyId
 MilestoneService -> MilestoneRepo : 4. save(DevelopmentMilestone{milestoneStatus=ACHIEVED, recordStatus=ACTIVE})
 activate MilestoneRepo
 MilestoneRepo -> DB : 5. INSERT INTO development_milestones ...
@@ -164,7 +164,7 @@ M -> GrowthController : 12. POST /api/v1/babies/{babyId}/growth-measurements\n{m
 activate GrowthController
 GrowthController -> GrowthService : 13. add(ownerId, babyId, request)
 activate GrowthService
-GrowthService -> GrowthService : 14. check ownership của babyId
+GrowthService -> GrowthService : 14. check ownership of babyId
 GrowthService -> GrowthRepo : 15. save(GrowthMeasurement{...})
 activate GrowthRepo
 GrowthRepo -> DB : 16. INSERT INTO growth_measurements ...
@@ -195,7 +195,7 @@ DB --> GrowthRepo : 27. measurements[]
 deactivate DB
 GrowthRepo --> GrowthService : 28. measurements[]
 deactivate GrowthRepo
-GrowthService -> GrowthService : 29. plot trend + so sánh reference range\n(WHO/Bộ Y tế) + guidanceNote nếu lệch xa
+GrowthService -> GrowthService : 29. plot trend + compare with reference range\n(WHO/MOH) + guidanceNote if far off
 GrowthService --> ChartController : 30. GrowthChartResponse
 deactivate GrowthService
 ChartController --> M : 31. HTTP 200 OK {GrowthChartResponse}

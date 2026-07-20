@@ -136,12 +136,12 @@ participant "FallDetectionService" as FallService
 participant "IImuMonitoringSessionRepository" as SessionRepo
 database "PostgreSQL" as DB
 
-== UC-116 Manage Emergency Contacts (chỉ 1 liên hệ mỗi tài khoản) ==
+== UC-116 Manage Emergency Contacts (only 1 contact per account) ==
 M -> ContactController : 1. PUT /api/v1/emergency/contact\n{name, phone, relationship, primaryContact}
 activate ContactController
 ContactController -> ContactService : 2. upsertContact(userId, request)
 activate ContactService
-ContactService -> ContactRepo : 3. findByUserId(userId) [tìm bản ghi hiện có nếu có]
+ContactService -> ContactRepo : 3. findByUserId(userId) [find existing record if any]
 activate ContactRepo
 ContactRepo -> DB : 4. SELECT * FROM emergency_contacts WHERE user_id=?
 activate DB
@@ -149,7 +149,7 @@ DB --> ContactRepo : 5. existing | none
 deactivate DB
 ContactRepo --> ContactService : 6. Optional<EmergencyContact>
 deactivate ContactRepo
-ContactService -> ContactService : 7. tạo mới nếu chưa có, hoặc cập nhật field lên bản ghi cũ\n[1 user CHỈ có 1 EmergencyContact — không phải danh sách nhiều liên hệ]
+ContactService -> ContactService : 7. create new if not exists, or update fields on existing record\n[1 user ONLY has 1 EmergencyContact — not a list of multiple contacts]
 ContactService -> ContactRepo : 8. save(contact{...})
 activate ContactRepo
 ContactRepo -> DB : 9. INSERT/UPDATE emergency_contacts ...
@@ -176,7 +176,7 @@ DB --> ConfigRepo : 18. existing | none
 deactivate DB
 ConfigRepo --> ConfigService : 19. Optional<SafetyMonitoringConfig>
 deactivate ConfigRepo
-ConfigService -> ConfigService : 20. tạo mới nếu chưa có, hoặc cập nhật field lên bản ghi cũ\n(upsert 1-1 theo userId)
+ConfigService -> ConfigService : 20. create new if not exists, or update fields on existing record\n(upsert 1-1 by userId)
 ConfigService -> ConfigRepo : 21. save(config{...})
 activate ConfigRepo
 ConfigRepo -> DB : 22. INSERT/UPDATE safety_monitoring_configs ...
@@ -194,7 +194,7 @@ deactivate ConfigController
 == UC-118 Enable Smart Activity Monitoring ==
 M -> FallController : 28. POST /api/v1/safety/fall-detection/enable
 activate FallController
-FallController -> ConfigService : 29. getConfig(userId)\n[lấy sensitivityLevel hiện tại]
+FallController -> ConfigService : 29. getConfig(userId)\n[get current sensitivityLevel]
 activate ConfigService
 ConfigService -> ConfigRepo : 30. findByUserId(userId)
 activate ConfigRepo
@@ -204,11 +204,11 @@ DB --> ConfigRepo : 32. existing | none
 deactivate DB
 ConfigRepo --> ConfigService : 33. Optional<SafetyMonitoringConfig>
 deactivate ConfigRepo
-ConfigService --> FallController : 34. SafetyConfigResponse{sensitivityLevel}\n(default fallDetectionEnabled=false, sensitivityLevel=MEDIUM,\nemergencyAutoAlert=true NẾU CHƯA từng cấu hình — không 404)
+ConfigService --> FallController : 34. SafetyConfigResponse{sensitivityLevel}\n(default fallDetectionEnabled=false, sensitivityLevel=MEDIUM,\nemergencyAutoAlert=true IF NOT yet configured — no 404)
 deactivate ConfigService
 FallController -> FallService : 35. enable(userId, sensitivityLevel)
 activate FallService
-FallService -> SessionRepo : 36. findActiveByUserId(userId)\n[idempotent — tránh 2 session ACTIVE song song]
+FallService -> SessionRepo : 36. findActiveByUserId(userId)\n[idempotent — avoid 2 parallel ACTIVE sessions]
 activate SessionRepo
 SessionRepo -> DB : 37. SELECT * FROM imu_monitoring_sessions\nWHERE user_id=? AND status='ACTIVE'
 activate DB
@@ -216,7 +216,7 @@ DB --> SessionRepo : 38. existing | none
 deactivate DB
 SessionRepo --> FallService : 39. Optional<ImuMonitoringSession>
 deactivate SessionRepo
-alt 40. chưa có session ACTIVE (luồng chính — tạo session mới)
+alt 40. no ACTIVE session yet (main flow — create new session)
   FallService -> SessionRepo : 40. save(ImuMonitoringSession{status=ACTIVE,\nsensitivityLevel, startedAt=now()})
   activate SessionRepo
   SessionRepo -> DB : 41. INSERT INTO imu_monitoring_sessions ...
@@ -230,8 +230,8 @@ alt 40. chưa có session ACTIVE (luồng chính — tạo session mới)
   deactivate FallService
   FallController --> M : 46. HTTP 201 Created
   deactivate FallController
-else 40. đã có session ACTIVE → idempotent
-  FallService --> FallController : 40a. trả lại session đang chạy (KHÔNG tạo mới)
+else 40. ACTIVE session already exists → idempotent
+  FallService --> FallController : 40a. return running session (DO NOT create new)
   deactivate FallService
   FallController --> M : 40b. HTTP 201 Created (idempotent)
   deactivate FallController
@@ -250,7 +250,7 @@ DB --> SessionRepo : 51. existing | none
 deactivate DB
 SessionRepo --> FallService : 52. Optional<ImuMonitoringSession>
 deactivate SessionRepo
-opt 53. có session ACTIVE đang chạy
+opt 53. has running ACTIVE session
   FallService -> SessionRepo : 53. save(session{status=STOPPED, endedAt=now()})
   activate SessionRepo
   SessionRepo -> DB : 54. UPDATE imu_monitoring_sessions\nSET status='STOPPED', ended_at=now()
@@ -261,14 +261,14 @@ opt 53. có session ACTIVE đang chạy
   deactivate SessionRepo
   FallService -> FallService : 57. publishEvent(FallDetectionDisabled)
 end
-FallService --> FallController : 58. void\n[im lặng nếu vốn không có session ACTIVE nào — KHÔNG phải lỗi]
+FallService --> FallController : 58. void\n[silent if there was no ACTIVE session — NOT an error]
 deactivate FallService
 FallController --> M : 59. HTTP 200 OK
 deactivate FallController
 note right of FallService
-  Sau khi STOPPED, endpoint /imu-data (spec 02) không còn tạo
-  SafetyEvent mới cho user này — findActiveByUserId() trả rỗng
-  nên processImuData() ném 409 SAFETY-006.
+  After STOPPED, endpoint /imu-data (spec 02) no longer creates
+  new SafetyEvent for this user — findActiveByUserId() returns empty
+  hence processImuData() throws 409 SAFETY-006.
 end note
 
 @enduml

@@ -182,36 +182,36 @@ Service -> GroupRepo : 17. findById(groupId)
 activate GroupRepo
 GroupRepo -> DB : 18. SELECT * FROM care_groups WHERE id=?
 activate DB
-DB --> GroupRepo : 19. group row (404 FAM-005 nếu không có)
+DB --> GroupRepo : 19. group row (404 FAM-005 if not found)
 deactivate DB
 GroupRepo --> Service : 20. CareGroup
 deactivate GroupRepo
 Service -> AuthPolicy : 21. isOwner(groupId, callerId)
 activate AuthPolicy
-AuthPolicy --> Service : 22. boolean (403 FAM-012 nếu không phải owner)
+AuthPolicy --> Service : 22. boolean (403 FAM-012 if not owner)
 deactivate AuthPolicy
-Service -> MemberRepo : 23. countByCareGroupIdAndInviteStatus(groupId, PENDING)\n[giới hạn tối đa 20 lời mời chờ]
+Service -> MemberRepo : 23. countByCareGroupIdAndInviteStatus(groupId, PENDING)\n[limit maximum 20 pending invitations]
 activate MemberRepo
 MemberRepo -> DB : 24. SELECT COUNT(*) FROM care_group_members\nWHERE care_group_id=? AND invite_status='PENDING'
 activate DB
-DB --> MemberRepo : 25. count (409 FAM-013 nếu ≥ 20)
+DB --> MemberRepo : 25. count (409 FAM-013 if ≥ 20)
 deactivate DB
 MemberRepo --> Service : 26. count
 deactivate MemberRepo
-Service -> TokenGen : 27. generate() [token ngẫu nhiên an toàn]
+Service -> TokenGen : 27. generate() [secure random token]
 activate TokenGen
 TokenGen --> Service : 28. rawToken
 deactivate TokenGen
 alt 29. channel == PHONE
-  Service -> UserRepo : 29. findByPhone(phone)\n[bắt buộc đã có tài khoản CareBridge]
+  Service -> UserRepo : 29. findByPhone(phone)\n[must already have a CareBridge account]
   activate UserRepo
   UserRepo -> DB : 30. SELECT * FROM users WHERE phone=?
   activate DB
-  DB --> UserRepo : 31. user row (404 FAM-014 nếu không có)
+  DB --> UserRepo : 31. user row (404 FAM-014 if not found)
   deactivate DB
   UserRepo --> Service : 32. User
   deactivate UserRepo
-  Service -> MemberRepo : 33. save(CareGroupMember{userId=invitee.id, memberRole=MEMBER,\ninviteStatus=PENDING, inviteChannel=PHONE, inviteToken, inviteExpiresAt=+7 ngày})
+  Service -> MemberRepo : 33. save(CareGroupMember{userId=invitee.id, memberRole=MEMBER,\ninviteStatus=PENDING, inviteChannel=PHONE, inviteToken, inviteExpiresAt=+7 days})
   activate MemberRepo
   MemberRepo -> DB : 34. INSERT INTO care_group_members ...
   activate DB
@@ -223,14 +223,14 @@ alt 29. channel == PHONE
   activate Audit
   Audit --> Service : 38. void
   deactivate Audit
-else 29. channel == LINK hoặc QR
+else 29. channel == LINK or QR
   Service -> Audit : 29a. log(CARE_GROUP_MEMBER_INVITED, callerId,\n"CareGroupInviteToken", tokenPrefix, channel+" invite issued")
   activate Audit
   Audit --> Service : 29b. void
   deactivate Audit
 end
-Service -> Service : 39. publishInviteEvent(FamilyMemberInvited)\n[payload chỉ chứa SHA-256 hash của token — KHÔNG log token thô]
-Service --> Controller : 40. InviteFamilyMemberResponse{inviteToken,\ncareGroupMemberId = null nếu LINK/QR}
+Service -> Service : 39. publishInviteEvent(FamilyMemberInvited)\n[payload only contains SHA-256 hash of token — DO NOT log raw token]
+Service --> Controller : 40. InviteFamilyMemberResponse{inviteToken,\ncareGroupMemberId = null if LINK/QR}
 deactivate Service
 Controller --> M : 41. HTTP 201 Created {inviteToken}
 deactivate Controller
@@ -247,7 +247,7 @@ DB --> GroupRepo : 46. group row
 deactivate DB
 GroupRepo --> Service : 47. CareGroup
 deactivate GroupRepo
-Service -> AuthPolicy : 48. requireOwner(groupId, callerId)\n[403 FAM-050 nếu không phải owner;\n400 FAM-053 nếu tự thu hồi chính mình]
+Service -> AuthPolicy : 48. requireOwner(groupId, callerId)\n[403 FAM-050 if not owner;\n400 FAM-053 if self-revoking]
 activate AuthPolicy
 AuthPolicy --> Service : 49. void
 deactivate AuthPolicy
@@ -255,9 +255,9 @@ Service -> MemberRepo : 50. findByCareGroupIdAndUserId(groupId, targetUserId)
 activate MemberRepo
 MemberRepo -> DB : 51. SELECT * FROM care_group_members\nWHERE care_group_id=? AND user_id=?
 activate DB
-DB --> MemberRepo : 52. member row (404 FAM-051 nếu không có)
+DB --> MemberRepo : 52. member row (404 FAM-051 if not found)
 deactivate DB
-MemberRepo --> Service : 53. CareGroupMember\n(409 FAM-052 nếu inviteStatus khác PENDING)
+MemberRepo --> Service : 53. CareGroupMember\n(409 FAM-052 if inviteStatus is not PENDING)
 deactivate MemberRepo
 Service -> MemberRepo : 54. save(member{inviteStatus=REVOKED})
 activate MemberRepo
@@ -285,23 +285,23 @@ Service -> MemberRepo : 64. findByInviteToken(token)
 activate MemberRepo
 MemberRepo -> DB : 65. SELECT * FROM care_group_members WHERE invite_token=?
 activate DB
-DB --> MemberRepo : 66. member row (404 FAM-040 nếu không có)
+DB --> MemberRepo : 66. member row (404 FAM-040 if not found)
 deactivate DB
 MemberRepo --> Service : 67. CareGroupMember
 deactivate MemberRepo
-Service -> Service : 68. kiểm tra hết hạn (lazy expiry) — quá inviteExpiresAt\n→ đánh dấu EXPIRED, trả 410 FAM-041
-Service -> Service : 69. kiểm tra inviteStatus vẫn PENDING (409 FAM-042 nếu không)
+Service -> Service : 68. check expiry (lazy expiry) — past inviteExpiresAt\n→ mark EXPIRED, return 410 FAM-041
+Service -> Service : 69. check inviteStatus is still PENDING (409 FAM-042 if not)
 opt 70. inviteChannel == PHONE
-  Service -> AuthPolicy : 70a. isPhoneMatchForInvite(member, callerId)\n[SĐT đã xác thực của caller phải khớp invitedPhone]
+  Service -> AuthPolicy : 70a. isPhoneMatchForInvite(member, callerId)\n[verified phone number of caller must match invitedPhone]
   activate AuthPolicy
-  AuthPolicy --> Service : 70b. boolean (403 FAM-043 nếu không khớp)
+  AuthPolicy --> Service : 70b. boolean (403 FAM-043 if not match)
   deactivate AuthPolicy
 end
-Service -> MemberRepo : 71. acceptIfPending(memberId, now)\n[UPDATE có điều kiện — chống double-accept đồng thời]
+Service -> MemberRepo : 71. acceptIfPending(memberId, now)\n[conditional UPDATE — prevent double-accept simultaneously]
 activate MemberRepo
 MemberRepo -> DB : 72. UPDATE care_group_members\nSET invite_status='ACCEPTED', joined_at=?, user_id=?\nWHERE id=? AND invite_status='PENDING'
 activate DB
-DB --> MemberRepo : 73. rows affected (0 nếu đã accept trước đó → 409 FAM-042)
+DB --> MemberRepo : 73. rows affected (0 if already accepted previously → 409 FAM-042)
 deactivate DB
 MemberRepo --> Service : 74. rows
 deactivate MemberRepo
@@ -309,7 +309,7 @@ Service -> Audit : 75. log(CARE_GROUP_INVITATION_ACCEPTED, callerId,\n"CareGroup
 activate Audit
 Audit --> Service : 76. void
 deactivate Audit
-Service -> FcmSvc : 77. sendToTokens(ownerDeviceTokens, "Lời mời đã được chấp nhận", ...)\n[best-effort — lỗi KHÔNG rollback transaction]
+Service -> FcmSvc : 77. sendToTokens(ownerDeviceTokens, "Invitation has been accepted", ...)\n[best-effort — DO NOT rollback transaction on error]
 activate FcmSvc
 FcmSvc --> Service : 78. void
 deactivate FcmSvc
@@ -327,7 +327,7 @@ Service -> AuthPolicy : 83. requireOwner(groupId, callerId)
 activate AuthPolicy
 AuthPolicy --> Service : 84. void
 deactivate AuthPolicy
-Service -> MemberRepo : 85. findByCareGroupIdAndUserId(groupId, targetUserId)\n[404 nếu không có; 409 nếu target là OWNER hoặc chưa ACCEPTED]
+Service -> MemberRepo : 85. findByCareGroupIdAndUserId(groupId, targetUserId)\n[404 if not found; 409 if target is OWNER or not ACCEPTED]
 activate MemberRepo
 MemberRepo -> DB : 86. SELECT * FROM care_group_members\nWHERE care_group_id=? AND user_id=?
 activate DB
@@ -335,7 +335,7 @@ DB --> MemberRepo : 87. member row
 deactivate DB
 MemberRepo --> Service : 88. CareGroupMember
 deactivate MemberRepo
-Service -> MemberRepo : 89. save(member{inviteStatus=REVOKED})\n[soft — KHÔNG xoá bản ghi]
+Service -> MemberRepo : 89. save(member{inviteStatus=REVOKED})\n[soft — DO NOT delete record]
 activate MemberRepo
 MemberRepo -> DB : 90. UPDATE care_group_members SET invite_status='REVOKED'
 activate DB
@@ -356,7 +356,7 @@ F -> Controller : 97. POST /api/v1/care-groups/{groupId}/leave
 activate Controller
 Controller -> Service : 98. leaveCareGroup(groupId, callerId)
 activate Service
-Service -> MemberRepo : 99. findByCareGroupIdAndUserId(groupId, callerId)\n[409 nếu OWNER cố rời, hoặc chưa ACCEPTED]
+Service -> MemberRepo : 99. findByCareGroupIdAndUserId(groupId, callerId)\n[409 if OWNER tries to leave, or not ACCEPTED]
 activate MemberRepo
 MemberRepo -> DB : 100. SELECT * FROM care_group_members\nWHERE care_group_id=? AND user_id=?
 activate DB
@@ -364,7 +364,7 @@ DB --> MemberRepo : 101. member row
 deactivate DB
 MemberRepo --> Service : 102. CareGroupMember
 deactivate MemberRepo
-Service -> Service : 103. reassignIncompleteTasks(groupId, callerId, ownerUserId)\n[CareTask đang giao cho người rời được chuyển lại cho OWNER]
+Service -> Service : 103. reassignIncompleteTasks(groupId, callerId, ownerUserId)\n[CareTask assigned to leaving member is reassigned to OWNER]
 Service -> MemberRepo : 104. save(member{inviteStatus=REVOKED})
 activate MemberRepo
 MemberRepo -> DB : 105. UPDATE care_group_members SET invite_status='REVOKED'

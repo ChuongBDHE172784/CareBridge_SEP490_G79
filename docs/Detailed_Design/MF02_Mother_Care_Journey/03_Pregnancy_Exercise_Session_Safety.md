@@ -212,7 +212,7 @@ alt 11. no red flag [happy path → CLEARED]
   deactivate Service
   ExController --> M : 17. HTTP 200 OK {status=CLEARED}
   deactivate ExController
-else 11. red flag detected [chặn tạo session → BLOCKED]
+else 11. red flag detected [block session creation → BLOCKED]
   Service -> SafetyRepo : 11a. save(SafetyCheck{resultStatus=BLOCKED, blockedReason})
   activate SafetyRepo
   SafetyRepo -> DB : 11b. INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
@@ -246,7 +246,7 @@ deactivate Service
 ExController --> M : 26. HTTP 201 Created
 deactivate ExController
 
-loop 27-34. mỗi khung hình gửi lên (nếu Mother bật camera consent)
+loop 27-34. each frame uploaded (if Mother enables camera consent)
   M -> SessController : 27. POST /api/v1/exercises/sessions/{sessionId}/posture-events
   activate SessController
   SessController -> Posture : 28. analyze(frameFeatures, postureConfig)
@@ -303,7 +303,7 @@ M -> SessController : 51. PATCH /api/v1/exercises/sessions/{sessionId}/complete
 activate SessController
 SessController -> Service : 52. complete(sessionId)
 activate Service
-Service -> Service : 53. tính completionPercent, postureScore, summaryJson
+Service -> Service : 53. calculate completionPercent, postureScore, summaryJson
 Service -> SessRepo : 54. update(session{sessionStatus=COMPLETED, endedAt=now()})
 activate SessRepo
 SessRepo -> DB : 55. UPDATE exercise_sessions\nSET session_status='COMPLETED', ended_at=now()

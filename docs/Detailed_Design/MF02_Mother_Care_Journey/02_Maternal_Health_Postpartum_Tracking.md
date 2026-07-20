@@ -155,7 +155,7 @@ M -> MetricController : 1. POST /api/v1/journeys/{journeyId}/metrics\n{metricTyp
 activate MetricController
 MetricController -> MetricService : 2. add(ownerId, journeyId, request)
 activate MetricService
-MetricService -> MetricService : 3. check ownership của journeyId
+MetricService -> MetricService : 3. check ownership of journeyId
 MetricService -> MetricRepo : 4. save(MaternalHealthMetric{status=ACTIVE, sourceType=MANUAL})
 activate MetricRepo
 MetricRepo -> DB : 5. INSERT INTO maternal_health_metrics ...

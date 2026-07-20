@@ -117,8 +117,8 @@ M -> Controller : 1. POST /api/v1/expenses\n{category=DIAPER, amount=250000, exp
 activate Controller
 Controller -> Service : 2. addExpense(request, callerId)
 activate Service
-Service -> Service : 3. kiểm tra expenseDate không ở tương lai\n(400 EXPENSE-003 nếu vi phạm)
-Service -> Repo : 4. save(Expense{ownerUserId=callerId,\ncurrency="VND" nếu request không truyền})
+Service -> Service : 3. check expenseDate is not in the future\n(400 EXPENSE-003 if violated)
+Service -> Repo : 4. save(Expense{ownerUserId=callerId,\ncurrency="VND" if not provided in request})
 activate Repo
 Repo -> DB : 5. INSERT INTO expenses ...
 activate DB
@@ -126,7 +126,7 @@ DB --> Repo : 6. saved
 deactivate DB
 Repo --> Service : 7. Expense
 deactivate Repo
-Service -> Audit : 8. log(EXPENSE_CREATED, callerId, "Expense", id, "created")\n[PDPA — KHÔNG ghi amount/note vào audit detail]
+Service -> Audit : 8. log(EXPENSE_CREATED, callerId, "Expense", id, "created")\n[PDPA — DO NOT log amount/note in audit detail]
 activate Audit
 Audit --> Service : 9. void
 deactivate Audit
@@ -144,11 +144,11 @@ Service -> Repo : 14. findByIdAndOwnerUserId(expenseId, callerId)
 activate Repo
 Repo -> DB : 15. SELECT * FROM expenses\nWHERE id=? AND owner_user_id=?
 activate DB
-DB --> Repo : 16. expense row (404 EXPENSE-004 nếu không có/không thuộc caller)
+DB --> Repo : 16. expense row (404 EXPENSE-004 if not found or not owned by caller)
 deactivate DB
 Repo --> Service : 17. Expense
 deactivate Repo
-Service -> Service : 18. áp dụng field non-null (PATCH); nếu đổi expenseDate\nthì kiểm tra lại không ở tương lai (400 EXPENSE-003)
+Service -> Service : 18. apply non-null fields (PATCH); if expenseDate changed,\nre-check not in the future (400 EXPENSE-003)
 Service -> Repo : 19. save(expense{...})
 activate Repo
 Repo -> DB : 20. UPDATE expenses\nSET category=?, amount=?, expense_date=?, note=?, updated_at=now()
@@ -174,15 +174,15 @@ Service -> Repo : 29. findByIdAndOwnerUserId(expenseId, callerId)
 activate Repo
 Repo -> DB : 30. SELECT * FROM expenses\nWHERE id=? AND owner_user_id=?
 activate DB
-DB --> Repo : 31. expense row (404 EXPENSE-004 nếu không có)
+DB --> Repo : 31. expense row (404 EXPENSE-004 if not found)
 deactivate DB
 Repo --> Service : 32. Expense
 deactivate Repo
-Service -> Audit : 33. log(EXPENSE_DELETED, callerId, "Expense", expenseId, "deleted")\n[ghi audit TRƯỚC khi hard-delete — ADR-CJ-052]
+Service -> Audit : 33. log(EXPENSE_DELETED, callerId, "Expense", expenseId, "deleted")\n[log audit BEFORE hard-delete — ADR-CJ-052]
 activate Audit
 Audit --> Service : 34. void
 deactivate Audit
-Service -> Repo : 35. delete(expense) [hard delete thật]
+Service -> Repo : 35. delete(expense) [perform actual hard delete]
 activate Repo
 Repo -> DB : 36. DELETE FROM expenses WHERE id=?
 activate DB
@@ -200,8 +200,8 @@ M -> Controller : 41. GET /api/v1/expenses/summary?groupBy=CATEGORY&from=&to=
 activate Controller
 Controller -> Service : 42. getSummary(callerId, groupBy, from, to)
 activate Service
-alt 43. groupBy hợp lệ (MONTH | CATEGORY | STAGE)
-  Service -> Repo : 43. groupByCategory(callerId, from, to)\n[hoặc groupByMonth/groupByStage tương ứng theo groupBy]
+alt 43. groupBy is valid (MONTH | CATEGORY | STAGE)
+  Service -> Repo : 43. groupByCategory(callerId, from, to)\n[or groupByMonth/groupByStage corresponding to groupBy]
   activate Repo
   Repo -> DB : 44. SELECT category, currency, SUM(amount), COUNT(*)\nFROM expenses WHERE owner_user_id=? ... GROUP BY category, currency
   activate DB
@@ -209,12 +209,12 @@ alt 43. groupBy hợp lệ (MONTH | CATEGORY | STAGE)
   deactivate DB
   Repo --> Service : 46. rows[]
   deactivate Repo
-  Service -> Service : 47. gộp thành ExpenseSummaryBucket[];\ngrandTotal CHỈ cộng dồn bucket cùng currency="VND"\n(mixed-currency guard — bucket ngoại tệ khác bị loại khỏi tổng)
+  Service -> Service : 47. combine into ExpenseSummaryBucket[];\ngrandTotal ONLY aggregates buckets with currency="VND"\n(mixed-currency guard — other foreign currency buckets are excluded from total)
   Service --> Controller : 48. ExpenseSummaryResponse{buckets[], grandTotal,\ngrandTotalCurrency="VND"}
   deactivate Service
   Controller --> M : 49. HTTP 200 OK {summary}
   deactivate Controller
-else 43. groupBy không hợp lệ (khác MONTH/CATEGORY/STAGE)
+else 43. groupBy is invalid (not MONTH/CATEGORY/STAGE)
   Service --> Controller : 43a. throw 400 EXPENSE-001\n"groupBy must be MONTH, CATEGORY, or STAGE"
   deactivate Service
   Controller --> M : 43b. HTTP 400 Bad Request

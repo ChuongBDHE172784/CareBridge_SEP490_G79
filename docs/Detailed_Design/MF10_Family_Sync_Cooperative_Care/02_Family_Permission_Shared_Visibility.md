@@ -161,19 +161,19 @@ DB --> GroupRepo : 5. group row
 deactivate DB
 GroupRepo --> Service : 6. CareGroup
 deactivate GroupRepo
-Service -> AuthPolicy : 7. canManagePermissions(groupId, callerId) [chỉ OWNER]
+Service -> AuthPolicy : 7. canManagePermissions(groupId, callerId) [OWNER only]
 activate AuthPolicy
-AuthPolicy --> Service : 8. boolean (403 FAM-021 nếu không phải owner)
+AuthPolicy --> Service : 8. boolean (403 FAM-021 if not owner)
 deactivate AuthPolicy
-Service -> MemberRepo : 9. findByIdAndCareGroupId(memberId, groupId)\n[target phải đang ACCEPTED]
+Service -> MemberRepo : 9. findByIdAndCareGroupId(memberId, groupId)\n[target must be ACCEPTED]
 activate MemberRepo
 MemberRepo -> DB : 10. SELECT * FROM care_group_members\nWHERE id=? AND care_group_id=?
 activate DB
-DB --> MemberRepo : 11. member row (404 FAM-020 nếu không có/chưa ACCEPTED)
+DB --> MemberRepo : 11. member row (404 FAM-020 if not found/not ACCEPTED)
 deactivate DB
 MemberRepo --> Service : 12. CareGroupMember{permissionJson}
 deactivate MemberRepo
-Service -> Service : 13. merge request với permission hiện tại\n(field null trong request = giữ nguyên giá trị cũ)
+Service -> Service : 13. merge request with current permission\n(null fields in request = keep old value)
 Service -> MemberRepo : 14. save(member{permissionJson=updatedJson})
 activate MemberRepo
 MemberRepo -> DB : 15. UPDATE care_group_members SET permission_json=?
@@ -187,7 +187,7 @@ activate Audit
 Audit --> Service : 19. void
 deactivate Audit
 Service -> Service : 20. publishEvent(FamilyPermissionUpdated)
-Service -> FcmSvc : 21. sendToTokens(memberDeviceTokens,\n"Quyền truy cập đã thay đổi", ...)\n[best-effort, KHÔNG rollback nếu lỗi]
+Service -> FcmSvc : 21. sendToTokens(memberDeviceTokens,\n"Access permission changed", ...)\n[best-effort, DO NOT rollback if error]
 activate FcmSvc
 FcmSvc --> Service : 22. void
 deactivate FcmSvc
@@ -209,19 +209,19 @@ DB --> GroupRepo : 29. group row
 deactivate DB
 GroupRepo --> CalService : 30. CareGroup
 deactivate GroupRepo
-CalService -> AuthPolicy : 31. isMember(groupId, callerId) [phải là thành viên ACCEPTED]
+CalService -> AuthPolicy : 31. isMember(groupId, callerId) [must be ACCEPTED member]
 activate AuthPolicy
-AuthPolicy --> CalService : 32. boolean (403 FAM-003 nếu không phải thành viên)
+AuthPolicy --> CalService : 32. boolean (403 FAM-003 if not member)
 deactivate AuthPolicy
-alt 33. caller là OWNER
-  CalService -> CalService : 33. bỏ qua kiểm tra cờ calendar\n— OWNER luôn xem được toàn bộ
-else 33. caller không phải OWNER
+alt 33. caller is OWNER
+  CalService -> CalService : 33. bypass calendar flag check\n— OWNER can always view all
+else 33. caller is not OWNER
   CalService -> AuthPolicy : 33a. hasPermission(groupId, callerId, CALENDAR)
   activate AuthPolicy
-  AuthPolicy --> CalService : 33b. boolean (403 FAM-007 nếu calendar=false)
+  AuthPolicy --> CalService : 33b. boolean (403 FAM-007 if calendar=false)
   deactivate AuthPolicy
 end
-CalService -> TaskRepo : 34. findByCareGroupIdAndDueAtBetween(groupId, rangeStart, rangeEnd)\n[CHỈ CareTask — chưa gộp reminder/vaccination trong v1]
+CalService -> TaskRepo : 34. findByCareGroupIdAndDueAtBetween(groupId, rangeStart, rangeEnd)\n[CareTask ONLY — not combined with reminder/vaccination in v1]
 activate TaskRepo
 TaskRepo -> DB : 35. SELECT * FROM care_tasks\nWHERE care_group_id=? AND due_at BETWEEN ? AND ?
 activate DB
@@ -248,13 +248,13 @@ GroupRepo --> SharedService : 45. CareGroup
 deactivate GroupRepo
 SharedService -> AuthPolicy : 46. isMember(groupId, callerId)
 activate AuthPolicy
-AuthPolicy --> SharedService : 47. boolean (403 FAM-003 nếu không phải thành viên)
+AuthPolicy --> SharedService : 47. boolean (403 FAM-003 if not member)
 deactivate AuthPolicy
-SharedService -> AuthPolicy : 48. hasPermission(groupId, callerId, LOGS) [bỏ qua nếu OWNER]
+SharedService -> AuthPolicy : 48. hasPermission(groupId, callerId, LOGS) [bypass if OWNER]
 activate AuthPolicy
-AuthPolicy --> SharedService : 49. boolean (403 FAM-011 nếu logs=false)
+AuthPolicy --> SharedService : 49. boolean (403 FAM-011 if logs=false)
 deactivate AuthPolicy
-SharedService -> SharedService : 50. category==LOGS → trả về danh sách rỗng\n(v1 CHƯA triển khai — cần join xuyên domain qua\nlinkedJourneyId/linkedBabyProfileId, Open Item OI-4)
+SharedService -> SharedService : 50. category==LOGS → return empty list\n(v1 NOT implemented yet — requires cross-domain join via\nlinkedJourneyId/linkedBabyProfileId, Open Item OI-4)
 SharedService --> SharedController : 51. SharedDataResponse{category=LOGS, items=[]}
 deactivate SharedService
 SharedController --> F : 52. HTTP 200 OK {sharedData: []}
@@ -264,7 +264,7 @@ F -> AlertController : 53. GET /api/v1/family-alerts?page=&size=
 activate AlertController
 AlertController -> AlertService : 54. listFamilyAlerts(callerId, page, size)
 activate AlertService
-AlertService -> NotifRepo : 55. findByUserIdAndType(callerId, EMERGENCY, pageable)\n[theo TÀI KHOẢN người gọi — KHÔNG lọc theo groupId/permission "alerts"]
+AlertService -> NotifRepo : 55. findByUserIdAndType(callerId, EMERGENCY, pageable)\n[by caller ACCOUNT — DO NOT filter by groupId/permission "alerts"]
 activate NotifRepo
 NotifRepo -> DB : 56. SELECT * FROM notification_records\nWHERE user_id=? AND type='EMERGENCY' ORDER BY created_at DESC
 activate DB
@@ -272,7 +272,7 @@ DB --> NotifRepo : 57. records[]
 deactivate DB
 NotifRepo --> AlertService : 58. records[]
 deactivate NotifRepo
-opt 59. danh sách alerts không rỗng
+opt 59. alerts list is not empty
   AlertService -> Audit : 59a. log(FAMILY_ALERT_VIEWED, callerId, "FamilyAlert",\ncallerId, "Viewed N alert(s), page=")
   activate Audit
   Audit --> AlertService : 59b. void

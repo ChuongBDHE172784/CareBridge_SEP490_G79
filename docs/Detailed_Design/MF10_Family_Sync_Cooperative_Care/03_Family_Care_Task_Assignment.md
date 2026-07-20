@@ -128,23 +128,23 @@ Service -> GroupRepo : 3. findById(groupId)
 activate GroupRepo
 GroupRepo -> DB : 4. SELECT * FROM care_groups WHERE id=?
 activate DB
-DB --> GroupRepo : 5. group row (404 FAM-005 nếu không có)
+DB --> GroupRepo : 5. group row (404 FAM-005 if not found)
 deactivate DB
 GroupRepo --> Service : 6. CareGroup
 deactivate GroupRepo
-Service -> AuthPolicy : 7. canAssignTasks(groupId, callerId) [chỉ OWNER]
+Service -> AuthPolicy : 7. canAssignTasks(groupId, callerId) [OWNER only]
 activate AuthPolicy
-AuthPolicy --> Service : 8. boolean (403 FAM-031 nếu không phải owner)
+AuthPolicy --> Service : 8. boolean (403 FAM-031 if not owner)
 deactivate AuthPolicy
-Service -> MemberRepo : 9. findByCareGroupIdAndUserId(groupId, assigneeMemberId)\n[assignee phải là thành viên ACCEPTED]
+Service -> MemberRepo : 9. findByCareGroupIdAndUserId(groupId, assigneeMemberId)\n[assignee must be an ACCEPTED member]
 activate MemberRepo
 MemberRepo -> DB : 10. SELECT * FROM care_group_members\nWHERE care_group_id=? AND user_id=?
 activate DB
-DB --> MemberRepo : 11. member row (409 FAM-030 nếu không có/chưa ACCEPTED)
+DB --> MemberRepo : 11. member row (409 FAM-030 if not found/not ACCEPTED)
 deactivate DB
 MemberRepo --> Service : 12. CareGroupMember
 deactivate MemberRepo
-Service -> Service : 13. kiểm tra dueAt phải ở tương lai (400 FAM-032 nếu không)
+Service -> Service : 13. check dueAt must be in the future (400 FAM-032 if not)
 Service -> TaskRepo : 14. save(CareTask{status=OPEN, assignedBy=callerId,\nassignedTo=assigneeMemberId})
 activate TaskRepo
 TaskRepo -> DB : 15. INSERT INTO care_tasks ...
@@ -158,7 +158,7 @@ Service -> Audit : 19. log(CARE_TASK_ASSIGNED, callerId,\n"CareTask", taskId, "A
 activate Audit
 Audit --> Service : 20. void
 deactivate Audit
-Service -> FcmSvc : 21. sendToToken(assigneeDeviceTokens, "New Task Assigned", ...)\n[best-effort — lỗi KHÔNG rollback transaction]
+Service -> FcmSvc : 21. sendToToken(assigneeDeviceTokens, "New Task Assigned", ...)\n[best-effort — DO NOT rollback transaction on error]
 activate FcmSvc
 FcmSvc --> Service : 22. void
 deactivate FcmSvc
@@ -172,20 +172,20 @@ M -> Controller : 25. PATCH /api/v1/care-groups/{groupId}/tasks/{taskId}\n{title
 activate Controller
 Controller -> Service : 26. updateFamilyTask(groupId, taskId, request, callerId)
 activate Service
-Service -> AuthPolicy : 27. canUpdateTask(groupId, callerId) [chỉ OWNER]
+Service -> AuthPolicy : 27. canUpdateTask(groupId, callerId) [OWNER only]
 activate AuthPolicy
-AuthPolicy --> Service : 28. boolean (403 FAM-072 nếu không phải owner)
+AuthPolicy --> Service : 28. boolean (403 FAM-072 if not owner)
 deactivate AuthPolicy
 Service -> TaskRepo : 29. findByIdAndCareGroupId(taskId, groupId)
 activate TaskRepo
 TaskRepo -> DB : 30. SELECT * FROM care_tasks WHERE id=? AND care_group_id=?
 activate DB
-DB --> TaskRepo : 31. task row (404 FAM-033 nếu không có)
+DB --> TaskRepo : 31. task row (404 FAM-033 if not found)
 deactivate DB
 TaskRepo --> Service : 32. CareTask
 deactivate TaskRepo
-Service -> Service : 33. kiểm tra task đang OPEN/IN_PROGRESS\n(409 FAM-073 nếu DONE/CANCELLED/NEEDS_SUPPORT)
-Service -> Service : 34. áp dụng field non-null; validate dueAt tương lai (FAM-075)\nvà assigneeMemberId mới phải ACCEPTED (FAM-074)
+Service -> Service : 33. check task is OPEN/IN_PROGRESS\n(409 FAM-073 if DONE/CANCELLED/NEEDS_SUPPORT)
+Service -> Service : 34. apply non-null fields; validate dueAt is in the future (FAM-075)\nand new assigneeMemberId must be ACCEPTED (FAM-074)
 Service -> TaskRepo : 35. save(task{...})
 activate TaskRepo
 TaskRepo -> DB : 36. UPDATE care_tasks\nSET title=?, description=?, due_at=?, assigned_to=?
@@ -221,13 +221,13 @@ Service -> TaskRepo : 50. findByIdAndCareGroupId(taskId, groupId)
 activate TaskRepo
 TaskRepo -> DB : 51. SELECT * FROM care_tasks WHERE id=? AND care_group_id=?
 activate DB
-DB --> TaskRepo : 52. task row (404 FAM-033 nếu không có)
+DB --> TaskRepo : 52. task row (404 FAM-033 if not found)
 deactivate DB
 TaskRepo --> Service : 53. CareTask{status=OPEN, assignedTo}
 deactivate TaskRepo
-Service -> Service : 54. kiểm tra callerId == task.assignedTo (403 FAM-034 nếu không)
-Service -> Service : 55. parse status request → CareTaskStatus (400 FAM-035 nếu không hợp lệ)
-alt 56. current.canTransitionTo(requested) == true [OPEN → IN_PROGRESS: hợp lệ]
+Service -> Service : 54. check callerId == task.assignedTo (403 FAM-034 if not)
+Service -> Service : 55. parse status request → CareTaskStatus (400 FAM-035 if invalid)
+alt 56. current.canTransitionTo(requested) == true [OPEN → IN_PROGRESS: valid]
   Service -> TaskRepo : 56. save(task{status=IN_PROGRESS})
   activate TaskRepo
   TaskRepo -> DB : 57. UPDATE care_tasks SET status='IN_PROGRESS'
@@ -240,7 +240,7 @@ alt 56. current.canTransitionTo(requested) == true [OPEN → IN_PROGRESS: hợp 
   activate Audit
   Audit --> Service : 61. void
   deactivate Audit
-  Service -> FcmSvc : 62. sendToToken(assignerDeviceTokens, "Task status updated", ...)\n[best-effort, gửi cho assignedBy — không rollback nếu lỗi]
+  Service -> FcmSvc : 62. sendToToken(assignerDeviceTokens, "Task status updated", ...)\n[best-effort, send to assignedBy — do not rollback if error]
   activate FcmSvc
   FcmSvc --> Service : 63. void
   deactivate FcmSvc
@@ -248,7 +248,7 @@ alt 56. current.canTransitionTo(requested) == true [OPEN → IN_PROGRESS: hợp 
   deactivate Service
   Controller --> F : 65. HTTP 200 OK
   deactivate Controller
-else 56. canTransitionTo == false [transition không hợp lệ, ví dụ DONE → OPEN]
+else 56. canTransitionTo == false [invalid transition, e.g. DONE → OPEN]
   Service --> Controller : 56a. throw 409 FAM-023\n"Cannot transition from X to Y"
   deactivate Service
   Controller --> F : 56b. HTTP 409 Conflict
@@ -259,7 +259,7 @@ F -> Controller : 66. PATCH /api/v1/care-groups/{groupId}/tasks/{taskId}/status\
 activate Controller
 Controller -> Service : 67. updateTaskStatus(groupId, taskId, request, callerId)
 activate Service
-Service -> Service : 68. tra cứu group/task + kiểm tra assignee\n(lặp lại các bước 46-55 ở trên — rút gọn)
+Service -> Service : 68. look up group/task + check assignee\n(repeat steps 46-55 above — summarized)
 Service -> Service : 69. IN_PROGRESS.canTransitionTo(DONE) = true
 Service -> TaskRepo : 70. save(task{status=DONE, completedAt=now()})
 activate TaskRepo
@@ -283,15 +283,15 @@ M -> Controller : 78. POST /api/v1/care-groups/{groupId}/tasks/{taskId}/cancel
 activate Controller
 Controller -> Service : 79. cancelFamilyTask(groupId, taskId, callerId)
 activate Service
-Service -> AuthPolicy : 80. canCancelTask(groupId, callerId) [chỉ OWNER]
+Service -> AuthPolicy : 80. canCancelTask(groupId, callerId) [OWNER only]
 activate AuthPolicy
-AuthPolicy --> Service : 81. boolean (403 FAM-079 nếu không phải owner)
+AuthPolicy --> Service : 81. boolean (403 FAM-079 if not owner)
 deactivate AuthPolicy
 Service -> TaskRepo : 82. findByIdAndCareGroupId(taskId, groupId)
 activate TaskRepo
 TaskRepo -> DB : 83. SELECT * FROM care_tasks WHERE id=? AND care_group_id=?
 activate DB
-DB --> TaskRepo : 84. task row (404 FAM-033 nếu không có)
+DB --> TaskRepo : 84. task row (404 FAM-033 if not found)
 deactivate DB
 TaskRepo --> Service : 85. CareTask
 deactivate TaskRepo
@@ -313,7 +313,7 @@ alt 86. task.status IN (OPEN, IN_PROGRESS)
   deactivate Service
   Controller --> M : 94. HTTP 200 OK
   deactivate Controller
-else 86. task.status == DONE hoặc đã CANCELLED
+else 86. task.status == DONE or already CANCELLED
   Service --> Controller : 86a. throw 409 FAM-080/FAM-081\n"completed/already-cancelled task cannot be cancelled"
   deactivate Service
   Controller --> M : 86b. HTTP 409 Conflict

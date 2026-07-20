@@ -205,8 +205,8 @@ QController --> U : 18. HTTP 201 Created
 deactivate QController
 
 note over QService
-  status=PENDING → chờ NS-04 safety pipeline (spec 02)
-  trước khi hiển thị trên feed công khai.
+  status=PENDING → wait for NS-04 safety pipeline (spec 02)
+  before displaying on public feed.
 end note
 
 == UC-47 View Community Question Detail ==

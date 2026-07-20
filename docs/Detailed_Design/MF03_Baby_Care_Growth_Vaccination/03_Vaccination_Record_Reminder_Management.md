@@ -208,7 +208,7 @@ DB --> RecordRepo : 39. records[]
 deactivate DB
 RecordRepo --> Service : 40. records[]
 deactivate RecordRepo
-Service -> Service : 41. ghép reference + record theo (vaccineName, doseNumber)\n+ lấy trạng thái reminder liên kết
+Service -> Service : 41. map reference + record by (vaccineName, doseNumber)\n+ get linked reminder status
 Service --> Controller : 42. VaccinationScheduleStatusResponse
 deactivate Service
 Controller --> M : 43. HTTP 200 OK {entries[]}

@@ -139,7 +139,7 @@ M -> Controller : 1. POST /api/v1/journeys\n{journeyType=PREGNANCY, lastMenstrua
 activate Controller
 Controller -> Service : 2. create(ownerUserId, request)
 activate Service
-Service -> Service : 3. validate ngày tối thiểu theo journeyType
+Service -> Service : 3. validate minimum days according to journeyType
 Service -> Repo : 4. save(MotherJourney{status=ACTIVE})
 activate Repo
 Repo -> DB : 5. INSERT INTO mother_journeys ...

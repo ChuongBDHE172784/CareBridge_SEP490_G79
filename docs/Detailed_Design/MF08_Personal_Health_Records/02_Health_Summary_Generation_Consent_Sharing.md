@@ -134,8 +134,8 @@ M -> Controller : 1. POST /api/v1/health-summaries\n{summaryPeriod="7D", journey
 activate Controller
 Controller -> SummaryService : 2. generateSummary(request, callerId)
 activate SummaryService
-SummaryService -> SummaryService : 3. validateSummaryJson()\n[BR-SAFETY: chặn nếu chứa từ khoá lâm sàng cấm —\ndiagnosis/prescription/medication/treatment/disease]
-alt 4. summaryJson hợp lệ (không có từ khoá cấm)
+SummaryService -> SummaryService : 3. validateSummaryJson()\n[BR-SAFETY: block if contains banned clinical keywords —\ndiagnosis/prescription/medication/treatment/disease]
+alt 4. summaryJson valid (no banned keywords)
   SummaryService -> SummaryRepo : 4. save(HealthSummary{status="ACTIVE", generatedBy="MOTHER"})
   activate SummaryRepo
   SummaryRepo -> DB : 5. INSERT INTO health_summaries ...
@@ -152,7 +152,7 @@ alt 4. summaryJson hợp lệ (không có từ khoá cấm)
   deactivate SummaryService
   Controller --> M : 11. HTTP 201 Created
   deactivate Controller
-else 4. summaryJson chứa từ khoá lâm sàng cấm
+else 4. summaryJson contains banned clinical keywords
   SummaryService --> Controller : 4a. throw 422 HEALTH-005\n"summaryJson must not contain clinical terms"
   deactivate SummaryService
   Controller --> M : 4b. HTTP 422 Unprocessable Entity
@@ -164,23 +164,23 @@ M -> Controller : 12. POST /api/v1/health-summaries/share\n{summaryId, bookingId
 activate Controller
 Controller -> ShareService : 13. shareSummary(request, motherUserId)
 activate ShareService
-ShareService -> SummaryRepo : 14. findByIdAndOwnerUserId(summaryId, motherUserId)\n[Gate 1: summary thuộc về Mother]
+ShareService -> SummaryRepo : 14. findByIdAndOwnerUserId(summaryId, motherUserId)\n[Gate 1: summary belongs to Mother]
 activate SummaryRepo
 SummaryRepo -> DB : 15. SELECT * FROM health_summaries\nWHERE id=? AND owner_user_id=?
 activate DB
 DB --> SummaryRepo : 16. summary row | none
 deactivate DB
-SummaryRepo --> ShareService : 17. HealthSummary (404 HEALTH-007 nếu không có)
+SummaryRepo --> ShareService : 17. HealthSummary (404 HEALTH-007 if not found)
 deactivate SummaryRepo
-ShareService -> BookingRepo : 18. findActiveByIdAndRequester(bookingId, motherUserId)\n[Gate 2: booking CONFIRMED/IN_PROGRESS, thuộc về Mother]
+ShareService -> BookingRepo : 18. findActiveByIdAndRequester(bookingId, motherUserId)\n[Gate 2: booking CONFIRMED/IN_PROGRESS, belongs to Mother]
 activate BookingRepo
 BookingRepo -> DB : 19. SELECT * FROM consultation_bookings\nWHERE id=? AND requester_user_id=?\nAND status IN ('CONFIRMED','IN_PROGRESS')
 activate DB
 DB --> BookingRepo : 20. booking row | none
 deactivate DB
-BookingRepo --> ShareService : 21. ConsultationBooking{expertProfileId}\n(422 HEALTH-008 nếu không hợp lệ)
+BookingRepo --> ShareService : 21. ConsultationBooking{expertProfileId}\n(422 HEALTH-008 if invalid)
 deactivate BookingRepo
-ShareService -> PermissionRepo : 22. existsValidPermission(motherUserId,\nbooking.expertProfileId, now())\n[Gate 3: DataPermission hợp lệ tới đúng expert của booking]
+ShareService -> PermissionRepo : 22. existsValidPermission(motherUserId,\nbooking.expertProfileId, now())\n[Gate 3: DataPermission valid for the correct expert of the booking]
 activate PermissionRepo
 PermissionRepo -> DB : 23. SELECT COUNT(p)>0 FROM data_permissions\nWHERE owner_user_id=? AND grantee_user_id=?\nAND status='ACTIVE' AND (expires_at IS NULL OR expires_at>now())
 activate DB
@@ -205,7 +205,7 @@ alt 26. hasPermission == true
   deactivate ShareService
   Controller --> M : 33. HTTP 200 OK
   deactivate Controller
-else 26. hasPermission == false → chặn
+else 26. hasPermission == false → block
   ShareService --> Controller : 26a. throw 403 HEALTH-009\n"No valid data permission granted for this expert"
   deactivate ShareService
   Controller --> M : 26b. HTTP 403 Forbidden

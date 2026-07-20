@@ -130,7 +130,7 @@ M -> Controller : 1. POST /api/v1/health-records\n{recordType=LAB_RESULT, title,
 activate Controller
 Controller -> Service : 2. addHealthRecord(request, callerId)
 activate Service
-opt 3. fileIds không rỗng
+opt 3. fileIds is not empty
   Service -> FileRepo : 3. findAllByIdInAndOwnerUserIdAndStatus(fileIds, callerId, ACTIVE)
   activate FileRepo
   FileRepo -> DB : 4. SELECT * FROM uploaded_files\nWHERE id IN (...) AND owner_user_id=? AND status='ACTIVE'
@@ -139,9 +139,9 @@ opt 3. fileIds không rỗng
   deactivate DB
   FileRepo --> Service : 6. ownedFiles[]
   deactivate FileRepo
-  Service -> Service : 7. nếu ownedFiles.size() != fileIds.size()\n→ throw 403 HEALTH-005 (file không thuộc caller)
+  Service -> Service : 7. if ownedFiles.size() != fileIds.size()\n→ throw 403 HEALTH-005 (file does not belong to caller)
 end
-Service -> RecordRepo : 8. save(HealthRecord{ownerUserId=callerId, status=ACTIVE mặc định})
+Service -> RecordRepo : 8. save(HealthRecord{ownerUserId=callerId, status=ACTIVE by default})
 activate RecordRepo
 RecordRepo -> DB : 9. INSERT INTO health_records ...
 activate DB
@@ -149,7 +149,7 @@ DB --> RecordRepo : 10. saved
 deactivate DB
 RecordRepo --> Service : 11. HealthRecord
 deactivate RecordRepo
-loop 12-15. với mỗi fileId (displayOrder tăng dần theo thứ tự)
+loop 12-15. for each fileId (displayOrder increases sequentially)
   Service -> RecordFileRepo : 12. save(HealthRecordFile{healthRecordId, fileId, displayOrder})
   activate RecordFileRepo
   RecordFileRepo -> DB : 13. INSERT INTO health_record_files ...
@@ -181,8 +181,8 @@ DB --> RecordRepo : 24. record row
 deactivate DB
 RecordRepo --> Service : 25. HealthRecord
 deactivate RecordRepo
-Service -> Service : 26. kiểm tra ownerUserId khớp (403 nếu không)\n&& status != ARCHIVED (409 HEALTH-006 nếu đã lưu trữ)
-Service -> Service : 27. áp dụng PATCH — chỉ ghi đè field non-null trong request
+Service -> Service : 26. check ownerUserId matches (403 if not)\n&& status != ARCHIVED (409 HEALTH-006 if already archived)
+Service -> Service : 27. apply PATCH — only override non-null fields in request
 Service -> RecordRepo : 28. save(record{...})
 activate RecordRepo
 RecordRepo -> DB : 29. UPDATE health_records\nSET title=?, record_type=?, source_type=?, updated_at=now()
@@ -213,13 +213,13 @@ DB --> RecordRepo : 40. record row
 deactivate DB
 RecordRepo --> Service : 41. HealthRecord
 deactivate RecordRepo
-Service -> Service : 42. kiểm tra ownerUserId khớp (403 nếu không)
-alt 43. status đã ARCHIVED từ trước (idempotent)
-  Service --> Controller : 43a. ArchiveHealthRecordResponse{status=ARCHIVED}\n(trả sớm, KHÔNG save() lại, KHÔNG ghi audit)
+Service -> Service : 42. check ownerUserId matches (403 if not)
+alt 43. status already ARCHIVED (idempotent)
+  Service --> Controller : 43a. ArchiveHealthRecordResponse{status=ARCHIVED}\n(return early, DO NOT save(), DO NOT log audit)
   deactivate Service
   Controller --> M : 43b. HTTP 200 OK
   deactivate Controller
-else 43. status đang ACTIVE → chuyển ARCHIVED
+else 43. status is ACTIVE → change to ARCHIVED
   Service -> RecordRepo : 44. save(record{status=ARCHIVED})
   activate RecordRepo
   RecordRepo -> DB : 45. UPDATE health_records SET status='ARCHIVED'
@@ -245,7 +245,7 @@ Controller -> Service : 53. getTimeline(ownerUserId, filter)
 activate Service
 Service -> RecordRepo : 54. findActiveByOwnerFiltered(ownerUserId, recordType,\njourneyId, babyId, sourceType, pageable)
 activate RecordRepo
-RecordRepo -> DB : 55. SELECT * FROM health_records\nWHERE owner_user_id=? AND status='ACTIVE' AND ... (filter động)
+RecordRepo -> DB : 55. SELECT * FROM health_records\nWHERE owner_user_id=? AND status='ACTIVE' AND ... (dynamic filter)
 activate DB
 DB --> RecordRepo : 56. page (rows + totalElements)
 deactivate DB
@@ -261,7 +261,7 @@ M -> Controller : 61. GET /api/v1/health-records/{recordId}
 activate Controller
 Controller -> Service : 62. getHealthRecord(recordId, callerId)
 activate Service
-Service -> RecordRepo : 63. findByIdAndStatus(recordId, ACTIVE)\n[record ARCHIVED → 404, kể cả với chủ sở hữu]
+Service -> RecordRepo : 63. findByIdAndStatus(recordId, ACTIVE)\n[record ARCHIVED → 404, even for owner]
 activate RecordRepo
 RecordRepo -> DB : 64. SELECT * FROM health_records\nWHERE id=? AND status='ACTIVE'
 activate DB
@@ -269,7 +269,7 @@ DB --> RecordRepo : 65. record row | none
 deactivate DB
 RecordRepo --> Service : 66. HealthRecord
 deactivate RecordRepo
-Service -> Service : 67. kiểm tra ownerUserId == callerId (403 nếu không)
+Service -> Service : 67. check ownerUserId == callerId (403 if not)
 Service -> RecordFileRepo : 68. findByHealthRecordIdOrderByDisplayOrderAsc(recordId)
 activate RecordFileRepo
 RecordFileRepo -> DB : 69. SELECT * FROM health_record_files\nWHERE health_record_id=? ORDER BY display_order
@@ -278,18 +278,18 @@ DB --> RecordFileRepo : 70. links[]
 deactivate DB
 RecordFileRepo --> Service : 71. links[]
 deactivate RecordFileRepo
-loop 72-77. với mỗi link đính kèm
+loop 72-77. for each attachment link
   Service -> FileRepo : 72. findByIdAndStatus(link.fileId, ACTIVE)
   activate FileRepo
   FileRepo -> DB : 73. SELECT * FROM uploaded_files WHERE id=? AND status='ACTIVE'
   activate DB
-  DB --> FileRepo : 74. file row | none (bỏ qua nếu file đã bị xoá)
+  DB --> FileRepo : 74. file row | none (skip if file was deleted)
   deactivate DB
   FileRepo --> Service : 75. UploadedFile
   deactivate FileRepo
   Service -> Storage : 76. generatePresignedUrl(storageKey, ttlMinutes=15)
   activate Storage
-  Storage --> Service : 77. presignedUrl (hết hạn sau 15 phút)
+  Storage --> Service : 77. presignedUrl (expires after 15 minutes)
   deactivate Storage
 end
 Service --> Controller : 78. HealthRecordDetailResponse{record, attachments[]}

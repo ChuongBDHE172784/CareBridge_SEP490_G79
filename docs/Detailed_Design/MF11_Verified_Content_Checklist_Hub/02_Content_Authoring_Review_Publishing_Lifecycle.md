@@ -159,19 +159,19 @@ CA -> AdminController : 1. POST /api/v1/admin/content\n{type=ARTICLE, title, bod
 activate AdminController
 AdminController -> AdminService : 2. createContent(request, authorUserId)
 activate AdminService
-AdminService -> TopicRepo : 3. existsById(topicId) [nếu topicId != null]
+AdminService -> TopicRepo : 3. existsById(topicId) [if topicId != null]
 activate TopicRepo
 TopicRepo -> DB : 4. SELECT EXISTS(...) FROM community_topics WHERE id=?
 activate DB
-DB --> TopicRepo : 5. boolean (404 nếu topicId không tồn tại)
+DB --> TopicRepo : 5. boolean (404 if topicId does not exist)
 deactivate DB
 TopicRepo --> AdminService : 6. boolean
 deactivate TopicRepo
-AdminService -> ContentRepo : 7. findByTitleIgnoreCaseAndStageAndType(title, stage, type)\n[chống trùng lặp nội dung]
+AdminService -> ContentRepo : 7. findByTitleIgnoreCaseAndStageAndType(title, stage, type)\n[prevent duplicate content]
 activate ContentRepo
 ContentRepo -> DB : 8. SELECT * FROM content_items\nWHERE LOWER(title)=? AND stage=? AND type=?
 activate DB
-DB --> ContentRepo : 9. existing | none (409 nếu đã tồn tại)
+DB --> ContentRepo : 9. existing | none (409 if already exists)
 deactivate DB
 ContentRepo --> AdminService : 10. Optional<ContentItem>
 deactivate ContentRepo
@@ -205,16 +205,16 @@ DB --> ContentRepo : 23. item row
 deactivate DB
 ContentRepo --> AdminService : 24. ContentItem
 deactivate ContentRepo
-alt 25. item.status VÀ request.status đều thuộc {DRAFT, PENDING_REVIEW}\n(separation-of-duties — Content Admin KHÔNG được set APPROVED qua endpoint này)
-  AdminService -> ContentRepo : 25. findByTitleIgnoreCaseAndStageAndType(...)\n[chỉ khi title/stage thay đổi]
+alt 25. item.status AND request.status are both in {DRAFT, PENDING_REVIEW}\n(separation-of-duties — Content Admin CANNOT set APPROVED via this endpoint)
+  AdminService -> ContentRepo : 25. findByTitleIgnoreCaseAndStageAndType(...)\n[only if title/stage changes]
   activate ContentRepo
   ContentRepo -> DB : 26. SELECT * FROM content_items\nWHERE LOWER(title)=? AND stage=? AND type=? AND id<>?
   activate DB
-  DB --> ContentRepo : 27. existing khác | none (409 nếu trùng)
+  DB --> ContentRepo : 27. different existing | none (409 if duplicate)
   deactivate DB
   ContentRepo --> AdminService : 28. Optional<ContentItem>
   deactivate ContentRepo
-  AdminService -> AdminService : 29. gán field cho phép sửa (title/body/stage/topicId/\nstatus/sourceLabel/sources); versionNo += 1
+  AdminService -> AdminService : 29. assign editable fields (title/body/stage/topicId/\nstatus/sourceLabel/sources); versionNo += 1
   AdminService -> ContentRepo : 30. save(item{...})
   activate ContentRepo
   ContentRepo -> DB : 31. UPDATE content_items\nSET title=?, body=?, status=?, version_no=version_no+1, ...
@@ -231,8 +231,8 @@ alt 25. item.status VÀ request.status đều thuộc {DRAFT, PENDING_REVIEW}\n(
   deactivate AdminService
   AdminController --> CA : 37. HTTP 200 OK
   deactivate AdminController
-else 25. item đang APPROVED/ARCHIVED, hoặc request.status không phải DRAFT/PENDING_REVIEW
-  AdminService --> AdminController : 25a. throw ContentException.invalidContentStatusTransition()\n[Content Admin không thể tự publish/sửa content đã APPROVED qua endpoint này]
+else 25. item is APPROVED/ARCHIVED, or request.status is not DRAFT/PENDING_REVIEW
+  AdminService --> AdminController : 25a. throw ContentException.invalidContentStatusTransition()\n[Content Admin cannot self-publish/edit APPROVED content via this endpoint]
   deactivate AdminService
   AdminController --> CA : 25b. HTTP 409/400
   deactivate AdminController
@@ -251,11 +251,11 @@ DB --> ContentRepo : 42. item row
 deactivate DB
 ContentRepo --> ApprovalService : 43. ContentItem
 deactivate ContentRepo
-ApprovalService -> ApprovalService : 44. kiểm tra status == PENDING_REVIEW\n(409 notPendingReview nếu khác)
+ApprovalService -> ApprovalService : 44. check status == PENDING_REVIEW\n(409 notPendingReview if otherwise)
 alt 45. decision == APPROVE
-  ApprovalService -> ApprovalService : 45. set status=APPROVED;\nnếu publishedAt chưa từng có → gán now()\n(giữ nguyên publishedAt cũ nếu đây là lần re-approve)
+  ApprovalService -> ApprovalService : 45. set status=APPROVED;\nif publishedAt not set yet → assign now()\n(keep old publishedAt if this is a re-approval)
 else 45. decision == REJECT
-  ApprovalService -> ApprovalService : 45a. kiểm tra reason bắt buộc, không blank\n(400 decisionReasonRequired nếu thiếu); set status=DRAFT
+  ApprovalService -> ApprovalService : 45a. check reason is required, not blank\n(400 decisionReasonRequired if missing); set status=DRAFT
 end
 ApprovalService -> ContentRepo : 46. save(item{status, publishedAt?})
 activate ContentRepo
@@ -277,7 +277,7 @@ deactivate ApprovalController
 == UC-107 Unpublish or Archive Content ==
 CA -> UnpublishController : 54. POST /api/v1/admin/content/{id}/unpublish {reason}
 activate UnpublishController
-UnpublishController -> UnpublishController : 55. kiểm tra reason bắt buộc (400 nếu blank)
+UnpublishController -> UnpublishController : 55. check reason is required (400 if blank)
 UnpublishController -> UnpublishService : 56. unpublish(id, request, adminId)
 activate UnpublishService
 UnpublishService -> ContentRepo : 57. findById(id)
@@ -288,7 +288,7 @@ DB --> ContentRepo : 59. item row
 deactivate DB
 ContentRepo --> UnpublishService : 60. ContentItem
 deactivate ContentRepo
-UnpublishService -> UnpublishService : 61. kiểm tra status == APPROVED\n(409 notCurrentlyPublished nếu không)
+UnpublishService -> UnpublishService : 61. check status == APPROVED\n(409 notCurrentlyPublished if not)
 UnpublishService -> ContentRepo : 62. save(item{status=ARCHIVED})
 activate ContentRepo
 ContentRepo -> DB : 63. UPDATE content_items SET status='ARCHIVED'
@@ -307,7 +307,7 @@ UnpublishController --> CA : 69. HTTP 200 OK
 deactivate UnpublishController
 
 == UC-108 Manage Content Categories and Stage/Topic Mapping ==
-CA -> CategoryController : 70. POST /api/v1/admin/content/categories\n{name, description}\n[thực chất gọi thẳng CommunityTopicService — bảng dùng chung MF-04]
+CA -> CategoryController : 70. POST /api/v1/admin/content/categories\n{name, description}\n[essentially calls CommunityTopicService directly — shared table MF-04]
 activate CategoryController
 CategoryController -> TopicService : 71. createTopic(actorId, request)
 activate TopicService
@@ -317,7 +317,7 @@ DB --> TopicService : 73. saved
 deactivate DB
 TopicService --> CategoryController : 74. CommunityTopicResponse
 deactivate TopicService
-CategoryController -> Audit : 75. log(CONTENT_CATEGORY_MANAGED, actorId,\n"COMMUNITY_TOPIC", topicId, "action=CREATE")\n[audit gọi trực tiếp từ controller — không qua service riêng]
+CategoryController -> Audit : 75. log(CONTENT_CATEGORY_MANAGED, actorId,\n"COMMUNITY_TOPIC", topicId, "action=CREATE")\n[audit logged directly from controller — not via separate service]
 activate Audit
 Audit --> CategoryController : 76. void
 deactivate Audit

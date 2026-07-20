@@ -227,7 +227,7 @@ DB --> CredRepo : 37. credentials[]
 deactivate DB
 CredRepo --> Service : 38. credentials[]
 deactivate CredRepo
-Service -> Service : 39. require tất cả credential bắt buộc đã APPROVED
+Service -> Service : 39. require all mandatory credentials are APPROVED
 Service -> ProfileRepo : 40. save(profile{verificationStatus=APPROVED, verifiedAt=now(), verifiedBy=adminId})
 activate ProfileRepo
 ProfileRepo -> DB : 41. UPDATE expert_profiles\nSET verification_status='APPROVED', verified_at=now(), verified_by=adminId
