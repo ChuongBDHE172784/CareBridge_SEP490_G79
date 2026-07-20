@@ -4,21 +4,27 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.expert.dto.request.CreateExpertProfileRequest;
 import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
+import com.carebridge.backend.expert.dto.request.RejectExpertRequest;
 import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.service.IExpertProfileService;
+import com.carebridge.backend.expertverification.adapter.FaceVerificationAdapter;
+import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +35,35 @@ import java.util.UUID;
 public class ExpertProfileController {
 
     private final IExpertProfileService expertProfileService;
+    private final FaceVerificationAdapter faceVerificationAdapter;
+
+    // NEW: AI Face Verification Endpoint for Quick Feedback (Tích xanh)
+    @PostMapping(value = "/verify-face", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('EXPERT')")
+    public ResponseEntity<ApiResponse<FaceVerificationResult>> verifyFace(
+            @RequestPart("selfie") MultipartFile selfie,
+            @RequestPart("idCard") MultipartFile idCard) {
+        try {
+            validatePreviewImage(selfie, "selfie");
+            validatePreviewImage(idCard, "idCard");
+            var result = faceVerificationAdapter.verify(
+                    selfie.getBytes(), selfie.getContentType(),
+                    idCard.getBytes(), idCard.getContentType());
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Lỗi khi xác thực khuôn mặt: " + e.getMessage()));
+        }
+    }
+
+    private static void validatePreviewImage(MultipartFile file, String field) {
+        if (file == null || file.isEmpty() || file.getSize() > 5L * 1024 * 1024) {
+            throw new IllegalArgumentException(field + " phải là ảnh không rỗng và tối đa 5 MB");
+        }
+        String type = file.getContentType();
+        if (!MediaType.IMAGE_JPEG_VALUE.equals(type) && !MediaType.IMAGE_PNG_VALUE.equals(type)) {
+            throw new IllegalArgumentException(field + " chỉ chấp nhận JPEG hoặc PNG");
+        }
+    }
 
     // UC-60: Expert creates profile
     @PostMapping("/profiles")
@@ -80,7 +115,7 @@ public class ExpertProfileController {
 
     // UC-70: Admin approves expert
     @PostMapping("/profiles/{expertProfileId}/approve")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'CONTENT_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> approveExpert(
             @PathVariable UUID expertProfileId,
             Principal principal) {
@@ -91,13 +126,13 @@ public class ExpertProfileController {
 
     // UC-70: Admin rejects expert
     @PostMapping("/profiles/{expertProfileId}/reject")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'CONTENT_ADMIN')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> rejectExpert(
             @PathVariable UUID expertProfileId,
             Principal principal,
-            @RequestBody(required = false) String reason) {
+            @Valid @RequestBody RejectExpertRequest request) {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
-        expertProfileService.rejectExpert(expertProfileId, adminId, reason);
+        expertProfileService.rejectExpert(expertProfileId, adminId, request.getReason());
         return ResponseEntity.ok(ApiResponse.success(null, "Expert rejected"));
     }
 

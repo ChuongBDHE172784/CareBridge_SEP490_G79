@@ -16,7 +16,7 @@ apiClient.interceptors.request.use((config) => {
 // password, locked account trying to log in, etc.), not "your session expired".
 // The calling page shows its own inline error — the interceptor must not
 // force-logout or redirect over it.
-const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password'];
+const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password'];
 
 // Clear session on 401, or 403 with ACCOUNT_DISABLED/ACCOUNT_LOCKED.
 // Plain 403 (role mismatch) must NOT trigger logout.

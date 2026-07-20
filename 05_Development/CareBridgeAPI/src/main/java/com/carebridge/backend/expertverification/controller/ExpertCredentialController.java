@@ -32,7 +32,7 @@ public class ExpertCredentialController {
   public ResponseEntity<ApiResponse<CredentialResponse>> submitCredential(
     Principal principal,
     @Valid @ModelAttribute SubmitCredentialRequest request,
-    @RequestPart(value = "file", required = false) MultipartFile file) {
+    @RequestPart("file") MultipartFile file) {
     UUID userId = SecurityUtils.requireCurrentUserId(principal);
     return ResponseEntity.status(HttpStatus.CREATED)
       .body(ApiResponse.success(credentialService.submitCredential(userId, request, file)));
@@ -80,7 +80,9 @@ public class ExpertCredentialController {
   @GetMapping("/pending")
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<List<DocumentReviewResponse>>> getPendingReviews(
+    Principal principal,
     @RequestParam(required = false) String credentialType) {
-    return ResponseEntity.ok(ApiResponse.success(credentialService.getPendingReviews(credentialType)));
+    UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+    return ResponseEntity.ok(ApiResponse.success(credentialService.getPendingReviews(credentialType, reviewerId)));
   }
 }

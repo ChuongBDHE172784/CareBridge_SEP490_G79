@@ -27,9 +27,11 @@ public class ExpertProfileMapper {
 			.userId(entity.getUserId())
 			.displayName(displayName)
 			.specialty(entity.getSpecialty())
+			.specialtyId(entity.getSpecialtyId())
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.hospitalId(entity.getHospitalId())
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
@@ -48,9 +50,11 @@ public class ExpertProfileMapper {
 			.userId(entity.getUserId())
 			.displayName(displayName)
 			.specialty(entity.getSpecialty())
+			.specialtyId(entity.getSpecialtyId())
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.hospitalId(entity.getHospitalId())
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
@@ -67,9 +71,11 @@ public class ExpertProfileMapper {
 		return ExpertProfile.builder()
 			.userId(userId)
 			.specialty(request.getSpecialty())
+			.specialtyId(request.getSpecialtyId())
 			.professionalTitle(request.getProfessionalTitle())
 			.experienceYears(request.getExperienceYears())
 			.workplace(request.getWorkplace())
+			.hospitalId(request.getHospitalId())
 			.consultationScope(request.getConsultationScope())
 			.ratingAvg(request.getRatingAvg())
 			.verificationStatus(VerificationStatus.PENDING)
@@ -78,9 +84,11 @@ public class ExpertProfileMapper {
 
 	public void updateEntity(ExpertProfile entity, UpdateExpertProfileRequest request) {
 		if (request.getSpecialty() != null) entity.setSpecialty(request.getSpecialty());
+		if (request.getSpecialtyId() != null) entity.setSpecialtyId(request.getSpecialtyId());
 		if (request.getProfessionalTitle() != null) entity.setProfessionalTitle(request.getProfessionalTitle());
 		if (request.getExperienceYears() != null) entity.setExperienceYears(request.getExperienceYears());
 		if (request.getWorkplace() != null) entity.setWorkplace(request.getWorkplace());
+		if (request.getHospitalId() != null) entity.setHospitalId(request.getHospitalId());
 		if (request.getConsultationScope() != null) entity.setConsultationScope(request.getConsultationScope());
 		if (request.getRatingAvg() != null) entity.setRatingAvg(request.getRatingAvg());
 	}
