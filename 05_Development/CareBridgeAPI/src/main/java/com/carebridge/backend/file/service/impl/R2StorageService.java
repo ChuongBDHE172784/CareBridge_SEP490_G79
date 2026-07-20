@@ -36,7 +36,7 @@ public class R2StorageService implements IStorageService {
                     .serverSideEncryption(ServerSideEncryption.AES256)
                     .build(), RequestBody.fromBytes(data));
         } catch (S3Exception e) {
-            throw new CloudinaryStorageService.StorageException("R2 upload failed", e);
+            throw new StorageException("R2 upload failed", e);
         }
     }
 
@@ -55,7 +55,13 @@ public class R2StorageService implements IStorageService {
         try {
             r2S3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
         } catch (S3Exception e) {
-            throw new CloudinaryStorageService.StorageException("R2 delete failed", e);
+            throw new StorageException("R2 delete failed", e);
         }
+    }
+
+    @SuppressWarnings("serial")
+    public static class StorageException extends RuntimeException {
+        public StorageException(String msg) { super(msg); }
+        public StorageException(String msg, Throwable cause) { super(msg, cause); }
     }
 }

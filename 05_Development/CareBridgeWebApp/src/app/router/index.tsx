@@ -27,6 +27,12 @@ import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCa
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 
+// Contribution screens
+import ContributionListPage from '../../features/expert/pages/ContributionListPage';
+import ContributionDraftPage from '../../features/expert/pages/ContributionDraftPage';
+import ContributionDetailPage from '../../features/expert/pages/ContributionDetailPage';
+import AdminContributionReviewQueuePage from '../../features/expert/pages/AdminContributionReviewQueuePage';
+
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
 import AdminExpertIdentityReviewPage from '../../features/expert/pages/AdminExpertIdentityReviewPage';
@@ -161,6 +167,7 @@ export const router = createBrowserRouter([
               { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
+              { path: '/admin/contribution-review-queue', element: <AdminContributionReviewQueuePage /> },
 { path: '/security/incidents', element: <SecurityIncidentListPage /> },
               { path: '/security/events', element: <SecurityEventsPage /> },
               { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
@@ -231,6 +238,11 @@ export const router = createBrowserRouter([
                   // UC-144D: Direct Consult Chat & Call
                   { path: '/expert/direct-chats', element: <ConversationListPage /> },
                   { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                  // Contribution (Medical Knowledge)
+                  { path: '/expert/contributions', element: <ContributionListPage /> },
+                  { path: '/expert/contributions/new', element: <ContributionDraftPage /> },
+                  { path: '/expert/contributions/:id/edit', element: <ContributionDraftPage /> },
+                  { path: '/expert/contributions/:id', element: <ContributionDetailPage /> },
                 ],
               },
             ],

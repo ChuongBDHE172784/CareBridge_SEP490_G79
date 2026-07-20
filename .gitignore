@@ -128,3 +128,4 @@ tools/
 .code-review-graph/
 .mcp.json
 .github/code-review-graph.instruction.md
+.codex_tmp/

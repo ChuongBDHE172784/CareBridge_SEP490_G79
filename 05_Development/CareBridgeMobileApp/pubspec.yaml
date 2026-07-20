@@ -54,6 +54,8 @@ dependencies:
   http_parser: ^4.1.2
   uuid: ^4.5.1
   google_sign_in: ^7.2.0
+  freezed_annotation: ^3.0.0
+  file_picker: ^10.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -67,6 +69,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
+  build_runner: ^2.4.13
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
