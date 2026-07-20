@@ -27,6 +27,9 @@ public class PostpartumLog {
     @Column(name = "journey_id", nullable = false)
     private UUID journeyId;
 
+    @Column(name = "submission_id", nullable = false)
+    private UUID submissionId;
+
     @Column(name = "log_date", nullable = false)
     private LocalDate logDate;
 

@@ -43,6 +43,7 @@ class BabyProfile {
   final double? birthWeightKg;
   final double? birthLengthCm;
   final bool isActive;
+  final String? relatedJourneyId;
 
   const BabyProfile({
     required this.id,
@@ -52,6 +53,7 @@ class BabyProfile {
     this.birthWeightKg,
     this.birthLengthCm,
     required this.isActive,
+    this.relatedJourneyId,
   });
 
   String get ageLabel {
@@ -81,6 +83,7 @@ class BabyProfile {
       birthLengthCm: (json['birthLengthCm'] as num?)?.toDouble(),
       isActive:
           (json['isActive'] as bool?) ?? (json['active'] as bool?) ?? false,
+      relatedJourneyId: json['relatedJourneyId'] as String?,
     );
   }
 }
@@ -118,6 +121,7 @@ class CreateBabyRequest {
   final double? birthWeightKg;
   final double? birthLengthCm;
   final String? relatedJourneyId;
+  final String? submissionId;
 
   const CreateBabyRequest({
     required this.nickname,
@@ -126,6 +130,7 @@ class CreateBabyRequest {
     this.birthWeightKg,
     this.birthLengthCm,
     this.relatedJourneyId,
+    this.submissionId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -135,5 +140,36 @@ class CreateBabyRequest {
     if (birthWeightKg != null) 'birthWeightKg': birthWeightKg,
     if (birthLengthCm != null) 'birthLengthCm': birthLengthCm,
     if (relatedJourneyId != null) 'relatedJourneyId': relatedJourneyId,
+    if (submissionId != null) 'submissionId': submissionId,
   };
+}
+
+class BabyProfilePage {
+  const BabyProfilePage({
+    required this.items,
+    this.page = 0,
+    this.size = 20,
+    this.totalElements = 0,
+    this.totalPages = 0,
+  });
+
+  final List<BabyProfile> items;
+  final int page;
+  final int size;
+  final int totalElements;
+  final int totalPages;
+
+  factory BabyProfilePage.fromJson(Map<String, dynamic> json) {
+    final raw = (json['content'] ?? json['items'] ?? const []) as List<dynamic>;
+    return BabyProfilePage(
+      items: raw
+          .map((item) => BabyProfile.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      page: (json['page'] as num?)?.toInt() ?? 0,
+      size: (json['size'] as num?)?.toInt() ?? raw.length,
+      totalElements: (json['totalElements'] as num?)?.toInt() ?? raw.length,
+      totalPages:
+          (json['totalPages'] as num?)?.toInt() ?? (raw.isEmpty ? 0 : 1),
+    );
+  }
 }

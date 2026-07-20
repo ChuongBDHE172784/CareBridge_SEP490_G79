@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,6 +30,11 @@ public class JourneyResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate deliveryDate;
+
+    private PregnancyOutcomeType pregnancyOutcome;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate pregnancyOutcomeDate;
 
     private String status;
     private String notes;

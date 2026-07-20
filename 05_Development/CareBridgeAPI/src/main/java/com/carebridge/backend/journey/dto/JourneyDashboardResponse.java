@@ -3,6 +3,7 @@ package com.carebridge.backend.journey.dto;
 import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
@@ -46,4 +47,9 @@ public class JourneyDashboardResponse {
     private JourneyDateSource dateSource;
 
     private JourneyDateConfidence dateConfidence;
+
+    private PregnancyOutcomeType pregnancyOutcome;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate pregnancyOutcomeDate;
 }

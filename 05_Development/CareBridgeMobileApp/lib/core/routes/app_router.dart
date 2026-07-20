@@ -13,11 +13,17 @@ import '../../features/home/screens/family_member_home_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_onboarding_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
+import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
 import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
+import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
+import '../../features/healthRecords/screens/postpartum_log_detail_screen.dart';
+import '../../features/healthRecords/screens/postpartum_log_form_screen.dart';
+import '../../features/healthRecords/screens/postpartum_safety_help_screen.dart';
+import '../../features/healthRecords/models/postpartum_log_model.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
@@ -48,12 +54,14 @@ import '../../features/baby/screens/baby_profiles_screen.dart';
 import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
+import '../../features/baby/screens/baby_journey_linkage_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/healthRecords/models/vaccination_model.dart';
 import '../../features/healthRecords/screens/growth_measurement_history_screen.dart';
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
+import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
@@ -87,6 +95,29 @@ Widget _buildHomeForRole(String? role, {required int initialIndex}) {
     default:
       return const _UnsupportedRoleHome();
   }
+}
+
+bool _isUuid(String? value) =>
+    value != null &&
+    RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value);
+
+class _InvalidRouteScreen extends StatelessWidget {
+  const _InvalidRouteScreen();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Liên kết nhật ký không hợp lệ.',
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+  );
 }
 
 class _UnsupportedRoleHome extends StatelessWidget {
@@ -203,6 +234,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MotherStageSelectionScreen(),
     ),
     GoRoute(
+      path: '/postpartum-recovery-setup',
+      builder: (context, state) => const PostpartumRecoverySetupScreen(),
+    ),
+    GoRoute(
       path: '/',
       builder: (context, state) {
         final tabParam = state.uri.queryParameters['tab'];
@@ -242,6 +277,51 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const Scaffold(
         body: Center(child: Text('Update Mother Journey Screen (3.3.1.2)')),
       ),
+    ),
+    GoRoute(
+      path: '/postpartum-logs',
+      builder: (context, state) {
+        final journeyId = state.uri.queryParameters['journeyId'];
+        return _isUuid(journeyId)
+            ? PostpartumLogListScreen(journeyId: journeyId!)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/postpartum-logs/new',
+      builder: (context, state) {
+        final journeyId = state.uri.queryParameters['journeyId'];
+        return _isUuid(journeyId)
+            ? PostpartumLogFormScreen(journeyId: journeyId!)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/postpartum-logs/:logId',
+      builder: (context, state) {
+        final logId = state.pathParameters['logId'];
+        return _isUuid(logId)
+            ? PostpartumLogDetailScreen(logId: logId!)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/postpartum-logs/:logId/edit',
+      builder: (context, state) {
+        final logId = state.pathParameters['logId'];
+        final initial = state.extra as PostpartumLog?;
+        return _isUuid(logId) && initial != null
+            ? PostpartumLogFormScreen(
+                journeyId: initial.journeyId,
+                logId: logId,
+                initialLog: initial,
+              )
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/postpartum-safety-help',
+      builder: (context, state) => const PostpartumSafetyHelpScreen(),
     ),
     GoRoute(
       path: '/health-metrics/:id',
@@ -368,10 +448,24 @@ final GoRouter appRouter = GoRouter(
       path: '/babies/add',
       builder: (context, state) {
         final entry = state.uri.queryParameters['entry'];
+        final relatedJourneyId = state.uri.queryParameters['relatedJourneyId'];
         return AddBabyScreen(
           entryPoint: entry == 'onboarding'
               ? AddBabyEntryPoint.onboarding
               : AddBabyEntryPoint.profileList,
+          relatedJourneyId: relatedJourneyId,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/journeys/:journeyId/babies',
+      builder: (context, state) {
+        final journeyId = state.pathParameters['journeyId'] ?? '';
+        return BabyJourneyLinkageScreen(
+          journeyId: journeyId,
+          onCreate: () => context.push<bool>(
+            '/babies/add?entry=list&relatedJourneyId=${Uri.encodeComponent(journeyId)}',
+          ),
         );
       },
     ),
@@ -553,7 +647,16 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/triage/intake',
-      builder: (context, state) => const SymptomIntakeScreen(),
+      builder: (context, state) {
+        final extra = state.extra;
+        if (extra != null && extra is! TriageEntryContext) {
+          return const _InvalidRouteScreen();
+        }
+        return SymptomIntakeScreen(
+          entryContext:
+              extra as TriageEntryContext? ?? const TriageEntryContext(),
+        );
+      },
     ),
     GoRoute(
       path: '/triage/result/:sessionId',

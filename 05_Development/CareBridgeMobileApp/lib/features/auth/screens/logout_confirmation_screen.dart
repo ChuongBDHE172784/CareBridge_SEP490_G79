@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
+import '../../journey/services/pregnancy_outcome_draft_store.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 
@@ -51,14 +52,26 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     });
 
     try {
+      final accountId = AuthState.instance.userId;
       await AuthService.instance.logout();
       if (!mounted) return;
       Navigator.of(context).pop();
+      if (accountId != null) {
+        await SecurePregnancyOutcomeDraftStore.instance.clearForAccount(
+          accountId,
+        );
+      }
       await AuthState.instance.clear();
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
+        final accountId = AuthState.instance.userId;
         if (!mounted) return;
         Navigator.of(context).pop();
+        if (accountId != null) {
+          await SecurePregnancyOutcomeDraftStore.instance.clearForAccount(
+            accountId,
+          );
+        }
         await AuthState.instance.clear();
         return;
       }

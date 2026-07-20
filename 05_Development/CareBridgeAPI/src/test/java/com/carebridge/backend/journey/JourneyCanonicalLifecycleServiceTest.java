@@ -102,6 +102,101 @@ class JourneyCanonicalLifecycleServiceTest {
     }
 
     @Test
+    void postpartumCreate_acceptsSelfReportedNonFutureRecoveryStart() {
+        when(userRepository.findById(JourneyLifecycleTestFactory.MOTHER_ID))
+                .thenReturn(Optional.of(JourneyLifecycleTestFactory.mother()));
+        when(journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
+                any(), any(), any())).thenReturn(false);
+        when(journeyRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            MotherJourney journey = invocation.getArgument(0);
+            journey.setId(JourneyLifecycleTestFactory.JOURNEY_ID);
+            return journey;
+        });
+        when(transitionRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.createJourney(
+                JourneyLifecycleTestFactory.postpartumCreate(),
+                JourneyLifecycleTestFactory.MOTHER_ID);
+
+        assertThat(response.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM.name());
+        ArgumentCaptor<MotherJourney> journey = ArgumentCaptor.forClass(MotherJourney.class);
+        verify(journeyRepository).saveAndFlush(journey.capture());
+        assertThat(journey.getValue().getDateSource())
+                .isEqualTo(JourneyDateSource.SELF_REPORTED);
+        assertThat(journey.getValue().getDateConfidence())
+                .isEqualTo(JourneyDateConfidence.CONFIRMED);
+        assertThat(journey.getValue().getDeliveryDate()).isNull();
+        assertThat(journey.getValue().getPregnancyOutcome()).isNull();
+    }
+
+    @Test
+    void postpartumCreate_rejectsFutureRecoveryStartWithoutPersistence() {
+        when(userRepository.findById(JourneyLifecycleTestFactory.MOTHER_ID))
+                .thenReturn(Optional.of(JourneyLifecycleTestFactory.mother()));
+        var request = JourneyLifecycleTestFactory.postpartumCreate();
+        request.setStartDate(java.time.LocalDate.of(2026, 7, 19));
+
+        assertJourneyError("POSTPARTUM_START_DATE_FUTURE", HttpStatus.BAD_REQUEST,
+                () -> service.createJourney(request, JourneyLifecycleTestFactory.MOTHER_ID));
+
+        verify(journeyRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(transitionRepository, auditService, eventPublisher);
+    }
+
+    @Test
+    void postpartumCreate_acceptsLocalTodayAcrossUtcDateBoundary() {
+        Clock boundaryClock = Clock.fixed(
+                Instant.parse("2026-07-18T18:30:00Z"),
+                ZoneOffset.UTC);
+        var boundaryService = new JourneyTransitionServiceImpl(
+                journeyRepository,
+                transitionRepository,
+                userRepository,
+                auditService,
+                policy,
+                eventPublisher,
+                onboardingService,
+                boundaryClock);
+        var request = JourneyLifecycleTestFactory.postpartumCreate();
+        request.setStartDate(java.time.LocalDate.of(2026, 7, 19));
+        when(userRepository.findById(JourneyLifecycleTestFactory.MOTHER_ID))
+                .thenReturn(Optional.of(JourneyLifecycleTestFactory.mother()));
+        when(journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
+                any(), any(), any())).thenReturn(false);
+        when(journeyRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            MotherJourney journey = invocation.getArgument(0);
+            journey.setId(JourneyLifecycleTestFactory.JOURNEY_ID);
+            return journey;
+        });
+        when(transitionRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = boundaryService.createJourney(
+                request, JourneyLifecycleTestFactory.MOTHER_ID);
+
+        assertThat(response.getStartDate()).isEqualTo("2026-07-19");
+    }
+
+    @Test
+    void postpartumCreate_rejectsMissingOrUnsupportedProvenance() {
+        when(userRepository.findById(JourneyLifecycleTestFactory.MOTHER_ID))
+                .thenReturn(Optional.of(JourneyLifecycleTestFactory.mother()));
+        var missingSource = JourneyLifecycleTestFactory.postpartumCreate();
+        missingSource.setDateSource(null);
+        var unknownConfidence = JourneyLifecycleTestFactory.postpartumCreate();
+        unknownConfidence.setDateConfidence(JourneyDateConfidence.UNKNOWN);
+
+        assertJourneyError("POSTPARTUM_PROVENANCE_INVALID", HttpStatus.BAD_REQUEST,
+                () -> service.createJourney(missingSource, JourneyLifecycleTestFactory.MOTHER_ID));
+        assertJourneyError("POSTPARTUM_PROVENANCE_INVALID", HttpStatus.BAD_REQUEST,
+                () -> service.createJourney(unknownConfidence, JourneyLifecycleTestFactory.MOTHER_ID));
+
+        verify(journeyRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(transitionRepository, auditService, eventPublisher);
+    }
+
+    @Test
     void jrnTc003_dateCorrectionRecordsPreviousAndNewValues() {
         MotherJourney current = JourneyLifecycleTestFactory.activePregnancy();
         when(journeyRepository.findById(current.getId())).thenReturn(Optional.of(current));

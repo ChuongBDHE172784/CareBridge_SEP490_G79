@@ -16,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class HealthMemoryServiceImplTest {
@@ -47,5 +49,21 @@ class HealthMemoryServiceImplTest {
 
         assertThat(entry.getDeletedAt()).isNotNull();
         assertThat(service.list(userId, TriageStage.INFANT, babyProfileId)).isEmpty();
+    }
+
+    @Test
+    void postpartum_shouldUseMaternalMemoryBoundaryOnly() {
+        UUID userId = UUID.randomUUID();
+        UUID motherProfileId = UUID.randomUUID();
+        HealthMemoryServiceImpl service = new HealthMemoryServiceImpl(repository);
+        when(repository.findActiveMaternal(
+                eq(userId), eq(motherProfileId), eq(TriageStage.POSTPARTUM), any(Instant.class)))
+                .thenReturn(List.of());
+
+        assertThat(service.list(userId, TriageStage.POSTPARTUM, motherProfileId)).isEmpty();
+
+        verify(repository).findActiveMaternal(
+                eq(userId), eq(motherProfileId), eq(TriageStage.POSTPARTUM), any(Instant.class));
+        verify(repository, never()).findActivePediatric(any(), any(), any(), any());
     }
 }

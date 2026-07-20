@@ -15,7 +15,7 @@ class MotherStageSelectionScreen extends StatefulWidget {
       _MotherStageSelectionScreenState();
 }
 
-enum _MotherStage { planning, pregnant, babyCare }
+enum _MotherStage { planning, postpartum, pregnant, babyCare }
 
 class _MotherStageSelectionScreenState
     extends State<MotherStageSelectionScreen> {
@@ -43,6 +43,8 @@ class _MotherStageSelectionScreenState
 
   String get _buttonLabel {
     switch (_selectedStage) {
+      case _MotherStage.postpartum:
+        return 'Thiết lập hành trình sau sinh';
       case _MotherStage.planning:
         return 'Tạo hành trình chuẩn bị';
       case _MotherStage.pregnant:
@@ -60,6 +62,11 @@ class _MotherStageSelectionScreenState
 
     if (stage == _MotherStage.pregnant) {
       context.go('/journey-setup');
+      return;
+    }
+
+    if (stage == _MotherStage.postpartum) {
+      context.go('/postpartum-recovery-setup');
       return;
     }
 
@@ -128,6 +135,19 @@ class _MotherStageSelectionScreenState
                 selected: _selectedStage == _MotherStage.planning,
                 onTap: () => setState(() {
                   _selectedStage = _MotherStage.planning;
+                  _error = null;
+                }),
+              ),
+              const SizedBox(height: 16),
+              _StageCard(
+                key: const Key('mother-stage-postpartum'),
+                icon: Icons.self_improvement_rounded,
+                title: 'Đang hồi phục sau sinh',
+                subtitle:
+                    'Theo dõi quá trình hồi phục của bạn mà không cần tạo hồ sơ em bé.',
+                selected: _selectedStage == _MotherStage.postpartum,
+                onTap: () => setState(() {
+                  _selectedStage = _MotherStage.postpartum;
                   _error = null;
                 }),
               ),
@@ -243,6 +263,7 @@ class _MotherStageSelectionScreenState
               width: double.infinity,
               height: 56,
               child: FilledButton(
+                key: const Key('mother-stage-continue'),
                 onPressed: _canContinue ? _continue : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: _primary,

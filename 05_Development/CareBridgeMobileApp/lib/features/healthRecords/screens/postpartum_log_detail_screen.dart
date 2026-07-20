@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/postpartum_log_model.dart';
+import '../services/postpartum_log_service.dart';
 
 class PostpartumLogDetailScreen extends StatefulWidget {
-  final String logId;
+  const PostpartumLogDetailScreen({
+    super.key,
+    required this.logId,
+    this.service,
+  });
 
-  const PostpartumLogDetailScreen({super.key, required this.logId});
+  final String logId;
+  final PostpartumLogService? service;
 
   @override
   State<PostpartumLogDetailScreen> createState() =>
@@ -11,341 +20,193 @@ class PostpartumLogDetailScreen extends StatefulWidget {
 }
 
 class _PostpartumLogDetailScreenState extends State<PostpartumLogDetailScreen> {
-  bool _isLoading = true;
-  bool _isDeleting = false;
-  Map<String, dynamic>? _detail;
+  static const _primary = Color(0xFF845143);
+  late final PostpartumLogService _service;
+  PostpartumLog? _log;
+  bool _loading = true;
+  bool _deleting = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchDetail();
+    _service = widget.service ?? PostpartumLogService();
+    _load();
   }
 
-  Future<void> _fetchDetail() async {
-    setState(() => _isLoading = true);
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      // API call: GET /api/v1/postpartum-logs/{logId}
-      await Future.delayed(const Duration(milliseconds: 700));
-      _detail = {
-        'title': 'Cảm giác hôm nay',
-        'timeLabel': '08:30 Sáng • 12/10/2023',
-        'mood': 'Khá tốt, có chút mệt mỏi vào buổi sáng.',
-        'food': 'Ăn ngon miệng, đã uống đủ 2 lít nước.',
-        'pain': ['Đau lưng nhẹ', 'Căng tức ngực'],
-        'note':
-            'Bé ngủ ngoan hơn đêm qua nên mẹ được nghỉ ngơi nhiều hơn. Vết mổ đã khô và bớt đau rát.',
-      };
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi tải thông tin chi tiết')),
-      );
+      final value = await _service.detail(widget.logId);
+      if (mounted) setState(() => _log = value);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Chưa thể tải chi tiết nhật ký.');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _deleteLog() async {
-    setState(() => _isDeleting = true);
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa nhật ký?'),
+        content: const Text('Bản ghi sẽ không còn xuất hiện trong nhật ký.'),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => context.pop(true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || _deleting) return;
+    setState(() => _deleting = true);
     try {
-      // API call: DELETE /api/v1/postpartum-logs/{logId}
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted) {
-        Navigator.pop(context, true); // true = deleted
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể xóa bản ghi này')),
-        );
-      }
+      await _service.delete(widget.logId);
+      if (mounted) context.pop(true);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Chưa thể xóa. Vui lòng thử lại.');
     } finally {
-      if (mounted) setState(() => _isDeleting = false);
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF845143);
-    const bgColor = Color(0xFFFFF8F6);
-    const textColor = Color(0xFF271812);
-    const errorColor = Color(0xFFBA1A1A);
-    const secondaryColor = Color(0xFF6E5A52);
-
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: const Color(0xFFFFF8F6),
       appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Chi tiết phục hồi',
-          style: TextStyle(
-            color: primaryColor,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
-            fontSize: 20,
-          ),
-        ),
+        backgroundColor: const Color(0xFFFFF8F6),
+        foregroundColor: _primary,
+        title: const Text('Chi tiết hồi phục'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: primaryColor),
-            onPressed: () {
-              // Edit log PATCH /api/v1/postpartum-logs/{logId}
-            },
+            tooltip: 'Chỉnh sửa',
+            onPressed: _log == null
+                ? null
+                : () async {
+                    final changed = await context.push<bool>(
+                      '/postpartum-logs/${widget.logId}/edit',
+                      extra: _log,
+                    );
+                    if (changed == true && mounted) await _load();
+                  },
+            icon: const Icon(Icons.edit_outlined),
           ),
           IconButton(
-            icon: _isDeleting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: errorColor,
-                    ),
-                  )
-                : const Icon(Icons.delete, color: errorColor),
-            onPressed: _isDeleting ? null : _deleteLog,
+            tooltip: 'Xóa nhật ký',
+            onPressed: _log == null || _deleting ? null : _delete,
+            icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryColor))
-          : _detail == null
-          ? const Center(child: Text('Không có dữ liệu'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                children: [
-                  // Header Info
-                  Column(
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFC98C7B), // primary-container
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.favorite,
-                          color: Color(0xFF51271B),
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _detail!['title'],
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                          fontFamily: 'Quicksand',
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _detail!['timeLabel'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: secondaryColor,
-                          fontFamily: 'Quicksand',
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Details Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _buildDetailRow(
-                          icon: Icons.mood,
-                          iconBgColor: const Color(0xFFF6DACF),
-                          iconColor: const Color(0xFF735E56),
-                          title: 'Tâm trạng',
-                          content: Text(
-                            _detail!['mood'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                          ),
-                          showBorder: true,
-                        ),
-                        _buildDetailRow(
-                          icon: Icons.restaurant,
-                          iconBgColor: const Color(
-                            0xFFA09A95,
-                          ), // tertiary-container mock
-                          iconColor: const Color(0xFF36322E),
-                          title: 'Ăn uống',
-                          content: Text(
-                            _detail!['food'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                          ),
-                          showBorder: true,
-                        ),
-                        _buildDetailRow(
-                          icon: Icons.local_hospital,
-                          iconBgColor: const Color(0xFFFFDAD6),
-                          iconColor: const Color(0xFF93000A),
-                          title: 'Cơn đau/Khó chịu',
-                          content: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: (_detail!['pain'] as List<String>).map((
-                              pain,
-                            ) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  pain,
-                                  style: const TextStyle(
-                                    color: primaryColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          showBorder: true,
-                        ),
-                        _buildDetailRow(
-                          icon: Icons.notes,
-                          iconBgColor: const Color(
-                            0xFFFADCD3,
-                          ), // surface-variant
-                          iconColor: const Color(0xFF524440),
-                          title: 'Ghi chú thêm',
-                          content: Text(
-                            _detail!['note'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                          ),
-                          showBorder: false,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Action Area
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // Medical support action
-                    },
-                    icon: const Icon(Icons.support_agent, color: primaryColor),
-                    label: const Text(
-                      'Cần hỗ trợ y tế?',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: primaryColor, width: 2),
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      elevation: 2,
-                      shadowColor: Colors.black.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Nếu bạn cảm thấy đau bất thường, hãy liên hệ bác sĩ ngay.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: secondaryColor),
-                  ),
-                ],
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null && _log == null
+          ? Center(
+              child: TextButton(
+                onPressed: _load,
+                child: Text('$_error Thử lại'),
               ),
-            ),
+            )
+          : _buildDetail(),
     );
   }
 
-  Widget _buildDetailRow({
-    required IconData icon,
-    required Color iconBgColor,
-    required Color iconColor,
-    required String title,
-    required Widget content,
-    required bool showBorder,
-  }) {
-    return Container(
-      padding: const EdgeInsets.only(bottom: 16),
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: showBorder
-            ? const Border(bottom: BorderSide(color: Color(0xFFD6C2BD)))
-            : null,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
+  Widget _buildDetail() {
+    final log = _log!;
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        if (_error != null) _message(_error!, const Color(0xFFFFDAD6)),
+        if (log.redFlagAlert)
+          _message(
+            'Một số thông tin cần được đánh giá sớm. Hãy tìm hỗ trợ y tế nếu bạn thấy không an toàn.',
+            const Color(0xFFFFDAD6),
           ),
-          const SizedBox(width: 16),
-          Expanded(
+        Card(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6E5A52),
-                    fontFamily: 'Quicksand',
-                  ),
+                _row('Ngày ghi nhận', _date(log.logDate)),
+                _row(
+                  'Mức đau',
+                  log.painLevel == null ? 'Không ghi' : '${log.painLevel}/10',
                 ),
-                const SizedBox(height: 4),
-                content,
+                _row('Mức chảy máu', log.bleedingLevel ?? 'Không ghi'),
+                _row(
+                  'Tâm trạng',
+                  log.moodLevel == null ? 'Không ghi' : '${log.moodLevel}/10',
+                ),
+                _row(
+                  'Giấc ngủ',
+                  log.sleepHours == null
+                      ? 'Không ghi'
+                      : '${log.sleepHours} giờ',
+                ),
+                _row('Ghi chú triệu chứng', log.symptomNote ?? 'Không ghi'),
+                _row(
+                  'Ghi chú cho con bú',
+                  log.breastfeedingNote ?? 'Không ghi',
+                ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/postpartum-safety-help'),
+          icon: const Icon(Icons.health_and_safety_outlined),
+          label: const Text('Xem dấu hiệu cần hỗ trợ khẩn cấp'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(56),
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _row(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(color: Color(0xFF7D6961))),
+        ),
+        Expanded(child: Text(value, textAlign: TextAlign.end)),
+      ],
+    ),
+  );
+
+  Widget _message(String text, Color color) => Semantics(
+    liveRegion: true,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(text),
+    ),
+  );
+
+  String _date(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
 }

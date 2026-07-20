@@ -5,12 +5,13 @@ import com.carebridge.backend.health.dto.PostpartumLogResponse;
 import com.carebridge.backend.health.dto.UpdatePostpartumLogRequest;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
 import java.util.UUID;
 
 public interface IPostpartumLogService {
 
     /** UC189: Lists ACTIVE postpartum logs for a journey owned by the caller. */
-    List<PostpartumLogResponse> listLogs(UUID journeyId, UUID callerId);
+    Page<PostpartumLogResponse> listLogs(UUID journeyId, UUID callerId, int page, int size);
 
     /** UC189: Returns detail for one ACTIVE postpartum log owned by the caller. */
     PostpartumLogResponse getLogDetail(UUID logId, UUID callerId);

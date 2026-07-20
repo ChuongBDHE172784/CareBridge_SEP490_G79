@@ -229,8 +229,14 @@ public class JourneyServiceImpl implements IJourneyService {
                     "Status ARCHIVED can only be set by the system");
         }
 
-        // C5 — COMPLETED requires a deliveryDate
-        if ("COMPLETED".equalsIgnoreCase(request.getStatus()) && request.getDeliveryDate() == null) {
+        // A live-birth (and legacy outcome-less) journey requires a delivery date.
+        // Loss and stillbirth journeys can be completed without inventing one.
+        if ("COMPLETED".equalsIgnoreCase(request.getStatus())
+                && request.getDeliveryDate() == null
+                && journey.getDeliveryDate() == null
+                && (journey.getPregnancyOutcome() == null
+                        || journey.getPregnancyOutcome()
+                                == com.carebridge.backend.journey.entity.PregnancyOutcomeType.LIVE_BIRTH)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "JOURNEY-013",
                     "deliveryDate is required when completing a journey");
         }
@@ -351,6 +357,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 .version(journey.getVersion())
                 .dateSource(journey.getDateSource())
                 .dateConfidence(journey.getDateConfidence())
+                .pregnancyOutcome(journey.getPregnancyOutcome())
+                .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .build();
     }
 
@@ -383,6 +391,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 .lastMenstrualDate(journey.getLastMenstrualDate())
                 .estimatedDueDate(journey.getEstimatedDueDate())
                 .deliveryDate(journey.getDeliveryDate())
+                .pregnancyOutcome(journey.getPregnancyOutcome())
+                .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .status(journey.getStatus().name())
                 .notes(journey.getNotes())
                 .createdAt(journey.getCreatedAt())

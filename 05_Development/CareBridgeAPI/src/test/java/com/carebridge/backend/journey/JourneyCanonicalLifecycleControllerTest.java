@@ -6,8 +6,10 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.journey.controller.JourneyController;
 import com.carebridge.backend.journey.dto.JourneyTransitionResponse;
 import com.carebridge.backend.journey.dto.JourneyTransitionPageResponse;
+import com.carebridge.backend.journey.dto.PregnancyOutcomeResponse;
 import com.carebridge.backend.journey.entity.*;
 import com.carebridge.backend.journey.service.IJourneyService;
+import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -46,8 +48,69 @@ class JourneyCanonicalLifecycleControllerTest {
     @Autowired RequestMappingHandlerMapping handlerMapping;
 
     @MockitoBean IJourneyService journeyService;
+    @MockitoBean IJourneyTransitionService journeyTransitionService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @MockitoBean UserRepository userRepository;
+
+    @Test
+    void story63_motherRecordsOutcomeThroughDedicatedOwnedCommand() throws Exception {
+        UUID evidenceId = UUID.fromString("40000000-0000-0000-0000-000000000001");
+        when(journeyTransitionService.recordPregnancyOutcome(
+                eq(JourneyLifecycleTestFactory.MOTHER_ID),
+                eq(JourneyLifecycleTestFactory.JOURNEY_ID),
+                any())).thenReturn(PregnancyOutcomeResponse.builder()
+                .evidenceId(evidenceId)
+                .journeyId(JourneyLifecycleTestFactory.JOURNEY_ID)
+                .outcomeType(PregnancyOutcomeType.LIVE_BIRTH)
+                .outcomeDate(java.time.LocalDate.of(2026, 7, 18))
+                .journeyType(JourneyType.POSTPARTUM)
+                .journeyVersion(4L)
+                .revisionNumber(1)
+                .babyActionsEligible(true)
+                .build());
+
+        mockMvc.perform(post("/api/v1/journeys/" + JourneyLifecycleTestFactory.JOURNEY_ID
+                        + "/pregnancy-outcomes")
+                        .with(SecurityMockMvcRequestPostProcessors.user(
+                                JourneyLifecycleTestFactory.MOTHER_ID.toString()).roles("MOTHER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "submissionId":"30000000-0000-0000-0000-000000000001",
+                                  "expectedJourneyVersion":3,
+                                  "outcomeType":"LIVE_BIRTH",
+                                  "outcomeDate":"2026-07-18",
+                                  "source":"SELF_REPORTED",
+                                  "reason":"Outcome confirmed",
+                                  "effectiveAt":"2026-07-19T08:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.evidenceId").value(evidenceId.toString()))
+                .andExpect(jsonPath("$.data.journeyType").value("POSTPARTUM"))
+                .andExpect(jsonPath("$.data.babyActionsEligible").value(true));
+    }
+
+    @Test
+    void story63_requiresExpectedJourneyVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/journeys/" + JourneyLifecycleTestFactory.JOURNEY_ID
+                        + "/pregnancy-outcomes")
+                        .with(SecurityMockMvcRequestPostProcessors.user(
+                                JourneyLifecycleTestFactory.MOTHER_ID.toString()).roles("MOTHER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "submissionId":"30000000-0000-0000-0000-000000000001",
+                                  "outcomeType":"ONGOING",
+                                  "source":"SELF_REPORTED",
+                                  "reason":"Outcome confirmed",
+                                  "effectiveAt":"2026-07-19T08:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(journeyTransitionService);
+    }
 
     @Test
     void jrnTcSec001_unauthenticatedCreateUpdateAndHistoryReturn401() throws Exception {

@@ -16,6 +16,10 @@ void main() {
         'cb_user_id': 'account-a',
         'cb_journey_onboarding_draft_account-a': '{"goal":"A"}',
         'cb_journey_onboarding_draft_account-b': '{"goal":"B"}',
+        'cb_postpartum_log_draft_account-a_journey-1': '{"pain":"3"}',
+        'cb_postpartum_log_draft_account-b_journey-2': '{"pain":"4"}',
+        'cb_baby_create_intent_account-a_journey-1': '{"submissionId":"a"}',
+        'cb_baby_create_intent_account-b_journey-2': '{"submissionId":"b"}',
       });
       final storage = SecureTokenStorage();
 
@@ -35,6 +39,22 @@ void main() {
         await secure.read(key: 'cb_journey_onboarding_draft_account-b'),
         isNotNull,
       );
+      expect(
+        await secure.read(key: 'cb_postpartum_log_draft_account-a_journey-1'),
+        isNull,
+      );
+      expect(
+        await secure.read(key: 'cb_postpartum_log_draft_account-b_journey-2'),
+        isNotNull,
+      );
+      expect(
+        await secure.read(key: 'cb_baby_create_intent_account-a_journey-1'),
+        isNull,
+      );
+      expect(
+        await secure.read(key: 'cb_baby_create_intent_account-b_journey-2'),
+        isNotNull,
+      );
     },
   );
 
@@ -45,6 +65,8 @@ void main() {
       'cb_refresh_token': 'refresh-a',
       'cb_role': 'MOTHER',
       'cb_journey_onboarding_draft_account-a': '{"goal":"A"}',
+      'cb_postpartum_log_draft_account-a_journey-1': '{"pain":"3"}',
+      'cb_baby_create_intent_account-a_journey-1': '{"submissionId":"a"}',
     });
 
     await SecureTokenStorage().clear();
@@ -55,5 +77,44 @@ void main() {
       await secure.read(key: 'cb_journey_onboarding_draft_account-a'),
       isNull,
     );
+    expect(
+      await secure.read(key: 'cb_postpartum_log_draft_account-a_journey-1'),
+      isNull,
+    );
+    expect(
+      await secure.read(key: 'cb_baby_create_intent_account-a_journey-1'),
+      isNull,
+    );
   });
+
+  test(
+    'account invalidation cannot be undone by a queued draft write',
+    () async {
+      const key = 'cb_postpartum_log_draft_account-a_journey-late';
+      const babyKey = 'cb_baby_create_intent_account-a_journey-late';
+      final generation = PostpartumDraftStorageCoordinator.generationFor(
+        'account-a',
+      );
+
+      final lateWrite = PostpartumDraftStorageCoordinator.write(
+        userId: 'account-a',
+        key: key,
+        value: '{"pain":"9"}',
+        generation: generation,
+      );
+      final lateBabyWrite = PostpartumDraftStorageCoordinator.write(
+        userId: 'account-a',
+        key: babyKey,
+        value: '{"submissionId":"late"}',
+        generation: generation,
+      );
+      final cleanup = PostpartumDraftStorageCoordinator.invalidateUser(
+        'account-a',
+      );
+      await Future.wait([lateWrite, lateBabyWrite, cleanup]);
+
+      expect(await const FlutterSecureStorage().read(key: key), isNull);
+      expect(await const FlutterSecureStorage().read(key: babyKey), isNull);
+    },
+  );
 }

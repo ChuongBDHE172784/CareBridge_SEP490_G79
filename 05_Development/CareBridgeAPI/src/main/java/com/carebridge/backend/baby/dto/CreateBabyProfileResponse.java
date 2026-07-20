@@ -20,4 +20,5 @@ public class CreateBabyProfileResponse {
     private BigDecimal birthLengthCm;
     private String status;
     private Instant createdAt;
+    private UUID relatedJourneyId;
 }
