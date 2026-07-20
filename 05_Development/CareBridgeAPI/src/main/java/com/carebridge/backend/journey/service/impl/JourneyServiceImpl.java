@@ -3,6 +3,9 @@ package com.carebridge.backend.journey.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.dto.CreateJourneyRequest;
 import com.carebridge.backend.journey.dto.CreateJourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
@@ -38,6 +41,8 @@ public class JourneyServiceImpl implements IJourneyService {
     private final MotherJourneyRepository journeyRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final CareGroupMemberRepository careGroupMemberRepository;
+    private final CareGroupRepository careGroupRepository;
     private final Clock clock;
     private final IJourneyTransitionService transitionService;
 
@@ -46,11 +51,15 @@ public class JourneyServiceImpl implements IJourneyService {
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService,
+            CareGroupMemberRepository careGroupMemberRepository,
+            CareGroupRepository careGroupRepository,
             IJourneyTransitionService transitionService) {
         this(
                 journeyRepository,
                 userRepository,
                 auditService,
+                careGroupMemberRepository,
+                careGroupRepository,
                 Clock.systemDefaultZone(),
                 transitionService);
     }
@@ -58,24 +67,72 @@ public class JourneyServiceImpl implements IJourneyService {
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
-            AuditService auditService) {
-        this(journeyRepository, userRepository, auditService, Clock.systemDefaultZone(), null);
+            AuditService auditService,
+            CareGroupMemberRepository careGroupMemberRepository,
+            CareGroupRepository careGroupRepository) {
+        this(
+                journeyRepository,
+                userRepository,
+                auditService,
+                careGroupMemberRepository,
+                careGroupRepository,
+                Clock.systemDefaultZone(),
+                null);
     }
 
-    /** Test constructor — allows injecting a fixed Clock for deterministic time calculations. */
-    public JourneyServiceImpl(MotherJourneyRepository journeyRepository, UserRepository userRepository, AuditService auditService, Clock clock) {
-        this(journeyRepository, userRepository, auditService, clock, null);
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            CareGroupMemberRepository careGroupMemberRepository,
+            CareGroupRepository careGroupRepository,
+            Clock clock) {
+        this(
+                journeyRepository,
+                userRepository,
+                auditService,
+                careGroupMemberRepository,
+                careGroupRepository,
+                clock,
+                null);
+    }
+
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService) {
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), null);
+    }
+
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            Clock clock) {
+        this(journeyRepository, userRepository, auditService, null, null, clock, null);
+    }
+
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            IJourneyTransitionService transitionService) {
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), transitionService);
     }
 
     private JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService,
+            CareGroupMemberRepository careGroupMemberRepository,
+            CareGroupRepository careGroupRepository,
             Clock clock,
             IJourneyTransitionService transitionService) {
         this.journeyRepository = journeyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
+        this.careGroupMemberRepository = careGroupMemberRepository;
+        this.careGroupRepository = careGroupRepository;
         this.clock = clock;
         this.transitionService = transitionService;
     }
@@ -172,8 +229,14 @@ public class JourneyServiceImpl implements IJourneyService {
                     "Status ARCHIVED can only be set by the system");
         }
 
-        // C5 — COMPLETED requires a deliveryDate
-        if ("COMPLETED".equalsIgnoreCase(request.getStatus()) && request.getDeliveryDate() == null) {
+        // A live-birth (and legacy outcome-less) journey requires a delivery date.
+        // Loss and stillbirth journeys can be completed without inventing one.
+        if ("COMPLETED".equalsIgnoreCase(request.getStatus())
+                && request.getDeliveryDate() == null
+                && journey.getDeliveryDate() == null
+                && (journey.getPregnancyOutcome() == null
+                        || journey.getPregnancyOutcome()
+                                == com.carebridge.backend.journey.entity.PregnancyOutcomeType.LIVE_BIRTH)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "JOURNEY-013",
                     "deliveryDate is required when completing a journey");
         }
@@ -234,6 +297,21 @@ public class JourneyServiceImpl implements IJourneyService {
                             userId, JourneyType.BABY_CARE, JourneyStatus.ACTIVE);
         }
 
+        if (activeJourney.isEmpty() && careGroupMemberRepository != null && careGroupRepository != null) {
+            var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED);
+            for (var member : memberships) {
+                var groupOpt = careGroupRepository.findById(member.getCareGroupId());
+                if (groupOpt.isPresent()) {
+                    var motherId = groupOpt.get().getOwnerUserId();
+                    activeJourney = journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                            motherId, JourneyStatus.ACTIVE);
+                    if (activeJourney.isPresent()) {
+                        break;
+                    }
+                }
+            }
+        }
+
         // No active journey → 200 OK with NO_JOURNEY (never 404 — mobile onboarding rule)
         if (activeJourney.isEmpty()) {
             return JourneyDashboardResponse.builder()
@@ -279,6 +357,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 .version(journey.getVersion())
                 .dateSource(journey.getDateSource())
                 .dateConfidence(journey.getDateConfidence())
+                .pregnancyOutcome(journey.getPregnancyOutcome())
+                .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .build();
     }
 
@@ -311,6 +391,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 .lastMenstrualDate(journey.getLastMenstrualDate())
                 .estimatedDueDate(journey.getEstimatedDueDate())
                 .deliveryDate(journey.getDeliveryDate())
+                .pregnancyOutcome(journey.getPregnancyOutcome())
+                .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .status(journey.getStatus().name())
                 .notes(journey.getNotes())
                 .createdAt(journey.getCreatedAt())

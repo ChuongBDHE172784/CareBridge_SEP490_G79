@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart';
+import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
 import 'package:untitled/features/aiTriage/models/triage_result_model.dart';
 import 'package:untitled/features/aiTriage/screens/symptom_intake_screen.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
@@ -44,6 +45,54 @@ class _StaticTriageService extends TriageService {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) async => response;
+}
+
+class _RecordingPostpartumTriageService extends TriageService {
+  Map<String, dynamic>? receivedIntake;
+
+  @override
+  Future<IntakeFlowResponse> startConversation({
+    required String initialText,
+    required Map<String, dynamic> currentIntake,
+  }) async {
+    receivedIntake = Map<String, dynamic>.from(currentIntake);
+    return const IntakeFlowResponse(
+      status: 'ASK_MORE',
+      intakeSessionId: _sessionId,
+      stage: 'POSTPARTUM',
+      mergedIntake: {'stage': 'POSTPARTUM'},
+      assistantMessage: 'Cần thêm thông tin về quá trình hồi phục.',
+      questions: [
+        IntakeQuestion(
+          questionKey: 'duration',
+          text: 'Triệu chứng đã xuất hiện bao lâu?',
+          answerType: 'TEXT',
+        ),
+      ],
+      round: 2,
+    );
+  }
+}
+
+class _MismatchedInfantTriageService extends TriageService {
+  @override
+  Future<IntakeFlowResponse> startConversation({
+    required String initialText,
+    required Map<String, dynamic> currentIntake,
+  }) async => const IntakeFlowResponse(
+    status: 'ASK_MORE',
+    intakeSessionId: _sessionId,
+    stage: 'INFANT',
+    mergedIntake: {'stage': 'INFANT', 'childAgeMonths': 2},
+    questions: [
+      IntakeQuestion(
+        questionKey: 'childAgeMonths',
+        text: 'Bé bao nhiêu tháng?',
+        answerType: 'NUMBER',
+      ),
+    ],
+    round: 2,
+  );
 }
 
 class _AskMoreTriageService extends TriageService {
@@ -165,6 +214,125 @@ Future<void> _submitInitial(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'typed postpartum entry is neutral and sends POSTPARTUM without infant defaults',
+    (tester) async {
+      final triage = _RecordingPostpartumTriageService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SymptomIntakeScreen(
+            triageService: triage,
+            entryContext: const TriageEntryContext.postpartum(),
+          ),
+        ),
+      );
+
+      expect(find.textContaining('sau sinh'), findsWidgets);
+      expect(find.textContaining('Bé 0-12 tháng'), findsNothing);
+      expect(find.textContaining('triệu chứng của bé'), findsNothing);
+
+      await tester.enterText(
+        find.byType(TextField).first,
+        'Tôi thấy chóng mặt',
+      );
+      await tester.tap(find.byIcon(Icons.send));
+      await tester.pumpAndSettle();
+
+      expect(triage.receivedIntake?['stage'], 'POSTPARTUM');
+      expect(triage.receivedIntake?.containsKey('childAgeMonths'), isFalse);
+      expect(triage.receivedIntake?.containsKey('feedingStatus'), isFalse);
+      expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
+    },
+  );
+
+  testWidgets('postpartum entry fails closed on an infant response', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SymptomIntakeScreen(
+          triageService: _MismatchedInfantTriageService(),
+          entryContext: TriageEntryContext.postpartum(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'Tôi thấy chóng mặt');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('không khớp với giai đoạn sau sinh'), findsOne);
+    expect(find.text('Bé bao nhiêu tháng?'), findsNothing);
+  });
+
+  testWidgets(
+    'postpartum RED uses direct emergency action without creating a client session',
+    (tester) async {
+      final emergency = _DelayedEmergencyService();
+      var directEmergencyCalls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SymptomIntakeScreen(
+            triageService: _StaticTriageService(
+              IntakeFlowResponse(
+                status: 'TRIAGE_COMPLETE',
+                intakeSessionId: _sessionId,
+                stage: 'POSTPARTUM',
+                mergedIntake: const {'stage': 'POSTPARTUM'},
+                round: 1,
+                triageResult: _result('RED', emergency: true),
+              ),
+            ),
+            emergencyService: emergency,
+            entryContext: const TriageEntryContext.postpartum(),
+            postpartumEmergencyAction: () => directEmergencyCalls++,
+          ),
+        ),
+      );
+
+      await _submitInitial(tester);
+      await tester.tap(find.byKey(const Key('triage-emergency-cta')));
+      await tester.pump();
+
+      expect(directEmergencyCalls, 1);
+      expect(emergency.calls, 0);
+    },
+  );
+
+  testWidgets('postpartum RED keeps manual 115 guidance when launch throws', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SymptomIntakeScreen(
+          triageService: _StaticTriageService(
+            IntakeFlowResponse(
+              status: 'TRIAGE_COMPLETE',
+              intakeSessionId: _sessionId,
+              stage: 'POSTPARTUM',
+              mergedIntake: const {'stage': 'POSTPARTUM'},
+              round: 1,
+              triageResult: _result('RED', emergency: true),
+            ),
+          ),
+          entryContext: const TriageEntryContext.postpartum(),
+          postpartumEmergencyLauncher: () async =>
+              throw StateError('dialer unavailable'),
+        ),
+      ),
+    );
+
+    await _submitInitial(tester);
+    await tester.tap(find.byKey(const Key('triage-emergency-cta')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('triage-postpartum-manual-call-guidance')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('tự gọi 115'), findsOneWidget);
+  });
+
   testWidgets('ASK_MORE continues the same server-owned conversation', (
     tester,
   ) async {
@@ -327,11 +495,15 @@ void main() {
     await _submitInitial(tester);
 
     expect(
-      find.byKey(const Key('triage-citation-https://moh.gov.vn/evidence-one-0')),
+      find.byKey(
+        const Key('triage-citation-https://moh.gov.vn/evidence-one-0'),
+      ),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('triage-citation-https://moh.gov.vn/evidence-two-1')),
+      find.byKey(
+        const Key('triage-citation-https://moh.gov.vn/evidence-two-1'),
+      ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/screens/account_profile_screen.dart';
 import '../../familySync/screens/care_groups_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
+import '../../familySync/screens/pending_invitations_screen.dart';
 import '../../familySync/services/family_home_service.dart';
 import '../../notification/screens/notification_center_screen.dart';
 
@@ -435,9 +436,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   void _openGroups() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _snapshot?.groupId == null
-            ? const CareGroupsScreen()
-            : const MyCareGroupsScreen(),
+        builder: (_) => const MyCareGroupsScreen(),
       ),
     );
   }

@@ -14,6 +14,7 @@ import '../../reminder/models/reminder_model.dart';
 import '../../reminder/services/reminder_service.dart';
 import '../models/journey_model.dart';
 import '../services/journey_service.dart';
+import 'pregnancy_outcome_screen.dart';
 
 /// CB-009 - Mother Journey (UC-23, UC-24, UC-25, UC-26, UC-27, UC-28)
 /// Shows the active mother journey from GET /api/v1/journeys/me/dashboard.
@@ -120,12 +121,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
     try {
       final dashboard = await _journeyService.getDashboard();
-      final babyProfiles = widget.loadSupportingData
+      final babyProfiles = widget.loadSupportingData && !dashboard.isPostpartum
           ? await _loadBabyProfiles()
-          : _babyProfiles;
-      final lastOpenedBabyProfileId = widget.loadSupportingData
+          : (dashboard.isPostpartum ? const <BabyProfile>[] : _babyProfiles);
+      final lastOpenedBabyProfileId =
+          widget.loadSupportingData && !dashboard.isPostpartum
           ? await _babySelectionStorage.readLastOpenedBabyProfileId()
-          : _selectedBabyProfileId;
+          : null;
       final reminders = widget.loadSupportingData
           ? await _loadReminders()
           : _reminders;
@@ -473,6 +475,21 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     if (dashboard.isPostpartum) {
       return [
         _buildPostpartumCard(dashboard),
+        if (dashboard.babyActionsEligible && dashboard.journeyId != null) ...[
+          const SizedBox(height: 16),
+          _postpartumAction(
+            key: const Key('postpartum-baby-linkage'),
+            icon: Icons.child_care_outlined,
+            title: 'Hồ sơ bé',
+            description: 'Tạo, liên kết hoặc để sau theo lựa chọn của bạn.',
+            onTap: () =>
+                context.push('/journeys/${dashboard.journeyId}/babies'),
+          ),
+        ],
+        if (dashboard.pregnancyOutcome != null) ...[
+          const SizedBox(height: 16),
+          _buildPregnancyOutcomeEntry(dashboard),
+        ],
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -481,6 +498,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           const SizedBox(height: 16),
           _buildJourneyHistoryCard(),
         ],
+        const SizedBox(height: 16),
+        _buildPostpartumRecoveryActions(dashboard),
       ];
     }
 
@@ -488,6 +507,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       _buildHeroCard(dashboard),
       const SizedBox(height: 16),
       _buildDueDateCard(dashboard),
+      const SizedBox(height: 16),
+      _buildPregnancyOutcomeEntry(dashboard),
       const SizedBox(height: 16),
       _buildNextAppointmentCard(),
       const SizedBox(height: 16),
@@ -507,6 +528,79 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         _buildJourneyHistoryCard(),
       ],
     ];
+  }
+
+  Widget _buildPregnancyOutcomeEntry(JourneyDashboard dashboard) {
+    return Semantics(
+      key: const Key('pregnancy-outcome-entry'),
+      button: true,
+      label: 'Cập nhật tình trạng thai kỳ',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: dashboard.journeyId == null || dashboard.version == null
+            ? null
+            : () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute<PregnancyOutcomeResult>(
+                    builder: (_) => PregnancyOutcomeScreen(
+                      journeyId: dashboard.journeyId!,
+                      journeyVersion: dashboard.version!,
+                      currentOutcome: dashboard.pregnancyOutcome,
+                    ),
+                  ),
+                );
+                if (result != null && mounted && widget.loadData) {
+                  await _load();
+                }
+              },
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2EAE4),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFE8DDD6)),
+          ),
+          child: const Row(
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.sync_alt_rounded, color: Color(0xFFC98C7B)),
+                ),
+              ),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cập nhật tình trạng thai kỳ',
+                      style: TextStyle(
+                        color: Color(0xFF5A463F),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Điều chỉnh hỗ trợ theo tình trạng hiện tại của bạn',
+                      style: TextStyle(color: Color(0xFF9C857C), fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: Color(0xFF9C857C)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildPostpartumCard(JourneyDashboard dashboard) {
@@ -552,6 +646,73 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPostpartumRecoveryActions(JourneyDashboard dashboard) {
+    return Column(
+      children: [
+        _postpartumAction(
+          key: const Key('postpartum-open-logs'),
+          icon: Icons.menu_book_outlined,
+          title: 'Nhật ký hồi phục',
+          description: 'Ghi nhận sức khỏe và xem lại các ngày trước.',
+          onTap: dashboard.journeyId == null
+              ? null
+              : () => context.push(
+                  '/postpartum-logs?journeyId=${Uri.encodeComponent(dashboard.journeyId!)}',
+                ),
+        ),
+        const SizedBox(height: 12),
+        _postpartumAction(
+          key: const Key('postpartum-safety-help'),
+          icon: Icons.health_and_safety_outlined,
+          title: 'Dấu hiệu cần hỗ trợ khẩn cấp',
+          description: 'Xem lựa chọn hỗ trợ dành riêng cho giai đoạn sau sinh.',
+          onTap: () => context.push('/postpartum-safety-help'),
+          urgent: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _postpartumAction({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String description,
+    required VoidCallback? onTap,
+    bool urgent = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: '$title. $description',
+      child: Card(
+        key: key,
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: urgent ? const Color(0xFFFFF0ED) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(
+            color: urgent ? const Color(0xFFE9A69A) : const Color(0xFFE8DDD6),
+          ),
+        ),
+        child: ListTile(
+          minTileHeight: 72,
+          onTap: onTap,
+          leading: Icon(
+            icon,
+            color: urgent ? const Color(0xFF93000A) : _primary,
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: Text(description),
+          trailing: const Icon(Icons.chevron_right_rounded),
+        ),
       ),
     );
   }

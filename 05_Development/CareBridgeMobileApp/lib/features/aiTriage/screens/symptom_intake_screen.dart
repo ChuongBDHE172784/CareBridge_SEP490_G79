@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../emergency/services/emergency_service.dart';
+import '../models/triage_entry_context.dart';
 import '../models/triage_intake_flow_model.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
@@ -9,11 +10,17 @@ import '../services/triage_service.dart';
 class SymptomIntakeScreen extends StatefulWidget {
   final TriageService? triageService;
   final EmergencyService? emergencyService;
+  final TriageEntryContext entryContext;
+  final VoidCallback? postpartumEmergencyAction;
+  final Future<bool> Function()? postpartumEmergencyLauncher;
 
   const SymptomIntakeScreen({
     super.key,
     this.triageService,
     this.emergencyService,
+    this.entryContext = const TriageEntryContext(),
+    this.postpartumEmergencyAction,
+    this.postpartumEmergencyLauncher,
   });
 
   @override
@@ -32,23 +39,18 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   late final EmergencyService _emergencyService;
   final _initialController = TextEditingController();
   final Map<String, TextEditingController> _answerControllers = {};
-  final List<_ChatMessage> _messages = [
-    const _ChatMessage(
-      role: _ChatRole.assistant,
-      text:
-          'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
-    ),
-  ];
+  final List<_ChatMessage> _messages = [];
 
   Map<String, dynamic> _currentIntake = _blankIntake();
   List<IntakeQuestion> _questions = [];
   final Map<String, dynamic> _answers = {};
-  String _selectedStage = 'INFANT';
+  late String _selectedStage;
   String? _sessionId;
   int _round = 1;
   bool _loading = false;
   bool _openingEmergency = false;
   bool _emergencyFailed = false;
+  bool _postpartumManualCallRequired = false;
   TriageResult? _result;
   String? _error;
 
@@ -57,24 +59,40 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     super.initState();
     _service = widget.triageService ?? TriageService();
     _emergencyService = widget.emergencyService ?? EmergencyService();
+    _selectedStage = widget.entryContext.stage.apiValue;
+    _currentIntake = _blankIntake(stage: _selectedStage);
+    _messages.add(
+      _ChatMessage(
+        role: _ChatRole.assistant,
+        text: widget.entryContext.isPostpartum
+            ? 'Hãy mô tả dấu hiệu bạn đang gặp trong quá trình hồi phục sau sinh. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu.'
+            : 'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
+      ),
+    );
   }
 
-  static Map<String, dynamic> _blankIntake({String stage = 'INFANT'}) => {
-    'stage': stage,
-    'childAgeMonths': null,
-    'symptomList': <String>[],
-    'duration': null,
-    'temperatureC': null,
-    'feedingStatus': null,
-    'breathingStatus': null,
-    'consciousnessStatus': null,
-    'vomiting': null,
-    'diarrhea': null,
-    'rash': null,
-    'seizure': null,
-    'dehydrationSigns': <String>[],
-    'parentFreeText': null,
-  };
+  static Map<String, dynamic> _blankIntake({String stage = 'INFANT'}) {
+    final common = <String, dynamic>{
+      'stage': stage,
+      'symptomList': <String>[],
+      'duration': null,
+      'temperatureC': null,
+      'breathingStatus': null,
+      'consciousnessStatus': null,
+      'seizure': null,
+      'parentFreeText': null,
+    };
+    if (stage == 'POSTPARTUM') return common;
+    return {
+      ...common,
+      'childAgeMonths': null,
+      'feedingStatus': null,
+      'vomiting': null,
+      'diarrhea': null,
+      'rash': null,
+      'dehydrationSigns': <String>[],
+    };
+  }
 
   @override
   void dispose() {
@@ -151,6 +169,33 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   }
 
   void _applyResponse(IntakeFlowResponse response, {String? userMessage}) {
+    if (widget.entryContext.lockStage &&
+        response.stage != widget.entryContext.stage.apiValue) {
+      setState(() {
+        _error =
+            'Phản hồi không khớp với giai đoạn sau sinh. Vui lòng thử lại.';
+        _questions = [];
+      });
+      return;
+    }
+    if (widget.entryContext.isPostpartum &&
+        response.questions.any(
+          (question) => const {
+            'childAgeMonths',
+            'feedingStatus',
+            'vomiting',
+            'diarrhea',
+            'rash',
+            'dehydrationSigns',
+          }.contains(question.questionKey),
+        )) {
+      setState(() {
+        _error =
+            'Không thể dùng bộ câu hỏi này cho giai đoạn sau sinh. Vui lòng thử lại.';
+        _questions = [];
+      });
+      return;
+    }
     setState(() {
       if (userMessage != null) {
         _messages.add(_ChatMessage(role: _ChatRole.user, text: userMessage));
@@ -295,6 +340,35 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
   }
 
+  Future<void> _openPostpartumEmergency() async {
+    if (_openingEmergency) return;
+    final action = widget.postpartumEmergencyAction;
+    if (action != null) {
+      action();
+      return;
+    }
+    setState(() {
+      _openingEmergency = true;
+      _postpartumManualCallRequired = false;
+    });
+    var opened = false;
+    try {
+      opened =
+          await (widget.postpartumEmergencyLauncher?.call() ??
+              launchUrl(
+                Uri.parse('tel:115'),
+                mode: LaunchMode.externalApplication,
+              ));
+    } catch (_) {
+      opened = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _openingEmergency = false;
+      _postpartumManualCallRequired = !opened;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -303,7 +377,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         backgroundColor: _surface,
         elevation: 0,
         foregroundColor: _primary,
-        title: const Text('Kiểm tra triệu chứng'),
+        title: Text(
+          widget.entryContext.isPostpartum
+              ? 'Hỗ trợ dấu hiệu sau sinh'
+              : 'Kiểm tra triệu chứng',
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -312,7 +390,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  if (_sessionId == null) _buildStageSelector(),
+                  if (_sessionId == null && !widget.entryContext.lockStage)
+                    _buildStageSelector(),
                   ..._messages.map(_buildBubble),
                   if (_result != null) _buildResult(_result!),
                   if (_questions.isNotEmpty && _result == null)
@@ -509,7 +588,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 key: const Key('triage-emergency-cta'),
-                onPressed: _openingEmergency ? null : _openEmergencyFlow,
+                onPressed: widget.entryContext.isPostpartum
+                    ? (_openingEmergency ? null : _openPostpartumEmergency)
+                    : (_openingEmergency ? null : _openEmergencyFlow),
                 icon: _openingEmergency
                     ? const SizedBox(
                         width: 18,
@@ -517,9 +598,39 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.emergency),
-                label: const Text('Kích hoạt hỗ trợ khẩn cấp'),
+                label: Text(
+                  widget.entryContext.isPostpartum
+                      ? 'Gọi cấp cứu 115'
+                      : 'Kích hoạt hỗ trợ khẩn cấp',
+                ),
               ),
             ),
+            if (widget.entryContext.isPostpartum &&
+                _postpartumManualCallRequired) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                liveRegion: true,
+                child: Container(
+                  key: const Key('triage-postpartum-manual-call-guidance'),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF0ED),
+                    borderRadius: BorderRadius.circular(16),
+                    border: const Border(
+                      left: BorderSide(color: Color(0xFFBA1A1A), width: 4),
+                    ),
+                  ),
+                  child: const Text(
+                    'Không thể mở ứng dụng gọi điện. Hãy tự gọi 115 ngay hoặc nhờ người bên cạnh gọi giúp.',
+                    style: TextStyle(
+                      color: Color(0xFF5A463F),
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
           if ((result.warning ?? '').isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -661,8 +772,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                     controller: _initialController,
                     minLines: 1,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: 'Ví dụ: Bé bị sốt và ho...',
+                    decoration: InputDecoration(
+                      hintText: widget.entryContext.isPostpartum
+                          ? 'Ví dụ: Tôi thấy chóng mặt và khó thở...'
+                          : 'Ví dụ: Bé bị sốt và ho...',
                       border: OutlineInputBorder(),
                     ),
                   ),

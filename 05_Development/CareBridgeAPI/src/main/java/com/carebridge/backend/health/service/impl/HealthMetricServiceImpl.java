@@ -22,6 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -37,6 +40,8 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     private final AuditService auditService;
     private final MetricAiAnalyzer metricAiAnalyzer;
     private final ApplicationEventPublisher eventPublisher;
+    private final CareGroupMemberRepository careGroupMemberRepository;
+    private final CareGroupRepository careGroupRepository;
 
     @Override
     public MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId) {
@@ -211,10 +216,23 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-020",
                         "Journey not found: " + journeyId));
 
-        // C1: ownership check
+        // C1: ownership or care group member check
         if (!journey.getOwnerUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021",
-                    "Access denied to journey");
+            boolean isCareGroupMember = false;
+            if (careGroupMemberRepository != null && careGroupRepository != null) {
+                var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED);
+                for (var member : memberships) {
+                    var groupOpt = careGroupRepository.findById(member.getCareGroupId());
+                    if (groupOpt.isPresent() && groupOpt.get().getOwnerUserId().equals(journey.getOwnerUserId())) {
+                        isCareGroupMember = true;
+                        break;
+                    }
+                }
+            }
+            if (!isCareGroupMember) {
+                throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021",
+                        "Access denied to journey");
+            }
         }
 
         // C2: fetch data — sorted ASC by measuredAt; empty list = 200 OK (not 404)

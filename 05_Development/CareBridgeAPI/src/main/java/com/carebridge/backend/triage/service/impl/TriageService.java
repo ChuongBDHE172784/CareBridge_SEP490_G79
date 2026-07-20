@@ -3,6 +3,7 @@ package com.carebridge.backend.triage.service.impl;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.TriageStage;
+import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import com.carebridge.backend.triage.TriageRecommendationCode;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
@@ -46,6 +47,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -62,6 +64,7 @@ public class TriageService implements ITriageService {
     private final ApplicationEventPublisher eventPublisher;
     private final TriageFallbackMetrics triageFallbackMetrics;
     private final TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics;
+    private final Consumer<UUID> postpartumEligibilityCheck;
 
     @Autowired
     public TriageService(
@@ -72,7 +75,37 @@ public class TriageService implements ITriageService {
             ObjectMapper objectMapper,
             ApplicationEventPublisher eventPublisher,
             TriageFallbackMetrics triageFallbackMetrics,
+            TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics,
+            LifecycleConsentValidator lifecycleConsentValidator) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                evidenceSourceService, objectMapper, eventPublisher, triageFallbackMetrics,
+                triageStageLegacyDefaultMetrics, lifecycleConsentValidator::ensureEligibleForMutation);
+    }
+
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            EvidenceSourceService evidenceSourceService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
+            TriageFallbackMetrics triageFallbackMetrics,
             TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                evidenceSourceService, objectMapper, eventPublisher, triageFallbackMetrics,
+                triageStageLegacyDefaultMetrics, missingPostpartumConsentValidator());
+    }
+
+    private TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            EvidenceSourceService evidenceSourceService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
+            TriageFallbackMetrics triageFallbackMetrics,
+            TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics,
+            Consumer<UUID> postpartumEligibilityCheck) {
         this.intakeSessionRepository = intakeSessionRepository;
         this.childTriageAiClient = childTriageAiClient;
         this.triageGraphService = triageGraphService;
@@ -81,6 +114,7 @@ public class TriageService implements ITriageService {
         this.eventPublisher = eventPublisher;
         this.triageFallbackMetrics = triageFallbackMetrics;
         this.triageStageLegacyDefaultMetrics = triageStageLegacyDefaultMetrics;
+        this.postpartumEligibilityCheck = postpartumEligibilityCheck;
     }
 
     public TriageService(
@@ -117,6 +151,18 @@ public class TriageService implements ITriageService {
         this(intakeSessionRepository, childTriageAiClient, triageGraphService,
                 legacyEvidenceSourceService(), objectMapper, eventPublisher, triageFallbackMetrics,
                 triageStageLegacyDefaultMetrics);
+    }
+
+    public TriageService(
+            IIntakeSessionRepository intakeSessionRepository,
+            ChildTriageAiClient childTriageAiClient,
+            TriageGraphService triageGraphService,
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
+            LifecycleConsentValidator lifecycleConsentValidator) {
+        this(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                legacyEvidenceSourceService(), objectMapper, eventPublisher, new TriageFallbackMetrics(),
+                new TriageStageLegacyDefaultMetrics(), lifecycleConsentValidator::ensureEligibleForMutation);
     }
 
     private static EvidenceSourceService legacyEvidenceSourceService() {
@@ -158,11 +204,19 @@ public class TriageService implements ITriageService {
         };
     }
 
+    private static Consumer<UUID> missingPostpartumConsentValidator() {
+        return ignored -> {
+            throw new IllegalStateException(
+                    "LifecycleConsentValidator is required for POSTPARTUM triage");
+        };
+    }
+
     @Override
     public synchronized IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
         validateBoundedPayload(request.getCurrentIntake(), "currentIntake");
         TriageStage stage = resolveStartStage(request.getStage(), request.getCurrentIntake(),
                 request.getBabyProfileId(), request.getMotherProfileId(), userId);
+        ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         String clientRequestId = normalizeClientRequestId(request.getClientRequestId());
         IntakeSession existing = clientRequestId == null ? null : intakeSessionRepository
@@ -218,6 +272,7 @@ public class TriageService implements ITriageService {
             throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-009", "Session is not a conversation intake");
         }
         TriageStage stage = requireCanonicalSessionStage(session);
+        ensurePostpartumEligible(stage, userId);
 
         Map<String, Object> previous = readJsonObject(session.getRawAiResponse());
         Map<String, Object> normalizedAnswers = coerceConversationAnswers(request.getNewAnswers());
@@ -272,6 +327,7 @@ public class TriageService implements ITriageService {
     public IntakeSessionResponse runIntake(RunIntakeRequest request, UUID userId) {
         TriageStage stage = resolveStage(request.getStage(), Map.of(), request.getBabyProfileId(), request.getMotherProfileId());
         request.setStage(stage);
+        ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         IntakeSession session = IntakeSession.builder()
                 .userId(userId)
@@ -544,7 +600,7 @@ public class TriageService implements ITriageService {
     }
 
     private void persistConversationEnvelope(IntakeSession session, Map<String, Object> envelope, UUID userId) {
-        sanitizeEnvelope(envelope);
+        sanitizeEnvelope(envelope, requireCanonicalSessionStage(session));
         try {
             session.setRawAiResponse(objectMapper.writeValueAsString(envelope));
         } catch (JsonProcessingException exception) {
@@ -600,10 +656,11 @@ public class TriageService implements ITriageService {
             result.put("recommendationCode", "CONTACT_HEALTHCARE_PROVIDER");
             result.put("warning", "Thông tin chưa đầy đủ, kết quả được phân loại thận trọng.");
         }
-        sanitizeMergedIntake(current, result);
+        TriageStage stage = intake.getStage() == null ? TriageStage.INFANT : intake.getStage();
+        sanitizeMergedIntake(current, result, stage);
         envelope.put("status", needMore ? "ASK_MORE" : "TRIAGE_COMPLETE");
         envelope.put("intakeSessionId", request.get("intakeSessionId"));
-        envelope.put("stage", intake.getStage() == null ? TriageStage.INFANT.name() : intake.getStage().name());
+        envelope.put("stage", stage.name());
         envelope.put("mergedIntake", current);
         envelope.put("assistantMessage", needMore
                 ? "CareBridge cần thêm một vài thông tin để phân loại rủi ro an toàn hơn."
@@ -615,6 +672,9 @@ public class TriageService implements ITriageService {
     }
 
     private List<Map<String, Object>> fallbackQuestions(RunIntakeRequest intake) {
+        if (intake.getStage() == TriageStage.POSTPARTUM) {
+            return postpartumFallbackQuestions(intake);
+        }
         List<Map<String, Object>> questions = new ArrayList<>();
         if (intake.getChildAgeMonths() == null) {
             questions.add(fallbackQuestion(
@@ -648,6 +708,39 @@ public class TriageService implements ITriageService {
             questions.add(fallbackQuestion(
                     "parentFreeText",
                     "Bạn hãy mô tả cụ thể hơn dấu hiệu đang quan sát được ở bé và triệu chứng đã kéo dài bao lâu.",
+                    "TEXT",
+                    List.of()));
+        }
+        return questions.stream().limit(3).toList();
+    }
+
+    private List<Map<String, Object>> postpartumFallbackQuestions(RunIntakeRequest intake) {
+        List<Map<String, Object>> questions = new ArrayList<>();
+        if (intake.getDuration() == null || intake.getDuration().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "duration",
+                    "Dấu hiệu đã xuất hiện bao lâu và có tăng nhanh không?",
+                    "TEXT",
+                    List.of()));
+        }
+        if (intake.getBreathingStatus() == null || intake.getBreathingStatus().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "breathingStatus",
+                    "Bạn có khó thở, đau ngực hoặc tím tái không?",
+                    "SINGLE_CHOICE",
+                    List.of("Không", "Khó thở", "Đau ngực", "Tím tái", "Không chắc")));
+        }
+        if (intake.getConsciousnessStatus() == null || intake.getConsciousnessStatus().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "consciousnessStatus",
+                    "Bạn có lơ mơ, ngất hoặc khó giữ tỉnh táo không?",
+                    "SINGLE_CHOICE",
+                    List.of("Tỉnh táo", "Lơ mơ", "Ngất", "Khó giữ tỉnh táo", "Không chắc")));
+        }
+        if (questions.isEmpty()) {
+            questions.add(fallbackQuestion(
+                    "parentFreeText",
+                    "Vui lòng mô tả thêm dấu hiệu hồi phục bạn đang gặp.",
                     "TEXT",
                     List.of()));
         }
@@ -707,6 +800,9 @@ public class TriageService implements ITriageService {
         } else {
             intake.put("motherProfileId", motherProfileId == null ? null : motherProfileId.toString());
             intake.remove("babyProfileId");
+            if (stage == TriageStage.POSTPARTUM) {
+                removePediatricIntakeFields(intake);
+            }
         }
         return intake;
     }
@@ -746,6 +842,12 @@ public class TriageService implements ITriageService {
         return session.getStage();
     }
 
+    private void ensurePostpartumEligible(TriageStage stage, UUID userId) {
+        if (stage == TriageStage.POSTPARTUM) {
+            postpartumEligibilityCheck.accept(userId);
+        }
+    }
+
     private void validateStageProfile(TriageStage stage, UUID babyProfileId, UUID motherProfileId, boolean requireProfile) {
         if (babyProfileId != null && motherProfileId != null) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "Only one profile type may be linked to a triage session");
@@ -763,14 +865,16 @@ public class TriageService implements ITriageService {
 
     private Map<String, Object> ensureSafeEnvelope(
             Map<String, Object> envelope, Map<String, Object> canonicalRequest, boolean start) {
+        TriageStage stage = TriageStage.valueOf(String.valueOf(canonicalRequest.get("stage")));
         String status = String.valueOf(envelope.get("status"));
         if ("ASK_MORE".equals(status)) {
             boolean valid = envelope.get("mergedIntake") instanceof Map<?, ?>
                     && envelope.get("questions") instanceof List<?> questions && !questions.isEmpty()
                     && questions.stream().allMatch(this::isRenderableQuestion)
+                    && questions.stream().allMatch(question -> isQuestionAllowedForStage(question, stage))
                     && envelope.get("round") instanceof Number round && round.intValue() >= 1 && round.intValue() <= 3;
             if (valid) {
-                sanitizeEnvelope(envelope);
+                sanitizeEnvelope(envelope, stage);
                 return envelope;
             }
             log.warn("AI conversation returned invalid ASK_MORE envelope; using Java fallback");
@@ -790,7 +894,7 @@ public class TriageService implements ITriageService {
                 && "SEEK_EMERGENCY_CARE".equals(result.get("recommendationCode"))
                 && result.get("matchedRules") instanceof List<?> rules && !rules.isEmpty());
         if (isPersistableRiskLevel(risk) && redInvariant) {
-            sanitizeEnvelope(envelope);
+            sanitizeEnvelope(envelope, stage);
             return envelope;
         }
         log.warn("AI conversation returned unsafe completed envelope; using Java fallback");
@@ -811,6 +915,21 @@ public class TriageService implements ITriageService {
         }
         return !java.util.Set.of("SINGLE_CHOICE", "MULTI_CHOICE", "BOOLEAN").contains(answerType)
                 || !((List<?>) question.get("options")).isEmpty();
+    }
+
+    private boolean isQuestionAllowedForStage(Object value, TriageStage stage) {
+        if (stage != TriageStage.POSTPARTUM || !(value instanceof Map<?, ?> question)) {
+            return true;
+        }
+        String questionKey = nonBlank(question.get("questionKey"));
+        return questionKey != null && java.util.Set.of(
+                "duration",
+                "parentFreeText",
+                "symptomList",
+                "breathingStatus",
+                "consciousnessStatus",
+                "seizure",
+                "temperatureC").contains(questionKey);
     }
 
     private java.util.Set<String> outstandingQuestionKeys(Map<String, Object> envelope) {
@@ -983,20 +1102,25 @@ public class TriageService implements ITriageService {
     }
 
     @SuppressWarnings("unchecked")
-    private void sanitizeEnvelope(Map<String, Object> envelope) {
+    private void sanitizeEnvelope(Map<String, Object> envelope, TriageStage stage) {
         Object intakeValue = envelope.get("mergedIntake");
         Object resultValue = envelope.get("triageResult");
         Map<String, Object> result = resultValue instanceof Map<?, ?> map
                 ? objectMapper.convertValue(map, new TypeReference<Map<String, Object>>() {}) : Map.of();
         if (intakeValue instanceof Map<?, ?> map) {
             Map<String, Object> intake = new LinkedHashMap<>((Map<String, Object>) map);
-            sanitizeMergedIntake(intake, result);
+            intake.put("stage", stage.name());
+            sanitizeMergedIntake(intake, result, stage);
             envelope.put("mergedIntake", intake);
         }
     }
 
-    private void sanitizeMergedIntake(Map<String, Object> intake, Map<String, Object> result) {
+    private void sanitizeMergedIntake(
+            Map<String, Object> intake, Map<String, Object> result, TriageStage stage) {
         intake.put("parentFreeText", null);
+        if (stage == TriageStage.POSTPARTUM) {
+            removePediatricIntakeFields(intake);
+        }
         Object normalized = result.get("normalizedSymptoms");
         if (normalized instanceof List<?>) {
             intake.put("symptomList", normalized);
@@ -1012,6 +1136,17 @@ public class TriageService implements ITriageService {
                 intake.put("symptomList", List.of());
             }
         }
+    }
+
+    private void removePediatricIntakeFields(Map<String, Object> intake) {
+        java.util.Set.of(
+                "babyProfileId",
+                "childAgeMonths",
+                "feedingStatus",
+                "vomiting",
+                "diarrhea",
+                "rash",
+                "dehydrationSigns").forEach(intake::remove);
     }
 
     private int number(Object value, int fallback) {

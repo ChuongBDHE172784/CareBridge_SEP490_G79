@@ -6,6 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +22,13 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
     List<BabyProfile> findByOwnerUserIdAndStatusOrderByCreatedAtAsc(UUID ownerUserId, BabyProfileStatus status);
 
     Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner")
+    Optional<BabyProfile> findOwnedByIdForUpdate(@Param("id") UUID id, @Param("owner") UUID owner);
+
+    Page<BabyProfile> findByOwnerUserIdAndRelatedJourneyIdAndStatus(
+            UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE BabyProfile b SET b.active = :active WHERE b.ownerUserId = :ownerUserId")

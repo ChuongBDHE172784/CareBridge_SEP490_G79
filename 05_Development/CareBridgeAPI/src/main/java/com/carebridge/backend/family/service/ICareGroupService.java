@@ -24,6 +24,13 @@ public interface ICareGroupService {
     /** @throws com.carebridge.backend.common.exception.BusinessException (FAM-002/409) if >= 5 active groups */
     CreateCareGroupResponse createCareGroup(CreateCareGroupRequest request, UUID callerId);
 
+    /**
+     * Deletes a care group (hard delete from DB) and all its members/tasks.
+     * @throws com.carebridge.backend.common.exception.BusinessException (FAM-005/404) group not found
+     * @throws com.carebridge.backend.common.exception.BusinessException (FAM-008/403) caller is not the group owner
+     */
+    void deleteCareGroup(UUID groupId, UUID callerId);
+
     /** @throws com.carebridge.backend.common.exception.BusinessException (FAM-003/403) if not ACCEPTED member */
     CareGroupMembersResponse listMembers(UUID groupId, UUID callerId);
 
@@ -93,4 +100,9 @@ public interface ICareGroupService {
      * @throws com.carebridge.backend.common.exception.BusinessException (FAM-043/403) PHONE channel — phone mismatch
      */
     AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, UUID callerId);
+
+    /**
+     * Joins a care group using an invite code (groupId UUID or invite token).
+     */
+    CareGroupSummaryDto joinGroupByCode(String code, UUID callerId);
 }

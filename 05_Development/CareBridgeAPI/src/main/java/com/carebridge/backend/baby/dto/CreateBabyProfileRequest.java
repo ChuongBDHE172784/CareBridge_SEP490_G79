@@ -30,4 +30,11 @@ public class CreateBabyProfileRequest {
     private BigDecimal birthLengthCm;
 
     private UUID relatedJourneyId;
+
+    private UUID submissionId;
+
+    @AssertTrue(message = "submissionId is required when relatedJourneyId is provided")
+    public boolean isLinkSubmissionValid() {
+        return relatedJourneyId == null || submissionId != null;
+    }
 }

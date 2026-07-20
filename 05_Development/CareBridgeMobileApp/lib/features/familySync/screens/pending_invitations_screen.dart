@@ -68,13 +68,11 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _busyGroupIds.remove(invite.groupId));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể xử lý lời mời. Vui lòng thử lại.'),
-          ),
+          SnackBar(content: Text('Lỗi: $e')),
         );
       }
     }

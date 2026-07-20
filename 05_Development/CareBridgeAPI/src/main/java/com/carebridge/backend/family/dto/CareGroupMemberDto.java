@@ -11,6 +11,7 @@ import java.util.UUID;
 public class CareGroupMemberDto {
 
     private UUID memberId;
+    private UUID userId;
     private String displayName;
     private String memberRole;
     private String inviteStatus;

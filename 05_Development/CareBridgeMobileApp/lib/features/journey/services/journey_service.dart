@@ -255,6 +255,51 @@ class JourneyService {
     return List.unmodifiable(transitions);
   }
 
+  Future<PregnancyOutcomeResult> recordPregnancyOutcome(
+    String journeyId,
+    RecordPregnancyOutcomeRequest request,
+  ) async {
+    final requestUserId = AuthState.instance.userId;
+    final data = await apiPost(
+      '/api/v1/journeys/$journeyId/pregnancy-outcomes',
+      request.toJson(),
+    );
+    if (!_isCurrentUser(requestUserId)) {
+      throw StateError(
+        'Authenticated account changed during pregnancy outcome update',
+      );
+    }
+    final result = PregnancyOutcomeResult.fromJson(
+      data['data'] as Map<String, dynamic>,
+    );
+    final prior =
+        _scopedOptimisticDashboard ?? await _readOptimisticDashboard();
+    await _saveOptimisticDashboard(
+      JourneyDashboard(
+        journeyId: result.journeyId,
+        journeyType: result.journeyType,
+        status: _dashboardStatusForJourneyType(
+          result.journeyType,
+          result.journeyType == 'POSTPARTUM'
+              ? 'ACTIVE_POSTPARTUM'
+              : 'ACTIVE_PREGNANCY',
+        ),
+        version: result.journeyVersion,
+        estimatedDueDate: prior?.estimatedDueDate,
+        lastMenstrualDate: prior?.lastMenstrualDate,
+        startDate: prior?.startDate,
+        dateSource: prior?.dateSource,
+        dateConfidence: prior?.dateConfidence,
+        pregnancyOutcome: result.outcomeType,
+        pregnancyOutcomeDate: result.outcomeDate,
+      ),
+      pendingSync: true,
+      expectedUserId: requestUserId,
+    );
+    _notifyDashboardChanged();
+    return result;
+  }
+
   // UC-23: Update Journey
   Future<void> updateJourney(
     String journeyId,
@@ -375,6 +420,9 @@ class JourneyService {
       version: dashboard.version ?? fallback.version,
       dateSource: dashboard.dateSource ?? fallback.dateSource,
       dateConfidence: dashboard.dateConfidence ?? fallback.dateConfidence,
+      pregnancyOutcome: dashboard.pregnancyOutcome ?? fallback.pregnancyOutcome,
+      pregnancyOutcomeDate:
+          dashboard.pregnancyOutcomeDate ?? fallback.pregnancyOutcomeDate,
     );
   }
 
@@ -406,6 +454,8 @@ class JourneyService {
         'version': dashboard.version,
         'dateSource': dashboard.dateSource,
         'dateConfidence': dashboard.dateConfidence,
+        'pregnancyOutcome': dashboard.pregnancyOutcome?.apiValue,
+        'pregnancyOutcomeDate': _formatDate(dashboard.pregnancyOutcomeDate),
         'pendingSync': pendingSync,
       }),
     );
@@ -442,6 +492,12 @@ class JourneyService {
         version: (data['version'] as num?)?.toInt(),
         dateSource: data['dateSource'] as String?,
         dateConfidence: data['dateConfidence'] as String?,
+        pregnancyOutcome: data['pregnancyOutcome'] == null
+            ? null
+            : PregnancyOutcome.fromApiValue(data['pregnancyOutcome'] as String),
+        pregnancyOutcomeDate: _parseDate(
+          data['pregnancyOutcomeDate'] as String?,
+        ),
       );
       _optimisticDashboard = dashboard;
       _optimisticDashboardUserId = userId;

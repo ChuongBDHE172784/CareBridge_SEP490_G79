@@ -18,6 +18,8 @@ import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
 import com.carebridge.backend.triage.service.impl.TriageService;
+import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,12 +46,14 @@ class TriageServiceTest {
     @Mock private ChildTriageAiClient childTriageAiClient;
     @Mock private TriageGraphService triageGraphService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private LifecycleConsentValidator lifecycleConsentValidator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     private TriageService service() {
-        return new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService, objectMapper, eventPublisher);
+        return new TriageService(intakeSessionRepository, childTriageAiClient, triageGraphService,
+                objectMapper, eventPublisher, lifecycleConsentValidator);
     }
 
     @Test
@@ -256,6 +260,159 @@ class TriageServiceTest {
 
         assertThat(response.getStage()).isEqualTo(TriageStage.PREGNANCY.name());
         assertThat(stageMetrics.legacyDefaultTotal()).isZero();
+    }
+
+    @Test
+    void startConversation_explicitPostpartumStage_shouldPersistAndReturnPostpartumContract() {
+        UUID motherProfileId = UUID.randomUUID();
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","assistantMessage":"Need recovery details","mergedIntake":{},
+                 "questions":[{"questionKey":"duration","text":"How long?","answerType":"TEXT","options":[]}],"round":1}
+                """);
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .initialText("toi can ho tro sau sinh")
+                        .stage(TriageStage.POSTPARTUM)
+                        .motherProfileId(motherProfileId)
+                        .currentIntake(Map.of("stage", "POSTPARTUM"))
+                        .build(),
+                USER_ID);
+
+        ArgumentCaptor<IntakeSession> sessionCaptor = ArgumentCaptor.forClass(IntakeSession.class);
+        verify(intakeSessionRepository, times(2)).save(sessionCaptor.capture());
+        IntakeSession persisted = sessionCaptor.getAllValues().getLast();
+        assertThat(persisted.getStage()).isEqualTo(TriageStage.POSTPARTUM);
+        assertThat(persisted.getMotherProfileId()).isEqualTo(motherProfileId);
+        assertThat(persisted.getBabyProfileId()).isNull();
+        assertThat(response.getStage()).isEqualTo("POSTPARTUM");
+        assertThat(response.getMergedIntake()).containsEntry("stage", "POSTPARTUM");
+        verify(lifecycleConsentValidator).ensureEligibleForMutation(USER_ID);
+        verify(childTriageAiClient, times(1)).startIntake(any());
+    }
+
+    @Test
+    void startConversation_postpartumMissingConsent_shouldFailBeforePersistenceOrAi() {
+        doThrow(consentError("LIFECYCLE_CONSENT_REQUIRED"))
+                .when(lifecycleConsentValidator).ensureEligibleForMutation(USER_ID);
+
+        assertThatThrownBy(() -> service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .initialText("toi can ho tro sau sinh")
+                        .stage(TriageStage.POSTPARTUM)
+                        .currentIntake(Map.of("stage", "POSTPARTUM"))
+                        .build(),
+                USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo("LIFECYCLE_CONSENT_REQUIRED"));
+
+        verifyNoInteractions(intakeSessionRepository, childTriageAiClient, triageGraphService, eventPublisher);
+    }
+
+    @Test
+    void continueConversation_postpartumRevokedConsent_shouldFailBeforeProcessing() {
+        IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","mergedIntake":{"stage":"POSTPARTUM"},
+                 "questions":[{"questionKey":"duration","text":"Bao lâu?","answerType":"TEXT","options":[]}],"round":1}
+                """);
+        session.setStage(TriageStage.POSTPARTUM);
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID))
+                .thenReturn(Optional.of(session));
+        doThrow(consentError("LIFECYCLE_CONSENT_INVALID"))
+                .when(lifecycleConsentValidator).ensureEligibleForMutation(USER_ID);
+
+        assertThatThrownBy(() -> service().continueConversation(
+                ContinueIntakeConversationRequest.builder()
+                        .intakeSessionId(session.getId().toString())
+                        .newAnswers(Map.of("duration", "1 ngay"))
+                        .build(),
+                USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo("LIFECYCLE_CONSENT_INVALID"));
+
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
+        verifyNoInteractions(triageGraphService, eventPublisher);
+    }
+
+    @Test
+    void runIntake_postpartumExpiredConsent_shouldFailBeforePersistenceOrAi() {
+        var request = TriageTestFactory.makeRunIntakeRequest();
+        request.setStage(TriageStage.POSTPARTUM);
+        request.setBabyProfileId(null);
+        doThrow(consentError("LIFECYCLE_CONSENT_INVALID"))
+                .when(lifecycleConsentValidator).ensureEligibleForMutation(USER_ID);
+
+        assertThatThrownBy(() -> service().runIntake(request, USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo("LIFECYCLE_CONSENT_INVALID"));
+
+        verifyNoInteractions(intakeSessionRepository, childTriageAiClient, triageGraphService, eventPublisher);
+    }
+
+    @Test
+    void startConversation_postpartumWithBabyProfile_shouldRejectBeforeAi() {
+        StartIntakeConversationRequest request = StartIntakeConversationRequest.builder()
+                .initialText("toi can ho tro sau sinh")
+                .stage(TriageStage.POSTPARTUM)
+                .babyProfileId(UUID.randomUUID())
+                .currentIntake(Map.of("stage", "POSTPARTUM"))
+                .build();
+
+        assertThatThrownBy(() -> service().startConversation(request, USER_ID))
+                .isInstanceOfSatisfying(TriageException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("TRIAGE-012"));
+        verifyNoInteractions(childTriageAiClient, eventPublisher);
+        verify(intakeSessionRepository, never()).save(any());
+    }
+
+    @Test
+    void startConversation_postpartumInfantQuestion_shouldUseLocalFallbackWithoutSecondAi() {
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","mergedIntake":{"stage":"POSTPARTUM","childAgeMonths":2},
+                 "questions":[{"questionKey":"childAgeMonths","text":"Baby age?","answerType":"NUMBER","options":[]}],
+                 "round":1}
+                """);
+        when(triageGraphService.run(any())).thenReturn(ChildTriageResult.builder()
+                .status("NEED_MORE_INFO")
+                .matchedRules(java.util.List.of("POSTPARTUM_RULES_REQUIRE_CLINICAL_REVIEW"))
+                .questions(java.util.List.of("Dấu hiệu đã xuất hiện bao lâu?"))
+                .citations(java.util.List.of())
+                .disclaimer("Không thay thế nhân viên y tế.")
+                .build());
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .initialText("toi thay chong mat")
+                        .stage(TriageStage.POSTPARTUM)
+                        .currentIntake(Map.of("stage", "POSTPARTUM"))
+                        .build(),
+                USER_ID);
+
+        assertThat(response.getStage()).isEqualTo("POSTPARTUM");
+        java.util.List<String> questionKeys = response.getQuestions().stream()
+                .map(question -> String.valueOf(((Map<?, ?>) question).get("questionKey")))
+                .toList();
+        assertThat(questionKeys)
+                .doesNotContain("childAgeMonths", "feedingStatus");
+        assertThat(response.getMergedIntake())
+                .doesNotContainKeys("babyProfileId", "childAgeMonths", "feedingStatus");
+        verify(childTriageAiClient, times(1)).startIntake(any());
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(triageGraphService, times(1)).run(any());
     }
 
     @Test
@@ -578,6 +735,10 @@ class TriageServiceTest {
             session.setSymptoms("CONVERSATION_INTAKE");
             session.setCreatedAt(Instant.parse("2026-07-13T00:00:00Z"));
         });
+    }
+
+    private BusinessException consentError(String code) {
+        return new BusinessException(HttpStatus.CONFLICT, code, "Postpartum eligibility required");
     }
 
     private String greenJson() {

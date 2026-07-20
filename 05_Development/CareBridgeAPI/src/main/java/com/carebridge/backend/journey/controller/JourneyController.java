@@ -8,7 +8,10 @@ import com.carebridge.backend.journey.dto.JourneyDashboardResponse;
 import com.carebridge.backend.journey.dto.JourneyResponse;
 import com.carebridge.backend.journey.dto.JourneyTransitionPageResponse;
 import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
+import com.carebridge.backend.journey.dto.RecordPregnancyOutcomeRequest;
+import com.carebridge.backend.journey.dto.PregnancyOutcomeResponse;
 import com.carebridge.backend.journey.service.IJourneyService;
+import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +33,7 @@ import java.util.UUID;
 public class JourneyController {
 
     private final IJourneyService journeyService;
+    private final IJourneyTransitionService journeyTransitionService;
 
     // UC22: Create mother journey
     @PostMapping
@@ -55,6 +59,19 @@ public class JourneyController {
         return ResponseEntity.ok(ApiResponse.success(response, "Journey updated successfully"));
     }
 
+    @PostMapping("/{journeyId}/pregnancy-outcomes")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<PregnancyOutcomeResponse>> recordPregnancyOutcome(
+            @PathVariable UUID journeyId,
+            @Valid @RequestBody RecordPregnancyOutcomeRequest request,
+            Principal principal) {
+        var ownerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = journeyTransitionService.recordPregnancyOutcome(
+                ownerId, journeyId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Pregnancy outcome recorded"));
+    }
+
     @GetMapping("/{journeyId}/history")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<JourneyTransitionPageResponse>> getHistory(
@@ -70,7 +87,7 @@ public class JourneyController {
 
     // UC24: View mother journey dashboard — /me pattern prevents IDOR (ADR-JOURNEY-003-003)
     @GetMapping("/me/dashboard")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'MEMBER')")
     public ResponseEntity<ApiResponse<JourneyDashboardResponse>> getDashboard(Principal principal) {
         var userId = SecurityUtils.requireCurrentUserId(principal);
         var dashboard = journeyService.getDashboard(userId);

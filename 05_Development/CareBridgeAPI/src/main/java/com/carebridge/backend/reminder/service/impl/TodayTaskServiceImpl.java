@@ -1,5 +1,9 @@
 package com.carebridge.backend.reminder.service.impl;
 
+import com.carebridge.backend.family.entity.CareGroupMember;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.reminder.dto.TodayTaskItem;
 import com.carebridge.backend.reminder.entity.CareTask;
 import com.carebridge.backend.reminder.entity.CareTaskStatus;
@@ -18,7 +22,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,6 +35,8 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
     private final ReminderRepository reminderRepository;
     private final CareTaskRepository careTaskRepository;
     private final ReminderRecurrenceService reminderRecurrenceService;
+    private final CareGroupMemberRepository careGroupMemberRepository;
+    private final CareGroupRepository careGroupRepository;
 
     @Override
     public List<TodayTaskItem> getTodayTasks(UUID callerId, ZoneId timezone) {
@@ -37,9 +45,37 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
         Instant startOfDay = today.atStartOfDay(timezone).toInstant();
         Instant endOfDay   = today.plusDays(1).atStartOfDay(timezone).toInstant();
 
-        // ADR-TODAY-001: two separate DB queries, merged in service
-        List<Reminder> reminders = reminderRepository
+        Set<UUID> processedReminderIds = new HashSet<>();
+        List<Reminder> reminders = new ArrayList<>();
+
+        // Fetch caller's own reminders
+        List<Reminder> ownReminders = reminderRepository
                 .findByOwnerUserIdAndStatusNot(callerId, ReminderStatus.CANCELLED);
+        for (Reminder r : ownReminders) {
+            if (r.getId() == null || processedReminderIds.add(r.getId())) {
+                reminders.add(r);
+            }
+        }
+
+        // If caller is in care groups, also fetch reminders of group owners (Mother) without duplicates
+        List<CareGroupMember> memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(callerId, InviteStatus.ACCEPTED);
+        if (memberships != null) {
+            Set<UUID> fetchedGroupOwnerIds = new HashSet<>();
+            for (CareGroupMember member : memberships) {
+                careGroupRepository.findById(member.getCareGroupId()).ifPresent(group -> {
+                    UUID ownerId = group.getOwnerUserId();
+                    if (!ownerId.equals(callerId) && fetchedGroupOwnerIds.add(ownerId)) {
+                        List<Reminder> groupReminders = reminderRepository
+                                .findByOwnerUserIdAndStatusNot(ownerId, ReminderStatus.CANCELLED);
+                        for (Reminder gr : groupReminders) {
+                            if (gr.getId() == null || processedReminderIds.add(gr.getId())) {
+                                reminders.add(gr);
+                            }
+                        }
+                    }
+                });
+            }
+        }
 
         List<CareTask> careTasks = careTaskRepository
                 .findByAssignedToAndStatusInAndDueAtBetween(
