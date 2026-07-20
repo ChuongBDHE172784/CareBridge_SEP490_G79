@@ -127,33 +127,79 @@ skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
 participant "MilestoneController" as MilestoneController
+participant "MilestoneServiceImpl" as MilestoneService
+participant "DevelopmentMilestoneRepository" as MilestoneRepo
 participant "GrowthMeasurementController" as GrowthController
 participant "GrowthMeasurementServiceImpl" as GrowthService
+participant "GrowthMeasurementRepository" as GrowthRepo
 participant "GrowthChartController" as ChartController
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-39 Record Development Milestone ==
-M -> MilestoneController : POST /api/v1/babies/{babyId}/milestones\n{milestoneType="FIRST_SMILE", achievedDate}
-MilestoneController -> DB : INSERT INTO development_milestones\n(milestoneStatus=ACHIEVED, recordStatus=ACTIVE)
-MilestoneController -> Audit : emit(MILESTONE_RECORDED)
-MilestoneController --> M : HTTP 201 Created
+M -> MilestoneController : 1. POST /api/v1/babies/{babyId}/milestones\n{milestoneType="FIRST_SMILE", achievedDate}
+activate MilestoneController
+MilestoneController -> MilestoneService : 2. record(ownerId, babyId, request)
+activate MilestoneService
+MilestoneService -> MilestoneService : 3. check ownership của babyId
+MilestoneService -> MilestoneRepo : 4. save(DevelopmentMilestone{milestoneStatus=ACHIEVED, recordStatus=ACTIVE})
+activate MilestoneRepo
+MilestoneRepo -> DB : 5. INSERT INTO development_milestones ...
+activate DB
+DB --> MilestoneRepo : 6. saved
+deactivate DB
+MilestoneRepo --> MilestoneService : 7. DevelopmentMilestone
+deactivate MilestoneRepo
+MilestoneService -> Audit : 8. log(MILESTONE_RECORDED)
+activate Audit
+Audit --> MilestoneService : 9. void
+deactivate Audit
+MilestoneService --> MilestoneController : 10. DevelopmentMilestone
+deactivate MilestoneService
+MilestoneController --> M : 11. HTTP 201 Created
+deactivate MilestoneController
 
 == UC-41 Add Growth Measurement ==
-M -> GrowthController : POST /api/v1/babies/{babyId}/growth-measurements\n{measuredDate, weightKg, heightCm, headCircumferenceCm}
-GrowthController -> GrowthService : add(ownerId, babyId, request)
-GrowthService -> GrowthService : check ownership của babyId
-GrowthService -> DB : INSERT INTO growth_measurements ...
-GrowthService -> Audit : emit(GROWTH_MEASUREMENT_ADDED)
-GrowthService --> GrowthController : GrowthMeasurement
-GrowthController --> M : HTTP 201 Created
+M -> GrowthController : 12. POST /api/v1/babies/{babyId}/growth-measurements\n{measuredDate, weightKg, heightCm, headCircumferenceCm}
+activate GrowthController
+GrowthController -> GrowthService : 13. add(ownerId, babyId, request)
+activate GrowthService
+GrowthService -> GrowthService : 14. check ownership của babyId
+GrowthService -> GrowthRepo : 15. save(GrowthMeasurement{...})
+activate GrowthRepo
+GrowthRepo -> DB : 16. INSERT INTO growth_measurements ...
+activate DB
+DB --> GrowthRepo : 17. saved
+deactivate DB
+GrowthRepo --> GrowthService : 18. GrowthMeasurement
+deactivate GrowthRepo
+GrowthService -> Audit : 19. log(GROWTH_MEASUREMENT_ADDED)
+activate Audit
+Audit --> GrowthService : 20. void
+deactivate Audit
+GrowthService --> GrowthController : 21. GrowthMeasurement
+deactivate GrowthService
+GrowthController --> M : 22. HTTP 201 Created
+deactivate GrowthController
 
 == UC-43 View Growth Trend and Measurement History ==
-M -> ChartController : GET /api/v1/babies/{babyId}/growth-chart
-ChartController -> DB : SELECT * FROM growth_measurements\nWHERE baby_id=? AND deleted_at IS NULL\nORDER BY measured_date
-DB --> ChartController : measurements[]
-ChartController -> ChartController : plot trend + so sánh reference range\n(WHO/Bộ Y tế) + guidanceNote nếu lệch xa
-ChartController --> M : HTTP 200 OK {GrowthChartResponse}
+M -> ChartController : 23. GET /api/v1/babies/{babyId}/growth-chart
+activate ChartController
+ChartController -> GrowthService : 24. chart(ownerId, babyId)
+activate GrowthService
+GrowthService -> GrowthRepo : 25. findByBabyIdAndDeletedAtIsNull(babyId)
+activate GrowthRepo
+GrowthRepo -> DB : 26. SELECT * FROM growth_measurements\nWHERE baby_id=? AND deleted_at IS NULL\nORDER BY measured_date
+activate DB
+DB --> GrowthRepo : 27. measurements[]
+deactivate DB
+GrowthRepo --> GrowthService : 28. measurements[]
+deactivate GrowthRepo
+GrowthService -> GrowthService : 29. plot trend + so sánh reference range\n(WHO/Bộ Y tế) + guidanceNote nếu lệch xa
+GrowthService --> ChartController : 30. GrowthChartResponse
+deactivate GrowthService
+ChartController --> M : 31. HTTP 200 OK {GrowthChartResponse}
+deactivate ChartController
 
 @enduml
 ```

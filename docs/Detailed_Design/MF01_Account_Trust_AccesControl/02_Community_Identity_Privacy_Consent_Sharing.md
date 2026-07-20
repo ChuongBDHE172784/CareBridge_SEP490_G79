@@ -139,6 +139,8 @@ skinparam backgroundColor #FAFAFA
 
 actor "User (Owner)" as Owner
 participant "CommunityProfileController" as CPController
+participant "CommunityProfileServiceImpl" as CPService
+participant "CommunityProfileRepository" as CPRepo
 participant "ConsentGrantController" as CGController
 participant "ConsentGrantServiceImpl" as Service
 participant "ConsentGrantRepository" as Repo
@@ -147,37 +149,86 @@ database "PostgreSQL" as DB
 actor "Family Member / Verified Expert" as Recipient
 
 == UC-10 Manage Community Identity ==
-Owner -> CPController : PUT /api/v1/community/profiles/me\n{displayName, bio, avatarUrl, visible}
-CPController -> CPController : validate against moderation rules\n(BR-COMMUNITY-01)
-CPController --> Owner : HTTP 200 OK {CommunityProfile}
+Owner -> CPController : 1. PUT /api/v1/community/profiles/me\n{displayName, bio, avatarUrl, visible}
+activate CPController
+CPController -> CPService : 2. updateMine(ownerId, request)
+activate CPService
+CPService -> CPService : 3. validate against moderation rules\n(BR-COMMUNITY-01)
+CPService -> CPRepo : 4. save(CommunityProfile{displayName, bio, visible})
+activate CPRepo
+CPRepo -> DB : 5. UPDATE community_profiles SET ...
+activate DB
+DB --> CPRepo : 6. updated
+deactivate DB
+CPRepo --> CPService : 7. CommunityProfile
+deactivate CPRepo
+CPService --> CPController : 8. CommunityProfile
+deactivate CPService
+CPController --> Owner : 9. HTTP 200 OK {CommunityProfile}
+deactivate CPController
 
 == UC-15 Grant Data Permission ==
-Owner -> CGController : POST /api/v1/consent/grants\n{dataType, purpose, recipient, scope, expiryAt}
-CGController -> Service : grant(ownerId, request)
-Service -> Repo : save(ConsentGrant{consentGivenAt=now})
-Repo -> DB : INSERT INTO consent_grants ...
-Service -> Audit : emit(ConsentGranted)
-Service --> CGController : ConsentGrant
-CGController --> Owner : HTTP 201 Created
+Owner -> CGController : 10. POST /api/v1/consent/grants\n{dataType, purpose, recipient, scope, expiryAt}
+activate CGController
+CGController -> Service : 11. grant(ownerId, request)
+activate Service
+Service -> Repo : 12. save(ConsentGrant{consentGivenAt=now})
+activate Repo
+Repo -> DB : 13. INSERT INTO consent_grants ...
+activate DB
+DB --> Repo : 14. saved
+deactivate DB
+Repo --> Service : 15. ConsentGrant
+deactivate Repo
+Service -> Audit : 16. log(CONSENT_GRANTED)
+activate Audit
+Audit --> Service : 17. void
+deactivate Audit
+Service --> CGController : 18. ConsentGrant
+deactivate Service
+CGController --> Owner : 19. HTTP 201 Created
+deactivate CGController
 
-Recipient -> Recipient : accesses shared data\n(checked via NS-02 consent enforcement\nin the consuming feature, e.g. MF-08/MF-10)
+Recipient -> Recipient : 20. accesses shared data\n(checked via NS-02 consent enforcement\nin the consuming feature, e.g. MF-08/MF-10)
 
 == UC-16 Review and Revoke Data Permission ==
-Owner -> CGController : GET /api/v1/consent/grants
-CGController -> Service : listForOwner(ownerId)
-Service -> Repo : findByUserId(ownerId)
-Repo -> DB : SELECT * FROM consent_grants WHERE user_id=?
-DB --> Repo : grants[]
-Service --> CGController : grants[]
-CGController --> Owner : HTTP 200 OK {grants[]}
+Owner -> CGController : 21. GET /api/v1/consent/grants
+activate CGController
+CGController -> Service : 22. listForOwner(ownerId)
+activate Service
+Service -> Repo : 23. findByUserId(ownerId)
+activate Repo
+Repo -> DB : 24. SELECT * FROM consent_grants WHERE user_id=?
+activate DB
+DB --> Repo : 25. grants[]
+deactivate DB
+Repo --> Service : 26. grants[]
+deactivate Repo
+Service --> CGController : 27. grants[]
+deactivate Service
+CGController --> Owner : 28. HTTP 200 OK {grants[]}
+deactivate CGController
 
-Owner -> CGController : DELETE /api/v1/consent/grants/{consentId}
-CGController -> Service : revoke(ownerId, consentId)
-Service -> Repo : setRevokedAt(consentId, now, revokedBy=ownerId)
-Repo -> DB : UPDATE consent_grants SET revoked_at=now()
-Service -> Audit : emit(ConsentRevoked)
-Service --> CGController : void
-CGController --> Owner : HTTP 204 No Content
+Owner -> CGController : 29. DELETE /api/v1/consent/grants/{consentId}
+activate CGController
+CGController -> Service : 30. revoke(ownerId, consentId)
+activate Service
+Service -> Repo : 31. setRevokedAt(consentId, now, revokedBy=ownerId)
+activate Repo
+Repo -> DB : 32. UPDATE consent_grants SET revoked_at=now()
+activate DB
+DB --> Repo : 33. updated
+deactivate DB
+Repo --> Service : 34. void
+deactivate Repo
+Service -> Audit : 35. log(CONSENT_REVOKED)
+activate Audit
+Audit --> Service : 36. void
+deactivate Audit
+Service --> CGController : 37. void
+deactivate Service
+CGController --> Owner : 38. HTTP 204 No Content
+deactivate CGController
 
 @enduml
 ```

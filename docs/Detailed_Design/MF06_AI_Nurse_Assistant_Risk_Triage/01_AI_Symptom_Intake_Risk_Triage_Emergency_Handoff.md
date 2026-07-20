@@ -126,51 +126,156 @@ skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
 participant "IntakeController" as Controller
-participant "IntakeServiceImpl" as Service
-participant "RedFlagRuleService" as RedFlag
-participant "EvidenceRetrievalService" as Evidence
-participant "AuditService" as Audit
+participant "TriageService" as Service
+participant "IIntakeSessionRepository" as SessionRepo
+participant "HttpChildTriageAiClient" as AiClient
+participant "EvidenceSourceService" as Evidence
 participant "EmergencyMapHandoffController" as HandoffController
+participant "EmergencyMapHandoffServiceImpl" as HandoffService
+participant "EmergencyMapHandoffRepository" as HandoffRepo
 database "PostgreSQL" as DB
 
-== UC-72 Run AI Symptom Intake ==
-M -> Controller : POST /api/v1/triage/intake/conversation/start\n{stage=PREGNANCY, initialSymptoms}
-Controller -> Service : start(userId, request)
-Service -> DB : INSERT INTO intake_sessions (status=PENDING)
-Service --> Controller : IntakeSession{status=PENDING}
-Controller --> M : HTTP 201 Created
+== UC-72 Run AI Symptom Intake (Start Conversation) ==
+M -> Controller : 1. POST /api/v1/triage/intake/conversation/start\n{stage=PREGNANCY, initialText, currentIntake}
+activate Controller
+Controller -> Service : 2. startConversation(request, userId)
+activate Service
+Service -> SessionRepo : 3. save(IntakeSession{status=PROCESSING,\nsymptoms="CONVERSATION_INTAKE"})
+activate SessionRepo
+SessionRepo -> DB : 4. INSERT INTO intake_sessions ...
+activate DB
+DB --> SessionRepo : 5. saved
+deactivate DB
+SessionRepo --> Service : 6. IntakeSession
+deactivate SessionRepo
+alt 7. AI triage service phản hồi bình thường
+  Service -> AiClient : 7. startIntake(canonicalRequest)
+  activate AiClient
+  AiClient --> Service : 8. envelope JSON\n{status=ASK_MORE|TRIAGE_COMPLETE, questions[] | triageResult}
+  deactivate AiClient
+else 7. AI service lỗi/timeout (network/5xx) → fallback nội bộ
+  Service -> Service : 7a. fallbackConversation()\nsinh câu hỏi/risk bảo thủ cục bộ (không gọi AI ngoài)
+end
+Service -> SessionRepo : 9. save(session{rawAiResponse=envelope,\nstatus=NEED_MORE_INFO|COMPLETED})
+activate SessionRepo
+SessionRepo -> DB : 10. UPDATE intake_sessions\nSET raw_ai_response=?, status=?, risk_level=?
+activate DB
+DB --> SessionRepo : 11. updated
+deactivate DB
+SessionRepo --> Service : 12. IntakeSession
+deactivate SessionRepo
+opt 13. status vừa chuyển COMPLETED && riskLevel != null
+  Service -> Service : 13a. publishEvent(IntakeSessionCompleted) [async, subscribers khác module nếu có]
+end
+Service --> Controller : 14. IntakeConversationResponse{questions[] | riskLevel}
+deactivate Service
+Controller --> M : 15. HTTP 200 OK
+deactivate Controller
 
-loop hội thoại thu thập thêm ngữ cảnh
-  M -> Controller : POST /api/v1/triage/intake/conversation/continue\n{sessionId, answer}
-  Controller -> Service : continueConversation(sessionId, answer)
-  Service -> DB : UPDATE intake_sessions SET status='PROCESSING'
-  Service -> RedFlag : evaluate(symptoms) → cờ đỏ?
-  Service -> Evidence : retrieveApprovedKnowledge(symptoms, stage)
-  Evidence --> Service : approvedContext[]
-  Service -> Service : compose AI answer trong khung an toàn\n(fallback bảo thủ nếu không chắc chắn)
-  Service -> DB : UPDATE intake_sessions\nSET status='COMPLETED', risk_level=?, disclaimer=?
-  Service -> Audit : emit(AI_TRIAGE)
-  Service --> Controller : IntakeSession{status=COMPLETED, riskLevel}
-  Controller --> M : HTTP 200 OK
+loop 16-30. mỗi lượt hội thoại tiếp theo cho tới khi đủ ngữ cảnh (status=COMPLETED)
+  M -> Controller : 16. POST /api/v1/triage/intake/conversation/continue\n{intakeSessionId, newAnswers}
+  activate Controller
+  Controller -> Service : 17. continueConversation(request, userId)
+  activate Service
+  Service -> SessionRepo : 18. findForUpdateByIdAndUserId(sessionId, userId)
+  activate SessionRepo
+  SessionRepo -> DB : 19. SELECT ... FOR UPDATE FROM intake_sessions\nWHERE id=? AND user_id=?
+  activate DB
+  DB --> SessionRepo : 20. session row
+  deactivate DB
+  SessionRepo --> Service : 21. IntakeSession
+  deactivate SessionRepo
+  alt 22. AI triage service phản hồi bình thường
+    Service -> AiClient : 22. continueIntake(canonical)
+    activate AiClient
+    AiClient --> Service : 23. envelope JSON\n{status=TRIAGE_COMPLETE, triageResult{riskLevel, disclaimer, redFlags[]}}
+    deactivate AiClient
+  else 22. AI service lỗi/timeout → fallback nội bộ
+    Service -> Service : 22a. fallbackConversation()\nsinh câu hỏi/risk bảo thủ cục bộ
+  end
+  Service -> SessionRepo : 24. save(session{rawAiResponse=envelope, riskLevel, status})
+  activate SessionRepo
+  SessionRepo -> DB : 25. UPDATE intake_sessions\nSET raw_ai_response=?, risk_level=?, status=?
+  activate DB
+  DB --> SessionRepo : 26. updated
+  deactivate DB
+  SessionRepo --> Service : 27. IntakeSession
+  deactivate SessionRepo
+  opt 28. status vừa chuyển COMPLETED && riskLevel != null
+    Service -> Service : 28a. publishEvent(IntakeSessionCompleted) [async]
+  end
+  Service --> Controller : 29. IntakeConversationResponse{riskLevel nếu COMPLETED | questions[] tiếp theo}
+  deactivate Service
+  Controller --> M : 30. HTTP 200 OK
+  deactivate Controller
 end
 
 == UC-73 View Risk Triage Result ==
-M -> Controller : GET /api/v1/triage/intake/{sessionId}
-Controller -> DB : SELECT * FROM intake_sessions WHERE id=?
-DB --> Controller : session{riskLevel, disclaimer}
-Controller --> M : HTTP 200 OK {riskLevel, guidance, disclaimer}
+M -> Controller : 31. GET /api/v1/triage/intake/{sessionId}
+activate Controller
+Controller -> Service : 32. getResult(sessionId, userId)
+activate Service
+Service -> SessionRepo : 33. findByIdAndUserId(sessionId, userId)
+activate SessionRepo
+SessionRepo -> DB : 34. SELECT * FROM intake_sessions\nWHERE id=? AND user_id=?
+activate DB
+DB --> SessionRepo : 35. session row
+deactivate DB
+SessionRepo --> Service : 36. IntakeSession
+deactivate SessionRepo
+loop 37-39. với mỗi citation đọc được từ rawAiResponse
+  Service -> Evidence : 37. isApprovedDeepLink(citationUrl)
+  activate Evidence
+  Evidence --> Service : 38. boolean approved
+  deactivate Evidence
+  Service -> Service : 39. loại citation nếu domain\nkhông thuộc nguồn đã duyệt (spec 02)
+end
+Service --> Controller : 40. TriageResultResponse{riskLevel, disclaimer,\ncitations[], recommendedAction, redFlags[]}
+deactivate Service
+Controller --> M : 41. HTTP 200 OK {riskLevel, guidance, disclaimer}
+deactivate Controller
 
 == UC-74 Open Emergency Support from a Red Risk Result ==
-alt riskLevel == RED
-  M -> HandoffController : POST /api/v1/map/emergency/handoff\n{triageHandoffId=sessionId, userLatitude, userLongitude}
-  HandoffController -> DB : INSERT INTO emergency_map_handoffs (status=OPEN)
-  HandoffController --> M : HTTP 201 Created\n→ điều hướng sang Emergency Map (MF-07)
+M -> HandoffController : 42. POST /api/v1/map/emergency/handoff\n{triageHandoffId=sessionId, riskLevel=RED, userLatitude, userLongitude}
+activate HandoffController
+HandoffController -> HandoffService : 43. createHandoff(userId, request)
+activate HandoffService
+HandoffService -> HandoffService : 44. map request → EmergencyMapHandoff{status=OPEN}\n(handoffMapper.toEntity)
+alt 45. riskLevel == RED (auto-accept khẩn cấp)
+  HandoffService -> HandoffService : 46. set status=ACCEPTED
+else 45. riskLevel != RED (hiếm gặp — UI chỉ hiện lối tắt khi RED)
+  HandoffService -> HandoffService : 45a. giữ nguyên status=OPEN
 end
+HandoffService -> HandoffRepo : 47. save(handoff)
+activate HandoffRepo
+HandoffRepo -> DB : 48. INSERT INTO emergency_map_handoffs ...
+activate DB
+DB --> HandoffRepo : 49. saved
+deactivate DB
+HandoffRepo --> HandoffService : 50. EmergencyMapHandoff
+deactivate HandoffRepo
+HandoffService --> HandoffController : 51. EmergencyHandoffResponse{status}
+deactivate HandoffService
+HandoffController --> M : 52. HTTP 201 Created\n→ điều hướng sang Emergency Map (MF-07)
+deactivate HandoffController
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Start Intake → Conversation → View Result → Emergency Handoff (Main Flow)**
+
+> **Ghi chú grounding:** Class Diagram ở mục 2 mô tả `IntakeServiceImpl` với các phụ thuộc
+> khái niệm (`RedFlagRuleService`, `EvidenceRetrievalService`, `AuditService`) theo tinh
+> thần SRS. Trong code thực tế, service duy nhất xử lý luồng này là `TriageService`
+> (implements `ITriageService`), phụ thuộc `IIntakeSessionRepository`, `ChildTriageAiClient`
+> (bean thật `HttpChildTriageAiClient`, gọi AI service ngoài qua HTTP) và
+> `EvidenceSourceService` (chỉ dùng để validate `citation` domain đã duyệt khi xem kết quả,
+> **không** chủ động "retrieve approved knowledge" trong lúc hội thoại như class diagram mô
+> tả). `RedFlagRuleService`/`RedFlagRuleServiceImpl` là service quản trị rule cờ đỏ
+> (CRUD, xem spec 02) — không được `TriageService` gọi trực tiếp trong luồng intake chính.
+> **Không có lệnh gọi `AuditService` nào** trong `TriageService` hay
+> `EmergencyMapHandoffServiceImpl` — luồng UC-72/73/74 hiện không phát sinh audit log ở
+> tầng service (khác với giả định trong class diagram).
 
 ## 4. State Machine — `IntakeSession.status` gating `RiskLevel`
 

@@ -126,44 +126,170 @@ skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
 participant "EmergencyContactController" as ContactController
+participant "EmergencyContactService" as ContactService
+participant "IEmergencyContactRepository" as ContactRepo
 participant "SafetyConfigController" as ConfigController
+participant "SafetyConfigService" as ConfigService
+participant "ISafetyConfigRepository" as ConfigRepo
 participant "FallDetectionController" as FallController
-participant "FallDetectionServiceImpl" as Service
+participant "FallDetectionService" as FallService
+participant "IImuMonitoringSessionRepository" as SessionRepo
 database "PostgreSQL" as DB
 
-== UC-116 Manage Emergency Contacts ==
-M -> ContactController : PUT /api/v1/emergency/contact\n{contacts: [{name, phone, primaryContact}]}
-ContactController -> DB : UPSERT INTO emergency_contacts ...
-ContactController --> M : HTTP 200 OK {contacts[]}
+== UC-116 Manage Emergency Contacts (chỉ 1 liên hệ mỗi tài khoản) ==
+M -> ContactController : 1. PUT /api/v1/emergency/contact\n{name, phone, relationship, primaryContact}
+activate ContactController
+ContactController -> ContactService : 2. upsertContact(userId, request)
+activate ContactService
+ContactService -> ContactRepo : 3. findByUserId(userId) [tìm bản ghi hiện có nếu có]
+activate ContactRepo
+ContactRepo -> DB : 4. SELECT * FROM emergency_contacts WHERE user_id=?
+activate DB
+DB --> ContactRepo : 5. existing | none
+deactivate DB
+ContactRepo --> ContactService : 6. Optional<EmergencyContact>
+deactivate ContactRepo
+ContactService -> ContactService : 7. tạo mới nếu chưa có, hoặc cập nhật field lên bản ghi cũ\n[1 user CHỈ có 1 EmergencyContact — không phải danh sách nhiều liên hệ]
+ContactService -> ContactRepo : 8. save(contact{...})
+activate ContactRepo
+ContactRepo -> DB : 9. INSERT/UPDATE emergency_contacts ...
+activate DB
+DB --> ContactRepo : 10. saved
+deactivate DB
+ContactRepo --> ContactService : 11. EmergencyContact
+deactivate ContactRepo
+ContactService --> ContactController : 12. EmergencyContactResponse
+deactivate ContactService
+ContactController --> M : 13. HTTP 200 OK {contact}
+deactivate ContactController
 
 == UC-117 Configure Smart Activity Monitoring ==
-M -> ConfigController : PUT /api/v1/safety/config\n{fallDetectionEnabled=true, sensitivityLevel=MEDIUM, emergencyAutoAlert=false}
-ConfigController -> DB : UPSERT INTO safety_monitoring_configs ...
-ConfigController --> M : HTTP 200 OK {config}
+M -> ConfigController : 14. PUT /api/v1/safety/config\n{fallDetectionEnabled=true, sensitivityLevel=MEDIUM, emergencyAutoAlert=false}
+activate ConfigController
+ConfigController -> ConfigService : 15. configure(request, userId)
+activate ConfigService
+ConfigService -> ConfigRepo : 16. findByUserId(userId)
+activate ConfigRepo
+ConfigRepo -> DB : 17. SELECT * FROM safety_monitoring_configs WHERE user_id=?
+activate DB
+DB --> ConfigRepo : 18. existing | none
+deactivate DB
+ConfigRepo --> ConfigService : 19. Optional<SafetyMonitoringConfig>
+deactivate ConfigRepo
+ConfigService -> ConfigService : 20. tạo mới nếu chưa có, hoặc cập nhật field lên bản ghi cũ\n(upsert 1-1 theo userId)
+ConfigService -> ConfigRepo : 21. save(config{...})
+activate ConfigRepo
+ConfigRepo -> DB : 22. INSERT/UPDATE safety_monitoring_configs ...
+activate DB
+DB --> ConfigRepo : 23. saved
+deactivate DB
+ConfigRepo --> ConfigService : 24. SafetyMonitoringConfig
+deactivate ConfigRepo
+ConfigService -> ConfigService : 25. publishEvent(SafetyConfigChanged)
+ConfigService --> ConfigController : 26. SafetyConfigResponse
+deactivate ConfigService
+ConfigController --> M : 27. HTTP 200 OK {config}
+deactivate ConfigController
 
 == UC-118 Enable Smart Activity Monitoring ==
-M -> FallController : POST /api/v1/safety/fall-detection/enable
-FallController -> FallController : lấy sensitivityLevel từ SafetyMonitoringConfig hiện tại
-FallController -> Service : enable(userId, sensitivityLevel)
-Service -> DB : INSERT INTO imu_monitoring_sessions\n(status=ACTIVE, sensitivityLevel)
-Service --> FallController : ImuMonitoringSessionResponse{status=ACTIVE}
-FallController --> M : HTTP 201 Created
+M -> FallController : 28. POST /api/v1/safety/fall-detection/enable
+activate FallController
+FallController -> ConfigService : 29. getConfig(userId)\n[lấy sensitivityLevel hiện tại]
+activate ConfigService
+ConfigService -> ConfigRepo : 30. findByUserId(userId)
+activate ConfigRepo
+ConfigRepo -> DB : 31. SELECT * FROM safety_monitoring_configs WHERE user_id=?
+activate DB
+DB --> ConfigRepo : 32. existing | none
+deactivate DB
+ConfigRepo --> ConfigService : 33. Optional<SafetyMonitoringConfig>
+deactivate ConfigRepo
+ConfigService --> FallController : 34. SafetyConfigResponse{sensitivityLevel}\n(default fallDetectionEnabled=false, sensitivityLevel=MEDIUM,\nemergencyAutoAlert=true NẾU CHƯA từng cấu hình — không 404)
+deactivate ConfigService
+FallController -> FallService : 35. enable(userId, sensitivityLevel)
+activate FallService
+FallService -> SessionRepo : 36. findActiveByUserId(userId)\n[idempotent — tránh 2 session ACTIVE song song]
+activate SessionRepo
+SessionRepo -> DB : 37. SELECT * FROM imu_monitoring_sessions\nWHERE user_id=? AND status='ACTIVE'
+activate DB
+DB --> SessionRepo : 38. existing | none
+deactivate DB
+SessionRepo --> FallService : 39. Optional<ImuMonitoringSession>
+deactivate SessionRepo
+alt 40. chưa có session ACTIVE (luồng chính — tạo session mới)
+  FallService -> SessionRepo : 40. save(ImuMonitoringSession{status=ACTIVE,\nsensitivityLevel, startedAt=now()})
+  activate SessionRepo
+  SessionRepo -> DB : 41. INSERT INTO imu_monitoring_sessions ...
+  activate DB
+  DB --> SessionRepo : 42. saved
+  deactivate DB
+  SessionRepo --> FallService : 43. ImuMonitoringSession
+  deactivate SessionRepo
+  FallService -> FallService : 44. publishEvent(FallDetectionEnabled)
+  FallService --> FallController : 45. ImuMonitoringSessionResponse{status=ACTIVE}
+  deactivate FallService
+  FallController --> M : 46. HTTP 201 Created
+  deactivate FallController
+else 40. đã có session ACTIVE → idempotent
+  FallService --> FallController : 40a. trả lại session đang chạy (KHÔNG tạo mới)
+  deactivate FallService
+  FallController --> M : 40b. HTTP 201 Created (idempotent)
+  deactivate FallController
+end
 
 == UC-119 Disable Smart Activity Monitoring ==
-M -> FallController : POST /api/v1/safety/fall-detection/disable
-FallController -> Service : disable(userId)
-Service -> DB : UPDATE imu_monitoring_sessions\nSET status='STOPPED', ended_at=now()\nWHERE user_id=? AND status='ACTIVE'
-Service --> FallController : void
-FallController --> M : HTTP 200 OK
-note right of Service
-  Sau khi STOPPED, endpoint /imu-data (spec 02) không còn
-  tạo SafetyEvent mới cho user này (UC-119 postcondition).
+M -> FallController : 47. POST /api/v1/safety/fall-detection/disable
+activate FallController
+FallController -> FallService : 48. disable(userId)
+activate FallService
+FallService -> SessionRepo : 49. findActiveByUserId(userId)
+activate SessionRepo
+SessionRepo -> DB : 50. SELECT * FROM imu_monitoring_sessions\nWHERE user_id=? AND status='ACTIVE'
+activate DB
+DB --> SessionRepo : 51. existing | none
+deactivate DB
+SessionRepo --> FallService : 52. Optional<ImuMonitoringSession>
+deactivate SessionRepo
+opt 53. có session ACTIVE đang chạy
+  FallService -> SessionRepo : 53. save(session{status=STOPPED, endedAt=now()})
+  activate SessionRepo
+  SessionRepo -> DB : 54. UPDATE imu_monitoring_sessions\nSET status='STOPPED', ended_at=now()
+  activate DB
+  DB --> SessionRepo : 55. updated
+  deactivate DB
+  SessionRepo --> FallService : 56. ImuMonitoringSession
+  deactivate SessionRepo
+  FallService -> FallService : 57. publishEvent(FallDetectionDisabled)
+end
+FallService --> FallController : 58. void\n[im lặng nếu vốn không có session ACTIVE nào — KHÔNG phải lỗi]
+deactivate FallService
+FallController --> M : 59. HTTP 200 OK
+deactivate FallController
+note right of FallService
+  Sau khi STOPPED, endpoint /imu-data (spec 02) không còn tạo
+  SafetyEvent mới cho user này — findActiveByUserId() trả rỗng
+  nên processImuData() ném 409 SAFETY-006.
 end note
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Configure Contacts/Sensitivity → Enable → Disable Monitoring (Main Flow)**
+**Hình 2 — Sequence Diagram: Configure Contact/Sensitivity → Enable (idempotent) → Disable (silent no-op) Monitoring (Main Flow)**
+
+> **Ghi chú grounding (quan trọng):**
+> 1. `EmergencyContactService.upsertContact` chỉ quản lý **MỘT** `EmergencyContact` cho mỗi
+>    user (tra cứu bằng `findByUserId`, 1-1) — request body là một object đơn
+>    `{name, phone, relationship, primaryContact}`, **không phải mảng** `contacts: [...]`
+>    như bản vẽ trước ngụ ý. UC-116 thực chất là "cấu hình một liên hệ khẩn cấp duy nhất",
+>    không phải quản lý danh sách nhiều liên hệ.
+> 2. Tên class thật là `SafetyConfigService` và `FallDetectionService` (không có hậu tố
+>    `Impl` như class diagram mục 2 nêu). `getConfig()` trả về **giá trị mặc định hợp lý**
+>    (`fallDetectionEnabled=false`, `sensitivityLevel=MEDIUM`, `emergencyAutoAlert=true`) khi
+>    user chưa từng cấu hình — không ném lỗi 404.
+> 3. `enable()` idempotent (trả lại session `ACTIVE` sẵn có thay vì tạo trùng);
+>    `disable()` **im lặng no-op** nếu không có session `ACTIVE` nào đang chạy (không ném
+>    lỗi) — khác với các "disable" khác trong hệ thống (ví dụ MF13) thường ném lỗi conflict
+>    khi gọi lại trên trạng thái đã tắt.
 
 ## 4. State Machine — `ImuMonitoringSession.status`
 
@@ -194,7 +320,7 @@ end note
 ## 5. Business Rules Applied
 
 - BR-RBAC / ownership — chỉ Mother (`hasRole('MOTHER')`) cấu hình và bật/tắt giám sát của chính mình.
-- UC-116 — danh sách liên hệ khẩn cấp dùng chung cho cả MF-07 (gia đình) và MF-14 (an toàn cá nhân); phải xác thực trước khi dùng làm điểm liên hệ chính (`primaryContact`).
+- UC-116 — liên hệ khẩn cấp (1 bản ghi/user) dùng chung entity với MF-07 (gia đình) và MF-14 (an toàn cá nhân); `primaryContact` đánh dấu đây là điểm liên hệ chính.
 - UC-117 — `sensitivityLevel` quyết định ngưỡng gia tốc thực tế (`getThreshold()`: LOW=15.0, MEDIUM=12.0, HIGH=9.0) dùng ở spec 02.
 - UC-119 — tắt giám sát phải chặn ngay việc tạo candidate safety event mới, không chỉ ẩn UI.
 - Excluded (SRS MF-14 description) — đây không phải thiết bị phát hiện ngã đã được chứng nhận y tế hay hệ thống điều phối cấp cứu.

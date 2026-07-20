@@ -143,35 +143,75 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "JourneyMetricController" as MetricController
 participant "HealthMetricServiceImpl" as MetricService
+participant "MaternalHealthMetricRepository" as MetricRepo
 participant "PostpartumLogController" as LogController
 participant "PostpartumLogServiceImpl" as LogService
+participant "PostpartumLogRepository" as LogRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-22 Add Maternal Health Metric ==
-M -> MetricController : POST /api/v1/journeys/{journeyId}/metrics\n{metricType=BLOOD_PRESSURE_SYSTOLIC, valueNumeric=120}
-MetricController -> MetricService : add(ownerId, journeyId, request)
-MetricService -> MetricService : check ownership của journeyId
-MetricService -> DB : INSERT INTO maternal_health_metrics\n(status=ACTIVE, source_type=USER_ENTERED)
-MetricService -> Audit : emit(HEALTH_METRIC_ADDED)
-MetricService --> MetricController : MaternalHealthMetric
-MetricController --> M : HTTP 201 Created
+M -> MetricController : 1. POST /api/v1/journeys/{journeyId}/metrics\n{metricType=BLOOD_PRESSURE_SYSTOLIC, valueNumeric=120}
+activate MetricController
+MetricController -> MetricService : 2. add(ownerId, journeyId, request)
+activate MetricService
+MetricService -> MetricService : 3. check ownership của journeyId
+MetricService -> MetricRepo : 4. save(MaternalHealthMetric{status=ACTIVE, sourceType=MANUAL})
+activate MetricRepo
+MetricRepo -> DB : 5. INSERT INTO maternal_health_metrics ...
+activate DB
+DB --> MetricRepo : 6. saved
+deactivate DB
+MetricRepo --> MetricService : 7. MaternalHealthMetric
+deactivate MetricRepo
+MetricService -> Audit : 8. log(HEALTH_METRIC_ADDED)
+activate Audit
+Audit --> MetricService : 9. void
+deactivate Audit
+MetricService --> MetricController : 10. MaternalHealthMetric
+deactivate MetricService
+MetricController --> M : 11. HTTP 201 Created
+deactivate MetricController
 
 == UC-24 View Maternal Health Trend ==
-M -> MetricController : GET /api/v1/journeys/{journeyId}/metrics?metricType=BLOOD_PRESSURE_SYSTOLIC
-MetricController -> MetricService : trend(ownerId, journeyId, metricType)
-MetricService -> DB : SELECT * FROM maternal_health_metrics\nWHERE journey_id=? AND metric_type=? AND status='ACTIVE'\nORDER BY measured_at
-DB --> MetricService : rows[]
-MetricService --> MetricController : MetricTrendResponse{points[], sourceLabels}
-MetricController --> M : HTTP 200 OK {trend}
+M -> MetricController : 12. GET /api/v1/journeys/{journeyId}/metrics?metricType=BLOOD_PRESSURE_SYSTOLIC
+activate MetricController
+MetricController -> MetricService : 13. trend(ownerId, journeyId, metricType)
+activate MetricService
+MetricService -> MetricRepo : 14. findByJourneyIdAndMetricTypeAndStatus(journeyId, metricType, ACTIVE)
+activate MetricRepo
+MetricRepo -> DB : 15. SELECT * FROM maternal_health_metrics\nWHERE journey_id=? AND metric_type=? AND status='ACTIVE'\nORDER BY measured_at
+activate DB
+DB --> MetricRepo : 16. rows[]
+deactivate DB
+MetricRepo --> MetricService : 17. rows[]
+deactivate MetricRepo
+MetricService --> MetricController : 18. MetricTrendResponse{points[], sourceLabels}
+deactivate MetricService
+MetricController --> M : 19. HTTP 200 OK {trend}
+deactivate MetricController
 
 == UC-25 Add Postpartum Recovery Log ==
-M -> LogController : POST /api/v1/journeys/{journeyId}/postpartum-logs\n{logDate, painLevel, bleedingLevel, moodLevel, sleepHours}
-LogController -> LogService : add(ownerId, journeyId, request)
-LogService -> DB : INSERT INTO postpartum_logs (status=ACTIVE)
-LogService -> Audit : emit(POSTPARTUM_LOG_ADDED)
-LogService --> LogController : PostpartumLog
-LogController --> M : HTTP 201 Created
+M -> LogController : 20. POST /api/v1/journeys/{journeyId}/postpartum-logs\n{logDate, painLevel, bleedingLevel, moodLevel, sleepHours}
+activate LogController
+LogController -> LogService : 21. add(ownerId, journeyId, request)
+activate LogService
+LogService -> LogRepo : 22. save(PostpartumLog{status=ACTIVE})
+activate LogRepo
+LogRepo -> DB : 23. INSERT INTO postpartum_logs ...
+activate DB
+DB --> LogRepo : 24. saved
+deactivate DB
+LogRepo --> LogService : 25. PostpartumLog
+deactivate LogRepo
+LogService -> Audit : 26. log(POSTPARTUM_LOG_ADDED)
+activate Audit
+Audit --> LogService : 27. void
+deactivate Audit
+LogService --> LogController : 28. PostpartumLog
+deactivate LogService
+LogController --> M : 29. HTTP 201 Created
+deactivate LogController
 
 @enduml
 ```

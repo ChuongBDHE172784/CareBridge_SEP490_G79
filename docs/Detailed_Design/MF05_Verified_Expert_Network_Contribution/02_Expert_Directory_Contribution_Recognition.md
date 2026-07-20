@@ -143,51 +143,135 @@ skinparam backgroundColor #FAFAFA
 
 actor "Verified Expert" as Exp
 participant "ExpertAvailabilityController" as AvailController
+participant "ExpertAvailabilityServiceImpl" as AvailService
+participant "ExpertAvailabilityRepository" as AvailRepo
 actor "User" as U
 participant "ExpertProfileController" as ProfileController
+participant "ExpertProfileServiceImpl" as ProfileService
+participant "ExpertProfileRepository" as ProfileRepo
 participant "CommunityAnswerController" as AnswerController
-participant "ExpertEventHandlerImpl" as Handler
-participant "ContributionPointServiceImpl" as PointService
+participant "CommunityAnswerServiceImpl" as AnswerService
+participant "CommunityAnswerRepository" as AnswerRepo
 participant "ContributionPointController" as PointController
+participant "ContributionPointServiceImpl" as PointService
+participant "ContributionPointRepository" as PointRepo
 database "PostgreSQL" as DB
 
 == UC-64 Configure Expert Availability and Service Scope ==
-Exp -> AvailController : POST /api/v1/expert/availability\n{startAt, endAt, channelType}
-AvailController -> DB : INSERT INTO expert_availability (status=AVAILABLE)
-AvailController --> Exp : HTTP 201 Created
+Exp -> AvailController : 1. POST /api/v1/expert/availability\n{startAt, endAt, channelType}
+activate AvailController
+AvailController -> AvailService : 2. setAvailability(expertProfileId, request)
+activate AvailService
+AvailService -> AvailRepo : 3. save(ExpertAvailability{status=AVAILABLE})
+activate AvailRepo
+AvailRepo -> DB : 4. INSERT INTO expert_availability ...
+activate DB
+DB --> AvailRepo : 5. saved
+deactivate DB
+AvailRepo --> AvailService : 6. ExpertAvailability
+deactivate AvailRepo
+AvailService --> AvailController : 7. ExpertAvailability
+deactivate AvailService
+AvailController --> Exp : 8. HTTP 201 Created
+deactivate AvailController
 
 == UC-65 Browse Verified Expert Directory / UC-66 View Profile ==
-U -> ProfileController : GET /api/v1/expert/directory?specialty=&availability=
-ProfileController -> DB : SELECT * FROM expert_profiles\nWHERE verification_status='APPROVED' AND trust_status='ACTIVE'
-DB --> ProfileController : experts[]
-ProfileController --> U : HTTP 200 OK {experts[]}
-U -> ProfileController : GET /api/v1/expert/profiles/{expertProfileId}
-ProfileController --> U : HTTP 200 OK {profile, ratingAvg, availability}
+U -> ProfileController : 9. GET /api/v1/expert/directory?specialty=&availability=
+activate ProfileController
+ProfileController -> ProfileService : 10. directory(filter)
+activate ProfileService
+ProfileService -> ProfileRepo : 11. findByVerificationStatusAndTrustStatus(APPROVED, ACTIVE)
+activate ProfileRepo
+ProfileRepo -> DB : 12. SELECT * FROM expert_profiles\nWHERE verification_status='APPROVED' AND trust_status='ACTIVE'
+activate DB
+DB --> ProfileRepo : 13. experts[]
+deactivate DB
+ProfileRepo --> ProfileService : 14. experts[]
+deactivate ProfileRepo
+ProfileService --> ProfileController : 15. experts[]
+deactivate ProfileService
+ProfileController --> U : 16. HTTP 200 OK {experts[]}
+deactivate ProfileController
+
+U -> ProfileController : 17. GET /api/v1/expert/profiles/{expertProfileId}
+activate ProfileController
+ProfileController -> ProfileService : 18. profile(expertProfileId)
+activate ProfileService
+ProfileService -> ProfileRepo : 19. findById(expertProfileId)
+activate ProfileRepo
+ProfileRepo -> DB : 20. SELECT * FROM expert_profiles WHERE id=?
+activate DB
+DB --> ProfileRepo : 21. profile
+deactivate DB
+ProfileRepo --> ProfileService : 22. profile
+deactivate ProfileRepo
+ProfileService --> ProfileController : 23. profile
+deactivate ProfileService
+ProfileController --> U : 24. HTTP 200 OK {profile, ratingAvg, availability}
+deactivate ProfileController
 
 == UC-67 View Expert Question Queue (tái sử dụng feed MF-04, lọc theo specialty) ==
-Exp -> ProfileController : GET /api/v1/community/feed?topic=<specialty của expert>
-ProfileController --> Exp : HTTP 200 OK {matchedQuestions[]}
+Exp -> ProfileController : 25. GET /api/v1/community/feed?topic=<specialty của expert>
+activate ProfileController
+ProfileController --> Exp : 26. HTTP 200 OK {matchedQuestions[]}
+deactivate ProfileController
 
 == UC-68 Post Verified Expert Answer ==
-Exp -> AnswerController : POST /api/v1/community/questions/{questionId}/answers\n{body}
-AnswerController -> AnswerController : expertLabeled = true\n(TrustStatus=ACTIVE)
-AnswerController -> DB : INSERT INTO community_answers (status=PENDING, expertLabeled=true)
-AnswerController -> Handler : onCommunityAnswerPosted(event)
-Handler -> PointService : awardPoints(expertUserId, 5,\n"Posted expert answer", "EXPERT_ANSWER", questionId)
-PointService -> DB : INSERT INTO contribution_points ...
-AnswerController --> Exp : HTTP 201 Created
+Exp -> AnswerController : 27. POST /api/v1/community/questions/{questionId}/answers\n{body}
+activate AnswerController
+AnswerController -> AnswerService : 28. post(authorId, questionId, request)
+activate AnswerService
+AnswerService -> ProfileRepo : 29. findByUserId(authorId)
+activate ProfileRepo
+ProfileRepo -> DB : 30. SELECT * FROM expert_profiles WHERE user_id=?
+activate DB
+DB --> ProfileRepo : 31. expertProfile{trustStatus}
+deactivate DB
+ProfileRepo --> AnswerService : 32. expertProfile
+deactivate ProfileRepo
+AnswerService -> AnswerService : 33. expertLabeled = (verified && trustStatus=ACTIVE)
+AnswerService -> AnswerRepo : 34. save(CommunityAnswer{status=PENDING, expertLabeled=true})
+activate AnswerRepo
+AnswerRepo -> DB : 35. INSERT INTO community_answers ...
+activate DB
+DB --> AnswerRepo : 36. saved
+deactivate DB
+AnswerRepo --> AnswerService : 37. CommunityAnswer
+deactivate AnswerRepo
+AnswerService --> AnswerController : 38. CommunityAnswer{status=PENDING}
+deactivate AnswerService
+AnswerController --> Exp : 39. HTTP 201 Created
+deactivate AnswerController
 
 == UC-69 View Contribution Points and Badges ==
-Exp -> PointController : GET /api/v1/expert/contribution-points/total
-PointController -> PointService : summary(userId)
-PointService -> DB : SELECT SUM(points), sourceType FROM contribution_points\nWHERE user_id=? GROUP BY sourceType
-DB --> PointService : rows[]
-PointService -> PointService : derive badge level từ totalPoints\n(ngưỡng cấu hình, không phải bảng riêng)
-PointService --> PointController : ContributionSummaryResponse
-PointController --> Exp : HTTP 200 OK {totalPoints, breakdown, derivedBadgeLevel}
+Exp -> PointController : 40. GET /api/v1/expert/contribution-points/total
+activate PointController
+PointController -> PointService : 41. summary(userId)
+activate PointService
+PointService -> PointRepo : 42. sumPointsBySourceType(userId)
+activate PointRepo
+PointRepo -> DB : 43. SELECT SUM(points), sourceType FROM contribution_points\nWHERE user_id=? GROUP BY sourceType
+activate DB
+DB --> PointRepo : 44. rows[]
+deactivate DB
+PointRepo --> PointService : 45. rows[]
+deactivate PointRepo
+PointService -> PointService : 46. derive badge level từ totalPoints\n(ngưỡng cấu hình, không phải bảng riêng)
+PointService --> PointController : 47. ContributionSummaryResponse
+deactivate PointService
+PointController --> Exp : 48. HTTP 200 OK {totalPoints, breakdown, derivedBadgeLevel}
+deactivate PointController
 
 @enduml
 ```
+
+> Ghi chú grounding: `IExpertEventHandler.onAnswerExpertPosted(...)` (award điểm khi đăng
+> trả lời chuyên gia) **chưa được gọi ở bất kỳ đâu trong codebase** ngoài chính định nghĩa
+> của nó — không có caller thật trong `CommunityAnswerServiceImpl` hay nơi khác. Vì vậy
+> bước 27-39 (UC-68) ở trên **không** vẽ việc tự động cộng điểm; UC-69 (xem điểm) vẫn đọc
+> đúng bảng `contribution_points` thật, nhưng liên kết "đăng trả lời chuyên gia → tự động
+> cộng điểm" cần được xác nhận/nối lại ở tầng code trước khi coi UC-68→UC-69 là một luồng
+> tự động hoàn chỉnh.
 
 **Hình 2 — Sequence Diagram: Configure Availability → Directory Visibility → Answer → Earn Points (Main Flow)**
 

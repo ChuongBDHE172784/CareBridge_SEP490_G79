@@ -132,59 +132,164 @@ participant "Phone IMU Sensor" as Sensor
 actor "Mother" as M
 participant "FallDetectionController" as Controller
 participant "FallDetectionService" as Service
+participant "IImuMonitoringSessionRepository" as SessionRepo
 participant "IFallDetectionAlgorithmService" as Algo
-participant "ApplicationEventPublisher" as Events
+participant "ISafetyEventRepository" as EventRepo
 database "PostgreSQL" as DB
 
 == UC-120 Handle Suspected Fall or Impact and Safety Check ==
-Sensor -> M : Thu thập accelerometer/gyroscope liên tục
-M -> Controller : POST /api/v1/safety/imu-data\n{accelerometerX/Y/Z, gyroscopeX/Y/Z, timestamp}
-Controller -> Service : processImuData(userId, payload)
-Service -> Service : require active ImuMonitoringSession\n[nếu không có → SAFETY-006]
-Service -> Algo : analyze(payload, sensitivityLevel)
-Algo --> Service : FallAnalysisResult{suspected, eventType, magnitude}
+Sensor -> M : 1. Thu thập accelerometer/gyroscope liên tục (cảm biến trên điện thoại)
+M -> Controller : 2. POST /api/v1/safety/imu-data\n{accelerometerX/Y/Z, gyroscopeX/Y/Z, timestamp}
+activate Controller
+Controller -> Service : 3. processImuData(userId, payload)
+activate Service
+Service -> SessionRepo : 4. findActiveByUserId(userId)
+activate SessionRepo
+SessionRepo -> DB : 5. SELECT * FROM imu_monitoring_sessions\nWHERE user_id=? AND status='ACTIVE'
+activate DB
+DB --> SessionRepo : 6. session row (409 SAFETY-006 nếu không có)
+deactivate DB
+SessionRepo --> Service : 7. ImuMonitoringSession{sensitivityLevel}
+deactivate SessionRepo
+Service -> Algo : 8. analyze(payload, sensitivityLevel)
+activate Algo
+Algo --> Service : 9. FallAnalysisResult{suspected, eventType, magnitude}
+deactivate Algo
+alt 10. suspected == true (nghi ngờ ngã/va chạm)
+  Service -> EventRepo : 10. save(SafetyEvent{status=OPEN mặc định, eventType,\nmagnitude, detectedAt=now(), createdBy="SYSTEM"})
+  activate EventRepo
+  EventRepo -> DB : 11. INSERT INTO safety_events ...
+  activate DB
+  DB --> EventRepo : 12. saved
+  deactivate DB
+  EventRepo --> Service : 13. SafetyEvent
+  deactivate EventRepo
+  Service -> Service : 14. publishEvent(SuspectedFallDetected)
+  Service --> Controller : 15. SafetyEventResponse{status=OPEN}
+  deactivate Service
+  Controller --> M : 16. HTTP 200 OK → mở màn hình đếm ngược xác nhận an toàn
+  deactivate Controller
+  M -> M : 17. đếm ngược xác nhận an toàn (theo cấu hình UC-117)
 
-alt suspected == true
-  Service -> DB : INSERT INTO safety_events\n(status=OPEN, eventType, magnitude, detectedAt)
-  Service -> Events : publish(SuspectedFallDetected)
-  Service --> Controller : SafetyEventResponse{status=OPEN}
-  Controller --> M : HTTP 200 OK → mở màn hình đếm ngược an toàn
-  M -> M : Đếm ngược xác nhận an toàn (theo cấu hình UC-117)
-
-  alt Mother xác nhận an toàn
-    M -> Controller : POST /api/v1/safety/events/{eventId}/confirm\n{note}
-    Controller -> Service : confirmSafetyCheck(userId, eventId, note)
-    Service -> DB : UPDATE safety_events\nSET status='CONFIRMED_SAFE', resolved_at=now()
-    Service --> M : HTTP 200 OK
-  else Mother không phản hồi kịp / chọn cần trợ giúp
-    M -> Controller : POST /api/v1/safety/events/{eventId}/emergency-alert
-    Controller -> Service : sendEmergencyAlert(userId, eventId)
-    Service -> DB : UPDATE safety_events\nSET status='EMERGENCY_ALERT_SENT', resolved_at=now()
-    Service -> Events : publish(SuspectedFallDetected) [để MF-07 gửi family alert]
-    Service --> M : HTTP 202 Accepted
+  alt 18. Mother xác nhận an toàn trong thời gian đếm ngược
+    M -> Controller : 18. POST /api/v1/safety/events/{eventId}/confirm {note}
+    activate Controller
+    Controller -> Service : 19. confirmSafetyCheck(userId, eventId, note)
+    activate Service
+    Service -> EventRepo : 20. findByIdAndUserId(eventId, userId)
+    activate EventRepo
+    EventRepo -> DB : 21. SELECT * FROM safety_events\nWHERE id=? AND user_id=?
+    activate DB
+    DB --> EventRepo : 22. event row (404 SAFETY-007 nếu không có/không thuộc caller)
+    deactivate DB
+    EventRepo --> Service : 23. SafetyEvent
+    deactivate EventRepo
+    Service -> Service : 24. set status=CONFIRMED_SAFE, resolvedAt=now(), notes\n[KHÔNG kiểm tra status hiện tại có phải OPEN hay không]
+    Service -> EventRepo : 25. save(event{...})
+    activate EventRepo
+    EventRepo -> DB : 26. UPDATE safety_events\nSET status='CONFIRMED_SAFE', resolved_at=now(), notes=?
+    activate DB
+    DB --> EventRepo : 27. updated
+    deactivate DB
+    EventRepo --> Service : 28. SafetyEvent
+    deactivate EventRepo
+    Service --> Controller : 29. SafetyEventResponse{status=CONFIRMED_SAFE}
+    deactivate Service
+    Controller --> M : 30. HTTP 200 OK
+    deactivate Controller
+  else 18. Mother không phản hồi kịp / chọn cần trợ giúp
+    M -> Controller : 18a. POST /api/v1/safety/events/{eventId}/emergency-alert
+    activate Controller
+    Controller -> Service : 18b. sendEmergencyAlert(userId, eventId)
+    activate Service
+    Service -> EventRepo : 18c. findByIdAndUserId(eventId, userId)
+    activate EventRepo
+    EventRepo -> DB : 18d. SELECT * FROM safety_events\nWHERE id=? AND user_id=?
+    activate DB
+    DB --> EventRepo : 18e. event row (404 SAFETY-007 nếu không có)
+    deactivate DB
+    EventRepo --> Service : 18f. SafetyEvent
+    deactivate EventRepo
+    Service -> Service : 18g. set status=EMERGENCY_ALERT_SENT, resolvedAt=now()
+    Service -> EventRepo : 18h. save(event{...})
+    activate EventRepo
+    EventRepo -> DB : 18i. UPDATE safety_events\nSET status='EMERGENCY_ALERT_SENT', resolved_at=now()
+    activate DB
+    DB --> EventRepo : 18j. updated
+    deactivate DB
+    EventRepo --> Service : 18k. SafetyEvent
+    deactivate EventRepo
+    Service -> Service : 18l. publishEvent(SuspectedFallDetected)\n[phát lại — để MF-07 family alert/consumer khác xử lý tiếp]
+    Service --> Controller : 18m. void
+    deactivate Service
+    Controller --> M : 18n. HTTP 202 Accepted
+    deactivate Controller
   end
-else suspected == false
-  Service --> Controller : null (không tạo event)
+else 10. suspected == false (không nghi ngờ, không tạo event)
+  Service --> Controller : 10a. null
+  deactivate Service
+  Controller --> M : 10b. HTTP 200 OK (không có safety event)
+  deactivate Controller
 end
 
 == UC-121 Review Safety Event History and Report False Positive ==
-M -> Controller : GET /api/v1/safety/events?page=0&size=20
-Controller -> Service : listSafetyEvents(userId, pageable)
-Service -> DB : SELECT * FROM safety_events\nWHERE user_id=? ORDER BY detected_at DESC
-DB --> Service : events[]
-Service --> Controller : SafetyEventResponse[]
-Controller --> M : HTTP 200 OK {events[]}
+M -> Controller : 31. GET /api/v1/safety/events?page=0&size=20
+activate Controller
+Controller -> Service : 32. listSafetyEvents(userId, pageable)
+activate Service
+Service -> EventRepo : 33. findByUserIdOrderByDetectedAtDesc(userId, pageable)
+activate EventRepo
+EventRepo -> DB : 34. SELECT * FROM safety_events\nWHERE user_id=? ORDER BY detected_at DESC
+activate DB
+DB --> EventRepo : 35. events[]
+deactivate DB
+EventRepo --> Service : 36. events[]
+deactivate EventRepo
+Service --> Controller : 37. SafetyEventResponse[]
+deactivate Service
+Controller --> M : 38. HTTP 200 OK {events[]}
+deactivate Controller
 
-M -> Controller : POST /api/v1/safety/events/{eventId}/false-positive\n{note="Đặt điện thoại xuống bàn mạnh"}
-Controller -> Service : reportFalsePositive(userId, eventId, note)
-Service -> DB : UPDATE safety_events\nSET status='FALSE_POSITIVE', resolved_at=now(), notes=?
-Service --> Controller : SafetyEventResponse{status=FALSE_POSITIVE}
-Controller --> M : HTTP 200 OK
+M -> Controller : 39. POST /api/v1/safety/events/{eventId}/false-positive\n{note="Đặt điện thoại xuống bàn mạnh"}
+activate Controller
+Controller -> Service : 40. reportFalsePositive(userId, eventId, note)
+activate Service
+Service -> EventRepo : 41. findByIdAndUserId(eventId, userId)
+activate EventRepo
+EventRepo -> DB : 42. SELECT * FROM safety_events\nWHERE id=? AND user_id=?
+activate DB
+DB --> EventRepo : 43. event row (404 SAFETY-007 nếu không có)
+deactivate DB
+EventRepo --> Service : 44. SafetyEvent
+deactivate EventRepo
+Service -> Service : 45. set status=FALSE_POSITIVE, resolvedAt=now(), notes
+Service -> EventRepo : 46. save(event{...})
+activate EventRepo
+EventRepo -> DB : 47. UPDATE safety_events\nSET status='FALSE_POSITIVE', resolved_at=now(), notes=?
+activate DB
+DB --> EventRepo : 48. updated
+deactivate DB
+EventRepo --> Service : 49. SafetyEvent
+deactivate EventRepo
+Service --> Controller : 50. SafetyEventResponse{status=FALSE_POSITIVE}
+deactivate Service
+Controller --> M : 51. HTTP 200 OK
+deactivate Controller
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: IMU Data → Detect → Safety Check (Confirm/Alert) → History → False-Positive Feedback (Main Flow)**
+
+> **Ghi chú grounding:** `confirmSafetyCheck`, `reportFalsePositive` và `sendEmergencyAlert`
+> đều dùng chung `findOwnedEvent()` (`findByIdAndUserId`, 404 `SAFETY-007` nếu không thuộc
+> caller) nhưng **không kiểm tra `status` hiện tại của event trước khi chuyển trạng thái**
+> — về mặt code, có thể gọi `/confirm` trên một event đã `FALSE_POSITIVE`/
+> `EMERGENCY_ALERT_SENT` và nó vẫn ghi đè `status`/`resolvedAt`/`notes` bình thường, không có
+> guard "chỉ áp dụng khi đang OPEN" như nhiều luồng khác trong hệ thống. Bản vẽ trước ngụ ý
+> các nhánh này chỉ áp dụng khi event đang `OPEN`, nhưng ràng buộc đó chỉ đúng về mặt UX
+> (app chỉ hiện màn hình xác nhận ngay sau khi tạo event), không phải ràng buộc được server
+> thực thi.
 
 ## 4. State Machine — `SafetyEvent.status`
 

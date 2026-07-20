@@ -108,45 +108,131 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "ExpenseController" as Controller
 participant "ExpenseServiceImpl" as Service
+participant "ExpenseRepository" as Repo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-109 Add Expense Entry ==
-M -> Controller : POST /api/v1/expenses\n{category=DIAPER, amount=250000, expenseDate}
-Controller -> Service : add(ownerId, request)
-Service -> DB : INSERT INTO expenses (currency="VND")
-Service -> Audit : emit(EXPENSE_CREATED)
-Service --> Controller : Expense
-Controller --> M : HTTP 201 Created
+M -> Controller : 1. POST /api/v1/expenses\n{category=DIAPER, amount=250000, expenseDate, journeyId, babyId}
+activate Controller
+Controller -> Service : 2. addExpense(request, callerId)
+activate Service
+Service -> Service : 3. kiểm tra expenseDate không ở tương lai\n(400 EXPENSE-003 nếu vi phạm)
+Service -> Repo : 4. save(Expense{ownerUserId=callerId,\ncurrency="VND" nếu request không truyền})
+activate Repo
+Repo -> DB : 5. INSERT INTO expenses ...
+activate DB
+DB --> Repo : 6. saved
+deactivate DB
+Repo --> Service : 7. Expense
+deactivate Repo
+Service -> Audit : 8. log(EXPENSE_CREATED, callerId, "Expense", id, "created")\n[PDPA — KHÔNG ghi amount/note vào audit detail]
+activate Audit
+Audit --> Service : 9. void
+deactivate Audit
+Service --> Controller : 10. ExpenseResponse
+deactivate Service
+Controller --> M : 11. HTTP 201 Created
+deactivate Controller
 
 == UC-110 Update or Delete Expense Entry ==
-M -> Controller : PATCH /api/v1/expenses/{expenseId}\n{amount=270000, note}
-Controller -> Service : update(ownerId, expenseId, request)
-Service -> Service : check ownership
-Service -> DB : UPDATE expenses SET amount=?, note=?, updated_at=now()
-Service -> Audit : emit(EXPENSE_UPDATED)
-Service --> Controller : Expense
-Controller --> M : HTTP 200 OK
+M -> Controller : 12. PATCH /api/v1/expenses/{expenseId}\n{amount=270000, note}
+activate Controller
+Controller -> Service : 13. updateExpense(expenseId, request, callerId)
+activate Service
+Service -> Repo : 14. findByIdAndOwnerUserId(expenseId, callerId)
+activate Repo
+Repo -> DB : 15. SELECT * FROM expenses\nWHERE id=? AND owner_user_id=?
+activate DB
+DB --> Repo : 16. expense row (404 EXPENSE-004 nếu không có/không thuộc caller)
+deactivate DB
+Repo --> Service : 17. Expense
+deactivate Repo
+Service -> Service : 18. áp dụng field non-null (PATCH); nếu đổi expenseDate\nthì kiểm tra lại không ở tương lai (400 EXPENSE-003)
+Service -> Repo : 19. save(expense{...})
+activate Repo
+Repo -> DB : 20. UPDATE expenses\nSET category=?, amount=?, expense_date=?, note=?, updated_at=now()
+activate DB
+DB --> Repo : 21. updated
+deactivate DB
+Repo --> Service : 22. Expense
+deactivate Repo
+Service -> Audit : 23. log(EXPENSE_UPDATED, callerId, "Expense", expenseId, "updated")
+activate Audit
+Audit --> Service : 24. void
+deactivate Audit
+Service --> Controller : 25. ExpenseResponse
+deactivate Service
+Controller --> M : 26. HTTP 200 OK
+deactivate Controller
 
-M -> Controller : DELETE /api/v1/expenses/{expenseId}
-Controller -> Service : delete(ownerId, expenseId)
-Service -> Audit : emit(EXPENSE_DELETED)\n[ghi audit TRƯỚC khi hard-delete — ADR-CJ-052]
-Service -> DB : DELETE FROM expenses WHERE id=?
-Service --> Controller : void
-Controller --> M : HTTP 204 No Content
+M -> Controller : 27. DELETE /api/v1/expenses/{expenseId}
+activate Controller
+Controller -> Service : 28. deleteExpense(expenseId, callerId)
+activate Service
+Service -> Repo : 29. findByIdAndOwnerUserId(expenseId, callerId)
+activate Repo
+Repo -> DB : 30. SELECT * FROM expenses\nWHERE id=? AND owner_user_id=?
+activate DB
+DB --> Repo : 31. expense row (404 EXPENSE-004 nếu không có)
+deactivate DB
+Repo --> Service : 32. Expense
+deactivate Repo
+Service -> Audit : 33. log(EXPENSE_DELETED, callerId, "Expense", expenseId, "deleted")\n[ghi audit TRƯỚC khi hard-delete — ADR-CJ-052]
+activate Audit
+Audit --> Service : 34. void
+deactivate Audit
+Service -> Repo : 35. delete(expense) [hard delete thật]
+activate Repo
+Repo -> DB : 36. DELETE FROM expenses WHERE id=?
+activate DB
+DB --> Repo : 37. deleted
+deactivate DB
+Repo --> Service : 38. void
+deactivate Repo
+Service --> Controller : 39. void
+deactivate Service
+Controller --> M : 40. HTTP 200 OK
+deactivate Controller
 
 == UC-111 View Expense Summary ==
-M -> Controller : GET /api/v1/expenses/summary?groupBy=CATEGORY
-Controller -> Service : summary(ownerId, "CATEGORY")
-Service -> DB : SELECT category, SUM(amount), COUNT(*)\nFROM expenses WHERE owner_user_id=? GROUP BY category
-DB --> Service : rows[]
-Service --> Controller : ExpenseSummaryResponse{buckets[], grandTotal}
-Controller --> M : HTTP 200 OK {summary}
+M -> Controller : 41. GET /api/v1/expenses/summary?groupBy=CATEGORY&from=&to=
+activate Controller
+Controller -> Service : 42. getSummary(callerId, groupBy, from, to)
+activate Service
+alt 43. groupBy hợp lệ (MONTH | CATEGORY | STAGE)
+  Service -> Repo : 43. groupByCategory(callerId, from, to)\n[hoặc groupByMonth/groupByStage tương ứng theo groupBy]
+  activate Repo
+  Repo -> DB : 44. SELECT category, currency, SUM(amount), COUNT(*)\nFROM expenses WHERE owner_user_id=? ... GROUP BY category, currency
+  activate DB
+  DB --> Repo : 45. rows[]
+  deactivate DB
+  Repo --> Service : 46. rows[]
+  deactivate Repo
+  Service -> Service : 47. gộp thành ExpenseSummaryBucket[];\ngrandTotal CHỈ cộng dồn bucket cùng currency="VND"\n(mixed-currency guard — bucket ngoại tệ khác bị loại khỏi tổng)
+  Service --> Controller : 48. ExpenseSummaryResponse{buckets[], grandTotal,\ngrandTotalCurrency="VND"}
+  deactivate Service
+  Controller --> M : 49. HTTP 200 OK {summary}
+  deactivate Controller
+else 43. groupBy không hợp lệ (khác MONTH/CATEGORY/STAGE)
+  Service --> Controller : 43a. throw 400 EXPENSE-001\n"groupBy must be MONTH, CATEGORY, or STAGE"
+  deactivate Service
+  Controller --> M : 43b. HTTP 400 Bad Request
+  deactivate Controller
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Add → Update/Delete → View Summary (Main Flow)**
+**Hình 2 — Sequence Diagram: Add (future-date guard) → Update/Delete (hard delete) → View Summary (Main Flow)**
+
+> **Ghi chú grounding:** `addExpense`/`updateExpense` đều chặn `expenseDate` ở tương lai
+> (400 `EXPENSE-003`) — ràng buộc chưa từng được vẽ. `getSummary` chỉ chấp nhận
+> `groupBy ∈ {MONTH, CATEGORY, STAGE}` (400 `EXPENSE-001` nếu khác) — **không có** nhóm theo
+> `journeyId`/`babyId` như class diagram mục 2 gợi ý mơ hồ. `grandTotal` chỉ cộng dồn các
+> bucket có `currency` trùng với `dominantCurrency` (hard-code `"VND"`) — bucket ở ngoại tệ
+> khác vẫn xuất hiện trong `buckets[]` nhưng bị loại khỏi `grandTotal` (mixed-currency
+> guard), tránh cộng nhầm hai đơn vị tiền tệ khác nhau thành một con số.
 
 ## 4. State Machine — `Expense` Record Lifecycle (tối giản, không có cột status)
 

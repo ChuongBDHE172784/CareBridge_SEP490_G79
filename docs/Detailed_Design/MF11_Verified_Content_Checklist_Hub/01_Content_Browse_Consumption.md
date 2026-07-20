@@ -128,43 +128,123 @@ skinparam backgroundColor #FAFAFA
 
 actor "User" as U
 participant "ContentController" as Controller
-participant "ContentQueryServiceImpl" as Service
+participant "ContentServiceImpl" as Service
+participant "ContentRepository" as ContentRepo
+participant "ChecklistTemplateRepository" as ChecklistTemplateRepo
+participant "ChecklistItemRepository" as ChecklistItemRepo
 database "PostgreSQL" as DB
 
 == UC-102 Browse Verified Content ==
-U -> Controller : GET /api/v1/content?type=ARTICLE&stage=PREGNANCY&keyword=
-Controller -> Service : browse(filter)
-Service -> DB : SELECT * FROM content_items\nWHERE status='APPROVED' AND stage=? AND type=?
-DB --> Service : items[]
-Service --> Controller : items[]
-Controller --> U : HTTP 200 OK {items[]}
+U -> Controller : 1. GET /api/v1/content?type=ARTICLE&stage=PREGNANCY&topicId=&page=&size=
+activate Controller
+Controller -> Service : 2. getContents(filter, pageable)
+activate Service
+Service -> ContentRepo : 3. findByFilters(type, stage, topicId,\nstatus=APPROVED, pageable)
+activate ContentRepo
+ContentRepo -> DB : 4. SELECT * FROM content_items\nWHERE status='APPROVED' AND (type=? OR ?) AND (stage=? OR ?) ...
+activate DB
+DB --> ContentRepo : 5. page (items + totalElements)
+deactivate DB
+ContentRepo --> Service : 6. Page<ContentItem>
+deactivate ContentRepo
+Service -> Service : 7. map → ContentListResponse[] (ContentMapper)
+Service --> Controller : 8. Page<ContentListResponse>
+deactivate Service
+Controller --> U : 9. HTTP 200 OK {items[], totalElements}
+deactivate Controller
 
-U -> Controller : GET /api/v1/content/checklists?stage=PREGNANCY
-Controller -> Service : browse(filter{type=CHECKLIST})
-Service -> DB : SELECT * FROM checklist_templates\nWHERE status='APPROVED' AND stage=?
-DB --> Service : checklists[]
-Service --> Controller : checklists[]
-Controller --> U : HTTP 200 OK {checklists[]}
+U -> Controller : 10. GET /api/v1/content/search?keyword=...&type=&stage=&topicId=\n[endpoint riêng — /content KHÔNG nhận tham số keyword]
+activate Controller
+Controller -> Controller : 11. validate keyword bắt buộc, tối đa 100 ký tự (400 nếu vi phạm)
+Controller -> Service : 12. searchContent(request, pageable)
+activate Service
+Service -> Service : 13. sanitizeKeyword() [trim + escape ký tự LIKE % và _]
+Service -> ContentRepo : 14. searchByFilters(sanitizedKeyword, type, stage,\ntopicId, status=APPROVED, pageable)
+activate ContentRepo
+ContentRepo -> DB : 15. SELECT * FROM content_items\nWHERE status='APPROVED' AND title/body ILIKE ? AND ...
+activate DB
+DB --> ContentRepo : 16. page
+deactivate DB
+ContentRepo --> Service : 17. Page<ContentItem>
+deactivate ContentRepo
+Service --> Controller : 18. Page<ContentSearchResponse>
+deactivate Service
+Controller --> U : 19. HTTP 200 OK {items[]}
+deactivate Controller
+
+U -> Controller : 20. GET /api/v1/content/checklists?stage=PREGNANCY
+activate Controller
+Controller -> Service : 21. getChecklists(stage)
+activate Service
+Service -> ChecklistTemplateRepo : 22. findByStage(stage) [hoặc findAll() nếu stage=null]
+activate ChecklistTemplateRepo
+ChecklistTemplateRepo -> DB : 23. SELECT * FROM checklist_templates WHERE stage=?\n[KHÔNG lọc theo status — xem ghi chú grounding]
+activate DB
+DB --> ChecklistTemplateRepo : 24. templates[]
+deactivate DB
+ChecklistTemplateRepo --> Service : 25. templates[]
+deactivate ChecklistTemplateRepo
+loop 26-29. với mỗi ChecklistTemplate
+  Service -> ChecklistItemRepo : 26. findByTemplate_IdOrderByOrder(templateId)
+  activate ChecklistItemRepo
+  ChecklistItemRepo -> DB : 27. SELECT * FROM checklist_items\nWHERE template_id=? ORDER BY "order"
+  activate DB
+  DB --> ChecklistItemRepo : 28. items[]
+  deactivate DB
+  ChecklistItemRepo --> Service : 29. items[]
+  deactivate ChecklistItemRepo
+end
+Service --> Controller : 30. ChecklistTemplateResponse[]
+deactivate Service
+Controller --> U : 31. HTTP 200 OK {checklists[]}
+deactivate Controller
 
 == UC-103 View Verified Content Detail ==
-U -> Controller : GET /api/v1/content/{id}
-Controller -> Service : detail(id)
-Service -> DB : SELECT * FROM content_items WHERE id=?
-DB --> Service : item{status}
-
-alt status == APPROVED
-  Service --> Controller : ContentItem{sources[], versionNo, publishedAt}
-  Controller --> U : HTTP 200 OK {content detail}
-else status != APPROVED
-  Service -> Service : throw 404 (không lộ nội dung chưa duyệt)
-  Service --> Controller : NotFoundException
-  Controller --> U : HTTP 404 Not Found
+U -> Controller : 32. GET /api/v1/content/{id}
+activate Controller
+Controller -> Service : 33. getContentById(id)
+activate Service
+Service -> ContentRepo : 34. findByIdAndStatus(id, APPROVED)
+activate ContentRepo
+ContentRepo -> DB : 35. SELECT * FROM content_items\nWHERE id=? AND status='APPROVED'
+activate DB
+alt 36. tìm thấy item APPROVED
+  DB --> ContentRepo : 36. item row
+  deactivate DB
+  ContentRepo --> Service : 37. ContentItem
+  deactivate ContentRepo
+  Service -> Service : 38. map → ContentDetailResponse\n(sources[], versionNo, publishedAt)
+  Service --> Controller : 39. ContentDetailResponse
+  deactivate Service
+  Controller --> U : 40. HTTP 200 OK {content detail}
+  deactivate Controller
+else 36. không có (không tồn tại HOẶC chưa APPROVED)
+  DB --> ContentRepo : 36a. none
+  deactivate DB
+  ContentRepo --> Service : 36b. Optional.empty()
+  deactivate ContentRepo
+  Service --> Controller : 36c. throw ContentException.contentNotFound()\n(không phân biệt "không tồn tại" và "chưa duyệt")
+  deactivate Service
+  Controller --> U : 36d. HTTP 404 Not Found
+  deactivate Controller
 end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Browse (Embedded Filter) → View Detail (Main Flow)**
+**Hình 2 — Sequence Diagram: Browse → Search (endpoint riêng) → Checklists → View Detail (Main Flow)**
+
+> **Ghi chú grounding (quan trọng):** Service thật là `ContentServiceImpl` (không phải
+> `ContentQueryServiceImpl`), repository thật là `ContentRepository` (không phải
+> `ContentItemRepository` như class diagram mục 2 nêu). `GET /api/v1/content` **không nhận**
+> tham số `keyword` — tìm kiếm theo từ khoá là một endpoint hoàn toàn riêng
+> (`GET /api/v1/content/search`, bắt buộc `keyword`, tối đa 100 ký tự, có sanitize chống
+> LIKE-injection). Đáng chú ý nhất: `getChecklists(stage)` **không lọc theo `status`** —
+> khác với `getContents`/`searchContent`/`getContentById` (luôn hardcode `APPROVED`) — nghĩa
+> là checklist ở trạng thái `DRAFT`/`PENDING_REVIEW`/`ARCHIVED` **vẫn có thể bị trả về** qua
+> `GET /content/checklists`, lệch với khẳng định ở mục 5 ("chỉ nội dung APPROVED được liệt
+> kê") và với State Machine mục 4. Cần xác nhận với đội phát triển đây là gap cần vá hay là
+> hành vi có chủ đích (ví dụ checklist không qua pipeline duyệt như article/FAQ).
 
 ## 4. State Machine — `ContentItem.status` (góc nhìn hiển thị cho User)
 

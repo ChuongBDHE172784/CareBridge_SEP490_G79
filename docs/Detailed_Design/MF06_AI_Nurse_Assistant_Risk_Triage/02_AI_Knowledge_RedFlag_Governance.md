@@ -136,44 +136,188 @@ actor "Content Admin" as CA
 actor "System Admin" as SA
 participant "EvidenceSourceAdminController" as EvController
 participant "EvidenceSourceServiceImpl" as EvService
+participant "EvidenceSourceRepository" as EvSourceRepo
+participant "EvidenceSourceReviewLogRepository" as ReviewLogRepo
+participant "InternalEvidenceSourceController" as InternalEvController
+actor "AI Triage Service (external)" as AiSvc
 participant "RedFlagRuleController" as RFController
+participant "RedFlagRuleServiceImpl" as RFService
+participant "RedFlagRuleRepository" as RFRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
-participant "IntakeServiceImpl (MF-06/01)" as Intake
 
 == UC-75 Manage Approved AI Knowledge Sources ==
-CA -> EvController : POST /admin/api/v1/evidence-sources\n{domain, organization, category, applicableStages}
-EvController -> EvService : register(actorId, request)
-EvService -> DB : INSERT INTO evidence_sources (status='PENDING_REVIEW')
-EvService --> EvController : EvidenceSource
-EvController --> CA : HTTP 201 Created
+CA -> EvController : 1. POST /admin/api/v1/evidence-sources\n{baseUrl, organization, category, applicableStages, notes}
+activate EvController
+EvController -> EvService : 2. propose(baseUrl, organization, category,\napplicableStages, notes, actorId)
+activate EvService
+EvService -> EvService : 3. parse HTTPS URL → derive domain;\nchặn nếu domain thuộc blocklist (facebook/tiktok/reddit/...)
+EvService -> EvSourceRepo : 4. findByDomainIgnoreCase(domain)
+activate EvSourceRepo
+EvSourceRepo -> DB : 5. SELECT * FROM evidence_sources WHERE domain=?
+activate DB
+DB --> EvSourceRepo : 6. existing row | none
+deactivate DB
+EvSourceRepo --> EvService : 7. Optional<EvidenceSource>
+deactivate EvSourceRepo
+EvService -> EvSourceRepo : 8. save(source{status=PENDING_REVIEW,\ndiscoveryMode=MANUAL_ADMIN_ADD})
+activate EvSourceRepo
+EvSourceRepo -> DB : 9. INSERT/UPDATE evidence_sources ...
+activate DB
+DB --> EvSourceRepo : 10. saved
+deactivate DB
+EvSourceRepo --> EvService : 11. EvidenceSource
+deactivate EvSourceRepo
+EvService -> ReviewLogRepo : 12. save(EvidenceSourceReviewLog{previousStatus=null,\nnewStatus=PENDING_REVIEW, actorRole=PROPOSER})
+activate ReviewLogRepo
+ReviewLogRepo -> DB : 13. INSERT INTO evidence_source_review_logs ...
+activate DB
+DB --> ReviewLogRepo : 14. saved
+deactivate DB
+ReviewLogRepo --> EvService : 15. EvidenceSourceReviewLog
+deactivate ReviewLogRepo
+EvService --> EvController : 16. EvidenceSource{status=PENDING_REVIEW}
+deactivate EvService
+EvController --> CA : 17. HTTP 201 Created
+deactivate EvController
 
-SA -> EvController : PATCH /admin/api/v1/evidence-sources/{id}/approve\n{notes}
-EvController -> EvService : changeStatus(id, "APPROVED", notes, adminId, "REVIEWER")
-EvService -> DB : UPDATE evidence_sources SET status='APPROVED'
-EvService -> DB : INSERT INTO evidence_source_review_logs\n(previousStatus='PENDING_REVIEW', newStatus='APPROVED')
-EvService -> Audit : emit(SECURITY_EVENT, "evidence_source_reviewed")
-EvService --> EvController : EvidenceSource{status=APPROVED}
-EvController --> SA : HTTP 200 OK
+SA -> EvController : 18. PATCH /admin/api/v1/evidence-sources/{id}/approve\n{notes}
+activate EvController
+EvController -> EvService : 19. changeStatus(id, "APPROVED", notes, adminId, "REVIEWER")
+activate EvService
+EvService -> EvSourceRepo : 20. findById(id)
+activate EvSourceRepo
+EvSourceRepo -> DB : 21. SELECT * FROM evidence_sources WHERE id=?
+activate DB
+DB --> EvSourceRepo : 22. source row
+deactivate DB
+EvSourceRepo --> EvService : 23. EvidenceSource
+deactivate EvSourceRepo
+EvService -> EvSourceRepo : 24. save(source{status=APPROVED, reviewedBy, reviewedAt})
+activate EvSourceRepo
+EvSourceRepo -> DB : 25. UPDATE evidence_sources\nSET status='APPROVED', reviewed_by=?, reviewed_at=?
+activate DB
+DB --> EvSourceRepo : 26. updated
+deactivate DB
+EvSourceRepo --> EvService : 27. EvidenceSource
+deactivate EvSourceRepo
+EvService -> ReviewLogRepo : 28. save(EvidenceSourceReviewLog{previousStatus=PENDING_REVIEW,\nnewStatus=APPROVED, actorRole=REVIEWER})
+activate ReviewLogRepo
+ReviewLogRepo -> DB : 29. INSERT INTO evidence_source_review_logs ...
+activate DB
+DB --> ReviewLogRepo : 30. saved
+deactivate DB
+ReviewLogRepo --> EvService : 31. EvidenceSourceReviewLog
+deactivate ReviewLogRepo
+EvService --> EvController : 32. EvidenceSource{status=APPROVED}
+deactivate EvService
+EvController --> SA : 33. HTTP 200 OK
+deactivate EvController
 
-Intake -> EvController : GET /internal/api/v1/triage/evidence-sources/approved?stage=PREGNANCY\n(chỉ nội bộ, dùng khi retrieval)
-EvController --> Intake : approvedSources[]
+AiSvc -> InternalEvController : 34. GET /internal/api/v1/triage/evidence-sources/approved?stage=PREGNANCY\nHeader: X-CareBridge-Internal-Key
+activate InternalEvController
+InternalEvController -> InternalEvController : 35. xác thực internalApiKey header (deployment secret,\nkhông cấp quyền admin cho AI service)
+InternalEvController -> EvService : 36. approvedForStage(stage)
+activate EvService
+EvService -> EvSourceRepo : 37. findByStatus("APPROVED")
+activate EvSourceRepo
+EvSourceRepo -> DB : 38. SELECT * FROM evidence_sources WHERE status='APPROVED'
+activate DB
+DB --> EvSourceRepo : 39. rows[]
+deactivate DB
+EvSourceRepo --> EvService : 40. sources[]
+deactivate EvSourceRepo
+EvService -> EvService : 41. lọc theo applicableStages chứa stage
+EvService --> InternalEvController : 42. approvedSources[]
+deactivate EvService
+InternalEvController --> AiSvc : 43. HTTP 200 OK {approvedSources[]}
+deactivate InternalEvController
 
 == UC-76 Configure AI Risk and Red-Flag Rules ==
-SA -> RFController : POST /api/v1/admin/red-flag-rules\n{keyword, severity=RED, action=BLOCK}
-RFController -> DB : INSERT INTO red_flag_rules (active=true)
-RFController -> Audit : emit(RED_FLAG_RULE_CREATED)
-RFController --> SA : HTTP 201 Created
+SA -> RFController : 44. POST /api/v1/admin/red-flag-rules\n{keyword, severity=RED, action=BLOCK}
+activate RFController
+RFController -> RFService : 45. createRule(request, actorUserId)
+activate RFService
+RFService -> RFRepo : 46. existsByKeywordIgnoreCase(keyword)
+activate RFRepo
+RFRepo -> DB : 47. SELECT EXISTS(...) FROM red_flag_rules WHERE keyword=?
+activate DB
+DB --> RFRepo : 48. false
+deactivate DB
+RFRepo --> RFService : 49. boolean
+deactivate RFRepo
+RFService -> RFRepo : 50. save(RedFlagRule{active=true, systemDefault=false})
+activate RFRepo
+RFRepo -> DB : 51. INSERT INTO red_flag_rules ...
+activate DB
+DB --> RFRepo : 52. saved
+deactivate DB
+RFRepo --> RFService : 53. RedFlagRule
+deactivate RFRepo
+RFService -> Audit : 54. log(RED_FLAG_RULE_CREATED, actorUserId,\n"RedFlagRule", ruleId, details)
+activate Audit
+Audit --> RFService : 55. void
+deactivate Audit
+RFService --> RFController : 56. RedFlagRuleResponse
+deactivate RFService
+RFController --> SA : 57. HTTP 201 Created
+deactivate RFController
 
-SA -> RFController : PATCH /api/v1/admin/red-flag-rules/{id}\n{active=false}
-RFController -> DB : UPDATE red_flag_rules SET active=false
-RFController -> Audit : emit(RED_FLAG_RULE_UPDATED)
-RFController --> SA : HTTP 200 OK
+SA -> RFController : 58. PATCH /api/v1/admin/red-flag-rules/{id}\n{active=false}
+activate RFController
+RFController -> RFService : 59. updateRule(id, request, actorUserId)
+activate RFService
+RFService -> RFRepo : 60. findById(id)
+activate RFRepo
+RFRepo -> DB : 61. SELECT * FROM red_flag_rules WHERE id=?
+activate DB
+DB --> RFRepo : 62. rule row
+deactivate DB
+RFRepo --> RFService : 63. RedFlagRule
+deactivate RFRepo
+RFService -> RFService : 64. kiểm tra rule.systemDefault && attemptsDeactivate\n(guard BR-SAFETY-RFR-003, chạy trước mọi thay đổi)
+alt 64. không vi phạm guard → tiếp tục cập nhật
+  RFService -> RFRepo : 65. save(rule{active=false, updatedBy})
+  activate RFRepo
+  RFRepo -> DB : 66. UPDATE red_flag_rules\nSET active=false, updated_by=?
+  activate DB
+  DB --> RFRepo : 67. updated
+  deactivate DB
+  RFRepo --> RFService : 68. RedFlagRule
+  deactivate RFRepo
+  RFService -> Audit : 69. log(RED_FLAG_RULE_UPDATED, actorUserId,\n"RedFlagRule", ruleId, details)
+  activate Audit
+  Audit --> RFService : 70. void
+  deactivate Audit
+  RFService --> RFController : 71. RedFlagRuleResponse
+  deactivate RFService
+  RFController --> SA : 72. HTTP 200 OK
+  deactivate RFController
+else 64. rule.systemDefault && attemptsDeactivate → chặn\n[BR-SAFETY-RFR-003: rule nền tảng không thể vô hiệu qua API]
+  RFService --> RFController : 64a. throw RedFlagRuleException.systemDefaultProtected()
+  deactivate RFService
+  RFController --> SA : 64b. HTTP 409 Conflict
+  deactivate RFController
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Register → Approve Evidence Source (consumed by Intake) → Configure Red-Flag Rule (Main Flow)**
+**Hình 2 — Sequence Diagram: Register → Approve Evidence Source (consumed by external AI service) → Configure Red-Flag Rule (Main Flow)**
+
+> **Ghi chú grounding:** `EvidenceSourceServiceImpl` (`propose`/`changeStatus`/`approvedForStage`)
+> **không** phụ thuộc `AuditService` — class diagram ở mục 2 vẽ cạnh `EvidenceSourceServiceImpl
+> --> AuditService` mang tính khái niệm/SRS, không khớp code thật; mọi thay đổi trạng thái
+> nguồn tri thức chỉ được ghi vết qua `EvidenceSourceReviewLog` (không phải audit log chung).
+> Ngược lại, `RedFlagRuleServiceImpl` **có** gọi `auditService.log(...)` thật cho
+> `RED_FLAG_RULE_CREATED`/`UPDATED`/`DELETED`. Endpoint đăng ký nguồn tri thức thực chất nhận
+> `baseUrl` (không phải `domain` trực tiếp — domain được suy ra từ URL) và được bảo vệ bởi
+> `@PreAuthorize("hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')")` ở **toàn bộ**
+> `EvidenceSourceAdminController` (kể cả approve/reject/deprecate — không giới hạn riêng cho
+> System Admin như mô tả SRS). Endpoint `GET .../evidence-sources/approved` nằm ở
+> `InternalEvidenceSourceController` riêng biệt (route `/internal/...`), được gọi bởi AI
+> triage service ngoài (Python) qua header `X-CareBridge-Internal-Key`, **không phải** do
+> `TriageService`/`IntakeController` (MF-06/01) gọi trực tiếp trong tiến trình Java.
 
 ## 4. State Machine — `EvidenceSource.status`
 
