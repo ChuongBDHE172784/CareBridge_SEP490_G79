@@ -96,9 +96,8 @@ public class CloudinaryStorageService implements IStorageService {
             case PUBLIC -> "upload";
         };
 
-        // Cloudinary signed URL with expiration
-        // Use URL builder with query parameter for signed URL
-        long expiresAt = System.currentTimeMillis() / 1000 + (boundedTtl * 60L);
+        // Cloudinary signed URL with expiration via query parameter
+        long expiresAt = System.currentTimeMillis() / 1000L + (long) boundedTtl * 60L;
 
         return cloudinary.url()
                 .resourceType(resourceType)
@@ -148,6 +147,11 @@ public class CloudinaryStorageService implements IStorageService {
         return "raw";
     }
 
+    /**
+     * Determine access mode from the purpose/policy, not just MIME type.
+     * This should be overridden by the policy-based approach in FileServiceImpl.
+     * For backward compatibility, default based on MIME.
+     */
     private FileAccessMode determineAccessMode(String mimeType) {
         // Images uploaded via store() default to AUTHENTICATED (private delivery)
         // Public images should use uploadPublicFile() which forces PUBLIC mode

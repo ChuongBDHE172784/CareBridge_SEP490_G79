@@ -5,13 +5,14 @@ import com.carebridge.backend.contribution.dto.response.ContributionResponse;
 import com.carebridge.backend.contribution.entity.ContributionStatus;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.response.PaginatedResponse;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface MedicalContributionService {
 
-    ContributionResponse createDraft(UUID expertUserId, CreateContributionRequest request);
+    ContributionResponse createDraft(CreateContributionRequest request, UUID expertUserId);
 
     ContributionResponse getById(UUID contributionId, UUID callerId);
 
@@ -25,9 +26,9 @@ public interface MedicalContributionService {
 
     void deleteDraft(UUID contributionId, UUID expertUserId);
 
-    List<ContributionResponse> getMyContributions(UUID expertUserId, ContributionStatus status);
+    PaginatedResponse<ContributionResponse> listMyContributions(UUID expertUserId, int page, int size);
 
-    List<ContributionResponse> getContributionsForReview(UUID adminUserId);
+    PaginatedResponse<ContributionResponse> listByStatus(ContributionStatus status, int page, int size);
 
     boolean isEligible(UUID expertUserId);
 }

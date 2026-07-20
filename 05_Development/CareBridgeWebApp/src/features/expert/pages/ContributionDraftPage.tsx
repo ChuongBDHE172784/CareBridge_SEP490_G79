@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createContribution, getContribution, updateContribution, submitContribution, checkContributionEligibility, type CreateContributionRequest, type UpdateContributionRequest, type ContributionAttachmentRequest } from '../services/expertApi';
+import { createContribution, getContribution, updateContribution, submitContribution, checkContributionEligibility, uploadContributionFile, type CreateContributionRequest, type UpdateContributionRequest, type ContributionAttachmentRequest, type UploadFileResponse } from '../services/expertApi';
 
 export default function ContributionDraftPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,15 +89,14 @@ export default function ContributionDraftPage() {
     }));
 
     try {
-      // Simulate upload - in production, call uploadContributionFile
-      // For now, we'll just create a mock fileId
-      const mockFileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
       const purpose = kind === 'IMAGE' ? 'MEDICAL_CONTRIBUTION_IMAGE' : 'MEDICAL_CONTRIBUTION_DOCUMENT';
       const accessMode = 'AUTHENTICATED';
 
+      const response: UploadFileResponse = await uploadContributionFile(file, kind, purpose, accessMode);
+      const fileId = response.fileId;
+
       setAttachments(prev => [...prev, {
-        fileId: mockFileId,
+        fileId,
         kind,
         purpose,
         accessMode,
@@ -107,11 +106,11 @@ export default function ContributionDraftPage() {
       setFilePreviews(prev => {
         const next = new Map(prev);
         next.delete(fileId);
-        next.set(mockFileId, { file, preview: kind === 'IMAGE' ? URL.createObjectURL(file) : '' });
+        next.set(fileId, { file, preview: kind === 'IMAGE' ? URL.createObjectURL(file) : '' });
         return next;
       });
 
-      return mockFileId;
+      return fileId;
     } catch (err) {
       setError('Tải file thất bại');
       throw err;

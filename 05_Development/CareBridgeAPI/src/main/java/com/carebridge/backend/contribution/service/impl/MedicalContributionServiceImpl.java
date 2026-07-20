@@ -304,20 +304,21 @@ public class MedicalContributionServiceImpl implements IMedicalContributionServi
     }
 
     private List<ContributionResponse.AttachmentResponse> getAttachmentsForResponse(UUID contributionId) {
+        UUID callerId = getCurrentUserId();
         return attachmentRepository.findByContributionIdOrderByDisplayOrderAsc(contributionId)
                 .stream()
-                .map(this::mapAttachmentToResponse)
+                .map(att -> mapAttachmentToResponse(att, callerId))
                 .collect(Collectors.toList());
     }
 
-    private ContributionResponse.AttachmentResponse mapAttachmentToResponse(ContributionAttachment attachment) {
+    private ContributionResponse.AttachmentResponse mapAttachmentToResponse(ContributionAttachment attachment, UUID callerId) {
         UploadedFile file = fileRepository.findById(attachment.getFileId())
                 .orElse(null);
 
         String presignedUrl = null;
         if (file != null) {
             try {
-                presignedUrl = fileService.viewFile(file.getId(), attachment.getOwnerUserId()).getPresignedUrl();
+                presignedUrl = fileService.viewFile(file.getId(), callerId).getPresignedUrl();
             } catch (Exception ignored) {
                 // URL generation failed
             }
@@ -336,5 +337,16 @@ public class MedicalContributionServiceImpl implements IMedicalContributionServi
                 .fileSizeBytes(file != null ? file.getFileSizeBytes() : 0)
                 .presignedUrl(presignedUrl)
                 .build();
+    }
+
+    private UUID getCurrentUserId() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+            try {
+                return UUID.fromString(auth.getName());
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
     }
 }

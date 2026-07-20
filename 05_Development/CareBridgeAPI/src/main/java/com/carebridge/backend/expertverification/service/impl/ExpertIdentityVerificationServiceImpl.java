@@ -6,8 +6,9 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
-import com.carebridge.backend.expertverification.adapter.FaceVerificationAdapter;
+import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
+import com.carebridge.backend.expertverification.enums.FaceDetectionStatus;
 import com.carebridge.backend.expertverification.dto.request.ReviewIdentityRequest;
 import com.carebridge.backend.expertverification.dto.response.ExpertOnboardingResponse;
 import com.carebridge.backend.expertverification.dto.response.IdentityVerificationResponse;
@@ -21,6 +22,9 @@ import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.service.IExpertIdentityVerificationService;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.dto.ViewFileResponse;
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
 import java.io.IOException;
 import java.time.Instant;
@@ -35,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVerificationService {
 
@@ -44,11 +47,12 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final ExpertProfileRepository profileRepository;
     private final ExpertIdentityVerificationRepository identityRepository;
     private final ExpertCredentialRepository credentialRepository;
-    private final FaceVerificationAdapter faceVerificationAdapter;
+    private final CompreFacePipelineAdapter pipelineAdapter;
     private final IFileService fileService;
     private final AuditService auditService;
 
     @Override
+    @Transactional
     public IdentityVerificationResponse submit(
             UUID userId, MultipartFile selfie, MultipartFile identityFront, MultipartFile identityBack) {
         var profile = profileRepository.findByUserIdForUpdate(userId)
@@ -66,52 +70,148 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         byte[] frontBytes = validateIdentityImage(identityFront, "identityFront");
         validateIdentityImage(identityBack, "identityBack");
 
-        FaceVerificationResult faceResult = faceVerificationAdapter.verify(
-                selfieBytes, normalizedMime(selfie), frontBytes, normalizedMime(identityFront));
-        if (faceResult.status() == FaceVerificationStatus.NO_FACE
-                || faceResult.status() == FaceVerificationStatus.MULTIPLE_FACES) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPIDENT-004",
-                    "Exactly one clear face is required in the selfie and identity front image");
-        }
+        // Step 1: Upload original images and create attempt record (short transaction)
+        IdentityVerificationResponse attemptResponse = submitInitialAttempt(userId, profile.getExpertProfileId(),
+                selfie, identityFront, identityBack, selfieBytes, frontBytes);
 
+        // Step 2: Run CompreFace pipeline OUTSIDE the transaction
+        UUID attemptId = attemptResponse.getIdentityVerificationId();
+        processIdentityVerificationAsync(attemptId, userId, selfieBytes, frontBytes,
+                normalizedMime(selfie), normalizedMime(identityFront));
+
+        return attemptResponse;
+    }
+
+    /**
+     * Initial attempt submission - short transaction to save originals and create attempt record.
+     * Returns the attempt for immediate response to client.
+     */
+    @Transactional
+    protected IdentityVerificationResponse submitInitialAttempt(UUID userId, UUID expertProfileId,
+            MultipartFile selfie, MultipartFile identityFront, MultipartFile identityBack,
+            byte[] selfieBytes, byte[] frontBytes) {
         List<UUID> uploaded = new ArrayList<>();
         try {
-            UploadFileResponse selfieUpload = fileService.uploadPrivateFile(selfie, userId);
+            UploadFileResponse selfieUpload = fileService.uploadWithPurpose(selfie, userId, FileKind.IMAGE, FilePurpose.EXPERT_IDENTITY_SELFIE, FileAccessMode.PRIVATE);
             uploaded.add(selfieUpload.getFileId());
-            UploadFileResponse frontUpload = fileService.uploadPrivateFile(identityFront, userId);
+            UploadFileResponse frontUpload = fileService.uploadWithPurpose(identityFront, userId, FileKind.IMAGE, FilePurpose.EXPERT_IDENTITY_CCCD_FRONT, FileAccessMode.PRIVATE);
             uploaded.add(frontUpload.getFileId());
-            UploadFileResponse backUpload = fileService.uploadPrivateFile(identityBack, userId);
+            UploadFileResponse backUpload = fileService.uploadWithPurpose(identityBack, userId, FileKind.IMAGE, FilePurpose.EXPERT_IDENTITY_CCCD_BACK, FileAccessMode.PRIVATE);
             uploaded.add(backUpload.getFileId());
 
-            IdentityReviewStatus reviewStatus = switch (faceResult.status()) {
-                case MATCHED -> IdentityReviewStatus.PENDING_REVIEW;
-                case NOT_MATCHED -> IdentityReviewStatus.REJECTED;
-                case DISABLED, RETRYABLE_ERROR -> IdentityReviewStatus.MANUAL_REVIEW_REQUIRED;
-                case NO_FACE, MULTIPLE_FACES -> throw new IllegalStateException("Validated above");
-            };
-            String reviewReason = faceResult.status() == FaceVerificationStatus.NOT_MATCHED
-                    ? "Face similarity is below the configured threshold" : null;
             ExpertIdentityVerification saved = identityRepository.save(
                     ExpertIdentityVerification.builder()
-                            .expertProfileId(profile.getExpertProfileId())
+                            .expertProfileId(expertProfileId)
                             .selfieFileId(selfieUpload.getFileId())
                             .identityFrontFileId(frontUpload.getFileId())
                             .identityBackFileId(backUpload.getFileId())
                             .faceProvider("COMPREFACE")
-                            .faceStatus(faceResult.status())
-                            .faceSimilarity(faceResult.similarity())
-                            .faceThreshold(faceResult.threshold())
-                            .providerErrorCode(faceResult.providerErrorCode())
-                            .reviewStatus(reviewStatus)
-                            .reviewReason(reviewReason)
+                            .faceStatus(FaceVerificationStatus.DISABLED)
+                            .reviewStatus(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED)
+                            .reviewReason("Pending CompreFace pipeline processing")
+                            .detectionSelfieStatus("PENDING")
+                            .detectionIdCardStatus("PENDING")
+                            .pipelineStatus("PROCESSING")
+                            .processedAt(Instant.now())
                             .build());
             auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
                     "ExpertIdentityVerification", saved.getId().toString(),
-                    Map.of("event", "IDENTITY_SUBMITTED", "faceStatus", faceResult.status().name()));
+                    Map.of("event", "IDENTITY_SUBMITTED", "stage", "ORIGINALS_UPLOADED"));
             return toResponse(saved);
         } catch (RuntimeException ex) {
             uploaded.forEach(fileId -> safePurge(fileId, userId));
             throw ex;
+        }
+    }
+
+    /**
+     * Processes the CompreFace pipeline separately from the initial transaction.
+     * Called after the initial attempt is saved.
+     */
+    @Transactional
+    protected void processIdentityVerificationAsync(UUID attemptId, UUID userId,
+            byte[] selfieBytes, byte[] frontBytes,
+            String selfieMimeType, String frontMimeType) {
+        List<UUID> uploaded = new ArrayList<>();
+        try {
+            // Run the full Detection -> Crop -> Verification pipeline
+            var pipelineResult = pipelineAdapter.verifyWithPipeline(
+                    selfieBytes, selfieMimeType, frontBytes, frontMimeType);
+            FaceVerificationResult faceResult = pipelineResult.verificationResult();
+            FaceDetectionStatus selfieDetectionStatus = pipelineResult.selfieDetectionStatus();
+            FaceDetectionStatus idCardDetectionStatus = pipelineResult.idCardDetectionStatus();
+
+            // Upload cropped face images
+            UUID selfieCropFileId = null;
+            UUID idCardCropFileId = null;
+            if (pipelineResult.croppedSelfie() != null) {
+                selfieCropFileId = fileService.uploadPrivateBytes(
+                        pipelineResult.croppedSelfie(), userId,
+                        selfieMimeType != null ? selfieMimeType : "image/jpeg",
+                        "selfie-crop-" + attemptId,
+                        FilePurpose.EXPERT_IDENTITY_SELFIE_CROP).getFileId();
+                uploaded.add(selfieCropFileId);
+            }
+            if (pipelineResult.croppedIdCard() != null) {
+                idCardCropFileId = fileService.uploadPrivateBytes(
+                        pipelineResult.croppedIdCard(), userId,
+                        frontMimeType != null ? frontMimeType : "image/jpeg",
+                        "id-card-crop-" + attemptId,
+                        FilePurpose.EXPERT_IDENTITY_CCCD_FRONT_CROP).getFileId();
+                uploaded.add(idCardCropFileId);
+            }
+
+            IdentityReviewStatus reviewStatus = switch (faceResult.status()) {
+                case MATCHED -> IdentityReviewStatus.PENDING_REVIEW;
+                case NOT_MATCHED,
+                     DISABLED,
+                     RETRYABLE_ERROR,
+                     NO_FACE,
+                     MULTIPLE_FACES -> IdentityReviewStatus.MANUAL_REVIEW_REQUIRED;
+            };
+            String reviewReason = switch (faceResult.status()) {
+                case NOT_MATCHED -> "Face similarity is below the configured threshold";
+                case DISABLED -> "CompreFace service is disabled";
+                case RETRYABLE_ERROR -> "CompreFace provider error: " + faceResult.providerErrorCode();
+                case NO_FACE -> "No face detected in one or both images";
+                case MULTIPLE_FACES -> "Multiple faces detected in one or both images";
+                default -> null;
+            };
+
+            ExpertIdentityVerification attempt = identityRepository.findByIdForUpdate(attemptId)
+                    .orElseThrow(() -> new IllegalStateException("Identity attempt not found: " + attemptId));
+
+            attempt.setSelfieCropFileId(selfieCropFileId);
+            attempt.setIdCardCropFileId(idCardCropFileId);
+            attempt.setFaceStatus(faceResult.status());
+            attempt.setFaceSimilarity(faceResult.similarity());
+            attempt.setFaceThreshold(faceResult.threshold());
+            attempt.setProviderErrorCode(faceResult.providerErrorCode());
+            attempt.setReviewStatus(reviewStatus);
+            attempt.setReviewReason(reviewReason);
+            attempt.setDetectionSelfieStatus(selfieDetectionStatus.name());
+            attempt.setDetectionIdCardStatus(idCardDetectionStatus.name());
+            attempt.setPipelineErrorCode(faceResult.providerErrorCode());
+            attempt.setPipelineStatus(pipelineResult.pipelineStatus());
+            attempt.setProcessedAt(Instant.now());
+
+            ExpertIdentityVerification saved = identityRepository.save(attempt);
+            auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
+                    "ExpertIdentityVerification", saved.getId().toString(),
+                    Map.of("event", "IDENTITY_PROCESSED", "faceStatus", faceResult.status().name(),
+                            "pipelineStatus", pipelineResult.pipelineStatus()));
+
+        } catch (RuntimeException ex) {
+            // On pipeline failure, mark attempt as error but keep original files
+            ExpertIdentityVerification attempt = identityRepository.findByIdForUpdate(attemptId)
+                    .orElseThrow(() -> new IllegalStateException("Identity attempt not found: " + attemptId));
+            attempt.setPipelineStatus("PROVIDER_ERROR");
+            attempt.setPipelineErrorCode("PIPELINE_FAILED: " + ex.getMessage());
+            attempt.setReviewStatus(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED);
+            attempt.setReviewReason("Pipeline processing failed: " + ex.getMessage());
+            attempt.setProcessedAt(Instant.now());
+            identityRepository.save(attempt);
+            uploaded.forEach(fileId -> safePurge(fileId, userId));
         }
     }
 
@@ -264,6 +364,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 .selfieFileId(entity.getSelfieFileId())
                 .identityFrontFileId(entity.getIdentityFrontFileId())
                 .identityBackFileId(entity.getIdentityBackFileId())
+                .selfieCropFileId(entity.getSelfieCropFileId())
+                .idCardCropFileId(entity.getIdCardCropFileId())
                 .faceStatus(entity.getFaceStatus())
                 .faceSimilarity(entity.getFaceSimilarity())
                 .faceThreshold(entity.getFaceThreshold())

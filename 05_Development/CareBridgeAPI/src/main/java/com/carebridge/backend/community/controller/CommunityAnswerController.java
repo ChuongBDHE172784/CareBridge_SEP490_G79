@@ -6,6 +6,8 @@ import com.carebridge.backend.community.dto.request.EditAnswerRequest;
 import com.carebridge.backend.community.dto.request.PostCommunityAnswerRequest;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.service.CommunityAnswerService;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,8 +24,10 @@ import java.util.UUID;
 public class CommunityAnswerController {
 
     private final CommunityAnswerService answerService;
+    private final ExpertProfileRepository expertProfileRepository;
 
     // ADR-COM-004: any authenticated user may post an answer
+    // But EXPERT role must be verified (APPROVED) and trust ACTIVE
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CommunityAnswerResponse>> postAnswer(
@@ -31,6 +35,20 @@ public class CommunityAnswerController {
             @Valid @RequestBody PostCommunityAnswerRequest request,
             Principal principal) {
         UUID authorId = SecurityUtils.requireCurrentUserId(principal);
+
+        // If user has EXPERT role, verify they are final approved and trust active
+        if (SecurityUtils.hasRole("EXPERT")) {
+            boolean isVerifiedActiveExpert = expertProfileRepository.findByUserId(authorId)
+                    .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                    .filter(p -> p.getTrustStatus() == com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE)
+                    .isPresent();
+
+            if (!isVerifiedActiveExpert) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Expert must be verified (APPROVED) and trust ACTIVE to post answers"));
+            }
+        }
+
         CommunityAnswerResponse response = answerService.postAnswer(authorId, questionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Answer posted"));

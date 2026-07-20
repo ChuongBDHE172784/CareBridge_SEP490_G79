@@ -116,8 +116,13 @@ carebridge:
   compreface:
     enabled: ${COMPREFACE_ENABLED:false}
     base-url: ${COMPREFACE_BASE_URL:http://localhost:8000}
-    api-key: ${COMPREFACE_API_KEY:}
+    detection-api-key: ${COMPREFACE_DETECTION_API_KEY:}
+    verification-api-key: ${COMPREFACE_VERIFICATION_API_KEY:}
+    # Deprecated: kept for backwards compatibility if needed
+    # api-key: ${COMPREFACE_API_KEY:}
     similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}
+    det-prob-threshold: ${COMPREFACE_DET_PROB_THRESHOLD:0.7}
+    detection-limit: ${COMPREFACE_DETECTION_LIMIT:2}
     connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
 

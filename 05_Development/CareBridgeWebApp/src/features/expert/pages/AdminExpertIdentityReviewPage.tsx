@@ -8,7 +8,7 @@ import {
   type IdentityAttemptResponse
 } from '../services/expertApi';
 
-type EvidenceUrls = { selfie: string; front: string; back: string };
+type EvidenceUrls = { selfie: string; front: string; back: string; selfieCrop?: string; idCardCrop?: string };
 
 export default function AdminExpertIdentityReviewPage() {
   const [items, setItems] = useState<IdentityAttemptResponse[]>([]);
@@ -37,12 +37,14 @@ export default function AdminExpertIdentityReviewPage() {
       return;
     }
     try {
-      const [selfie, front, back] = await Promise.all([
+      const [selfie, front, back, selfieCrop, idCardCrop] = await Promise.all([
         getIdentityFileUrl(item.selfieFileId),
         getIdentityFileUrl(item.identityFrontFileId),
-        getIdentityFileUrl(item.identityBackFileId)
+        getIdentityFileUrl(item.identityBackFileId),
+        item.selfieCropFileId ? getIdentityFileUrl(item.selfieCropFileId) : Promise.resolve(undefined),
+        item.idCardCropFileId ? getIdentityFileUrl(item.idCardCropFileId) : Promise.resolve(undefined),
       ]);
-      setUrls({ selfie, front, back });
+      setUrls({ selfie, front, back, selfieCrop, idCardCrop });
     } catch { setError('Không thể tải ảnh. Vui lòng thử lại sau.'); }
   };
 
@@ -233,8 +235,18 @@ export default function AdminExpertIdentityReviewPage() {
                   <div className="grid gap-6">
                     {urls ? (
                       <>
-                        <EvidenceImage title="Ảnh chân dung (Selfie)" url={urls.selfie} />
-                        <EvidenceImage title="CCCD Mặt trước" url={urls.front} />
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <EvidenceImage title="Ảnh chân dung gốc (Selfie)" url={urls.selfie} />
+                          {urls.selfieCrop && (
+                            <EvidenceImage title="Chân dung đã cắt (AI)" url={urls.selfieCrop} />
+                          )}
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <EvidenceImage title="CCCD Mặt trước (Gốc)" url={urls.front} />
+                          {urls.idCardCrop && (
+                            <EvidenceImage title="CCCD đã cắt khuôn mặt (AI)" url={urls.idCardCrop} />
+                          )}
+                        </div>
                         <EvidenceImage title="CCCD Mặt sau" url={urls.back} />
                       </>
                     ) : (

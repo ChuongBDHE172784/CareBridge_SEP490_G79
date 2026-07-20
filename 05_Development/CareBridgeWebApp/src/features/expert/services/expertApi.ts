@@ -60,6 +60,8 @@ export interface IdentityAttemptResponse {
 	selfieFileId?: string;
 	identityFrontFileId?: string;
 	identityBackFileId?: string;
+	selfieCropFileId?: string;
+	idCardCropFileId?: string;
 	status?: string;
 	reviewStatus?: string;
 	faceStatus?: string;
@@ -393,6 +395,145 @@ export async function postCommunityAnswer(
 }
 
 // ── Contribution (Medical Knowledge) ────────────────────────────────────────
+
+export type ContributionStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface ContributionAttachmentRequest {
+	fileId: string;
+	kind: 'IMAGE' | 'DOCUMENT';
+	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT';
+	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE';
+	displayOrder?: number;
+}
+
+export interface CreateContributionRequest {
+	title: string;
+	content: string;
+	specialtyId?: string;
+	hospitalId?: string;
+	attachments?: ContributionAttachmentRequest[];
+}
+
+export interface UpdateContributionRequest {
+	title: string;
+	content: string;
+	specialtyId?: string;
+	hospitalId?: string;
+	attachments?: ContributionAttachmentRequest[];
+}
+
+export interface ContributionAttachmentResponse {
+	id: string;
+	fileId: string;
+	contributionId: string;
+	kind: 'IMAGE' | 'DOCUMENT';
+	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT';
+	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE';
+	displayOrder: number;
+	originalName: string | null;
+	mimeType: string;
+	fileSizeBytes: number;
+	presignedUrl: string | null;
+}
+
+export interface ContributionResponse {
+	id: string;
+	expertUserId: string;
+	title: string;
+	content: string;
+	specialtyId?: string;
+	hospitalId?: string;
+	status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+	rejectionReason?: string;
+	version: number;
+	createdAt: string;
+	updatedAt: string;
+	attachments?: ContributionAttachmentResponse[];
+}
+
+export interface PaginatedContributionResponse {
+	content: ContributionResponse[];
+	page: number;
+	size: number;
+	totalElements: number;
+	totalPages: number;
+}
+
+export interface UploadFileResponse {
+	fileId: string;
+	originalName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	presignedUrl: string;
+	createdAt: string;
+}
+
+export async function uploadContributionFile(
+	file: File,
+	kind: 'IMAGE' | 'DOCUMENT',
+	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT',
+	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE'
+): Promise<UploadFileResponse> {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('kind', kind);
+	form.append('purpose', purpose);
+	form.append('accessMode', accessMode);
+	const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form, {
+		headers: { 'Content-Type': undefined },
+	});
+	return data.data;
+}
+
+export async function createContribution(body: CreateContributionRequest): Promise<ContributionResponse> {
+	const { data } = await apiClient.post('/api/v1/contributions', body);
+	return data.data;
+}
+
+export async function getContribution(contributionId: string): Promise<ContributionResponse> {
+	const { data } = await apiClient.get(`/api/v1/contributions/${contributionId}`);
+	return data.data;
+}
+
+export async function listMyContributions(params: { page?: number; size?: number }): Promise<PaginatedContributionResponse> {
+	const { data } = await apiClient.get('/api/v1/contributions/me', { params });
+	return data.data;
+}
+
+export async function updateContribution(contributionId: string, body: UpdateContributionRequest): Promise<ContributionResponse> {
+	const { data } = await apiClient.put(`/api/v1/contributions/${contributionId}`, body);
+	return data.data;
+}
+
+export async function submitContribution(contributionId: string): Promise<ContributionResponse> {
+	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/submit`);
+	return data.data;
+}
+
+export async function deleteContribution(contributionId: string): Promise<void> {
+	await apiClient.delete(`/api/v1/contributions/${contributionId}`);
+}
+
+export async function checkContributionEligibility(): Promise<boolean> {
+	const { data } = await apiClient.get('/api/v1/contributions/eligibility');
+	return data.data;
+}
+
+// Admin functions
+export async function listContributionsForReview(params: { status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'DRAFT'; page?: number; size?: number }): Promise<PaginatedContributionResponse> {
+	const { data } = await apiClient.get('/api/v1/contributions/review-queue', { params });
+	return data.data;
+}
+
+export async function approveContribution(contributionId: string): Promise<ContributionResponse> {
+	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/approve`);
+	return data.data;
+}
+
+export async function rejectContribution(contributionId: string, reason: string): Promise<ContributionResponse> {
+	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/reject`, null, { params: { reason } });
+	return data.data;
+}
 
 export type ContributionStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 

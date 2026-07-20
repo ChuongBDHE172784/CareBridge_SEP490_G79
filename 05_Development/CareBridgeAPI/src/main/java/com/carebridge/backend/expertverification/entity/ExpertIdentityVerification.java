@@ -72,4 +72,25 @@ public class ExpertIdentityVerification {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "selfie_crop_file_id")
+    private UUID selfieCropFileId;
+
+    @Column(name = "id_card_crop_file_id")
+    private UUID idCardCropFileId;
+
+    @Column(name = "detection_selfie_status", length = 40)
+    private String detectionSelfieStatus;
+
+    @Column(name = "detection_id_card_status", length = 40)
+    private String detectionIdCardStatus;
+
+    @Column(name = "pipeline_error_code", length = 100)
+    private String pipelineErrorCode;
+
+    @Column(name = "pipeline_status", length = 40)
+    private String pipelineStatus;
+
+    @Column(name = "processed_at")
+    private Instant processedAt;
 }

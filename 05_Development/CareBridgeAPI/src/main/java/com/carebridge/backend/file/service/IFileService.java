@@ -40,4 +40,16 @@ public interface IFileService {
 
     /** Internal compensation for a failed atomic workflow. Not exposed by FileController. */
     void purgeFile(UUID fileId, UUID callerId);
+
+    /**
+     * Upload raw bytes directly to private storage (for cropped face images).
+     * Returns the uploaded file metadata.
+     */
+    UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName);
+
+    /**
+     * Upload raw bytes directly to private storage with explicit purpose (for cropped face images).
+     * Returns the uploaded file metadata.
+     */
+    UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName, FilePurpose purpose);
 }

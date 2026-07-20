@@ -17,7 +17,7 @@ public interface IMedicalContributionService {
     ContributionResponse createDraft(CreateContributionRequest request, UUID expertUserId);
 
     /**
-     * Get a contribution by ID.
+     * Get a contribution by ID with caller ID for access control.
      */
     ContributionResponse getById(UUID contributionId);
 

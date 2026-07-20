@@ -18,6 +18,8 @@ public class IdentityVerificationResponse {
     private UUID selfieFileId;
     private UUID identityFrontFileId;
     private UUID identityBackFileId;
+    private UUID selfieCropFileId;
+    private UUID idCardCropFileId;
     private FaceVerificationStatus faceStatus;
     private BigDecimal faceSimilarity;
     private BigDecimal faceThreshold;

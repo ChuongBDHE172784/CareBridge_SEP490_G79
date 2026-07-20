@@ -373,6 +373,98 @@ public class FileServiceImpl implements IFileService {
         });
     }
 
+    @Override
+    public UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName) {
+        return uploadPrivateBytes(bytes, callerId, mimeType, suggestedName, null);
+    }
+
+    @Override
+    public UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName, FilePurpose purpose) {
+        // Size check (FILE-002)
+        if (bytes.length > MAX_SIZE_BYTES) {
+            throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "FILE-002",
+                    "File exceeds maximum size of 20MB");
+        }
+
+        // Storage quota check (C4)
+        long existingCount = fileRepository.countByOwnerUserIdAndStatus(callerId, FileStatus.ACTIVE);
+        if (existingCount >= MAX_FILES_PER_ACCOUNT) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FILE-003",
+                    "Storage quota of 500 files exceeded");
+        }
+
+        // Validate MIME type (C1)
+        if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    "Unsupported file type: " + mimeType);
+        }
+
+        // Determine kind
+        FileKind kind = IMAGE_MIME_TYPES.contains(mimeType) ? FileKind.IMAGE : FileKind.DOCUMENT;
+
+        // For cropped face images, use Cloudinary with PRIVATE access
+        String provider = kind == FileKind.IMAGE ? "cloudinary" : "r2";
+        FilePurpose effectivePurpose = purpose != null ? purpose :
+            (kind == FileKind.IMAGE ? FilePurpose.EXPERT_IDENTITY_SELFIE_CROP : FilePurpose.EXPERT_IDENTITY_CCCD_FRONT_CROP);
+        FileAccessMode accessMode = FileAccessMode.PRIVATE;
+
+        // Generate storage key
+        String fileExt = getExtension(suggestedName, mimeType);
+        String storageKey = "files/" + UUID.randomUUID() + fileExt;
+
+        // Calculate checksum
+        String checksum = null;
+        try {
+            checksum = calculateChecksum(bytes);
+        } catch (Exception ignored) {
+            // Continue without checksum
+        }
+
+        IStorageService storageService = storageFor(provider);
+        String persistedStorageKey;
+        try {
+            storageService.store(storageKey, bytes, mimeType);
+            persistedStorageKey = storageService.persistedKey(storageKey);
+        } catch (IOException e) {
+            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-004",
+                    "Failed to store file");
+        }
+
+        try {
+            UploadedFile saved = fileRepository.save(UploadedFile.builder()
+                    .ownerUserId(callerId)
+                    .storageKey(persistedStorageKey)
+                    .storageProvider(provider)
+                    .kind(kind)
+                    .purpose(effectivePurpose)
+                    .accessMode(accessMode)
+                    .originalName(suggestedName != null ? suggestedName : "crop-" + System.currentTimeMillis() + fileExt)
+                    .mimeType(mimeType)
+                    .fileSizeBytes((long) bytes.length)
+                    .checksum(checksum)
+                    .status(FileStatus.ACTIVE)
+                    .build());
+            String presignedUrl = storageService.generatePresignedUrl(saved.getStorageKey(), 15);
+            auditService.log(AuditAction.FILE_UPLOADED, callerId,
+                    "UploadedFile", saved.getId().toString(), "uploaded");
+            return UploadFileResponse.builder()
+                    .fileId(saved.getId())
+                    .originalName(saved.getOriginalName())
+                    .mimeType(saved.getMimeType())
+                    .fileSizeBytes(saved.getFileSizeBytes())
+                    .presignedUrl(presignedUrl)
+                    .createdAt(saved.getCreatedAt())
+                    .build();
+        } catch (RuntimeException ex) {
+            try {
+                storageService.delete(persistedStorageKey);
+            } catch (RuntimeException cleanupFailure) {
+                ex.addSuppressed(cleanupFailure);
+            }
+            throw ex;
+        }
+    }
+
     private IStorageService storageFor(String provider) {
         if ("cloudinary".equalsIgnoreCase(provider)) {
             return cloudinaryStorageService;
