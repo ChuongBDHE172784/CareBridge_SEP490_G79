@@ -3,6 +3,7 @@ package com.carebridge.backend.expertverification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.carebridge.backend.audit.service.AuditService;
@@ -10,7 +11,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
-import com.carebridge.backend.expertverification.adapter.FaceVerificationAdapter;
+import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
@@ -19,6 +20,9 @@ import com.carebridge.backend.expertverification.repository.ExpertCredentialRepo
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
 import com.carebridge.backend.expertverification.service.impl.ExpertIdentityVerificationServiceImpl;
 import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -36,7 +40,7 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private ExpertProfileRepository profileRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
-    @Mock private FaceVerificationAdapter faceVerificationAdapter;
+    @Mock private CompreFacePipelineAdapter pipelineAdapter;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
 
@@ -48,7 +52,7 @@ class ExpertIdentityVerificationServiceTest {
     void setUp() {
         service = new ExpertIdentityVerificationServiceImpl(
                 profileRepository, identityRepository, credentialRepository,
-                faceVerificationAdapter, fileService, auditService);
+                pipelineAdapter, fileService, auditService);
     }
 
     @Test
@@ -62,31 +66,55 @@ class ExpertIdentityVerificationServiceTest {
                 .satisfies(error -> assertThat(((BusinessException) error).getCode())
                         .isEqualTo("EXPIDENT-001"));
 
-        verifyNoInteractions(faceVerificationAdapter, fileService);
+        verifyNoInteractions(pipelineAdapter, fileService);
         verify(identityRepository).findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId);
     }
 
     @Test
     void disabledCompreFaceStoresAllEvidenceForManualReview() {
         when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
-        when(faceVerificationAdapter.verify(any(), any(), any(), any()))
-                .thenReturn(new FaceVerificationResult(
-                        FaceVerificationStatus.DISABLED, null, BigDecimal.valueOf(.75),
-                        "PENDING_LINUX_VERIFICATION"));
-        when(fileService.uploadPrivateFile(any(), eq(userId)))
-                .thenReturn(upload(), upload(), upload());
+
+        // Mock pipeline to return DISABLED immediately (doesn't call CompreFace)
+        when(pipelineAdapter.verifyWithPipeline(any(), any(), any(), any()))
+                .thenReturn(new CompreFacePipelineAdapter.PipelineResult(
+                        new FaceVerificationResult(
+                                FaceVerificationStatus.DISABLED, null, BigDecimal.valueOf(.75),
+                                "PENDING_LINUX_VERIFICATION"),
+                        null, null,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        "DISABLED"));
+
+        UploadFileResponse uploadResponse = upload();
+        when(fileService.uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_SELFIE), eq(FileAccessMode.PRIVATE)))
+                .thenReturn(uploadResponse);
+        when(fileService.uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_CCCD_FRONT), eq(FileAccessMode.PRIVATE)))
+                .thenReturn(uploadResponse);
+        when(fileService.uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_CCCD_BACK), eq(FileAccessMode.PRIVATE)))
+                .thenReturn(uploadResponse);
         when(identityRepository.save(any())).thenAnswer(invocation -> {
             ExpertIdentityVerification value = invocation.getArgument(0);
-            value.setId(UUID.randomUUID());
+            if (value.getId() == null) {
+                value.setId(UUID.randomUUID());
+            }
             return value;
         });
+
+        // Mock findByIdForUpdate to return the saved attempt
+        var mockAttempt = ExpertIdentityVerification.builder()
+                .id(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .build();
+        when(identityRepository.findByIdForUpdate(any())).thenReturn(Optional.of(mockAttempt));
 
         var response = service.submit(userId, image("selfie"), image("front"), image("back"));
 
         assertThat(response.getReviewStatus()).isEqualTo(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED);
         assertThat(response.getFaceStatus()).isEqualTo(FaceVerificationStatus.DISABLED);
-        verify(fileService, times(3)).uploadPrivateFile(any(), eq(userId));
-        verify(identityRepository).save(any());
+        verify(fileService).uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_SELFIE), eq(FileAccessMode.PRIVATE));
+        verify(fileService).uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_CCCD_FRONT), eq(FileAccessMode.PRIVATE));
+        verify(fileService).uploadWithPurpose(any(), eq(userId), eq(FileKind.IMAGE), eq(FilePurpose.EXPERT_IDENTITY_CCCD_BACK), eq(FileAccessMode.PRIVATE));
+        verify(identityRepository, times(2)).save(any());
     }
 
     @Test
