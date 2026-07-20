@@ -154,22 +154,37 @@ class FileServiceImplTest {
         verify(cloudinaryStorageService, never()).store(any(), any(), any());
     }
 
-    // FILE-TC-002b: uploadPublicFile() forces Cloudinary even for documents (backward compat)
-// This test verifies the legacy behavior - use uploadFile() for proper routing
+    // FILE-TC-002b: uploadPublicFile() rejects non-image files (images only)
     @Test
-    void uploadPublicFile_forcesCloudinaryEvenForPdf() {
+    void uploadPublicFile_rejectsPdfWithFile001() {
         byte[] pdfBytes = new byte[100];
         pdfBytes[0] = 0x25; pdfBytes[1] = 0x50; pdfBytes[2] = 0x44; pdfBytes[3] = 0x46; // %PDF
         MockMultipartFile pdfFile = new MockMultipartFile("file", "report.pdf", "application/pdf", pdfBytes);
+
+        assertThatThrownBy(() -> fileService.uploadPublicFile(pdfFile, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getCode()).isEqualTo("FILE-001");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+                });
+
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
+        verify(r2StorageService, never()).store(any(), any(), any());
+    }
+
+    // FILE-TC-002c: uploadPublicFile() accepts images
+    @Test
+    void uploadPublicFile_acceptsJpeg() {
         when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
         when(fileRepository.save(any())).thenReturn(savedFile(FILE_ID));
-        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
+        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/image.jpg");
 
-        UploadFileResponse resp = fileService.uploadPublicFile(pdfFile, CALLER_ID);
+        UploadFileResponse resp = fileService.uploadPublicFile(makeFile("image/jpeg", 1000), CALLER_ID);
 
         assertThat(resp.getFileId()).isEqualTo(FILE_ID);
         assertThat(resp.getPresignedUrl()).isNotBlank();
-        verify(cloudinaryStorageService).store(anyString(), any(), eq("application/pdf"));
+        verify(cloudinaryStorageService).store(anyString(), any(), eq("image/jpeg"));
         verify(r2StorageService, never()).store(any(), any(), any());
     }
 

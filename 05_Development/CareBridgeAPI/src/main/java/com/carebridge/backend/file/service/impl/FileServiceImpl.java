@@ -95,7 +95,12 @@ public class FileServiceImpl implements IFileService {
     @Override
     public UploadFileResponse uploadPublicFile(MultipartFile file, UUID callerId) {
         String mimeType = detectMimeType(file);
-        // Public files override purpose to public content image
+        // Public files must be images only - reject documents
+        if (!IMAGE_MIME_TYPES.contains(mimeType)) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    "Public file upload only supports image types (JPEG, PNG, WebP, HEIC, GIF). Got: " + mimeType);
+        }
+        // Public files are always Cloudinary with PUBLIC access mode
         return uploadUsing(file, callerId, "cloudinary", FileKind.IMAGE, FilePurpose.PUBLIC_CONTENT_IMAGE, FileAccessMode.PUBLIC);
     }
 
@@ -109,10 +114,22 @@ public class FileServiceImpl implements IFileService {
     /**
      * Upload with explicit routing by kind/purpose/accessMode.
      * Used by domain services that know the semantic purpose.
+     * Validates that detected kind matches requested kind.
      */
+    @Override
     public UploadFileResponse uploadWithPurpose(MultipartFile file, UUID callerId,
                                                  FileKind kind, FilePurpose purpose, FileAccessMode accessMode) {
-        return uploadUsing(file, callerId, determineProviderByKind(kind), kind, purpose, accessMode);
+        String mimeType = detectMimeType(file);
+        String provider = determineProviderByKind(kind);
+
+        // Validate: detected kind must match requested kind
+        FileKind detectedKind = IMAGE_MIME_TYPES.contains(mimeType) ? FileKind.IMAGE : FileKind.DOCUMENT;
+        if (detectedKind != kind) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    String.format("File kind mismatch: declared %s but detected %s (MIME: %s)", kind, detectedKind, mimeType));
+        }
+
+        return uploadUsing(file, callerId, provider, kind, purpose, accessMode);
     }
 
     private String determineProvider(String mimeType) {
@@ -170,7 +187,7 @@ public class FileServiceImpl implements IFileService {
 
         // Determine purpose/accessMode if not provided
         if (purpose == null) {
-            // Infer purpose from provider + mime
+            // Infer purpose from provider + kind
             if (provider.equals("cloudinary") && kind == FileKind.IMAGE) {
                 purpose = FilePurpose.PUBLIC_CONTENT_IMAGE;
                 accessMode = FileAccessMode.AUTHENTICATED;
@@ -186,11 +203,11 @@ public class FileServiceImpl implements IFileService {
             accessMode = provider.equals("cloudinary") ? FileAccessMode.AUTHENTICATED : FileAccessMode.PRIVATE;
         }
 
-        // C2: storageKey must be UUID-based (ADR-FILE-003)
+        // C2: storageKey must be UUID-based (not originalName)
         String fileExt = getExtension(file.getOriginalFilename(), mimeType);
         String storageKey = "files/" + UUID.randomUUID() + fileExt;
 
-        // Calculate checksum for integrity
+        // Calculate checksum for integrity (single read - bytes cached from detectMimeType)
         String checksum = null;
         try {
             checksum = calculateChecksum(file.getBytes());

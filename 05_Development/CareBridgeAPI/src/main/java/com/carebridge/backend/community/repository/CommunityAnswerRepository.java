@@ -17,8 +17,8 @@ import java.util.UUID;
 @Repository
 public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer, UUID> {
 
-    // UC-198: batch-check which questions in a set have at least one expert-labeled answer
-    @Query("SELECT DISTINCT a.questionId FROM CommunityAnswer a WHERE a.questionId IN :questionIds AND a.expertLabeled = true")
+    // UC-198: batch-check which questions in a set have at least one expert-labeled APPROVED answer
+    @Query("SELECT DISTINCT a.questionId FROM CommunityAnswer a WHERE a.questionId IN :questionIds AND a.expertLabeled = true AND a.status = 'APPROVED'")
     Set<UUID> findQuestionIdsWithExpertAnswer(java.util.Collection<UUID> questionIds);
 
     // Dev seed idempotency (DevDataSeeder) — tolerate legacy duplicate answers
