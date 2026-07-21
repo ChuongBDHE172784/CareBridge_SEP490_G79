@@ -12,6 +12,8 @@ public interface CareGroupRepository extends JpaRepository<CareGroup, UUID> {
 
     long countByOwnerUserIdAndStatus(UUID ownerUserId, CareGroupStatus status);
 
+    boolean existsByOwnerUserIdAndGroupNameIgnoreCase(UUID ownerUserId, String groupName);
+
     Optional<CareGroup> findByIdAndStatus(UUID id, CareGroupStatus status);
 
     List<CareGroup> findByOwnerUserIdAndStatus(UUID ownerUserId, CareGroupStatus status);

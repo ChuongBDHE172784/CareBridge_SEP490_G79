@@ -9,6 +9,7 @@ import com.carebridge.backend.family.dto.CreateCareGroupResponse;
 import com.carebridge.backend.family.dto.FamilyPermissionResponse;
 import com.carebridge.backend.family.dto.InviteFamilyMemberRequest;
 import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
+import com.carebridge.backend.family.dto.JoinCareGroupRequest;
 import com.carebridge.backend.family.dto.CareGroupSummaryDto;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
 import com.carebridge.backend.family.dto.UpdateFamilyPermissionRequest;
@@ -31,7 +32,6 @@ import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -61,6 +61,17 @@ public class CareGroupController {
         var response = careGroupService.createCareGroup(request, callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Care group created successfully"));
+    }
+
+    // UC70-DEL: Delete care group (owner only, hard delete)
+    @DeleteMapping("/{groupId}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<Void>> deleteCareGroup(
+            @PathVariable UUID groupId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        careGroupService.deleteCareGroup(groupId, callerId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Care group deleted successfully"));
     }
 
     // UC-71/83: List care groups the caller belongs to (owner or accepted member)
@@ -169,6 +180,17 @@ public class CareGroupController {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = careGroupService.acceptInvitationByToken(token, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Invitation accepted"));
+    }
+
+    // Join care group by invite code or groupId
+    @PostMapping("/join")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<CareGroupSummaryDto>> joinGroupByCode(
+            @Valid @RequestBody JoinCareGroupRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.joinGroupByCode(request.getCode(), callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Joined care group successfully"));
     }
 
     // UC72: Update a member's permission flags (OWNER only)

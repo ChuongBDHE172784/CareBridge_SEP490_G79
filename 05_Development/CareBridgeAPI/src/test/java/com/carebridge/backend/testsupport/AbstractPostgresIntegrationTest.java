@@ -42,6 +42,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         "spring.mail.port=3025",
         "carebridge.mail.from-address=noreply@carebridge.test",
         "carebridge.mail.from-name=CareBridge",
+        // Full application contexts also construct the direct-chat/Zego boundary.
+        // Synthetic values keep integration tests hermetic; no external call is made.
+        "carebridge.zego.app-id=1",
+        "carebridge.zego.server-secret=synthetic-test-secret",
         // Keep the DB clean and deterministic: each test class seeds its own data.
         // (Leaving the dev seeder on would re-insert the same accounts for every
         // Spring context sharing this singleton container and hit unique clashes.)

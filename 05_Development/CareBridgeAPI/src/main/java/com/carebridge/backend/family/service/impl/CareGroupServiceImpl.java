@@ -78,6 +78,12 @@ public class CareGroupServiceImpl implements ICareGroupService {
                     "Maximum of 5 active care groups reached");
         }
 
+        // C5: group name must be unique for this owner (case-insensitive)
+        if (groupRepository.existsByOwnerUserIdAndGroupNameIgnoreCase(callerId, request.getGroupName().trim())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-015",
+                    "A care group with this name already exists");
+        }
+
         // C4: accountId from JWT
         CareGroup group = CareGroup.builder()
                 .ownerUserId(callerId)
@@ -117,6 +123,27 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     @Override
+    public void deleteCareGroup(UUID groupId, UUID callerId) {
+        CareGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
+                        "Care group not found: " + groupId));
+
+        // Only OWNER can delete
+        if (!group.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "FAM-008",
+                    "Only the group owner can delete this group");
+        }
+
+        // Hard delete: members, tasks, then the group itself
+        memberRepository.deleteByCareGroupId(groupId);
+        taskRepository.deleteByCareGroupId(groupId);
+        groupRepository.deleteById(groupId);
+
+        auditService.log(AuditAction.CARE_GROUP_DELETED, callerId,
+                "CareGroup", groupId.toString(), "deleted");
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CareGroupMembersResponse listMembers(UUID groupId, UUID callerId) {
         CareGroup group = groupRepository.findById(groupId)
@@ -135,15 +162,28 @@ public class CareGroupServiceImpl implements ICareGroupService {
         List<CareGroupMember> members = memberRepository.findByCareGroupIdAndInviteStatusIn(
                 groupId, List.of(InviteStatus.ACCEPTED, InviteStatus.PENDING));
 
-        // C2: displayName only — NO email/phone/raw accountId (BR-PRIVACY-002)
+        // C2: resolve displayName from user profile — full_name only (BR-PRIVACY-002)
         List<CareGroupMemberDto> memberDtos = members.stream()
-                .map(m -> CareGroupMemberDto.builder()
-                        .memberId(m.getId())
-                        .displayName("Member")  // display name resolved from user profile in controller layer
-                        .memberRole(m.getMemberRole() != null ? m.getMemberRole().name() : null)
-                        .inviteStatus(m.getInviteStatus().name())
-                        .joinedAt(m.getJoinedAt())
-                        .build())
+                .map(m -> {
+                    String displayName = userRepository.findById(m.getUserId())
+                            .map(u -> {
+                                String name = u.getName();
+                                if (name != null && !name.isBlank()) return name;
+                                // fallback: show phone (masked) if name is empty
+                                String phone = u.getPhone();
+                                if (phone != null && !phone.isBlank()) return phone;
+                                return "Thành viên";
+                            })
+                            .orElse("Thành viên");
+                    return CareGroupMemberDto.builder()
+                            .memberId(m.getId())
+                            .userId(m.getUserId())
+                            .displayName(displayName)
+                            .memberRole(m.getMemberRole() != null ? m.getMemberRole().name() : null)
+                            .inviteStatus(m.getInviteStatus().name())
+                            .joinedAt(m.getJoinedAt())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return CareGroupMembersResponse.builder()
@@ -305,42 +345,65 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
     @Override
     public RemoveMemberResponse removeMember(UUID groupId, UUID targetUserId, UUID callerId) {
-        groupRepository.findById(groupId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
-                        "Care group not found"));
+        try {
+            CareGroup group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
+                            "Care group not found"));
 
-        requireOwner(groupId, callerId, "FAM-058", "Only the care group owner can remove members");
+            if (!group.getOwnerUserId().equals(callerId)) {
+                requireOwner(groupId, callerId, "FAM-058", "Only the care group owner can remove members");
+            }
 
-        CareGroupMember target = memberRepository.findByCareGroupIdAndUserId(groupId, targetUserId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-059",
-                        "No membership found for this user in this group"));
-        if (target.getMemberRole() == GroupMemberRole.OWNER) {
-            throw new BusinessException(HttpStatus.CONFLICT, "FAM-061",
-                    "The group owner cannot be removed");
+            CareGroupMember target = memberRepository.findByCareGroupIdAndUserId(groupId, targetUserId)
+                    .or(() -> memberRepository.findByIdAndCareGroupId(targetUserId, groupId))
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-059",
+                            "No membership found for this user in this group"));
+            if (target.getMemberRole() == GroupMemberRole.OWNER || (target.getUserId() != null && target.getUserId().equals(group.getOwnerUserId()))) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-061",
+                        "The group owner cannot be removed");
+            }
+
+            UUID memberId = target.getId();
+            UUID targetUserUuid = target.getUserId();
+
+            if (targetUserUuid != null) {
+                taskRepository.reassignIncompleteTasks(groupId, targetUserUuid, group.getOwnerUserId());
+                List<CareGroupMember> duplicates = memberRepository.findAllByCareGroupIdAndUserId(groupId, targetUserUuid);
+                if (!duplicates.isEmpty()) {
+                    memberRepository.deleteAll(duplicates);
+                } else {
+                    memberRepository.delete(target);
+                }
+            } else {
+                memberRepository.delete(target);
+            }
+            Instant removedAt = Instant.now();
+
+            auditService.log(AuditAction.CARE_GROUP_MEMBER_REMOVED, callerId,
+                    "CareGroup", groupId.toString(), "member removed: " + targetUserUuid);
+            try {
+                eventPublisher.publishEvent(new CareGroupMemberRemoved(
+                        UUID.randomUUID(), "CareGroupMemberRemoved", removedAt, "1.0",
+                        new CareGroupMemberRemoved.Payload(groupId, memberId, targetUserUuid, callerId),
+                        new CareGroupMemberRemoved.Metadata(UUID.randomUUID(), "CareGroupServiceImpl")));
+            } catch (Exception e) {
+                log.warn("Failed to publish CareGroupMemberRemoved event", e);
+            }
+
+            return RemoveMemberResponse.builder()
+                    .careGroupMemberId(memberId)
+                    .groupId(groupId)
+                    .targetUserId(targetUserUuid)
+                    .inviteStatus("REMOVED")
+                    .removedAt(removedAt)
+                    .build();
+        } catch (BusinessException be) {
+            throw be;
+        } catch (Exception e) {
+            log.error("Error removing member from care group groupId={} targetUserId={}", groupId, targetUserId, e);
+            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FAM-500",
+                    "Error removing member: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
-        if (target.getInviteStatus() != InviteStatus.ACCEPTED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "FAM-060",
-                    "This user is not an active member and cannot be removed");
-        }
-
-        target.setInviteStatus(InviteStatus.REVOKED);
-        CareGroupMember saved = memberRepository.save(target);
-        Instant removedAt = Instant.now();
-
-        auditService.log(AuditAction.CARE_GROUP_MEMBER_REMOVED, callerId,
-                "CareGroup", groupId.toString(), "member removed: " + targetUserId);
-        eventPublisher.publishEvent(new CareGroupMemberRemoved(
-                UUID.randomUUID(), "CareGroupMemberRemoved", removedAt, "1.0",
-                new CareGroupMemberRemoved.Payload(groupId, saved.getId(), targetUserId, callerId),
-                new CareGroupMemberRemoved.Metadata(UUID.randomUUID(), "CareGroupServiceImpl")));
-
-        return RemoveMemberResponse.builder()
-                .careGroupMemberId(saved.getId())
-                .groupId(groupId)
-                .targetUserId(targetUserId)
-                .inviteStatus(saved.getInviteStatus().name())
-                .removedAt(removedAt)
-                .build();
     }
 
     @Override
@@ -437,11 +500,12 @@ public class CareGroupServiceImpl implements ICareGroupService {
             String phone = request.getPhone();
             if (phone == null || phone.isBlank()) {
                 throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-010",
-                        "Phone number is required for PHONE channel invite.");
+                        "Phone number or email is required for invitation.");
             }
             User invitee = userRepository.findByPhone(phone)
+                    .or(() -> userRepository.findByEmailIgnoreCase(phone))
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-014",
-                            "No CareBridge account was found for this phone number."));
+                            "No CareBridge account was found for this phone number or email."));
 
             // Duplicate check: PENDING invite already exists
             if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, invitee.getId(), InviteStatus.PENDING)) {
@@ -454,6 +518,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                     .ifPresent(m -> { throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
                             "This person is already an accepted member of the group."); });
 
+            String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
+                    ? invitee.getPhone()
+                    : (phone.length() <= 20 ? phone : null);
+
             CareGroupMember member = CareGroupMember.builder()
                     .careGroupId(groupId)
                     .userId(invitee.getId())
@@ -462,22 +530,22 @@ public class CareGroupServiceImpl implements ICareGroupService {
                     .inviteChannel(InviteChannel.PHONE)
                     .inviteToken(rawToken)
                     .inviteExpiresAt(expiresAt)
-                    .invitedPhone(phone)
+                    .invitedPhone(targetPhone)
                     .build();
             CareGroupMember saved = memberRepository.save(member);
 
             auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
-                    "CareGroupMember", saved.getId().toString(), "phone invite created");
+                    "CareGroupMember", saved.getId().toString(), "phone/email invite created");
 
             // C2: publish event with hashed token only — NEVER log raw token
-            publishInviteEvent(groupId, saved.getId(), callerId, channel, rawToken, phone, expiresAt);
+            publishInviteEvent(groupId, saved.getId(), callerId, channel, rawToken, targetPhone, expiresAt);
 
             return InviteFamilyMemberResponse.builder()
                     .careGroupMemberId(saved.getId())
                     .channel(InviteChannel.PHONE)
                     .inviteToken(rawToken)
                     .inviteExpiresAt(expiresAt)
-                    .invitedPhone(phone)
+                    .invitedPhone(targetPhone)
                     .build();
         }
 
@@ -593,6 +661,72 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .careGroupMemberId(member.getId())
                 .inviteStatus(InviteStatus.ACCEPTED.name())
                 .joinedAt(now)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public CareGroupSummaryDto joinGroupByCode(String code, UUID callerId) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-060", "Mã mời không được để trống.");
+        }
+        String cleanCode = code.trim();
+        UUID groupId = null;
+
+        try {
+            groupId = UUID.fromString(cleanCode);
+        } catch (IllegalArgumentException e) {
+            try {
+                var res = acceptInvitationByToken(cleanCode, callerId);
+                groupId = res.getCareGroupId();
+            } catch (Exception ex) {
+                throw new BusinessException(HttpStatus.NOT_FOUND, "FAM-005", "Mã mời không hợp lệ hoặc không tồn tại.");
+            }
+        }
+
+        CareGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005", "Không tìm thấy nhóm chăm sóc với mã này."));
+
+        if (group.getStatus() != CareGroupStatus.ACTIVE) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-061", "Nhóm chăm sóc này hiện không hoạt động.");
+        }
+
+        var existingOpt = memberRepository.findByCareGroupIdAndUserId(groupId, callerId);
+        if (existingOpt.isPresent()) {
+            CareGroupMember existing = existingOpt.get();
+            if (existing.getInviteStatus() == InviteStatus.ACCEPTED) {
+                return toGroupSummaryDto(group, existing.getMemberRole().name());
+            } else {
+                existing.setInviteStatus(InviteStatus.ACCEPTED);
+                existing.setJoinedAt(Instant.now());
+                memberRepository.save(existing);
+                return toGroupSummaryDto(group, existing.getMemberRole().name());
+            }
+        }
+
+        CareGroupMember newMember = CareGroupMember.builder()
+                .careGroupId(groupId)
+                .userId(callerId)
+                .memberRole(GroupMemberRole.MEMBER)
+                .inviteStatus(InviteStatus.ACCEPTED)
+                .joinedAt(Instant.now())
+                .build();
+        memberRepository.save(newMember);
+
+        auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
+                "CareGroup", group.getId().toString(), "Joined care group via invite code");
+
+        return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
+    }
+
+    private CareGroupSummaryDto toGroupSummaryDto(CareGroup group, String roleName) {
+        long count = memberRepository.countByCareGroupId(group.getId());
+        return CareGroupSummaryDto.builder()
+                .groupId(group.getId())
+                .groupName(group.getGroupName())
+                .isActive(group.getStatus() == CareGroupStatus.ACTIVE)
+                .totalMembers((int) count)
+                .myRole(roleName)
                 .build();
     }
 

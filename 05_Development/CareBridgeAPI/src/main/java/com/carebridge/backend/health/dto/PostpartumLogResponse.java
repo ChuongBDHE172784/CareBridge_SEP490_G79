@@ -14,6 +14,7 @@ public class PostpartumLogResponse {
 
     private UUID postpartumLogId;
     private UUID journeyId;
+    private UUID submissionId;
     private LocalDate logDate;
     private Short painLevel;
     private String bleedingLevel;

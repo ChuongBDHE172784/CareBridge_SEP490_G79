@@ -371,16 +371,21 @@ public class DevDataSeeder implements ApplicationRunner {
             savedUsers.get("mother4@carebridge.dev"), JourneyType.POSTPARTUM,
             LocalDate.now().minusMonths(2));
 
-        BabyProfile mother4Baby = seedBabyProfile(
-            savedUsers.get("mother4@carebridge.dev"), mother4Journey);
-        seedBabyJourneyViewData(savedUsers.get("mother4@carebridge.dev"), mother4Baby);
-
         seedAcceptedCareGroup(
             savedUsers.get("mother3@carebridge.dev"), savedUsers.get("family2@carebridge.dev"),
             mother3Journey.getId(), null, "Mother Test 3's Care Group");
-        seedAcceptedCareGroup(
-            savedUsers.get("mother4@carebridge.dev"), savedUsers.get("family3@carebridge.dev"),
-            mother4Journey.getId(), mother4Baby.getId(), "Mother Test 4's Care Group");
+        if (mother4Journey.getJourneyType() == JourneyType.POSTPARTUM) {
+            BabyProfile mother4Baby = seedBabyProfile(
+                savedUsers.get("mother4@carebridge.dev"), mother4Journey);
+            seedBabyJourneyViewData(savedUsers.get("mother4@carebridge.dev"), mother4Baby);
+            seedAcceptedCareGroup(
+                savedUsers.get("mother4@carebridge.dev"), savedUsers.get("family3@carebridge.dev"),
+                mother4Journey.getId(), mother4Baby.getId(), "Mother Test 4's Care Group");
+        } else {
+            log.warn(
+                "Skipping mother4 postpartum baby fixture because active canonical journey {} is {}",
+                mother4Journey.getId(), mother4Journey.getJourneyType());
+        }
 
         seedVerifiedExpert(savedUsers.get("expert2@carebridge.dev"), admin,
             "Sản khoa", "Bác sĩ Sản khoa", 8, "Bệnh viện Từ Dũ");
@@ -389,6 +394,11 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     private MotherJourney seedMotherJourney(User mother, JourneyType type, LocalDate deliveryDate) {
+        var activeCanonical = motherJourneyRepository
+            .findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(mother.getId(), JourneyStatus.ACTIVE);
+        if (activeCanonical.isPresent()) {
+            return activeCanonical.get();
+        }
         List<MotherJourney> existing = motherJourneyRepository
             .findByOwnerUserIdAndJourneyTypeAndStatusOrderByCreatedAtAsc(mother.getId(), type, JourneyStatus.ACTIVE);
         if (!existing.isEmpty()) {

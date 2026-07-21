@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/postpartum_log_model.dart';
+import '../services/postpartum_log_service.dart';
 
 class PostpartumLogListScreen extends StatefulWidget {
-  final String journeyId;
+  const PostpartumLogListScreen({
+    super.key,
+    required this.journeyId,
+    this.service,
+  });
 
-  const PostpartumLogListScreen({super.key, required this.journeyId});
+  final String journeyId;
+  final PostpartumLogService? service;
 
   @override
   State<PostpartumLogListScreen> createState() =>
@@ -11,379 +20,208 @@ class PostpartumLogListScreen extends StatefulWidget {
 }
 
 class _PostpartumLogListScreenState extends State<PostpartumLogListScreen> {
-  bool _isLoading = true;
-  String _selectedFilter = 'Tất cả';
-  final List<String> _filters = [
-    'Tất cả',
-    'Giấc ngủ',
-    'Tâm trạng',
-    'Triệu chứng',
-    'Cho bú',
-  ];
-
-  List<Map<String, dynamic>> _logs = [];
+  static const _primary = Color(0xFF845143);
+  static const _accent = Color(0xFFC98C7B);
+  late final PostpartumLogService _service;
+  final List<PostpartumLog> _logs = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  String? _error;
+  int _page = 0;
+  bool _hasNext = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchLogs();
+    _service = widget.service ?? PostpartumLogService();
+    _load();
   }
 
-  Future<void> _fetchLogs() async {
-    setState(() => _isLoading = true);
+  Future<void> _load({bool more = false}) async {
+    if (more && (!_hasNext || _loading || _loadingMore)) return;
+    final generation = more ? _loadGeneration : ++_loadGeneration;
+    setState(() {
+      if (more) {
+        _loadingMore = true;
+      } else {
+        _loading = true;
+        _loadingMore = false;
+        _error = null;
+      }
+    });
     try {
-      // API call: GET /api/v1/postpartum-logs?journeyId={journeyId}
-      await Future.delayed(const Duration(milliseconds: 800));
-      _logs = [
-        {
-          'id': 'log_1',
-          'dateLabel': 'Hôm nay, 14 Tháng 10',
-          'time': '08:30',
-          'category': 'Giấc ngủ',
-          'icon': Icons.bedtime,
-          'color': const Color(0xFFC98C7B), // primary-container
-          'note':
-              'Ngủ được khoảng 4 tiếng liên tục. Cảm thấy đỡ mệt hơn hôm qua một chút.',
-          'tags': ['Ngủ ngon', '4h'],
-        },
-        {
-          'id': 'log_2',
-          'dateLabel':
-              '', // Same date group implicitly in UI or handled via logic
-          'time': '14:15',
-          'category': 'Tâm trạng',
-          'icon': Icons.mood,
-          'color': const Color(0xFF6E5A52), // secondary
-          'note':
-              'Hơi lo lắng về việc bé bú không đủ. Đã gọi cho bác sĩ tư vấn, thấy yên tâm hơn.',
-          'tags': ['Lo âu nhẹ'],
-        },
-        {
-          'id': 'log_3',
-          'dateLabel': 'Hôm qua, 13 Tháng 10',
-          'time': '19:00',
-          'category': 'Triệu chứng',
-          'icon': Icons.water_drop,
-          'color': const Color(0xFFC98C7B),
-          'note':
-              'Vết mổ hơi nhói khi di chuyển nhiều. Đã uống thuốc giảm đau theo đơn.',
-          'tags': ['Đau nhẹ'],
-          'isErrorTag': true,
-        },
-      ];
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi tải danh sách nhật ký')),
-      );
+      final nextPage = more ? _page + 1 : 0;
+      final result = await _service.list(widget.journeyId, page: nextPage);
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _error = null;
+        if (!more) _logs.clear();
+        _logs.addAll(result.items);
+        _page = result.page;
+        _hasNext = result.hasNext;
+      });
+    } catch (_) {
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _error = 'Chưa thể tải nhật ký hồi phục.');
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && generation == _loadGeneration) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      }
     }
+  }
+
+  Future<void> _openCreate() async {
+    final changed = await context.push<bool>(
+      '/postpartum-logs/new?journeyId=${Uri.encodeComponent(widget.journeyId)}',
+    );
+    if (changed == true && mounted) await _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF845143);
-    const bgColor = Color(0xFFFFF8F6);
-
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: const Color(0xFFFFF8F6),
       appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Nhật ký phục hồi',
-          style: TextStyle(
-            color: primaryColor,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
-            fontSize: 20,
-          ),
-        ),
+        backgroundColor: const Color(0xFFFFF8F6),
+        foregroundColor: _primary,
+        title: const Text('Nhật ký hồi phục'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close, color: primaryColor),
-            onPressed: () => Navigator.pop(context),
+            tooltip: 'Dấu hiệu cần hỗ trợ khẩn cấp',
+            onPressed: () => context.push('/postpartum-safety-help'),
+            icon: const Icon(Icons.health_and_safety_outlined),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryColor))
-          : Column(
-              children: [
-                // Filters
-                SizedBox(
-                  height: 50,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _filters.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      final isSelected = filter == _selectedFilter;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedFilter = filter);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFFC98C7B)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.transparent
-                                  : const Color(0xFFD6C2BD),
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              filter,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF524440),
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Timeline
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(
-                      left: 36,
-                      right: 20,
-                      top: 16,
-                      bottom: 100,
-                    ),
-                    itemCount: _logs.length,
-                    itemBuilder: (context, index) {
-                      final log = _logs[index];
-                      return _buildTimelineItem(
-                        log,
-                        isLast: index == _logs.length - 1,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: _accent,
+        child: _buildBody(),
+      ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Add new log
-        },
-        backgroundColor: const Color(0xFFC98C7B),
-        icon: const Icon(Icons.add, color: Color(0xFF51271B)),
-        label: const Text(
-          'Thêm nhật ký',
-          style: TextStyle(
-            color: Color(0xFF51271B),
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
-            fontSize: 16,
-          ),
-        ),
+        key: const Key('postpartum-log-add'),
+        onPressed: _openCreate,
+        backgroundColor: _accent,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Thêm nhật ký'),
       ),
     );
   }
 
-  Widget _buildTimelineItem(Map<String, dynamic> log, {required bool isLast}) {
-    final bool hasDateLabel =
-        log['dateLabel'] != null && log['dateLabel'].isNotEmpty;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(color: _accent));
+    }
+    if (_error != null && _logs.isEmpty) {
+      return ListView(
         children: [
-          // Timeline indicator
-          SizedBox(
-            width: 24,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                if (!isLast)
-                  Positioned(
-                    top: 24,
-                    bottom: -24, // overlap to next item
-                    left: 11,
-                    child: Container(
-                      width: 2,
-                      color: const Color(0xFFFADCD3), // surface-variant
-                    ),
-                  ),
-                Positioned(
-                  top: hasDateLabel ? 32 : 4,
-                  left: 0,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFE2D9),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFFFF8F6),
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: log['color'],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (hasDateLabel)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      log['dateLabel'],
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF524440),
-                        fontFamily: 'Quicksand',
-                      ),
-                    ),
-                  ),
-                GestureDetector(
-                  onTap: () {
-                    // Navigator.push Named to CB-159 Detail
-                    // For now:
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFFFADCD3),
-                      ), // surface-variant
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  log['icon'],
-                                  color: log['color'],
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  log['category'],
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF271812),
-                                    fontFamily: 'Quicksand',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              log['time'],
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF524440),
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          log['note'],
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF271812),
-                            fontFamily: 'Quicksand',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          children: (log['tags'] as List<String>).map((tag) {
-                            final isError = log['isErrorTag'] == true;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isError
-                                    ? const Color(0xFFFFDAD6)
-                                    : const Color(0xFFFFF1EC),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                tag,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isError
-                                      ? const Color(0xFF93000A)
-                                      : const Color(0xFF524440),
-                                  fontFamily: 'Quicksand',
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 120),
+          Icon(Icons.cloud_off_rounded, size: 52, color: _primary),
+          const SizedBox(height: 12),
+          Text(_error!, textAlign: TextAlign.center),
+          Center(
+            child: TextButton(onPressed: _load, child: const Text('Thử lại')),
           ),
         ],
-      ),
+      );
+    }
+    if (_logs.isEmpty) {
+      return ListView(
+        children: const [
+          SizedBox(height: 120),
+          Icon(Icons.menu_book_outlined, size: 52, color: _primary),
+          SizedBox(height: 12),
+          Text(
+            'Chưa có nhật ký. Bạn có thể bắt đầu khi sẵn sàng.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+    final hasPartialError = _error != null;
+    final offset = hasPartialError ? 1 : 0;
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      itemCount: _logs.length + (_hasNext ? 1 : 0) + offset,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        if (hasPartialError && index == 0) {
+          return Semantics(
+            liveRegion: true,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF0ED),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Một phần dữ liệu chưa tải được.'),
+                  ),
+                  TextButton(onPressed: _load, child: const Text('Thử lại')),
+                ],
+              ),
+            ),
+          );
+        }
+        final logIndex = index - offset;
+        if (logIndex == _logs.length) {
+          return Center(
+            child: TextButton(
+              onPressed: _loadingMore ? null : () => _load(more: true),
+              child: Text(_loadingMore ? 'Đang tải…' : 'Tải thêm'),
+            ),
+          );
+        }
+        final log = _logs[logIndex];
+        return Semantics(
+          button: true,
+          label: 'Nhật ký hồi phục ngày ${_date(log.logDate)}',
+          child: Card(
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: ListTile(
+              minTileHeight: 72,
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFFE2D9),
+                child: Icon(Icons.self_improvement_rounded, color: _primary),
+              ),
+              title: Text(_date(log.logDate)),
+              subtitle: Text(_summary(log)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                final changed = await context.push<bool>(
+                  '/postpartum-logs/${Uri.encodeComponent(log.id)}',
+                );
+                if (changed == true && mounted) await _load();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
+
+  String _summary(PostpartumLog log) {
+    final parts = <String>[
+      if (log.painLevel != null) 'Đau ${log.painLevel}/10',
+      if (log.moodLevel != null) 'Tâm trạng ${log.moodLevel}/10',
+      if (log.sleepHours != null) 'Ngủ ${log.sleepHours} giờ',
+    ];
+    return parts.isEmpty ? 'Đã ghi nhận thông tin hồi phục' : parts.join(' • ');
+  }
+
+  String _date(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
 }

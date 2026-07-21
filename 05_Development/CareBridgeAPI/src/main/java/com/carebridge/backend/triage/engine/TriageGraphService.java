@@ -38,6 +38,7 @@ public class TriageGraphService {
                 new RiskRuleFactory(
                         new PreconceptionRiskRules(),
                         new MaternalPregnancyRiskRules(),
+                        new PostpartumRiskRules(),
                         new PediatricInfantRiskRules(),
                         new PediatricToddlerRiskRules()));
     }
@@ -47,13 +48,17 @@ public class TriageGraphService {
         StageRiskRules riskRules = riskRuleFactory.forStage(stage);
         List<String> questions = collectIntake(request, riskRules);
         List<String> symptoms = normalizeSymptoms(request);
-        List<MedicalSource> sources = retrieveSources(symptoms, request.getChildAgeMonths());
+        List<MedicalSource> sources = stage.isPediatric()
+                ? retrieveSources(symptoms, request.getChildAgeMonths())
+                : List.of();
         PediatricRiskRules.RuleOutcome outcome = applyRules(request, symptoms, riskRules);
         List<TriageCitation> citations = attachCitations(sources);
 
         if (symptoms.isEmpty() && !"RED".equals(outcome.riskLevel())) {
             questions = new ArrayList<>(questions);
-            questions.add("Vui lòng mô tả lại bằng dấu hiệu cụ thể mà bạn quan sát được ở trẻ.");
+            questions.add(stage == TriageStage.POSTPARTUM
+                    ? "Vui lòng mô tả cụ thể dấu hiệu bạn đang gặp trong quá trình hồi phục sau sinh."
+                    : "Vui lòng mô tả lại bằng dấu hiệu cụ thể mà bạn quan sát được ở trẻ.");
             questions = questions.stream().distinct().limit(3).toList();
         }
 
@@ -63,14 +68,18 @@ public class TriageGraphService {
             return ChildTriageResult.builder()
                     .status("NEED_MORE_INFO")
                     .summary("CareBridge cần thêm thông tin quan trọng trước khi phân loại rủi ro chắc chắn.")
-                    .possibleConcern("Thiếu dữ liệu nền như tuổi, hô hấp, ý thức hoặc bú/uống.")
-                    .recommendedAction("Vui lòng trả lời các câu hỏi bổ sung. Nếu trẻ có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay.")
+                    .possibleConcern(stage == TriageStage.POSTPARTUM
+                            ? "Thông tin hồi phục hiện chưa đủ để phân loại an toàn."
+                            : "Thiếu dữ liệu nền như tuổi, hô hấp, ý thức hoặc bú/uống.")
+                    .recommendedAction(stage == TriageStage.POSTPARTUM
+                            ? "Vui lòng trả lời các câu hỏi bổ sung. Nếu bạn thấy không an toàn hoặc có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay."
+                            : "Vui lòng trả lời các câu hỏi bổ sung. Nếu trẻ có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay.")
                     .emergencyActionRequired(false)
                     .redFlags(List.of())
                     .matchedRules(outcome.matchedRules())
                     .normalizedSymptoms(symptoms)
                     .citations(citations)
-                    .disclaimer(DISCLAIMER)
+                    .disclaimer(disclaimer(stage))
                     .questions(questions)
                     .warning(citations.isEmpty() ? "Không tìm thấy nguồn phù hợp trong knowledge base" : null)
                     .build();
@@ -81,15 +90,15 @@ public class TriageGraphService {
                 .status("COMPLETED")
                 .riskLevel(riskLevel)
                 .riskColor(colorFor(riskLevel))
-                .summary(summary(riskLevel, symptoms, outcome.redFlags()))
-                .possibleConcern(possibleConcern(riskLevel, outcome.redFlags()))
-                .recommendedAction(recommendedAction(riskLevel))
+                .summary(summary(stage, riskLevel, symptoms, outcome.redFlags()))
+                .possibleConcern(possibleConcern(stage, riskLevel, outcome.redFlags()))
+                .recommendedAction(recommendedAction(stage, riskLevel))
                 .emergencyActionRequired("RED".equals(riskLevel))
                 .redFlags(outcome.redFlags())
                 .matchedRules(outcome.matchedRules())
                 .normalizedSymptoms(symptoms)
                 .citations(citations)
-                .disclaimer(DISCLAIMER)
+                .disclaimer(disclaimer(stage))
                 .questions(List.of())
                 .warning(citations.isEmpty() ? "Không tìm thấy nguồn phù hợp trong knowledge base" : null)
                 .build();
@@ -128,7 +137,14 @@ public class TriageGraphService {
         };
     }
 
-    private String summary(String riskLevel, List<String> symptoms, List<String> redFlags) {
+    private String summary(TriageStage stage, String riskLevel, List<String> symptoms, List<String> redFlags) {
+        if (stage == TriageStage.POSTPARTUM) {
+            return switch (riskLevel) {
+                case "RED" -> "Thông tin nhập vào có dấu hiệu cảnh báo cần được hỗ trợ khẩn cấp.";
+                case "YELLOW" -> "Dấu hiệu hồi phục cần được nhân viên y tế đánh giá thêm.";
+                default -> "Chưa ghi nhận dấu hiệu nguy hiểm từ thông tin hiện có.";
+            };
+        }
         return switch (riskLevel) {
             case "RED" -> "Thông tin nhập vào có dấu hiệu cảnh báo cần xử trí khẩn cấp.";
             case "YELLOW" -> "Trẻ có triệu chứng cần theo dõi sát hoặc hỏi ý kiến nhân viên y tế: "
@@ -137,7 +153,14 @@ public class TriageGraphService {
         };
     }
 
-    private String possibleConcern(String riskLevel, List<String> redFlags) {
+    private String possibleConcern(TriageStage stage, String riskLevel, List<String> redFlags) {
+        if (stage == TriageStage.POSTPARTUM) {
+            return switch (riskLevel) {
+                case "RED" -> String.join("; ", redFlags);
+                case "YELLOW" -> "Dấu hiệu chưa đủ để kết luận và cần được theo dõi hoặc đánh giá trực tiếp.";
+                default -> "Thông tin hiện có chưa cho thấy dấu hiệu nguy hiểm rõ ràng.";
+            };
+        }
         return switch (riskLevel) {
             case "RED" -> String.join("; ", redFlags);
             case "YELLOW" -> "Triệu chứng chưa có red flag rõ, nhưng cần theo dõi diễn tiến.";
@@ -145,11 +168,26 @@ public class TriageGraphService {
         };
     }
 
-    private String recommendedAction(String riskLevel) {
+    private String recommendedAction(TriageStage stage, String riskLevel) {
+        if (stage == TriageStage.POSTPARTUM) {
+            return switch (riskLevel) {
+                case "RED" -> "Gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất ngay. Không chờ thêm kết quả trực tuyến nếu tình trạng đang xấu đi.";
+                case "YELLOW" -> "Liên hệ nhân viên y tế để được đánh giá và theo dõi diễn tiến.";
+                default -> "Tiếp tục theo dõi và liên hệ nhân viên y tế nếu dấu hiệu kéo dài hoặc nặng hơn.";
+            };
+        }
         return switch (riskLevel) {
             case "RED" -> "Liên hệ cấp cứu hoặc đưa trẻ đến cơ sở y tế gần nhất ngay. Không chờ tư vấn AI nếu tình trạng đang xấu đi.";
             case "YELLOW" -> "Theo dõi nhiệt độ, nhịp thở, bú/uống và tình trạng tỉnh táo. Liên hệ bác sĩ nếu kéo dài, nặng hơn hoặc xuất hiện red flag.";
             default -> "Theo dõi tại nhà, cho trẻ bú/uống đủ, ghi nhận triệu chứng và quay lại kiểm tra nếu có thay đổi.";
         };
+    }
+
+    private String disclaimer(TriageStage stage) {
+        if (stage == TriageStage.POSTPARTUM) {
+            return "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế nhân viên y tế. "
+                    + "Nếu bạn có dấu hiệu nặng hoặc cảm thấy không an toàn, hãy liên hệ cơ sở y tế/cấp cứu.";
+        }
+        return DISCLAIMER;
     }
 }

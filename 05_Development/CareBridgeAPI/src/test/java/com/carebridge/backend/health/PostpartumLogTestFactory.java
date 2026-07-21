@@ -19,6 +19,7 @@ public final class PostpartumLogTestFactory {
     public static final UUID MOTHER_ID      = UUID.fromString("00000000-0000-0000-0000-000000000028");
     public static final UUID JOURNEY_ID     = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000028");
     public static final UUID LOG_ID         = UUID.fromString("cccccccc-0000-0000-0000-000000000028");
+    public static final UUID SUBMISSION_ID  = UUID.fromString("dddddddd-0000-0000-0000-000000000028");
     public static final UUID OTHER_USER     = UUID.fromString("99999999-0000-0000-0000-000000000028");
     public static final UUID UNKNOWN_JOURNEY = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
@@ -62,6 +63,7 @@ public final class PostpartumLogTestFactory {
 
     public static AddPostpartumLogRequest makeValidRequest() {
         AddPostpartumLogRequest req = new AddPostpartumLogRequest();
+        req.setSubmissionId(SUBMISSION_ID);
         req.setLogDate(LocalDate.now());
         req.setPainLevel((short) 3);
         req.setBleedingLevel(BleedingLevel.LIGHT);
@@ -76,6 +78,7 @@ public final class PostpartumLogTestFactory {
         return PostpartumLog.builder()
                 .id(LOG_ID)
                 .journeyId(JOURNEY_ID)
+                .submissionId(SUBMISSION_ID)
                 .logDate(LocalDate.now())
                 .painLevel((short) 3)
                 .bleedingLevel(BleedingLevel.LIGHT)
@@ -89,6 +92,7 @@ public final class PostpartumLogTestFactory {
 
     public static UpdatePostpartumLogRequest makeUpdateRequest() {
         UpdatePostpartumLogRequest req = new UpdatePostpartumLogRequest();
+        req.setLogDate(LocalDate.now().minusDays(1));
         req.setPainLevel((short) 4);
         req.setSymptomNote("Pain improved");
         return req;

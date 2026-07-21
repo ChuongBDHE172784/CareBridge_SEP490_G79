@@ -6,5 +6,7 @@ public enum JourneyTransitionType {
     DATES_CHANGED,
     DETAILS_CHANGED,
     STATUS_CHANGED,
+    OUTCOME_RECORDED,
+    OUTCOME_CORRECTED,
     MIGRATED
 }

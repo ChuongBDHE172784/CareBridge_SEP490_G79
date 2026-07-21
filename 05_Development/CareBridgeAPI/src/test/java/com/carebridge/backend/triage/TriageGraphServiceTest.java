@@ -156,6 +156,82 @@ class TriageGraphServiceTest {
     }
 
     @Test
+    void postpartumWithoutUniversalDangerSignal_shouldNeverUsePediatricCopyOrEvidence() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.POSTPARTUM)
+                .symptomList(List.of("chong_mat"))
+                .duration("1 ngày")
+                .parentFreeText("Tôi thấy chóng mặt")
+                .breathingStatus("bình thường")
+                .consciousnessStatus("tỉnh táo")
+                .seizure(false)
+                .build());
+
+        assertThat(result.getStatus()).isEqualTo("NEED_MORE_INFO");
+        assertThat(result.getRiskLevel()).isNull();
+        assertThat(result.getCitations()).isEmpty();
+        assertThat(result.getSummary()).doesNotContain("trẻ", "bé", "bú");
+        assertThat(result.getPossibleConcern()).doesNotContain("trẻ", "bé", "bú");
+        assertThat(result.getRecommendedAction()).doesNotContain("trẻ", "bé", "bú");
+        assertThat(result.getDisclaimer()).doesNotContain("trẻ", "bé", "bú");
+    }
+
+    @Test
+    void postpartumBreathingDifficulty_shouldReturnDeterministicRedWithoutPediatricEvidence() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.POSTPARTUM)
+                .symptomList(List.of("kho_tho"))
+                .duration("vừa xuất hiện")
+                .parentFreeText("Tôi thấy khó thở")
+                .breathingStatus("khó thở")
+                .consciousnessStatus("tỉnh táo")
+                .seizure(false)
+                .build());
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.isEmergencyActionRequired()).isTrue();
+        assertThat(result.getMatchedRules()).contains("RED_POSTPARTUM_BREATHING_DISTRESS");
+        assertThat(result.getCitations()).isEmpty();
+        assertThat(result.getRecommendedAction()).contains("115").doesNotContain("trẻ", "bé");
+    }
+
+    @Test
+    void postpartumUrgentFreeText_shouldReturnRedWithoutStructuredAnswers() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.POSTPARTUM)
+                .parentFreeText("Tôi khó thở, chảy máu nhiều và muốn tự làm hại bản thân")
+                .symptomList(List.of())
+                .duration("vừa xuất hiện")
+                .build());
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.isEmergencyActionRequired()).isTrue();
+        assertThat(result.getMatchedRules()).contains(
+                "RED_POSTPARTUM_BREATHING_DISTRESS",
+                "RED_POSTPARTUM_HEAVY_BLEEDING",
+                "RED_POSTPARTUM_SELF_HARM");
+    }
+
+    @Test
+    void postpartumUrgentSuppliedSymptoms_shouldRecognizeCanonicalTokens() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.POSTPARTUM)
+                .parentFreeText("Cần hỗ trợ")
+                .symptomList(List.of("tim_tai", "co_giat", "bat_tinh"))
+                .duration("vừa xuất hiện")
+                .build());
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getRiskLevel()).isEqualTo("RED");
+        assertThat(result.getMatchedRules()).contains(
+                "RED_POSTPARTUM_CYANOSIS",
+                "RED_POSTPARTUM_SEIZURE",
+                "RED_POSTPARTUM_ALTERED_CONSCIOUSNESS");
+    }
+
+    @Test
     void noCitationMatch_shouldNotFabricateSource() {
         ChildTriageResult result = graph.run(base()
                 .symptomList(List.of("ngứa tai"))

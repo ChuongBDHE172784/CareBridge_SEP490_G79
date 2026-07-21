@@ -42,6 +42,13 @@ public class MotherJourney {
     @Column(name = "delivery_date")
     private LocalDate deliveryDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pregnancy_outcome", length = 30)
+    private PregnancyOutcomeType pregnancyOutcome;
+
+    @Column(name = "pregnancy_outcome_date")
+    private LocalDate pregnancyOutcomeDate;
+
     @Column(name = "notes", columnDefinition = "text")
     private String notes;
 

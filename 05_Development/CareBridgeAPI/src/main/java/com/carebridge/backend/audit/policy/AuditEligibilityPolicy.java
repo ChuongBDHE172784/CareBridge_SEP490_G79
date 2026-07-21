@@ -23,6 +23,8 @@ public class AuditEligibilityPolicy {
             AuditAction.VIEW_HEALTH_RECORD,
             AuditAction.JOURNEY_CREATED,
             AuditAction.JOURNEY_UPDATED,
+            AuditAction.BABY_JOURNEY_LINK_ACCEPTED,
+            AuditAction.BABY_JOURNEY_LINK_REJECTED,
             AuditAction.EXPERT_VERIFICATION,
             AuditAction.MODERATION_ACTION,
             AuditAction.AI_TRIAGE,

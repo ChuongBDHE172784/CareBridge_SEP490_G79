@@ -7,7 +7,8 @@ import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 
 /**
@@ -18,10 +19,13 @@ public final class TodayTaskTestFactory {
     public static final UUID OWNER_ID      = UUID.fromString("00000000-0000-0000-0002-000000000001");
     public static final UUID CARE_GROUP_ID = UUID.fromString("00000000-0000-0000-0002-000000000002");
 
+    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private TodayTaskTestFactory() {}
 
     public static Reminder pendingReminderToday(ReminderType type) {
-        return pendingReminderToday(type, Instant.now().plus(1, ChronoUnit.HOURS));
+        Instant todayTime = LocalDate.now(VN_ZONE).atTime(12, 0).atZone(VN_ZONE).toInstant();
+        return pendingReminderToday(type, todayTime);
     }
 
     public static Reminder pendingReminderToday(ReminderType type, Instant scheduledAt) {
@@ -36,14 +40,16 @@ public final class TodayTaskTestFactory {
     }
 
     public static Reminder snoozedReminderToday(ReminderType type) {
+        Instant scheduledAt = LocalDate.now(VN_ZONE).atTime(10, 0).atZone(VN_ZONE).toInstant();
+        Instant snoozedUntil = LocalDate.now(VN_ZONE).atTime(14, 0).atZone(VN_ZONE).toInstant();
         return Reminder.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(OWNER_ID)
                 .reminderType(type)
                 .title(type.name() + " snoozed today")
-                .scheduledAt(Instant.now().plus(1, ChronoUnit.HOURS))
+                .scheduledAt(scheduledAt)
                 .status(ReminderStatus.SNOOZED)
-                .snoozedUntil(Instant.now().plus(2, ChronoUnit.HOURS))
+                .snoozedUntil(snoozedUntil)
                 .build();
     }
 
@@ -60,18 +66,20 @@ public final class TodayTaskTestFactory {
     }
 
     public static Reminder completedReminderToday(ReminderType type) {
+        Instant scheduledAt = LocalDate.now(VN_ZONE).atTime(10, 0).atZone(VN_ZONE).toInstant();
         return Reminder.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(OWNER_ID)
                 .reminderType(type)
                 .title(type.name() + " completed today")
-                .scheduledAt(Instant.now().plus(1, ChronoUnit.HOURS))
+                .scheduledAt(scheduledAt)
                 .status(ReminderStatus.COMPLETED)
                 .build();
     }
 
     public static CareTask openCareTaskToday() {
-        return openCareTaskToday(Instant.now().plus(2, ChronoUnit.HOURS));
+        Instant dueAt = LocalDate.now(VN_ZONE).atTime(15, 0).atZone(VN_ZONE).toInstant();
+        return openCareTaskToday(dueAt);
     }
 
     public static CareTask openCareTaskToday(Instant dueAt) {
@@ -86,13 +94,14 @@ public final class TodayTaskTestFactory {
     }
 
     public static CareTask completedCareTaskToday() {
+        Instant dueAt = LocalDate.now(VN_ZONE).atTime(15, 0).atZone(VN_ZONE).toInstant();
         return CareTask.builder()
                 .id(UUID.randomUUID())
                 .careGroupId(CARE_GROUP_ID)
                 .assignedTo(OWNER_ID)
                 .title("Completed care task today")
                 .status(CareTaskStatus.COMPLETED)
-                .dueAt(Instant.now().plus(2, ChronoUnit.HOURS))
+                .dueAt(dueAt)
                 .build();
     }
 }

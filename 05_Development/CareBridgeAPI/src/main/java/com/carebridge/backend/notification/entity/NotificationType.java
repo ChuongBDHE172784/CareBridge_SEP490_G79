@@ -6,5 +6,6 @@ public enum NotificationType {
     CONSULTATION,
     EMERGENCY,
     // ADR-MEDI-004 — direct-chat message alert (CB-EXPCHAT-IMP-001)
-    MESSAGE
+    MESSAGE,
+    GROUP_INVITE
 }

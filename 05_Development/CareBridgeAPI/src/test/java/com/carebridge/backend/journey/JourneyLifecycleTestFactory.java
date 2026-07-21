@@ -45,6 +45,17 @@ final class JourneyLifecycleTestFactory {
         return request;
     }
 
+    static CreateJourneyRequest postpartumCreate() {
+        CreateJourneyRequest request = new CreateJourneyRequest();
+        request.setJourneyType(JourneyType.POSTPARTUM);
+        request.setStartDate(LocalDate.of(2026, 7, 18));
+        request.setDateSource(JourneyDateSource.SELF_REPORTED);
+        request.setDateConfidence(JourneyDateConfidence.CONFIRMED);
+        request.setChangeReason("INITIAL_SETUP");
+        request.setEffectiveAt(NOW);
+        return request;
+    }
+
     static UpdateJourneyRequest dateCorrection() {
         UpdateJourneyRequest request = new UpdateJourneyRequest();
         request.setLastMenstrualDate(LocalDate.of(2026, 6, 2));

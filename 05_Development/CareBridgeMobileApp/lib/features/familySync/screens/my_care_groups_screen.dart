@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_detail_screen.dart';
@@ -54,6 +57,94 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
       context,
       MaterialPageRoute(builder: (_) => const PendingInvitationsScreen()),
     ).then((_) => _load());
+  }
+
+  Future<void> _joinGroupWithCode() async {
+    final codeCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Tham gia nhóm',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Nhập mã nhóm (UUID hoặc mã mời) được chia sẻ từ Mẹ bầu:',
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFF524440)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: codeCtrl,
+              decoration: InputDecoration(
+                labelText: 'Mã nhóm chăm sóc',
+                hintText: 'VD: cb51dfb1-c615-41af-ae16-47df06cbca80',
+                prefixIcon: const Icon(Icons.key, color: _primaryContainer),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
+            child: const Text('Tham gia', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+    final code = codeCtrl.text.trim();
+    if (code.isEmpty) return;
+
+    try {
+      setState(() => _loading = true);
+      await _service.joinGroupByCode(code);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tham gia nhóm thành công!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      String errorMsg = 'Không thể tham gia nhóm';
+      if (e is ApiException) {
+        try {
+          final map = jsonDecode(e.message) as Map<String, dynamic>;
+          final errCode = map['error']?.toString();
+          if (errCode == 'FAM-005' || e.statusCode == 404) {
+            errorMsg = 'Nhóm không tồn tại';
+          } else if (map['message'] != null) {
+            errorMsg = map['message'].toString();
+          }
+        } catch (_) {
+          if (e.statusCode == 404 || e.message.contains('FAM-005')) {
+            errorMsg = 'Nhóm không tồn tại';
+          }
+        }
+      } else {
+        final raw = e.toString();
+        if (raw.contains('FAM-005') || raw.contains('404')) {
+          errorMsg = 'Nhóm không tồn tại';
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg)),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _leaveGroup(CareGroup g) async {
@@ -204,7 +295,7 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: _joinGroupWithCode,
                   child: const Text(
                     'Tham gia',
                     style: TextStyle(
@@ -418,23 +509,27 @@ class _GroupCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDAD6).withAlpha(77),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.logout,
-                    size: 18,
-                    color: Color(0xFFBA1A1A),
+              if (AuthState.instance.role != 'MOTHER' &&
+                  group.myRole != 'OWNER' &&
+                  group.myRole != 'MOTHER') ...[
+                const SizedBox(width: 12),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDAD6).withAlpha(77),
+                    shape: BoxShape.circle,
                   ),
-                  onPressed: onLeave,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.logout,
+                      size: 18,
+                      color: Color(0xFFBA1A1A),
+                    ),
+                    onPressed: onLeave,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],

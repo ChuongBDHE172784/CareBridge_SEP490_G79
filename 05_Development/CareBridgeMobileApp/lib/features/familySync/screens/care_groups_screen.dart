@@ -77,14 +77,59 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       ),
     );
     if (ok != true) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
     try {
-      await _service.createCareGroup(nameCtrl.text);
+      await _service.createCareGroup(name);
       _load();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Không thể tạo nhóm.')));
+      final msg = e.toString().contains('FAM-015')
+          ? 'Tên nhóm này đã tồn tại. Vui lòng chọn tên khác.'
+          : 'Không thể tạo nhóm. Vui lòng thử lại.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Future<void> _deleteGroup(CareGroup g) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Xóa nhóm?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Nhóm "${g.groupName}" sẽ bị xóa vĩnh viễn khỏi hệ thống, '
+          'bao gồm tất cả thành viên và nhiệm vụ. Không thể hoàn tác!',
+          style: const TextStyle(fontFamily: 'Lexend'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
+            child: const Text('Xóa vĩnh viễn', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _service.deleteCareGroup(g.id);
+      _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xóa nhóm thành công.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Không thể xóa nhóm: $e')));
     }
   }
 
@@ -170,12 +215,20 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
     if (idx == 0 && group.isActive) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: _ActiveGroupCard(group: group, onTap: () => _openDetail(group)),
+        child: _ActiveGroupCard(
+          group: group,
+          onTap: () => _openDetail(group),
+          onDelete: () => _deleteGroup(group),
+        ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: _SecondaryGroupCard(group: group, onTap: () => _openDetail(group)),
+      child: _SecondaryGroupCard(
+        group: group,
+        onTap: () => _openDetail(group),
+        onDelete: () => _deleteGroup(group),
+      ),
     );
   }
 
@@ -194,8 +247,13 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
 class _ActiveGroupCard extends StatelessWidget {
   final CareGroup group;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _ActiveGroupCard({required this.group, required this.onTap});
+  const _ActiveGroupCard({
+    required this.group,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +300,11 @@ class _ActiveGroupCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.more_vert, color: Colors.white),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, color: Colors.white),
+                  tooltip: 'Xóa nhóm',
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -405,8 +467,13 @@ class _StackedAvatars extends StatelessWidget {
 class _SecondaryGroupCard extends StatelessWidget {
   final CareGroup group;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _SecondaryGroupCard({required this.group, required this.onTap});
+  const _SecondaryGroupCard({
+    required this.group,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -461,20 +528,14 @@ class _SecondaryGroupCard extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE9E1DB).withAlpha(128),
-                borderRadius: BorderRadius.circular(99),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFBA1A1A),
+                size: 22,
               ),
-              child: const Text(
-                'Tạm ngưng',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 11,
-                  color: Color(0xFF524440),
-                ),
-              ),
+              tooltip: 'Xóa nhóm',
             ),
           ],
         ),

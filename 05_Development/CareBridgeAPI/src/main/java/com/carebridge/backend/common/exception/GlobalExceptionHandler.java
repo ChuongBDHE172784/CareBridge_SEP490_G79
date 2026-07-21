@@ -70,13 +70,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
-        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request body: " + ex.getMessage(), request);
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request body", request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-        String message = "Invalid value for parameter '" + ex.getName() + "': " + ex.getValue();
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
         return error(HttpStatus.BAD_REQUEST, "MOD-001", message, request);
     }
 

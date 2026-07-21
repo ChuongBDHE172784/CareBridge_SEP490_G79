@@ -35,6 +35,9 @@ temp/
 
 # Python
 __pycache__/
+
+# Dart/Flutter local app data
+.dart_localappdata/
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -75,6 +78,7 @@ out/
 .github/agents/
 _bmad/
 _bmad-output/
+bmad-output/
 AGENTS.md
 CLAUDE.md
 GEMINI.md

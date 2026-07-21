@@ -22,8 +22,9 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
   bool _isValid = false;
 
   void _onContactChanged(String value) {
+    final trimmed = value.trim();
     setState(() {
-      _isValid = value.trim().length >= 9;
+      _isValid = trimmed.length >= 9 || (trimmed.contains('@') && trimmed.contains('.'));
     });
   }
 
@@ -32,11 +33,13 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // API currently uses email. We map contact input to email or pass it to a phone parameter.
-      // Assuming inviteMember handles email. For demo, we just pass the text.
+      String channel = _currentTab == 'phone' ? 'PHONE' : (_currentTab == 'link' ? 'LINK' : 'QR');
+      String? phone = channel == 'PHONE' ? _contactController.text.trim() : null;
+
       await _service.inviteMember(
         widget.groupId,
-        _contactController.text.trim(),
+        channel: channel,
+        phone: phone,
       );
 
       if (mounted) {
@@ -47,9 +50,24 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String message = 'Lỗi khi gửi lời mời: $e';
+        final errStr = e.toString();
+        if (errStr.contains('FAM-011') ||
+            errStr.contains('already an accepted member') ||
+            errStr.contains('already a member')) {
+          message = 'Thành viên đã tồn tại';
+        } else if (errStr.contains('FAM-010') ||
+            errStr.contains('Pending invitation already exists')) {
+          message = 'Lời mời cho người này đang chờ xử lý';
+        } else if (errStr.contains('FAM-004') ||
+            errStr.contains('FAM-014') ||
+            errStr.contains('User not found') ||
+            errStr.contains('phone number or email')) {
+          message = 'Không tìm thấy tài khoản với SĐT hoặc Gmail này';
+        }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi khi gửi lời mời: $e')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) {
@@ -133,7 +151,7 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
               margin: const EdgeInsets.only(bottom: 24),
               child: Row(
                 children: [
-                  _buildTab('phone', 'Số điện thoại/Email'),
+                  _buildTab('phone', 'SĐT / Gmail'),
                   _buildTab('link', 'Link mời'),
                   _buildTab('qr', 'Mã QR'),
                 ],
@@ -258,7 +276,7 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'SỐ ĐIỆN THOẠI HOẶC EMAIL NGƯỜI NHẬN',
+          'SỐ ĐIỆN THOẠI HOẶC GMAIL NGƯỜI NHẬN',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
@@ -270,8 +288,9 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
         TextField(
           controller: _contactController,
           onChanged: _onContactChanged,
+          keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
-            hintText: 'Nhập SĐT hoặc Email',
+            hintText: 'Nhập SĐT hoặc Gmail (VD: 0987654321 hoặc user@gmail.com)',
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(

@@ -9,6 +9,8 @@ import com.carebridge.backend.triage.controller.IntakeController;
 import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
+import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,13 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
+
+import java.util.UUID;
 
 @WebMvcTest(
         value = IntakeController.class,
@@ -89,6 +98,41 @@ class IntakeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"initialText\":\"" + tooLong + "\",\"currentIntake\":{}}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
+    void startConversation_postpartumJson_shouldBindTypedMaternalStage() throws Exception {
+        when(triageService.startConversation(any(), any())).thenReturn(
+                IntakeConversationResponse.builder()
+                        .status("ASK_MORE")
+                        .intakeSessionId("00000000-0000-0000-0000-000000000064")
+                        .stage("POSTPARTUM")
+                        .round(1)
+                        .build());
+
+        mockMvc.perform(post(BASE_URL + "/conversation/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "initialText": "Tôi cần hỗ trợ sau sinh",
+                                  "stage": "POSTPARTUM",
+                                  "motherProfileId": "00000000-0000-0000-0000-000000000099",
+                                  "currentIntake": {"stage": "POSTPARTUM"}
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<StartIntakeConversationRequest> captor =
+                ArgumentCaptor.forClass(StartIntakeConversationRequest.class);
+        verify(triageService).startConversation(
+                captor.capture(),
+                eq(UUID.fromString("00000000-0000-0000-0000-000000000010")));
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getStage())
+                .isEqualTo(TriageStage.POSTPARTUM);
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getMotherProfileId())
+                .isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000099"));
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getBabyProfileId()).isNull();
     }
 
     @Test

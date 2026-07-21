@@ -294,37 +294,18 @@ class _ManageFamilyPermissionScreenState
                         const SizedBox(height: 24),
 
                         _buildPermissionSwitch(
-                          title: 'Lịch trình',
-                          subtitle:
-                              'Xem và chỉnh sửa lịch tiêm chủng, khám định kỳ.',
-                          icon: Icons.calendar_month,
-                          value: _calendar,
-                          onChanged: (val) => setState(() => _calendar = val),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPermissionSwitch(
-                          title: 'Việc cần làm & Thông báo',
-                          subtitle:
-                              'Quản lý danh sách nhiệm vụ và nhận cảnh báo chung.',
+                          title: 'Việc cần làm',
+                          subtitle: 'Quản lý danh sách nhiệm vụ hôm nay',
                           icon: Icons.checklist,
                           value: _alerts,
                           onChanged: (val) => setState(() => _alerts = val),
                         ),
                         const SizedBox(height: 16),
                         _buildPermissionSwitch(
-                          title: 'Nhật ký bé',
+                          title: 'Dữ liệu chia sẻ',
                           subtitle:
-                              'Xem lại các khoảnh khắc, hình ảnh và ghi chú hàng ngày.',
-                          icon: Icons.auto_stories,
-                          value: _logs,
-                          onChanged: (val) => setState(() => _logs = val),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPermissionSwitch(
-                          title: 'Sức khỏe',
-                          subtitle:
-                              'Thông số chiều cao, cân nặng và tiền sử bệnh lý.',
-                          icon: Icons.monitor_heart,
+                              'Cho phép xem các thông tin sức khỏe được chia sẻ',
+                          icon: Icons.folder_shared,
                           value: _records,
                           onChanged: (val) => setState(() => _records = val),
                         ),
