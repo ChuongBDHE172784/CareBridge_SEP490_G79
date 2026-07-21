@@ -55,7 +55,7 @@ public class JourneyMetricController {
 
     // UC27: View maternal health metric trend
     @GetMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'MEMBER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<MetricTrendResponse>> getMetricTrend(
             @PathVariable UUID journeyId,
             @RequestParam MetricType metricType,

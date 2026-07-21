@@ -180,7 +180,7 @@ public class ReminderController {
 
     // UC49: View today tasks
     @GetMapping("/today")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'MEMBER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<List<TodayTaskItem>>> getTodayTasks(
             @RequestHeader(value = "X-User-Timezone", required = false) String timezoneHeader,
             Principal principal) {

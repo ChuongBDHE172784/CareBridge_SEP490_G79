@@ -27,6 +27,7 @@ class DatabaseGate0IntegrationTest {
         String migrationFailureType = null;
         String serverVersion = null;
         String runtimeImage = POSTGRES_IMAGE;
+        boolean canonicalRoleOnly = false;
 
         try (PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE)) {
             postgres.start();
@@ -50,6 +51,15 @@ class DatabaseGate0IntegrationTest {
                 versionResult.next();
                 serverVersion = versionResult.getString(1);
                 if (migrationFailureType == null) {
+                    try (var schemaStatement = connection.createStatement();
+                         var schemaResult = schemaStatement.executeQuery("""
+                                 SELECT to_regclass('public.users') IS NOT NULL
+                                        AND to_regclass('public.roles') IS NULL
+                                        AND to_regclass('public.user_roles') IS NULL
+                                 """)) {
+                        schemaResult.next();
+                        canonicalRoleOnly = schemaResult.getBoolean(1);
+                    }
                     try (var historyStatement = connection.createStatement();
                          var historyResult = historyStatement.executeQuery("""
                                  SELECT version, script, checksum
@@ -72,7 +82,8 @@ class DatabaseGate0IntegrationTest {
 
         boolean passed = migrationFailureType == null
                 && repository.gateFailures().isEmpty()
-                && applied.equals(expected);
+                && applied.equals(expected)
+                && canonicalRoleOnly;
         var manifest = new LinkedHashMap<String, Object>();
         manifest.put("status", passed ? "passed" : "failed");
         manifest.put("containerImage", runtimeImage);
@@ -81,6 +92,7 @@ class DatabaseGate0IntegrationTest {
         manifest.put("expectedMigrationChain", expected);
         manifest.put("appliedMigrationChain", applied);
         manifest.put("repositoryGateFailures", repository.gateFailures());
+        manifest.put("canonicalRoleOnly", canonicalRoleOnly);
         DatabaseGate0Support.writeManifest("clean-bootstrap-manifest.json", manifest);
 
         assertThat(migrationFailureType)
@@ -90,6 +102,9 @@ class DatabaseGate0IntegrationTest {
                 .as("Gate 0 repository failure codes")
                 .isEmpty();
         assertThat(applied).containsExactlyElementsOf(expected);
+        assertThat(canonicalRoleOnly)
+                .as("Clean bootstrap must retain only users.role as role persistence")
+                .isTrue();
     }
 
     private record BootstrapMigration(String version, String script, Integer checksum) {
