@@ -28,6 +28,7 @@ class DatabaseGate0IntegrationTest {
         String serverVersion = null;
         String runtimeImage = POSTGRES_IMAGE;
         boolean canonicalRoleOnly = false;
+        boolean canonicalTriageOnly = false;
 
         try (PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE)) {
             postgres.start();
@@ -55,10 +56,15 @@ class DatabaseGate0IntegrationTest {
                          var schemaResult = schemaStatement.executeQuery("""
                                  SELECT to_regclass('public.users') IS NOT NULL
                                         AND to_regclass('public.roles') IS NULL
-                                        AND to_regclass('public.user_roles') IS NULL
+                                        AND to_regclass('public.user_roles') IS NULL,
+                                        to_regclass('public.intake_sessions') IS NOT NULL
+                                        AND to_regclass('public.structured_intake_data') IS NOT NULL
+                                        AND to_regclass('public.triage_answers') IS NULL
+                                        AND to_regclass('public.triage_assessments') IS NULL
                                  """)) {
                         schemaResult.next();
                         canonicalRoleOnly = schemaResult.getBoolean(1);
+                        canonicalTriageOnly = schemaResult.getBoolean(2);
                     }
                     try (var historyStatement = connection.createStatement();
                          var historyResult = historyStatement.executeQuery("""
@@ -83,7 +89,8 @@ class DatabaseGate0IntegrationTest {
         boolean passed = migrationFailureType == null
                 && repository.gateFailures().isEmpty()
                 && applied.equals(expected)
-                && canonicalRoleOnly;
+                && canonicalRoleOnly
+                && canonicalTriageOnly;
         var manifest = new LinkedHashMap<String, Object>();
         manifest.put("status", passed ? "passed" : "failed");
         manifest.put("containerImage", runtimeImage);
@@ -93,6 +100,7 @@ class DatabaseGate0IntegrationTest {
         manifest.put("appliedMigrationChain", applied);
         manifest.put("repositoryGateFailures", repository.gateFailures());
         manifest.put("canonicalRoleOnly", canonicalRoleOnly);
+        manifest.put("canonicalTriageOnly", canonicalTriageOnly);
         DatabaseGate0Support.writeManifest("clean-bootstrap-manifest.json", manifest);
 
         assertThat(migrationFailureType)
@@ -104,6 +112,9 @@ class DatabaseGate0IntegrationTest {
         assertThat(applied).containsExactlyElementsOf(expected);
         assertThat(canonicalRoleOnly)
                 .as("Clean bootstrap must retain only users.role as role persistence")
+                .isTrue();
+        assertThat(canonicalTriageOnly)
+                .as("Clean bootstrap must retain only canonical triage persistence")
                 .isTrue();
     }
 

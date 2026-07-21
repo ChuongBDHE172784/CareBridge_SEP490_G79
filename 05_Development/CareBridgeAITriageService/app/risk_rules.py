@@ -3,7 +3,7 @@ from app.symptom_normalizer import strip_accents
 
 
 def missing_info_questions(intake: ChildTriageRequest) -> list[str]:
-    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"}:
         questions: list[str] = []
         if not (intake.parentFreeText or "").strip() and not intake.symptomList:
             questions.append("Bạn đang gặp triệu chứng hoặc muốn được hỗ trợ nội dung nào?")
@@ -25,7 +25,7 @@ def apply_red_flag_rules(
     intake: ChildTriageRequest,
     normalized_symptoms: list[str],
 ) -> tuple[list[str], list[str]]:
-    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"}:
         # Maternal/preconception red thresholds require clinical sign-off before production activation.
         return [], [f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW"]
     symptoms = set(normalized_symptoms)
@@ -66,7 +66,7 @@ def score_risk(
     red_flags: list[str],
     matched_rules: list[str],
 ) -> tuple[str, list[str]]:
-    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"}:
         if f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW" not in matched_rules:
             matched_rules.append(f"{intake.stage}_RULES_NEED_CLINICAL_REVIEW")
         return "NEED_MORE_INFO", matched_rules

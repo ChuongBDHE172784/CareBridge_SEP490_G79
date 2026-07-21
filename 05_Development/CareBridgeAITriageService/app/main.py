@@ -134,7 +134,17 @@ def _build_intake_response(
             conversationSummary=conversation_summary,
         )
 
-    force_cautious = bool(questions and not red_flag and reached_question_limit(round_number))
+    force_cautious = bool(
+        not red_flag
+        and reached_question_limit(round_number)
+        and (
+            questions
+            or (
+                intake.stage in {"INFANT", "TODDLER"}
+                and not normalized_details
+            )
+        )
+    )
     triage_result = run_triage(
         intake,
         force_cautious_yellow=force_cautious,
