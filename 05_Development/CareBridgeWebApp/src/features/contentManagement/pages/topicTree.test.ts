@@ -55,4 +55,16 @@ describe('buildTopicTree', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].isChild).toBe(false);
   });
+
+  // Move-up/down (ADR-COM-019) merges the PATCH response back into `topics` at the same array
+  // index, so array order can lag sortOrder until a refetch — rows must follow sortOrder, not
+  // array position, or a swap looks like a no-op until the page is reloaded.
+  it('orders rows by sortOrder, not by array position', () => {
+    const topicA = topic({ id: 'topic-a', name: 'Topic A', type: 'TOPIC', sortOrder: 2 });
+    const topicB = topic({ id: 'topic-b', name: 'Topic B', type: 'TOPIC', sortOrder: 1 });
+
+    const rows = buildTopicTree([topicA, topicB], new Set());
+
+    expect(rows.map((r) => r.item.id)).toEqual(['topic-b', 'topic-a']);
+  });
 });
