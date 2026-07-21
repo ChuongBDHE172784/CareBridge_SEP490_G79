@@ -88,7 +88,10 @@ class CareBridgeApp extends StatelessWidget {
       routerConfig: appRouter,
       builder: (context, child) {
         final app = child ?? const SizedBox.shrink();
-        return firebaseEnabled ? DirectCallHost(child: app) : app;
+        return DirectCallHost(
+          manageAuthenticatedSession: firebaseEnabled,
+          child: app,
+        );
       },
     );
   }
