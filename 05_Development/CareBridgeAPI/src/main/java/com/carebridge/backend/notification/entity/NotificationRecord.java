@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 @Entity
@@ -79,6 +80,11 @@ public class NotificationRecord {
     @Column(name = "processing_started_at")
     private Instant processingStartedAt;
 
+    /** Delivery channel retained when legacy notifications are consolidated. */
+    @Builder.Default
+    @Column(name = "channel", nullable = false, length = 30)
+    private String channel = "PUSH";
+
     /** UC-12: Whether the user has read this notification (added via V20260628120000). */
     @Builder.Default
     @Column(name = "is_read", nullable = false)
@@ -92,4 +98,8 @@ public class NotificationRecord {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, String> metadata;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

@@ -10,6 +10,7 @@ interface NotificationRecord {
   referenceId?: string;
   referenceType?: string;
   status: string;
+  isRead: boolean;
   createdAt: string;
   sentAt?: string;
 }
@@ -68,15 +69,20 @@ export default function NotificationCenterPage() {
   }, [fetchNotifications]);
 
   const handleMarkAllRead = async () => {
-    // TODO: wire to backend when mark-all-as-read endpoint is implemented
-    fetchNotifications();
+    setError(null);
+    try {
+      await apiClient.put('/api/v1/notifications/read-all', {});
+      await fetchNotifications();
+    } catch {
+      setError('Không thể đánh dấu tất cả thông báo đã đọc.');
+    }
   };
 
-  const unreadCount = notifications.filter((n) => n.status !== 'READ').length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const filteredNotifications =
     activeFilter === 1
-      ? notifications.filter((n) => n.status !== 'READ')
+      ? notifications.filter((n) => !n.isRead)
       : notifications;
 
   return (
@@ -202,7 +208,7 @@ export default function NotificationCenterPage() {
 }
 
 function NotificationRow({ notification: n }: { notification: NotificationRecord }) {
-  const isUnread = n.status !== 'READ';
+  const isUnread = !n.isRead;
   const typeLabel = getTypeLabel(n.referenceType || n.type);
   const badgeCls = getTypeBadgeClass(n.referenceType || n.type);
 

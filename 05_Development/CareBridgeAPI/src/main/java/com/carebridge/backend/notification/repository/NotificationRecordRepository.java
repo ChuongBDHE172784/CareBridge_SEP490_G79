@@ -50,7 +50,7 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     @Modifying
     @Query("""
             UPDATE NotificationRecord r
-            SET r.isRead = true, r.readAt = :readAt
+            SET r.isRead = true, r.readAt = :readAt, r.updatedAt = :readAt
             WHERE r.id = :id
               AND r.userId = :userId
               AND r.isRead = false
@@ -68,7 +68,7 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     @Modifying
     @Query("""
             UPDATE NotificationRecord r
-            SET r.isRead = true, r.readAt = :readAt
+            SET r.isRead = true, r.readAt = :readAt, r.updatedAt = :readAt
             WHERE r.userId = :userId
               AND r.isRead = false
             """)

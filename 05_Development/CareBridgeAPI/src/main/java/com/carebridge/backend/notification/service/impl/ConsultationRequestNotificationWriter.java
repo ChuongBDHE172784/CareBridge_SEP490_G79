@@ -51,7 +51,7 @@ class ConsultationRequestNotificationWriter {
     boolean claim(UUID id) {
         return jdbcTemplate.update("""
                 UPDATE notification_records
-                   SET status = 'PROCESSING', processing_started_at = now()
+                   SET status = 'PROCESSING', processing_started_at = now(), updated_at = now()
                  WHERE id = ?
                    AND (status = 'PENDING'
                         OR (status = 'PROCESSING'
@@ -64,7 +64,8 @@ class ConsultationRequestNotificationWriter {
         jdbcTemplate.update("""
                 UPDATE notification_records
                    SET status = ?, attempt_count = ?, fcm_message_id = ?,
-                       sent_at = ?, failed_at = ?, processing_started_at = NULL
+                       sent_at = ?, failed_at = ?, processing_started_at = NULL,
+                       updated_at = now()
                  WHERE id = ?
                 """,
                 record.getStatus().name(),
