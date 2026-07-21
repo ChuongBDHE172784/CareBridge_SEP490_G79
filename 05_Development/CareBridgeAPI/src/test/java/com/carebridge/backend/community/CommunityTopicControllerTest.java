@@ -78,7 +78,7 @@ class CommunityTopicControllerTest {
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void getTopics_asMotherUser_shouldReturn200WithNonHiddenTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
-        when(topicService.searchTopics(eq(null), eq(false), any())).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
+        when(topicService.searchTopics(eq(null), eq(false), eq(null), any())).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
@@ -93,7 +93,7 @@ class CommunityTopicControllerTest {
     void getTopics_asModeratorWithIncludeHidden_shouldReturn200WithAllTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
         UUID t2 = UUID.randomUUID();
-        when(topicService.searchTopics(eq(null), eq(true), any())).thenReturn(List.of(
+        when(topicService.searchTopics(eq(null), eq(true), eq(null), any())).thenReturn(List.of(
                 makeTopic(t1, "Thai kỳ", false),
                 makeTopic(t2, "Ẩn", true)));
 
@@ -156,7 +156,7 @@ class CommunityTopicControllerTest {
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Dinh dưỡng thai kỳ\",\"sortOrder\":3}"))
+                .content("{\"name\":\"Dinh dưỡng thai kỳ\",\"type\":\"TOPIC\",\"sortOrder\":3}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.name").value("Dinh dưỡng thai kỳ"));
@@ -237,5 +237,22 @@ class CommunityTopicControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("COM-014"));
+    }
+
+    // COM-TC-011: GET /topics?type=TOPIC forwards the type filter to the service (ADR-COM-017)
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void getTopics_withTypeParam_shouldForwardTypeToService() throws Exception {
+        UUID t1 = UUID.randomUUID();
+        when(topicService.searchTopics(eq(null), eq(false),
+                eq(com.carebridge.backend.community.entity.TopicType.TOPIC), any()))
+                .thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
+
+        mockMvc.perform(get(BASE_URL).param("type", "TOPIC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].name").value("Thai kỳ"));
+
+        verify(topicService).searchTopics(eq(null), eq(false),
+                eq(com.carebridge.backend.community.entity.TopicType.TOPIC), any());
     }
 }

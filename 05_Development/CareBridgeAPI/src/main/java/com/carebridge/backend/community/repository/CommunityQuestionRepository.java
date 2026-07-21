@@ -22,6 +22,17 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 
+    // ADR-COM-015: batch count of APPROVED questions per topic (for CommunityTopicResponse.questionCount),
+    // avoids N+1 — one query for the whole topic list, same pattern as the existing follow-state hydration.
+    @Query("""
+            SELECT q.topicId AS topicId, COUNT(q) AS cnt
+            FROM CommunityQuestion q
+            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+              AND q.topicId IN :topicIds
+            GROUP BY q.topicId
+            """)
+    List<TopicQuestionCountProjection> countApprovedQuestionsByTopicIds(@Param("topicIds") List<UUID> topicIds);
+
     // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
     Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
 

@@ -1,17 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 import type { ApiResponse } from '../../auth/models/user';
-import type { CommunityTopic } from '../models/content';
+import type { CommunityTopic, CommunityTopicType } from '../models/content';
+import { buildTopicTree } from './topicTree';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-type TaxonomyType = 'TOPIC' | 'CATEGORY' | 'TAG';
-
 interface TopicFormState {
   name: string;
-  slug: string;
-  type: TaxonomyType;
+  type: CommunityTopicType;
   parentId: string;
   sortOrder: number;
   description: string;
@@ -19,7 +17,6 @@ interface TopicFormState {
 
 const DEFAULT_FORM: TopicFormState = {
   name: '',
-  slug: '',
   type: 'TOPIC',
   parentId: '',
   sortOrder: 0,
@@ -27,37 +24,11 @@ const DEFAULT_FORM: TopicFormState = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd').replace(/Đ/g, 'd')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
-}
-
-function iconForType(type: TaxonomyType): string {
-  if (type === 'CATEGORY') return 'label';
-  if (type === 'TAG') return 'sell';
-  return 'folder';
-}
-
-function typeFromIcon(icon?: string): TaxonomyType {
-  if (icon === 'label') return 'CATEGORY';
-  if (icon === 'sell') return 'TAG';
-  return 'TOPIC';
-}
-
-/* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
-interface TypeBadgeProps { icon?: string }
-function TypeBadge({ icon }: TypeBadgeProps) {
-  if (icon === 'label') {
+interface TypeBadgeProps { type: CommunityTopicType }
+function TypeBadge({ type }: TypeBadgeProps) {
+  if (type === 'CATEGORY') {
     return (
       <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-surface-container-high text-on-surface text-xs font-medium">
         <span className="material-symbols-outlined text-sm">label</span>
@@ -65,7 +36,7 @@ function TypeBadge({ icon }: TypeBadgeProps) {
       </span>
     );
   }
-  if (icon === 'sell') {
+  if (type === 'TAG') {
     return (
       <span className="inline-flex items-center gap-1 px-3 py-[3px] rounded-full bg-surface-dim text-on-surface text-xs font-medium">
         <span className="material-symbols-outlined text-sm">sell</span>
@@ -118,6 +89,7 @@ export default function ManageTopicsPage() {
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [form, setForm] = useState<TopicFormState>(DEFAULT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -145,19 +117,17 @@ export default function ManageTopicsPage() {
 
   useEffect(() => { loadTopics(); }, [loadTopics]);
 
-  /* ── Filter ── */
+  /* ── Filter + tree ── */
   const filteredTopics = topics.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  // Separate topics (folder), categories (label), tags (sell)
-  const topicItems = filteredTopics.filter((t) => t.icon !== 'label' && t.icon !== 'sell');
-  const categoryItems = filteredTopics.filter((t) => t.icon === 'label');
-  const tagItems = filteredTopics.filter((t) => t.icon === 'sell');
+  const topicItems = topics.filter((t) => t.type === 'TOPIC');
+  const renderRows = buildTopicTree(filteredTopics, expandedIds);
 
   /* ── Drawer helpers ── */
   function openCreateDrawer() {
     setEditingId(null);
+    setEditingSlug(null);
     setForm(DEFAULT_FORM);
     setSubmitError('');
     setIsDrawerOpen(true);
@@ -165,11 +135,11 @@ export default function ManageTopicsPage() {
 
   function openEditDrawer(topic: CommunityTopic) {
     setEditingId(topic.id);
+    setEditingSlug(topic.slug);
     setForm({
       name: topic.name,
-      slug: generateSlug(topic.name),
-      type: typeFromIcon(topic.icon),
-      parentId: '',
+      type: topic.type,
+      parentId: topic.parentId ?? '',
       sortOrder: topic.sortOrder,
       description: topic.description ?? '',
     });
@@ -180,10 +150,11 @@ export default function ManageTopicsPage() {
   function closeDrawer() {
     setIsDrawerOpen(false);
     setEditingId(null);
+    setEditingSlug(null);
   }
 
   function handleNameChange(name: string) {
-    setForm((prev) => ({ ...prev, name, slug: generateSlug(name) }));
+    setForm((prev) => ({ ...prev, name }));
   }
 
   /* ── API actions ── */
@@ -220,7 +191,8 @@ export default function ManageTopicsPage() {
       const payload = {
         name: form.name.trim(),
         description: form.description,
-        icon: iconForType(form.type),
+        type: form.type,
+        parentId: form.type === 'TOPIC' || !form.parentId ? null : form.parentId,
         sortOrder: form.sortOrder,
       };
       if (editingId) {
@@ -242,6 +214,8 @@ export default function ManageTopicsPage() {
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? '';
       if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('com-009')) {
         setSubmitError('Tên phân loại này đã tồn tại. Vui lòng chọn tên khác.');
+      } else if (msg.toLowerCase().includes('com-015')) {
+        setSubmitError('Chủ đề cha không hợp lệ. Chủ đề cha phải là một Chủ đề (Topic) đang hiển thị.');
       } else {
         setSubmitError('Đã xảy ra lỗi. Vui lòng thử lại.');
       }
@@ -259,17 +233,36 @@ export default function ManageTopicsPage() {
     });
   }
 
-  /* ── Build render list (topics with nested categories, then standalone tags) ── */
-  // For now backend has no parentId — we render topics first, then categories, then tags.
-  // TODO: wire parent-child hierarchy when backend adds parentId to CommunityTopic.
-  const renderRows: Array<{ item: CommunityTopic; isChild: boolean }> = [];
-  topicItems.forEach((topic) => {
-    renderRows.push({ item: topic, isChild: false });
-    if (expandedIds.has(topic.id)) {
-      categoryItems.forEach((cat) => renderRows.push({ item: cat, isChild: true }));
+  /* ── Real reorder (ADR-COM-019): swap sortOrder with the adjacent sibling, persisted via PATCH.
+     Siblings = same parentId AND same "is a TOPIC" bucket (root topics vs. child/standalone
+     categories-tags never mix), sorted by sortOrder. ── */
+  function getSiblings(item: CommunityTopic): CommunityTopic[] {
+    return topics
+      .filter((t) => t.parentId === item.parentId && (t.type === 'TOPIC') === (item.type === 'TOPIC'))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  async function handleMove(item: CommunityTopic, direction: 'up' | 'down') {
+    const siblings = getSiblings(item);
+    const index = siblings.findIndex((s) => s.id === item.id);
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= siblings.length) return;
+    const other = siblings[swapIndex];
+
+    try {
+      const [updatedItem, updatedOther] = await Promise.all([
+        apiClient.patch<ApiResponse<CommunityTopic>>(`/api/v1/community/topics/${item.id}`, { sortOrder: other.sortOrder }),
+        apiClient.patch<ApiResponse<CommunityTopic>>(`/api/v1/community/topics/${other.id}`, { sortOrder: item.sortOrder }),
+      ]);
+      setTopics((prev) => prev.map((t) => {
+        if (t.id === item.id) return updatedItem.data.data;
+        if (t.id === other.id) return updatedOther.data.data;
+        return t;
+      }));
+    } catch {
+      alert('Không thể sắp xếp lại. Vui lòng thử lại.');
     }
-  });
-  tagItems.forEach((tag) => renderRows.push({ item: tag, isChild: false }));
+  }
 
   return (
     <div className="p-8 font-sans bg-background min-h-screen">
@@ -315,11 +308,11 @@ export default function ManageTopicsPage() {
 
         {/* Table header */}
         <div className="flex px-6 py-[14px] bg-surface-container-low border-b border-surface-container-high text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">
-          <div className="w-[33%]">Tên / Chủ đề</div>
-          <div className="w-[16%]">Loại</div>
-          <div className="w-[16%] text-center">Nội dung</div>
-          <div className="w-[16%] text-center">Sắp xếp</div>
-          <div className="w-[19%] text-right">Trạng thái &amp; Thao tác</div>
+          <div className="w-[30%]">Tên / Chủ đề</div>
+          <div className="w-[15%]">Loại</div>
+          <div className="w-[15%] text-center">Nội dung</div>
+          <div className="w-[15%] text-center">Sắp xếp</div>
+          <div className="w-[25%] text-right">Trạng thái &amp; Thao tác</div>
         </div>
 
         {/* Table body */}
@@ -341,10 +334,12 @@ export default function ManageTopicsPage() {
           )}
 
           {renderRows.map(({ item, isChild }) => {
-            const isTopic = item.icon !== 'label' && item.icon !== 'sell';
+            const isTopic = item.type === 'TOPIC';
             const isExpanded = expandedIds.has(item.id);
             const isHovered = hoveredId === item.id;
             const isActive = !item.isHidden;
+            const siblings = getSiblings(item);
+            const siblingIndex = siblings.findIndex((s) => s.id === item.id);
 
             return (
               <div
@@ -357,7 +352,7 @@ export default function ManageTopicsPage() {
               >
                 <div className={`flex items-center ${isChild ? 'py-3 pr-6 pl-16' : 'py-4 px-6'}`}>
                   {/* Name column */}
-                  <div className="w-[33%] flex items-center gap-3">
+                  <div className="w-[30%] flex items-center gap-3">
                     {isTopic && (
                       <button
                         onClick={() => toggleExpand(item.id)}
@@ -371,39 +366,49 @@ export default function ManageTopicsPage() {
                     {isChild && (
                       <span className="w-2 h-2 rounded-full bg-outline-variant flex-shrink-0" />
                     )}
-                    {item.icon === 'sell' && <span className="w-8 flex-shrink-0" />}
+                    {item.type === 'TAG' && !isChild && <span className="w-8 flex-shrink-0" />}
                     <div>
                       <div className={`${isTopic ? 'font-semibold' : 'font-medium'} text-sm text-on-surface`}>
                         {item.name}
                       </div>
                       <div className="text-xs text-on-surface-variant mt-0.5">
-                        {generateSlug(item.name)}
+                        {item.slug}
                       </div>
                     </div>
                   </div>
 
                   {/* Type badge */}
-                  <div className="w-[16%]">
-                    <TypeBadge icon={item.icon ?? 'folder'} />
+                  <div className="w-[15%]">
+                    <TypeBadge type={item.type} />
                   </div>
 
-                  {/* Content count — TODO: wire to content count API */}
-                  <div className="w-[16%] text-center text-sm text-on-surface-variant">
-                    — bài
+                  {/* Content count — real, from backend (ADR-COM-015) */}
+                  <div className="w-[15%] text-center text-sm text-on-surface-variant">
+                    {item.questionCount} bài
                   </div>
 
-                  {/* Drag handle */}
-                  <div className="w-[16%] text-center">
+                  {/* Reorder — real, persisted via PATCH (ADR-COM-019) */}
+                  <div className="w-[15%] flex items-center justify-center gap-1">
                     <button
-                      className="border-none bg-transparent cursor-grab text-outline p-1"
-                      title="Kéo để sắp xếp"
+                      onClick={() => handleMove(item, 'up')}
+                      disabled={siblingIndex <= 0}
+                      title="Di chuyển lên"
+                      className="border-none bg-transparent cursor-pointer text-outline p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      <span className="material-symbols-outlined text-xl">drag_indicator</span>
+                      <span className="material-symbols-outlined text-lg">arrow_upward</span>
+                    </button>
+                    <button
+                      onClick={() => handleMove(item, 'down')}
+                      disabled={siblingIndex === -1 || siblingIndex >= siblings.length - 1}
+                      title="Di chuyển xuống"
+                      className="border-none bg-transparent cursor-pointer text-outline p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <span className="material-symbols-outlined text-lg">arrow_downward</span>
                     </button>
                   </div>
 
                   {/* Actions */}
-                  <div className="w-[19%] flex items-center justify-end gap-3">
+                  <div className="w-[25%] flex items-center justify-end gap-3">
                     <Toggle checked={isActive} onChange={() => handleToggleHidden(item)} />
                     <button
                       onClick={() => openEditDrawer(item)}
@@ -465,10 +470,10 @@ export default function ManageTopicsPage() {
               Loại phân loại
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {([['TOPIC', 'Chủ đề'], ['CATEGORY', 'Danh mục'], ['TAG', 'Thẻ (Tag)']] as [TaxonomyType, string][]).map(([value, label]) => (
+              {([['TOPIC', 'Chủ đề'], ['CATEGORY', 'Danh mục'], ['TAG', 'Thẻ (Tag)']] as [CommunityTopicType, string][]).map(([value, label]) => (
                 <button
                   key={value}
-                  onClick={() => setForm((prev) => ({ ...prev, type: value }))}
+                  onClick={() => setForm((prev) => ({ ...prev, type: value, parentId: value === 'TOPIC' ? '' : prev.parentId }))}
                   className={`py-[10px] px-1 rounded-xl cursor-pointer text-[13px] font-medium font-sans transition-all duration-[150ms] ${
                     form.type === value
                       ? 'border-2 border-primary bg-[rgba(201,140,123,0.08)] text-primary'
@@ -494,64 +499,41 @@ export default function ManageTopicsPage() {
             />
           </div>
 
-          {/* Slug input */}
+          {/* Slug — read-only, server-generated (ADR-COM-018) */}
           <div>
             <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
               Đường dẫn tĩnh (Slug)
             </label>
-            <div className="relative">
-              <input
-                value={form.slug}
-                onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-                placeholder="VD: suc-khoe-ba-bau"
-                className="w-full h-14 pr-[112px] pl-4 border border-surface-container-highest rounded-xl text-sm text-on-surface-variant bg-surface-container-low outline-none font-sans box-border focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-              <button
-                onClick={() => setForm((prev) => ({ ...prev, slug: generateSlug(prev.name) }))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 border-none bg-transparent cursor-pointer text-xs font-semibold text-primary font-sans"
-              >
-                Tạo tự động
-              </button>
+            <div className="w-full h-14 px-4 flex items-center border border-surface-container-highest rounded-xl text-sm text-on-surface-variant bg-surface-container-low box-border">
+              {editingSlug ?? 'Sẽ được tạo tự động khi lưu'}
             </div>
           </div>
 
-          {/* Parent topic — UI only; TODO: add parentId to backend */}
-          <div>
-            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
-              Chủ đề cha
-            </label>
-            <div className="relative">
-              <select
-                value={form.parentId}
-                onChange={(e) => setForm((prev) => ({ ...prev, parentId: e.target.value }))}
-                className="w-full h-14 pr-12 pl-4 border border-outline-variant rounded-xl text-sm text-on-surface bg-surface outline-none appearance-none cursor-pointer font-sans box-border"
-              >
-                <option value="">-- Không có (Làm chủ đề gốc) --</option>
-                {topicItems.filter((t) => !t.isHidden).map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <span
-                className="material-symbols-outlined absolute right-[14px] top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-xl"
-              >
-                expand_more
-              </span>
+          {/* Parent topic — real, sent to backend (ADR-COM-016 revised: optional) */}
+          {form.type !== 'TOPIC' && (
+            <div>
+              <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
+                Chủ đề cha (tuỳ chọn)
+              </label>
+              <div className="relative">
+                <select
+                  value={form.parentId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, parentId: e.target.value }))}
+                  className="w-full h-14 pr-12 pl-4 border border-outline-variant rounded-xl text-sm text-on-surface bg-surface outline-none appearance-none cursor-pointer font-sans box-border"
+                >
+                  <option value="">-- Không có (đứng độc lập) --</option>
+                  {topicItems.filter((t) => !t.isHidden).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <span
+                  className="material-symbols-outlined absolute right-[14px] top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-xl"
+                >
+                  expand_more
+                </span>
+              </div>
             </div>
-          </div>
-
-          {/* Sort order */}
-          <div>
-            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
-              Thứ tự hiển thị
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={form.sortOrder}
-              onChange={(e) => setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))}
-              className="w-full h-14 px-4 border border-outline-variant rounded-xl text-sm text-on-surface bg-surface outline-none font-sans box-border focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-          </div>
+          )}
 
           {submitError && (
             <p className="text-error text-[13px] m-0">{submitError}</p>
