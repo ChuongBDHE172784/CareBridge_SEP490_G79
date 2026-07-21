@@ -34,7 +34,9 @@ public class CreateCommunityTopicRequest {
     // validated in CommunityTopicServiceImpl, not here (needs a DB lookup).
     private UUID parentId;
 
+    // Boxed (not primitive int): with @AllArgsConstructor present, Jackson can pass null for an
+    // absent JSON field, which throws for primitives ("Cannot map null into type int"). null here
+    // means "not provided" -> mapper defaults it to 0, same convention as UpdateCommunityTopicRequest.
     @Min(value = 0, message = "sortOrder must be non-negative")
-    @Builder.Default
-    private int sortOrder = 0;
+    private Integer sortOrder;
 }

@@ -16,7 +16,7 @@ public class CommunityTopicMapper {
                 .icon(request.getIcon())
                 .type(request.getType())
                 .parentId(request.getParentId())
-                .sortOrder(request.getSortOrder())
+                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .createdBy(createdBy)
                 .isHidden(false)
                 .build();
