@@ -4,7 +4,7 @@
 **Document ID:** `CB-COMMUNITY-TEST-010`
 **Version:** `1.0`
 **Date:** `2026-07-21`
-**Status:** `Partially Implemented — 2026-07-21 (15/17 test cases verified GREEN; 2 integration tests written but unexecuted — Docker unavailable in this environment)`
+**Status:** `Implemented — 2026-07-22 (17/17 test cases verified GREEN — Docker Desktop was started, integration tests ran against real Testcontainers PostgreSQL and passed)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
 **Author:** `AI Agent — Amelia (Test Designer)`
 **Reviewed by:** `[ ] [Tên] — Pending`
@@ -30,6 +30,7 @@
 | 2026-07-21 | HuyND | Approved — "Approved" xác nhận qua chat, không chỉnh sửa nội dung. |
 | 2026-07-21 | AI Agent — Amelia (Dev Agent) | **Sửa COM-TC-006 + COM-TC-INT-002 theo ADR-COM-016 đã sửa**: phát hiện `ContentCategoryController` dùng chung entity, tạo CATEGORY không có parent — parentId cho CATEGORY/TAG chuyển từ "bắt buộc" sang "tuỳ chọn". Xem TDS CHANGELOG cùng ngày. |
 | 2026-07-21 | AI Agent — Amelia (Dev Agent) | **Truthful Sync sau implement**: 15/17 TC thực sự chạy và PASS (10 backend unit qua Red→Green đầy đủ; COM-TC-011/SEC-001 pure routing/regression, ngoài phạm vi Red Gate; WEB-TC-001/MOB-TC-001 pass thật nhưng KHÔNG theo strict Red-first — implement trước, test sau, ghi nhận minh bạch). 2/17 (`COM-TC-INT-001`, `COM-TC-INT-002`) viết xong, compile sạch, nhưng KHÔNG chạy được — môi trường không có Docker (`Could not find a valid Docker environment`). Full regression: backend 0 regression thật (9 lớp lỗi sẵn có từ trước, xác nhận qua `git stash` baseline so sánh); web 0 regression (4 file e2e lỗi từ trước cũng qua baseline check); mobile 248/248 pass. Migration thật dùng timestamp `V20260721204919` (không phải placeholder `V20260721100000` trong TDS gốc — theo đúng quy tắc implement-feature skill "TDS may reference for docs, actual file uses real timestamp"). |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **17/17 GREEN.** User đã commit, apply migration lên Supabase, bật Docker Desktop. Chạy lại `CommunityTopicIntegrationTest` → phát hiện lỗi Flyway có sẵn từ trước (2 migration trùng version `20260720100000`, từ merge `c2f96088`, chặn TOÀN BỘ Testcontainers test trong dự án — xác nhận bằng `CommunityProfileIntegrationTest` không liên quan cũng lỗi y hệt). User xác nhận đổi tên `V20260720100000__add_content_report_revert_columns.sql` → `V20260720100001__...`. Sau `mvn clean test`: `CommunityTopicIntegrationTest` 3/3 pass thật (Testcontainers PostgreSQL thật, không giả lập). Full regression backend lại lần nữa sau khi sửa: không có test nào của community/topic/content-category nằm trong danh sách lỗi còn sót (đã grep xác nhận); các lỗi còn lại (kể cả 1 lớp mới `Mf03OpenApiContractTest`, do thiếu `carebridge.zego.app-id` config) đều xác nhận không liên quan qua kiểm tra root cause riêng. |
 
 ---
 
@@ -516,7 +517,7 @@ class CommunityTopicTestFactory {
 **Severity:** `CRITICAL`
 **Feature Under Test:** Full flow: seed topic + questions (mixed status) → `GET /api/v1/community/topics`
 **Test File:** `src/test/java/com/carebridge/backend/community/CommunityTopicIntegrationTest.java` (mới)
-**TDD Phase:** 🟡 Written — unexecuted (Docker unavailable in this environment; Testcontainers cannot start)
+**TDD Phase:** 🟢 GREEN — verified 2026-07-22 against real Testcontainers PostgreSQL after Docker Desktop was started (`./mvnw clean test -Dtest=CommunityTopicIntegrationTest`, exit 0, `Tests run: 3, Failures: 0, Errors: 0`)
 **Condition Ref:** `TC-COND-009`, `TC-COND-010`
 
 **Preconditions:**
@@ -539,7 +540,8 @@ long approvedCount = questionRepository.countApprovedQuestionsByTopicIds(List.of
 assertThat(approvedCount).isEqualTo(3L);
 ```
 
-**Current Status:** 🟡 Written, not verified — see §5.1
+**Current Status:** 🟢 Passing (verified 2026-07-22, real Postgres via Testcontainers). Test method thực tế trong code: `countApprovedQuestionsByTopicIds_mixedStatuses_countsOnlyApproved` — dùng repository trực tiếp thay vì gọi qua `GET /api/v1/community/topics` (đơn giản hoá so với plan gốc, vẫn cùng oracle: 3 APPROVED trên tổng 5 câu hỏi mixed-status).
+**Ghi chú phát sinh khi chạy lần đầu:** phát hiện 1 lỗi Flyway CÓ SẴN TỪ TRƯỚC (không do feature này) — 2 migration khác nhau trùng version `20260720100000` (`V20260720100000__secure_baby_journey_linkage.sql` và `V20260720100000__add_content_report_revert_columns.sql`, từ merge commit `c2f96088`), chặn TOÀN BỘ Testcontainers integration test trong dự án. Đã xác nhận bằng cách chạy thử `CommunityProfileIntegrationTest` (không liên quan) và bị lỗi y hệt. User xác nhận sửa: đổi tên `V20260720100000__add_content_report_revert_columns.sql` → `V20260720100001__add_content_report_revert_columns.sql` (chỉ đổi version, giữ nguyên nội dung SQL). Sau khi sửa + `mvn clean`, test pass thật.
 
 ---
 
@@ -548,7 +550,7 @@ assertThat(approvedCount).isEqualTo(3L);
 **Severity:** `HIGH`
 **Feature Under Test:** `V20260721204919__add_community_topic_taxonomy.sql` — `community_topics_parent_rule_check`
 **Test File:** `CommunityTopicIntegrationTest.java`
-**TDD Phase:** 🟡 Written — unexecuted (Docker unavailable in this environment; Testcontainers cannot start)
+**TDD Phase:** 🟢 GREEN — verified 2026-07-22 against real Testcontainers PostgreSQL
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-COM-016` (revised) — the ONLY DB-enforced rule left after the revision is `type <> 'TOPIC' OR parent_id IS NULL`; "parent must be a TOPIC" is a cross-row rule and is service-layer only (COM-TC-007), not DB-enforced.
 
@@ -559,7 +561,7 @@ assertThat(approvedCount).isEqualTo(3L);
 
 **Expected Result (PASS):** bước 2 bị chặn (DataIntegrityViolationException), bước 3 thành công (không lỗi).
 
-**Current Status:** 🟡 Written, not verified — see §5.1
+**Current Status:** 🟢 Passing (verified 2026-07-22). Implement thực tế tách thành 2 test method riêng: `insertTopicTypeWithParentId_bypassingService_isRejectedByCheckConstraint` (bước 2) và `insertCategoryTypeWithNullParentId_bypassingService_isAccepted` (bước 3) — cùng đóng gói trong `Tests run: 3` của `CommunityTopicIntegrationTest`.
 
 ---
 
@@ -633,8 +635,8 @@ assertThat(approvedCount).isEqualTo(3L);
 | `COM-TC-011` | `community/CommunityTopicControllerTest.java` | `[ ]` — pure routing test, not stub-gated (see §5.1 note) | 2026-07-21 (uncommitted) | Passed as soon as written; not a Green-from-Birth violation — controller has no deferred business logic, service is fully mocked |
 | `COM-TC-012` | `community/CommunityTopicServiceImplTest.java` | `[x]` | 2026-07-21 (uncommitted) | — |
 | `COM-TC-SEC-001` | `community/CommunityTopicControllerTest.java` | `[x]` (pre-existing test, reused — RBAC unchanged) | 2026-07-21 (uncommitted) | This TC maps to the already-existing `createTopic_asMotherUser_shouldReturn403` regression test |
-| `COM-TC-INT-001` | `community/CommunityTopicIntegrationTest.java` | ⚠️ **NOT RUN** | ⚠️ **NOT RUN** | Docker unavailable in this environment — Testcontainers cannot start. Test is written and compiles; execution is unverified. See §5.1. |
-| `COM-TC-INT-002` | (idem) | ⚠️ **NOT RUN** | ⚠️ **NOT RUN** | Same Docker limitation |
+| `COM-TC-INT-001` | `community/CommunityTopicIntegrationTest.java` | `[x]` | 2026-07-22 (uncommitted at test time) | Verified GREEN against real Testcontainers PostgreSQL after Docker Desktop was started |
+| `COM-TC-INT-002` | (idem) | `[x]` | 2026-07-22 (uncommitted at test time) | Verified GREEN; also surfaced and fixed a pre-existing, unrelated Flyway duplicate-version collision (`V20260720100000` × 2, from merge `c2f96088`) that blocked ALL Testcontainers integration tests project-wide — renamed `V20260720100000__add_content_report_revert_columns.sql` → `V20260720100001__...` with user approval |
 | `WEB-TC-001` | `contentManagement/pages/topicTree.test.ts` | ⚠️ Not stub-gated | 2026-07-21 (uncommitted) | `buildTopicTree` was implemented directly, then the test was written and run against it (3/3 pass) — did NOT follow strict red-stub-first order. No dependency to stub (pure function); low Green-from-Birth risk, but flagged honestly per Truthful Sync policy. |
 | `MOB-TC-001` | `test/features/community/topic_directory_screen_test.dart` | ⚠️ Not stub-gated | 2026-07-21 (uncommitted) | Same as WEB-TC-001 — `questionCountLabel` implemented first, then tested (2/2 pass). Also: test targets an extracted top-level function, not the originally-planned `pumpWidget(_TopicGridCard(...))` — `CommunityService`'s private constructor makes full widget-pump testing impractical without a larger DI refactor (out of scope). |
 
@@ -678,14 +680,14 @@ public final class SlugGenerator {
 | `COM-TC-002`…`COM-TC-010`, `COM-TC-012` | `throw('Not implemented')` | 🔴 FAIL | ☑ FAIL ☐ PASS | Verified via `./mvnw test` — actual run showed 10 failures (`UnsupportedOperationException` or wrong-exception-type) before implementation |
 | `COM-TC-011` | N/A — `topicService` fully mocked via `@MockitoBean`, no business logic deferred behind the stub | N/A | N/A | Not subject to Red Gate — pure controller routing test |
 | `COM-TC-SEC-001` | N/A — pre-existing regression test (`createTopic_asMotherUser_shouldReturn403`), unaffected by the new stub | N/A | N/A | RBAC check predates this feature |
-| `COM-TC-INT-001/002` | Would run against a real Testcontainers Postgres | 🔴 FAIL (expected) | ⚠️ **NOT RUN — Docker unavailable in this environment** | `ExceptionInInitializerError: Could not find a valid Docker environment`. Test is written and compiles; Red Gate is unverified, not confirmed. |
+| `COM-TC-INT-001/002` | Ran against a real Testcontainers Postgres (Docker Desktop started) | 🔴 FAIL (expected) | ☑ Verified PASS after implement (2026-07-22) | Red Gate itself was not re-verified with a throw-stub for the integration layer (no separate stub exists for repository/DB behavior) — but the underlying service logic (`validateHierarchy`, `countApprovedQuestionsByTopicIds`) already passed unit-level Red Gate (§ above). Integration run confirms the same behavior holds against a real DB. |
 | `WEB-TC-001` | N/A — implemented before the test was written (see §5 tracker note) | N/A | N/A | Strict red-stub-first order was NOT followed for this file |
 | `MOB-TC-001` | N/A — implemented before the test was written (see §5 tracker note) | N/A | N/A | Strict red-stub-first order was NOT followed for this file |
 
 **Red Gate Evidence:**
 - Stub commit hash: not committed yet — all changes are uncommitted in the working tree as of 2026-07-21
-- Tất cả FAIL? ☑ Yes cho 10/10 test case backend thực sự chịu Red Gate (`COM-TC-001`–`COM-TC-010`, `COM-TC-012`) → **GATE-2 PASS** (T2→T3) cho backend service/util layer. `COM-TC-011`/`COM-TC-SEC-001` ngoài phạm vi Red Gate (giải thích ở cột Stub Result). `COM-TC-INT-001/002` **CHƯA XÁC MINH ĐƯỢC** — môi trường không có Docker. `WEB-TC-001`/`MOB-TC-001` không tuân thủ thứ tự Red-trước-Green — ghi nhận trung thực, không che giấu.
-- Log file: chạy trực tiếp `./mvnw test` / `npx vitest run` / `flutter test` trong phiên làm việc; không lưu file log riêng.
+- Tất cả FAIL? ☑ Yes cho 10/10 test case backend thực sự chịu Red Gate (`COM-TC-001`–`COM-TC-010`, `COM-TC-012`) → **GATE-2 PASS** (T2→T3) cho backend service/util layer. `COM-TC-011`/`COM-TC-SEC-001` ngoài phạm vi Red Gate (giải thích ở cột Stub Result). `COM-TC-INT-001/002` verify GREEN sau (2026-07-22, Docker Desktop khởi động) — `./mvnw clean test -Dtest=CommunityTopicIntegrationTest` → `Tests run: 3, Failures: 0, Errors: 0`. `WEB-TC-001`/`MOB-TC-001` không tuân thủ thứ tự Red-trước-Green — ghi nhận trung thực, không che giấu.
+- Log file: chạy trực tiếp `./mvnw test` / `npx vitest run` / `flutter test` trong phiên làm việc; không lưu file log riêng. Log integration test: `target/surefire-reports/com.carebridge.backend.community.CommunityTopicIntegrationTest.txt`.
 
 ---
 
@@ -694,12 +696,12 @@ public final class SlugGenerator {
 ### Entry Criteria
 - [x] TDS `CB-COMMUNITY-IMP-010` đã Approved
 - [x] Logic Issues (§2) đã confirm
-- [ ] Migration `V20260721204919__add_community_topic_taxonomy.sql` đã chạy sạch trên Testcontainers — **CHƯA XÁC MINH** (Docker không có sẵn trong môi trường này); migration chỉ được xác minh gián tiếp qua compile + `./mvnw compile` sạch, KHÔNG qua chạy Flyway thật
+- [x] Migration `V20260721204919__add_community_topic_taxonomy.sql` đã chạy sạch trên Testcontainers (verified 2026-07-22 sau khi Docker Desktop được bật)
 - [x] Fixtures (§3 TDS-05) đã chuẩn bị (qua `CommunityTopicTestFactory`)
 
 ### Exit Criteria (DoD)
 - [x] `./mvnw test -Dtest=SlugGeneratorTest,CommunityTopicServiceImplTest,CommunityTopicControllerTest,CommunityTopicSearchServiceImplTest,ContentCategoryControllerTest` — xanh, không skip (chạy thật, exit code 0)
-- [ ] `./mvnw verify -Dtest=CommunityTopicIntegrationTest` — **KHÔNG chạy được** — Docker/Testcontainers không có sẵn trong môi trường này (`ExceptionInInitializerError: Could not find a valid Docker environment`)
+- [x] `./mvnw clean test -Dtest=CommunityTopicIntegrationTest` — xanh (3/3 pass, chạy thật với Docker Desktop, sau khi sửa 1 lỗi Flyway version-collision có sẵn từ trước không liên quan feature này)
 - [x] `npx vitest run src/features/contentManagement/pages/topicTree.test.ts` — xanh (3/3 pass, chạy thật)
 - [x] `flutter test test/features/community/topic_directory_screen_test.dart` — xanh (2/2 pass, chạy thật)
 - [x] Không có business logic trong `CommunityTopicController` (chỉ validation + mapping — hồi quy, không đổi)
@@ -748,13 +750,13 @@ git checkout -- ../CareBridgeMobileApp/lib/features/community/ ../CareBridgeMobi
 | AP-AI-005 | Hallucinated Contract | Tất cả class/method reference (`SlugGenerator`, `InvalidTopicHierarchyException`, `TopicQuestionCountProjection`) đều được định nghĩa tường minh ở TDS §8 trước khi test case dùng tới | ☑ | G-3 |
 
 **Kết quả review:**
-- [x] Không phát hiện anti-pattern nghiêm trọng nào → Test-Spec approved, với 2 ngoại lệ đã ghi nhận minh bạch (WEB-TC-001/MOB-TC-001 không theo strict Red-first; COM-TC-INT-001/002 chưa verify được do thiếu Docker)
+- [x] Không phát hiện anti-pattern nghiêm trọng nào → Test-Spec approved, với 1 ngoại lệ đã ghi nhận minh bạch (WEB-TC-001/MOB-TC-001 không theo strict Red-first). `COM-TC-INT-001/002` đã verify GREEN thật (2026-07-22).
 - [ ] Phát hiện AP nghiêm trọng cần fix trước implement → không có
 
 | AP detected | TC ID | Mô tả | Fix action | Fixed? |
 |--------------|-------|-------|------------|--------|
 | Deviation (không phải AP chính thức) | WEB-TC-001, MOB-TC-001 | Implement trước khi viết test (không theo strict Red-first) | Chấp nhận có ghi chú — pure function/no stub dependency, rủi ro Green-from-Birth thấp | N/A — ghi nhận, không "fix" |
-| Environment gap | COM-TC-INT-001, COM-TC-INT-002 | Docker không có sẵn, Testcontainers không chạy được | Cần chạy lại ở môi trường có Docker trước khi coi là Approved/Implemented đầy đủ | ☐ Chưa fix — outstanding |
+| Environment gap (đã fix) | COM-TC-INT-001, COM-TC-INT-002 | Docker không có sẵn lúc đầu; sau khi bật Docker Desktop, phát hiện thêm lỗi Flyway version-collision có sẵn từ trước (2 migration cùng version `20260720100000`) chặn toàn bộ Testcontainers test trong dự án | User xác nhận đổi tên `V20260720100000__add_content_report_revert_columns.sql` → `V20260720100001__...`; chạy lại `./mvnw clean test` | ☑ Fixed 2026-07-22 — 3/3 pass |
 
 ---
 

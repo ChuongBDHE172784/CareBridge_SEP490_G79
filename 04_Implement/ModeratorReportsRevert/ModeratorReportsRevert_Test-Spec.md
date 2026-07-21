@@ -27,6 +27,7 @@
 | 2026-07-20 | AI Agent — Claude | Khởi tạo tài liệu — Test-Spec cho CB-MOD-IMP-015 (Status=Draft) |
 | 2026-07-20 | HuyND | Approved qua chat ("Approved") — chuyển Status sang `Approved` |
 | 2026-07-20 | AI Agent — Claude (Dev Agent) | Phase 3/4: `MRR-TC-001..016` (unit + security + integration) đều 🟢 PASS trên lần chạy đầu tiên (`./mvnw -Dtest=ModerationServiceImplTest,ModerationControllerSecurityTest,RevertReportIntegrationTest test`). `MRR-TC-017..019` (frontend) verify bằng manual QA qua trình duyệt (`moderator@carebridge.dev`) — không có Vitest/RTL harness cho trang này nên không tự động hoá được ở batch này. Red Gate (§5.1) KHÔNG được chạy như một bước riêng biệt — service method được viết cùng lúc với test thay vì stub-throw-trước, nên không có bằng chứng "confirmed FAIL" riêng để ghi nhận; §5.1 giữ nguyên chưa tick theo đúng tinh thần "chỉ ghi nhận điều đã thực sự xảy ra". Toàn bộ 20/20 test case (không tính 3 case FE manual QA) PASS ngay từ lần chạy đầu — không có case nào phải sửa lại. |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent, session CommunityTopicManagement) | Migration `V20260720100000__add_content_report_revert_columns.sql` đổi tên thành `V20260720100001__...` (chỉ đổi version, giữ nguyên SQL) để giải quyết trùng version với `V20260720100000__secure_baby_journey_linkage.sql`, đang chặn toàn bộ Testcontainers integration test trong dự án. Xem chi tiết ở `CommunityTopicManagement_TDS.md`/`_Test-Spec.md` CHANGELOG cùng ngày. |
 
 ---
 
