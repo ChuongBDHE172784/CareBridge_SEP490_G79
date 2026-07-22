@@ -19,7 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "health_device_connections")
+@Table(name = "device_connections")
 @Getter
 @Setter
 @Builder(toBuilder = true)
@@ -29,7 +29,7 @@ public class HealthDeviceConnection {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "connection_id", updatable = false, nullable = false)
+    @Column(name = "device_connection_id", updatable = false, nullable = false)
     private UUID connectionId;
 
     @Column(name = "user_id", nullable = false)
@@ -41,7 +41,7 @@ public class HealthDeviceConnection {
     @Column(name = "device_name", length = 150)
     private String deviceName;
 
-    @Column(name = "scopes_json", columnDefinition = "jsonb")
+    @Column(name = "scopes_jsonb", columnDefinition = "jsonb")
     private String scopesJson;
 
     @Column(name = "token_reference", columnDefinition = "text")

@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "uploaded_files")
+@Table(name = "attachments")
 @Getter
 @Setter
 @Builder
@@ -19,7 +19,7 @@ public class UploadedFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "file_id", updatable = false, nullable = false)
+    @Column(name = "attachment_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
