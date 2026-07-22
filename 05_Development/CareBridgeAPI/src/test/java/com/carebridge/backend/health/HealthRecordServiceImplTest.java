@@ -6,12 +6,11 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
-import com.carebridge.backend.file.service.IStorageService;
+import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.health.dto.AddHealthRecordRequest;
 import com.carebridge.backend.health.dto.AddHealthRecordResponse;
 import com.carebridge.backend.health.dto.HealthRecordDetailResponse;
 import com.carebridge.backend.health.entity.HealthRecord;
-import com.carebridge.backend.health.entity.HealthRecordFile;
 import com.carebridge.backend.health.entity.HealthRecordStatus;
 import com.carebridge.backend.health.entity.RecordType;
 import com.carebridge.backend.health.repository.HealthRecordFileRepository;
@@ -39,7 +38,7 @@ class HealthRecordServiceImplTest {
     @Mock private HealthRecordRepository recordRepository;
     @Mock private HealthRecordFileRepository recordFileRepository;
     @Mock private UploadedFileRepository uploadedFileRepository;
-    @Mock private IStorageService storageService;
+    @Mock private IFileService fileService;
     @Mock private AuditService auditService;
     @InjectMocks private HealthRecordServiceImpl healthRecordService;
 
@@ -167,11 +166,11 @@ class HealthRecordServiceImplTest {
                 .thenReturn(List.of(link));
         when(uploadedFileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE))
                 .thenReturn(Optional.of(uploadedFile));
-        when(storageService.generatePresignedUrl(anyString(), eq(15))).thenReturn("https://presigned/url");
+        when(fileService.generatePresignedUrl(eq(fileId), eq(CALLER_ID), eq(15))).thenReturn("https://presigned/url");
 
         healthRecordService.getHealthRecord(RECORD_ID, CALLER_ID);
 
-        verify(storageService).generatePresignedUrl(anyString(), eq(15));
+        verify(fileService).generatePresignedUrl(eq(fileId), eq(CALLER_ID), eq(15));
     }
 
     // HEALTH-TC-005: View — response must NOT contain medical diagnosis (BR-SAFETY-001)

@@ -52,4 +52,10 @@ public interface IFileService {
      * Returns the uploaded file metadata.
      */
     UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName, FilePurpose purpose);
+
+    /**
+     * Generate a presigned URL for accessing a file.
+     * @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted
+     */
+    String generatePresignedUrl(UUID fileId, UUID callerId, int ttlMinutes);
 }

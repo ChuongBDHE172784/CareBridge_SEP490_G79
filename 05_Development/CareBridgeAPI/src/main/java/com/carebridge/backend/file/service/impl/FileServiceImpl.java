@@ -374,6 +374,23 @@ public class FileServiceImpl implements IFileService {
     }
 
     @Override
+    public String generatePresignedUrl(UUID fileId, UUID callerId, int ttlMinutes) {
+        UploadedFile file = fileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        Set<String> authorities = java.util.Optional
+                .ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(auth -> auth.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toSet()))
+                .orElse(Set.of());
+
+        fileAccessPolicy.assertViewable(file, callerId, authorities);
+
+        return storageFor(file.getStorageProvider()).generatePresignedUrl(file.getStorageKey(), ttlMinutes);
+    }
+
+    @Override
     public UploadFileResponse uploadPrivateBytes(byte[] bytes, UUID callerId, String mimeType, String suggestedName) {
         return uploadPrivateBytes(bytes, callerId, mimeType, suggestedName, null);
     }
@@ -425,9 +442,9 @@ public class FileServiceImpl implements IFileService {
         try {
             storageService.store(storageKey, bytes, mimeType);
             persistedStorageKey = storageService.persistedKey(storageKey);
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-004",
-                    "Failed to store file");
+                    "Failed to store file: " + e.getMessage());
         }
 
         try {

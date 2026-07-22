@@ -112,10 +112,11 @@ public class FaceCropService {
                 return image;
             }
 
-            int orientation = exifDir.getInt(ExifIFD0Directory.TAG_ORIENTATION);
-            if (orientation <= 1) {
-                return image; // No rotation needed
+            Integer orientationInt = exifDir.getInteger(ExifIFD0Directory.TAG_ORIENTATION);
+            if (orientationInt == null || orientationInt <= 1) {
+                return image; // No orientation tag or no rotation needed
             }
+            int orientation = orientationInt;
 
             int width = image.getWidth();
             int height = image.getHeight();
