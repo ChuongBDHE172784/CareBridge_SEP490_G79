@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 // project-wide, same finding as UC-100/UC-101). This test exercises the full Spring MVC + Security
 // filter chain against a mocked service layer (established project convention — see
 // ModerateContentIntegrationTest, ResolveReportIntegrationTest). It verifies HTTP-level wiring/response
-// shape only; it does NOT verify real DB row persistence (users.suspended_until / moderation_actions
+// shape only; it does NOT verify real DB row persistence (users.suspended_until / moderation_events
 // columns) — that is covered instead at the service-unit-test level (WarnOrSuspendAccountServiceImplTest
 // WSA-TC-202/WSA-TC-211). WSA-TC-INT-003 (atomicity rollback) requires a real transactional DB and is
 // NOT implemented here — documented as an open gap, same honest treatment as UC-101's RES-TC-INT-004.

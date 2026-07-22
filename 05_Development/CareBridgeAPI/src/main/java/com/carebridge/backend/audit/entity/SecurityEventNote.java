@@ -16,7 +16,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "security_event_notes")
+@Table(name = "audit_events")
 @Getter
 @Setter
 @Builder
@@ -26,19 +26,23 @@ public class SecurityEventNote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "note_id", updatable = false, nullable = false)
+    @Column(name = "audit_event_id", updatable = false, nullable = false)
     private UUID noteId;
 
-    @Column(name = "event_id", nullable = false)
+    @Column(name = "security_event_id", nullable = false)
     private Long eventId;
 
-    @Column(name = "author_id", nullable = false)
+    @Column(name = "actor_user_id", nullable = false)
     private UUID authorId;
 
     @Column(name = "note_text", nullable = false, columnDefinition = "text")
     private String noteText;
 
+    @Builder.Default
+    @Column(name = "event_category", nullable = false, length = 80)
+    private String eventCategory = "SECURITY_INVESTIGATION_NOTE";
+
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant createdAt;
 }

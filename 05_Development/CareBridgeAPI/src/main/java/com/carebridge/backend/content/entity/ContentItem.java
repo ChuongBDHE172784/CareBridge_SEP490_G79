@@ -68,7 +68,7 @@ public class ContentItem {
     private String sourceLabel;
 
     @ElementCollection
-    @CollectionTable(name = "content_sources", joinColumns = @JoinColumn(name = "content_item_id"))
+    @CollectionTable(name = "content_item_sources", joinColumns = @JoinColumn(name = "content_item_id"))
     private List<ContentSource> sources = new ArrayList<>();
 
     @Column(name = "published_at")

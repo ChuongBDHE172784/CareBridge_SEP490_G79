@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "content_reports")
+@Table(name = "moderation_cases")
 @Getter
 @Setter
 @Builder
@@ -27,7 +27,7 @@ public class ContentReport {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "report_id", updatable = false, nullable = false, columnDefinition = "uuid")
+    @Column(name = "moderation_case_id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
     @Column(name = "target_id", columnDefinition = "uuid")
@@ -41,7 +41,7 @@ public class ContentReport {
     @Column(name = "status", nullable = false, length = 20)
     private ReportStatus status;
 
-    @Column(name = "category", length = 50)
+    @Column(name = "reason_code", length = 80)
     private String category;
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +58,7 @@ public class ContentReport {
     @Column(name = "assigned_moderator_id", columnDefinition = "uuid")
     private UUID assignedModeratorId;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "opened_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "resolved_at")

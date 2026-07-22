@@ -37,7 +37,7 @@ public interface ModerationService {
     PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal);
 
     /**
-     * Lists past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER targets from moderation_actions
+     * Lists past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER targets from moderation_events
      * (CB-MOD-IMP-004 §16 ADR-007), read directly — no ACCOUNT actions (separate history view).
      */
     ModerationHistoryResponse getModerationHistory(ModerationHistoryFilter filter, Principal principal);

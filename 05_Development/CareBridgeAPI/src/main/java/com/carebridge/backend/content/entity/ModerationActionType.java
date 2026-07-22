@@ -14,6 +14,6 @@ public enum ModerationActionType {
     ESCALATE,
     // CB-MOD-IMP-009: only ever created by ModerationServiceImpl.undoModerationAction() — blocked
     // from the generic POST /actions endpoint (OUT_OF_SCOPE_ACTION_TYPES). No Flyway migration
-    // needed: moderation_actions.action_type is a plain varchar(30), no DB CHECK constraint (ADR-005).
+    // moderation_events.action_type remains an extensible varchar (ADR-005).
     UNDO
 }
