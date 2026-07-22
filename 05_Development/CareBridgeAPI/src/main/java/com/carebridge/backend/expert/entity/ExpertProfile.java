@@ -39,6 +39,9 @@ private Integer experienceYears;
 @Column(name = "workplace", length = 200)
 private String workplace;
 
+@Column(name = "facility_id")
+private UUID facilityId;
+
 @Column(name = "consultation_scope", columnDefinition = "text")
 private String consultationScope;
 
