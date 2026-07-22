@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * (email/SMS) are mocked, since those are side effects outside the persistence boundary.
  *
  * <p>Assertions reflect the real implementation: account status {@code PENDING_ACTIVATION}
- * with {@code enabled=false}, a BCrypt password hash, and a pending {@code otp_verifications}
+ * with {@code enabled=false}, a BCrypt password hash, and a pending auth challenge
  * row with a future {@code expires_at}. (The Test-Spec's idealized names — {@code UNVERIFIED},
  * {@code otp_records} — map to these actual columns.)
  */
@@ -87,7 +87,7 @@ class RegisterAccountIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(user.getRole()).isEqualTo(Role.MOTHER);
         assertThat(user.getPasswordHash()).startsWith("$2");
 
-        // otp_verifications table: 1 pending row, unused, future expiry
+        // auth_challenges: one pending row, unused, future expiry
         OtpVerification otp = otpVerificationRepository
                 .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();

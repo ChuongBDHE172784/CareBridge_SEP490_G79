@@ -124,7 +124,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isActiveSession(UserSession session, UUID userId) {
         return userId.equals(session.getUserId())
                 && !session.isRevoked()
-                && "active".equals(session.getStatus())
+                && "ACTIVE".equalsIgnoreCase(session.getStatus())
                 && session.getExpiresAt() != null
                 && session.getExpiresAt().isAfter(Instant.now());
     }

@@ -313,7 +313,7 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         assertThatThrownBy(() -> babyRepository.saveAndFlush(invalid))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_profiles where owner_user_id=? and nickname='Invalid FK'",
+                "select count(*) from care_subjects where owner_user_id=? and nickname='Invalid FK' and subject_type='BABY'",
                 Long.class,
                 motherId)).isZero();
     }
@@ -454,6 +454,6 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
     }
 
     private void wipeStoryFixtures() {
-        jdbcTemplate.execute("truncate table baby_link_submissions, pregnancy_outcome_evidence, baby_profiles, mother_journeys, audit_logs, users cascade");
+        jdbcTemplate.execute("truncate table baby_link_submissions, pregnancy_outcome_evidence, care_subjects, mother_journeys, audit_logs, users cascade");
     }
 }

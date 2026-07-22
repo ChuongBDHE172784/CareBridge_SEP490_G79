@@ -169,12 +169,12 @@ public class BabyServiceImpl implements IBabyService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-003",
                     "Access denied to baby profile");
         }
-        if (profile.getStatus() != BabyProfileStatus.ACTIVE) {
+        if (profile.getStatus() == BabyProfileStatus.ARCHIVED) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-004",
                     "Cannot activate archived baby profile");
         }
 
-        babyRepository.updateActiveByOwnerUserId(callerId, false);
+        babyRepository.setActiveBaby(callerId, babyId);
         profile.setActive(true);
         BabyProfile saved = babyRepository.save(profile);
 

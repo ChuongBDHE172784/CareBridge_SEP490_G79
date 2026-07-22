@@ -2,48 +2,97 @@ package com.carebridge.backend.notification.repository;
 
 import com.carebridge.backend.notification.entity.NotificationPreference;
 import com.carebridge.backend.notification.entity.NotificationType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
+/** Persists notification preferences inside the canonical users.settings_jsonb document. */
 @Repository
-public interface NotificationPreferenceRepository extends JpaRepository<NotificationPreference, UUID> {
+@RequiredArgsConstructor
+public class NotificationPreferenceRepository {
+    private static final String KEY = "notifications";
+    private final UserRepository userRepository;
 
-    /**
-     * Find all preferences for a given user.
-     */
-    List<NotificationPreference> findByUserId(UUID userId);
+    public List<NotificationPreference> findByUserId(UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return List.of();
+        Map<String, Object> values = section(user);
+        List<NotificationPreference> result = new ArrayList<>();
+        values.forEach((type, value) -> {
+            if (value instanceof Map<?, ?> channels) result.add(toPreference(userId, type, channels));
+        });
+        return result;
+    }
 
-    /**
-     * Find preference for a specific user and notification type.
-     */
-    Optional<NotificationPreference> findByUserIdAndNotificationType(UUID userId, NotificationType notificationType);
+    public Optional<NotificationPreference> findByUserIdAndNotificationType(UUID userId, NotificationType type) {
+        return findByUserId(userId).stream().filter(p -> p.getNotificationType() == type).findFirst();
+    }
 
-    /**
-     * Delete all preferences for a user (used when account is deleted).
-     */
-    void deleteByUserId(UUID userId);
+    public NotificationPreference save(NotificationPreference preference) {
+        User user = userRepository.findById(preference.getUserId()).orElseThrow();
+        Map<String, Object> settings = mutableSettings(user);
+        Map<String, Object> notifications = mutableSection(settings);
+        notifications.put(preference.getNotificationType().name(), Map.of(
+                "pushEnabled", Boolean.TRUE.equals(preference.getPushEnabled()),
+                "emailEnabled", Boolean.TRUE.equals(preference.getEmailEnabled()),
+                "inAppEnabled", Boolean.TRUE.equals(preference.getInAppEnabled())));
+        settings.put(KEY, notifications);
+        user.setSettings(settings);
+        userRepository.save(user);
+        if (preference.getPreferenceId() == null) preference.setPreferenceId(UUID.randomUUID());
+        if (preference.getCreatedAt() == null) preference.setCreatedAt(Instant.now());
+        preference.setUpdatedAt(Instant.now());
+        return preference;
+    }
 
-    /**
-     * Check if push notifications are enabled for a user and type.
-     * Used by UC-158 / UC-159 / UC-160 / UC-161 preference gate.
-     *
-     * @return true if a preference row exists with push_enabled = true,
-     *         or if NO row exists (default = enabled).
-     */
-    @Query("""
-            SELECT CASE
-                WHEN COUNT(p) = 0 THEN true
-                ELSE MAX(CASE WHEN p.pushEnabled = true THEN 1 ELSE 0 END) = 1
-            END
-            FROM NotificationPreference p
-            WHERE p.userId = :userId AND p.notificationType = :type
-            """)
-    boolean isPushEnabled(@Param("userId") UUID userId, @Param("type") NotificationType type);
+    public void deleteByUserId(UUID userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            Map<String, Object> settings = mutableSettings(user);
+            settings.remove(KEY);
+            user.setSettings(settings);
+            userRepository.save(user);
+        });
+    }
+
+    public boolean isPushEnabled(UUID userId, NotificationType type) {
+        return findByUserIdAndNotificationType(userId, type)
+                .map(p -> Boolean.TRUE.equals(p.getPushEnabled())).orElse(true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> section(User user) {
+        Object value = user.getSettings() == null ? null : user.getSettings().get(KEY);
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+    }
+
+    private Map<String, Object> mutableSettings(User user) {
+        return user.getSettings() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(user.getSettings());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> mutableSection(Map<String, Object> settings) {
+        Object value = settings.get(KEY);
+        return value instanceof Map<?, ?> map
+                ? new LinkedHashMap<>((Map<String, Object>) map) : new LinkedHashMap<>();
+    }
+
+    private NotificationPreference toPreference(UUID userId, String type, Map<?, ?> channels) {
+        return NotificationPreference.builder().preferenceId(UUID.nameUUIDFromBytes((userId + ":" + type).getBytes()))
+                .userId(userId).notificationType(NotificationType.valueOf(type))
+                .pushEnabled(flag(channels, "pushEnabled")).emailEnabled(flag(channels, "emailEnabled"))
+                .inAppEnabled(flag(channels, "inAppEnabled")).build();
+    }
+
+    private boolean flag(Map<?, ?> values, String key) {
+        Object value = values.get(key);
+        return value == null || Boolean.parseBoolean(value.toString());
+    }
 }

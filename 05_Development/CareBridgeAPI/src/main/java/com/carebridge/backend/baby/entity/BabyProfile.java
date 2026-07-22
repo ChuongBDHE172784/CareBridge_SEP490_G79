@@ -1,5 +1,6 @@
 package com.carebridge.backend.baby.entity;
 
+import com.carebridge.backend.profile.entity.Person;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -11,7 +12,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "baby_profiles")
+@Table(name = "care_subjects")
 @Getter
 @Setter
 @Builder
@@ -21,13 +22,17 @@ public class BabyProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "baby_id", updatable = false, nullable = false)
+    @Column(name = "care_subject_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
     private UUID ownerUserId;
 
-    @Column(name = "related_journey_id")
+    @ManyToOne(optional = false, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "person_id", nullable = false)
+    private Person person;
+
+    @Column(name = "mother_journey_id")
     private UUID relatedJourneyId;
 
     @Column(name = "nickname", nullable = false, length = 100)
@@ -51,9 +56,12 @@ public class BabyProfile {
     @Column(name = "status", nullable = false, length = 20)
     private BabyProfileStatus status = BabyProfileStatus.ACTIVE;
 
+    @org.hibernate.annotations.Formula("coalesce((select (u.settings_jsonb ->> 'activeBabyId')::uuid = care_subject_id from users u where u.user_id = owner_user_id), false)")
+    private Boolean active;
+
     @Builder.Default
-    @Column(name = "is_active", nullable = false)
-    private Boolean active = false;
+    @Column(name = "subject_type", nullable = false, length = 30, updatable = false)
+    private String subjectType = "BABY";
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -62,4 +70,22 @@ public class BabyProfile {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    public Boolean getActive() {
+        return active != null ? active : status == BabyProfileStatus.ACTIVE;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    @PrePersist
+    @PreUpdate
+    void canonicalPerson() {
+        if (person == null) person = Person.builder().displayName(nickname).dateOfBirth(birthDate).build();
+        else {
+            person.setDisplayName(nickname);
+            person.setDateOfBirth(birthDate);
+        }
+    }
 }

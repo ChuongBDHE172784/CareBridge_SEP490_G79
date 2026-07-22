@@ -19,7 +19,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,12 +44,11 @@ class AuthServiceResendOtpTest {
         smsService = mock(SmsService.class);
         tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
 
-        AtomicLong otpIdSequence = new AtomicLong(10L);
         when(otpVerificationRepository.save(any(OtpVerification.class)))
                 .thenAnswer(invocation -> {
                     OtpVerification saved = invocation.getArgument(0);
                     if (saved.getId() == null) {
-                        saved.setId(otpIdSequence.getAndIncrement());
+                        saved.setId(UUID.randomUUID());
                     }
                     return saved;
                 });
@@ -88,7 +86,7 @@ class AuthServiceResendOtpTest {
                 .build();
 
         OtpVerification existingOtp = OtpVerification.builder()
-                .id(1L)
+                .id(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .user(user)
                 .phone(phone)
                 .purpose(OtpVerification.OtpPurpose.REGISTER)
@@ -262,7 +260,7 @@ class AuthServiceResendOtpTest {
         String accountKey = userId.toString();
         User user = User.builder().id(userId).phone(phone).email(email).build();
         OtpVerification existingOtp = OtpVerification.builder()
-                .id(1L)
+                .id(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .user(user)
                 .phone(phone)
                 .purpose(OtpVerification.OtpPurpose.REGISTER)

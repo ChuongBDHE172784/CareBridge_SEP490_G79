@@ -78,7 +78,7 @@ class FederatedIdentityLinkIntegrationTest extends AbstractPostgresIntegrationTe
                  where actor_user_id = ? and action = 'FEDERATED_IDENTITY_LINKED'
                 """, Integer.class, user.getId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
-                select count(*) from user_sessions where user_id = ?
+                select count(*) from auth_sessions where user_id = ?
                 """, Integer.class, user.getId())).isZero();
     }
 }

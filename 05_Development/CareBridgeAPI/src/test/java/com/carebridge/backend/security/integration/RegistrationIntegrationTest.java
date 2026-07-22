@@ -640,11 +640,11 @@ class RegistrationIntegrationTest {
                         .build());
 
         jdbcTemplate.update(
-                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                "UPDATE auth_challenges SET created_at = ? WHERE challenge_id = ?",
                 Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
                 olderPending.getId());
         jdbcTemplate.update(
-                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                "UPDATE auth_challenges SET created_at = ? WHERE challenge_id = ?",
                 Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
                 newerPending.getId());
         clearInvocations(emailService, smsService);
