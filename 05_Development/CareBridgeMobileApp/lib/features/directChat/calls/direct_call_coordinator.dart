@@ -27,6 +27,9 @@ class DirectCallCoordinator {
   bool _pendingSync = false;
   bool _disposed = false;
   int _generation = 0;
+  Timer? _pollTimer;
+
+  static const _pollInterval = Duration(seconds: 5);
 
   DirectCallState get state => _state;
   Stream<DirectCallState> get states => _states.stream;
@@ -193,12 +196,35 @@ class DirectCallCoordinator {
     if (_disposed) return;
     _state = next;
     _states.add(next);
+    _syncPollTimer(next);
+  }
+
+  void _syncPollTimer(DirectCallState state) {
+    final shouldPoll =
+        state.call != null &&
+        state.phase != DirectCallPhase.idle &&
+        state.phase != DirectCallPhase.terminal &&
+        state.phase != DirectCallPhase.failed;
+    if (!shouldPoll) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+      return;
+    }
+    _pollTimer ??= Timer.periodic(_pollInterval, (_) => _pollActiveCall());
+  }
+
+  void _pollActiveCall() {
+    final call = _state.call;
+    if (_disposed || call == null) return;
+    unawaited(_fetchDetail(call.conversationId, call.callId));
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _generation++;
+    _pollTimer?.cancel();
+    _pollTimer = null;
     await _signalSubscription?.cancel();
     unawaited(_states.close());
   }

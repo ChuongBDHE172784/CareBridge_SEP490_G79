@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { fetchModerationQueue, fetchRelatedReports, resolveReport } from '../services/moderationApi';
+import { fetchModerationQueue, fetchRelatedReports, resolveReport, revertReport } from '../services/moderationApi';
 import type { ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
-import { formatReportReason } from '../models/moderation';
+import { formatReportReason, REPORT_STATUS_LABELS } from '../models/moderation';
 import RelatedReportsCard from '../components/RelatedReportsCard';
 
 function formatDateTime(iso: string): string {
@@ -45,13 +45,24 @@ export default function AccountReportDetailPage() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState(false);
 
+  const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
+  const [revertSubmitting, setRevertSubmitting] = useState(false);
+  const [revertError, setRevertError] = useState('');
+
+  // A report can be PENDING, RESOLVED, or DISMISSED by the time this page is opened (e.g. from the
+  // "Đã xử lý" tab) — the backend defaults `status` to PENDING when omitted, so all 3 must be
+  // queried explicitly to find the report regardless of its current state.
   const loadItem = useCallback(async () => {
     if (!reportId) return;
     setIsLoading(true);
     setError('');
     try {
-      const page = await fetchModerationQueue({ size: 50 });
-      const found = page.content.find((i) => i.id === reportId);
+      const [pending, resolved, dismissed] = await Promise.all([
+        fetchModerationQueue({ status: 'PENDING', size: 50 }),
+        fetchModerationQueue({ status: 'RESOLVED', size: 50 }),
+        fetchModerationQueue({ status: 'DISMISSED', size: 50 }),
+      ]);
+      const found = [...pending.content, ...resolved.content, ...dismissed.content].find((i) => i.id === reportId);
       if (!found) setError('Không tìm thấy báo cáo tài khoản này trong hàng đợi hiện tại.');
       setItem(found ?? null);
     } catch {
@@ -106,6 +117,23 @@ export default function AccountReportDetailPage() {
       setConfirming(false);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // CB-MOD-IMP-015 follow-up: a RESOLVED/DISMISSED report reopened from the "Đã xử lý" tab has no
+  // resolve action to offer — reverting it back to PENDING is the only valid action here.
+  const confirmRevert = async () => {
+    if (!revertTarget) return;
+    setRevertSubmitting(true);
+    setRevertError('');
+    try {
+      await revertReport(revertTarget.id);
+      navigate('/moderator/reports');
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setRevertError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
+    } finally {
+      setRevertSubmitting(false);
     }
   };
 
@@ -179,6 +207,35 @@ export default function AccountReportDetailPage() {
 
               <div className="flex flex-col gap-4">
                 <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
+                {item.status !== 'PENDING' ? (
+                  <div className="portal-card-padded">
+                    <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
+                      Đã xử lý
+                    </p>
+                    <div className="rounded-md bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                      <p className="m-0">
+                        Trạng thái: <strong className="text-on-surface">{REPORT_STATUS_LABELS[item.status]}</strong>
+                      </p>
+                      {item.resolvedAt && (
+                        <p className="m-0 mt-2 text-xs">Xử lý lúc: {formatDateTime(item.resolvedAt)}</p>
+                      )}
+                      {item.assignedModeratorId && (
+                        <p className="m-0 mt-1 text-xs">Người xử lý (ID): {item.assignedModeratorId.slice(0, 8).toUpperCase()}</p>
+                      )}
+                      {item.revertedAt && (
+                        <p className="m-0 mt-1 text-xs">Đã từng hoàn tác lúc: {formatDateTime(item.revertedAt)}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setRevertError(''); setRevertTarget(item); }}
+                      className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md border-0 bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface"
+                    >
+                      <span className="material-symbols-outlined text-lg">undo</span>
+                      Hoàn tác báo cáo
+                    </button>
+                  </div>
+                ) : (
                 <div className="portal-card-padded">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">gavel</span>
@@ -246,6 +303,7 @@ export default function AccountReportDetailPage() {
                     Báo cáo Cấp trên
                   </button>
                 </div>
+                )}
               </div>
             </div>
           </>
@@ -264,6 +322,19 @@ export default function AccountReportDetailPage() {
         errorText={actionError}
         onConfirm={executeApply}
         onCancel={() => setConfirming(false)}
+      />
+
+      <ConfirmDialog
+        open={revertTarget !== null}
+        title="Hoàn tác báo cáo này?"
+        description="Báo cáo sẽ quay lại hàng đợi để xử lý lại."
+        icon="undo"
+        tone="default"
+        confirmLabel="Hoàn tác"
+        submitting={revertSubmitting}
+        errorText={revertError}
+        onConfirm={confirmRevert}
+        onCancel={() => setRevertTarget(null)}
       />
     </div>
   );

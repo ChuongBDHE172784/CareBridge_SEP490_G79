@@ -122,43 +122,110 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "HealthSummaryController" as Controller
 participant "HealthSummaryServiceImpl" as SummaryService
+participant "HealthSummaryRepository" as SummaryRepo
 participant "ShareSummaryServiceImpl" as ShareService
+participant "ConsultationBookingRepository" as BookingRepo
+participant "DataPermissionRepository" as PermissionRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-87 Generate Health Summary ==
-M -> Controller : POST /api/v1/health-summaries\n{summaryPeriod="7D", journeyId, summaryJson}
-Controller -> SummaryService : generate(ownerId, request)
-SummaryService -> DB : INSERT INTO health_summaries (status='ACTIVE')
-SummaryService -> Audit : emit(HEALTH_SUMMARY_GENERATED)
-SummaryService --> Controller : HealthSummary
-Controller --> M : HTTP 201 Created
+M -> Controller : 1. POST /api/v1/health-summaries\n{summaryPeriod="7D", journeyId, babyId, periodStart, periodEnd, summaryJson}
+activate Controller
+Controller -> SummaryService : 2. generateSummary(request, callerId)
+activate SummaryService
+SummaryService -> SummaryService : 3. validateSummaryJson()\n[BR-SAFETY: block if contains banned clinical keywords —\ndiagnosis/prescription/medication/treatment/disease]
+alt 4. summaryJson valid (no banned keywords)
+  SummaryService -> SummaryRepo : 4. save(HealthSummary{status="ACTIVE", generatedBy="MOTHER"})
+  activate SummaryRepo
+  SummaryRepo -> DB : 5. INSERT INTO health_summaries ...
+  activate DB
+  DB --> SummaryRepo : 6. saved
+  deactivate DB
+  SummaryRepo --> SummaryService : 7. HealthSummary
+  deactivate SummaryRepo
+  SummaryService -> Audit : 8. log(HEALTH_SUMMARY_GENERATED, callerId,\n"HealthSummary", id, "generated")
+  activate Audit
+  Audit --> SummaryService : 9. void
+  deactivate Audit
+  SummaryService --> Controller : 10. HealthSummaryResponse
+  deactivate SummaryService
+  Controller --> M : 11. HTTP 201 Created
+  deactivate Controller
+else 4. summaryJson contains banned clinical keywords
+  SummaryService --> Controller : 4a. throw 422 HEALTH-005\n"summaryJson must not contain clinical terms"
+  deactivate SummaryService
+  Controller --> M : 4b. HTTP 422 Unprocessable Entity
+  deactivate Controller
+end
 
-== UC-88 Share Health Summary Under Consent ==
-M -> Controller : POST /api/v1/health-summaries/share\n{summaryId, bookingId}
-Controller -> ShareService : shareSummary(request, motherUserId)
-ShareService -> DB : SELECT * FROM health_summaries\nWHERE id=? AND owner_user_id=?
-DB --> ShareService : summary
-ShareService -> ShareService : Gate 1: summary thuộc về Mother
-
-ShareService -> DB : SELECT * FROM data_permissions\nWHERE owner_user_id=? AND grantee_user_id=?\nAND status='ACTIVE' AND expires_at > now()
-DB --> ShareService : hasPermission?
-
-alt permission hợp lệ
-  ShareService -> DB : UPDATE ... SET shared_summary_id=?\n(liên kết vào ngữ cảnh chia sẻ)
-  ShareService -> Audit : emit(HEALTH_SUMMARY_SHARED)
-  ShareService --> Controller : ShareSummaryResponse{sharedAt}
-  Controller --> M : HTTP 200 OK
-else không có permission hợp lệ
-  ShareService -> ShareService : throw 403 "HEALTH-009: No valid data permission"
-  ShareService --> Controller : Exception
-  Controller --> M : HTTP 403 Forbidden
+== UC-88 Share Health Summary or Selected Records Under Consent ==
+M -> Controller : 12. POST /api/v1/health-summaries/share\n{summaryId, bookingId}
+activate Controller
+Controller -> ShareService : 13. shareSummary(request, motherUserId)
+activate ShareService
+ShareService -> SummaryRepo : 14. findByIdAndOwnerUserId(summaryId, motherUserId)\n[Gate 1: summary belongs to Mother]
+activate SummaryRepo
+SummaryRepo -> DB : 15. SELECT * FROM health_summaries\nWHERE id=? AND owner_user_id=?
+activate DB
+DB --> SummaryRepo : 16. summary row | none
+deactivate DB
+SummaryRepo --> ShareService : 17. HealthSummary (404 HEALTH-007 if not found)
+deactivate SummaryRepo
+ShareService -> BookingRepo : 18. findActiveByIdAndRequester(bookingId, motherUserId)\n[Gate 2: booking CONFIRMED/IN_PROGRESS, belongs to Mother]
+activate BookingRepo
+BookingRepo -> DB : 19. SELECT * FROM consultation_bookings\nWHERE id=? AND requester_user_id=?\nAND status IN ('CONFIRMED','IN_PROGRESS')
+activate DB
+DB --> BookingRepo : 20. booking row | none
+deactivate DB
+BookingRepo --> ShareService : 21. ConsultationBooking{expertProfileId}\n(422 HEALTH-008 if invalid)
+deactivate BookingRepo
+ShareService -> PermissionRepo : 22. existsValidPermission(motherUserId,\nbooking.expertProfileId, now())\n[Gate 3: DataPermission valid for the correct expert of the booking]
+activate PermissionRepo
+PermissionRepo -> DB : 23. SELECT COUNT(p)>0 FROM data_permissions\nWHERE owner_user_id=? AND grantee_user_id=?\nAND status='ACTIVE' AND (expires_at IS NULL OR expires_at>now())
+activate DB
+DB --> PermissionRepo : 24. boolean
+deactivate DB
+PermissionRepo --> ShareService : 25. hasPermission
+deactivate PermissionRepo
+alt 26. hasPermission == true
+  ShareService -> BookingRepo : 26. updateSharedSummaryId(bookingId, summaryId)
+  activate BookingRepo
+  BookingRepo -> DB : 27. UPDATE consultation_bookings\nSET shared_summary_id=? WHERE id=?
+  activate DB
+  DB --> BookingRepo : 28. updated
+  deactivate DB
+  BookingRepo --> ShareService : 29. void
+  deactivate BookingRepo
+  ShareService -> Audit : 30. log(HEALTH_SUMMARY_SHARED, motherUserId,\n"HealthSummary", summaryId, "shared with booking="+bookingId)
+  activate Audit
+  Audit --> ShareService : 31. void
+  deactivate Audit
+  ShareService --> Controller : 32. ShareSummaryResponse{bookingId, summaryId, sharedAt}
+  deactivate ShareService
+  Controller --> M : 33. HTTP 200 OK
+  deactivate Controller
+else 26. hasPermission == false → block
+  ShareService --> Controller : 26a. throw 403 HEALTH-009\n"No valid data permission granted for this expert"
+  deactivate ShareService
+  Controller --> M : 26b. HTTP 403 Forbidden
+  deactivate Controller
 end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Generate Summary → Check Permission → Share (Main Flow)**
+**Hình 2 — Sequence Diagram: Generate Summary (BR-SAFETY guard) → 3-Gate Share Check → Share (Main Flow)**
+
+> **Ghi chú grounding bổ sung:** `shareSummary` thực chất kiểm tra **3 gate tuần tự**, không
+> phải 2 như bản vẽ trước: (1) summary thuộc sở hữu Mother, (2) `ConsultationBooking` được
+> tham chiếu (`bookingId`) phải `ACTIVE` (`CONFIRMED`/`IN_PROGRESS`) **và thuộc về chính
+> Mother**, (3) `DataPermission` hợp lệ **tới đúng `expertProfileId` gắn với booking đó**
+> (không phải tới một `granteeUserId` tuỳ ý trong request — người nhận được suy ra từ
+> booking, không phải tham số client tự chọn). Ngoài ra `HealthSummaryServiceImpl.generateSummary`
+> có một guard BR-SAFETY chưa từng được vẽ: từ chối 422 nếu `summaryJson` chứa các từ khoá
+> lâm sàng (`diagnosis`, `prescription`, `medication`, `treatment`, `disease`) — đúng tinh
+> thần "AI/hệ thống không chẩn đoán" áp dụng cả cho dữ liệu tự nhập của Mother.
 
 ## 4. State Machine — `DataPermission.status` (gate cho việc chia sẻ)
 

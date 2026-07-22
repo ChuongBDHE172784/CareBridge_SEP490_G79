@@ -6,6 +6,7 @@ import com.carebridge.backend.community.dto.request.CreateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.request.UpdateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
 import com.carebridge.backend.community.dto.response.TopicFollowResponse;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import com.carebridge.backend.community.service.TopicFollowService;
 import jakarta.validation.Valid;
@@ -38,12 +39,13 @@ public class CommunityTopicController {
     public ResponseEntity<ApiResponse<List<CommunityTopicResponse>>> getTopics(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean includeHidden,
+            @RequestParam(required = false) TopicType type,
             Authentication authentication) {
         boolean canManageTopics = SecurityUtils.hasRole("MODERATOR") || SecurityUtils.hasRole("CONTENT_ADMIN");
         boolean effectiveInclude = includeHidden && canManageTopics;
         UUID currentUserId = SecurityUtils.requireCurrentUserId(authentication);
         return ResponseEntity.ok(
-                ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude, currentUserId)));
+                ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude, type, currentUserId)));
     }
 
     @PostMapping

@@ -189,7 +189,11 @@ export async function createContentCategory(data: {
   icon?: string;
   sortOrder?: number;
 }): Promise<CommunityTopic> {
-  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/admin/content/categories', data);
+  // Backend now requires `type` (TOPIC | CATEGORY | TAG) — this route always creates CATEGORY.
+  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/admin/content/categories', {
+    ...data,
+    type: 'CATEGORY',
+  });
   return res.data.data;
 }
 

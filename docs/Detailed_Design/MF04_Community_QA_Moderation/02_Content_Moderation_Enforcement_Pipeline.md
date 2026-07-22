@@ -141,42 +141,102 @@ skinparam backgroundColor #FAFAFA
 
 actor "User (Reporter)" as U
 participant "ReportController" as ReportController
+participant "ReportServiceImpl" as ReportService
+participant "ContentReportRepository" as ReportRepo
 actor "Moderator" as Mod
 participant "ModerationController" as ModController
 participant "ModerationServiceImpl" as Service
+participant "ModerationActionRepository" as ActionRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-55 Report Unsafe Community Content or Account ==
-U -> ReportController : POST /api/v1/reports\n{targetId, targetType=ANSWER, category, description}
-ReportController -> DB : INSERT INTO content_reports\n(status=PENDING, reportSource=USER)
-ReportController -> Audit : emit(CONTENT_REPORTED)
-ReportController --> U : HTTP 201 Created
+U -> ReportController : 1. POST /api/v1/reports\n{targetId, targetType=ANSWER, category, description}
+activate ReportController
+ReportController -> ReportService : 2. submit(reporterId, request)
+activate ReportService
+ReportService -> ReportRepo : 3. save(ContentReport{status=PENDING, reportSource=USER})
+activate ReportRepo
+ReportRepo -> DB : 4. INSERT INTO content_reports ...
+activate DB
+DB --> ReportRepo : 5. saved
+deactivate DB
+ReportRepo --> ReportService : 6. ContentReport
+deactivate ReportRepo
+ReportService -> Audit : 7. log(CONTENT_REPORTED)
+activate Audit
+Audit --> ReportService : 8. void
+deactivate Audit
+ReportService --> ReportController : 9. ContentReport
+deactivate ReportService
+ReportController --> U : 10. HTTP 201 Created
+deactivate ReportController
 
 == UC-56 View Moderation Queue ==
-Mod -> ModController : GET /api/v1/admin/moderation/queue
-ModController -> Service : queue(moderatorId, filter)
-Service -> DB : SELECT * FROM content_reports WHERE status='PENDING'\nUNION pending-publication content
-DB --> Service : queueItems[]
-Service --> ModController : queueItems[]
-ModController --> Mod : HTTP 200 OK {queueItems[]}
+Mod -> ModController : 11. GET /api/v1/admin/moderation/queue
+activate ModController
+ModController -> Service : 12. queue(moderatorId, filter)
+activate Service
+Service -> ReportRepo : 13. findByStatus(PENDING)
+activate ReportRepo
+ReportRepo -> DB : 14. SELECT * FROM content_reports WHERE status='PENDING'\nUNION pending-publication content
+activate DB
+DB --> ReportRepo : 15. queueItems[]
+deactivate DB
+ReportRepo --> Service : 16. queueItems[]
+deactivate ReportRepo
+Service --> ModController : 17. queueItems[]
+deactivate Service
+ModController --> Mod : 18. HTTP 200 OK {queueItems[]}
+deactivate ModController
 
 == UC-57 Moderate Community Content ==
-Mod -> ModController : POST /api/v1/admin/moderation/actions\n{targetId, targetType=ANSWER, actionType=HIDE, reason}
-ModController -> Service : applyAction(moderatorId, request)
-Service -> DB : UPDATE community_answers SET status='HIDDEN'\nWHERE id = targetId
-Service -> DB : INSERT INTO moderation_actions ...
-Service -> Audit : emit(MODERATION_ACTION)
-Service --> ModController : ModerationAction
-ModController --> Mod : HTTP 201 Created
+Mod -> ModController : 19. POST /api/v1/admin/moderation/actions\n{targetId, targetType=ANSWER, actionType=HIDE, reason}
+activate ModController
+ModController -> Service : 20. applyAction(moderatorId, request)
+activate Service
+Service -> DB : 21. UPDATE community_answers SET status='HIDDEN'\nWHERE id = targetId
+activate DB
+DB --> Service : 22. updated
+deactivate DB
+Service -> ActionRepo : 23. save(ModerationAction{actionType=HIDE, reason})
+activate ActionRepo
+ActionRepo -> DB : 24. INSERT INTO moderation_actions ...
+activate DB
+DB --> ActionRepo : 25. saved
+deactivate DB
+ActionRepo --> Service : 26. ModerationAction
+deactivate ActionRepo
+Service -> Audit : 27. log(MODERATION_ACTION)
+activate Audit
+Audit --> Service : 28. void
+deactivate Audit
+Service --> ModController : 29. ModerationAction
+deactivate Service
+ModController --> Mod : 30. HTTP 201 Created
+deactivate ModController
 
 == UC-58 Resolve Content or Account Report and Apply Enforcement ==
-Mod -> ModController : POST /api/v1/admin/moderation/reports/{reportId}/resolve\n{outcome=RESOLVED, linkedActionId}
-ModController -> Service : resolveReport(moderatorId, reportId, outcome)
-Service -> DB : UPDATE content_reports\nSET status='RESOLVED', resolved_at=now()
-Service -> Audit : emit(MODERATION_ACTION, "report_resolved")
-Service --> ModController : ContentReport{status=RESOLVED}
-ModController --> Mod : HTTP 200 OK
+Mod -> ModController : 31. POST /api/v1/admin/moderation/reports/{reportId}/resolve\n{outcome=RESOLVED, linkedActionId}
+activate ModController
+ModController -> Service : 32. resolveReport(moderatorId, reportId, outcome)
+activate Service
+Service -> ReportRepo : 33. save(report{status=RESOLVED, resolvedAt=now()})
+activate ReportRepo
+ReportRepo -> DB : 34. UPDATE content_reports\nSET status='RESOLVED', resolved_at=now()
+activate DB
+DB --> ReportRepo : 35. updated
+deactivate DB
+ReportRepo --> Service : 36. ContentReport
+deactivate ReportRepo
+Service -> Audit : 37. log(MODERATION_ACTION, note="report_resolved")
+activate Audit
+Audit --> Service : 38. void
+deactivate Audit
+Service --> ModController : 39. ContentReport{status=RESOLVED}
+deactivate Service
+ModController --> Mod : 40. HTTP 200 OK
+deactivate ModController
 
 @enduml
 ```

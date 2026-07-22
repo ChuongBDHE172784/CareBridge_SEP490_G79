@@ -136,56 +136,172 @@ skinparam backgroundColor #FAFAFA
 
 actor "Expert Applicant" as EA
 participant "ExpertProfileController" as ProfileController
-participant "ExpertCredentialController" as CredController
-actor "System Admin" as Admin
 participant "ExpertProfileServiceImpl" as Service
-participant "AuditService" as Audit
+participant "ExpertProfileRepository" as ProfileRepo
+participant "ExpertCredentialController" as CredController
+participant "ExpertCredentialServiceImpl" as CredService
+participant "ExpertCredentialRepository" as CredRepo
+actor "System Admin" as Admin
 database "PostgreSQL" as DB
 
 == UC-60 Submit Expert Profile ==
-EA -> ProfileController : POST /api/v1/expert/profiles\n{specialty, professionalTitle, consultationScope}
-ProfileController -> Service : submit(userId, request)
-Service -> DB : INSERT INTO expert_profiles\n(verificationStatus=PENDING, trustStatus=ACTIVE)
-Service -> Audit : emit(EXPERT_VERIFICATION, "submitted")
-Service --> ProfileController : ExpertProfile
-ProfileController --> EA : HTTP 201 Created
+EA -> ProfileController : 1. POST /api/v1/expert/profiles\n{specialty, professionalTitle, consultationScope}
+activate ProfileController
+ProfileController -> Service : 2. submit(userId, request)
+activate Service
+Service -> ProfileRepo : 3. save(ExpertProfile{verificationStatus=PENDING, trustStatus=ACTIVE})
+activate ProfileRepo
+ProfileRepo -> DB : 4. INSERT INTO expert_profiles ...
+activate DB
+DB --> ProfileRepo : 5. saved
+deactivate DB
+ProfileRepo --> Service : 6. ExpertProfile
+deactivate ProfileRepo
+Service --> ProfileController : 7. ExpertProfile
+deactivate Service
+ProfileController --> EA : 8. HTTP 201 Created
+deactivate ProfileController
 
 == UC-62 Submit Verification Documents ==
-EA -> CredController : POST /api/v1/expert/credentials (multipart)\n{credentialType, credentialNumber, file}
-CredController -> DB : INSERT INTO expert_credentials (reviewStatus=PENDING)
-CredController --> EA : HTTP 201 Created
+EA -> CredController : 9. POST /api/v1/expert/credentials (multipart)\n{credentialType, credentialNumber, file}
+activate CredController
+CredController -> CredService : 10. upload(userId, request)
+activate CredService
+CredService -> CredRepo : 11. save(ExpertCredential{reviewStatus=PENDING})
+activate CredRepo
+CredRepo -> DB : 12. INSERT INTO expert_credentials ...
+activate DB
+DB --> CredRepo : 13. saved
+deactivate DB
+CredRepo --> CredService : 14. ExpertCredential
+deactivate CredRepo
+CredService --> CredController : 15. ExpertCredential
+deactivate CredService
+CredController --> EA : 16. HTTP 201 Created
+deactivate CredController
 
 == UC-70 Review Expert Verification Submission ==
-Admin -> ProfileController : GET /api/v1/expert/credentials/pending
-Admin -> CredController : PUT /api/v1/expert/credentials/{credentialId}/review\n{reviewStatus=APPROVED}
-CredController -> DB : UPDATE expert_credentials SET review_status='APPROVED'
+Admin -> CredController : 17. GET /api/v1/expert/credentials/pending
+activate CredController
+CredController -> CredService : 18. pending()
+activate CredService
+CredService -> CredRepo : 19. findByReviewStatus(PENDING)
+activate CredRepo
+CredRepo -> DB : 20. SELECT * FROM expert_credentials WHERE review_status='PENDING'
+activate DB
+DB --> CredRepo : 21. rows[]
+deactivate DB
+CredRepo --> CredService : 22. credentials[]
+deactivate CredRepo
+CredService --> CredController : 23. credentials[]
+deactivate CredService
+CredController --> Admin : 24. HTTP 200 OK {credentials[]}
+deactivate CredController
 
-Admin -> ProfileController : POST /api/v1/expert/profiles/{id}/approve
-ProfileController -> Service : approve(adminId, expertProfileId)
-Service -> Service : require tất cả credential bắt buộc đã APPROVED
-Service -> DB : UPDATE expert_profiles\nSET verificationStatus='APPROVED', verified_at=now(), verified_by=adminId
-Service -> Audit : emit(EXPERT_VERIFICATION, "approved")
-Service --> ProfileController : ExpertProfile{verificationStatus=APPROVED}
-ProfileController --> Admin : HTTP 200 OK
+Admin -> CredController : 25. PUT /api/v1/expert/credentials/{credentialId}/review\n{reviewStatus=APPROVED}
+activate CredController
+CredController -> CredService : 26. review(adminId, credentialId, APPROVED)
+activate CredService
+CredService -> CredRepo : 27. save(credential{reviewStatus=APPROVED, reviewedBy=adminId})
+activate CredRepo
+CredRepo -> DB : 28. UPDATE expert_credentials SET review_status='APPROVED'
+activate DB
+DB --> CredRepo : 29. updated
+deactivate DB
+CredRepo --> CredService : 30. void
+deactivate CredRepo
+CredService --> CredController : 31. void
+deactivate CredService
+CredController --> Admin : 32. HTTP 200 OK
+deactivate CredController
+
+Admin -> ProfileController : 33. POST /api/v1/expert/profiles/{id}/approve
+activate ProfileController
+ProfileController -> Service : 34. approve(adminId, expertProfileId)
+activate Service
+Service -> CredRepo : 35. findByExpertProfileId(expertProfileId)
+activate CredRepo
+CredRepo -> DB : 36. SELECT * FROM expert_credentials WHERE expert_profile_id=?
+activate DB
+DB --> CredRepo : 37. credentials[]
+deactivate DB
+CredRepo --> Service : 38. credentials[]
+deactivate CredRepo
+Service -> Service : 39. require all mandatory credentials are APPROVED
+Service -> ProfileRepo : 40. save(profile{verificationStatus=APPROVED, verifiedAt=now(), verifiedBy=adminId})
+activate ProfileRepo
+ProfileRepo -> DB : 41. UPDATE expert_profiles\nSET verification_status='APPROVED', verified_at=now(), verified_by=adminId
+activate DB
+DB --> ProfileRepo : 42. updated
+deactivate DB
+ProfileRepo --> Service : 43. ExpertProfile
+deactivate ProfileRepo
+Service --> ProfileController : 44. ExpertProfile{verificationStatus=APPROVED}
+deactivate Service
+ProfileController --> Admin : 45. HTTP 200 OK
+deactivate ProfileController
 
 == UC-71 Restrict, Suspend or Reinstate Expert Trust Status ==
-Admin -> ProfileController : PATCH /api/v1/expert/profiles/{id}/trust\n{trustStatus=SUSPENDED, reason}
-ProfileController -> Service : updateTrust(adminId, expertProfileId, SUSPENDED)
-Service -> DB : UPDATE expert_profiles SET trust_status='SUSPENDED'
-Service -> Audit : emit(EXPERT_VERIFICATION, "trust_changed")
-Service --> ProfileController : ExpertProfile{trustStatus=SUSPENDED}
-ProfileController --> Admin : HTTP 200 OK
+Admin -> ProfileController : 46. PATCH /api/v1/expert/profiles/{id}/trust\n{trustStatus=SUSPENDED, reason}
+activate ProfileController
+ProfileController -> Service : 47. updateTrust(adminId, expertProfileId, SUSPENDED)
+activate Service
+Service -> ProfileRepo : 48. save(profile{trustStatus=SUSPENDED})
+activate ProfileRepo
+ProfileRepo -> DB : 49. UPDATE expert_profiles SET trust_status='SUSPENDED'
+activate DB
+DB --> ProfileRepo : 50. updated
+deactivate DB
+ProfileRepo --> Service : 51. ExpertProfile
+deactivate ProfileRepo
+Service --> ProfileController : 52. ExpertProfile{trustStatus=SUSPENDED}
+deactivate Service
+ProfileController --> Admin : 53. HTTP 200 OK
+deactivate ProfileController
 
 == UC-63 View Verification Status and Renew Submission ==
-EA -> ProfileController : GET /api/v1/expert/profiles/me/verification-status
-ProfileController --> EA : HTTP 200 OK {verificationStatus, trustStatus, expiredCredentials[]}
-EA -> ProfileController : POST /api/v1/expert/profiles/me/renew
-ProfileController -> Service : submit(userId, renewalRequest)
-Service -> DB : UPDATE expert_profiles SET verificationStatus='PENDING'
-ProfileController --> EA : HTTP 200 OK
+EA -> ProfileController : 54. GET /api/v1/expert/profiles/me/verification-status
+activate ProfileController
+ProfileController -> Service : 55. verificationStatus(userId)
+activate Service
+Service -> ProfileRepo : 56. findByUserId(userId)
+activate ProfileRepo
+ProfileRepo -> DB : 57. SELECT * FROM expert_profiles WHERE user_id=?
+activate DB
+DB --> ProfileRepo : 58. profile
+deactivate DB
+ProfileRepo --> Service : 59. profile
+deactivate ProfileRepo
+Service --> ProfileController : 60. {verificationStatus, trustStatus, expiredCredentials[]}
+deactivate Service
+ProfileController --> EA : 61. HTTP 200 OK {verificationStatus, trustStatus, expiredCredentials[]}
+deactivate ProfileController
+
+EA -> ProfileController : 62. POST /api/v1/expert/profiles/me/renew
+activate ProfileController
+ProfileController -> Service : 63. submit(userId, renewalRequest)
+activate Service
+Service -> ProfileRepo : 64. save(profile{verificationStatus=PENDING})
+activate ProfileRepo
+ProfileRepo -> DB : 65. UPDATE expert_profiles SET verification_status='PENDING'
+activate DB
+DB --> ProfileRepo : 66. updated
+deactivate DB
+ProfileRepo --> Service : 67. void
+deactivate ProfileRepo
+Service --> ProfileController : 68. void
+deactivate Service
+ProfileController --> EA : 69. HTTP 200 OK
+deactivate ProfileController
 
 @enduml
 ```
+
+> Ghi chú grounding: rà soát `ExpertProfileServiceImpl` và `ExpertCredentialServiceImpl`
+> không tìm thấy lệnh gọi `auditService.log(...)` nào — `AuditAction.EXPERT_VERIFICATION`
+> hiện chỉ xuất hiện trong danh sách hành động đủ điều kiện audit
+> (`AuditEligibilityPolicy`), chưa được service nào thực sự phát ra. Vì vậy sequence diagram
+> này **không vẽ** lệnh gọi `AuditService` để không suy diễn hành vi chưa có thật trong code.
 
 **Hình 2 — Sequence Diagram: Submit Profile → Submit Credentials → Admin Review → Trust Management → Renew (Main Flow)**
 

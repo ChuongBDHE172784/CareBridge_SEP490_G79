@@ -5,9 +5,13 @@ class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  Future<List<CommunityTopic>> getTopics({String? keyword}) async {
+  // [type] defaults to unset (all taxonomy kinds). TopicDirectoryScreen passes type: 'TOPIC' so
+  // mothers only see root topics, not the CATEGORY/TAG rows used internally by the admin console
+  // (ADR-COM-017 in CommunityTopicManagement_TDS.md).
+  Future<List<CommunityTopic>> getTopics({String? keyword, String? type}) async {
     final params = <String, String>{};
     if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    if (type != null && type.isNotEmpty) params['type'] = type;
     final query = params.isEmpty
         ? ''
         : '?${params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&')}';

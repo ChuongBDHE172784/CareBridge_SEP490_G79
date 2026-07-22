@@ -2,6 +2,8 @@ package com.carebridge.backend.community.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -38,6 +40,17 @@ public class CommunityTopic {
 
     @Column(name = "icon", length = 255)
     private String icon;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    private TopicType type = TopicType.TOPIC;
+
+    @Column(name = "slug", length = 140, unique = true)
+    private String slug;
+
+    @Column(name = "parent_id")
+    private UUID parentId;
 
     @Builder.Default
     @Column(name = "is_hidden", nullable = false)

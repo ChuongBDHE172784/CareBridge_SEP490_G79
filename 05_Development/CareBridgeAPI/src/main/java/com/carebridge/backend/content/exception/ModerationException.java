@@ -220,4 +220,33 @@ public class ModerationException extends RuntimeException {
                 "Question " + questionId + " must be APPROVED before it can be locked",
                 HttpStatus.CONFLICT);
     }
+
+    // CB-MOD-IMP-015 (Revert Report Resolution, §10)
+    public static ModerationException reportNotYetResolved(UUID reportId) {
+        return new ModerationException(
+                "MOD-032",
+                "Report " + reportId + " is still PENDING — it has not been resolved yet, nothing to revert",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException revertNotSupportedForAccountAction(UUID actionId) {
+        return new ModerationException(
+                "MOD-033",
+                "Action " + actionId + " is an account-level action — revert is not supported for that outcome",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ModerationException revertNotMostRecentAction(UUID actionId) {
+        return new ModerationException(
+                "MOD-034",
+                "Action " + actionId + " is not the most recent action for this target — a newer action already exists",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ModerationException revertStatusSuperseded(UUID actionId) {
+        return new ModerationException(
+                "MOD-035",
+                "Current status no longer matches the result of action " + actionId + " — it may have been superseded",
+                HttpStatus.CONFLICT);
+    }
 }

@@ -176,57 +176,144 @@ participant "AuthController" as Controller
 participant "AuthServiceImpl" as Service
 participant "UserRepository" as Repo
 participant "OtpService" as Otp
+participant "OtpVerificationRepository" as OtpRepo
+participant "RefreshTokenRepository" as RefreshRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-01 Register Account ==
-Client -> Controller : POST /api/v1/auth/register\n{email|phone, password, role}
-Controller -> Service : register(request)
-Service -> Repo : existsByEmailOrPhone(id)
-Repo -> DB : SELECT ... FROM users
-DB --> Repo : not found
-Service -> Repo : save(User{accountStatus="PENDING_ACTIVATION"})
-Repo -> DB : INSERT INTO users ...
-Service -> Otp : generateAndSend(userId, REGISTER)
-Otp -> DB : INSERT INTO otp_verifications ...
-Service -> Audit : emit(AccountRegistered)
-Service --> Controller : AuthResponse{status=PENDING_ACTIVATION}
-Controller --> Client : HTTP 201 Created
+Client -> Controller : 1. POST /api/v1/auth/register\n{email|phone, password, role}
+activate Controller
+Controller -> Service : 2. register(request)
+activate Service
+Service -> Repo : 3. existsByEmailOrPhone(id)
+activate Repo
+Repo -> DB : 4. SELECT ... FROM users
+activate DB
+DB --> Repo : 5. not found
+deactivate DB
+Repo --> Service : 6. false
+deactivate Repo
+Service -> Repo : 7. save(User{accountStatus="PENDING_ACTIVATION"})
+activate Repo
+Repo -> DB : 8. INSERT INTO users ...
+activate DB
+DB --> Repo : 9. savedUser
+deactivate DB
+Repo --> Service : 10. savedUser
+deactivate Repo
+Service -> Otp : 11. generateAndSend(userId, REGISTER)
+activate Otp
+Otp -> OtpRepo : 12. save(OtpVerification{codeHash, expiresAt})
+activate OtpRepo
+OtpRepo -> DB : 13. INSERT INTO otp_verifications ...
+activate DB
+DB --> OtpRepo : 14. saved
+deactivate DB
+OtpRepo --> Otp : 15. void
+deactivate OtpRepo
+Otp --> Service : 16. void
+deactivate Otp
+Service -> Audit : 17. log(OTP_SENT)
+activate Audit
+Audit --> Service : 18. void
+deactivate Audit
+Service --> Controller : 19. AuthResponse{status=PENDING_ACTIVATION}
+deactivate Service
+Controller --> Client : 20. HTTP 201 Created
+deactivate Controller
 
 == UC-02 Verify OTP ==
-Client -> Controller : POST /api/v1/auth/verify-otp\n{identifier, code}
-Controller -> Service : verifyOtp(request)
-Service -> Otp : validate(code, purpose=REGISTER)
-Otp -> DB : SELECT ... FROM otp_verifications WHERE ...
-DB --> Otp : otpRecord{expiresAt, attempts}
-Otp --> Service : verified=true
-Service -> Repo : setAccountStatus(user, "ACTIVE")
-Repo -> DB : UPDATE users SET account_status='ACTIVE'
-Service -> Audit : emit(AccountActivated)
-Service --> Controller : AuthResponse{status=ACTIVE}
-Controller --> Client : HTTP 200 OK
+Client -> Controller : 21. POST /api/v1/auth/verify-otp\n{identifier, code}
+activate Controller
+Controller -> Service : 22. verifyOtp(request)
+activate Service
+Service -> Otp : 23. validate(code, purpose=REGISTER)
+activate Otp
+Otp -> OtpRepo : 24. findLatestByUserAndPurpose(userId, REGISTER)
+activate OtpRepo
+OtpRepo -> DB : 25. SELECT ... FROM otp_verifications WHERE ...
+activate DB
+DB --> OtpRepo : 26. otpRecord{expiresAt, attempts}
+deactivate DB
+OtpRepo --> Otp : 27. otpRecord
+deactivate OtpRepo
+Otp --> Service : 28. verified=true
+deactivate Otp
+Service -> Repo : 29. setAccountStatus(user, "ACTIVE")
+activate Repo
+Repo -> DB : 30. UPDATE users SET account_status='ACTIVE'
+activate DB
+DB --> Repo : 31. updated
+deactivate DB
+Repo --> Service : 32. void
+deactivate Repo
+Service -> Audit : 33. log(OTP_VERIFIED)
+activate Audit
+Audit --> Service : 34. void
+deactivate Audit
+Service -> Audit : 35. log(USER_REGISTRATION_COMPLETED)
+activate Audit
+Audit --> Service : 36. void
+deactivate Audit
+Service --> Controller : 37. AuthResponse{status=ACTIVE}
+deactivate Service
+Controller --> Client : 38. HTTP 200 OK
+deactivate Controller
 
 == UC-03 Log In ==
-Client -> Controller : POST /api/v1/auth/login\n{identifier, password}
-Controller -> Service : login(request)
-Service -> Repo : findByEmailOrPhone(identifier)
-Repo -> DB : SELECT ... FROM users
-DB --> Repo : user{accountStatus="ACTIVE", locked=false}
-Service -> Service : check accountStatus=="ACTIVE" AND !locked AND suspendedUntil==null
-Service -> Service : passwordEncoder.matches(password, passwordHash)
-Service -> Repo : save(RefreshToken), update lastLoginAt
-Repo -> DB : INSERT INTO refresh_tokens ...
-Service -> Audit : emit(LoginSucceeded)
-Service --> Controller : AuthResponse{accessToken, refreshToken}
-Controller --> Client : HTTP 200 OK
+Client -> Controller : 39. POST /api/v1/auth/login\n{identifier, password}
+activate Controller
+Controller -> Service : 40. login(request)
+activate Service
+Service -> Repo : 41. findByEmailOrPhone(identifier)
+activate Repo
+Repo -> DB : 42. SELECT ... FROM users
+activate DB
+DB --> Repo : 43. user{accountStatus="ACTIVE", locked=false}
+deactivate DB
+Repo --> Service : 44. user
+deactivate Repo
+Service -> Service : 45. check accountStatus=="ACTIVE" AND !locked AND suspendedUntil==null
+Service -> Service : 46. passwordEncoder.matches(password, passwordHash)
+Service -> RefreshRepo : 47. save(RefreshToken), update lastLoginAt
+activate RefreshRepo
+RefreshRepo -> DB : 48. INSERT INTO refresh_tokens ...
+activate DB
+DB --> RefreshRepo : 49. saved
+deactivate DB
+RefreshRepo --> Service : 50. void
+deactivate RefreshRepo
+Service -> Audit : 51. log(LOGIN)
+activate Audit
+Audit --> Service : 52. void
+deactivate Audit
+Service --> Controller : 53. AuthResponse{accessToken, refreshToken}
+deactivate Service
+Controller --> Client : 54. HTTP 200 OK
+deactivate Controller
 
 == UC-04 Log Out ==
-Client -> Controller : POST /api/v1/auth/logout\nAuthorization: Bearer <token>
-Controller -> Service : logout(userId, refreshToken)
-Service -> Repo : revoke(refreshToken)
-Repo -> DB : UPDATE refresh_tokens SET revoked=true
-Service --> Controller : void
-Controller --> Client : HTTP 204 No Content
+Client -> Controller : 55. POST /api/v1/auth/logout\nAuthorization: Bearer <token>
+activate Controller
+Controller -> Service : 56. logout(userId, refreshToken)
+activate Service
+Service -> RefreshRepo : 57. revoke(refreshToken)
+activate RefreshRepo
+RefreshRepo -> DB : 58. UPDATE refresh_tokens SET revoked=true
+activate DB
+DB --> RefreshRepo : 59. updated
+deactivate DB
+RefreshRepo --> Service : 60. void
+deactivate RefreshRepo
+Service -> Audit : 61. log(LOGOUT)
+activate Audit
+Audit --> Service : 62. void
+deactivate Audit
+Service --> Controller : 63. void
+deactivate Service
+Controller --> Client : 64. HTTP 204 No Content
+deactivate Controller
 
 @enduml
 ```

@@ -52,11 +52,17 @@ export interface ChecklistItem {
   isRequired: boolean;
 }
 
+export type CommunityTopicType = 'TOPIC' | 'CATEGORY' | 'TAG';
+
 export interface CommunityTopic {
   id: string;
   name: string;
   description: string;
   icon: string;
+  type: CommunityTopicType;
+  slug: string;
+  parentId: string | null;
+  questionCount: number;
   isHidden: boolean;
   sortOrder: number;
   createdAt: string;
