@@ -12,16 +12,17 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "emergency_alert_attempts")
+@Table(name = "safety_event_actions")
+@org.hibernate.annotations.SQLRestriction("action_type = 'ALERT_ATTEMPT'")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmergencyAlertAttempt {
     @Id
-    @Column(name = "emergency_session_id", nullable = false)
+    @Column(name = "safety_event_action_id", nullable = false)
     private UUID emergencySessionId;
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "attempt_status", nullable = false, length = 20)
     private String status;
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
@@ -37,4 +38,8 @@ public class EmergencyAlertAttempt {
     private int failedRecipientCount;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    @Column(name = "action_type", nullable = false, updatable = false)
+    private String actionType;
+    @Column(name = "idempotency_key", nullable = false, updatable = false)
+    private String idempotencyKey;
 }

@@ -38,15 +38,15 @@ class CareFacilityCanonicalMigrationIntegrationTest {
 
         assertThat(scalar("SELECT to_regclass('public.hospitals') IS NULL")).isEqualTo("t");
         assertThat(scalar("SELECT count(*) FROM care_facilities")).isEqualTo("25");
-        assertThat(scalar("SELECT count(*) FROM care_facility_legacy_ids WHERE legacy_source='HOSPITAL'"))
-                .isEqualTo("20");
+        assertThat(scalar("SELECT to_regclass('public.care_facility_legacy_ids') IS NULL"))
+                .isEqualTo("t");
         assertThat(scalar("""
                 SELECT count(*) FROM care_facilities
                  WHERE source_type='LEGACY_IMPORT' AND verification_status='UNVERIFIED'
                    AND facility_type='HOSPITAL' AND partner_id IS NULL
                    AND latitude IS NULL AND longitude IS NULL AND is_searchable=false
                 """)).isEqualTo("20");
-        assertThat(scalar("SELECT count(*) FROM expert_profiles WHERE facility_id IS NOT NULL"))
+        assertThat(scalar("SELECT count(*) FROM professional_profiles WHERE facility_id IS NOT NULL"))
                 .isEqualTo("2");
         assertThat(scalar("""
                 SELECT count(*) FROM information_schema.columns

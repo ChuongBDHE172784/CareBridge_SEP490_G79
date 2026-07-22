@@ -37,13 +37,9 @@ class FinalPhase2SchemaIntegrationTest {
             "flyway_schema_history");
 
     private static final List<String> EXPECTED_TRANSITIONAL = List.of(
-            "audit_logs", "care_facility_legacy_ids", "consent_grants", "consultation_bookings",
+            "audit_logs", "consent_grants", "consultation_bookings",
             "consultation_price_bands", "consultation_sessions", "conversation_calls", "direct_conversations",
-            "direct_messages", "emergency_alert_attempts", "emergency_alert_deliveries",
-            "emergency_map_handoffs", "emergency_sessions", "expenses", "expert_consultation_prices",
-            "family_alert_log", "imu_monitoring_sessions", "imu_safety_events",
-            "location_snapshots", "partner_organizations", "safety_event_responses",
-            "safety_monitoring_config");
+            "direct_messages", "expenses", "expert_consultation_prices", "partner_organizations");
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");

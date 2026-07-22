@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "safety_monitoring_config")
+@Table(name = "safety_configs")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,6 +17,7 @@ public class SafetyMonitoringConfig {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "safety_config_id")
     private UUID id;
 
     @Column(name = "user_id", nullable = false, unique = true)
