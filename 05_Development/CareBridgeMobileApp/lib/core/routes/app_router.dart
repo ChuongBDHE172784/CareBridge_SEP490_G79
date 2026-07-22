@@ -75,9 +75,14 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_contributions_screen.dart';
+import '../../features/expert/screens/expert_contribution_list_screen.dart';
+import '../../features/expert/screens/expert_contribution_draft_screen.dart';
+import '../../features/expert/screens/expert_contribution_detail_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
+import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
+import '../../features/expert/screens/expert_identity_capture_screen.dart';
+import '../../features/expert/services/expert_onboarding_store.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
 import '../../features/directChat/screens/direct_chat_screen.dart';
@@ -167,12 +172,12 @@ String? resolveAppRedirect({
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
     return role == 'EXPERT'
-        ? '/expert-home'
+        ? '/expert-onboarding'
         : (role == 'MOTHER' ? '/journey-onboarding' : '/');
   }
   if (isAuthenticated && isAuthRoute && location != '/auth-landing') {
     return role == 'EXPERT'
-        ? '/expert-home'
+        ? '/expert-onboarding'
         : (role == 'MOTHER'
               ? '/auth-landing'
               : (hasAssignedRole ? '/' : '/role-selection'));
@@ -181,7 +186,7 @@ String? resolveAppRedirect({
     return role == 'MOTHER'
         ? null
         : (role == 'EXPERT'
-              ? '/expert-home'
+              ? '/expert-onboarding'
               : (hasAssignedRole ? '/' : '/role-selection'));
   }
 
@@ -199,13 +204,31 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: AuthState.instance,
   redirect: (context, state) {
     final auth = AuthState.instance;
-    return resolveAppRedirect(
+    final isExpert = auth.role?.trim().toUpperCase() == 'EXPERT';
+    final isExpertOnboardingRoute =
+        state.matchedLocation == '/expert-onboarding' ||
+        state.matchedLocation == '/expert-profile-setup' ||
+        state.matchedLocation == '/expert/identity' ||
+        state.matchedLocation == '/expert/credentials' ||
+        state.matchedLocation == '/expert-verification-status';
+
+    final baseRedirect = resolveAppRedirect(
       isAuthenticated: auth.isAuthenticated,
       isRestoring: auth.isRestoring,
       blockedReason: auth.blockedReason,
       role: auth.role,
       location: state.matchedLocation,
     );
+    if (baseRedirect != null) return baseRedirect;
+
+    if (auth.isAuthenticated &&
+        isExpert &&
+        !isExpertOnboardingRoute &&
+        !ExpertOnboardingStore.instance.approvedFor(auth.userId)) {
+      return '/expert-onboarding';
+    }
+
+    return null;
   },
   routes: [
     GoRoute(
@@ -701,8 +724,16 @@ final GoRouter appRouter = GoRouter(
     ),
     // CB-033: Expert Profile Setup (UC-87)
     GoRoute(
+      path: '/expert-onboarding',
+      builder: (context, state) => const ExpertOnboardingGateScreen(),
+    ),
+    GoRoute(
       path: '/expert-profile-setup',
       builder: (context, state) => const ExpertProfileSetupScreen(),
+    ),
+    GoRoute(
+      path: '/expert/identity',
+      builder: (context, state) => const ExpertIdentityCaptureScreen(),
     ),
     // CB-034: Upload Verification Documents (UC-89)
     GoRoute(
@@ -726,8 +757,26 @@ final GoRouter appRouter = GoRouter(
     ),
     // CB-054: Expert Contributions (UC-69)
     GoRoute(
-      path: '/expert-contributions',
-      builder: (context, state) => const ExpertContributionsScreen(),
+      path: '/expert/contributions',
+      builder: (context, state) => const ExpertContributionListScreen(),
+    ),
+    GoRoute(
+      path: '/expert/contributions/new',
+      builder: (context, state) => const ExpertContributionDraftScreen(),
+    ),
+    GoRoute(
+      path: '/expert/contributions/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertContributionDraftScreen(contributionId: id);
+      },
+    ),
+    GoRoute(
+      path: '/expert/contributions/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertContributionDetailScreen(contributionId: id);
+      },
     ),
     // CB-061: Nearby Support Expert (UC-82)
     GoRoute(

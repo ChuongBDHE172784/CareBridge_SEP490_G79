@@ -19,57 +19,69 @@ import java.util.UUID;
 @Builder
 public class ExpertProfile {
 
-@Id
-@GeneratedValue(strategy = GenerationType.UUID)
-@Column(name = "expert_profile_id", updatable = false, nullable = false)
-private UUID expertProfileId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "expert_profile_id", updatable = false, nullable = false)
+    private UUID expertProfileId;
 
-@Column(name = "user_id", nullable = false, unique = true)
-private UUID userId;
+    @Column(name = "user_id", nullable = false, unique = true)
+    private UUID userId;
 
-@Column(name = "specialty", length = 100)
-private String specialty;
+    @Column(name = "display_name", length = 150)
+    private String displayName;
 
-@Column(name = "professional_title", length = 150)
-private String professionalTitle;
+    @Column(name = "specialty", length = 100)
+    private String specialty;
 
-@Column(name = "experience_years")
-private Integer experienceYears;
+    @Column(name = "specialty_id", length = 5)
+    private String specialtyId;
 
-@Column(name = "workplace", length = 200)
-private String workplace;
+    @Column(name = "professional_title", length = 150)
+    private String professionalTitle;
 
-@Column(name = "consultation_scope", columnDefinition = "text")
-private String consultationScope;
+    @Column(name = "experience_years")
+    private Integer experienceYears;
 
-@Enumerated(EnumType.STRING)
-@Column(name = "verification_status", nullable = false, length = 30)
-private VerificationStatus verificationStatus;
+    @Column(name = "workplace", length = 200)
+    private String workplace;
 
-@Builder.Default
-@Enumerated(EnumType.STRING)
-@Column(name = "trust_status", nullable = false, length = 20)
-private TrustStatus trustStatus = TrustStatus.ACTIVE;
+    @Column(name = "hospital_id", length = 8)
+    private String hospitalId;
 
-@Column(name = "verified_at")
-private LocalDateTime verifiedAt;
+    @Column(name = "consultation_scope", columnDefinition = "text")
+    private String consultationScope;
 
-@Column(name = "verified_by")
-private UUID verifiedBy;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", nullable = false, length = 30)
+    private VerificationStatus verificationStatus;
 
-@Column(name = "rating_avg", precision = 3, scale = 2)
-private BigDecimal ratingAvg;
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trust_status", nullable = false, length = 20)
+    private TrustStatus trustStatus = TrustStatus.ACTIVE;
 
-@CreationTimestamp
-@Column(name = "created_at", nullable = false, updatable = false)
-private LocalDateTime createdAt;
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
 
-@UpdateTimestamp
-@Column(name = "updated_at", nullable = false)
-private LocalDateTime updatedAt;
+    @Column(name = "verified_by")
+    private UUID verifiedBy;
 
-public boolean isEligibleForConsultation() {
-return verificationStatus == VerificationStatus.APPROVED
-        && trustStatus == TrustStatus.ACTIVE;
-}
+    @Column(name = "verification_rejection_reason", columnDefinition = "text")
+    private String verificationRejectionReason;
+
+    @Column(name = "rating_avg", precision = 3, scale = 2)
+    private BigDecimal ratingAvg;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    public boolean isEligibleForConsultation() {
+        return verificationStatus == VerificationStatus.APPROVED
+                && trustStatus == TrustStatus.ACTIVE;
+    }
 }

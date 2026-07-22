@@ -20,5 +20,5 @@ public interface IExpertCredentialService {
 
  DocumentReviewResponse reviewCredential(UUID credentialId, ReviewCredentialRequest request, UUID reviewerId);
 
- List<DocumentReviewResponse> getPendingReviews(String credentialType);
+ List<DocumentReviewResponse> getPendingReviews(String credentialType, UUID reviewerId);
 }

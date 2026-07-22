@@ -14,7 +14,7 @@ import java.util.UUID;
 @Component
 public class ExpertCredentialMapper {
 
-	public ExpertCredential toEntity(UUID expertProfileId, SubmitCredentialRequest request, java.time.LocalDate issuedDate, java.time.LocalDate expiryDate, String fileUrl) {
+	public ExpertCredential toEntity(UUID expertProfileId, SubmitCredentialRequest request, java.time.LocalDate issuedDate, java.time.LocalDate expiryDate, UUID fileId) {
 		return ExpertCredential.builder()
 			.expertProfileId(expertProfileId)
 			.credentialType(request.getCredentialType())
@@ -22,7 +22,7 @@ public class ExpertCredentialMapper {
 			.issuer(request.getIssuer())
 			.issuedDate(issuedDate)
 			.expiryDate(expiryDate)
-			.fileUrl(fileUrl)
+			.fileId(fileId)
 			.reviewStatus(ReviewStatus.PENDING)
 			.build();
 	}
@@ -37,6 +37,7 @@ public class ExpertCredentialMapper {
 			.issuedDate(entity.getIssuedDate())
 			.expiryDate(entity.getExpiryDate())
 			.fileUrl(entity.getFileUrl())
+			.fileId(entity.getFileId())
 			.reviewStatus(entity.getReviewStatus())
 			.reviewNote(entity.getReviewNote())
 			.createdAt(entity.getCreatedAt())
@@ -54,6 +55,7 @@ public class ExpertCredentialMapper {
 		res.setIssuedDate(entity.getIssuedDate());
 		res.setExpiryDate(entity.getExpiryDate());
 		res.setFileUrl(entity.getFileUrl());
+		res.setFileId(entity.getFileId());
 		res.setCreatedAt(entity.getCreatedAt());
 		res.setReviewStatus(entity.getReviewStatus());
 		res.setReviewNote(entity.getReviewNote());

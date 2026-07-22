@@ -45,6 +45,11 @@ spring:
             required: true
         debug: false
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 16MB
+
 carebridge:
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
@@ -102,6 +107,29 @@ carebridge:
   consultation-request:
     expiry-hours: ${CONSULTATION_REQUEST_EXPIRY_HOURS:48}
     expiry-job-delay-ms: ${CONSULTATION_REQUEST_EXPIRY_JOB_DELAY_MS:60000}
+
+  storage:
+    provider: ${FILE_STORAGE_PROVIDER:cloudinary}
+    private-provider: ${PRIVATE_FILE_STORAGE_PROVIDER:r2}
+    r2:
+      endpoint: ${R2_ENDPOINT:}
+      access-key: ${R2_ACCESS_KEY_ID:}
+      secret-key: ${R2_SECRET_ACCESS_KEY:}
+      bucket: ${R2_BUCKET:${R2_BUCKET_NAME:carebridge-private}}
+      region: ${R2_REGION:auto}
+
+  compreface:
+    enabled: ${COMPREFACE_ENABLED:false}
+    base-url: ${COMPREFACE_BASE_URL:http://localhost:8000}
+    detection-api-key: ${COMPREFACE_DETECTION_API_KEY:}
+    verification-api-key: ${COMPREFACE_VERIFICATION_API_KEY:}
+    # Deprecated: kept for backwards compatibility if needed
+    # api-key: ${COMPREFACE_API_KEY:}
+    similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}
+    det-prob-threshold: ${COMPREFACE_DET_PROB_THRESHOLD:0.7}
+    detection-limit: ${COMPREFACE_DETECTION_LIMIT:2}
+    connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
 
   notification:
     consultation-request-outbox-delay-ms: ${CONSULTATION_REQUEST_OUTBOX_DELAY_MS:5000}

@@ -4,6 +4,14 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface ExpertRegisterRequest {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: 'EXPERT';
+}
+
 export interface OtpSendResponse {
   message: string;
   expiresIn: number;

@@ -11,6 +11,12 @@ import java.math.BigDecimal;
 @Builder
 public class UpdateExpertProfileRequest {
 
+    @Size(max = 5)
+    private String specialtyId;
+
+    @Size(max = 8)
+    private String hospitalId;
+
     @Size(max = 100)
     private String specialty;
 
