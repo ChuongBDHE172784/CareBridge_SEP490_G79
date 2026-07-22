@@ -60,9 +60,7 @@ public class CommunityTopicMapper {
         if (request.getIcon() != null) {
             entity.setIcon(request.getIcon());
         }
-        if (request.getType() != null) {
-            entity.setType(request.getType());
-        }
+        // Type is immutable after creation (ADR-COM-025); the service rejects attempted changes.
         if (request.getParentId() != null) {
             entity.setParentId(request.getParentId());
         }

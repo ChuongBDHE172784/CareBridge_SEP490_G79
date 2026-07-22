@@ -1,7 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 import type { ApiResponse } from '../../auth/models/user';
-import type { CommunityTopic, CommunityTopicType } from '../models/content';
+import type {
+  CommunityTopic,
+  CommunityTopicType,
+  CreateCommunityTopicPayload,
+  UpdateCommunityTopicPayload,
+} from '../models/content';
+import { getTopicMutationErrorMessage } from './topicErrors';
 import { buildTopicTree } from './topicTree';
 
 /* ------------------------------------------------------------------ */
@@ -93,8 +99,9 @@ export default function ManageTopicsPage() {
   const [form, setForm] = useState<TopicFormState>(DEFAULT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  // Expand/collapse for topic rows
+  // Expand/collapse for CATEGORY root rows
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Row hover tracking
@@ -121,7 +128,7 @@ export default function ManageTopicsPage() {
   const filteredTopics = topics.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  const topicItems = topics.filter((t) => t.type === 'TOPIC');
+  const categoryItems = topics.filter((topic) => topic.type === 'CATEGORY');
   const renderRows = buildTopicTree(filteredTopics, expandedIds);
 
   /* ── Drawer helpers ── */
@@ -170,38 +177,46 @@ export default function ManageTopicsPage() {
     }
   }
 
-  async function handleSoftDelete(topic: CommunityTopic) {
-    if (!confirm(`Ẩn "${topic.name}"? Các nội dung liên quan vẫn được giữ lại trong hệ thống.`)) return;
+  async function handleDelete(topic: CommunityTopic) {
+    if (!window.confirm(`Xoá "${topic.name}"? Hành động này không thể hoàn tác.`)) return;
+    setActionError('');
     try {
-      const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
-        `/api/v1/community/topics/${topic.id}`,
-        { isHidden: true },
-      );
-      setTopics((prev) => prev.map((t) => (t.id === topic.id ? res.data.data : t)));
-    } catch {
-      alert('Không thể ẩn phân loại. Vui lòng thử lại.');
+      await apiClient.delete(`/api/v1/community/topics/${topic.id}`);
+      setTopics((prev) => prev.filter((item) => item.id !== topic.id));
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(topic.id);
+        return next;
+      });
+    } catch (err: unknown) {
+      setActionError(getTopicMutationErrorMessage(err));
     }
   }
 
   async function handleSubmit() {
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || (form.type === 'TOPIC' && !form.parentId)) return;
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      const payload = {
+      const commonPayload = {
         name: form.name.trim(),
         description: form.description,
-        type: form.type,
-        parentId: form.type === 'TOPIC' || !form.parentId ? null : form.parentId,
         sortOrder: form.sortOrder,
       };
       if (editingId) {
+        const payload: UpdateCommunityTopicPayload = {
+          ...commonPayload,
+          parentId: form.type === 'TOPIC' ? form.parentId : null,
+        };
         const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
           `/api/v1/community/topics/${editingId}`,
           payload,
         );
         setTopics((prev) => prev.map((t) => (t.id === editingId ? res.data.data : t)));
       } else {
+        const payload: CreateCommunityTopicPayload = form.type === 'TOPIC'
+          ? { ...commonPayload, type: 'TOPIC', parentId: form.parentId }
+          : { ...commonPayload, type: form.type, parentId: null };
         const res = await apiClient.post<ApiResponse<CommunityTopic>>(
           '/api/v1/community/topics',
           payload,
@@ -210,15 +225,7 @@ export default function ManageTopicsPage() {
       }
       closeDrawer();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? '';
-      if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('com-009')) {
-        setSubmitError('Tên phân loại này đã tồn tại. Vui lòng chọn tên khác.');
-      } else if (msg.toLowerCase().includes('com-015')) {
-        setSubmitError('Chủ đề cha không hợp lệ. Chủ đề cha phải là một Chủ đề (Topic) đang hiển thị.');
-      } else {
-        setSubmitError('Đã xảy ra lỗi. Vui lòng thử lại.');
-      }
+      setSubmitError(getTopicMutationErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -234,11 +241,10 @@ export default function ManageTopicsPage() {
   }
 
   /* ── Real reorder (ADR-COM-019): swap sortOrder with the adjacent sibling, persisted via PATCH.
-     Siblings = same parentId AND same "is a TOPIC" bucket (root topics vs. child/standalone
-     categories-tags never mix), sorted by sortOrder. ── */
+     Siblings share both type and parentId, so CATEGORY roots, child TOPICs and flat TAGs never mix. ── */
   function getSiblings(item: CommunityTopic): CommunityTopic[] {
     return topics
-      .filter((t) => t.parentId === item.parentId && (t.type === 'TOPIC') === (item.type === 'TOPIC'))
+      .filter((topic) => topic.parentId === item.parentId && topic.type === item.type)
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
@@ -303,6 +309,12 @@ export default function ManageTopicsPage() {
         </div>
       </div>
 
+      {actionError && (
+        <div className="mb-5 rounded-xl bg-error-container px-4 py-3 text-sm text-error">
+          {actionError}
+        </div>
+      )}
+
       {/* ── Table ── */}
       <div className="bg-surface rounded-3xl shadow-[0_4px_20px_rgba(90,70,63,0.06)] overflow-hidden">
 
@@ -334,7 +346,7 @@ export default function ManageTopicsPage() {
           )}
 
           {renderRows.map(({ item, isChild }) => {
-            const isTopic = item.type === 'TOPIC';
+            const isCategory = item.type === 'CATEGORY';
             const isExpanded = expandedIds.has(item.id);
             const isHovered = hoveredId === item.id;
             const isActive = !item.isHidden;
@@ -353,7 +365,7 @@ export default function ManageTopicsPage() {
                 <div className={`flex items-center ${isChild ? 'py-3 pr-6 pl-16' : 'py-4 px-6'}`}>
                   {/* Name column */}
                   <div className="w-[30%] flex items-center gap-3">
-                    {isTopic && (
+                    {isCategory && (
                       <button
                         onClick={() => toggleExpand(item.id)}
                         className="w-8 h-8 rounded-full border-none bg-transparent cursor-pointer flex items-center justify-center text-on-surface-variant flex-shrink-0"
@@ -368,7 +380,7 @@ export default function ManageTopicsPage() {
                     )}
                     {item.type === 'TAG' && !isChild && <span className="w-8 flex-shrink-0" />}
                     <div>
-                      <div className={`${isTopic ? 'font-semibold' : 'font-medium'} text-sm text-on-surface`}>
+                      <div className={`${isCategory ? 'font-semibold' : 'font-medium'} text-sm text-on-surface`}>
                         {item.name}
                       </div>
                       <div className="text-xs text-on-surface-variant mt-0.5">
@@ -417,10 +429,10 @@ export default function ManageTopicsPage() {
                     >
                       <span className="material-symbols-outlined text-xl">edit</span>
                     </button>
-                    {isTopic && (
+                    {(item.type === 'CATEGORY' || item.type === 'TOPIC') && (
                       <button
-                        onClick={() => handleSoftDelete(item)}
-                        title="Ẩn"
+                        onClick={() => handleDelete(item)}
+                        title="Xoá"
                         className="border-none bg-transparent cursor-pointer text-outline p-1 flex items-center"
                       >
                         <span className="material-symbols-outlined text-xl">delete</span>
@@ -469,21 +481,29 @@ export default function ManageTopicsPage() {
             <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
               Loại phân loại
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {([['TOPIC', 'Chủ đề'], ['CATEGORY', 'Danh mục'], ['TAG', 'Thẻ (Tag)']] as [CommunityTopicType, string][]).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setForm((prev) => ({ ...prev, type: value, parentId: value === 'TOPIC' ? '' : prev.parentId }))}
-                  className={`py-[10px] px-1 rounded-xl cursor-pointer text-[13px] font-medium font-sans transition-all duration-[150ms] ${
-                    form.type === value
-                      ? 'border-2 border-primary bg-[rgba(201,140,123,0.08)] text-primary'
-                      : 'border border-outline-variant bg-surface text-on-surface-variant'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {editingId ? (
+              <div className="h-14 px-4 flex items-center border border-surface-container-highest rounded-xl bg-surface-container-low">
+                <TypeBadge type={form.type} />
+                <span className="ml-3 text-xs text-on-surface-variant">Không thể thay đổi sau khi tạo</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {([['TOPIC', 'Chủ đề'], ['CATEGORY', 'Danh mục'], ['TAG', 'Thẻ (Tag)']] as [CommunityTopicType, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, type: value, parentId: '' }))}
+                    className={`py-[10px] px-1 rounded-xl cursor-pointer text-[13px] font-medium font-sans transition-all duration-[150ms] ${
+                      form.type === value
+                        ? 'border-2 border-primary bg-[rgba(201,140,123,0.08)] text-primary'
+                        : 'border border-outline-variant bg-surface text-on-surface-variant'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Name input */}
@@ -509,21 +529,22 @@ export default function ManageTopicsPage() {
             </div>
           </div>
 
-          {/* Parent topic — real, sent to backend (ADR-COM-016 revised: optional) */}
-          {form.type !== 'TOPIC' && (
+          {/* TOPIC requires a visible CATEGORY parent (ADR-COM-020). CATEGORY/TAG stay flat. */}
+          {form.type === 'TOPIC' && (
             <div>
               <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">
-                Chủ đề cha (tuỳ chọn)
+                Danh mục cha <span className="text-error">*</span>
               </label>
               <div className="relative">
                 <select
+                  required
                   value={form.parentId}
                   onChange={(e) => setForm((prev) => ({ ...prev, parentId: e.target.value }))}
                   className="w-full h-14 pr-12 pl-4 border border-outline-variant rounded-xl text-sm text-on-surface bg-surface outline-none appearance-none cursor-pointer font-sans box-border"
                 >
-                  <option value="">-- Không có (đứng độc lập) --</option>
-                  {topicItems.filter((t) => !t.isHidden).map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                  <option value="">-- Chọn danh mục --</option>
+                  {categoryItems.filter((category) => !category.isHidden).map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
                 <span
@@ -550,9 +571,9 @@ export default function ManageTopicsPage() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !form.name.trim()}
+            disabled={isSubmitting || !form.name.trim() || (form.type === 'TOPIC' && !form.parentId)}
             className={`h-[52px] px-8 rounded-full text-white border-none text-[15px] font-semibold font-sans shadow-[0_2px_8px_rgba(90,70,63,0.2)] transition-[background] duration-200 ${
-              isSubmitting || !form.name.trim()
+              isSubmitting || !form.name.trim() || (form.type === 'TOPIC' && !form.parentId)
                 ? 'bg-outline-variant cursor-not-allowed'
                 : 'bg-primary-container cursor-pointer'
             }`}

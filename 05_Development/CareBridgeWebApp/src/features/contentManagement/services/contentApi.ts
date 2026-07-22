@@ -12,6 +12,8 @@ import type {
   ContentStatus,
   ContentDecision,
   ContentSource,
+  CreateCommunityTopicPayload,
+  UpdateCommunityTopicPayload,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -148,61 +150,27 @@ export async function decideContent(
 
 export async function fetchTopics(includeHidden = false): Promise<CommunityTopic[]> {
   const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
-    `/api/v1/community/topics?includeHidden=${includeHidden}`,
+    `/api/v1/community/topics?includeHidden=${includeHidden}&type=TOPIC`,
   );
   return res.data.data;
 }
 
-export async function createTopic(data: {
-  name: string;
-  description?: string;
-  icon?: string;
-  sortOrder?: number;
-}): Promise<CommunityTopic> {
-  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/community/topics', data);
+export async function createTopic(
+  data: Omit<Extract<CreateCommunityTopicPayload, { type: 'TOPIC' }>, 'type'>,
+): Promise<CommunityTopic> {
+  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/community/topics', {
+    ...data,
+    type: 'TOPIC',
+  });
   return res.data.data;
 }
 
 export async function updateTopic(
   id: string,
-  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
+  data: UpdateCommunityTopicPayload,
 ): Promise<CommunityTopic> {
   const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
     `/api/v1/community/topics/${id}`,
-    data,
-  );
-  return res.data.data;
-}
-
-// UC-226 uses the Content Admin boundary. Community-topic routes are reserved
-// for the Moderator workflow (UC-109), even though both workflows share data.
-export async function fetchContentCategories(includeHidden = false): Promise<CommunityTopic[]> {
-  const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
-    `/api/v1/admin/content/categories?includeHidden=${includeHidden}`,
-  );
-  return res.data.data;
-}
-
-export async function createContentCategory(data: {
-  name: string;
-  description?: string;
-  icon?: string;
-  sortOrder?: number;
-}): Promise<CommunityTopic> {
-  // Backend now requires `type` (TOPIC | CATEGORY | TAG) — this route always creates CATEGORY.
-  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/admin/content/categories', {
-    ...data,
-    type: 'CATEGORY',
-  });
-  return res.data.data;
-}
-
-export async function updateContentCategory(
-  id: string,
-  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
-): Promise<CommunityTopic> {
-  const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
-    `/api/v1/admin/content/categories/${id}`,
     data,
   );
   return res.data.data;

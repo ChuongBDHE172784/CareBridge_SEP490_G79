@@ -16,6 +16,8 @@ import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.InvalidTopicHierarchyException;
+import com.carebridge.backend.community.exception.ImmutableTopicTypeException;
+import com.carebridge.backend.community.exception.TopicHasDependentsException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
@@ -174,6 +176,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInvalidTopicHierarchy(
             InvalidTopicHierarchyException ex, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "COM-015", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TopicHasDependentsException.class)
+    public ResponseEntity<ErrorResponse> handleTopicHasDependents(
+            TopicHasDependentsException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-016", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ImmutableTopicTypeException.class)
+    public ResponseEntity<ErrorResponse> handleImmutableTopicType(
+            ImmutableTopicTypeException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-017", ex.getMessage(), request);
     }
 
     @ExceptionHandler(QuestionNotAnswerableException.class)

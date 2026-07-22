@@ -2,13 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
-import 'community_topic_search_screen.dart';
 import 'community_feed_screen.dart';
 
 /// CB-118 — Topic Directory (UC-163)
 /// Displays a library of community topics with featured banner,
 /// 2-column bento grid, and a community suggestion row.
-/// Supports keyword search (navigates to CommunityTopicSearchScreen).
+/// Supports inline keyword search and CATEGORY-based filtering.
 class TopicDirectoryScreen extends StatefulWidget {
   const TopicDirectoryScreen({super.key});
 
@@ -25,29 +24,42 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   static const _outline = Color(0xFF84736F);
   static const _outlineVariant = Color(0xFFD6C2BD);
 
-  // Stage filter chips
-  static const _stages = ['Tất cả', 'Mang thai', 'Sau sinh', 'Chăm bé'];
-
   final _service = CommunityService.instance;
+  final _searchController = TextEditingController();
   List<CommunityTopic> _topics = [];
+  List<CommunityTopic> _categories = [];
   bool _loading = true;
-  int _selectedStage = 0;
+  String? _selectedCategoryId;
+  Timer? _searchDebounce;
+  int _searchGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadTopics();
+    _loadDirectory();
   }
 
-  Future<void> _loadTopics() async {
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDirectory() async {
+    final searchGeneration = _searchGeneration;
     setState(() => _loading = true);
     try {
-      // ADR-COM-017: only TOPIC-type rows are meant for mothers to browse — Category/Tag are
-      // internal admin taxonomy (see ManageTopicsPage.tsx on the web console).
-      final topics = await _service.getTopics(type: 'TOPIC');
+      final results = await Future.wait([
+        _service.getTopics(type: 'TOPIC'),
+        _service.getTopicCategories(),
+      ]);
       if (mounted) {
         setState(() {
-          _topics = topics;
+          if (searchGeneration == _searchGeneration) {
+            _topics = results[0];
+          }
+          _categories = results[1];
           _loading = false;
         });
       }
@@ -56,15 +68,34 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
     }
   }
 
-  List<CommunityTopic> get _filteredTopics {
-    if (_selectedStage == 0) return _topics;
-    // Client-side stage filter based on topic name keywords
-    final stageKw = [null, 'thai', 'sinh', 'bé'][_selectedStage];
-    if (stageKw == null) return _topics;
-    return _topics
-        .where((t) => t.name.toLowerCase().contains(stageKw))
-        .toList();
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _searchTopics(value),
+    );
   }
+
+  Future<void> _searchTopics(String keyword) async {
+    final generation = ++_searchGeneration;
+    try {
+      final topics = await _service.getTopics(
+        keyword: keyword.trim(),
+        type: 'TOPIC',
+      );
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _topics = topics);
+      }
+    } catch (_) {
+      // Keep the last successful result visible when an inline search fails.
+    }
+  }
+
+  List<CommunityTopic> get _filteredTopics => filterDirectoryTopics(
+    _topics,
+    selectedCategoryId: _selectedCategoryId,
+    keyword: _searchController.text,
+  );
 
   IconData _topicIcon(String iconName) {
     const map = <String, IconData>{
@@ -145,74 +176,77 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
               preferredSize: const Size.fromHeight(100),
               child: Column(
                 children: [
-                  // Search bar — taps open CommunityTopicSearchScreen
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CommunityTopicSearchScreen(),
-                      ),
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    decoration: BoxDecoration(
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: _outlineVariant),
                     ),
-                    child: Container(
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _surface,
-                        borderRadius: BorderRadius.circular(99),
-                        border: Border.all(color: _outlineVariant),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.search, color: _outline, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Tìm kiếm chủ đề bạn quan tâm...',
-                            style: TextStyle(color: _outline, fontSize: 14),
-                          ),
-                        ],
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      textInputAction: TextInputAction.search,
+                      decoration: const InputDecoration(
+                        hintText: 'Tìm kiếm chủ đề bạn quan tâm...',
+                        hintStyle: TextStyle(color: _outline, fontSize: 14),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: _outline,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  // Stage filter chips
+                  // CATEGORY filter chips from the community taxonomy API.
                   SizedBox(
                     height: 44,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _stages.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (_, i) {
-                        final selected = _selectedStage == i;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedStage = i),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: selected ? _primary : _surface,
-                              borderRadius: BorderRadius.circular(99),
-                              border: selected
-                                  ? null
-                                  : Border.all(color: _outlineVariant),
-                            ),
-                            child: Text(
-                              _stages[i],
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: selected
-                                    ? Colors.white
-                                    : _onSurfaceVariant,
+                    child: Builder(
+                      builder: (context) {
+                        final chips = buildCategoryChips(_categories);
+                        return ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: chips.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) {
+                            final chip = chips[i];
+                            final selected =
+                                _selectedCategoryId == chip.categoryId;
+                            return GestureDetector(
+                              onTap: () => setState(
+                                () => _selectedCategoryId = chip.categoryId,
                               ),
-                            ),
-                          ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: selected ? _primary : _surface,
+                                  borderRadius: BorderRadius.circular(99),
+                                  border: selected
+                                      ? null
+                                      : Border.all(color: _outlineVariant),
+                                ),
+                                child: Text(
+                                  chip.label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    color: selected
+                                        ? Colors.white
+                                        : _onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -294,7 +328,52 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
 // function so a widget test can assert the badge is driven by the real questionCount field and
 // not the previous `sortOrder * 100` placeholder — CommunityService.instance being a private
 // singleton constructor makes full widget-pump testing of TopicDirectoryScreen impractical here.
-String questionCountLabel(CommunityTopic topic) => '${topic.questionCount} câu hỏi';
+String questionCountLabel(CommunityTopic topic) =>
+    '${topic.questionCount} câu hỏi';
+
+class TopicCategoryChip {
+  final String? categoryId;
+  final String label;
+
+  const TopicCategoryChip({required this.categoryId, required this.label});
+}
+
+// MOB-TC-002/003 follow the MOB-TC-001 precedent: these are pure top-level helpers rather than
+// widget/service mocks because CommunityService remains a private singleton by design.
+List<TopicCategoryChip> buildCategoryChips(
+  Iterable<CommunityTopic> taxonomyRows,
+) {
+  final categories =
+      taxonomyRows.where((row) => row.type == 'CATEGORY').toList()
+        ..sort((a, b) {
+          final order = a.sortOrder.compareTo(b.sortOrder);
+          return order != 0 ? order : a.name.compareTo(b.name);
+        });
+  return [
+    const TopicCategoryChip(categoryId: null, label: 'Tất cả'),
+    ...categories.map(
+      (category) =>
+          TopicCategoryChip(categoryId: category.id, label: category.name),
+    ),
+  ];
+}
+
+List<CommunityTopic> filterDirectoryTopics(
+  Iterable<CommunityTopic> topics, {
+  required String? selectedCategoryId,
+  required String keyword,
+}) {
+  final normalizedKeyword = keyword.trim().toLowerCase();
+  return topics.where((topic) {
+    if (topic.type != 'TOPIC') return false;
+    if (selectedCategoryId != null && topic.parentId != selectedCategoryId) {
+      return false;
+    }
+    if (normalizedKeyword.isEmpty) return true;
+    return topic.name.toLowerCase().contains(normalizedKeyword) ||
+        topic.description.toLowerCase().contains(normalizedKeyword);
+  }).toList();
+}
 
 class _TopicGridCard extends StatelessWidget {
   final CommunityTopic topic;

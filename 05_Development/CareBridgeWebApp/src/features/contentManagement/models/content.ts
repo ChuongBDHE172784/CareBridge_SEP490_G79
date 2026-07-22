@@ -54,6 +54,24 @@ export interface ChecklistItem {
 
 export type CommunityTopicType = 'TOPIC' | 'CATEGORY' | 'TAG';
 
+interface CommunityTopicMutationFields {
+  name: string;
+  description?: string;
+  icon?: string;
+  sortOrder?: number;
+}
+
+export type CreateCommunityTopicPayload = CommunityTopicMutationFields & (
+  | { type: 'TOPIC'; parentId: string }
+  | { type: 'CATEGORY' | 'TAG'; parentId: null }
+);
+
+// Type is intentionally absent: ADR-COM-025 makes it immutable after creation.
+export interface UpdateCommunityTopicPayload extends Partial<CommunityTopicMutationFields> {
+  parentId?: string | null;
+  isHidden?: boolean;
+}
+
 export interface CommunityTopic {
   id: string;
   name: string;

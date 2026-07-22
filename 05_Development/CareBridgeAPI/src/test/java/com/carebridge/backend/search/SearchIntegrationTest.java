@@ -9,6 +9,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -57,13 +58,27 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
         return jwtTokenProvider.generateAccessToken(user);
     }
 
+    private CommunityTopic seedTopicUnderCategory(String name) {
+        UUID categorySuffix = UUID.randomUUID();
+        CommunityTopic category = topicRepository.save(CommunityTopic.builder()
+                .name(name + " category - " + categorySuffix)
+                .slug("search-category-" + categorySuffix)
+                .type(TopicType.CATEGORY)
+                .build());
+        UUID topicSuffix = UUID.randomUUID();
+        return topicRepository.save(CommunityTopic.builder()
+                .name(name + " - " + topicSuffix)
+                .slug("search-topic-" + topicSuffix)
+                .type(TopicType.TOPIC)
+                .parentId(category.getId())
+                .build());
+    }
+
     // SEARCH-TC-013-010: page=0 and page=1 return distinct, correctly-paginated results
     @Test
     void search_pagination_returnsDistinctPagesWithCorrectTotals() throws Exception {
         String token = seedUserAndGetToken();
-        CommunityTopic topic = topicRepository.save(CommunityTopic.builder()
-                .name("Dinh dưỡng thai kỳ - " + UUID.randomUUID())
-                .build());
+        CommunityTopic topic = seedTopicUnderCategory("Dinh dưỡng thai kỳ");
 
         for (int i = 0; i < 25; i++) {
             questionRepository.save(CommunityQuestion.builder()
@@ -114,9 +129,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     @Test
     void search_sqlInjectionAttempt_isHandledSafely() throws Exception {
         String token = seedUserAndGetToken();
-        CommunityTopic topic = topicRepository.save(CommunityTopic.builder()
-                .name("Safety topic - " + UUID.randomUUID())
-                .build());
+        CommunityTopic topic = seedTopicUnderCategory("Safety topic");
         questionRepository.save(CommunityQuestion.builder()
                 .topicId(topic.getId())
                 .authorId(UUID.randomUUID())

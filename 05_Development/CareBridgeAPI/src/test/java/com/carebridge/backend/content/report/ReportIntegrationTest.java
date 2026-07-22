@@ -8,6 +8,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -58,8 +59,18 @@ class ReportIntegrationTest extends AbstractPostgresIntegrationTest {
                 .build());
         String token = jwtTokenProvider.generateAccessToken(reporter);
 
+        UUID categorySuffix = UUID.randomUUID();
+        CommunityTopic category = topicRepository.save(CommunityTopic.builder()
+                .name("Report target category - " + categorySuffix)
+                .slug("report-target-category-" + categorySuffix)
+                .type(TopicType.CATEGORY)
+                .build());
+        UUID topicSuffix = UUID.randomUUID();
         CommunityTopic topic = topicRepository.save(CommunityTopic.builder()
-                .name("Report target topic - " + UUID.randomUUID())
+                .name("Report target topic - " + topicSuffix)
+                .slug("report-target-topic-" + topicSuffix)
+                .type(TopicType.TOPIC)
+                .parentId(category.getId())
                 .build());
         CommunityQuestion targetQuestion = questionRepository.save(CommunityQuestion.builder()
                 .topicId(topic.getId())

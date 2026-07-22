@@ -74,7 +74,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/archive").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/unpublish").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/admin/content/categories/**").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/community/topics").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partner/profile").hasRole("PARTNER")

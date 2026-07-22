@@ -4,9 +4,9 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-COMMUNITY-IMP-010` |
-| **Version** | `1.0` |
+| **Version** | `2.0-approved` |
 | **Date** | `2026-07-21` |
-| **Status** | `Implemented — 2026-07-22 (17/17 test case verified GREEN; backend/web/mobile code complete, integration test chạy thật qua Testcontainers PostgreSQL)` |
+| **Status** | `Implementation Complete (Amendment 2) — automated verification complete; pending human browser/device QA and user final approval` |
 | **Document Owner** | `HuyND` |
 | **Author** | `AI Agent — Winston (System Architect)` |
 | **Reviewed by** | `[Tech Lead]` |
@@ -28,6 +28,12 @@
 | 2026-07-22 | AI Agent — Amelia (Dev Agent) | **17/17 test case GREEN.** User commit, apply migration lên Supabase, bật Docker Desktop, yêu cầu tiếp tục. Chạy `CommunityTopicIntegrationTest` với Docker thật → phát hiện lỗi Flyway **có sẵn từ trước, không do feature này**: 2 migration khác nhau cùng version `20260720100000` (`V20260720100000__secure_baby_journey_linkage.sql` và `V20260720100000__add_content_report_revert_columns.sql`, từ merge commit `c2f96088`), chặn TOÀN BỘ Testcontainers integration test trong dự án (xác nhận bằng cách chạy thử `CommunityProfileIntegrationTest` — không liên quan community-topic — cũng lỗi y hệt). User xác nhận qua AskUserQuestion: đổi tên `V20260720100000__add_content_report_revert_columns.sql` → `V20260720100001__add_content_report_revert_columns.sql` (chỉ đổi version, giữ nguyên SQL). Sau `mvn clean test`: `CommunityTopicIntegrationTest` 3/3 pass thật. Full regression backend chạy lại: không có test nào của community/topic/content-category trong danh sách lỗi còn sót; 1 lớp lỗi mới xuất hiện (`Mf03OpenApiContractTest`) xác nhận nguyên nhân là thiếu config `carebridge.zego.app-id` — hoàn toàn không liên quan, có sẵn từ trước. Xem Test-Spec CHANGELOG cùng ngày để biết chi tiết đầy đủ. |
 | 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Bug fix phát hiện qua UI QA thủ công (Chrome DevTools MCP), không phải feature mới.** Đăng nhập thật với `content@carebridge.dev`, thao tác thật trên `/content/topics` và `/content/categories`. Tạo mới qua `ManageTopicsPage.tsx` (luôn gửi `sortOrder:0`) thành công (201), nhưng tạo qua route cũ `/content/categories` (`contentApi.ts createContentCategory()`, không gửi `sortOrder`) trả về **400 "Invalid request body"**. Root cause xác nhận qua log backend (`Cannot map 'null' into type 'int'`) và curl isolation: `CreateCommunityTopicRequest.sortOrder` khai báo `private int sortOrder = 0;` (primitive) + `@Builder.Default`, trong khi class có cả `@NoArgsConstructor` lẫn `@AllArgsConstructor` — khi JSON không gửi field này, Jackson chọn constructor all-args và truyền `null` cho tham số `int`, gây lỗi unbox. `UpdateCommunityTopicRequest.sortOrder` (đã dùng `Integer` boxed từ đầu) không có bug này — xác nhận đây là lỗi cục bộ của DTO tạo mới, không phải lỗi hệ thống rộng hơn. **Fix**: đổi `CreateCommunityTopicRequest.sortOrder` sang `Integer` (bỏ `@Builder.Default`, giữ `@Min(0)`); `CommunityTopicMapper.toEntity()` null-check về 0. Xác minh lại qua curl (400 → 201) và qua UI thật (form "Thêm danh mục" lưu thành công). Chạy lại toàn bộ test community/content (46/46 xanh) + full regression backend (2410 test, 13 failures/69 errors — không cái nào thuộc community/topic/content-category, xác nhận không liên quan). Dữ liệu test tạo trong lúc QA đã được ẩn (soft-hide) trên Supabase dev DB dùng chung để không để lại rác. |
 | 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Bug thứ 2 phát hiện qua UI QA thủ công**: bấm nút ▲/▼ (ADR-COM-019) trên `/content/topics` — 2 PATCH request thành công (200, xác nhận `sortOrder` đổi đúng ở backend), nhưng danh sách hiển thị KHÔNG đổi vị trí ngay; chỉ đúng lại sau khi reload trang. Root cause: `buildTopicTree()` (`topicTree.ts`) chỉ lặp qua mảng `topics` theo đúng thứ tự phần tử trong mảng (thứ tự từ lần fetch gốc), không tự sort theo `sortOrder` — trong khi `handleMove()` chỉ cập nhật giá trị `sortOrder` của 2 object tại đúng vị trí cũ trong mảng (`setTopics(prev => prev.map(...))`), không thay đổi thứ tự mảng. **Fix**: `buildTopicTree()` sort `topicItems` và `childItems` theo `sortOrder` trước khi dựng rows, thay vì tin vào thứ tự mảng đầu vào. Thêm 1 test case mới (`orders rows by sortOrder, not by array position`) — `topicTree.test.ts` 4/4 pass. Verify qua UI thật: bấm ▲/▼ giờ đổi vị trí NGAY LẬP TỨC, không cần reload. Đồng thời test mobile qua `flutter run -d web-server` + Chrome DevTools MCP (đăng nhập `mother@carebridge.dev` thật): `TopicDirectoryScreen` và `CommunityTopicSearchScreen` đều hiển thị đúng `questionCount` thật (khớp 100% với số liệu bên web), filter `type=TOPIC` và search `keyword=` gửi đúng qua network — xác nhận cả 2 màn hình mobile không có regression. |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Amendment 2 Milestone C — Backend GREEN.** Thêm migration `V20260722054603__invert_community_topic_hierarchy.sql`; đảo luật CATEGORY-root/TOPIC-child, giữ nguyên ID topic/question/follow; thêm COM-016/COM-017, delete guard type-agnostic, DELETE 204/409/403, question chỉ nhận TOPIC và xoá backend `ContentCategoryController` cùng rule/test cũ. Targeted backend 64/64 GREEN trên PostgreSQL 16 Testcontainers; regression fixtures Report/Search 3/3 GREEN. Full `./mvnw test`: 2.419 test, 9 failures/68 errors/1 skipped, không còn lỗi do Amendment 2; các nhóm còn lại là baseline đã ghi nhận (Zego config, family/auth fixtures, content mapper, moderation, notification...). Web/mobile chưa được chạm trong Milestone C. |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Amendment 2 Milestone D — Web GREEN.** `buildTopicTree()` đảo đúng CATEGORY-root/TOPIC-child, TAG flat; form TOPIC bắt buộc CATEGORY cha, edit không gửi/cho đổi type; thêm hard-delete với thông báo COM-016/COM-017/403; xoá page/route/sidebar/API `/content/categories`. RED 4/4 đúng chiều cũ, GREEN targeted 7/7; toàn bộ unit `src` 18/18, typecheck/build/lint sạch. Full Vitest vẫn exit 1 vì 4 Playwright e2e specs bị Vitest thu nhầm — baseline có sẵn, 18 unit tests vẫn PASS. Mobile pending. |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Amendment 2 Milestone E — Mobile GREEN.** `TopicDirectoryScreen` tải CATEGORY thật cho chips, lọc TOPIC theo `parentId`, tìm kiếm inline qua backend `keyword`; model parse `type`/`parentId`; xoá màn `CommunityTopicSearchScreen` dư thừa sau khi xác nhận chỉ có một caller và không có route riêng. MOB-TC-002/003 dùng pure helper theo precedent MOB-TC-001, không refactor singleton service. RED compile đúng vì helper/model fields chưa tồn tại; GREEN targeted/community 6/6. `dart analyze` bốn file đổi sạch; `flutter analyze` bị analysis-server LSP crash trước khi trả diagnostic, cần retry ở Milestone F. |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Amendment 2 Milestone F — automated verification complete, pending human QA/user approval.** ADR-COM-020/021/022 landed in Milestone C backend; ADR-COM-023 landed across Milestones C/D; ADR-COM-024 landed in Milestone E. Final runs: backend targeted 67/67 GREEN on PostgreSQL 16 Testcontainers; clean full backend reproduced the unrelated baseline (2,419 tests, 9 failures/68 errors/1 skipped, no Amendment 2 class failing); web typecheck + 18/18 scoped unit + build + lint GREEN; mobile 252/252 GREEN and scoped community `dart analyze` clean. Full `flutter analyze` remains blocked by the same analysis-server LSP JSON truncation crash (exit 255). No commit exists; shared Supabase migration and human browser/device QA remain pending. |
+| 2026-07-22 | HuyND | **Yêu cầu redesign (không phải bug fix)** sau khi tự tay dùng qua UI thật: (1) `CommunityTopicSearchScreen` (mobile) chỉ vào được qua ô tìm kiếm trên `TopicDirectoryScreen`, chip lọc "Nhi khoa/Sản khoa/..." không khớp dữ liệu thật — bất hợp lý, yêu cầu xoá nếu xác nhận đúng là dư thừa. (2) Chip "Tất cả/Mang thai/Sau sinh/Chăm bé" trên `TopicDirectoryScreen` không có logic xử lý tương ứng bên ContentPortal — yêu cầu xoá hoặc thay bằng Danh mục thật. (3) `/content/categories` (web) trùng lặp với `/content/topics` (đã có đủ logic thêm Danh mục) — yêu cầu xoá nếu bất hợp lý. (4) **Quan trọng nhất**: mô hình phân cấp hiện tại sai chiều — đúng ra "Danh mục (Category) là không gian bao quát chứa nhiều Chủ đề; Chủ đề (Topic) là nhánh nhỏ hơn, thuộc quyền quản lý của Danh mục lớn" — yêu cầu sửa lại cho Category là cha, Topic là con (ngược với ADR-COM-016 hiện tại). (5) `/content/topics` chưa có nút xoá thật cho Danh mục. Yêu cầu "Phân tích lại và sửa lại hết đi". |
+| 2026-07-22 | AI Agent — Amelia (Dev Agent) | **Điều tra + AskUserQuestion để chốt thiết kế** trước khi động code (implement-flow.md — đây là thay đổi data model/kiến trúc, không phải trivial fix). Điều tra xác nhận cả 5 điểm user nêu đều đúng thực tế code (chi tiết ở ADR-COM-020 đến COM-024 bên dưới): `CommunityTopicSearchScreen` chỉ có 1 entry point (search bar trên `TopicDirectoryScreen`), 2 bộ chip đều hardcoded string-match không có field backing; `ManageTopicsPage.tsx` đã hỗ trợ đầy đủ CRUD Category (tạo/sửa/ẩn/sắp xếp/gán cha) trong khi `ContentCategoryListPage.tsx` chỉ có tạo (không parentId)+ẩn; `community_topics_parent_rule_check` hiện chỉ ép "TOPIC không được có cha", không hề ép "CATEGORY/TAG phải có cha là gì" — đúng là đảo ngược so với mô hình danh mục lớn/chủ đề nhỏ chuẩn. User xác nhận qua AskUserQuestion 4 quyết định: (a) bộ Category gốc = Chuẩn bị mang thai / Mang thai / Sau sinh / Chăm bé / Khác — 8 topic hiện có giữ nguyên ID, gán làm con theo mapping ở ADR-COM-020; (b) TAG giữ tách biệt, không thuộc cây Category>Topic; (c) xoá thật (hard-delete) chỉ khi rỗng, chặn có thông báo rõ nếu còn phụ thuộc; (d) xoá hẳn `CommunityTopicSearchScreen`, gộp tìm kiếm inline vào `TopicDirectoryScreen`. Xem ADR-COM-020 → 024 bên dưới cho thiết kế chi tiết. **Tài liệu này ở trạng thái Draft — CHƯA implement, chờ user đổi Status → Approved.** |
 
 ---
 
@@ -70,14 +76,16 @@
 
 **Mô tả:** Hoàn thiện tính năng quản lý "Danh mục/Chủ đề thảo luận cộng đồng" (`CommunityTopic`) hiện đang dở dang — loại bỏ toàn bộ dữ liệu giả (mock/placeholder) đã phát hiện trong gap-analysis trước đó:
 
-1. **Backend**: thêm field thật `type` (TOPIC/CATEGORY/TAG), `slug` (unique, server-generated), `parentId` (phân cấp Topic→Category/Tag), và API đếm số câu hỏi APPROVED thật sự thuộc mỗi topic.
+1. **Backend**: thêm field thật `type` (TOPIC/CATEGORY/TAG), `slug` (unique, server-generated), `parentId` (phân cấp Category→Topic; TAG tách biệt), và API đếm số câu hỏi APPROVED thật sự thuộc mỗi topic.
 2. **Web** (`/content/topics`, role MODERATOR + CONTENT_ADMIN): xoá hack "icon giả làm type", nối `parentId` thật vào dropdown "Chủ đề cha", hiển thị slug + số bài viết thật từ backend, thay nút kéo-thả tĩnh bằng nút di chuyển thứ tự (▲/▼) hoạt động thật.
 3. **Mobile** (`TopicDirectoryScreen`, UC-163): sửa badge "X câu hỏi" đang tính giả (`sortOrder * 100`) thành gọi API thật; lọc chỉ hiển thị `type=TOPIC` cho mẹ bầu (Category/Tag là taxonomy nội bộ cho admin, không phải đối tượng duyệt riêng của mẹ).
 
-**Out of scope (ghi nhận rõ, không tự ý mở rộng):**
-- Bộ lọc giai đoạn "Mang thai/Sau sinh/Chăm bé" trên mobile hiện match substring tên topic ở client — **giữ nguyên**, vì không có field "stage" thật trên `CommunityTopic` và việc thêm field này không nằm trong 3 quyết định đã được user chốt. Đây là hạn chế đã biết, không phải phạm vi của spec này.
-- Xoá cứng (hard delete) topic — vẫn dùng soft-hide (`isHidden`) như hiện tại.
-- Ràng buộc "không cho ẩn Topic cha khi còn Category/Tag con chưa ẩn" — không được yêu cầu, không tự thêm.
+**Out of scope (v1.0, ghi nhận rõ, không tự ý mở rộng):**
+- ~~Bộ lọc giai đoạn "Mang thai/Sau sinh/Chăm bé" trên mobile hiện match substring tên topic ở client — giữ nguyên~~ **→ NAY TRONG PHẠM VI, xem ADR-COM-024 (Amendment 2, 2026-07-22): thay bằng CATEGORY thật.**
+- ~~Xoá cứng (hard delete) topic — vẫn dùng soft-hide~~ **→ NAY TRONG PHẠM VI, xem ADR-COM-022 (Amendment 2).**
+- Ràng buộc "không cho ẩn Topic cha khi còn Category/Tag con chưa ẩn" — vẫn KHÔNG được yêu cầu ở Amendment 2 (chỉ có ràng buộc tương đương cho **xoá thật**, không phải **ẩn**) — không tự thêm.
+
+**Amendment 2 (2026-07-22, xem ADR-COM-020 → 024):** đảo chiều phân cấp (CATEGORY là gốc bắt buộc, TOPIC là con bắt buộc), thêm xoá thật có điều kiện, xoá bỏ `/content/categories` (web) và `CommunityTopicSearchScreen` (mobile) do trùng lặp/bất hợp lý — chi tiết đầy đủ ở các ADR tương ứng và §5.3/§11 Chặng 7-10.
 
 ---
 
@@ -92,6 +100,11 @@
 | User-decision-2026-07-21 | Explicit approved decision | Chỉ CATEGORY/TAG có `parent_id`, bắt buộc trỏ tới 1 TOPIC | `CommunityTopicServiceImpl.validateHierarchy()` | — | ADR-COM-016 |
 | User-decision-2026-07-21 | Explicit approved decision | Slug trùng → tự thêm hậu tố `-2`, `-3`... | `SlugGenerator`, `CommunityTopicServiceImpl` | — | ADR-COM-018 |
 | BR-RBAC | Business Rule | Create/update topic chỉ MODERATOR/CONTENT_ADMIN | `@PreAuthorize("hasAnyRole('MODERATOR','CONTENT_ADMIN')")` (không đổi) | RBAC | — |
+| User-decision-2026-07-22 | Explicit approved decision (AskUserQuestion) | Đảo chiều: CATEGORY là gốc bắt buộc, TOPIC bắt buộc có CATEGORY cha; TAG tách biệt | `CommunityTopicServiceImpl.validateHierarchy()` (viết lại) | — | ADR-COM-020 |
+| User-decision-2026-07-22 | Explicit approved decision | Câu hỏi cộng đồng chỉ gắn được vào TOPIC | `CommunityQuestionServiceImpl` | — | ADR-COM-021 |
+| User-decision-2026-07-22 | Explicit approved decision | Xoá thật CATEGORY/TOPIC/TAG, chỉ khi rỗng | `CommunityTopicServiceImpl.deleteTopic()` (mới) | — | ADR-COM-022 |
+| User-decision-2026-07-22 | Explicit approved decision | Xoá `/content/categories`, gộp vào `/content/topics` | `router/index.tsx`, `ManageTopicsPage.tsx` | — | ADR-COM-023 |
+| User-decision-2026-07-22 | Explicit approved decision | Xoá `CommunityTopicSearchScreen`; chip lọc mobile dùng CATEGORY thật | `topic_directory_screen.dart` | — | ADR-COM-024 |
 
 ---
 
@@ -128,7 +141,8 @@ Chọn **Phương án B**. Query 1 lần cho toàn bộ danh sách topic đang t
 
 | Field | Value |
 |-------|-------|
-| **Status** | `Accepted` — **đã sửa 2026-07-21 trong lúc implement** (xem CHANGELOG) |
+| **Status** | `Superseded 2026-07-22 bởi ADR-COM-020` — nội dung bên dưới **giữ nguyên không sửa** (Immutable History), chỉ để lại làm hồ sơ quyết định gốc. Áp dụng thực tế: xem ADR-COM-020. |
+| **Status (lịch sử)** | `Accepted` — **đã sửa 2026-07-21 trong lúc implement** (xem CHANGELOG) |
 | **Deciders** | `HuyND (user-approved via AskUserQuestion 2026-07-21, sửa lần 2 cùng ngày)` |
 | **Date** | `2026-07-21` |
 
@@ -203,6 +217,201 @@ Thay icon kéo-thả tĩnh bằng 2 nút mũi tên **▲ / ▼** — mỗi lần
 
 ---
 
+### ADR-COM-020 — Đảo chiều phân cấp: CATEGORY là gốc bắt buộc chứa TOPIC; TOPIC bắt buộc có CATEGORY cha (supersedes ADR-COM-016)
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Deciders** | `HuyND (yêu cầu redesign 2026-07-22, chốt qua AskUserQuestion cùng ngày)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+Mô hình hiện tại (ADR-COM-016) đặt TOPIC làm gốc (luôn `parent_id IS NULL`) và cho phép CATEGORY/TAG **tuỳ chọn** nhận TOPIC làm cha. Sau khi tự tay dùng thử `/content/topics` và `/content/categories`, user chỉ ra đây là **ngược chiều** so với mô hình phân loại nội dung chuẩn: "Danh mục lớn (Category) là không gian bao quát chứa nhiều chủ đề khác nhau. Chủ đề (Topic) là nhánh thông tin nhỏ hơn, cụ thể hơn, thuộc quyền quản lý của Danh mục lớn." Xác nhận qua điều tra code thực tế: `community_topics_parent_rule_check` hiện tại (`V20260721204919`, dòng 332-333) chỉ ép "TOPIC không có cha" — không hề ép chiều ngược lại.
+
+#### Các phương án đã xem xét
+
+| Phương án | Mô tả | Ưu điểm | Nhược điểm |
+|-----------|-------|---------|------------|
+| A | Giữ nguyên ADR-COM-016 (TOPIC=gốc, CATEGORY/TAG=con tuỳ chọn) | Không cần migration mới, không backfill | Sai bản chất domain — user xác nhận rõ ràng là bug thiết kế, không chấp nhận được |
+| B (chọn) | Đảo chiều: CATEGORY=gốc bắt buộc (`parent_id` luôn `NULL`), TOPIC=con bắt buộc (`parent_id` **NOT NULL**, phải trỏ tới 1 CATEGORY còn hiển thị). TAG giữ nguyên tách biệt (`parent_id` luôn `NULL`, không thuộc cây) | Đúng domain, khớp yêu cầu user, tận dụng được 5 "chip giả" hiện có trên mobile để biến thành Category thật | Cần migration mới + backfill 8 topic hiện có + xử lý các Category-test-row đang có `parent_id` trỏ tới TOPIC (vi phạm luật mới) |
+
+#### Quyết định
+Chọn **Phương án B**.
+
+**Luật mới (thay thế hoàn toàn ADR-COM-016):**
+- `type = CATEGORY` → `parent_id` luôn **`NULL`** (danh mục không lồng nhau — chỉ 1 tầng danh mục gốc, khớp đúng phạm vi user mô tả, không mở rộng thêm "danh mục con của danh mục").
+- `type = TOPIC` → `parent_id` **bắt buộc NOT NULL**, phải trỏ tới 1 row `type = CATEGORY` đang `is_hidden = false`.
+- `type = TAG` → `parent_id` luôn **`NULL`** (giữ nguyên tách biệt, theo quyết định user — TAG không nằm trong cây Category→Topic).
+
+**CHECK constraint mới** (thay `community_topics_parent_rule_check`):
+```sql
+CHECK (
+  (type = 'CATEGORY' AND parent_id IS NULL) OR
+  (type = 'TOPIC' AND parent_id IS NOT NULL) OR
+  (type = 'TAG' AND parent_id IS NULL)
+)
+```
+Rule "TOPIC's parent phải là CATEGORY còn hiển thị" vẫn là cross-row, tiếp tục enforce ở service layer (không đổi cách tiếp cận so với ADR-COM-016 gốc).
+
+**Service layer** (`CommunityTopicServiceImpl.validateHierarchy`, thay thế toàn bộ method cũ):
+```java
+private void validateHierarchy(TopicType type, UUID parentId) {
+    if (type == TopicType.CATEGORY || type == TopicType.TAG) {
+        if (parentId != null) {
+            throw new InvalidTopicHierarchyException(type + " cannot have a parent: " + parentId);
+        }
+        return;
+    }
+    // type == TOPIC: parent is mandatory, must reference a visible CATEGORY
+    if (parentId == null) {
+        throw new InvalidTopicHierarchyException("A TOPIC must belong to a parent CATEGORY");
+    }
+    topicRepository.findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY)
+            .orElseThrow(() -> new InvalidTopicHierarchyException(
+                    "parentId must reference an existing, visible CATEGORY: " + parentId));
+}
+```
+
+**Backfill dữ liệu hiện có (migration mới, KHÔNG sửa `V20260721204919` đã apply — xem §5.3):**
+1. Tạo 5 CATEGORY gốc mới (id mới, `parent_id=NULL`): **Chuẩn bị mang thai**, **Mang thai**, **Sau sinh**, **Chăm bé**, **Khác** (user chốt qua AskUserQuestion 2026-07-22, có bổ sung "Chuẩn bị mang thai" so với đề xuất ban đầu).
+2. Gán 8 TOPIC hiện có (giữ nguyên ID — không mất `community_questions`/`user_topic_follows` đã gắn) làm con theo mapping:
+
+| TOPIC (id cũ, giữ nguyên) | CATEGORY cha mới |
+|---|---|
+| Dinh dưỡng thai kỳ (`...567801`) | Mang thai |
+| Sức khỏe thai nhi (`...567802`) | Mang thai |
+| Giấc ngủ và thể chất (`...567805`) | Mang thai |
+| Chăm sóc sau sinh (`...567803`) | Sau sinh |
+| Nuôi con bằng sữa mẹ (`...567804`) | Sau sinh |
+| Chăm sóc bé sơ sinh (`...567807`) | Chăm bé |
+| Tâm lý & Cảm xúc (`...567806`) | Khác |
+| Hỏi đáp chung (`...567808`) | Khác |
+
+"Chuẩn bị mang thai" khởi tạo **rỗng** (0 topic con) — dành cho nội dung tương lai, đúng yêu cầu user dù hiện chưa có topic nào khớp.
+3. Bất kỳ CATEGORY/TAG nào hiện có `parent_id IS NOT NULL` (vd. dữ liệu test tạo trong lúc QA thủ công, đã bị `isHidden` sẵn) → `UPDATE ... SET parent_id = NULL` để không vi phạm CHECK mới (xử lý tổng quát bằng điều kiện `WHERE type IN ('CATEGORY','TAG') AND parent_id IS NOT NULL`, không hardcode theo từng row cụ thể).
+
+#### Hệ quả
+**Tích cực:** đúng mô hình domain user yêu cầu; tận dụng luôn 5 category để thay thế 2 bộ chip "giả" trên mobile (ADR-COM-024); không mất dữ liệu (ID giữ nguyên, câu hỏi/follow không bị đứt gãy).
+**Trade-offs:** cần 1 migration mới chạy trên Supabase dev DB chia sẻ (thao tác thủ công, xem §11.2); web `ManageTopicsPage.tsx` cần sửa lại: dropdown "cha" khi tạo TOPIC bắt buộc chọn 1 CATEGORY (không còn tuỳ chọn "Không có"); cây hiển thị đảo ngược thứ tự lồng (CATEGORY ở ngoài, TOPIC lồng bên trong — ngược lại hoàn toàn so với UI hiện tại).
+
+---
+
+### ADR-COM-021 — Câu hỏi cộng đồng chỉ được gắn vào TOPIC, không được gắn vào CATEGORY/TAG
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+Hệ quả trực tiếp, bắt buộc của ADR-COM-020: nếu CATEGORY là "không gian bao quát" thuần tuý (không phải nơi chứa nội dung), thì `community_questions.topic_id` — hiện là FK **type-agnostic** (không kiểm tra type của row được trỏ tới, xác nhận qua `CommunityQuestionServiceImpl` chỉ gọi `findByIdAndIsHiddenFalse`, không lọc theo `type`) — phải được validate chặt hơn: chỉ chấp nhận `topic_id` trỏ tới 1 row `type = TOPIC`. Đây không phải yêu cầu độc lập của user mà là hệ quả logic tất yếu để tránh dữ liệu vô nghĩa (câu hỏi "gắn thẳng" vào 1 Category rỗng nội dung).
+
+#### Quyết định
+`CommunityQuestionServiceImpl` (nơi tạo câu hỏi mới) thêm điều kiện: `topicRepository.findByIdAndTypeAndIsHiddenFalse(topicId, TopicType.TOPIC)` thay vì `findByIdAndIsHiddenFalse(topicId)` hiện tại — nếu row tồn tại nhưng `type != TOPIC`, coi như "not found", trả lỗi hiện có (COM-003, không thêm mã lỗi mới). `create_question_screen.dart` (mobile, dropdown chọn chủ đề) tiếp tục gọi `GET /community/topics?type=TOPIC` — không đổi, đã tự động chỉ hiện TOPIC.
+
+#### Hệ quả
+**Tích cực:** đảm bảo tính toàn vẹn dữ liệu domain, tránh câu hỏi "mồ côi ý nghĩa" gắn vào 1 Category.
+**Trade-offs:** không có — hành vi hiện tại của UI (dropdown chọn topic) vốn đã chỉ hiện TOPIC, đây chỉ là siết chặt validate ở tầng service cho khớp, không có breaking change quan sát được từ client.
+
+---
+
+### ADR-COM-022 — Xoá thật (hard-delete) CATEGORY/TOPIC/TAG, chỉ khi rỗng
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Deciders** | `HuyND (chốt qua AskUserQuestion 2026-07-22)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+User chỉ ra `/content/topics` chưa có nút xoá thật cho Danh mục (hiện chỉ có toggle ẩn cho CATEGORY/TAG; nút xoá hiển thị cho TOPIC thực chất cũng chỉ gọi PATCH ẩn — `handleSoftDelete`, không xoá thật). Với mô hình mới (CATEGORY là container bắt buộc), xoá thật cần ràng buộc rõ để không phá vỡ cây/nội dung đang gắn.
+
+#### Quyết định
+Thêm endpoint mới `DELETE /api/v1/community/topics/{id}` (role `MODERATOR`, `CONTENT_ADMIN` — khớp RBAC hiện có của POST/PATCH). Logic trong `CommunityTopicServiceImpl.deleteTopic()` là **type-agnostic**: với bất kỳ CATEGORY/TOPIC/TAG nào, chặn xoá nếu có ít nhất một trong ba loại dependent sau:
+1. Row con có `parent_id = id` (`topicRepository.existsByParentId(id)`).
+2. Câu hỏi có `topic_id = id` (`questionRepository.existsByTopicId(id)`).
+3. Lượt follow có `topic_id = id` (`topicFollowRepository.existsByTopicId(id)`).
+
+Bất kỳ check nào dương tính đều throw `TopicHasDependentsException` → `409 COM-016`.
+Chỉ khi cả ba check đều false mới gọi `topicRepository.delete(entity)` và ghi
+`AuditService.log(MODERATION_ACTION, ..., "action=DELETE")`.
+FK tự thân `fk_community_topics_parent ON DELETE RESTRICT` (đã có từ `V20260721204919`) đóng vai trò lưới an toàn tầng DB nếu service-layer check có sai sót — không đổi.
+
+#### Hệ quả
+**Tích cực:** đáp ứng đúng yêu cầu "có nút xoá thật", an toàn kể cả với legacy row sai type (ví dụ CATEGORY có question/follow), và trả conflict rõ ràng thay vì để FK RESTRICT rơi xuống 500.
+**Trade-offs:** Moderator muốn "dọn sạch" 1 Category còn nhiều Topic con sẽ phải xoá/di chuyển từng Topic con trước — chấp nhận được, đúng tinh thần "an toàn hơn tiện lợi" mà user chọn.
+
+---
+
+### ADR-COM-023 — Bỏ trang web `/content/categories`; `/content/topics` là nơi quản lý duy nhất cho cả CATEGORY và TOPIC
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Deciders** | `HuyND (yêu cầu 2026-07-22)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+Điều tra xác nhận `/content/topics` (`ManageTopicsPage.tsx`) đã hỗ trợ **đầy đủ** vòng đời CATEGORY (tạo có `parentId`+`sortOrder`, sửa, ẩn/hiện, sắp xếp ▲/▼) — vượt trội hoàn toàn so với `/content/categories` (`ContentCategoryListPage.tsx`, chỉ tạo tên+ẩn, không sửa/không sắp xếp/không gán cha). Route `/content/topics` đã cho phép cả `CONTENT_ADMIN` lẫn `MODERATOR` truy cập — xoá `/content/categories` không làm mất quyền truy cập của CONTENT_ADMIN.
+
+#### Quyết định
+Xoá: route `/content/categories` (`router/index.tsx`), `ContentCategoryListPage.tsx`, mục sidebar "Danh mục" (`ContentPortalSidebar.tsx`), 3 hàm client `fetchContentCategories`/`createContentCategory`/`updateContentCategory` (`contentApi.ts`) sau khi xác nhận không còn nơi nào khác gọi (grep lại tại thời điểm implement). Backend `ContentCategoryController` (`/api/v1/admin/content/categories`) cũng xoá — không còn client nào gọi sau khi xoá trang web (xác nhận: chỉ `ContentCategoryListPage.tsx` gọi 3 hàm trên; mobile không gọi endpoint này).
+
+#### Hệ quả
+**Tích cực:** loại bỏ hoàn toàn 1 UI trùng lặp, kém năng lực hơn; giảm bề mặt code cần bảo trì (1 controller + 1 trang + 3 hàm API client + test file tương ứng).
+**Trade-offs:** không có — mọi khả năng của trang cũ đều là tập con của trang mới.
+
+---
+
+### ADR-COM-024 — Mobile: xoá `CommunityTopicSearchScreen`, gộp tìm kiếm inline; chip lọc dùng CATEGORY thật thay chuỗi hardcode
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Deciders** | `HuyND (chốt qua AskUserQuestion 2026-07-22)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+`CommunityTopicSearchScreen` chỉ có 1 entry point duy nhất — chạm vào ô tìm kiếm (decorative) trên `TopicDirectoryScreen` — rồi điều hướng sang 1 màn hình khác cũng có ô tìm kiếm riêng và 1 bộ chip "Nhi khoa/Sản khoa/Dinh dưỡng/Tâm lý/An toàn" hoàn toàn không khớp dữ liệu thật (empty-state với seed data thật). Đồng thời, chip "Tất cả/Mang thai/Sau sinh/Chăm bé" trên `TopicDirectoryScreen` hiện lọc bằng cách match substring cứng vào `name` (`['thai','sinh','bé']`), không dựa trên field thật nào.
+
+#### Quyết định
+1. Xoá file `community_topic_search_screen.dart` (và test file liên quan nếu có).
+2. `TopicDirectoryScreen`: ô tìm kiếm chuyển thành `TextField` thật, gõ chữ lọc **inline ngay trên màn hình hiện tại** (gọi lại `getTopics(keyword:, type:'TOPIC')`, param `keyword` đã tồn tại sẵn ở backend — không thêm endpoint mới), không điều hướng sang màn hình khác.
+3. Thay `_stages = ['Tất cả','Mang thai','Sau sinh','Chăm bé']` (hardcode) bằng danh sách CATEGORY thật lấy từ `GET /community/topics?type=CATEGORY` (gọi 1 lần khi mở màn hình, cùng cơ chế `type` filter đã có — ADR-COM-017 không đổi). Chọn 1 chip → lọc danh sách TOPIC đã fetch theo `topic.parentId == category.id` (client-side, trên list đã có sẵn, không cần round-trip mới mỗi lần đổi chip).
+
+#### Hệ quả
+**Tích cực:** loại bỏ 1 màn hình dư thừa + 1 bộ chip vô nghĩa; chip lọc giờ phản ánh đúng cấu trúc dữ liệu thật (CATEGORY thật từ ADR-COM-020), không còn substring-match mong manh.
+**Trade-offs:** cần 1 lần gọi API bổ sung (`type=CATEGORY`) khi mở màn hình — chấp nhận được, dữ liệu nhỏ (5 category), không ảnh hưởng SLA §4.1.
+
+---
+
+### ADR-COM-025 — `CommunityTopic.type` immutable after creation
+
+| Field | Value |
+|-------|-------|
+| **Status** | `Accepted (Amendment 2)` |
+| **Deciders** | `HuyND (Decision B, 2026-07-22)` |
+| **Date** | `2026-07-22` |
+
+#### Bối cảnh
+`PATCH` hiện dùng quy ước `null = leave unchanged`, nên không phân biệt được
+`parentId` bị bỏ trống với yêu cầu xoá parent. Sau khi đảo chiều hierarchy, chỉ
+transition TOPIC→CATEGORY/TAG mới cần xoá parent; các update hợp lệ khác không cần.
+
+#### Quyết định
+`type` là immutable sau khi tạo. `UpdateCommunityTopicRequest.type` có thể bỏ trống hoặc
+gửi lại đúng giá trị hiện tại; nếu khác giá trị hiện tại, service throw
+`ImmutableTopicTypeException` và trả `400 COM-017`. Không thêm tri-state PATCH hay dependency mới.
+
+TOPIC vẫn có thể đổi từ CATEGORY cha A sang CATEGORY cha B bằng một UUID khác null.
+CATEGORY/TAG luôn có `parentId=null`, nên không cần thao tác clear-parent.
+
+#### Hệ quả
+Giữ nguyên semantics `parentId=null = leave unchanged`, tránh custom Jackson deserializer/tri-state
+DTO, và loại bỏ transition có thể làm vi phạm hierarchy.
+
+---
+
 ## 4. Non-Functional Requirements & SLA
 
 ### 4.1. Performance & Availability
@@ -219,7 +428,10 @@ Thay icon kéo-thả tĩnh bằng 2 nút mũi tên **▲ / ▼** — mỗi lần
 | Uniqueness | `community_topics.slug` | `UNIQUE` DB constraint | Migration + `existsBySlug` check |
 | Uniqueness | `community_topics.name` (case-insensitive) | Đã có, giữ nguyên | `existsByNameIgnoreCase` |
 | Referential integrity | `parent_id → community_topics.id` | FK `ON DELETE RESTRICT` | Migration |
-| Hierarchy invariant | TOPIC không có cha; CATEGORY/TAG bắt buộc có cha là TOPIC không ẩn | CHECK constraint (cấp NULL) + service-layer validate (cấp type-of-parent) | `V20260721204919` migration + `CommunityTopicServiceImplTest` |
+| Hierarchy invariant *(SUPERSEDED — xem dòng dưới, ADR-COM-020)* | ~~TOPIC không có cha; CATEGORY/TAG bắt buộc có cha là TOPIC không ẩn~~ | ~~`V20260721204919`~~ | — |
+| Hierarchy invariant (v2, ADR-COM-020) | CATEGORY luôn không có cha; TOPIC bắt buộc có cha là CATEGORY không ẩn; TAG luôn không có cha | CHECK constraint mới (cấp NULL theo type) + service-layer validate (cấp type-of-parent) | migration mới §5.3 + `CommunityTopicServiceImplTest` |
+| Delete integrity (ADR-COM-022) | Không xoá được bất kỳ CATEGORY/TOPIC/TAG nào còn row con, câu hỏi, hoặc follow | Ba service-layer pre-check type-agnostic + FK `ON DELETE RESTRICT` (lưới an toàn) | `CommunityTopicServiceImplTest` |
+| Type immutability (ADR-COM-025) | `type` không được đổi sau create | Service-layer compare current/request type → COM-017 | `CommunityTopicServiceImplTest` |
 
 ### 4.3. Security
 
@@ -311,7 +523,7 @@ CommunityTopic --> CommunityTopic : parentId (self-FK)
 
 > **CareBridge rule:** `V1__init_schema.sql` + approved migrations là nguồn chân lý. `community_topics` hiện tại (từ `V1__init_schema.sql`): `id, created_at, description, name, updated_at, is_hidden, icon, sort_order, created_by` — không có `type`/`slug`/`parent_id`.
 
-Tạo file: `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260721204919__add_community_topic_taxonomy.sql`
+Migration v1 đã áp dụng (không chỉnh sửa): `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260721204919__add_community_topic_taxonomy.sql`. Các comment/rule bên dưới mô tả lịch sử v1 và được migration Amendment 2 ở §5.3 thay thế.
 
 ```sql
 -- === Community Topic taxonomy: type / slug / parent_id (real, non-mock replacement for icon-hack) ===
@@ -362,11 +574,92 @@ CREATE INDEX idx_community_topics_type ON community_topics(type);
 
 > ⚠️ **Rủi ro triển khai đã biết** (xem memory `project_medi_flyway_gap.md`): `spring.flyway.enabled=false` khi chạy local với profile `supabase` (shared dev DB) — migration này **sẽ không tự apply** lên DB dev chia sẻ qua `./mvnw spring-boot:run` thông thường. Phải verify qua Testcontainers integration test (tự động bật `spring.flyway.enabled=true`) trước, sau đó áp dụng thủ công lên shared DB (`./mvnw flyway:migrate` với `SPRING_FLYWAY_ENABLED=true`) — có khả năng đụng phải checksum drift đã biết trên 3 migration không liên quan (`20260711120000`, `20260712000000`, `20260713010000`). Không tự ý chạy `flyway repair` — cần người có context xác nhận trước (xem §11.2).
 
+### 5.3. Amendment 2 Migration — Đảo chiều phân cấp (ADR-COM-020)
+
+> **KHÔNG sửa `V20260721204919__add_community_topic_taxonomy.sql`** (đã apply lên shared Supabase dev DB — CLAUDE.md: "Never modify an applied migration"). Migration thực tế của Milestone C là `V20260722054603__invert_community_topic_hierarchy.sql`.
+
+```sql
+-- === Amendment 2 (ADR-COM-020): invert Category/Topic hierarchy ===
+-- CATEGORY is now the mandatory top-level container; TOPIC is a mandatory child of a CATEGORY;
+-- TAG stays flat/unattached (unchanged from V20260721204919).
+--
+-- ORDER MATTERS: the old CHECK (type <> 'TOPIC' OR parent_id IS NULL) is still active until we
+-- drop it. If we set a TOPIC's parent_id before dropping it, that UPDATE itself violates the old
+-- CHECK and the whole migration transaction rolls back. So: drop the old CHECK FIRST, mutate data,
+-- add the new (inverted) CHECK LAST — the new CHECK only needs to hold for the final state.
+--
+-- IF EXISTS on the DROP: the shared Supabase dev DB got V20260721204919's columns applied via
+-- hibernate.ddl-auto=update (see memory project_medi_flyway_gap.md), which does NOT create CHECK
+-- constraints — so this constraint may not exist there even though it exists in Testcontainers
+-- (which runs the real migration file). IF EXISTS keeps this migration valid on both.
+
+-- Step 1: drop the old (now-wrong-direction) CHECK before touching any data.
+ALTER TABLE community_topics
+    DROP CONSTRAINT IF EXISTS community_topics_parent_rule_check;
+
+-- Step 2: clear any existing CATEGORY/TAG parent_id that would violate the new rule (e.g. rows
+-- created during manual QA testing that pointed a CATEGORY at a TOPIC under the old model).
+UPDATE community_topics
+SET parent_id = NULL
+WHERE type IN ('CATEGORY', 'TAG') AND parent_id IS NOT NULL;
+
+-- Step 3: create the 5 top-level categories (user-approved set, 2026-07-22).
+INSERT INTO community_topics (id, name, description, icon, type, slug, parent_id, is_hidden, sort_order, created_by)
+VALUES
+  (gen_random_uuid(), 'Chuẩn bị mang thai', 'Chuẩn bị sức khoẻ, tâm lý trước khi mang thai', 'favorite',        'CATEGORY', 'chuan-bi-mang-thai', NULL, false, 1, NULL),
+  (gen_random_uuid(), 'Mang thai',          'Chăm sóc và theo dõi trong thai kỳ',            'pregnant_woman', 'CATEGORY', 'mang-thai',          NULL, false, 2, NULL),
+  (gen_random_uuid(), 'Sau sinh',           'Hồi phục và chăm sóc sau khi sinh',             'healing',        'CATEGORY', 'sau-sinh',           NULL, false, 3, NULL),
+  (gen_random_uuid(), 'Chăm bé',            'Chăm sóc và nuôi dạy bé sơ sinh',               'child_care',     'CATEGORY', 'cham-be',            NULL, false, 4, NULL),
+  (gen_random_uuid(), 'Khác',               'Các chủ đề khác không thuộc nhóm trên',         'more_horiz',     'CATEGORY', 'khac',               NULL, false, 5, NULL);
+
+-- Step 4: reassign the 8 existing seed TOPICs as children (IDs unchanged — community_questions
+-- and user_topic_follows FKs stay intact, no content is orphaned).
+UPDATE community_topics SET parent_id = (SELECT id FROM community_topics WHERE slug = 'mang-thai')
+  WHERE id IN ('a1b2c3d4-e5f6-7890-abcd-ef1234567801', 'a1b2c3d4-e5f6-7890-abcd-ef1234567802', 'a1b2c3d4-e5f6-7890-abcd-ef1234567805');
+UPDATE community_topics SET parent_id = (SELECT id FROM community_topics WHERE slug = 'sau-sinh')
+  WHERE id IN ('a1b2c3d4-e5f6-7890-abcd-ef1234567803', 'a1b2c3d4-e5f6-7890-abcd-ef1234567804');
+UPDATE community_topics SET parent_id = (SELECT id FROM community_topics WHERE slug = 'cham-be')
+  WHERE id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567807';
+UPDATE community_topics SET parent_id = (SELECT id FROM community_topics WHERE slug = 'khac')
+  WHERE id IN ('a1b2c3d4-e5f6-7890-abcd-ef1234567806', 'a1b2c3d4-e5f6-7890-abcd-ef1234567808');
+
+-- Step 5 (safety net): any other pre-existing TOPIC row not covered above (e.g. a QA test row like
+-- "Minimal Topic Test", or one created by a Moderator between the two migrations) falls back to
+-- "Khác" rather than being left with parent_id=NULL, which would violate the new CHECK in Step 6.
+UPDATE community_topics SET parent_id = (SELECT id FROM community_topics WHERE slug = 'khac')
+  WHERE type = 'TOPIC' AND parent_id IS NULL;
+
+-- Step 6: data is now clean (every TOPIC has a parent, every CATEGORY/TAG has none) — safe to add
+-- the inverted CHECK.
+ALTER TABLE community_topics
+    ADD CONSTRAINT community_topics_parent_rule_check_v2
+        CHECK (
+            (type = 'CATEGORY' AND parent_id IS NULL) OR
+            (type = 'TOPIC' AND parent_id IS NOT NULL) OR
+            (type = 'TAG' AND parent_id IS NULL)
+        );
+```
+
+> **Idempotency note:** Step 3's `INSERT` has no `ON CONFLICT` guard — safe because Flyway only runs each versioned migration once per environment (tracked in `flyway_schema_history`), matching the existing convention in `V20260721204919`. Do not re-run manually outside Flyway.
+
+> **Milestone C implementation note:** file migration thực tế dùng 5 UUID xác định trước, điền `created_at`/`updated_at` bắt buộc, và thêm trigger `trg_community_topic_parent_category`. PostgreSQL `CHECK` không được phép subquery sang row cha, nên `community_topics_parent_rule_check_v2` kiểm nullability theo type, còn trigger kiểm `TOPIC.parent_id` thực sự trỏ tới row `CATEGORY`. Đây là hai nửa của cùng invariant ADR-COM-020.
+
+> **Shared-DB caveat:** "đúng 5 category" và "đúng 8 topic" chỉ đúng nguyên văn trên 1 DB sạch (Testcontainers). Trên Supabase dev DB dùng chung, các category/topic rác tạo trong lúc QA thủ công trước đó (đã `isHidden=true`) vẫn còn tồn tại — Step 5 gán chúng vào "Khác" thay vì để `parent_id=NULL` vi phạm CHECK mới, nhưng tổng số category/topic có thể nhiều hơn 5/8 trên DB chia sẻ. Verification query dùng điều kiện bất biến (`orphan_topics=0`, `invalid_parents=0`), không đếm số lượng tuyệt đối, để đúng trên cả 2 môi trường.
+
+> **Legacy dependency note (Decision A):** migration không xoá hay di chuyển câu hỏi/follow hiện có, kể cả khi một legacy CATEGORY/TAG đang được tham chiếu. Sau migration, hard-delete luôn chạy cả ba dependent check (children/questions/follows) cho mọi type, nên các row legacy này bị chặn bằng COM-016 thay vì rơi xuống lỗi FK.
+
+> **Verification query (post-migration):**
+> ```sql
+> SELECT (SELECT COUNT(*) FROM community_topics WHERE type='TOPIC' AND parent_id IS NULL) AS orphan_topics,
+>        (SELECT COUNT(*) FROM community_topics WHERE type IN ('CATEGORY','TAG') AND parent_id IS NOT NULL) AS invalid_parents;
+> -- Expected: orphan_topics = 0, invalid_parents = 0
+> ```
+
 ---
 
 ## 6. Dynamic Modeling (Mô hình Động)
 
-### 6.1. Sequence Diagram — Create CATEGORY under a TOPIC (Happy Path)
+### 6.1. Sequence Diagram — Create TOPIC under a CATEGORY (Happy Path)
 
 ```plantuml
 @startuml CommunityTopicManagement_SequenceDiagram_HappyPath
@@ -383,7 +676,7 @@ participant "CommunityTopicRepository"  as Repo
 database    "PostgreSQL"                as DB
 participant "AuditService"              as Audit
 
-Client -> Controller : POST /api/v1/community/topics\n{name, type:CATEGORY, parentId, description, icon, sortOrder}
+Client -> Controller : POST /api/v1/community/topics\n{name, type:TOPIC, parentId:<category-id>, description, icon, sortOrder}
 activate Controller
 Controller -> Controller : @Valid DTO check (name NotBlank, type NotNull)
 Controller -> Service : createTopic(userId, request)
@@ -392,13 +685,13 @@ activate Service
 Service -> Repo : existsByNameIgnoreCase(name)
 Repo -> DB : SELECT
 DB --> Repo : false
-Service -> Service : validateHierarchy(CATEGORY, parentId)
-Service -> Repo : findByIdAndTypeAndIsHiddenFalse(parentId, TOPIC)
+Service -> Service : validateHierarchy(TOPIC, parentId)
+Service -> Repo : findByIdAndTypeAndIsHiddenFalse(parentId, CATEGORY)
 Repo -> DB : SELECT
 DB --> Repo : parent found
 Service -> Slug : generate(name)
-Slug --> Service : "ten-danh-muc"
-Service -> Repo : existsBySlug("ten-danh-muc")
+Slug --> Service : "ten-chu-de"
+Service -> Repo : existsBySlug("ten-chu-de")
 Repo -> DB : SELECT
 DB --> Repo : false → slug unique, no suffix needed
 Service -> Repo : save(entity)
@@ -422,12 +715,12 @@ actor "Moderator" as Client
 participant "CommunityTopicController" as Controller
 participant "CommunityTopicServiceImpl" as Service
 
-Client -> Controller : POST /api/v1/community/topics\n{name:"X", type:CATEGORY, parentId: null}
+Client -> Controller : POST /api/v1/community/topics\n{name:"X", type:TOPIC, parentId: null}
 Controller -> Service : createTopic(userId, request)
-Service -> Service : validateHierarchy(CATEGORY, null)
-note right: type != TOPIC nhưng parentId thiếu\n→ throw InvalidTopicHierarchyException
+Service -> Service : validateHierarchy(TOPIC, null)
+note right: TOPIC thiếu CATEGORY cha\n→ throw InvalidTopicHierarchyException
 Service --> Controller : InvalidTopicHierarchyException
-Controller --> Client : HTTP 400\n{"error":{"code":"COM-015","message":"Category/Tag requires a parent TOPIC"}}
+Controller --> Client : HTTP 400\n{"error":{"code":"COM-015","message":"A TOPIC must belong to a parent CATEGORY"}}
 @enduml
 
 @startuml CommunityTopicManagement_SequenceDiagram_ErrorPath2
@@ -437,10 +730,10 @@ participant "CommunityTopicController" as Controller
 participant "CommunityTopicServiceImpl" as Service
 participant "CommunityTopicRepository" as Repo
 
-Client -> Controller : POST /api/v1/community/topics\n{name:"Y", type:TAG, parentId: <id-of-a-CATEGORY>}
+Client -> Controller : POST /api/v1/community/topics\n{name:"Y", type:TOPIC, parentId: <id-of-a-TAG>}
 Controller -> Service : createTopic(userId, request)
-Service -> Repo : findByIdAndTypeAndIsHiddenFalse(parentId, TOPIC)
-Repo --> Service : Optional.empty() (parent exists but type=CATEGORY, not TOPIC)
+Service -> Repo : findByIdAndTypeAndIsHiddenFalse(parentId, CATEGORY)
+Repo --> Service : Optional.empty() (parent exists but type=TAG, not CATEGORY)
 Service --> Controller : InvalidTopicHierarchyException
 Controller --> Client : HTTP 400 {"error":{"code":"COM-015", ...}}
 @enduml
@@ -448,9 +741,11 @@ Controller --> Client : HTTP 400 {"error":{"code":"COM-015", ...}}
 
 ### 6.3. State/Invariant Notes
 
-Không phải finite-state-machine cổ điển (không có status field cho topic ngoài `isHidden` boolean, giữ nguyên hành vi cũ). Invariant bất biến duy nhất mới thêm:
+Không phải finite-state-machine cổ điển (không có status field cho topic ngoài `isHidden` boolean, giữ nguyên hành vi cũ). Các invariant:
 
-> **Invariant:** `type = TOPIC ⟺ parent_id IS NULL`. Không transition nào (create/update) được phép vi phạm — enforced kép: DB CHECK constraint (chặn tầng NULL) + service validate (chặn tầng "cha phải là TOPIC, không ẩn").
+> **Hierarchy invariant:** CATEGORY/TAG luôn `parent_id IS NULL`; TOPIC luôn `parent_id IS NOT NULL` và cha phải là CATEGORY không ẩn. Enforced kép bằng DB CHECK (nullability theo type) và service lookup (type/visibility của parent).
+>
+> **Update invariant:** `type` immutable sau create (ADR-COM-025); PATCH đổi type trả COM-017. TOPIC chỉ được reassign tới một CATEGORY UUID khác null.
 
 ---
 
@@ -499,7 +794,7 @@ public class CreateCommunityTopicRequest {
     @Size(max = 500) private String description;
     @Size(max = 255) private String icon;
     @NotNull private TopicType type;          // TOPIC | CATEGORY | TAG
-    private UUID parentId;                    // optional; forbidden when type=TOPIC; if set, must reference a visible TOPIC (validated in service, ADR-COM-016 revised)
+    private UUID parentId;                    // required for TOPIC and must reference a visible CATEGORY; forbidden for CATEGORY/TAG (ADR-COM-020)
     @Min(0) private int sortOrder;
 }
 
@@ -509,7 +804,7 @@ public class UpdateCommunityTopicRequest {
     @Size(max = 100) private String name;
     @Size(max = 500) private String description;
     @Size(max = 255) private String icon;
-    private TopicType type;                   // null = leave unchanged
+    private TopicType type;                   // null or same value = unchanged; changing value -> COM-017 (ADR-COM-025)
     private UUID parentId;                    // null = leave unchanged (see §9.2 semantics)
     private Boolean isHidden;
     private Integer sortOrder;
@@ -524,7 +819,7 @@ public class CommunityTopicResponse {
     private String icon;
     private TopicType type;         // NEW
     private String slug;            // NEW — server-generated, always present
-    private UUID parentId;          // NEW — null for TOPIC
+    private UUID parentId;          // CATEGORY/TAG: null; TOPIC: non-null CATEGORY id
     private long questionCount;     // NEW — APPROVED questions under this topic (ADR-COM-015)
     private boolean isHidden;
     private boolean isFollowed;
@@ -541,10 +836,38 @@ public interface CommunityTopicService {
     CommunityTopicResponse createTopic(UUID createdBy, CreateCommunityTopicRequest request);
     /**
      * @throws DuplicateTopicNameException (COM-009) khi tên trùng
-     * @throws InvalidTopicHierarchyException (COM-015) khi vi phạm quy tắc phân cấp (ADR-COM-016)
+     * @throws InvalidTopicHierarchyException (COM-015) khi vi phạm quy tắc phân cấp (ADR-COM-020)
+     * @throws ImmutableTopicTypeException (COM-017) khi request đổi type sau create (ADR-COM-025)
      * @throws CommunityTopicNotFoundException (COM-003) khi parentId không tồn tại/đang ẩn
      */
     CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request);
+
+    /**
+     * ADR-COM-022 — hard delete, chỉ khi rỗng.
+     * @throws TopicHasDependentsException (COM-016) khi bất kỳ type nào còn row con,
+     *         câu hỏi, hoặc follow gắn vào
+     * @throws CommunityTopicNotFoundException (COM-003) khi id không tồn tại
+     */
+    void deleteTopic(UUID id, UUID deletedBy);
+}
+```
+
+```java
+// TopicHasDependentsException.java — new, community/exception package (ADR-COM-022)
+// @version 1.0
+package com.carebridge.backend.community.exception;
+
+public class TopicHasDependentsException extends RuntimeException {
+    public TopicHasDependentsException(String message) { super(message); }
+}
+```
+
+```java
+// ImmutableTopicTypeException.java — new, community/exception package (ADR-COM-025)
+public class ImmutableTopicTypeException extends RuntimeException {
+    public ImmutableTopicTypeException(TopicType currentType, TopicType requestedType) {
+        super("Community topic type is immutable after creation: " + currentType + " -> " + requestedType);
+    }
 }
 ```
 
@@ -562,8 +885,12 @@ public interface CommunityTopicRepository extends JpaRepository<CommunityTopic, 
     boolean existsBySlug(String slug);
     boolean existsBySlugAndIdNot(String slug, UUID id);
 
-    // Parent lookup for hierarchy validation (ADR-COM-016): must exist, be TOPIC-typed, not hidden.
+    // Parent lookup for hierarchy validation (ADR-COM-020 — was TOPIC-typed under superseded
+    // ADR-COM-016, now CATEGORY-typed): must exist, be the right type, not hidden.
     Optional<CommunityTopic> findByIdAndTypeAndIsHiddenFalse(UUID id, TopicType type);
+
+    // ADR-COM-022 — universal delete-blocking child check, independent of target type.
+    boolean existsByParentId(UUID parentId);
 }
 
 // CommunityQuestionRepository.java — addition (existing file, community/repository)
@@ -587,6 +914,20 @@ public interface TopicQuestionCountProjection {
     UUID getTopicId();
     long getCnt();
 }
+
+// CommunityQuestionRepository.java — addition (ADR-COM-021, ADR-COM-022)
+// @version 1.2
+public interface CommunityQuestionRepository extends JpaRepository<CommunityQuestion, UUID> {
+    // ... existing methods unchanged ...
+    boolean existsByTopicId(UUID topicId);   // ADR-COM-022 delete-blocking check
+}
+
+// UserTopicFollowRepository.java — addition (ADR-COM-022)
+// @version 1.1
+public interface UserTopicFollowRepository extends JpaRepository<UserTopicFollow, UUID> {
+    // ... existing methods unchanged ...
+    boolean existsByTopicId(UUID topicId);   // ADR-COM-022 delete-blocking check
+}
 ```
 
 ---
@@ -600,9 +941,22 @@ public interface TopicQuestionCountProjection {
 | `GET` | `/api/v1/community/topics` | JWT Bearer | Any authenticated | — (unchanged) | Yes |
 | `POST` | `/api/v1/community/topics` | JWT Bearer | `MODERATOR`, `CONTENT_ADMIN` | — (unchanged) | No |
 | `PATCH` | `/api/v1/community/topics/{id}` | JWT Bearer | `MODERATOR`, `CONTENT_ADMIN` | — (unchanged) | Yes |
+| `DELETE` | `/api/v1/community/topics/{id}` | JWT Bearer | `MODERATOR`, `CONTENT_ADMIN` | — | Yes |
 | `POST` | `/api/v1/community/topics/{id}/follow` | JWT Bearer | Any authenticated | — (unchanged) | No — toggle |
 
-> **Không thêm endpoint mới.** Web dựng cây Topic→Category/Tag từ danh sách phẳng (`parentId`) client-side; không cần endpoint "children" riêng (giữ API surface tối thiểu theo CLAUDE.md).
+> **1 endpoint mới trong Amendment 2** (`DELETE`, ADR-COM-022) — mọi thứ khác giữ nguyên "không thêm endpoint mới" của v1.0. Web dựng cây Category→Topic từ danh sách phẳng (`parentId`) client-side; không cần endpoint "children" riêng.
+
+#### `DELETE /api/v1/community/topics/{id}` — Xoá thật (MODERATOR/CONTENT_ADMIN, ADR-COM-022)
+
+**Response — 204 No Content:** xoá thành công, không còn phụ thuộc.
+
+**Response — 409 Conflict (còn phụ thuộc):**
+```json
+{ "error": { "code": "COM-016", "message": "Category still has topics, cannot delete" } }
+```
+hoặc `"Topic still has questions or followers, cannot delete"` tuỳ trường hợp.
+
+**Response — 404 Not Found:** id không tồn tại (COM-003, không đổi).
 
 ### 9.2. Request / Response Schemas
 
@@ -636,21 +990,21 @@ public interface TopicQuestionCountProjection {
 
 #### `POST /api/v1/community/topics` — Tạo mới (MODERATOR/CONTENT_ADMIN)
 
-**Request Body (type=TOPIC):**
+**Request Body (type=CATEGORY, root):**
 ```json
-{ "name": "Sức khỏe tinh thần", "description": "...", "icon": "psychology", "type": "TOPIC", "sortOrder": 9 }
+{ "name": "Sức khỏe tinh thần", "description": "...", "icon": "psychology", "type": "CATEGORY", "sortOrder": 9 }
 ```
 
-**Request Body (type=CATEGORY, cha bắt buộc):**
+**Request Body (type=TOPIC, CATEGORY cha bắt buộc):**
 ```json
-{ "name": "Trầm cảm sau sinh", "description": "...", "type": "CATEGORY", "parentId": "a1b2c3d4-...567806", "sortOrder": 1 }
+{ "name": "Trầm cảm sau sinh", "description": "...", "type": "TOPIC", "parentId": "<category-id>", "sortOrder": 1 }
 ```
 
 **Response — 201 Created:** như schema `CommunityTopicResponse` ở §9.2 (GET), `questionCount: 0` cho topic mới tạo.
 
-**Response — 400 Bad Request (thiếu parentId cho CATEGORY/TAG, hoặc cha không phải TOPIC):**
+**Response — 400 Bad Request (TOPIC thiếu parentId/cha không phải CATEGORY, hoặc CATEGORY/TAG có parentId):**
 ```json
-{ "error": { "code": "COM-015", "message": "Category or Tag topics must reference an existing, visible TOPIC as parent" } }
+{ "error": { "code": "COM-015", "message": "A TOPIC must reference an existing, visible CATEGORY as parent" } }
 ```
 
 **Response — 409 Conflict (trùng tên — không đổi so với hiện tại):**
@@ -660,9 +1014,9 @@ public interface TopicQuestionCountProjection {
 
 #### `PATCH /api/v1/community/topics/{id}`
 
-**Semantics field-null = "không đổi"** (giữ nguyên convention hiện có cho `isHidden`/`sortOrder`): `name=null` → không đổi tên (không đổi slug); `type=null` → không đổi loại; `parentId=null` → không đổi cha. Muốn đổi cha, phải gửi UUID mới.
+**Semantics field-null = "không đổi"** (giữ nguyên convention hiện có cho `isHidden`/`sortOrder`): `name=null` → không đổi tên (không đổi slug); `type=null` → không đổi loại; `parentId=null` → không đổi cha. Muốn reassign một TOPIC, phải gửi UUID CATEGORY mới khác null.
 
-**Ràng buộc đặc biệt:** nếu request đổi `type` sang `TOPIC`, `parentId` trong CÙNG request phải là `null` (nếu không → COM-015, vì vừa "trở thành TOPIC" vừa "có cha" là mâu thuẫn).
+**Type immutable (ADR-COM-025):** request có `type` khác type hiện tại → `400 COM-017`; gửi lại cùng type là idempotent và hợp lệ.
 
 ---
 
@@ -672,9 +1026,11 @@ public interface TopicQuestionCountProjection {
 
 | Code | HTTP Status | Message (EN) | Message (VI) | Trigger Condition |
 |------|-------------|---------------|---------------|--------------------|
-| `COM-003` | 404 | Community topic not found or is hidden | Không tìm thấy chủ đề cha hoặc chủ đề cha đang bị ẩn | `parentId` không trỏ tới topic tồn tại/không ẩn (tái dùng exception có sẵn) |
+| `COM-003` | 404 | Community topic not found or is hidden | Không tìm thấy chủ đề hoặc chủ đề đang bị ẩn | Question target không phải TOPIC hiển thị, hoặc TOPIC parent lookup không tìm thấy CATEGORY hiển thị (tái dùng exception có sẵn) |
 | `COM-009` | 409 | Community topic with name already exists | Tên chủ đề đã tồn tại | `existsByNameIgnoreCase` (không đổi) |
-| `COM-015` | 400 | Invalid topic hierarchy | Phân cấp chủ đề không hợp lệ | (a) `type=TOPIC` nhưng có `parentId`; (b) `parentId` trỏ tới 1 topic có `type ≠ TOPIC`; (c) `parentId` trỏ tới 1 TOPIC đang ẩn |
+| `COM-015` | 400 | Invalid topic hierarchy | Phân cấp chủ đề không hợp lệ | **(ADR-COM-020, đảo chiều)** (a) `type∈{CATEGORY,TAG}` nhưng có `parentId`; (b) `type=TOPIC` nhưng thiếu `parentId`; (c) `parentId` trỏ tới 1 topic có `type ≠ CATEGORY`; (d) `parentId` trỏ tới 1 CATEGORY đang ẩn |
+| `COM-016` | 409 | Topic/Category has dependents, cannot delete | Còn dữ liệu phụ thuộc, không thể xoá | Bất kỳ CATEGORY/TOPIC/TAG nào còn row con, câu hỏi, hoặc follow (ba check type-agnostic, ADR-COM-022) |
+| `COM-017` | 400 | Community topic type is immutable after creation | Không thể đổi loại sau khi tạo | PATCH gửi `type` khác type hiện tại (ADR-COM-025) |
 
 ---
 
@@ -710,18 +1066,49 @@ Tạo `V20260721204919__add_community_topic_taxonomy.sql` (nội dung đầy đ�
 
 #### Chặng 4 — Web
 - `content.ts`: cập nhật interface `CommunityTopic` (thêm `type`, `slug`, `parentId`, `questionCount`)
-- `ManageTopicsPage.tsx`: xoá `TaxonomyType`/`iconForType`/`typeFromIcon`/`generateSlug` hack; dùng `item.type` thật; dropdown "Chủ đề cha" filter theo `type===TOPIC && !isHidden`, required khi `form.type !== 'TOPIC'`; slug hiển thị read-only từ response; thay `drag_indicator` bằng nút ▲/▼ gọi PATCH thật (ADR-COM-019); hiển thị `questionCount` thay `"— bài"`; sửa logic nhóm cây dùng `item.parentId === topic.id` thay vì lồng mọi category dưới mọi topic
+- `ManageTopicsPage.tsx`: xoá `TaxonomyType`/`iconForType`/`typeFromIcon`/`generateSlug` hack; dùng `item.type` thật; theo Amendment 2, dropdown "Danh mục cha" filter `type===CATEGORY && !isHidden` và bắt buộc khi `form.type===TOPIC`; slug hiển thị read-only từ response; thay `drag_indicator` bằng nút ▲/▼ gọi PATCH thật (ADR-COM-019); hiển thị `questionCount`; nhóm cây theo `topic.parentId === category.id`
 
 #### Chặng 5 — Mobile
 - `community_model.dart`: `CommunityTopic` thêm field `questionCount`
 - `community_service.dart`: `getTopics({String? type})` thêm query param
 - `topic_directory_screen.dart`: gọi `getTopics(type: 'TOPIC')`; badge dùng `topic.questionCount` thay `sortOrder * 100`
 
-#### Chặng 6 — Verification sau deploy
+#### Chặng 7 — Backend: đảo chiều phân cấp + xoá thật (Amendment 2, ADR-COM-020/021/022)
+- Tạo migration mới `V20260722054603__invert_community_topic_hierarchy.sql` (nội dung đầy đủ §5.3) — **không sửa** `V20260721204919`
+- `CommunityTopicServiceImpl.validateHierarchy()`: viết lại theo ADR-COM-020 (CATEGORY/TAG cấm có cha; TOPIC bắt buộc có cha là CATEGORY còn hiển thị)
+- `CommunityTopicServiceImpl`: thêm `deleteTopic()` với ba dependent check type-agnostic (children/questions/follows, ADR-COM-022) + `CommunityTopicController`: thêm `@DeleteMapping("/{id}")`
+- `CommunityTopicServiceImpl.updateTopic()`: cấm đổi `type` sau create; thêm `ImmutableTopicTypeException` → COM-017 (ADR-COM-025)
+- `CommunityTopicRepository`: thêm `existsByParentId`; `CommunityQuestionRepository`/`UserTopicFollowRepository`: thêm `existsByTopicId`
+- `community/exception/TopicHasDependentsException.java` + `ImmutableTopicTypeException.java` (mới) + đăng ký `GlobalExceptionHandler` → COM-016 (409), COM-017 (400)
+- `CommunityQuestionServiceImpl`: đổi `findByIdAndIsHiddenFalse(topicId)` → `findByIdAndTypeAndIsHiddenFalse(topicId, TopicType.TOPIC)` (ADR-COM-021)
+- `ContentCategoryController.java`: **xoá file** (ADR-COM-023) — xác nhận trước bằng grep không còn caller nào khác gọi `/api/v1/admin/content/categories`; xoá rule cũ trong `SecurityConfig.java` và ba test chỉ dành cho controller bị xoá (`ContentCategoryControllerTest`, `ContentCategoryIntegrationTest`, `ContentCategoryControllerSecurityTest`)
+
+#### Chặng 8 — Web: đảo chiều cây hiển thị + xoá `/content/categories`
+- `ManageTopicsPage.tsx`: dropdown "cha" khi tạo/sửa TOPIC bắt buộc chọn 1 CATEGORY (bỏ tuỳ chọn "Không có"); `buildTopicTree()` (`topicTree.ts`) đảo ngược: CATEGORY render ở ngoài, TOPIC lồng bên trong theo `topic.parentId === category.id`; nút xoá thật (gọi `DELETE`, xác nhận qua dialog, hiện lỗi COM-016 rõ ràng nếu bị chặn) cho cả CATEGORY và TOPIC
+- Xoá: `src/app/router/index.tsx` route `/content/categories`; `ContentCategoryListPage.tsx`; mục sidebar "Danh mục" (`ContentPortalSidebar.tsx`); `contentApi.ts` 3 hàm `fetchContentCategories`/`createContentCategory`/`updateContentCategory`; test file tương ứng nếu có (grep xác nhận không còn caller trước khi xoá)
+
+#### Chặng 9 — Mobile: xoá màn hình dư thừa, chip lọc dùng CATEGORY thật
+- Xoá `community_topic_search_screen.dart` + test file liên quan (ADR-COM-024)
+- `topic_directory_screen.dart`: ô tìm kiếm chuyển thành `TextField` lọc inline (gọi `getTopics(keyword:, type:'TOPIC')`); thay `_stages` hardcode bằng `getTopics(type:'CATEGORY')` fetch 1 lần; chip lọc theo `topic.parentId == category.id`
+- `community_model.dart`: parse `type` và `parentId`; mobile pure-function tests dùng các field này, không refactor singleton `CommunityService`
+
+#### Chặng 6 — Verification sau deploy (Amendment 1)
 ```bash
 ./mvnw test -Dtest=CommunityTopicServiceImplTest,CommunityTopicControllerTest
 curl -X GET http://localhost:8080/api/v1/community/topics?type=TOPIC -H "Authorization: Bearer $TOKEN"
 # Expected: mỗi item có type/slug/parentId/questionCount, không còn "— bài" hay sortOrder*100 ở FE
+```
+
+#### Chặng 10 — Verification sau deploy (Amendment 2)
+```bash
+./mvnw test -Dtest=CommunityTopicServiceImplTest,CommunityTopicControllerTest,CommunityTopicIntegrationTest
+curl -X GET "http://localhost:8080/api/v1/community/topics?type=CATEGORY" -H "Authorization: Bearer $TOKEN"
+# Expected: đúng 5 category (Chuẩn bị mang thai/Mang thai/Sau sinh/Chăm bé/Khác), parentId=null mỗi item
+curl -X GET "http://localhost:8080/api/v1/community/topics?type=TOPIC" -H "Authorization: Bearer $TOKEN"
+# Expected: 8 topic, mỗi item parentId khớp đúng category theo mapping §5.3, không topic nào parentId=null
+curl -X DELETE "http://localhost:8080/api/v1/community/topics/<category-còn-topic-con>" -H "Authorization: Bearer $TOKEN"
+# Expected: 409 COM-016
+grep -rn "ContentCategoryController\|community_topic_search_screen\|ContentCategoryListPage" 05_Development/ ; echo "Expected: no output (đã xoá hết)"
 ```
 
 ### 11.4. Deployment Checklist
@@ -773,11 +1160,18 @@ Không có PII → không cần thông báo DPO/DPA. Thông báo Tech Lead qua k
 > Chi tiết test case đầy đủ nằm ở `CommunityTopicManagement_Test-Spec.md` (file riêng, theo PHASE-4 template). Section này chỉ liệt kê **nhóm** kịch bản để Test-Spec map ngược lại.
 
 - **TC nhóm A — Slug generation & uniqueness**: tên có dấu tiếng Việt → slug đúng; trùng slug → auto-suffix `-2`; đổi tên → slug tính lại.
-- **TC nhóm B — Hierarchy validation**: TOPIC có parentId → reject; CATEGORY/TAG thiếu parentId → reject; parentId trỏ tới CATEGORY (không phải TOPIC) → reject; parentId trỏ tới TOPIC đang ẩn → reject; happy path CATEGORY dưới TOPIC hợp lệ.
+- **TC nhóm B — Hierarchy validation (v2)**: CATEGORY/TAG có parentId → reject; TOPIC thiếu parentId → reject; TOPIC parentId không trỏ tới CATEGORY hiển thị → reject; happy path TOPIC dưới CATEGORY hợp lệ; PATCH đổi type → COM-017.
 - **TC nhóm C — Question count aggregation**: chỉ đếm APPROVED, không đếm PENDING/HIDDEN/LOCKED/DELETED; batch không N+1; topic không có câu hỏi nào → `questionCount=0`.
 - **TC nhóm D — RBAC**: MOTHER gọi POST/PATCH → 403; MODERATOR/CONTENT_ADMIN → thành công (không đổi so với hiện tại, hồi quy).
 - **TC nhóm E — `type` filter trên GET**: `type=TOPIC` chỉ trả TOPIC; không truyền `type` trả cả 3.
 - **TC nhóm F — Web/Mobile integration (manual + logic unit)**: cây phân cấp render đúng theo `parentId` thật; badge mobile hiển thị đúng `questionCount`; nút ▲/▼ gọi đúng 2 PATCH và hoán đổi `sortOrder`.
+
+**Amendment 2 (ADR-COM-020..025):**
+- **TC nhóm G — Hierarchy v2 (đảo chiều)**: CATEGORY có parentId → reject (COM-015); TOPIC thiếu parentId → reject; TOPIC parentId trỏ tới TAG/TOPIC khác (không phải CATEGORY) → reject; TOPIC parentId trỏ tới CATEGORY đang ẩn → reject; happy path TOPIC dưới CATEGORY hợp lệ; TAG có parentId → reject (giữ tách biệt).
+- **TC nhóm H — Migration backfill (integration, Testcontainers)**: sau migrate, đúng 5 CATEGORY tồn tại với `parent_id=NULL`; đúng 8 TOPIC cũ có `parent_id` khớp mapping §5.3; không còn row nào vi phạm invariant (`orphan_topics=0`, `invalid_parents=0`).
+- **TC nhóm I — Xoá thật (DELETE, ADR-COM-022)**: với mọi type, còn row con/câu hỏi/follow đều → 409 COM-016; hoàn toàn rỗng → 204; controller map 204/409 đúng; MOTHER gọi DELETE → 403.
+- **TC nhóm J — Câu hỏi chỉ gắn TOPIC (ADR-COM-021)**: tạo câu hỏi với `topicId` trỏ tới CATEGORY → reject (COM-003, not-found semantics); tạo câu hỏi với `topicId` trỏ tới TOPIC hợp lệ → thành công (hồi quy, không đổi).
+- **TC nhóm K — Web/Mobile Amendment 2 (logic unit + manual)**: `buildTopicTree()` v2 render CATEGORY ở ngoài, TOPIC lồng trong theo `parentId`; dropdown tạo TOPIC không còn tuỳ chọn "Không có cha"; mobile chip lọc dùng CATEGORY thật (không còn hardcode); `CommunityTopicSearchScreen` không còn tồn tại trong codebase (grep); `/content/categories` không còn route/trang/sidebar-link (grep).
 
 ---
 
@@ -789,8 +1183,18 @@ Không có PII → không cần thông báo DPO/DPA. Thông báo Tech Lead qua k
 -- Verify taxonomy columns & constraint sau migration
 SELECT id, name, type, slug, parent_id, is_hidden, sort_order FROM community_topics ORDER BY sort_order;
 
--- Verify invariant: không có TOPIC nào có parent_id, không có CATEGORY/TAG nào thiếu parent_id
-SELECT * FROM community_topics WHERE (type = 'TOPIC' AND parent_id IS NOT NULL) OR (type <> 'TOPIC' AND parent_id IS NULL);
+-- Verify invariant v2: TOPIC luôn có parent; CATEGORY/TAG luôn không có parent
+SELECT * FROM community_topics
+WHERE (type = 'TOPIC' AND parent_id IS NULL)
+   OR (type IN ('CATEGORY', 'TAG') AND parent_id IS NOT NULL);
+-- Expected: 0 rows
+
+-- Verify cross-row parent type (CHECK constraint thuần SQL không enforce được)
+SELECT child.*
+FROM community_topics child
+LEFT JOIN community_topics parent ON parent.id = child.parent_id
+WHERE child.type = 'TOPIC'
+  AND (parent.id IS NULL OR parent.type <> 'CATEGORY');
 -- Expected: 0 rows
 
 -- Verify slug uniqueness
@@ -818,31 +1222,31 @@ grep -rn "typeFromIcon\|iconForType" 05_Development/CareBridgeWebApp/src/ ; echo
 
 ## 15. Mẫu thử thực tế (API Verification Samples)
 
-### 15.1. Happy Path — tạo TOPIC rồi tạo CATEGORY con
+### 15.1. Happy Path — tạo CATEGORY gốc rồi tạo TOPIC con
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/community/topics \
   -H "Authorization: Bearer $MODERATOR_TOKEN" -H "Content-Type: application/json" \
-  -d '{"name":"Sức khỏe tinh thần","type":"TOPIC","description":"...","sortOrder":9}'
-# Expected 201, lưu lại "id" trả về là TOPIC_ID
+  -d '{"name":"Sức khỏe tinh thần","type":"CATEGORY","description":"...","sortOrder":9}'
+# Expected 201, lưu lại "id" trả về là CATEGORY_ID
 
 curl -X POST http://localhost:8080/api/v1/community/topics \
   -H "Authorization: Bearer $MODERATOR_TOKEN" -H "Content-Type: application/json" \
-  -d "{\"name\":\"Trầm cảm sau sinh\",\"type\":\"CATEGORY\",\"parentId\":\"$TOPIC_ID\",\"sortOrder\":1}"
+  -d "{\"name\":\"Trầm cảm sau sinh\",\"type\":\"TOPIC\",\"parentId\":\"$CATEGORY_ID\",\"sortOrder\":1}"
 ```
 
 **Expected Response (201):**
 ```json
-{ "success": true, "data": { "type": "CATEGORY", "parentId": "<TOPIC_ID>", "slug": "tram-cam-sau-sinh", "questionCount": 0, ... } }
+{ "success": true, "data": { "type": "TOPIC", "parentId": "<CATEGORY_ID>", "slug": "tram-cam-sau-sinh", "questionCount": 0, ... } }
 ```
 
 ### 15.2. Error Paths
 
 ```bash
-# CATEGORY thiếu parentId -> 400 COM-015
+# TOPIC thiếu parentId -> 400 COM-015
 curl -X POST http://localhost:8080/api/v1/community/topics \
   -H "Authorization: Bearer $MODERATOR_TOKEN" -H "Content-Type: application/json" \
-  -d '{"name":"X","type":"CATEGORY"}'
+  -d '{"name":"X","type":"TOPIC"}'
 ```
 **Expected Response (400):** `{"error":{"code":"COM-015", ...}}`
 
@@ -863,6 +1267,7 @@ curl -X POST http://localhost:8080/api/v1/community/topics \
 | `GET /api/v1/community/topics` | ✅ (chỉ non-hidden, `isHidden`/hidden rows ẩn) | ✅ | ✅ (kèm hidden nếu `includeHidden=true`) | ✅ (kèm hidden) | ✅ |
 | `POST /api/v1/community/topics` | ❌ 403 | ❌ 403 | ✅ | ✅ | ❌ 403 *(không đổi — RBAC hiện tại không cấp quyền này cho SYSTEM_ADMIN)* |
 | `PATCH /api/v1/community/topics/{id}` | ❌ 403 | ❌ 403 | ✅ | ✅ | ❌ 403 |
+| `DELETE /api/v1/community/topics/{id}` (ADR-COM-022) | ❌ 403 | ❌ 403 | ✅ | ✅ | ❌ 403 |
 | `POST /api/v1/community/topics/{id}/follow` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Chú thích:** Không thay đổi RBAC hiện có (yêu cầu tường minh của user: "Giữ nguyên RBAC hiện tại"). Bảng này chỉ tường minh hoá matrix đã ngầm định trong `@PreAuthorize` hiện tại.
@@ -876,10 +1281,14 @@ curl -X POST http://localhost:8080/api/v1/community/topics \
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-------------------|-----------------|
 | C1 | Slug KHÔNG BAO GIỜ được nhận từ client request DTO — luôn server-generated qua `SlugGenerator` | ADR-COM-018 | 2026-07-21 |
-| C2 | `type=TOPIC` ⟺ `parentId IS NULL`; vi phạm → `InvalidTopicHierarchyException` (COM-015), không silent-fix | ADR-COM-016 | 2026-07-21 |
+| C2 | CATEGORY/TAG luôn `parentId=null`; TOPIC bắt buộc có `parentId` trỏ tới CATEGORY hiển thị; vi phạm → COM-015 | ADR-COM-020 | 2026-07-22 |
 | C3 | Question count CHỈ đếm `status=APPROVED`, batch 1 query cho toàn bộ topic list đang trả về (không N+1, theo pattern `toResponsesWithFollowState`) | ADR-COM-015 | 2026-07-21 |
-| C4 | Không thêm endpoint mới — cây phân cấp dựng client-side từ `parentId` phẳng | §9.1 | 2026-07-21 |
-| C5 | RBAC create/update giữ nguyên `hasAnyRole('MODERATOR','CONTENT_ADMIN')` — không mở rộng, không thu hẹp | §16 | 2026-07-21 |
+| C4 | Cây Category→Topic dựng client-side từ list phẳng; endpoint mới duy nhất của Amendment 2 là `DELETE /api/v1/community/topics/{id}` | §9.1, ADR-COM-022 | 2026-07-22 |
+| C5 | RBAC create/update/delete giữ nguyên `hasAnyRole('MODERATOR','CONTENT_ADMIN')` — không mở rộng, không thu hẹp | §16 | 2026-07-22 |
+| C6 | `DELETE` chỉ thành công khi cả ba check children/questions/follows đều false cho bất kỳ type nào; vi phạm → COM-016 | ADR-COM-022 | 2026-07-22 |
+| C7 | Câu hỏi cộng đồng chỉ chấp nhận `topicId` trỏ tới row `type=TOPIC` | ADR-COM-021 | 2026-07-22 |
+| C8 | `CommunityTopic.type` immutable sau create; PATCH đổi type → COM-017 | ADR-COM-025 | 2026-07-22 |
+| C9 | Không còn `ContentCategoryController`, `/api/v1/admin/content/categories`, `/content/categories`, `CommunityTopicSearchScreen` trong runtime source/test/config/route/nav sau khi implement; historical specs/migration comments có thể giữ nguyên khi được ghi nhận rõ là superseded/immutable history | ADR-COM-023, ADR-COM-024 | 2026-07-22 |
 
 ### 17.2 Constraint Injection Block
 
@@ -888,10 +1297,12 @@ curl -X POST http://localhost:8080/api/v1/community/topics \
 Theo TDS CB-COMMUNITY-IMP-010 và các ADR liên quan:
 
 1. Slug luôn server-generated qua SlugGenerator.generate(name) — không nhận slug từ request DTO (ADR-COM-018).
-2. type=TOPIC bắt buộc parentId=null; type∈{CATEGORY,TAG} bắt buộc parentId trỏ tới 1 TOPIC không ẩn — validate ở service layer, throw InvalidTopicHierarchyException (COM-015) khi vi phạm (ADR-COM-016).
+2. CATEGORY/TAG bắt buộc parentId=null; TOPIC bắt buộc parentId trỏ tới 1 CATEGORY không ẩn — validate ở service layer, throw InvalidTopicHierarchyException (COM-015) khi vi phạm (ADR-COM-020).
 3. questionCount chỉ đếm CommunityQuestion.status=APPROVED, dùng 1 query batch theo topicId list, không N+1 (ADR-COM-015).
-4. Không thêm endpoint mới ngoài GET/POST/PATCH/follow đã có.
-5. Không đổi RBAC hiện tại (MODERATOR + CONTENT_ADMIN cho create/update).
+4. DELETE /api/v1/community/topics/{id} chỉ xoá khi children/questions/follows đều không tồn tại, không phân biệt type (ADR-COM-022).
+5. CommunityTopic.type immutable sau create; PATCH đổi type trả COM-017 (ADR-COM-025).
+6. Câu hỏi chỉ gắn vào TOPIC; CATEGORY/TAG bị từ chối theo COM-003 semantics (ADR-COM-021).
+7. Không đổi RBAC hiện tại (MODERATOR + CONTENT_ADMIN cho create/update/delete).
 
 [CONTEXT BLOCK]
 - Bounded Context: community
@@ -904,13 +1315,13 @@ Theo TDS CB-COMMUNITY-IMP-010 và các ADR liên quan:
 [TASK BLOCK]
 Implement backend (entity/migration/DTO/mapper/service/controller), web (ManageTopicsPage.tsx + content.ts),
 mobile (community_model.dart + community_service.dart + topic_directory_screen.dart) thỏa mãn constraints trên.
-Tests phải cover §13 nhóm A-F, chi tiết tại CommunityTopicManagement_Test-Spec.md.
+Tests phải cover §13 nhóm A-K, chi tiết tại CommunityTopicManagement_Test-Spec.md.
 ```
 
 ### 17.3 Constraint Quality Checklist
 - [x] Mỗi constraint traceable về ADR cụ thể
 - [x] Không có constraint generic
-- [x] Constraint block ≥ 3 constraints cụ thể (5)
+- [x] Constraint block ≥ 3 constraints cụ thể (7)
 - [x] Reference §8 Interface + §16 Auth Matrix
 
 ### 17.4 Anti-Pattern Detection
@@ -918,9 +1329,11 @@ Tests phải cover §13 nhóm A-F, chi tiết tại CommunityTopicManagement_Tes
 | AP-ID | Anti-Pattern | Dấu hiệu | Hành động |
 |-------|-------------|-----------|----------|
 | AP-AI-001 | Unconstrained Gen | Code sinh slug ở nơi khác ngoài `SlugGenerator`, hoặc nhận slug từ FE | Reject |
-| AP-AI-003 | Implicit Decision | Code cho phép TOPIC có `parentId`, hoặc CATEGORY/TAG không bắt buộc `parentId` | Reject — vi phạm ADR-COM-016 |
-| AP-AI-005 | Hallucinated Contract | Code gọi endpoint "children" hoặc "tree" không có trong §9.1 | Reject |
+| AP-AI-003 | Implicit Decision | Code cho phép CATEGORY/TAG có `parentId`, hoặc TOPIC không bắt buộc `parentId` | Reject — vi phạm ADR-COM-020 (đảo chiều so với ADR-COM-016 cũ) |
+| AP-AI-005 | Hallucinated Contract | Code gọi endpoint "children" hoặc "tree" không có trong §9.1, hoặc sửa `V20260721204919` đã apply thay vì tạo migration mới | Reject |
+| AP-AI-006 | Cascade Delete | Code tự động xoá/di chuyển dependent, hoặc bỏ qua một trong ba check children/questions/follows | Reject — vi phạm ADR-COM-022 |
+| AP-AI-007 | Mutable taxonomy type | PATCH cho phép đổi `type` sau create hoặc thêm tri-state parentId ngoài spec | Reject — vi phạm ADR-COM-025 |
 
 ---
 
-*Tài liệu này Draft — chờ user đổi Status → Approved trước khi implement (implement-flow.md Phase 2).*
+*Amendment 2 approved by HuyND via chat on 2026-07-22. Implementation status remains pending until Red→Green→Refactor completes.*

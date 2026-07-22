@@ -3,6 +3,8 @@ class CommunityTopic {
   final String name;
   final String description;
   final String icon;
+  final String type;
+  final String? parentId;
   final bool isHidden;
   final int sortOrder;
   final bool isFollowed;
@@ -15,6 +17,8 @@ class CommunityTopic {
     required this.name,
     required this.description,
     required this.icon,
+    this.type = 'TOPIC',
+    this.parentId,
     required this.isHidden,
     required this.sortOrder,
     this.isFollowed = false,
@@ -26,6 +30,8 @@ class CommunityTopic {
     name: json['name'] as String,
     description: json['description'] as String? ?? '',
     icon: json['icon'] as String? ?? 'topic',
+    type: json['type'] as String? ?? 'TOPIC',
+    parentId: json['parentId'] as String?,
     isHidden: json['isHidden'] as bool? ?? false,
     sortOrder: json['sortOrder'] as int? ?? 0,
     isFollowed: json['isFollowed'] as bool? ?? false,
@@ -37,6 +43,8 @@ class CommunityTopic {
     name: name,
     description: description,
     icon: icon,
+    type: type,
+    parentId: parentId,
     isHidden: isHidden,
     sortOrder: sortOrder,
     isFollowed: isFollowed ?? this.isFollowed,

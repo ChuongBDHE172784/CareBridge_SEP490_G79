@@ -78,7 +78,6 @@ import PartnerPerformancePage from '../../features/partnerGovernance/pages/Partn
 import PartnerVerificationQueuePage from '../../features/partnerGovernance/pages/PartnerVerificationQueuePage';
 import ApprovePartnerContentPage from '../../features/partnerGovernance/pages/ApprovePartnerContentPage';
 import RemovePartnerContentPage from '../../features/partnerGovernance/pages/RemovePartnerContentPage';
-import ContentCategoryListPage from '../../features/contentManagement/pages/ContentCategoryListPage';
 import UnpublishContentPage from '../../features/contentManagement/pages/UnpublishContentPage';
 
 // Moderation screens (CB-068, 069, 070, 071)
@@ -184,7 +183,6 @@ export const router = createBrowserRouter([
                   { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
                   { path: '/content/faq', element: <FaqListPage /> },
                   { path: '/content/checklists', element: <ChecklistListPage /> },
-                  { path: '/content/categories', element: <ContentCategoryListPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
                   { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },

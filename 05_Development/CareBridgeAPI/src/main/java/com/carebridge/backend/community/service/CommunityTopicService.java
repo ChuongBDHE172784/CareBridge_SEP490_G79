@@ -16,7 +16,7 @@ public interface CommunityTopicService {
 
     /**
      * @throws com.carebridge.backend.community.exception.DuplicateTopicNameException (COM-009) khi tên trùng
-     * @throws com.carebridge.backend.community.exception.InvalidTopicHierarchyException (COM-015) khi vi phạm ADR-COM-016
+     * @throws com.carebridge.backend.community.exception.InvalidTopicHierarchyException (COM-015) khi vi phạm ADR-COM-020
      * @throws com.carebridge.backend.community.exception.CommunityTopicNotFoundException (COM-003) khi parentId không tồn tại/đang ẩn
      */
     CommunityTopicResponse createTopic(java.util.UUID createdBy, CreateCommunityTopicRequest request);
@@ -24,7 +24,16 @@ public interface CommunityTopicService {
     /**
      * @throws com.carebridge.backend.common.exception.ResourceNotFoundException khi topic không tồn tại
      * @throws com.carebridge.backend.community.exception.DuplicateTopicNameException (COM-009) khi tên trùng
-     * @throws com.carebridge.backend.community.exception.InvalidTopicHierarchyException (COM-015) khi vi phạm ADR-COM-016
+     * @throws com.carebridge.backend.community.exception.InvalidTopicHierarchyException (COM-015) khi vi phạm ADR-COM-020
+     * @throws com.carebridge.backend.community.exception.ImmutableTopicTypeException (COM-017) khi đổi type
      */
     CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request);
+
+    /**
+     * Hard-deletes a topic row only when it has no children, questions, or follows.
+     *
+     * @throws com.carebridge.backend.community.exception.CommunityTopicNotFoundException (COM-003) khi id không tồn tại
+     * @throws com.carebridge.backend.community.exception.TopicHasDependentsException (COM-016) khi còn dữ liệu phụ thuộc
+     */
+    void deleteTopic(UUID id, UUID deletedBy);
 }

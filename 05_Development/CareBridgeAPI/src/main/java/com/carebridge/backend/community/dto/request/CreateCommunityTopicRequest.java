@@ -30,8 +30,8 @@ public class CreateCommunityTopicRequest {
     @NotNull(message = "type is required")
     private TopicType type;
 
-    // Required iff type != TOPIC, must reference an existing, visible TOPIC (ADR-COM-016) —
-    // validated in CommunityTopicServiceImpl, not here (needs a DB lookup).
+    // Required iff type=TOPIC and must reference an existing visible CATEGORY (ADR-COM-020).
+    // CATEGORY/TAG must leave this null; the service performs the cross-row validation.
     private UUID parentId;
 
     // Boxed (not primitive int): with @AllArgsConstructor present, Jackson can pass null for an
