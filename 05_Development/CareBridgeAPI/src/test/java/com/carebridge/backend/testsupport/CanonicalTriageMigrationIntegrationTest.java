@@ -21,6 +21,8 @@ class CanonicalTriageMigrationIntegrationTest {
 
     private static final MigrationVersion PRE_BATCH_3 =
             MigrationVersion.fromVersion("20260722020400");
+    private static final MigrationVersion BATCH_3 =
+            MigrationVersion.fromVersion("20260722020500");
 
     @Container
     private static final PostgreSQLContainer POSTGRES =
@@ -40,7 +42,7 @@ class CanonicalTriageMigrationIntegrationTest {
         int tableCountBefore = publicTableCount();
         UUID sessionId = insertCanonicalTriageRows();
 
-        migrateTo(null);
+        migrateTo(BATCH_3);
 
         assertThat(publicTableCount()).isEqualTo(tableCountBefore - 2);
         assertThat(regclass("triage_answers")).isNull();
@@ -103,7 +105,7 @@ class CanonicalTriageMigrationIntegrationTest {
     }
 
     private void assertBlockedMigration() {
-        assertThatThrownBy(() -> migrateTo(null))
+        assertThatThrownBy(() -> migrateTo(BATCH_3))
                 .isInstanceOf(FlywayException.class)
                 .rootCause()
                 .hasMessageContaining("BLOCKED_PARTIAL_TRIAGE_MIGRATION");

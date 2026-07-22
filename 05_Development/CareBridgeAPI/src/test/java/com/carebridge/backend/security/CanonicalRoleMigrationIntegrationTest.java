@@ -14,6 +14,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CanonicalRoleMigrationIntegrationTest {
 
     private static final String PRE_CONSOLIDATION_TARGET = "20260722020300";
+    private static final String CONSOLIDATION_TARGET = "20260722020400";
 
     @Test
     void emptyLegacyTablesPreserveAssignedAndUnassignedUsersAndDropExactlyTwoTables()
@@ -43,7 +44,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """);
             }
 
-            flyway(postgres, null).migrate();
+            flyway(postgres, CONSOLIDATION_TARGET).migrate();
 
             try (var connection = connection(postgres);
                  var statement = connection.createStatement();
@@ -97,7 +98,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """.formatted(nullRoleUserId, roleId, matchingUserId, roleId));
             }
 
-            flyway(postgres, null).migrate();
+            flyway(postgres, CONSOLIDATION_TARGET).migrate();
 
             try (var connection = connection(postgres);
                  var statement = connection.createStatement();
@@ -143,7 +144,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """.formatted(userId, roleId));
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, CONSOLIDATION_TARGET).migrate())
                     .hasMessageContaining("inactive, expiring, or historical role mapping");
             assertNullRoleRollbackState(postgres, userId);
         }
@@ -176,7 +177,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """.formatted(userId, motherRoleId, userId, familyRoleId));
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, CONSOLIDATION_TARGET).migrate())
                     .hasMessageContaining("multi-role mapping cannot be represented");
             assertNullRoleRollbackState(postgres, userId);
         }
@@ -192,7 +193,7 @@ class CanonicalRoleMigrationIntegrationTest {
             UUID userId = UUID.randomUUID();
             insertMapping(postgres, roleId, userId, "MOTHER", "FAMILY");
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, CONSOLIDATION_TARGET).migrate())
                     .hasMessageContaining("users.role conflicts with legacy mapping");
 
             assertRollbackState(postgres, userId, "MOTHER");
@@ -213,7 +214,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """);
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, CONSOLIDATION_TARGET).migrate())
                     .hasMessageContaining("function/procedure reference");
 
             try (var connection = connection(postgres);
@@ -250,7 +251,7 @@ class CanonicalRoleMigrationIntegrationTest {
                         """);
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, CONSOLIDATION_TARGET).migrate())
                     .hasMessageContaining("function/procedure reference");
 
             try (var connection = connection(postgres);

@@ -86,7 +86,6 @@ import PendingContentQueuePage from '../../features/moderation/pages/PendingCont
 
 // SYSTEM_ADMIN-only ModPortal screens (CB-066, 090, 091)
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
-import ImpactReportDashboardPage from '../../features/dashboard/pages/ImpactReportDashboardPage';
 import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
 import SystemConfigurationPage from '../../features/aiRuleManagement/pages/SystemConfigurationPage';
 
@@ -244,13 +243,12 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // RedFlagRuleController / CommunityDashboardController / ImpactReportController
+            // RedFlagRuleController / CommunityDashboardController
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
               { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
               { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
               { path: '/moderator/system-configuration', element: <SystemConfigurationPage /> },
-              { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
             ],
           },
