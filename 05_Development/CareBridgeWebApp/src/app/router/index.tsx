@@ -72,12 +72,7 @@ import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLa
 import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 import PartnerProfilePage from '../../features/partnerGovernance/pages/PartnerProfilePage';
-import ServiceListingsPage from '../../features/partnerGovernance/pages/ServiceListingsPage';
-import SponsoredCampaignsPage from '../../features/partnerGovernance/pages/SponsoredCampaignsPage';
-import PartnerPerformancePage from '../../features/partnerGovernance/pages/PartnerPerformancePage';
 import PartnerVerificationQueuePage from '../../features/partnerGovernance/pages/PartnerVerificationQueuePage';
-import ApprovePartnerContentPage from '../../features/partnerGovernance/pages/ApprovePartnerContentPage';
-import RemovePartnerContentPage from '../../features/partnerGovernance/pages/RemovePartnerContentPage';
 import ContentCategoryListPage from '../../features/contentManagement/pages/ContentCategoryListPage';
 import UnpublishContentPage from '../../features/contentManagement/pages/UnpublishContentPage';
 
@@ -229,9 +224,6 @@ export const router = createBrowserRouter([
               { path: '/partner/dashboard', element: <AdminDashboardPage /> },
               { path: '/partner/profile-setup', element: <CreatePartnerProfilePage /> },
               { path: '/partner/profile', element: <PartnerProfilePage /> },
-              { path: '/partner/services', element: <ServiceListingsPage /> },
-              { path: '/partner/campaigns', element: <SponsoredCampaignsPage /> },
-              { path: '/partner/performance', element: <PartnerPerformancePage /> },
             ],
           },
           {
@@ -260,8 +252,6 @@ export const router = createBrowserRouter([
               { path: '/moderator/system-configuration', element: <SystemConfigurationPage /> },
               { path: '/moderator/impact-report', element: <ImpactReportDashboardPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
-              { path: '/admin/partner-content/:targetType/:targetId/approval', element: <ApprovePartnerContentPage /> },
-              { path: '/admin/partner-content/:targetType/:targetId/removal', element: <RemovePartnerContentPage /> },
             ],
           },
           {
