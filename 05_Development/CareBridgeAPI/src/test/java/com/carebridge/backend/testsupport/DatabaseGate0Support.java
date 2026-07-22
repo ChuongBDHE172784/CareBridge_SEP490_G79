@@ -45,6 +45,7 @@ final class DatabaseGate0Support {
     static final String MALFORMED_FILENAME = "REPOSITORY_MALFORMED_FILENAME";
     static final String EMPTY_REPOSITORY = "REPOSITORY_MIGRATIONS_EMPTY";
     static final String CANDIDATE_NOT_EMPTY = "CANDIDATE_NOT_EMPTY";
+    static final String CANDIDATE_MISSING = "CANDIDATE_MISSING";
     static final String RETAINED_INBOUND_FK = "RETAINED_INBOUND_FK";
     static final String DATABASE_OBJECT_REFERENCE = "DATABASE_OBJECT_REFERENCE";
 
@@ -641,6 +642,9 @@ final class DatabaseGate0Support {
                 }
             }
             states.put(table, new CandidateState(present, count));
+            if (!present && !KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES.contains(table)) {
+                failures.add(CANDIDATE_MISSING + ":" + table);
+            }
             if (count != 0) {
                 failures.add(CANDIDATE_NOT_EMPTY + ":" + table + ":" + count);
             }

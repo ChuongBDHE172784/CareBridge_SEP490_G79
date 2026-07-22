@@ -118,6 +118,38 @@ class DatabaseGate0IntegrationTest {
                 .isTrue();
     }
 
+    @Test
+    void liveAuditRejectsMissingRequiredCandidateButAllowsKnownBootstrapAbsences() throws Exception {
+        try (PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE)) {
+            postgres.start();
+            Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(true)
+                    .outOfOrder(true)
+                    .target("20260722020900")
+                    .load()
+                    .migrate();
+            try (var connection = DriverManager.getConnection(
+                    postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 var statement = connection.createStatement()) {
+                statement.execute("DROP TABLE impact_assessment_ratings");
+            }
+
+            var manifest = DatabaseGate0Support.auditExternal(new DatabaseGate0Support.ExternalConfig(
+                    postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword(),
+                    "public", "flyway_schema_history", "testcontainers"));
+
+            assertThat(manifest.gateFailures())
+                    .contains(DatabaseGate0Support.CANDIDATE_MISSING + ":impact_assessment_ratings")
+                    .doesNotContain(
+                            DatabaseGate0Support.CANDIDATE_MISSING + ":contribution_attachments",
+                            DatabaseGate0Support.CANDIDATE_MISSING + ":expert_identity_verifications",
+                            DatabaseGate0Support.CANDIDATE_MISSING + ":medical_contributions");
+            assertThat(manifest.rollbackConfirmed()).isTrue();
+        }
+    }
+
     private record BootstrapMigration(String version, String script, Integer checksum) {
     }
 }

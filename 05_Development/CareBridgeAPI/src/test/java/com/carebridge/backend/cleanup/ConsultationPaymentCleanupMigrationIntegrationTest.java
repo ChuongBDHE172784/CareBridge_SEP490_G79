@@ -108,6 +108,23 @@ class ConsultationPaymentCleanupMigrationIntegrationTest {
         assertThat(relationExists("retained_consultation_requests")).isTrue();
     }
 
+    @Test
+    void sameNamedButWrongNotificationIndexBlocksCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("DROP INDEX uq_notification_records_consultation_request");
+        execute("""
+                CREATE UNIQUE INDEX uq_notification_records_consultation_request
+                    ON notification_records (id)
+                """);
+
+        assertThatThrownBy(() -> migrateTo(CONSULTATION_PAYMENT_CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("notification index has an unexpected shape");
+
+        assertCompleteRollback();
+    }
+
     private void assertCompleteRollback() throws Exception {
         for (String table : REMOVED_TABLES) {
             assertThat(relationExists(table)).as(table).isTrue();

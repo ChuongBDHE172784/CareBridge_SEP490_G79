@@ -74,6 +74,63 @@ class PartnerSponsoredCleanupMigrationIntegrationTest {
         assertThat(exists("retained_partner_services")).isTrue();
     }
 
+    @Test
+    void publicGrantBlocksCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("GRANT SELECT ON partner_services TO PUBLIC");
+
+        assertThatThrownBy(() -> migrateTo(CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("external table or column grants");
+        assertAllPresent();
+    }
+
+    @Test
+    void publicationBlocksCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("CREATE PUBLICATION final_cleanup_test_publication FOR TABLE partner_services");
+
+        try {
+            assertThatThrownBy(() -> migrateTo(CLEANUP))
+                    .rootCause()
+                    .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                    .hasMessageContaining("publication or partitioning");
+            assertAllPresent();
+        } finally {
+            execute("DROP PUBLICATION IF EXISTS final_cleanup_test_publication");
+        }
+    }
+
+    @Test
+    void unexpectedColumnShapeBlocksCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("ALTER TABLE sponsored_campaigns ADD COLUMN unreviewed_payload jsonb");
+
+        assertThatThrownBy(() -> migrateTo(CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("approved catalog shape");
+        assertAllPresent();
+    }
+
+    @Test
+    void sameNamedPrimaryKeyOnWrongColumnBlocksCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("""
+                ALTER TABLE sponsored_campaigns
+                    DROP CONSTRAINT sponsored_campaigns_pkey;
+                ALTER TABLE sponsored_campaigns
+                    ADD CONSTRAINT sponsored_campaigns_pkey PRIMARY KEY (partner_id)
+                """);
+
+        assertThatThrownBy(() -> migrateTo(CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("approved catalog shape");
+        assertAllPresent();
+    }
+
     private void assertAllPresent() throws Exception {
         for (String table : REMOVED) assertThat(exists(table)).as(table).isTrue();
     }

@@ -96,18 +96,124 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
         assertThat(exists("expert_verification_documents")).isTrue();
     }
 
+    @Test
+    void unexpectedCandidateShapeRollsBackCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("ALTER TABLE impact_assessment_ratings ADD COLUMN unreviewed_payload jsonb");
+
+        assertThatThrownBy(() -> migrateTo(CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("unapproved catalog shape");
+        assertThat(exists("impact_assessment_ratings")).isTrue();
+        assertThat(exists("expert_verification_documents")).isTrue();
+    }
+
+    @Test
+    void publicGrantRollsBackCompleteWave() throws Exception {
+        migrateTo(PRE_CLEANUP);
+        execute("GRANT SELECT ON expert_verification_documents TO PUBLIC");
+
+        assertThatThrownBy(() -> migrateTo(CLEANUP))
+                .rootCause()
+                .hasMessageContaining("BLOCKED_FINAL_CLEANUP")
+                .hasMessageContaining("external table or column grants");
+        assertThat(exists("impact_assessment_ratings")).isTrue();
+        assertThat(exists("expert_verification_documents")).isTrue();
+    }
+
     private void installLiveOnlyEmptyFixture() throws Exception {
         execute("""
                 CREATE TABLE medical_contributions (
-                    medical_contribution_id uuid PRIMARY KEY
+                    contribution_id uuid PRIMARY KEY,
+                    content text NOT NULL,
+                    created_at timestamptz NOT NULL,
+                    expert_user_id uuid NOT NULL,
+                    hospital_id varchar,
+                    rejection_reason varchar,
+                    specialty_id varchar,
+                    status varchar NOT NULL,
+                    title varchar NOT NULL,
+                    updated_at timestamptz NOT NULL,
+                    version integer NOT NULL,
+                    CONSTRAINT medical_contributions_status_check
+                        CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'))
                 );
+                CREATE INDEX idx_medical_contributions_expert_user_id
+                    ON medical_contributions (expert_user_id);
+                CREATE INDEX idx_medical_contributions_hospital_id
+                    ON medical_contributions (hospital_id);
+                CREATE INDEX idx_medical_contributions_specialty_id
+                    ON medical_contributions (specialty_id);
+                CREATE INDEX idx_medical_contributions_status
+                    ON medical_contributions (status);
                 CREATE TABLE contribution_attachments (
-                    contribution_attachment_id uuid PRIMARY KEY,
-                    medical_contribution_id uuid REFERENCES medical_contributions(medical_contribution_id)
+                    attachment_id uuid PRIMARY KEY,
+                    access_mode varchar NOT NULL,
+                    contribution_id uuid NOT NULL,
+                    created_at timestamptz NOT NULL,
+                    display_order integer NOT NULL,
+                    file_id uuid NOT NULL,
+                    kind varchar NOT NULL,
+                    owner_user_id uuid NOT NULL,
+                    purpose varchar NOT NULL,
+                    CONSTRAINT contribution_attachments_access_mode_check
+                        CHECK (access_mode IN ('PRIVATE', 'AUTHENTICATED', 'PUBLIC')),
+                    CONSTRAINT contribution_attachments_kind_check
+                        CHECK (kind IN ('IMAGE', 'DOCUMENT')),
+                    CONSTRAINT contribution_attachments_purpose_check CHECK (purpose IN (
+                        'EXPERT_IDENTITY_SELFIE', 'EXPERT_IDENTITY_CCCD_FRONT',
+                        'EXPERT_IDENTITY_CCCD_BACK', 'EXPERT_IDENTITY_SELFIE_CROP',
+                        'EXPERT_IDENTITY_CCCD_FRONT_CROP', 'EXPERT_CREDENTIAL',
+                        'COMMUNITY_ANSWER_IMAGE', 'MEDICAL_CONTRIBUTION_IMAGE',
+                        'MEDICAL_CONTRIBUTION_DOCUMENT', 'PUBLIC_CONTENT_IMAGE'))
                 );
+                CREATE INDEX idx_contrib_attachments_contribution_id
+                    ON contribution_attachments (contribution_id);
+                CREATE INDEX idx_contrib_attachments_file_id
+                    ON contribution_attachments (file_id);
                 CREATE TABLE expert_identity_verifications (
-                    expert_identity_verification_id uuid PRIMARY KEY
-                )
+                    identity_verification_id uuid PRIMARY KEY,
+                    created_at timestamptz NOT NULL,
+                    expert_profile_id uuid NOT NULL,
+                    face_provider varchar NOT NULL,
+                    face_similarity numeric,
+                    face_status varchar NOT NULL,
+                    face_threshold numeric,
+                    identity_back_file_id uuid NOT NULL,
+                    identity_front_file_id uuid NOT NULL,
+                    provider_error_code varchar,
+                    review_reason text,
+                    review_status varchar NOT NULL,
+                    reviewed_at timestamptz,
+                    reviewed_by uuid,
+                    selfie_file_id uuid NOT NULL,
+                    updated_at timestamptz NOT NULL,
+                    detection_id_card_status varchar,
+                    detection_selfie_status varchar,
+                    id_card_crop_file_id uuid,
+                    pipeline_error_code varchar,
+                    pipeline_status varchar,
+                    processed_at timestamptz,
+                    selfie_crop_file_id uuid,
+                    CONSTRAINT expert_identity_verifications_face_status_check CHECK (face_status IN (
+                        'DISABLED', 'MATCHED', 'NOT_MATCHED', 'RETRYABLE_ERROR',
+                        'NO_FACE', 'MULTIPLE_FACES')),
+                    CONSTRAINT expert_identity_verifications_review_status_check CHECK (review_status IN (
+                        'PENDING_REVIEW', 'MANUAL_REVIEW_REQUIRED', 'APPROVED', 'REJECTED')),
+                    CONSTRAINT fk_expert_identity_id_card_crop_file
+                        FOREIGN KEY (id_card_crop_file_id) REFERENCES uploaded_files(file_id)
+                        ON DELETE SET NULL,
+                    CONSTRAINT fk_expert_identity_selfie_crop_file
+                        FOREIGN KEY (selfie_crop_file_id) REFERENCES uploaded_files(file_id)
+                        ON DELETE SET NULL
+                );
+                CREATE INDEX idx_expert_identity_pipeline_status
+                    ON expert_identity_verifications (pipeline_status, created_at);
+                CREATE INDEX idx_expert_identity_profile_created
+                    ON expert_identity_verifications (expert_profile_id, created_at DESC);
+                CREATE INDEX idx_expert_identity_review_status
+                    ON expert_identity_verifications (review_status, created_at)
                 """);
     }
 
