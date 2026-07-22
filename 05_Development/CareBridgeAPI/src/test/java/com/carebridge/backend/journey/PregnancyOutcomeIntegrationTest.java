@@ -38,23 +38,34 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
     @BeforeEach
     void cleanAndSeedPregnancy() {
         jdbcTemplate.update("DELETE FROM public.audit_logs WHERE actor_user_id = ?", OWNER_ID);
-        jdbcTemplate.update("DELETE FROM public.pregnancy_outcome_evidence WHERE journey_id = ?", JOURNEY_ID);
-        jdbcTemplate.update("DELETE FROM public.mother_journey_transitions WHERE journey_id = ?", JOURNEY_ID);
+        deleteCanonicalEvents();
         jdbcTemplate.update("DELETE FROM public.mother_journeys WHERE journey_id = ?", JOURNEY_ID);
         jdbcTemplate.update("""
+                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
+                VALUES (?, 'Story 63 Mother', now(), now())
+                ON CONFLICT (person_id) DO NOTHING
+                """, OWNER_ID);
+        jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, email, role, account_status, enabled, locked,
+                    user_id, person_id, email, role, account_status, enabled, locked,
                     must_change_password, created_at, updated_at
-                ) VALUES (?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
+                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
-                """, OWNER_ID, "story63.mother@test.carebridge.local");
+                """, OWNER_ID, OWNER_ID, "story63.mother@test.carebridge.local");
+        jdbcTemplate.update("""
+                INSERT INTO public.care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at
+                ) VALUES (?, ?, ?, 'MOTHER', 'Story 63 Mother', 'ACTIVE', now(), now())
+                ON CONFLICT (care_subject_id) DO NOTHING
+                """, JOURNEY_ID, OWNER_ID, OWNER_ID);
         jdbcTemplate.update("""
                 INSERT INTO public.mother_journeys (
-                    journey_id, owner_user_id, journey_type, status, version,
+                    journey_id, care_subject_id, owner_user_id, journey_type, status, version,
                     date_source, date_confidence, created_at, updated_at
-                ) VALUES (?, ?, 'PREGNANCY', 'ACTIVE', 0,
+                ) VALUES (?, ?, ?, 'PREGNANCY', 'ACTIVE', 0,
                     'SELF_REPORTED', 'ESTIMATED', now(), now())
-                """, JOURNEY_ID, OWNER_ID);
+                """, JOURNEY_ID, JOURNEY_ID, OWNER_ID);
     }
 
     @Test
@@ -75,17 +86,20 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
                 "SELECT delivery_date FROM mother_journeys WHERE journey_id = ?",
                 LocalDate.class, JOURNEY_ID)).isNull();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM pregnancy_outcome_evidence WHERE journey_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'PREGNANCY_OUTCOME'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_transitions "
-                        + "WHERE journey_id = ? AND event_type = 'OUTCOME_RECORDED'",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION' "
+                        + "AND event_type = 'OUTCOME_RECORDED'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
 
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "UPDATE pregnancy_outcome_evidence SET reason = 'changed' WHERE journey_id = ?",
+                "UPDATE mother_journey_events SET reason = 'changed' "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'PREGNANCY_OUTCOME'",
                 JOURNEY_ID))
-                .hasMessageContaining("pregnancy outcome evidence is append-only");
+                .hasMessageContaining("IMMUTABLE_TABLE: public.mother_journey_events");
     }
 
     @Test
@@ -100,11 +114,13 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(replay.getEvidenceId()).isEqualTo(first.getEvidenceId());
         assertThat(replay.getTransitionId()).isEqualTo(first.getTransitionId());
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM pregnancy_outcome_evidence "
-                        + "WHERE journey_id = ? AND submission_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND submission_id = ? "
+                        + "AND legacy_source = 'PREGNANCY_OUTCOME'",
                 Long.class, JOURNEY_ID, submissionId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_transitions WHERE journey_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
     }
 
@@ -136,10 +152,12 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
                                 .isEqualTo("JOURNEY_VERSION_CONFLICT"));
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM pregnancy_outcome_evidence WHERE journey_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'PREGNANCY_OUTCOME'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_transitions WHERE journey_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
     }
 
@@ -148,15 +166,31 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
         UUID differentOwner = UUID.fromString("00000000-0000-0000-0000-000000016399");
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
-                INSERT INTO pregnancy_outcome_evidence (
-                    evidence_id, journey_id, owner_user_id, submission_id, outcome_type,
-                    source, actor_user_id, reason, effective_at, revision_number,
-                    journey_version, semantic_hash, correction
-                ) VALUES (?, ?, ?, ?, 'ONGOING', 'SELF_REPORTED', ?,
-                    'Synthetic owner mismatch', now(), 1, 0, 'synthetic', false)
+                INSERT INTO mother_journey_events (
+                    event_id, mother_journey_id, owner_user_id, event_type,
+                    event_payload_jsonb, schema_version, submission_id, outcome_type,
+                    event_source, actor_user_id, reason, effective_at, recorded_at,
+                    revision_number, journey_version, semantic_hash, correction,
+                    legacy_source, legacy_id
+                ) VALUES (?, ?, ?, 'PREGNANCY_OUTCOME_EVIDENCE', '{}'::jsonb, '1', ?,
+                    'ONGOING', 'SELF_REPORTED', ?, 'Synthetic owner mismatch', now(), now(),
+                    1, 0, 'synthetic', false, 'PREGNANCY_OUTCOME', ?)
                 """,
-                UUID.randomUUID(), JOURNEY_ID, differentOwner, UUID.randomUUID(), differentOwner))
-                .hasMessageContaining("pregnancy outcome evidence owner must match journey owner");
+                UUID.randomUUID(), JOURNEY_ID, differentOwner, UUID.randomUUID(), differentOwner,
+                UUID.randomUUID().toString()))
+                .hasMessageContaining("mother journey event owner must match journey owner");
+    }
+
+    private void deleteCanonicalEvents() {
+        jdbcTemplate.execute(
+                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
+        try {
+            jdbcTemplate.update(
+                    "DELETE FROM public.mother_journey_events WHERE mother_journey_id = ?", JOURNEY_ID);
+        } finally {
+            jdbcTemplate.execute(
+                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
+        }
     }
 
     private RecordPregnancyOutcomeRequest request(

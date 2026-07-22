@@ -117,6 +117,7 @@ public class JourneyOnboardingServiceImpl implements IJourneyOnboardingService {
                         .preferences(preferences)
                         .recordedAt(now)
                         .build());
+        baselineRepository.updateCurrentJourneySnapshot(baseline);
         ConsentGrant evidence = consentRepository.save(
                 ConsentGrant.builder()
                         .userId(userId)

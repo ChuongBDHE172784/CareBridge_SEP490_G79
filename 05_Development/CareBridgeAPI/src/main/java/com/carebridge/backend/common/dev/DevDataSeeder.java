@@ -496,12 +496,12 @@ public class DevDataSeeder implements ApplicationRunner {
                                 Instant occurredAt, BigDecimal quantity, String unit, String note) {
         Timestamp timestamp = Timestamp.from(occurredAt);
         jdbcTemplate.update("""
-            INSERT INTO baby_daily_logs
-                (baby_log_id, baby_id, log_type, started_at, quantity, unit, note,
+            INSERT INTO care_logs
+                (care_log_id, care_subject_id, log_type, started_at, quantity, unit, note,
                  recorded_by, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
-            ON CONFLICT (baby_log_id) DO UPDATE SET
-                baby_id = EXCLUDED.baby_id,
+            ON CONFLICT (care_log_id) DO UPDATE SET
+                care_subject_id = EXCLUDED.care_subject_id,
                 log_type = EXCLUDED.log_type,
                 started_at = EXCLUDED.started_at,
                 quantity = EXCLUDED.quantity,

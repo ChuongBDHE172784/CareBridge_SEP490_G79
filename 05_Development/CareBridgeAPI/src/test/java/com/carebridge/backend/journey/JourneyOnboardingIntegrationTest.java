@@ -43,15 +43,19 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
     void cleanAndSeedOwner() {
         jdbcTemplate.update("DELETE FROM public.audit_logs WHERE actor_user_id = ?", OWNER_ID);
         jdbcTemplate.update("DELETE FROM public.consent_grants WHERE user_id = ?", OWNER_ID);
-        jdbcTemplate.update(
-                "DELETE FROM public.mother_baseline_contexts WHERE owner_user_id = ?", OWNER_ID);
+        deleteCanonicalEvents(OWNER_ID);
+        jdbcTemplate.update("""
+                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
+                VALUES (?, 'Story 62 Mother', now(), now())
+                ON CONFLICT (person_id) DO NOTHING
+                """, OWNER_ID);
         jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, email, role, account_status, enabled, locked,
+                    user_id, person_id, email, role, account_status, enabled, locked,
                     must_change_password, created_at, updated_at
-                ) VALUES (?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
+                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
-                """, OWNER_ID, "story62.mother@test.carebridge.local");
+                """, OWNER_ID, OWNER_ID, "story62.mother@test.carebridge.local");
     }
 
     @Test
@@ -70,7 +74,8 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM consent_grants WHERE user_id = ? AND evidence_key = ?",
@@ -88,7 +93,8 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
                 .isEqualTo("LIFECYCLE_CONSENT_REQUIRED");
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isZero();
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM consent_grants WHERE user_id = ?",
@@ -162,8 +168,21 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
                 .extracting("code")
                 .isEqualTo("LIFECYCLE_CONSENT_INVALID");
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isEqualTo(1L);
+    }
+
+    private void deleteCanonicalEvents(UUID ownerId) {
+        jdbcTemplate.execute(
+                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
+        try {
+            jdbcTemplate.update(
+                    "DELETE FROM public.mother_journey_events WHERE owner_user_id = ?", ownerId);
+        } finally {
+            jdbcTemplate.execute(
+                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
+        }
     }
 
     private static java.util.stream.Stream<Arguments> invalidPersistedConsentMutations() {

@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "baby_daily_logs")
+@Table(name = "care_logs")
 @Getter
 @Setter
 @Builder
@@ -20,10 +20,10 @@ public class BabyDailyLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "baby_log_id", updatable = false, nullable = false)
+    @Column(name = "care_log_id", updatable = false, nullable = false)
     private UUID babyLogId;
 
-    @Column(name = "baby_id", nullable = false)
+    @Column(name = "care_subject_id", nullable = false)
     private UUID babyId;
 
     @Column(name = "log_type", nullable = false, length = 30)
