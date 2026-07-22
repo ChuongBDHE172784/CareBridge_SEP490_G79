@@ -252,20 +252,30 @@ Future<dynamic> apiMultipart(
   String path,
   Map<String, String> fields, {
   String? token,
+  List<MultipartUploadFile> files = const [],
   String? fileFieldName,
   String? filePath,
   String? fileName,
   String? mimeType,
 }) async {
-  final uri = Uri.parse('$_baseUrl\$path');
+  final uri = Uri.parse('$_baseUrl$path');
   var request = http.MultipartRequest('POST', uri);
   for (final entry in fields.entries) {
     request.fields[entry.key] = entry.value;
   }
-  if (token != null) request.headers['Authorization'] = 'Bearer \$token';
   final effectiveToken = token ?? AuthState.instance.accessToken;
   if (effectiveToken != null) {
-    request.headers['Authorization'] = 'Bearer \$effectiveToken';
+    request.headers['Authorization'] = 'Bearer $effectiveToken';
+  }
+  for (final upload in files) {
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        upload.fieldName,
+        upload.bytes,
+        filename: upload.fileName,
+        contentType: MediaType.parse(upload.mimeType),
+      ),
+    );
   }
   if (filePath != null) {
     final file = http.MultipartFile(
@@ -281,7 +291,7 @@ Future<dynamic> apiMultipart(
   }
   final streamed = await request.send();
   final response = await http.Response.fromStream(streamed);
-  debugPrint('Multipart \$path → \${response.statusCode}');
+  debugPrint('Multipart $path → ${response.statusCode}');
   final auth = AuthState.instance;
   String? effectiveToken2 = token ?? auth.accessToken;
   if (response.statusCode == 401 && effectiveToken2 != null) {
@@ -291,6 +301,7 @@ Future<dynamic> apiMultipart(
         path,
         fields,
         token: null,
+        files: files,
         fileFieldName: fileFieldName,
         filePath: filePath,
         fileName: fileName,
@@ -306,6 +317,22 @@ Future<dynamic> apiMultipart(
   }
   if (response.statusCode == 401) await _handle401(response);
   throw ApiException(response.statusCode, response.body);
+}
+
+/// Platform-neutral multipart input. Keeping bytes here lets mobile and web
+/// upload camera evidence without relying on `dart:io` paths.
+class MultipartUploadFile {
+  final String fieldName;
+  final List<int> bytes;
+  final String fileName;
+  final String mimeType;
+
+  const MultipartUploadFile({
+    required this.fieldName,
+    required this.bytes,
+    required this.fileName,
+    required this.mimeType,
+  });
 }
 
 class ApiException implements Exception {

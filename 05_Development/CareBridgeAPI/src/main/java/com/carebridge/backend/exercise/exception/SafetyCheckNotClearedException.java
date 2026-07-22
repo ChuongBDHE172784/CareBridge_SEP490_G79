@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 public class SafetyCheckNotClearedException extends RuntimeException {
 
     private final String code = "EXSESS-003";
-    private final HttpStatus httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+    private final HttpStatus httpStatus = HttpStatus.UNPROCESSABLE_CONTENT;
 
     public SafetyCheckNotClearedException() {
         super("Safety check is not cleared for this exercise");

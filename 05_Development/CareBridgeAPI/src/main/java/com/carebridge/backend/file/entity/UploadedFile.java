@@ -1,5 +1,8 @@
 package com.carebridge.backend.file.entity;
 
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -28,6 +31,24 @@ public class UploadedFile {
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
 
+    @Column(name = "storage_provider", nullable = false, length = 20)
+    @Builder.Default
+    private String storageProvider = "cloudinary";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", nullable = false, length = 20)
+    @Builder.Default
+    private FileKind kind = FileKind.IMAGE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purpose", nullable = false, length = 50)
+    private FilePurpose purpose;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "access_mode", nullable = false, length = 20)
+    @Builder.Default
+    private FileAccessMode accessMode = FileAccessMode.PRIVATE;
+
     @Column(name = "original_name", nullable = false, length = 255)
     private String originalName;
 
@@ -36,6 +57,9 @@ public class UploadedFile {
 
     @Column(name = "file_size_bytes", nullable = false)
     private long fileSizeBytes;
+
+    @Column(name = "checksum", length = 64)
+    private String checksum;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

@@ -1,6 +1,7 @@
 package com.carebridge.backend.expert.dto.request;
 
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.math.BigDecimal;
 
@@ -10,6 +11,14 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class CreateExpertProfileRequest {
+
+    @NotBlank
+    @Size(max = 5)
+    private String specialtyId;
+
+    @NotBlank
+    @Size(max = 8)
+    private String hospitalId;
 
     @Size(max = 100)
     private String specialty;

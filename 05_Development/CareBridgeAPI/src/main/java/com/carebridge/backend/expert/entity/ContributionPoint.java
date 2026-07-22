@@ -8,7 +8,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "contribution_points", schema = "public")
+@Table(name = "contribution_points", schema = "public",
+        uniqueConstraints = {
+            @UniqueConstraint(name = "uk_contribution_points_user_source", columnNames = {"user_id", "source_type", "source_id"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor

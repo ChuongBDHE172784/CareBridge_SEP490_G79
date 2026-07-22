@@ -8,6 +8,12 @@ public interface IContributionPointService {
     /** UC-69: Award contribution points to a user (called by other services) */
     void awardPoints(UUID userId, int points, String reason, String sourceType, UUID sourceId);
 
+    /**
+     * Award contribution points if a record with the same sourceId doesn't already exist.
+     * Used for idempotent point awards on transition events (e.g., answer APPROVED).
+     */
+    void awardPointsIfNotExists(UUID userId, int points, String reason, String sourceType, UUID sourceId);
+
     /** UC-69: Total points for the authenticated user */
     int getTotalPoints(UUID userId);
 

@@ -40,6 +40,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       if (!mounted) return;
       if (role == 'MOTHER') {
         context.go('/journey-onboarding');
+      } else if (role == 'EXPERT') {
+        context.go('/expert-onboarding');
       } else {
         context.go('/');
       }

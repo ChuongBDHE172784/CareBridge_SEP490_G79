@@ -44,6 +44,9 @@ public class ExpertCredential {
     @Column(name = "file_url", columnDefinition = "text")
     private String fileUrl;
 
+    @Column(name = "file_id")
+    private UUID fileId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 30)
     private ReviewStatus reviewStatus;

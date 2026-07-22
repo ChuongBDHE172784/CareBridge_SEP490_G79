@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -27,6 +28,33 @@ public class ContributionPointServiceImpl implements IContributionPointService {
     @Override
     @Transactional
     public void awardPoints(UUID userId, int points, String reason, String sourceType, UUID sourceId) {
+        ContributionPoint cp = ContributionPoint.builder()
+                .userId(userId)
+                .points(points)
+                .reason(reason)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .build();
+        repository.save(cp);
+    }
+
+    @Override
+    @Transactional
+    public void awardPointsIfNotExists(UUID userId, int points, String reason, String sourceType, UUID sourceId) {
+        if (sourceId == null) {
+            // Fall back to non-idempotent if no sourceId provided
+            awardPoints(userId, points, reason, sourceType, sourceId);
+            return;
+        }
+
+        // Check if a record with this sourceId already exists for this user
+        // Using optimistic locking via unique constraint on (userId, sourceType, sourceId)
+        Optional<ContributionPoint> existing = repository.findByUserIdAndSourceTypeAndSourceId(userId, sourceType, sourceId);
+        if (existing.isPresent()) {
+            // Already awarded - skip silently (idempotent)
+            return;
+        }
+
         ContributionPoint cp = ContributionPoint.builder()
                 .userId(userId)
                 .points(points)

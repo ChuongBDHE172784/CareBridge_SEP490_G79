@@ -27,7 +27,7 @@ public class DirectChatException extends RuntimeException {
 
     public static DirectChatException expertNotEligibleForConsultation() {
         return new DirectChatException(
-                "DCC-002", "Expert is not eligible for consultation", HttpStatus.UNPROCESSABLE_ENTITY);
+                "DCC-002", "Expert is not eligible for consultation", HttpStatus.UNPROCESSABLE_CONTENT);
     }
 
     public static DirectChatException expertNoLongerApproved() {
