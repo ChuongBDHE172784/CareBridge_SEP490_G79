@@ -30,7 +30,7 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
         Fixture fixture = seedFixture();
 
         jdbcTemplate.update(
-                "UPDATE expert_profiles SET trust_status='REVOKED' WHERE expert_profile_id=?",
+                "UPDATE professional_profiles SET trust_status='REVOKED' WHERE professional_profile_id=?",
                 fixture.expertProfileId());
         assertThat(conversationService.getConversation(
                         fixture.conversationId(), fixture.motherId())
@@ -61,9 +61,9 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
 
         jdbcTemplate.update(
                 """
-                UPDATE expert_profiles
+                UPDATE professional_profiles
                    SET verification_status='REJECTED', trust_status='ACTIVE'
-                 WHERE expert_profile_id=?
+                 WHERE professional_profile_id=?
                 """,
                 fixture.expertProfileId());
         conversationService.getConversation(fixture.conversationId(), fixture.motherId());
@@ -96,8 +96,8 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
         seedUser(motherId, "Read Mother", "MOTHER");
         seedUser(expertUserId, "Read Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);

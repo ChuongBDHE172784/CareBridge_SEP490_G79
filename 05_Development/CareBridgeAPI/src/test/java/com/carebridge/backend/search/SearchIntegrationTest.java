@@ -127,7 +127,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
                 .status(QuestionStatus.APPROVED)
                 .build());
 
-        String maliciousQuery = "'; DROP TABLE community_questions; --";
+        String maliciousQuery = "'; DROP TABLE community_content; --";
 
         mockMvc.perform(get("/api/v1/search")
                         .header("Authorization", "Bearer " + token)

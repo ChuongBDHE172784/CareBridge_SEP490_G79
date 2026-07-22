@@ -5,13 +5,15 @@ import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import java.sql.Types;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "expert_profiles")
+@Table(name = "professional_profiles")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +23,7 @@ public class ExpertProfile {
 
 @Id
 @GeneratedValue(strategy = GenerationType.UUID)
-@Column(name = "expert_profile_id", updatable = false, nullable = false)
+@Column(name = "professional_profile_id", updatable = false, nullable = false)
 private UUID expertProfileId;
 
 @Column(name = "user_id", nullable = false, unique = true)
@@ -33,7 +35,8 @@ private String specialty;
 @Column(name = "professional_title", length = 150)
 private String professionalTitle;
 
-@Column(name = "experience_years")
+@Column(name = "experience_years", columnDefinition = "smallint")
+@JdbcTypeCode(Types.SMALLINT)
 private Integer experienceYears;
 
 @Column(name = "workplace", length = 200)

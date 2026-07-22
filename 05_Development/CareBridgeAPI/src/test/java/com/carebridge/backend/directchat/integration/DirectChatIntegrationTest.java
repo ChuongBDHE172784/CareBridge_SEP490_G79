@@ -70,7 +70,7 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
                 EXPERT_USER_ID);
         expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
                 expertProfileId, EXPERT_USER_ID);
 
@@ -210,7 +210,7 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
                         .with(csrf()).with(user2()))
                 .andExpect(status().isOk());
 
-        jdbcTemplate.update("UPDATE expert_profiles SET verification_status = 'PENDING' WHERE expert_profile_id = ?",
+        jdbcTemplate.update("UPDATE professional_profiles SET verification_status = 'PENDING' WHERE professional_profile_id = ?",
                 expertProfileId);
         mockMvc.perform(get("/api/v1/direct-conversations/" + conversationId + "/timeline"))
                 .andExpect(status().isOk());

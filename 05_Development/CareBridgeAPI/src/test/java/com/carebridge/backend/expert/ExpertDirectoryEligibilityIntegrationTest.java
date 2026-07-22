@@ -59,13 +59,17 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
         UUID userId = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
         jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, 'EXPERT', true, false, now(), now())
+                INSERT INTO persons(person_id, display_name, phone_number, created_at, updated_at)
+                VALUES (?, ?, ?, now(), now())
                 """, userId, name, uniquePhone());
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO users
+                    (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'EXPERT', true, false, now(), now())
+                """, userId, userId, name, uniquePhone());
+        jdbcTemplate.update("""
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      rating_avg, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, now(), now())
                 """, profileId, userId, specialty, verificationStatus, trustStatus, rating);

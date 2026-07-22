@@ -38,7 +38,7 @@ class ExpertProfileRepositorySearchIntegrationTest extends AbstractPostgresInteg
                         + "VALUES (?, 'Nguyễn Văn A', ?, 'EXPERT', true, false, now(), now())",
                 EXPERT_USER_ID, "09" + String.valueOf(System.nanoTime()).substring(0, 8));
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, professional_title, workplace, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, professional_title, workplace, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'Bác sĩ CKI', 'BV Từ Dũ', 'APPROVED', now(), now())",
                 UUID.randomUUID(), EXPERT_USER_ID);
     }
@@ -67,13 +67,13 @@ class ExpertProfileRepositorySearchIntegrationTest extends AbstractPostgresInteg
     // MEDI-TC-SEC-001 — injection payload is a bind parameter, never concatenated into SQL
     @Test
     void searchDirectory_sqlInjectionAttempt_handledSafely() {
-        String malicious = "'; DROP TABLE expert_profiles; --";
+        String malicious = "'; DROP TABLE professional_profiles; --";
 
         Page<ExpertProfile> result = expertProfileRepository.searchDirectory(null, malicious, PageRequest.of(0, 10));
 
         assertThat(result.getContent()).isEmpty();
         Long stillExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM expert_profiles WHERE user_id = ?", Long.class, EXPERT_USER_ID);
+                "SELECT COUNT(*) FROM professional_profiles WHERE user_id = ?", Long.class, EXPERT_USER_ID);
         assertThat(stillExists).isEqualTo(1L);
     }
 }

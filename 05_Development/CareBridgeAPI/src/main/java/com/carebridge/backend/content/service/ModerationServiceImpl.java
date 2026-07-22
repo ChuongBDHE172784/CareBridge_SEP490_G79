@@ -401,7 +401,7 @@ public class ModerationServiceImpl implements ModerationService {
         answer.setStatus(newStatus);
         communityAnswerRepository.save(answer);
 
-        // Keep community_questions.answer_count in sync with the visible (APPROVED) answer set
+        // Keep canonical question answer_count in sync with the visible (APPROVED) answer set
         if (oldStatus != AnswerStatus.APPROVED && newStatus == AnswerStatus.APPROVED) {
             communityQuestionRepository.incrementAnswerCount(answer.getQuestionId());
         } else if (oldStatus == AnswerStatus.APPROVED && newStatus != AnswerStatus.APPROVED) {

@@ -108,7 +108,7 @@ import org.springframework.transaction.annotation.Transactional;
  * account in the shared dev database, so seeding continues from mother3/mother4:
  *   mother3@carebridge.dev / mother4@carebridge.dev   -> MOTHER  (own mother journeys + care subjects)
  *   family2@carebridge.dev / family3@carebridge.dev   -> FAMILY  (ACCEPTED care_group_members of mother3/mother4's group)
- *   expert2@carebridge.dev / expert3@carebridge.dev   -> EXPERT  (expert_profiles APPROVED + expert_credentials APPROVED + availability slot)
+ *   expert2@carebridge.dev / expert3@carebridge.dev   -> EXPERT  (professional profile APPROVED + expert credentials APPROVED + availability slot)
  *
  * OTP: dev uses MockEmailService logs; supabase uses configured SMTP.
  */

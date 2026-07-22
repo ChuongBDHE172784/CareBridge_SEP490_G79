@@ -23,7 +23,7 @@ public class ExpertCredential {
     @Column(name = "credential_id", updatable = false, nullable = false)
     private UUID credentialId;
 
-    @Column(name = "expert_profile_id", nullable = false)
+    @Column(name = "professional_profile_id", nullable = false)
     private UUID expertProfileId;
 
     @Column(name = "credential_type", nullable = false, length = 50)
