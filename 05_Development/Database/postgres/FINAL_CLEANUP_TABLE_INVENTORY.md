@@ -1,19 +1,65 @@
 ---
 title: Final Cleanup Repository and Live Table Inventory
 baseline_commit: 2b33b582
+reconciliation_baseline_commit: 0e36f6ee
 live_audit_date: 2026-07-22
 status: evidence-baseline
 ---
 
 # Final Cleanup Repository and Live Table Inventory
 
+## Count reconciliation at HEAD
+
+Counting is restricted to schema `public` and relation kinds `r` (ordinary
+base table) and `p` (partitioned table). Views, materialized views, foreign
+tables, sequences, indexes, and TOAST relations are excluded.
+`flyway_schema_history` is included exactly once.
+
+| Name set | Count | Derivation |
+| --- | ---: | --- |
+| Live current | 127 | Exact `Live rows != absent` names below; read-only live audit |
+| Clean bootstrap HEAD | 99 | 113 pre-Final `Repo = Yes` names minus 14 Final Cleanup tables present on clean bootstrap |
+| Expected live after all pending migrations | 104 | 127 - 10 Batch 1-5 drops + 4 Batch 4-5 creates - 17 Final Cleanup drops |
+
+The clean 99 consists of 98 domain tables plus `flyway_schema_history`.
+Therefore 100 is a double-counting artifact: it adds Flyway history to a total
+that already includes it. The live-after-upgrade total is five higher than
+clean bootstrap because `baby_journey_link_cleanup_summary`, `districts`,
+`provinces`, `specialties`, and `wards` are retained live-only tables.
+
+Exact set differences by table name:
+
+- `live_current - clean_bootstrap` (32): `baby_journey_link_cleanup_summary`,
+  `commission_config`, `commission_records`, `consultation_disputes`,
+  `consultation_messages`, `consultation_requests`, `contribution_attachments`,
+  `districts`, `emergency_events`, `expert_identity_verifications`,
+  `expert_reviews`, `expert_verification_documents`, `hospitals`,
+  `impact_assessment_ratings`, `medical_contributions`, `notifications`,
+  `partner_expert_links`, `partner_services`, `payment_transactions`,
+  `provinces`, `refund_records`, `roles`, `safety_alerts`, `safety_events`,
+  `safety_monitoring_settings`, `settlement_records`, `specialties`,
+  `sponsored_campaigns`, `triage_answers`, `triage_assessments`, `user_roles`,
+  `wards`.
+- `clean_bootstrap - live_current` (4): `care_facility_legacy_ids`,
+  `emergency_alert_attempts`, `emergency_alert_deliveries`,
+  `safety_event_responses`.
+- `expected_live_after_upgrade - clean_bootstrap` (5):
+  `baby_journey_link_cleanup_summary`, `districts`, `provinces`, `specialties`,
+  `wards`.
+- `clean_bootstrap - expected_live_after_upgrade`: empty.
+
+The inventory rows below remain the 131-name evidence union captured before
+Final Cleanup. `Repo` is the 113-table post-Batch-5/pre-Final snapshot, not the
+99-table final HEAD set; the derivation above prevents those two snapshots from
+being conflated.
+
 ## Decision baseline
 
-Inventory này là union của **131** tên bảng: **127** bảng live hiện tại và **113** bảng clean-bootstrap tại HEAD (112 domain + `flyway_schema_history`). Có 4 bảng repository-only do Batch 4–5 chưa deploy và 18 bảng live-only/pre-Batch drift. Live audit dùng JDBC `REPEATABLE READ, READ ONLY`, rollback rõ ràng; fingerprint `4e414b1bbc88a5fef9bbea73e83d7bcac2d2d6cf10a70cb0d23c216e462d5a7c` không đổi.
+Inventory này là union lịch sử của **131** tên bảng: **127** bảng live hiện tại và **113** bảng clean-bootstrap tại snapshot sau Batch 5/trước Final Cleanup (112 domain + `flyway_schema_history`). Clean-bootstrap tại HEAD sau Final Cleanup là **99** bảng như phần reconciliation phía trên. Có 4 bảng repository-only do Batch 4–5 chưa deploy và 18 bảng live-only/pre-Batch drift. Live audit dùng JDBC `REPEATABLE READ, READ ONLY`, rollback rõ ràng; fingerprint `4e414b1bbc88a5fef9bbea73e83d7bcac2d2d6cf10a70cb0d23c216e462d5a7c` không đổi.
 
 - Approved Final Cleanup: 17 bảng, tất cả live rows = 0.
 - Blocked: 9 bảng có data/dependency; bảng thứ chín là `health_summaries` vì UC-88 đang dùng booking dependency sai dù bản thân bảng phải giữ Release 1.
-- Expected counts: live 127 → 121 sau Batch 1–5 → 104 sau Final Cleanup; repository bootstrap 113 → 99.
+- Reconciled counts: live 127 → 121 sau Batch 1–5 → 104 sau Final Cleanup; clean bootstrap snapshot 113 → HEAD 99. Tất cả các số này đều tính `flyway_schema_history` đúng một lần.
 - Catalog: toàn bộ 127 live tables có RLS policy count = 0. View/matview/trigger/routine/cross-schema scan không tìm hidden dependency vào approved 17. Các lexical match `roles` trong system/realtime function đã được refute bằng catalog dependency.
 
 ## Classification rules
@@ -184,5 +230,4 @@ Ba approved tables live-only (`contribution_attachments`, `expert_identity_verif
 - `_bmad-output/implementation-artifacts/investigations/release-1-database-audit-investigation.md`
 - `_bmad-output/implementation-artifacts/investigations/final-cleanup-schema-live-audit-investigation.md`
 - `02_Requirements/SRS/3_Functional_Specification_Detailed_Scope_121UC.md`
-- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260722020300__consolidate_notification_records.sql` through `V20260722020700__consolidate_nearby_care_facilities.sql`
-
+- `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260722020300__consolidate_notification_records.sql` through `V20260722021000__remove_remaining_unused_release1_schema.sql`
