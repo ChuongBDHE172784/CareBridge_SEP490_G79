@@ -99,13 +99,6 @@ carebridge:
     call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}
     firebase-event-retention-hours: ${DIRECTCHAT_FIREBASE_EVENT_RETENTION_HOURS:24}
 
-  consultation-request:
-    expiry-hours: ${CONSULTATION_REQUEST_EXPIRY_HOURS:48}
-    expiry-job-delay-ms: ${CONSULTATION_REQUEST_EXPIRY_JOB_DELAY_MS:60000}
-
-  notification:
-    consultation-request-outbox-delay-ms: ${CONSULTATION_REQUEST_OUTBOX_DELAY_MS:5000}
-
 ai:
   triage-service:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}

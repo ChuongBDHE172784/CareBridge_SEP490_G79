@@ -235,13 +235,6 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
-    @ExceptionHandler(com.carebridge.backend.consultation.exception.ConsultationRequestException.class)
-    public ResponseEntity<ErrorResponse> handleConsultationRequest(
-            com.carebridge.backend.consultation.exception.ConsultationRequestException ex,
-            HttpServletRequest request) {
-        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
-    }
-
     @ExceptionHandler(ModerationException.class)
     public ResponseEntity<ErrorResponse> handleModeration(ModerationException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);

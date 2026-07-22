@@ -117,9 +117,13 @@ For each environment, review and retain:
    mismatches.
 3. `schemaFingerprintSha256`, computed from ordered tables, columns, types, defaults,
    nullability, constraints, and indexes.
-4. All 22 candidate table presence flags and exact row counts.
-5. Retained inbound foreign keys and cross-schema database object references.
-6. `transactionReadOnly=true`, `rollbackConfirmed=true`, and an empty
+4. All 17 approved Final Cleanup candidate presence flags and exact row counts.
+5. `repository.finalCleanupPolicy`: the 17 approved candidates, nine
+   blocked/dependent tables, Release-1 guards, three known clean-bootstrap
+   absences, and expected table counts (`113 -> 99` repository;
+   `127 -> 121 -> 104` deployed live).
+6. Retained inbound foreign keys and cross-schema database object references.
+7. `transactionReadOnly=true`, `rollbackConfirmed=true`, and an empty
    `gateFailures` list.
 
 Timestamp and environment labels may differ. Endpoint hashes should differ when
@@ -145,3 +149,35 @@ Gate 0 evidence does not authorize a drop, migration, `repair`, or runtime
 configuration change. Those actions require their separate approval checkpoints.
 External ETL/BI consumers are not visible in PostgreSQL catalogs; attach their
 owner-confirmed inventory separately before any destructive wave.
+
+## Final Cleanup policy at `2b33b582`
+
+The legacy Gate 0 list of 22 tables has been superseded. Batch 1-5 already own
+the removal of `notifications`, `roles`, `user_roles`, `triage_answers`,
+`triage_assessments`, `safety_alerts`, `safety_events`,
+`safety_monitoring_settings`, `emergency_events`, and `hospitals`.
+
+The approved 17 are:
+
+- consultation/payment: `consultation_requests`, `consultation_messages`,
+  `consultation_disputes`, `payment_transactions`, `refund_records`,
+  `commission_config`, `commission_records`, `settlement_records`,
+  `expert_reviews`;
+- partner: `partner_expert_links`, `partner_services`, `sponsored_campaigns`;
+- unused: `impact_assessment_ratings`, `contribution_attachments`,
+  `expert_identity_verifications`, `expert_verification_documents`,
+  `medical_contributions`.
+
+The clean repository shape legitimately lacks only three candidates:
+`contribution_attachments`, `expert_identity_verifications`, and
+`medical_contributions`. Absence of another candidate or presence of any
+candidate with rows/dependencies remains fail-closed.
+
+Blocked/dependent metadata protects booking/session/pricing, direct
+conversation/message/call, `partner_organizations`, and the Release-1
+`health_summaries` UC-88 dependency. Nearby support requests/responses,
+`care_facilities`, consent, audit, security, triage, safety, and health-record
+guards are never removal candidates.
+
+Full evidence is recorded in `FINAL_CLEANUP_TABLE_INVENTORY.md` and
+`FINAL_CLEANUP_CANONICAL_ENUM_REVIEW.md`.

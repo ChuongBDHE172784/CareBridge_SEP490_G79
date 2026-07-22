@@ -57,29 +57,64 @@ final class DatabaseGate0Support {
             .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
             .enable(SerializationFeature.INDENT_OUTPUT);
 
-    private static final Set<String> REMOVAL_CANDIDATES = Set.of(
+    static final Set<String> REMOVAL_CANDIDATES = Set.of(
             "commission_config",
             "commission_records",
             "consultation_disputes",
             "consultation_messages",
+            "consultation_requests",
             "contribution_attachments",
-            "emergency_events",
             "expert_identity_verifications",
             "expert_reviews",
             "expert_verification_documents",
             "impact_assessment_ratings",
             "medical_contributions",
-            "notifications",
+            "partner_expert_links",
+            "partner_services",
             "payment_transactions",
             "refund_records",
-            "roles",
-            "safety_alerts",
-            "safety_events",
-            "safety_monitoring_settings",
             "settlement_records",
-            "triage_answers",
-            "triage_assessments",
-            "user_roles");
+            "sponsored_campaigns");
+
+    static final Set<String> BLOCKED_OR_DEPENDENT_TABLES = Set.of(
+            "consultation_bookings",
+            "consultation_price_bands",
+            "consultation_sessions",
+            "conversation_calls",
+            "direct_conversations",
+            "direct_messages",
+            "expert_consultation_prices",
+            "health_summaries",
+            "partner_organizations");
+
+    static final Set<String> RETAINED_RELEASE1_GUARDS = Set.of(
+            "audit_logs",
+            "care_facilities",
+            "consent_grants",
+            "emergency_sessions",
+            "expert_availability",
+            "health_records",
+            "health_summaries",
+            "imu_safety_events",
+            "intake_sessions",
+            "nearby_support_requests",
+            "nearby_support_responses",
+            "notification_records",
+            "safety_monitoring_config",
+            "security_events",
+            "structured_intake_data");
+
+    static final Set<String> KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES = Set.of(
+            "contribution_attachments",
+            "expert_identity_verifications",
+            "medical_contributions");
+
+    static final Map<String, Integer> EXPECTED_PUBLIC_TABLE_COUNTS = Map.of(
+            "repositoryBeforeFinalCleanup", 113,
+            "repositoryAfterFinalCleanup", 99,
+            "liveAuditBaseline", 127,
+            "liveAfterBatch1To5", 121,
+            "liveAfterFinalCleanup", 104);
 
     private DatabaseGate0Support() {
     }
@@ -133,7 +168,17 @@ final class DatabaseGate0Support {
                 List.copyOf(migrations),
                 List.copyOf(malformed),
                 stableMap(duplicateVersions),
+                finalCleanupPolicy(),
                 List.copyOf(failures));
+    }
+
+    private static FinalCleanupPolicy finalCleanupPolicy() {
+        return new FinalCleanupPolicy(
+                REMOVAL_CANDIDATES.stream().sorted().toList(),
+                BLOCKED_OR_DEPENDENT_TABLES.stream().sorted().toList(),
+                RETAINED_RELEASE1_GUARDS.stream().sorted().toList(),
+                KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES.stream().sorted().toList(),
+                stableMap(EXPECTED_PUBLIC_TABLE_COUNTS));
     }
 
     private static void inspectMigration(
@@ -884,7 +929,16 @@ final class DatabaseGate0Support {
             List<MigrationFile> migrations,
             List<String> malformedFiles,
             Map<String, List<String>> duplicateVersions,
+            FinalCleanupPolicy finalCleanupPolicy,
             List<String> gateFailures) {
+    }
+
+    record FinalCleanupPolicy(
+            List<String> approvedRemovalCandidates,
+            List<String> blockedOrDependentTables,
+            List<String> retainedRelease1Guards,
+            List<String> knownCleanBootstrapAbsentCandidates,
+            Map<String, Integer> expectedPublicTableCounts) {
     }
 
     record ExternalConfig(
