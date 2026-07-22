@@ -153,7 +153,7 @@ public class ModerationServiceImpl implements ModerationService {
         }
 
         // C2: AuditService.log() after every successful queue view — reuses MODERATION_QUEUE_VIEWED
-        // (ADR-003 of UC-99; no new AuditAction needed, avoids an audit_logs_action_check migration)
+        // (ADR-003 of UC-99; no new AuditAction needed, avoids widening the audit category contract)
         String userId = principal != null ? principal.getName() : null;
         auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
                 "pending-content targetType=" + filter.targetType() + " count=" + totalElements);

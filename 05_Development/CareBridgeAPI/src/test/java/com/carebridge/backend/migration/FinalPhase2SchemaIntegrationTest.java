@@ -36,10 +36,7 @@ class FinalPhase2SchemaIntegrationTest {
             "archived_consultation_records", "archived_realtime_records", "archived_partner_records",
             "flyway_schema_history");
 
-    private static final List<String> EXPECTED_TRANSITIONAL = List.of(
-            "audit_logs", "consent_grants", "consultation_bookings",
-            "consultation_price_bands", "consultation_sessions", "conversation_calls", "direct_conversations",
-            "direct_messages", "expenses", "expert_consultation_prices", "partner_organizations");
+    private static final List<String> EXPECTED_TRANSITIONAL = List.of();
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");

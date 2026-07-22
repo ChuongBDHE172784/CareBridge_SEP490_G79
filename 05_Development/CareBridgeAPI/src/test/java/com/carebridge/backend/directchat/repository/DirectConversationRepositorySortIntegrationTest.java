@@ -31,10 +31,11 @@ class DirectConversationRepositorySortIntegrationTest extends AbstractPostgresIn
 
     @BeforeEach
     void seed() {
+        jdbcTemplate.update("INSERT INTO persons(person_id,display_name) VALUES (?, 'Mother Sort')", MOTHER_ID);
         jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Mother Sort', ?, 'MOTHER', true, false, now(), now())",
-                MOTHER_ID, "09" + String.valueOf(System.nanoTime()).substring(0, 8));
+                "INSERT INTO users (user_id,person_id,full_name,phone,role,enabled,locked,created_at,updated_at) "
+                        + "VALUES (?,?,'Mother Sort',?,'MOTHER',true,false,now(),now())",
+                MOTHER_ID, MOTHER_ID, "09" + String.valueOf(System.nanoTime()).substring(0, 8));
 
         convOld = seedConversation(Instant.parse("2026-07-10T00:00:00Z"));
         convNew = seedConversation(Instant.parse("2026-07-16T00:00:00Z"));
@@ -44,15 +45,16 @@ class DirectConversationRepositorySortIntegrationTest extends AbstractPostgresIn
     private UUID seedConversation(Instant lastActivityAt) {
         UUID expertUserId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO persons(person_id,display_name) VALUES (?, 'Expert Sort')", expertUserId);
         jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Expert Sort', ?, 'EXPERT', true, false, now(), now())",
-                expertUserId, "08" + String.valueOf(System.nanoTime()).substring(0, 8));
-        // chk_direct_conversations_activity_after_created requires last_activity_at >= created_at.
+                "INSERT INTO users (user_id,person_id,full_name,phone,role,enabled,locked,created_at,updated_at) "
+                        + "VALUES (?,?,'Expert Sort',?,'EXPERT',true,false,now(),now())",
+                expertUserId, expertUserId, "08" + String.valueOf(System.nanoTime()).substring(0, 8));
+        // Canonical archive preserves last_activity_at >= original_created_at.
         jdbcTemplate.update(
-                "INSERT INTO direct_conversations (conversation_id, mother_user_id, expert_user_id, status, created_at, last_activity_at) "
-                        + "VALUES (?, ?, ?, 'ACTIVE', ?, ?)",
-                conversationId, MOTHER_ID, expertUserId,
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,mother_user_id,expert_user_id,status,original_created_at,last_activity_at) "
+                        + "VALUES (?,'direct_conversations',?,?,?,?,'ACTIVE',?,?)",
+                conversationId, conversationId.toString(), MOTHER_ID, MOTHER_ID, expertUserId,
                 java.sql.Timestamp.from(lastActivityAt), java.sql.Timestamp.from(lastActivityAt));
         return conversationId;
     }

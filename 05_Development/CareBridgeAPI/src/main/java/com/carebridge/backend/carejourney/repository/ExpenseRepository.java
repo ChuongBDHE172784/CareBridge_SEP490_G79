@@ -51,7 +51,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
                    e.currency,
                    SUM(e.amount) AS total_amount,
                    COUNT(*) AS cnt
-            FROM expenses e
+            FROM expense_entries e
             WHERE e.owner_user_id = :ownerUserId
               AND (:from IS NULL OR e.expense_date >= CAST(:from AS date))
               AND (:to IS NULL OR e.expense_date <= CAST(:to AS date))
@@ -69,8 +69,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
                    e.currency,
                    SUM(e.amount) AS total_amount,
                    COUNT(*) AS cnt
-            FROM expenses e
-            LEFT JOIN mother_journeys mj ON e.journey_id = mj.journey_id
+            FROM expense_entries e
+            LEFT JOIN mother_journeys mj ON e.mother_journey_id = mj.journey_id
             WHERE e.owner_user_id = :ownerUserId
               AND (:from IS NULL OR e.expense_date >= CAST(:from AS date))
               AND (:to IS NULL OR e.expense_date <= CAST(:to AS date))
