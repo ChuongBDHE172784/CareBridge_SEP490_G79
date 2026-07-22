@@ -57,8 +57,10 @@ class DatabaseGate0IntegrationTest {
                                  SELECT to_regclass('public.users') IS NOT NULL
                                         AND to_regclass('public.roles') IS NULL
                                         AND to_regclass('public.user_roles') IS NULL,
-                                        to_regclass('public.intake_sessions') IS NOT NULL
-                                        AND to_regclass('public.structured_intake_data') IS NOT NULL
+                                        to_regclass('public.triage_sessions') IS NOT NULL
+                                        AND to_regclass('public.triage_session_evidence') IS NOT NULL
+                                        AND to_regclass('public.intake_sessions') IS NULL
+                                        AND to_regclass('public.structured_intake_data') IS NULL
                                         AND to_regclass('public.triage_answers') IS NULL
                                         AND to_regclass('public.triage_assessments') IS NULL
                                  """)) {

@@ -14,8 +14,10 @@ class CanonicalTriageSchemaIntegrationTest extends AbstractPostgresIntegrationTe
     @Test
     void cleanBootstrapAndHibernateValidationKeepOnlyCanonicalTriagePersistence() {
         Boolean canonicalTriageOnly = jdbcTemplate.queryForObject("""
-                SELECT to_regclass('public.intake_sessions') IS NOT NULL
-                   AND to_regclass('public.structured_intake_data') IS NOT NULL
+                SELECT to_regclass('public.triage_sessions') IS NOT NULL
+                   AND to_regclass('public.triage_session_evidence') IS NOT NULL
+                   AND to_regclass('public.intake_sessions') IS NULL
+                   AND to_regclass('public.structured_intake_data') IS NULL
                    AND to_regclass('public.triage_answers') IS NULL
                    AND to_regclass('public.triage_assessments') IS NULL
                 """, Boolean.class);

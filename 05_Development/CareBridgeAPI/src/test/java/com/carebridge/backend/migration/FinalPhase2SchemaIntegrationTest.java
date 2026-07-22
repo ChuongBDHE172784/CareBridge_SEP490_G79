@@ -42,13 +42,12 @@ class FinalPhase2SchemaIntegrationTest {
             "consultation_price_bands", "consultation_sessions", "content_reports",
             "content_sources", "conversation_calls", "device_measurements", "direct_conversations",
             "direct_messages", "emergency_alert_attempts", "emergency_alert_deliveries",
-            "emergency_map_handoffs", "emergency_sessions", "evidence_source_review_log",
-            "evidence_sources", "expenses", "expert_consultation_prices", "family_alert_log",
-            "health_device_connections", "health_memory_entries", "health_record_files",
-            "health_summaries", "imu_monitoring_sessions", "imu_safety_events", "intake_sessions",
+            "emergency_map_handoffs", "emergency_sessions", "expenses", "expert_consultation_prices",
+            "family_alert_log", "health_device_connections", "health_record_files",
+            "health_summaries", "imu_monitoring_sessions", "imu_safety_events",
             "location_snapshots", "moderation_actions", "partner_organizations", "reminders",
             "safety_event_responses", "safety_monitoring_config", "security_event_notes",
-            "structured_intake_data", "uploaded_files", "user_checklist_items");
+            "uploaded_files", "user_checklist_items");
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");

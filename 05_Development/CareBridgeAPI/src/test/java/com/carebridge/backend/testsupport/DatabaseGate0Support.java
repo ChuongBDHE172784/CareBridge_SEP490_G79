@@ -97,13 +97,12 @@ final class DatabaseGate0Support {
             "health_records",
             "health_summaries",
             "imu_safety_events",
-            "intake_sessions",
             "nearby_support_requests",
             "nearby_support_responses",
             "notification_records",
             "safety_monitoring_config",
             "security_events",
-            "structured_intake_data");
+            "triage_sessions");
 
     static final Set<String> KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES = Set.of(
             "contribution_attachments",
