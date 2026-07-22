@@ -32,6 +32,16 @@ public class SafetyMonitoringConfig {
     @Column(name = "emergency_auto_alert", nullable = false)
     private boolean emergencyAutoAlert;
 
+    @Column(name = "countdown_seconds", nullable = false)
+    @Builder.Default
+    private int countdownSeconds = 30;
+
+    @Column(name = "sensor_permission_granted", nullable = false)
+    private boolean sensorPermissionGranted;
+
+    @Column(name = "sensor_permission_recorded_at")
+    private Instant sensorPermissionRecordedAt;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 

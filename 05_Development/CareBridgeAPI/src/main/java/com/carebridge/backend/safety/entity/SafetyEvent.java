@@ -43,6 +43,9 @@ public class SafetyEvent {
     @Column(name = "detected_at", nullable = false)
     private Instant detectedAt;
 
+    @Column(name = "client_detected_at")
+    private Instant clientDetectedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
@@ -53,6 +56,27 @@ public class SafetyEvent {
 
     @Column(name = "notes")
     private String notes;
+
+    @Column(name = "signal_key", length = 200)
+    private String signalKey;
+
+    @Column(name = "countdown_deadline_at")
+    private Instant countdownDeadlineAt;
+
+    @Column(name = "response_type", length = 30)
+    private String responseType;
+
+    @Column(name = "response_reason", length = 500)
+    private String responseReason;
+
+    @Column(name = "responded_at")
+    private Instant respondedAt;
+
+    @Column(name = "escalation_started_at")
+    private Instant escalationStartedAt;
+
+    @Column(name = "emergency_session_id")
+    private UUID emergencySessionId;
 
     @Column(name = "created_by", nullable = false)
     private String createdBy;

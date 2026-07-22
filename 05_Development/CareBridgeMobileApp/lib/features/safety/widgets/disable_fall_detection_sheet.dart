@@ -46,7 +46,16 @@ class _DisableFallDetectionSheetState
   Future<void> _confirmDisable() async {
     setState(() => _submitting = true);
     try {
-      await SafetyService().disableFallDetection();
+      final service = SafetyService();
+      final config = await service.getConfig();
+      await service.updateConfig(
+        fallDetectionEnabled: false,
+        sensitivityLevel: config.sensitivityLevel,
+        emergencyAutoAlert: config.emergencyAutoAlert,
+        countdownSeconds: config.countdownSeconds,
+        sensorPermissionGranted: config.sensorPermissionGranted,
+      );
+      await service.disableFallDetection();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {

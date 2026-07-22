@@ -30,6 +30,10 @@
 	<string>CareBridge uses the camera for one-to-one video consultations.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>CareBridge uses the microphone for one-to-one voice and video consultations.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>CareBridge uses motion sensors to detect possible falls after you explicitly enable safety monitoring.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CareBridge includes your location in an emergency alert only when you explicitly consent and grant location access.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

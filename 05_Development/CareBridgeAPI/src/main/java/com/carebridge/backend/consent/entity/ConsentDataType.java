@@ -8,5 +8,6 @@ public enum ConsentDataType {
     SENSITIVE_DATA,
     RAG_CONTEXT,
     EXPERT_SHARED_DATA,
-    MOTHER_BASELINE
+    MOTHER_BASELINE,
+    SENSOR_DATA
 }
