@@ -7,6 +7,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.dto.request.*;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import com.carebridge.backend.content.controller.ContentCategoryController;
 import java.security.Principal;
@@ -26,14 +27,14 @@ class ContentCategoryControllerTest {
     @BeforeEach void setUp() { response = CommunityTopicResponse.builder().id(TOPIC).name("Nutrition").build(); }
 
     @Test void mccTc1101_listDelegates() {
-        when(topics.getTopics(true, ADMIN)).thenReturn(List.of(response));
+        when(topics.getTopics(true, TopicType.CATEGORY, ADMIN)).thenReturn(List.of(response));
         assertEquals(1, Objects.requireNonNull(controller.listCategories(null, true, principal).getBody()).getData().size());
-        verify(topics).getTopics(true, ADMIN);
+        verify(topics).getTopics(true, TopicType.CATEGORY, ADMIN);
     }
 
     @Test void mccTc1101_searchDelegates() {
         controller.listCategories("nutri", false, principal);
-        verify(topics).searchTopics("nutri", false, ADMIN);
+        verify(topics).searchTopics("nutri", false, TopicType.CATEGORY, ADMIN);
     }
 
     @Test void mccTc1102_createDelegatesAndAudits() {

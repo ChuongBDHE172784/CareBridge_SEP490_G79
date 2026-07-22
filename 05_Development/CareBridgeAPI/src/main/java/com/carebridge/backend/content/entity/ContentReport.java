@@ -66,4 +66,12 @@ public class ContentReport {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    // CB-MOD-IMP-015: most recent revert-to-PENDING event. resolvedAt/assignedModeratorId are
+    // deliberately left untouched by revert (ADR-005) — these two fields are the only trace of it.
+    @Column(name = "reverted_at")
+    private Instant revertedAt;
+
+    @Column(name = "reverted_by", columnDefinition = "uuid")
+    private UUID revertedBy;
 }

@@ -8,6 +8,9 @@ export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISI
 // RESTRICT/UNDO are excluded server-side too (CB-MOD-IMP-009 ADR-001/ADR-004, MOD-028/MOD-026).
 export const UNDOABLE_ACTION_TYPES: ReadonlySet<ModerationActionType> = new Set(['APPROVE', 'HIDE', 'LOCK']);
 
+// resolvedAt/assignedModeratorId/revertedAt/revertedBy are null for a PENDING report — their
+// presence is what the detail pages (ContentReportDetailPage/AccountReportDetailPage) use to
+// switch between the actionable view and the read-only "already processed" view (CB-MOD-IMP-015).
 export interface ModerationQueueItem {
   id: string;
   targetId: string | null;
@@ -18,6 +21,10 @@ export interface ModerationQueueItem {
   reportedAt: string;
   reportReason: string;
   status: ReportStatus;
+  resolvedAt: string | null;
+  assignedModeratorId: string | null;
+  revertedAt: string | null;
+  revertedBy: string | null;
 }
 
 export interface ModerationQueuePage {
@@ -147,6 +154,20 @@ export interface UndoModerationActionResult {
   moderatorUserId: string;
   actionAt: string;
   resultingStatus: string;
+}
+
+// CB-MOD-IMP-015: POST /reports/{reportId}/revert response — reportStatus is always "PENDING" on
+// success. undoActionId/resultingStatus are null when the reverted report was DISMISS (no
+// ModerationAction ever existed for that outcome).
+export interface RevertReportResult {
+  reportId: string;
+  reportStatus: ReportStatus;
+  revertedByModeratorId: string;
+  revertedAt: string;
+  undoActionId: string | null;
+  targetType: ReportTargetType | null;
+  targetId: string | null;
+  resultingStatus: string | null;
 }
 
 // UC-100's POST /actions response — used directly by the Pending Content queue (no ContentReport)

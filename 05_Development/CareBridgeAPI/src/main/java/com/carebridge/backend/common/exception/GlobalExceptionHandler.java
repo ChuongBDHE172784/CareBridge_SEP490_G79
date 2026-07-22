@@ -15,6 +15,7 @@ import com.carebridge.backend.exercise.exception.SessionNotCompletedException;
 import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
+import com.carebridge.backend.community.exception.InvalidTopicHierarchyException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
@@ -167,6 +168,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
             DuplicateTopicNameException ex, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "COM-009", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidTopicHierarchyException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTopicHierarchy(
+            InvalidTopicHierarchyException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-015", ex.getMessage(), request);
     }
 
     @ExceptionHandler(QuestionNotAnswerableException.class)

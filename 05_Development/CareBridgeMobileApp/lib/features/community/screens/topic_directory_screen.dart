@@ -42,7 +42,9 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   Future<void> _loadTopics() async {
     setState(() => _loading = true);
     try {
-      final topics = await _service.getTopics();
+      // ADR-COM-017: only TOPIC-type rows are meant for mothers to browse — Category/Tag are
+      // internal admin taxonomy (see ManageTopicsPage.tsx on the web console).
+      final topics = await _service.getTopics(type: 'TOPIC');
       if (mounted) {
         setState(() {
           _topics = topics;
@@ -288,6 +290,12 @@ class _TopicDirectoryScreenState extends State<TopicDirectoryScreen> {
   }
 }
 
+// MOB-TC-001 (CommunityTopicManagement_Test-Spec.md): pulled out as a standalone, testable
+// function so a widget test can assert the badge is driven by the real questionCount field and
+// not the previous `sortOrder * 100` placeholder — CommunityService.instance being a private
+// singleton constructor makes full widget-pump testing of TopicDirectoryScreen impractical here.
+String questionCountLabel(CommunityTopic topic) => '${topic.questionCount} câu hỏi';
+
 class _TopicGridCard extends StatelessWidget {
   final CommunityTopic topic;
   final IconData icon;
@@ -369,7 +377,7 @@ class _TopicGridCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${topic.sortOrder * 100} câu hỏi',
+                    questionCountLabel(topic),
                     style: const TextStyle(fontSize: 11, color: _outline),
                   ),
                 ),

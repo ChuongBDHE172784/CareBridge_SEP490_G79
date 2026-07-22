@@ -518,11 +518,11 @@ class _ControlButton extends StatelessWidget {
       button: true,
       label: label,
       child: IconButton.filled(
-        tooltip: label,
         style: IconButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
           minimumSize: const Size(56, 56),
+          maximumSize: const Size(56, 56),
         ),
         onPressed: () => unawaited(onPressed()),
         icon: Icon(icon),

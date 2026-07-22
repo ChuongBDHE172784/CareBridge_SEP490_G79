@@ -26,6 +26,7 @@ class CommunityTopicSearchServiceImplTest {
     @Mock CommunityTopicRepository topicRepository;
     @Mock CommunityTopicMapper topicMapper;
     @Mock UserTopicFollowRepository topicFollowRepository;
+    @Mock com.carebridge.backend.community.repository.CommunityQuestionRepository questionRepository;
     @InjectMocks CommunityTopicServiceImpl topicService;
 
     private static final UUID CURRENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000009");
@@ -38,7 +39,7 @@ class CommunityTopicSearchServiceImplTest {
         when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
         when(topicMapper.toResponse(topic, false)).thenReturn(response);
 
-        List<CommunityTopicResponse> result = topicService.searchTopics("dinh", false, CURRENT_USER_ID);
+        List<CommunityTopicResponse> result = topicService.searchTopics("dinh", false, null, CURRENT_USER_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Dinh dưỡng thai kỳ");
@@ -52,7 +53,7 @@ class CommunityTopicSearchServiceImplTest {
         when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
         when(topicMapper.toResponse(topic, false)).thenReturn(response);
 
-        List<CommunityTopicResponse> result = topicService.searchTopics(null, false, CURRENT_USER_ID);
+        List<CommunityTopicResponse> result = topicService.searchTopics(null, false, null, CURRENT_USER_ID);
 
         assertThat(result).hasSize(1);
     }
@@ -60,9 +61,10 @@ class CommunityTopicSearchServiceImplTest {
     @Test
     void searchTopics_withBlankKeyword_delegatesToGetTopics() {
         when(topicRepository.findAllByIsHiddenFalseOrderBySortOrderAsc()).thenReturn(List.of());
-        when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
+        // topicFollowRepository/questionRepository are NOT stubbed here — hydrate() short-circuits
+        // on an empty topic list and never calls them (see CommunityTopicServiceImpl.hydrate()).
 
-        List<CommunityTopicResponse> result = topicService.searchTopics("   ", false, CURRENT_USER_ID);
+        List<CommunityTopicResponse> result = topicService.searchTopics("   ", false, null, CURRENT_USER_ID);
 
         assertThat(result).isEmpty();
     }
@@ -70,9 +72,8 @@ class CommunityTopicSearchServiceImplTest {
     @Test
     void searchTopics_noMatch_returnsEmpty() {
         when(topicRepository.searchByKeyword("xyz_no_match")).thenReturn(List.of());
-        when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
 
-        List<CommunityTopicResponse> result = topicService.searchTopics("xyz_no_match", false, CURRENT_USER_ID);
+        List<CommunityTopicResponse> result = topicService.searchTopics("xyz_no_match", false, null, CURRENT_USER_ID);
 
         assertThat(result).isEmpty();
     }
@@ -86,7 +87,7 @@ class CommunityTopicSearchServiceImplTest {
         when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
         when(topicMapper.toResponse(hiddenTopic, false)).thenReturn(response);
 
-        List<CommunityTopicResponse> result = topicService.searchTopics("hidden", true, CURRENT_USER_ID);
+        List<CommunityTopicResponse> result = topicService.searchTopics("hidden", true, null, CURRENT_USER_ID);
 
         assertThat(result).hasSize(1);
         verify(topicRepository).searchByKeywordIncludingHidden("hidden");
@@ -96,9 +97,8 @@ class CommunityTopicSearchServiceImplTest {
     @Test
     void searchTopics_nonModeratorIncludeHiddenFalse_usesNonHiddenQuery() {
         when(topicRepository.searchByKeyword("test")).thenReturn(List.of());
-        when(topicFollowRepository.findFollowedTopicIds(any(), any())).thenReturn(Set.of());
 
-        topicService.searchTopics("test", false, CURRENT_USER_ID);
+        topicService.searchTopics("test", false, null, CURRENT_USER_ID);
 
         verify(topicRepository).searchByKeyword("test");
         verify(topicRepository, never()).searchByKeywordIncludingHidden(any());

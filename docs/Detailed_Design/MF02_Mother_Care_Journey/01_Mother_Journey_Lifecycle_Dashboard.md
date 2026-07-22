@@ -130,43 +130,83 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "JourneyController" as Controller
 participant "JourneyServiceImpl" as Service
-participant "JourneyRepository" as Repo
+participant "MotherJourneyRepository" as Repo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-19 Initialize Mother Care Journey ==
-M -> Controller : POST /api/v1/journeys\n{journeyType=PREGNANCY, lastMenstrualDate, estimatedDueDate}
-Controller -> Service : create(ownerUserId, request)
-Service -> Service : validate ngày tối thiểu theo journeyType
-Service -> Repo : save(MotherJourney{status=ACTIVE})
-Repo -> DB : INSERT INTO mother_journeys ...
-Service -> Audit : emit(JOURNEY_CREATED)
-Service --> Controller : MotherJourney
-Controller --> M : HTTP 201 Created
+M -> Controller : 1. POST /api/v1/journeys\n{journeyType=PREGNANCY, lastMenstrualDate, estimatedDueDate}
+activate Controller
+Controller -> Service : 2. create(ownerUserId, request)
+activate Service
+Service -> Service : 3. validate minimum days according to journeyType
+Service -> Repo : 4. save(MotherJourney{status=ACTIVE})
+activate Repo
+Repo -> DB : 5. INSERT INTO mother_journeys ...
+activate DB
+DB --> Repo : 6. saved
+deactivate DB
+Repo --> Service : 7. MotherJourney
+deactivate Repo
+Service -> Audit : 8. log(JOURNEY_CREATED)
+activate Audit
+Audit --> Service : 9. void
+deactivate Audit
+Service --> Controller : 10. MotherJourney
+deactivate Service
+Controller --> M : 11. HTTP 201 Created
+deactivate Controller
 
 == UC-20 Update Mother Journey Stage and Dates ==
-M -> Controller : PUT /api/v1/journeys/{journeyId}\n{journeyType=POSTPARTUM, deliveryDate}
-Controller -> Service : update(ownerUserId, journeyId, request)
-Service -> Repo : findById(journeyId)
-Repo -> DB : SELECT * FROM mother_journeys WHERE id=?
-DB --> Repo : journey
-Service -> Service : check ownerUserId == journey.ownerUserId
-Service -> Repo : save(journey{journeyType, deliveryDate, updatedAt})
-Repo -> DB : UPDATE mother_journeys SET ...
-Service -> Audit : emit(JOURNEY_UPDATED)
-Service --> Controller : MotherJourney
-Controller --> M : HTTP 200 OK
+M -> Controller : 12. PUT /api/v1/journeys/{journeyId}\n{journeyType=POSTPARTUM, deliveryDate}
+activate Controller
+Controller -> Service : 13. update(ownerUserId, journeyId, request)
+activate Service
+Service -> Repo : 14. findById(journeyId)
+activate Repo
+Repo -> DB : 15. SELECT * FROM mother_journeys WHERE id=?
+activate DB
+DB --> Repo : 16. journey
+deactivate DB
+Repo --> Service : 17. journey
+deactivate Repo
+Service -> Service : 18. check ownerUserId == journey.ownerUserId
+Service -> Repo : 19. save(journey{journeyType, deliveryDate, updatedAt})
+activate Repo
+Repo -> DB : 20. UPDATE mother_journeys SET ...
+activate DB
+DB --> Repo : 21. updated
+deactivate DB
+Repo --> Service : 22. MotherJourney
+deactivate Repo
+Service -> Audit : 23. log(JOURNEY_UPDATED)
+activate Audit
+Audit --> Service : 24. void
+deactivate Audit
+Service --> Controller : 25. MotherJourney
+deactivate Service
+Controller --> M : 26. HTTP 200 OK
+deactivate Controller
 
 == UC-21 View Mother Journey Dashboard ==
-M -> Controller : GET /api/v1/journeys/me/dashboard
-Controller -> Service : buildDashboard(ownerUserId)
-Service -> Repo : findByOwnerUserIdAndStatus(ownerUserId, ACTIVE)
-Repo -> DB : SELECT * FROM mother_journeys WHERE ...
-DB --> Repo : journey
-Service -> Service : compute current stage/week from journeyType + dates
-Service -> Service : aggregate recent metrics, due reminders,\nchecklist progress, suggested content
-Service --> Controller : MotherJourneyDashboardResponse
-Controller --> M : HTTP 200 OK {dashboard}
+M -> Controller : 27. GET /api/v1/journeys/me/dashboard
+activate Controller
+Controller -> Service : 28. buildDashboard(ownerUserId)
+activate Service
+Service -> Repo : 29. findByOwnerUserIdAndStatus(ownerUserId, ACTIVE)
+activate Repo
+Repo -> DB : 30. SELECT * FROM mother_journeys WHERE ...
+activate DB
+DB --> Repo : 31. journey
+deactivate DB
+Repo --> Service : 32. journey
+deactivate Repo
+Service -> Service : 33. compute current stage/week from journeyType + dates
+Service -> Service : 34. aggregate recent metrics, due reminders,\nchecklist progress, suggested content
+Service --> Controller : 35. MotherJourneyDashboardResponse
+deactivate Service
+Controller --> M : 36. HTTP 200 OK {dashboard}
+deactivate Controller
 
 @enduml
 ```

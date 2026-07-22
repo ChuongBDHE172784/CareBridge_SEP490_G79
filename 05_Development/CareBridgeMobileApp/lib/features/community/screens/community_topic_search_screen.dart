@@ -59,8 +59,11 @@ class _CommunityTopicSearchScreenState
   Future<void> _loadTopics({String? keyword}) async {
     setState(() => _loading = true);
     try {
+      // ADR-COM-017 (CommunityTopicManagement_TDS.md): mothers only browse TOPIC-type rows,
+      // not the CATEGORY/TAG taxonomy used internally by the admin console.
       final topics = await CommunityService.instance.getTopics(
         keyword: keyword,
+        type: 'TOPIC',
       );
       if (mounted) {
         setState(() {
@@ -410,8 +413,12 @@ class _TopicListCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
+                  // Real questionCount from the backend (ADR-COM-015) — the previous
+                  // sortOrder-derived question AND "expert" counts were both fabricated;
+                  // there is no real expert-count metric for a topic, so it is dropped
+                  // rather than shown with invented numbers.
                   Text(
-                    '${topic.sortOrder * 100} câu hỏi • ${(topic.sortOrder * 3).clamp(1, 20)} chuyên gia',
+                    '${topic.questionCount} câu hỏi',
                     style: const TextStyle(
                       fontSize: 12,
                       color: _onSurfaceVariant,

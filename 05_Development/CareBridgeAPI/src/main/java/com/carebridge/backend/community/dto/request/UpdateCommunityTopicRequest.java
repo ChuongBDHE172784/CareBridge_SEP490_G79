@@ -1,6 +1,8 @@
 package com.carebridge.backend.community.dto.request;
 
+import com.carebridge.backend.community.entity.TopicType;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +22,13 @@ public class UpdateCommunityTopicRequest {
 
     @Size(max = 255, message = "icon must not exceed 255 characters")
     private String icon;
+
+    // null = leave unchanged (PATCH semantics — matches isHidden/sortOrder below)
+    private TopicType type;
+
+    // null = leave unchanged. If `type` is being set to TOPIC in the same request, this MUST be
+    // null too (a TOPIC can never have a parent) — validated in CommunityTopicServiceImpl.
+    private UUID parentId;
 
     private Boolean isHidden;
 

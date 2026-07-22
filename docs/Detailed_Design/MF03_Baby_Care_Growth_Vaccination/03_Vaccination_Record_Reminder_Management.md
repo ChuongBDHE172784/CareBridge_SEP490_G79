@@ -116,41 +116,103 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "VaccinationController" as Controller
 participant "VaccinationServiceImpl" as Service
+participant "VaccinationRecordRepository" as RecordRepo
+participant "VaccinationReferenceRepository" as RefRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-44 Manage Vaccination Record (Add) ==
-M -> Controller : POST /api/v1/vaccination/babies/{babyId}/records\n{vaccineName, doseNumber, scheduledDate}
-Controller -> Service : addRecord(ownerId, babyId, request)
-Service -> DB : INSERT INTO vaccination_records (status=SCHEDULED)
-Service -> Audit : emit(VACCINATION_RECORD_ADDED)
-Service --> Controller : VaccinationRecord
-Controller --> M : HTTP 201 Created
+M -> Controller : 1. POST /api/v1/vaccination/babies/{babyId}/records\n{vaccineName, doseNumber, scheduledDate}
+activate Controller
+Controller -> Service : 2. addRecord(ownerId, babyId, request)
+activate Service
+Service -> RecordRepo : 3. save(VaccinationRecord{status=SCHEDULED})
+activate RecordRepo
+RecordRepo -> DB : 4. INSERT INTO vaccination_records ...
+activate DB
+DB --> RecordRepo : 5. saved
+deactivate DB
+RecordRepo --> Service : 6. VaccinationRecord
+deactivate RecordRepo
+Service -> Audit : 7. log(VACCINATION_RECORD_ADDED)
+activate Audit
+Audit --> Service : 8. void
+deactivate Audit
+Service --> Controller : 9. VaccinationRecord
+deactivate Service
+Controller --> M : 10. HTTP 201 Created
+deactivate Controller
 
 == UC-44 Manage Vaccination Record (Complete) ==
-M -> Controller : POST /api/v1/vaccination/babies/{babyId}/completions\n{recordId, administeredDate, facilityName}
-Controller -> Service : markCompleted(ownerId, babyId, recordId)
-Service -> DB : UPDATE vaccination_records\nSET status='COMPLETED', administered_date=?
-Service -> Audit : emit(VACCINATION_COMPLETED)
-Service --> Controller : VaccinationRecord
-Controller --> M : HTTP 200 OK
+M -> Controller : 11. POST /api/v1/vaccination/babies/{babyId}/completions\n{recordId, administeredDate, facilityName}
+activate Controller
+Controller -> Service : 12. markCompleted(ownerId, babyId, recordId)
+activate Service
+Service -> RecordRepo : 13. save(record{status=COMPLETED, administeredDate})
+activate RecordRepo
+RecordRepo -> DB : 14. UPDATE vaccination_records\nSET status='COMPLETED', administered_date=?
+activate DB
+DB --> RecordRepo : 15. updated
+deactivate DB
+RecordRepo --> Service : 16. VaccinationRecord
+deactivate RecordRepo
+Service -> Audit : 17. log(VACCINATION_COMPLETED)
+activate Audit
+Audit --> Service : 18. void
+deactivate Audit
+Service --> Controller : 19. VaccinationRecord
+deactivate Service
+Controller --> M : 20. HTTP 200 OK
+deactivate Controller
 
 == UC-44 Manage Vaccination Record (Postpone) ==
-M -> Controller : POST /api/v1/vaccination/babies/{babyId}/postponements\n{recordId, postponeReason}
-Controller -> Service : postpone(ownerId, babyId, recordId, reason)
-Service -> DB : UPDATE vaccination_records\nSET status='POSTPONED', postpone_reason=?
-Service -> Audit : emit(VACCINATION_POSTPONED)
-Service --> Controller : VaccinationRecord
-Controller --> M : HTTP 200 OK
+M -> Controller : 21. POST /api/v1/vaccination/babies/{babyId}/postponements\n{recordId, postponeReason}
+activate Controller
+Controller -> Service : 22. postpone(ownerId, babyId, recordId, reason)
+activate Service
+Service -> RecordRepo : 23. save(record{status=POSTPONED, postponeReason})
+activate RecordRepo
+RecordRepo -> DB : 24. UPDATE vaccination_records\nSET status='POSTPONED', postpone_reason=?
+activate DB
+DB --> RecordRepo : 25. updated
+deactivate DB
+RecordRepo --> Service : 26. VaccinationRecord
+deactivate RecordRepo
+Service -> Audit : 27. log(VACCINATION_POSTPONED)
+activate Audit
+Audit --> Service : 28. void
+deactivate Audit
+Service --> Controller : 29. VaccinationRecord
+deactivate Service
+Controller --> M : 30. HTTP 200 OK
+deactivate Controller
 
 == UC-45 View Vaccination Reference Schedule and Reminder Status ==
-M -> Controller : GET /api/v1/vaccination/babies/{babyId}/schedule
-Controller -> Service : scheduleStatus(ownerId, babyId)
-Service -> DB : SELECT * FROM vaccination_reference_schedule
-Service -> DB : SELECT * FROM vaccination_records WHERE baby_id=?
-Service -> Service : ghép reference + record theo (vaccineName, doseNumber)\n+ lấy trạng thái reminder liên kết
-Service --> Controller : VaccinationScheduleStatusResponse
-Controller --> M : HTTP 200 OK {entries[]}
+M -> Controller : 31. GET /api/v1/vaccination/babies/{babyId}/schedule
+activate Controller
+Controller -> Service : 32. scheduleStatus(ownerId, babyId)
+activate Service
+Service -> RefRepo : 33. findAll()
+activate RefRepo
+RefRepo -> DB : 34. SELECT * FROM vaccination_reference_schedule
+activate DB
+DB --> RefRepo : 35. referenceEntries[]
+deactivate DB
+RefRepo --> Service : 36. referenceEntries[]
+deactivate RefRepo
+Service -> RecordRepo : 37. findByBabyId(babyId)
+activate RecordRepo
+RecordRepo -> DB : 38. SELECT * FROM vaccination_records WHERE baby_id=?
+activate DB
+DB --> RecordRepo : 39. records[]
+deactivate DB
+RecordRepo --> Service : 40. records[]
+deactivate RecordRepo
+Service -> Service : 41. map reference + record by (vaccineName, doseNumber)\n+ get linked reminder status
+Service --> Controller : 42. VaccinationScheduleStatusResponse
+deactivate Service
+Controller --> M : 43. HTTP 200 OK {entries[]}
+deactivate Controller
 
 @enduml
 ```

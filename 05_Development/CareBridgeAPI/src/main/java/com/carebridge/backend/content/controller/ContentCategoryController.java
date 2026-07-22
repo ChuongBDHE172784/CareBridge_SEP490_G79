@@ -7,6 +7,7 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.dto.request.CreateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.request.UpdateCommunityTopicRequest;
 import com.carebridge.backend.community.dto.response.CommunityTopicResponse;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.service.CommunityTopicService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -31,9 +32,11 @@ public class ContentCategoryController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean includeHidden, Principal principal) {
         UUID actorId = SecurityUtils.requireCurrentUserId(principal);
+        // This controller manages the CATEGORY taxonomy only — filter explicitly so it never
+        // shows TOPIC/TAG rows created via CommunityTopicController's fuller management page.
         List<CommunityTopicResponse> result = keyword == null || keyword.isBlank()
-                ? topicService.getTopics(includeHidden, actorId)
-                : topicService.searchTopics(keyword, includeHidden, actorId);
+                ? topicService.getTopics(includeHidden, TopicType.CATEGORY, actorId)
+                : topicService.searchTopics(keyword, includeHidden, TopicType.CATEGORY, actorId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -41,6 +44,8 @@ public class ContentCategoryController {
     public ResponseEntity<ApiResponse<CommunityTopicResponse>> createCategory(
             @Valid @RequestBody CreateCommunityTopicRequest request, Principal principal) {
         UUID actorId = SecurityUtils.requireCurrentUserId(principal);
+        // This route creates CATEGORY entries only — never trust/derive type from the client body.
+        request.setType(TopicType.CATEGORY);
         CommunityTopicResponse result = topicService.createTopic(actorId, request);
         auditService.log(AuditAction.CONTENT_CATEGORY_MANAGED, actorId, "COMMUNITY_TOPIC",
                 result.getId().toString(), "action=CREATE");

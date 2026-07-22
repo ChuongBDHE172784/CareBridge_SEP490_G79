@@ -168,54 +168,246 @@ skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
 participant "EmergencyController" as EmController
-participant "EmergencyServiceImpl" as EmService
-participant "NotificationService" as Notif
+participant "EmergencyService" as EmService
+participant "IEmergencySessionRepository" as SessionRepo
+participant "EmergencySessionOpenedHandler" as Handler
+participant "FamilyAlertService" as FamilyAlertSvc
+participant "FamilyMemberPort" as FamMember
+participant "LocationConsentPort" as Consent
+participant "FcmNotificationPort" as Fcm
+participant "SmsFallbackPort" as Sms
+participant "IFamilyAlertLogRepository" as AlertLogRepo
 participant "NearbySupportController" as NearController
 participant "NearbySupportServiceImpl" as NearService
+participant "NearbySupportRequestRepository" as ReqRepo
+participant "NearbySupportResponseRepository" as RespRepo
+participant "ExpertProfileRepository" as ExpertRepo
 actor "Verified Expert" as Exp
 database "PostgreSQL" as DB
 
 == UC-80 Share Time-Limited Location and Send Family Emergency Alert ==
-M -> EmController : POST /api/v1/emergency/sessions\n{userLatitude, userLongitude, triggerSource="MANUAL"}
-EmController -> EmService : open(userId, request)
-EmService -> DB : INSERT INTO emergency_sessions (status=ACTIVE)
-EmService -> DB : SELECT * FROM emergency_contacts WHERE user_id=?
-EmService -> Notif : notify(contacts, minimumLocationContext, expiresInMinutes)
-Notif --> EmService : recipientCount
-EmService -> DB : INSERT INTO family_alert_logs\n(recipientCount, locationIncluded=true)
-EmService --> EmController : EmergencySession
-EmController --> M : HTTP 201 Created
+M -> EmController : 1. POST /api/v1/emergency/sessions\n{userLatitude, userLongitude, triggerSource="MANUAL"}
+activate EmController
+EmController -> EmService : 2. openFlow(request, userId)
+activate EmService
+EmService -> SessionRepo : 3. findActiveByUserId(userId)\n[idempotent — return old ACTIVE session if any]
+activate SessionRepo
+SessionRepo -> DB : 4. SELECT * FROM emergency_sessions\nWHERE user_id=? AND status='ACTIVE'
+activate DB
+DB --> SessionRepo : 5. none
+deactivate DB
+SessionRepo --> EmService : 6. Optional.empty()
+deactivate SessionRepo
+EmService -> SessionRepo : 7. save(EmergencySession{status=ACTIVE,\nuserLatitude, userLongitude})
+activate SessionRepo
+SessionRepo -> DB : 8. INSERT INTO emergency_sessions ...
+activate DB
+DB --> SessionRepo : 9. saved
+deactivate DB
+SessionRepo --> EmService : 10. EmergencySession
+deactivate SessionRepo
+EmService -> Handler : 11. publishEvent(EmergencySessionOpened)\n→ onEmergencySessionOpened(event)\n[Spring @EventListener synchronous, same transaction]
+activate Handler
+Handler -> FamilyAlertSvc : 12. sendAlert(event)
+activate FamilyAlertSvc
+FamilyAlertSvc -> AlertLogRepo : 13. existsBySessionId(sessionId)\n[guard idempotent]
+activate AlertLogRepo
+AlertLogRepo -> DB : 14. SELECT EXISTS(...) FROM family_alert_logs\nWHERE session_id=?
+activate DB
+DB --> AlertLogRepo : 15. false
+deactivate DB
+AlertLogRepo --> FamilyAlertSvc : 16. boolean
+deactivate AlertLogRepo
+FamilyAlertSvc -> FamMember : 17. getFamilyFcmTokens(userId)\n[CareGroup ACTIVE → CareGroupMember ACCEPTED\n→ DeviceToken active, DO NOT use EmergencyContact]
+activate FamMember
+FamMember --> FamilyAlertSvc : 18. fcmTokens[]
+deactivate FamMember
+FamilyAlertSvc -> Consent : 19. hasLocationConsent(userId)\n[ConsentGrantRepository: LOCATION/SHARE still valid?]
+activate Consent
+Consent --> FamilyAlertSvc : 20. boolean hasConsent
+deactivate Consent
+FamilyAlertSvc -> FamilyAlertSvc : 21. build payload\n(include latitude/longitude ONLY when hasConsent=true — PDPA)
+alt 22. FCM sent successfully
+  FamilyAlertSvc -> Fcm : 22. sendBatch(fcmTokens, payload)
+  activate Fcm
+  Fcm --> FamilyAlertSvc : 23. void
+  deactivate Fcm
+else 22. FCM error → fallback SMS (must not block service)
+  FamilyAlertSvc -> Sms : 22a. sendFallback(userId, sessionId,\n"Emergency alert fallback triggered...")
+  activate Sms
+  Sms --> FamilyAlertSvc : 22b. void
+  deactivate Sms
+end
+FamilyAlertSvc -> AlertLogRepo : 24. save(FamilyAlertLog{recipientCount=fcmTokens.size(),\nlocationIncluded})
+activate AlertLogRepo
+AlertLogRepo -> DB : 25. INSERT INTO family_alert_logs ...
+activate DB
+DB --> AlertLogRepo : 26. saved
+deactivate DB
+AlertLogRepo --> FamilyAlertSvc : 27. FamilyAlertLog
+deactivate AlertLogRepo
+FamilyAlertSvc -> FamilyAlertSvc : 28. publishEvent(FamilyAlertSent) [internal, no UC currently subscribed]
+FamilyAlertSvc --> Handler : 29. void
+deactivate FamilyAlertSvc
+Handler --> EmService : 30. void (listener completed, same thread/transaction)
+deactivate Handler
+EmService --> EmController : 31. EmergencySessionResponse{status=ACTIVE}
+deactivate EmService
+EmController --> M : 32. HTTP 201 Created
+deactivate EmController
 
 == UC-81 Create or Cancel Nearby Support Request ==
-M -> NearController : POST /api/v1/nearbycare/support-requests\n{supportType, latitude, longitude, description}
-NearController -> NearService : create(requesterId, request)
-NearService -> DB : INSERT INTO nearby_support_requests\n(status=OPEN, consentStatus="GRANTED")
-NearService --> NearController : NearbySupportRequest{status=OPEN}
-NearController --> M : HTTP 201 Created
+M -> NearController : 33. POST /api/v1/nearbycare/support-requests\n{supportType, latitude, longitude, description, consentStatus}
+activate NearController
+NearController -> NearService : 34. createRequest(userId, request)
+activate NearService
+NearService -> NearService : 35. map request → NearbySupportRequest{status=OPEN}\n(NearbySupportMapper.toEntity)
+NearService -> ReqRepo : 36. save(entity)
+activate ReqRepo
+ReqRepo -> DB : 37. INSERT INTO nearby_support_requests ...
+activate DB
+DB --> ReqRepo : 38. saved
+deactivate DB
+ReqRepo --> NearService : 39. NearbySupportRequest
+deactivate ReqRepo
+NearService --> NearController : 40. NearbySupportRequest{status=OPEN}
+deactivate NearService
+NearController --> M : 41. HTTP 201 Created
+deactivate NearController
 
-M -> NearController : DELETE /api/v1/nearbycare/support-requests/{requestId}
-NearController -> NearService : cancel(requesterId, requestId)
-NearService -> DB : UPDATE nearby_support_requests SET status='CANCELLED'
-NearController --> M : HTTP 204 No Content
+M -> NearController : 42. DELETE /api/v1/nearbycare/support-requests/{requestId}
+activate NearController
+NearController -> NearService : 43. cancelRequest(requestId, userId)
+activate NearService
+NearService -> ReqRepo : 44. findById(requestId)
+activate ReqRepo
+ReqRepo -> DB : 45. SELECT * FROM nearby_support_requests WHERE id=?
+activate DB
+DB --> ReqRepo : 46. request row
+deactivate DB
+ReqRepo --> NearService : 47. NearbySupportRequest
+deactivate ReqRepo
+NearService -> NearService : 48. check requesterUserId matches\n&& status==OPEN (if not → 403/400)
+NearService -> ReqRepo : 49. save(request{status=CANCELLED})
+activate ReqRepo
+ReqRepo -> DB : 50. UPDATE nearby_support_requests SET status='CANCELLED'
+activate DB
+DB --> ReqRepo : 51. updated
+deactivate DB
+ReqRepo --> NearService : 52. NearbySupportRequest
+deactivate ReqRepo
+NearService --> NearController : 53. NearbySupportRequest{status=CANCELLED}
+deactivate NearService
+NearController --> M : 54. HTTP 200 OK
+deactivate NearController
 
 == UC-82 Manage Expert Nearby Availability and Respond to Nearby Support Request ==
-Exp -> NearController : GET /api/v1/nearbycare/support-requests/open
-NearController -> NearService : listOpen(expertProfileId)
-NearService -> DB : SELECT * FROM nearby_support_requests r\nJOIN expert_availability a ON ... WHERE r.status='OPEN'\nAND ST_DWithin(r.location, expert.location, radius)
-DB --> NearService : requests[] (minimal context only)
-NearService --> Exp : HTTP 200 OK {requests[]}
+Exp -> NearController : 55. GET /api/v1/nearbycare/support-requests/open
+activate NearController
+NearController -> ExpertRepo : 56. findByUserId(expertUserId)\n[only to retrieve expertProfileId — not used to filter results]
+activate ExpertRepo
+ExpertRepo -> DB : 57. SELECT * FROM expert_profiles WHERE user_id=?
+activate DB
+DB --> ExpertRepo : 58. profile row
+deactivate DB
+ExpertRepo --> NearController : 59. ExpertProfile
+deactivate ExpertRepo
+NearController -> NearService : 60. getOpenRequests()
+activate NearService
+NearService -> ReqRepo : 61. findByStatus(OPEN)
+activate ReqRepo
+ReqRepo -> DB : 62. SELECT * FROM nearby_support_requests WHERE status='OPEN'
+activate DB
+DB --> ReqRepo : 63. rows[]
+deactivate DB
+ReqRepo --> NearService : 64. requests[]
+deactivate ReqRepo
+NearService --> NearController : 65. requests[] (all OPEN requests in system)
+deactivate NearService
+NearController --> Exp : 66. HTTP 200 OK {requests[]}
+deactivate NearController
 
-Exp -> NearController : POST /api/v1/nearbycare/support-requests/{requestId}/respond\n{action=ACCEPT}
-NearController -> NearService : respond(expertProfileId, requestId, ACCEPT)
-NearService -> DB : INSERT INTO nearby_support_responses (action=ACCEPT)
-NearService -> DB : UPDATE nearby_support_requests\nSET status='ACCEPTED', responded_at=now()
-NearService --> NearController : NearbySupportResponse
-NearController --> Exp : HTTP 200 OK
+Exp -> NearController : 67. POST /api/v1/nearbycare/support-requests/{requestId}/respond\n{action=ACCEPT, note}
+activate NearController
+NearController -> ExpertRepo : 68. findByUserId(expertUserId)
+activate ExpertRepo
+ExpertRepo -> DB : 69. SELECT * FROM expert_profiles WHERE user_id=?
+activate DB
+DB --> ExpertRepo : 70. profile row
+deactivate DB
+ExpertRepo --> NearController : 71. ExpertProfile{expertProfileId}
+deactivate ExpertRepo
+NearController -> NearService : 72. respondToRequest(requestId, expertProfileId, request)
+activate NearService
+NearService -> ReqRepo : 73. findById(requestId)
+activate ReqRepo
+ReqRepo -> DB : 74. SELECT * FROM nearby_support_requests WHERE id=?
+activate DB
+DB --> ReqRepo : 75. request row (status must be == OPEN)
+deactivate DB
+ReqRepo --> NearService : 76. NearbySupportRequest
+deactivate ReqRepo
+NearService -> ExpertRepo : 77. findById(expertProfileId)
+activate ExpertRepo
+ExpertRepo -> DB : 78. SELECT * FROM expert_profiles WHERE id=?
+activate DB
+DB --> ExpertRepo : 79. profile row
+deactivate DB
+ExpertRepo --> NearService : 80. ExpertProfile{verificationStatus}
+deactivate ExpertRepo
+alt 81. verificationStatus == APPROVED (verified expert)
+  NearService -> RespRepo : 81. save(NearbySupportResponse{action=ACCEPT, note})
+  activate RespRepo
+  RespRepo -> DB : 82. INSERT INTO nearby_support_responses ...
+  activate DB
+  DB --> RespRepo : 83. saved
+  deactivate DB
+  RespRepo --> NearService : 84. NearbySupportResponse
+  deactivate RespRepo
+  opt 85. action == ACCEPT
+    NearService -> ReqRepo : 85a. save(request{status=ACCEPTED, respondedAt=now()})
+    activate ReqRepo
+    ReqRepo -> DB : 85b. UPDATE nearby_support_requests\nSET status='ACCEPTED', responded_at=now()
+    activate DB
+    DB --> ReqRepo : 85c. updated
+    deactivate DB
+    ReqRepo --> NearService : 85d. NearbySupportRequest
+    deactivate ReqRepo
+  end
+  NearService --> NearController : 86. NearbySupportResponse
+  deactivate NearService
+  NearController --> Exp : 87. HTTP 200 OK
+  deactivate NearController
+else 81. verificationStatus != APPROVED → block
+  NearService --> NearController : 81a. throw ExpertException(FORBIDDEN,\n"Only verified experts can respond")
+  deactivate NearService
+  NearController --> Exp : 81b. HTTP 403 Forbidden
+  deactivate NearController
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Send Family Alert → Create Nearby Support Request → Expert Responds (Main Flow)**
+**Hình 2 — Sequence Diagram: Send Family Alert (event-driven) → Create/Cancel Nearby Support Request → Expert Responds (Main Flow)**
+
+> **Ghi chú grounding (quan trọng — lệch với Class Diagram & Business Rules):**
+> 1. `EmergencyContact` (entity/`EmergencyContactController`) **không** được dùng để gửi
+>    cảnh báo khẩn cấp. Danh sách người nhận thật sự lấy từ thành viên `CareGroup` (module
+>    Family, MF-10) đang `ACTIVE`/`ACCEPTED` qua `FamilyMemberPort` (device token FCM), hoàn
+>    toàn độc lập với entity `EmergencyContact`. Cạnh `EmergencySession *-- FamilyAlertLog`
+>    trong class diagram đúng, nhưng liên hệ tới `EmergencyContact` ở đó là khái niệm, không
+>    khớp pipeline thật.
+> 2. `NearbySupportServiceImpl.getOpenRequests()` trả về **toàn bộ** request `OPEN` của hệ
+>    thống — không có join `ExpertAvailability`, không lọc bán kính (`ST_DWithin`), không
+>    kiểm tra `verificationStatus` ở bước liệt kê. Việc chỉ "verified expert" mới thao tác
+>    được chỉ enforce ở bước `respondToRequest` (kiểm tra `VerificationStatus.APPROVED`) —
+>    khác với mô tả mục 5 ("chỉ hiển thị cho verified expert đủ điều kiện trong bán kính phù
+>    hợp"). Cạnh `NearbySupportServiceImpl --> ExpertAvailabilityRepository` trong class
+>    diagram không tồn tại trong code (`ExpertAvailabilityRepository` không được inject).
+> 3. Hành động `STOP` (`ResponseAction`) chỉ lưu một `NearbySupportResponse`, **không** đổi
+>    `NearbySupportRequest.status` — transition `ACCEPTED --> OPEN` do "Expert phản hồi STOP"
+>    ở State Machine (mục 4) hiện **không được code thực thi**; chỉ `ACCEPT` mới đổi status
+>    (sang `ACCEPTED`).
 
 ## 4. State Machine — `NearbySupportRequest.status`
 
