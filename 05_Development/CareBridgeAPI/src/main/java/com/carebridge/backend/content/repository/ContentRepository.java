@@ -33,20 +33,24 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     Optional<ContentItem> findByIdAndStatus(UUID id, ContentStatus status);
 
-    Page<ContentItem> findByStatus(ContentStatus status, Pageable pageable);
-
-    Page<ContentItem> findByType(ContentType type, Pageable pageable);
-
+    // Admin workspace filter: every param optional and ANDed together (type+stage+status+keyword
+    // used to be handled by separate findByStatus/findByType/searchStaffByKeyword* methods that
+    // branched on which param was present instead of combining them, so passing e.g. type=FAQ
+    // together with status=DRAFT silently ignored the type and returned drafts of every type.
+    // keyword is CAST to string: an untyped null bind parameter used only inside lower(...) makes
+    // pgjdbc guess its type as bytea (no other context to infer from), and lower(bytea) doesn't exist.
     @Query("SELECT c FROM ContentItem c WHERE " +
-           "LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "OR LOWER(c.body) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<ContentItem> searchStaffByKeyword(@Param("keyword") String keyword, Pageable pageable);
-
-    @Query("SELECT c FROM ContentItem c WHERE c.type = :type AND " +
-           "(LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "OR LOWER(c.body) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<ContentItem> searchStaffByKeywordAndType(
-            @Param("keyword") String keyword, @Param("type") ContentType type, Pageable pageable);
+           "(:type IS NULL OR c.type = :type) AND " +
+           "(:stage IS NULL OR c.stage = :stage) AND " +
+           "(:status IS NULL OR c.status = :status) AND " +
+           "(:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+           "   OR LOWER(c.body) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))")
+    Page<ContentItem> findByAdminFilters(
+            @Param("type") ContentType type,
+            @Param("stage") ContentStage stage,
+            @Param("status") ContentStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable);
 
     // UC-113: impact report — published content reach (count only, no view/impression column exists)
     long countByPublishedAtIsNotNull();

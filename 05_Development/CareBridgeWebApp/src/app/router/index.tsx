@@ -48,9 +48,11 @@ import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPa
 import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
 import ContentListPage from '../../features/contentManagement/pages/ContentListPage';
 import ContentDetailPage from '../../features/contentManagement/pages/ContentDetailPage';
-import ContentPreviewPage from '../../features/contentManagement/pages/ContentPreviewPage';
+import ArticleListPage from '../../features/contentManagement/pages/ArticleListPage';
 import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
+import ChecklistDetailPage from '../../features/contentManagement/pages/ChecklistDetailPage';
+import ChecklistFormPage from '../../features/contentManagement/pages/ChecklistFormPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
 // Content Management screens (CB-076, 077, 079, 087)
@@ -154,6 +156,12 @@ export const router = createBrowserRouter([
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
+              // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
+              // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly
+              // (those are gated to CONTENT_ADMIN below); ContentDetailPage/ChecklistDetailPage already
+              // hide all write actions when the viewer lacks CONTENT_ADMIN (see canManage in each page).
+              { path: '/admin/content-review/:id', element: <ContentDetailPage /> },
+              { path: '/admin/content-review/checklists/:id', element: <ChecklistDetailPage /> },
 { path: '/security/incidents', element: <SecurityIncidentListPage /> },
               { path: '/security/events', element: <SecurityEventsPage /> },
               { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
@@ -177,12 +185,15 @@ export const router = createBrowserRouter([
                   { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
                   { path: '/content/create', element: <CreateContentPage /> },
                   { path: '/content/list', element: <ContentListPage /> },
+                  { path: '/content/articles', element: <ArticleListPage /> },
                   { path: '/content/:id', element: <ContentDetailPage /> },
                   { path: '/content/:id/edit', element: <EditContentPage /> },
-                  { path: '/content/:id/preview', element: <ContentPreviewPage /> },
                   { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
                   { path: '/content/faq', element: <FaqListPage /> },
                   { path: '/content/checklists', element: <ChecklistListPage /> },
+                  { path: '/content/checklists/create', element: <ChecklistFormPage /> },
+                  { path: '/content/checklists/:id', element: <ChecklistDetailPage /> },
+                  { path: '/content/checklists/:id/edit', element: <ChecklistFormPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
                   { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },

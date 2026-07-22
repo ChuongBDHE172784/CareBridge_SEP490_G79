@@ -1,14 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent, archiveContent } from '../services/contentApi';
-import type { ContentDetail } from '../models/content';
-import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
+import { fetchChecklistTemplateDetail, updateChecklistTemplate, archiveChecklistTemplate } from '../services/contentApi';
+import type { ChecklistTemplate } from '../models/content';
+import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
 
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
 function statusDotClass(status: string): string {
   if (status === 'APPROVED') return 'bg-[#137333]';
   if (status === 'DRAFT') return 'bg-[#616161]';
@@ -16,29 +12,14 @@ function statusDotClass(status: string): string {
   return 'bg-[#BA1A1A]';
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-const TYPE_LIST_PATH: Record<string, string> = {
-  ARTICLE: '/content/articles',
-  FAQ: '/content/faq',
-  CHECKLIST: '/content/checklists',
-};
-
-/* ------------------------------------------------------------------ */
-/*  Page Component                                                     */
-/* ------------------------------------------------------------------ */
-export default function ContentDetailPage() {
+export default function ChecklistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  // System Admin can reach this page read-only from the approval queue (/admin/content-review/:id) —
-  // /content/:id/edit and the archive/list routes below are gated to CONTENT_ADMIN only, so those
-  // actions must stay hidden rather than link into a route that will bounce to /forbidden.
+  // System Admin can reach this page read-only from the approval queue
+  // (/admin/content-review/checklists/:id) — /content/checklists/:id/edit is CONTENT_ADMIN-only.
   const canManage = hasRole('CONTENT_ADMIN');
-  const [detail, setDetail] = useState<ContentDetail | null>(null);
+  const [detail, setDetail] = useState<ChecklistTemplate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -49,7 +30,7 @@ export default function ContentDetailPage() {
     setIsLoading(true);
     setError('');
     try {
-      const data = await fetchStaffContentDetail(id);
+      const data = await fetchChecklistTemplateDetail(id);
       setDetail(data);
     } catch {
       setError('Không tải được nội dung. Vui lòng thử lại.');
@@ -65,14 +46,12 @@ export default function ContentDetailPage() {
     setSubmittingApproval(true);
     setActionError('');
     try {
-      await updateContent(detail.id, {
-        title: detail.title,
-        body: detail.body,
+      await updateChecklistTemplate(detail.id, {
+        name: detail.name,
+        description: detail.description,
         stage: detail.stage,
-        topicId: detail.topicId || undefined,
         status: 'PENDING_REVIEW',
-        sourceLabel: detail.sourceLabel || undefined,
-        sources: detail.sources,
+        items: undefined,
       });
       await loadDetail();
     } catch {
@@ -84,17 +63,17 @@ export default function ContentDetailPage() {
 
   const handleDelete = async () => {
     if (!detail) return;
-    const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${detail.title}":`);
+    const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${detail.name}":`);
     if (reason === null) return;
     if (!reason.trim()) {
       setActionError('Vui lòng nhập lý do trước khi xóa.');
       return;
     }
     try {
-      await archiveContent(detail.id, reason.trim());
-      navigate(TYPE_LIST_PATH[detail.type] ?? '/content/list');
+      await archiveChecklistTemplate(detail.id, reason.trim());
+      navigate('/content/checklists');
     } catch {
-      setActionError('Không thể xóa nội dung. Vui lòng thử lại.');
+      setActionError('Không thể xóa checklist. Vui lòng thử lại.');
     }
   };
 
@@ -105,7 +84,7 @@ export default function ContentDetailPage() {
   if (error || !detail) {
     return (
       <div className="py-12 text-center font-sans">
-        <p className="text-error mb-4">{error || 'Không tìm thấy nội dung.'}</p>
+        <p className="text-error mb-4">{error || 'Không tìm thấy checklist.'}</p>
         <button onClick={() => navigate(-1)} className="py-2.5 px-6 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer">
           Quay lại
         </button>
@@ -113,20 +92,19 @@ export default function ContentDetailPage() {
     );
   }
 
-  const typeLabel = TYPE_LABELS[detail.type];
-  const typeListPath = TYPE_LIST_PATH[detail.type] ?? '/content/list';
+  const editable = detail.status === 'DRAFT' || detail.status === 'PENDING_REVIEW';
 
   return (
     <div className="p-8 font-sans">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-[13px] text-outline mb-4">
         {canManage ? (
-          <span className="cursor-pointer" onClick={() => navigate(typeListPath)}>{typeLabel}</span>
+          <span className="cursor-pointer" onClick={() => navigate('/content/checklists')}>Checklist</span>
         ) : (
-          <span>{typeLabel}</span>
+          <span>Checklist</span>
         )}
         <span className="material-symbols-outlined text-base">chevron_right</span>
-        <span className="text-on-surface-variant">Chi tiết {typeLabel.toLowerCase()}</span>
+        <span className="text-on-surface-variant">Chi tiết checklist</span>
       </div>
 
       {/* Back button */}
@@ -143,46 +121,52 @@ export default function ContentDetailPage() {
       <div className="grid grid-cols-[1fr_340px] gap-6">
         {/* Main content area */}
         <div>
-          {/* Title */}
-          <h1 className="text-[28px] font-bold text-on-surface mt-0 mb-5 leading-[1.3]">{detail.title}</h1>
+          <h1 className="text-[28px] font-bold text-on-surface mt-0 mb-5 leading-[1.3]">{detail.name}</h1>
 
           {/* Metadata card */}
           <div className="bg-surface rounded-2xl p-5 shadow-md mb-6 flex gap-8 flex-wrap">
             <div>
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">TÁC GIẢ</div>
-              <div className="text-sm text-on-surface font-medium">Content Admin</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">NGÀY TẠO</div>
-              <div className="text-sm text-on-surface font-medium">{formatDate(detail.createdAt)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">CHUYÊN MỤC</div>
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">GIAI ĐOẠN</div>
               <div className="text-sm text-on-surface font-medium">{STAGE_LABELS[detail.stage]}</div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">ĐỐI TƯỢNG MỤC TIÊU</div>
-              <div className="flex gap-1.5 mt-0.5">
-                <span className="py-[3px] px-2.5 rounded-full bg-[#FFE9E3] text-primary text-xs font-medium">Mẹ bầu</span>
-                <span className="py-[3px] px-2.5 rounded-full bg-[#FFE9E3] text-primary text-xs font-medium">Gia đình</span>
-              </div>
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">SỐ MỤC</div>
+              <div className="text-sm text-on-surface font-medium">{detail.items.length} mục</div>
             </div>
           </div>
 
-          {/* Article canvas */}
-          <div className="bg-surface rounded-2xl p-8 shadow-md">
-            {/* Hero image placeholder */}
-            <div
-              className="w-full h-[220px] rounded-xl flex items-center justify-center mb-6 bg-[linear-gradient(135deg,#FFE9E3_0%,#F6DACF_100%)]"
-            >
-              <span className="material-symbols-outlined text-[#C98C7B] text-5xl">image</span>
+          {/* Description */}
+          {detail.description && (
+            <div className="bg-surface rounded-2xl p-6 shadow-md mb-6">
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">MÔ TẢ</div>
+              <p className="text-[15px] leading-7 text-on-surface">{detail.description}</p>
             </div>
+          )}
 
-            {/* Body content */}
-            <div
-              className="text-[15px] leading-7 text-on-surface"
-              dangerouslySetInnerHTML={{ __html: detail.body }}
-            />
+          {/* Items list */}
+          <div className="bg-surface rounded-2xl p-6 shadow-md">
+            <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-4">
+              DANH SÁCH MỤC ({detail.items.length})
+            </div>
+            {detail.items.length === 0 ? (
+              <p className="text-sm text-outline">Checklist này chưa có mục nào.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {[...detail.items].sort((a, b) => a.order - b.order).map(item => (
+                  <li key={item.id} className="flex items-start gap-3 py-2.5 px-3 rounded-xl bg-surface-container-lowest">
+                    <span className="material-symbols-outlined text-primary text-lg mt-0.5">
+                      {item.isRequired ? 'check_box' : 'check_box_outline_blank'}
+                    </span>
+                    <div className="flex-1">
+                      <div className="text-sm text-on-surface">{item.itemText}</div>
+                      <div className="text-xs text-outline mt-0.5">
+                        Thứ tự: {item.order} · {item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -195,24 +179,22 @@ export default function ContentDetailPage() {
               <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass(detail.status)}`} />
               <span className="text-sm font-semibold text-on-surface">{STATUS_LABELS[detail.status]}</span>
             </div>
-            <div className="text-xs text-outline mb-1">Phiên bản: v{detail.version}</div>
-            <div className="text-xs text-outline">Xuất bản: {formatDate(detail.publishedAt)}</div>
           </div>
 
           {/* Action buttons — hidden for read-only reviewers (e.g. System Admin from the approval queue) */}
           {canManage && (
             <>
-              {(detail.status === 'DRAFT' || detail.status === 'PENDING_REVIEW') ? (
+              {editable ? (
                 <button
-                  onClick={() => navigate(`/content/${detail.id}/edit`)}
+                  onClick={() => navigate(`/content/checklists/${detail.id}/edit`)}
                   className="w-full py-3.5 rounded-2xl bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">edit</span>
-                  Chỉnh sửa nội dung
+                  Chỉnh sửa checklist
                 </button>
               ) : (
                 <p className="text-xs text-outline text-center px-2">
-                  Nội dung đã xuất bản hoặc lưu trữ không thể chỉnh sửa trực tiếp.
+                  Checklist đã xuất bản hoặc lưu trữ không thể chỉnh sửa trực tiếp.
                 </p>
               )}
               {detail.status === 'DRAFT' && (
@@ -234,12 +216,6 @@ export default function ContentDetailPage() {
               </button>
             </>
           )}
-
-          {/* Version history */}
-          <div className="bg-surface rounded-2xl p-5 shadow-md">
-            <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">LỊCH SỬ PHIÊN BẢN</div>
-            <p className="text-xs text-outline">Phiên bản hiện tại: v{detail.version}</p>
-          </div>
         </div>
       </div>
     </div>

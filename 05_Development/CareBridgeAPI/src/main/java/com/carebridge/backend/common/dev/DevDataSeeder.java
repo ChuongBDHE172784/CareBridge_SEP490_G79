@@ -351,6 +351,76 @@ public class DevDataSeeder implements ApplicationRunner {
             checklistItemRepository.save(ChecklistItem.builder().template(template).itemText("Chuẩn bị giấy tờ cần thiết")
                     .order(1).isRequired(true).build());
         }
+        seedChecklistTemplateBatch();
+    }
+
+    private record ChecklistItemSpec(String text, boolean required) {}
+
+    /**
+     * 7 additional templates spanning every (stage, status) combination plus a zero-item
+     * template, so the Content Admin "Checklist" screen (/content/checklists) has real
+     * variety instead of the single PREGNANCY/DRAFT row above. Idempotent by template name.
+     */
+    private void seedChecklistTemplateBatch() {
+        seedChecklistTemplate("Checklist khám sức khỏe tiền sản", ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "Các xét nghiệm và mũi tiêm cần hoàn thành trước khi mang thai.", List.of(
+                        new ChecklistItemSpec("Khám sức khỏe tổng quát", true),
+                        new ChecklistItemSpec("Xét nghiệm máu và các bệnh lây truyền", true),
+                        new ChecklistItemSpec("Tiêm phòng Rubella, thủy đậu", true),
+                        new ChecklistItemSpec("Tư vấn di truyền nếu có tiền sử gia đình", false)));
+
+        seedChecklistTemplate("Checklist đồ dùng cho mẹ và bé khi đi sinh", ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "Danh sách vật dụng cần chuẩn bị trước ngày dự sinh cho cả mẹ và bé.", List.of(
+                        new ChecklistItemSpec("Hồ sơ khám thai và giấy tờ tùy thân", true),
+                        new ChecklistItemSpec("Quần áo sơ sinh và tã bỉm", true),
+                        new ChecklistItemSpec("Đồ dùng vệ sinh cá nhân cho mẹ", true),
+                        new ChecklistItemSpec("Nước uống và đồ ăn nhẹ", false),
+                        new ChecklistItemSpec("Sạc điện thoại, máy ảnh", false)));
+
+        seedChecklistTemplate("Checklist chuẩn bị tâm lý trước sinh", ContentStage.PREGNANCY, ContentStatus.DRAFT,
+                "Bản nháp checklist tâm lý trước sinh, chưa có mục nào được thêm.", List.of());
+
+        seedChecklistTemplate("Checklist chăm sóc mẹ sau sinh 6 tuần đầu", ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "Các mốc theo dõi sức khỏe mẹ trong 6 tuần đầu sau sinh.", List.of(
+                        new ChecklistItemSpec("Theo dõi vết mổ/vết khâu hàng ngày", true),
+                        new ChecklistItemSpec("Tái khám sau sinh 6 tuần", true),
+                        new ChecklistItemSpec("Theo dõi dấu hiệu trầm cảm sau sinh", true),
+                        new ChecklistItemSpec("Duy trì chế độ dinh dưỡng cho con bú", false)));
+
+        seedChecklistTemplate("Checklist theo dõi dấu hiệu trầm cảm sau sinh", ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW,
+                "Bảng theo dõi cảm xúc và dấu hiệu cảnh báo trầm cảm sau sinh, đang chờ duyệt.", List.of(
+                        new ChecklistItemSpec("Ghi nhận chất lượng giấc ngủ", true),
+                        new ChecklistItemSpec("Ghi nhận thay đổi cảm xúc bất thường", true),
+                        new ChecklistItemSpec("Liên hệ chuyên gia nếu có dấu hiệu cảnh báo", false)));
+
+        seedChecklistTemplate("Checklist an toàn cho bé tại nhà", ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "Danh mục kiểm tra an toàn không gian sống để phòng ngừa tai nạn cho trẻ nhỏ.", List.of(
+                        new ChecklistItemSpec("Che chắn ổ điện và góc cạnh sắc nhọn", true),
+                        new ChecklistItemSpec("Khóa an toàn tủ đựng hóa chất, thuốc", true),
+                        new ChecklistItemSpec("Lắp thanh chắn cầu thang", true),
+                        new ChecklistItemSpec("Kiểm tra nhiệt độ nước tắm", true),
+                        new ChecklistItemSpec("Dọn vật nhỏ dễ hóc nghẹn", false),
+                        new ChecklistItemSpec("Chuẩn bị số điện thoại khẩn cấp", false)));
+
+        seedChecklistTemplate("Checklist đồ dùng sơ sinh (bản cũ)", ContentStage.BABY_CARE, ContentStatus.ARCHIVED,
+                "Phiên bản checklist cũ, đã được thay thế bởi bản cập nhật mới hơn.", List.of(
+                        new ChecklistItemSpec("Bình sữa và dụng cụ tiệt trùng", true),
+                        new ChecklistItemSpec("Nôi và chăn ga cho bé", false)));
+    }
+
+    private void seedChecklistTemplate(String name, ContentStage stage, ContentStatus status, String description,
+            List<ChecklistItemSpec> items) {
+        ChecklistTemplate template = checklistTemplateRepository.findAll().stream()
+                .filter(t -> name.equals(t.getName())).findFirst()
+                .orElseGet(() -> checklistTemplateRepository.saveAndFlush(ChecklistTemplate.builder()
+                        .name(name).stage(stage).status(status).description(description).build()));
+        if (checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).isEmpty()) {
+            int order = 1;
+            for (ChecklistItemSpec item : items) {
+                checklistItemRepository.save(ChecklistItem.builder().template(template).itemText(item.text())
+                        .order(order++).isRequired(item.required()).build());
+            }
+        }
     }
 
     /**
@@ -427,9 +497,12 @@ public class DevDataSeeder implements ApplicationRunner {
             baby.setActive(true);
             if (baby.getBirthWeightKg() == null) baby.setBirthWeightKg(new BigDecimal("3.40"));
             if (baby.getBirthLengthCm() == null) baby.setBirthLengthCm(new BigDecimal("50.0"));
-            return babyProfileRepository.save(baby);
+            // saveAndFlush: seedBabyJourneyViewData writes child rows via raw jdbcTemplate right
+            // after this returns, which needs the baby_profiles row to already be visible in the
+            // DB (Hibernate write-behind alone would leave it queued, tripping the FK constraint).
+            return babyProfileRepository.saveAndFlush(baby);
         }
-        return babyProfileRepository.save(BabyProfile.builder()
+        return babyProfileRepository.saveAndFlush(BabyProfile.builder()
             .ownerUserId(mother.getId())
             .relatedJourneyId(journey.getId())
             .nickname("Bé " + mother.getName())

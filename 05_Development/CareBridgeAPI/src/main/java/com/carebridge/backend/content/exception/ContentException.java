@@ -93,4 +93,48 @@ public class ContentException extends RuntimeException {
                 "Content Admin may only save a draft or submit it for review",
                 HttpStatus.CONFLICT);
     }
+
+    // UC-243 (CB-CONTENT-IMP-011)
+    public static ContentException checklistTemplateNotFound() {
+        return new ContentException(
+                "CHKTPL-003",
+                "Không tìm thấy checklist template",
+                HttpStatus.NOT_FOUND);
+    }
+
+    public static ContentException checklistTemplateInvalidStatusTransition() {
+        return new ContentException(
+                "CHKTPL-004",
+                "Content Admin chỉ có thể lưu bản nháp hoặc gửi để chờ duyệt",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ContentException checklistTemplateArchiveReasonRequired() {
+        return new ContentException(
+                "CHKTPL-005",
+                "Lý do bắt buộc khi lưu trữ (xóa) checklist template",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException checklistTemplateAlreadyArchived() {
+        return new ContentException(
+                "CHKTPL-006",
+                "Checklist template đã được lưu trữ trước đó",
+                HttpStatus.CONFLICT);
+    }
+
+    // §14 addendum — approval flow
+    public static ContentException checklistTemplateNotPendingReview() {
+        return new ContentException(
+                "CHKTPL-007",
+                "Checklist template không ở trạng thái chờ duyệt",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ContentException checklistTemplateDecisionReasonRequired() {
+        return new ContentException(
+                "CHKTPL-008",
+                "Lý do bắt buộc khi từ chối checklist template",
+                HttpStatus.BAD_REQUEST);
+    }
 }

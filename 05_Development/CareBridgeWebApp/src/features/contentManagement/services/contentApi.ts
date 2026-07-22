@@ -5,6 +5,8 @@ import type {
   ContentDetail,
   ContentSearchItem,
   ChecklistTemplate,
+  CreateChecklistTemplatePayload,
+  UpdateChecklistTemplatePayload,
   CommunityTopic,
   PaginatedResponse,
   ContentType,
@@ -57,6 +59,7 @@ export async function fetchStaffContentDetail(id: string): Promise<ContentDetail
 export async function fetchStaffContentList(params: {
   status?: ContentStatus;
   type?: ContentType;
+  stage?: ContentStage;
   keyword?: string;
   page?: number;
   size?: number;
@@ -92,6 +95,61 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
   const q = stage ? `?stage=${stage}` : '';
   const res = await apiClient.get<ApiResponse<ChecklistTemplate[]>>(
     `/api/v1/content/checklists${q}`,
+  );
+  return res.data.data;
+}
+
+/** Admin workspace (UC-243): includes DRAFT/PENDING_REVIEW/ARCHIVED, unlike the public list above. */
+export async function fetchAdminChecklistTemplates(params: {
+  status?: ContentStatus;
+  stage?: ContentStage;
+  page?: number;
+  size?: number;
+} = {}): Promise<PaginatedResponse<ChecklistTemplate>> {
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<ChecklistTemplate>>>(
+    '/api/v1/admin/checklist-templates',
+    { params: { ...params, page: params.page ?? 0, size: params.size ?? 20 } },
+  );
+  return res.data.data;
+}
+
+export async function fetchChecklistTemplateDetail(id: string): Promise<ChecklistTemplate> {
+  const res = await apiClient.get<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`);
+  return res.data.data;
+}
+
+export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<ChecklistTemplate> {
+  const res = await apiClient.post<ApiResponse<ChecklistTemplate>>('/api/v1/admin/checklist-templates', data);
+  return res.data.data;
+}
+
+export async function updateChecklistTemplate(
+  id: string,
+  data: UpdateChecklistTemplatePayload,
+): Promise<ChecklistTemplate> {
+  const res = await apiClient.put<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`, data);
+  return res.data.data;
+}
+
+/** Soft-delete: transitions the template to ARCHIVED (no hard delete). */
+export async function archiveChecklistTemplate(
+  id: string,
+  reason: string,
+): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/checklist-templates/${id}/archive`, { reason },
+  );
+  return res.data.data;
+}
+
+/** SYSTEM_ADMIN-only approval decision (UC-243 §14 addendum). */
+export async function decideChecklistTemplate(
+  id: string,
+  decision: ContentDecision,
+  reason?: string,
+): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/checklist-templates/${id}/decision`, { decision, reason },
   );
   return res.data.data;
 }
@@ -179,6 +237,14 @@ export async function updateTopic(
 export async function unpublishContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
   const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
     `/api/v1/admin/content/${id}/unpublish`, { reason },
+  );
+  return res.data.data;
+}
+
+/** Soft-deletes content by transitioning it to ARCHIVED (no hard delete — keeps audit history). */
+export async function archiveContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/content/${id}/archive`, { reason },
   );
   return res.data.data;
 }

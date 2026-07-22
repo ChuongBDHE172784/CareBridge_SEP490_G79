@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.service.AdminContentService;
@@ -43,6 +44,7 @@ public class AdminContentController {
     public ResponseEntity<ApiResponse<Page<ContentDetailResponse>>> getContents(
             @RequestParam(required = false) ContentStatus status,
             @RequestParam(required = false) ContentType type,
+            @RequestParam(required = false) ContentStage stage,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -50,7 +52,7 @@ public class AdminContentController {
             throw ContentException.validationFailed("size", "must be between 1 and 50");
         }
         return ResponseEntity.ok(ApiResponse.success(
-                adminContentService.getStaffContents(status, type, keyword, PageRequest.of(page, size)),
+                adminContentService.getStaffContents(status, type, stage, keyword, PageRequest.of(page, size)),
                 "Content workspace loaded"));
     }
 

@@ -53,9 +53,8 @@ export default function CreateContentPage() {
         });
       }
       setCreated({ id: result.id, title: result.title, sentForApproval: sendForApproval });
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || 'Không thể tạo nội dung. Vui lòng thử lại.');
+    } catch {
+      setError('Không thể tạo nội dung. Vui lòng thử lại.');
     } finally {
       setSubmitting(null);
     }
@@ -93,9 +92,17 @@ export default function CreateContentPage() {
 
   return (
     <div className="p-8 font-sans max-w-[900px]">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
+      >
+        <span className="material-symbols-outlined text-lg">arrow_back</span>
+        Quay lại
+      </button>
+
       <h1 className="text-[26px] font-bold text-on-surface m-0">Tạo nội dung mới</h1>
       <p className="text-on-surface-variant text-sm mt-1 mb-6">
-        Điền thông tin chi tiết để thêm bài viết, FAQ hoặc checklist vào thư viện.
+        Điền thông tin chi tiết để thêm bài viết hoặc FAQ vào thư viện.
       </p>
 
       <div className="bg-surface rounded-2xl p-6 shadow-md mb-6">
@@ -110,7 +117,11 @@ export default function CreateContentPage() {
               className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
             >
               <option value="">Chọn loại nội dung</option>
-              {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {/* ADR-CHK-004 (UC-243): Checklist has its own dedicated CRUD at /content/checklists/create
+                  — creating a CHECKLIST-type ContentItem here would never be consumed by anything. */}
+              {Object.entries(TYPE_LABELS)
+                .filter(([k]) => k !== 'CHECKLIST')
+                .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
           <div>
@@ -202,15 +213,7 @@ export default function CreateContentPage() {
 
       {error && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{error}</div>}
 
-      <div className="flex items-center justify-between sticky bottom-0 bg-background py-4">
-        <button
-          disabled
-          title="Không áp dụng khi tạo nội dung mới"
-          className="flex items-center gap-2 text-error text-sm font-semibold opacity-40 cursor-not-allowed"
-        >
-          <span className="material-symbols-outlined text-lg">delete</span>
-          Xóa
-        </button>
+      <div className="flex items-center justify-end sticky bottom-0 bg-background py-4">
         <div className="flex gap-3">
           <button
             onClick={() => submit(false)}

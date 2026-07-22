@@ -23,6 +23,7 @@ export interface ContentDetail {
   publishedAt: string | null;
   status: ContentStatus;
   createdAt: string;
+  sourceLabel?: string | null;
   sources?: ContentSource[];
 }
 
@@ -41,6 +42,7 @@ export interface ChecklistTemplate {
   id: string;
   name: string;
   stage: ContentStage;
+  status: ContentStatus;
   description: string;
   items: ChecklistItem[];
 }
@@ -50,6 +52,28 @@ export interface ChecklistItem {
   itemText: string;
   order: number;
   isRequired: boolean;
+}
+
+export interface ChecklistItemInput {
+  itemText: string;
+  order: number;
+  isRequired: boolean;
+}
+
+export interface CreateChecklistTemplatePayload {
+  name: string;
+  description?: string;
+  stage: ContentStage;
+  items: ChecklistItemInput[];
+}
+
+export interface UpdateChecklistTemplatePayload {
+  name: string;
+  description?: string;
+  stage: ContentStage;
+  status: ContentStatus;
+  // null/undefined = keep existing items unchanged; [] = clear all; non-empty = full replace
+  items?: ChecklistItemInput[] | null;
 }
 
 export type CommunityTopicType = 'TOPIC' | 'CATEGORY' | 'TAG';
@@ -96,21 +120,21 @@ export interface PaginatedResponse<T> {
 }
 
 export const STAGE_LABELS: Record<ContentStage, string> = {
-  PRE_PREGNANCY: 'Chuan bi',
-  PREGNANCY: 'Thai ky',
+  PRE_PREGNANCY: 'Chuẩn bị',
+  PREGNANCY: 'Thai kỳ',
   POSTPARTUM: 'Sau sinh',
-  BABY_CARE: 'Cham be',
+  BABY_CARE: 'Chăm bé',
 };
 
 export const TYPE_LABELS: Record<ContentType, string> = {
-  ARTICLE: 'Bai viet',
+  ARTICLE: 'Bài viết',
   FAQ: 'FAQ',
   CHECKLIST: 'Checklist',
 };
 
 export const STATUS_LABELS: Record<ContentStatus, string> = {
-  DRAFT: 'Ban nhap',
-  PENDING_REVIEW: 'Cho phe duyet',
-  APPROVED: 'Da xuat ban',
-  ARCHIVED: 'Luu tru',
+  DRAFT: 'Bản nháp',
+  PENDING_REVIEW: 'Chờ phê duyệt',
+  APPROVED: 'Đã xuất bản',
+  ARCHIVED: 'Đã lưu trữ',
 };
