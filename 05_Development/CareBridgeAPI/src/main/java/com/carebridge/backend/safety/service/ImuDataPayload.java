@@ -1,6 +1,7 @@
 package com.carebridge.backend.safety.service;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 
 public record ImuDataPayload(
         double accelerometerX,
@@ -9,5 +10,8 @@ public record ImuDataPayload(
         double gyroscopeX,
         double gyroscopeY,
         double gyroscopeZ,
-        Instant timestamp
+        Instant timestamp,
+        String signalId,
+        BigDecimal latitude,
+        BigDecimal longitude
 ) {}

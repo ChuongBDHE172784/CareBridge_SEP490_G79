@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "health_record_files")
+@Table(name = "health_record_attachments")
 @Getter
 @Setter
 @Builder
@@ -18,13 +18,13 @@ public class HealthRecordFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "health_record_attachment_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "health_record_id", nullable = false)
     private UUID healthRecordId;
 
-    @Column(name = "file_id", nullable = false)
+    @Column(name = "attachment_id", nullable = false)
     private UUID fileId;
 
     @Builder.Default

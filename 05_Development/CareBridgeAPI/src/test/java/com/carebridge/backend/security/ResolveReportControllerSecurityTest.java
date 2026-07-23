@@ -103,7 +103,7 @@ class ResolveReportControllerSecurityTest {
     @Test
     @WithMockUser(username = "aaaaaaaa-0000-0000-0000-000000000001", roles = "MODERATOR")
     void resolveReport_sqlInjectionInReason_handledAsLiteralText() throws Exception {
-        String maliciousReason = "x'; DROP TABLE content_reports;--";
+        String maliciousReason = "x'; DROP TABLE moderation_cases;--";
         when(moderationService.resolveReport(any(), any(), any())).thenReturn(new ResolveReportResponse(
                 REPORT_ID_QUESTION, ReportStatus.RESOLVED,
                 UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001"), Instant.now(),

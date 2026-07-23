@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 public class CreateExpertProfileRequest {
 
     @NotBlank
-    @Size(max = 5)
+    @Size(max = 80)
     private String specialtyId;
 
     @NotBlank

@@ -41,7 +41,7 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
 
     // UC-114 Manage User Accounts: admin-facing search/filter over the existing users
     // table. ADR-IAM-001: scoped to the single-entity `User` — never joins a
-    // roles/user_roles table. Each nullable filter is cast to `string`/kept typed so
+    // legacy role join tables. Each nullable filter is cast to `string`/kept typed so
     // Postgres can resolve the bind-parameter type when the value is null (avoids the
     // "could not determine data type of parameter" error seen elsewhere in the
     // codebase for null-filter JPQL against a real Postgres driver).

@@ -10,7 +10,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "emergency_map_handoffs")
+@Table(name = "safety_event_actions")
+@org.hibernate.annotations.SQLRestriction("action_type = 'MAP_HANDOFF'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,10 +21,10 @@ public class EmergencyMapHandoff {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "handoff_id", updatable = false, nullable = false)
+    @Column(name = "safety_event_action_id", updatable = false, nullable = false)
     private UUID handoffId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "owner_user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "triage_handoff_id")
@@ -32,20 +33,20 @@ public class EmergencyMapHandoff {
     @Column(name = "risk_level", length = 20)
     private String riskLevel;
 
-    @Column(name = "user_latitude", precision = 10, scale = 8)
+    @Column(name = "latitude", precision = 10, scale = 8)
     private BigDecimal userLatitude;
 
-    @Column(name = "user_longitude", precision = 11, scale = 8)
+    @Column(name = "longitude", precision = 11, scale = 8)
     private BigDecimal userLongitude;
 
-    @Column(name = "selected_facility_id")
+    @Column(name = "care_facility_id")
     private UUID selectedFacilityId;
 
     @Column(columnDefinition = "text")
     private String summary;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "action_status", nullable = false, length = 20)
     private HandoffStatus status = HandoffStatus.OPEN;
 
     @CreationTimestamp
@@ -55,4 +56,16 @@ public class EmergencyMapHandoff {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Builder.Default
+    @Column(name = "action_type", nullable = false, updatable = false)
+    private String actionType = "MAP_HANDOFF";
+    @Column(name = "idempotency_key", nullable = false, updatable = false)
+    private String idempotencyKey;
+
+    @PrePersist
+    void prepareCanonicalAction() {
+        actionType = "MAP_HANDOFF";
+        if (idempotencyKey == null) idempotencyKey = "map-handoff:" + UUID.randomUUID();
+    }
 }

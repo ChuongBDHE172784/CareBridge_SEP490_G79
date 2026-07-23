@@ -61,7 +61,7 @@ class DirectConversationServiceImplReadRaceIntegrationTest extends AbstractPostg
                 EXPERT_USER_ID);
         UUID expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
                 expertProfileId, EXPERT_USER_ID);
         conversationId = UUID.randomUUID();

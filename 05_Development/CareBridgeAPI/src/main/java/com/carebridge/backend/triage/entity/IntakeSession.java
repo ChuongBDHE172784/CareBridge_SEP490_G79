@@ -9,12 +9,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "intake_sessions")
+@Table(name = "triage_sessions")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class IntakeSession {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "triage_session_id")
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
@@ -48,7 +49,7 @@ public class IntakeSession {
     @Column(name = "status", nullable = false, length = 20)
     private IntakeStatus status;
 
-    @Column(name = "disclaimer", columnDefinition = "TEXT")
+    @Column(name = "disclaimer_text", columnDefinition = "TEXT")
     private String disclaimer;
 
     @Column(name = "created_at", nullable = false)

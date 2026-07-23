@@ -16,29 +16,41 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserSessionRepository extends JpaRepository<UserSession, UUID> {
 
-    List<UserSession> findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(UUID userId);
+    List<UserSession> findByUserIdAndRevokedAtIsNullOrderByLastActivityAtDesc(UUID userId);
 
-    Page<UserSession> findByUserIdAndRevokedFalse(UUID userId, Pageable pageable);
+    Page<UserSession> findByUserIdAndRevokedAtIsNull(UUID userId, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.revoked = true, us.status = 'revoked', us.updatedAt = :now WHERE us.userId = :userId AND us.sessionId != :excludeSessionId AND us.revoked = false")
+    @Query("UPDATE UserSession us SET us.revokedAt = :now, us.status = 'REVOKED' WHERE us.userId = :userId AND us.sessionId != :excludeSessionId AND us.revokedAt IS NULL")
     int revokeAllExceptSession(@Param("userId") UUID userId, @Param("excludeSessionId") UUID excludeSessionId, @Param("now") Instant now);
 
-    Optional<UserSession> findByRefreshTokenHashAndRevokedFalse(String refreshTokenHash);
+    Optional<UserSession> findByRefreshTokenHashAndRevokedAtIsNull(String refreshTokenHash);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.lastActivityAt = :now, us.ipAddress = :ip, us.updatedAt = :now WHERE us.refreshTokenHash = :token")
+    @Query("UPDATE UserSession us SET us.lastActivityAt = :now WHERE us.refreshTokenHash = :token")
     void updateActivity(@Param("now") Instant now, @Param("ip") String ip, @Param("token") String token);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.revoked = true, us.status = 'revoked', us.updatedAt = :now WHERE us.sessionId = :sessionId AND us.userId = :userId")
+    @Query("UPDATE UserSession us SET us.revokedAt = :now, us.status = 'REVOKED' WHERE us.sessionId = :sessionId AND us.userId = :userId")
     int revokeSession(@Param("sessionId") UUID sessionId, @Param("userId") UUID userId, @Param("now") Instant now);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.isCurrent = false WHERE us.userId = :userId AND us.isCurrent = true AND us.sessionId != :newSessionId")
+    @Query("UPDATE UserSession us SET us.status = us.status WHERE us.userId = :userId AND us.sessionId != :newSessionId")
     int clearCurrentSessions(@Param("userId") UUID userId, @Param("newSessionId") UUID newSessionId);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.refreshTokenHash = :newHash, us.expiresAt = :newExpiry, us.updatedAt = :now WHERE us.sessionId = :sessionId")
+    @Query("UPDATE UserSession us SET us.refreshTokenHash = :newHash, us.expiresAt = :newExpiry, us.lastActivityAt = :now WHERE us.sessionId = :sessionId")
     int updateSessionForRotation(@Param("sessionId") UUID sessionId, @Param("newHash") String newHash, @Param("newExpiry") Instant newExpiry, @Param("now") Instant now);
+
+    @Modifying
+    @Query("UPDATE UserSession us SET us.revokedAt=:now, us.status='REVOKED' WHERE us.refreshTokenHash=:hash AND us.userId=:userId AND us.revokedAt IS NULL")
+    int revokeByHash(@Param("hash") String hash, @Param("userId") UUID userId, @Param("now") Instant now);
+
+    @Modifying
+    @Query("UPDATE UserSession us SET us.revokedAt=:now, us.status='REVOKED' WHERE us.userId=:userId AND us.revokedAt IS NULL")
+    int revokeAllByUserId(@Param("userId") UUID userId, @Param("now") Instant now);
+
+    default List<UserSession> findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(UUID userId) { return findByUserIdAndRevokedAtIsNullOrderByLastActivityAtDesc(userId); }
+    default Page<UserSession> findByUserIdAndRevokedFalse(UUID userId, Pageable pageable) { return findByUserIdAndRevokedAtIsNull(userId, pageable); }
+    default Optional<UserSession> findByRefreshTokenHashAndRevokedFalse(String hash) { return findByRefreshTokenHashAndRevokedAtIsNull(hash); }
 }

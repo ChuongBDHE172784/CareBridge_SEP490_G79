@@ -114,7 +114,7 @@ def merge_answers(intake: ChildTriageRequest, new_answers: dict[str, object]) ->
 
 
 def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
-    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"}:
         missing: list[str] = []
         if not intake.symptomList and _empty(intake.parentFreeText):
             missing.append("parentFreeText")
@@ -150,7 +150,7 @@ def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
 
 
 def ask_followup_questions(intake: ChildTriageRequest) -> list[IntakeQuestion]:
-    if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
+    if intake.stage in {"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"}:
         bank = {
             "parentFreeText": IntakeQuestion(
                 questionKey="parentFreeText",

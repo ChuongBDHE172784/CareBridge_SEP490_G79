@@ -9,24 +9,25 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "community_questions", indexes = {
-    @Index(name = "idx_community_questions_topic_id", columnList = "topic_id"),
-    @Index(name = "idx_community_questions_author_id", columnList = "author_id"),
-    @Index(name = "idx_community_questions_status", columnList = "status"),
-    @Index(name = "idx_community_questions_stage", columnList = "stage")
+@Table(name = "community_content", indexes = {
+    @Index(name = "community_content_topic_ix", columnList = "topic_id"),
+    @Index(name = "community_content_author_ix", columnList = "author_user_id"),
+    @Index(name = "community_content_status_ix", columnList = "moderation_status"),
+    @Index(name = "community_content_stage_ix", columnList = "stage")
 })
+@org.hibernate.annotations.SQLRestriction("content_type = 'QUESTION'")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CommunityQuestion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "content_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "topic_id", nullable = false)
     private UUID topicId;
 
-    @Column(name = "author_id", nullable = false)
+    @Column(name = "author_user_id", nullable = false)
     private java.util.UUID authorId;
 
     @Column(name = "title", nullable = false, length = 255)
@@ -54,7 +55,7 @@ public class CommunityQuestion {
     private boolean anonymous = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "moderation_status", nullable = false, length = 30)
     @Builder.Default
     private QuestionStatus status = QuestionStatus.PENDING;
 
@@ -73,4 +74,8 @@ public class CommunityQuestion {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Builder.Default
+    @Column(name = "content_type", nullable = false, updatable = false, length = 20)
+    private String contentType = "QUESTION";
 }

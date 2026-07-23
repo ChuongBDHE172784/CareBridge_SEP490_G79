@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "reminders")
+@Table(name = "scheduled_care_items")
 @Getter
 @Setter
 @Builder
@@ -19,7 +19,7 @@ public class Reminder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "reminder_id", updatable = false, nullable = false)
+    @Column(name = "care_item_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
@@ -32,7 +32,7 @@ public class Reminder {
     private UUID babyId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "reminder_type", nullable = false, length = 50)
+    @Column(name = "item_type", nullable = false, length = 50)
     private ReminderType reminderType;
 
     @Column(name = "title", nullable = false, length = 255)

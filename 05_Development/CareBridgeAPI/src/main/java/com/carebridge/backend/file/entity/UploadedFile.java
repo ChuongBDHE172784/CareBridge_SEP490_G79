@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "uploaded_files")
+@Table(name = "attachments")
 @Getter
 @Setter
 @Builder
@@ -22,7 +22,7 @@ public class UploadedFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "file_id", updatable = false, nullable = false)
+    @Column(name = "attachment_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
@@ -31,21 +31,18 @@ public class UploadedFile {
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
 
-    @Column(name = "storage_provider", nullable = false, length = 20)
+    @Transient
     @Builder.Default
     private String storageProvider = "cloudinary";
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "kind", nullable = false, length = 20)
+    @Transient
     @Builder.Default
     private FileKind kind = FileKind.IMAGE;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "purpose", nullable = false, length = 50)
+    @Transient
     private FilePurpose purpose;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "access_mode", nullable = false, length = 20)
+    @Transient
     @Builder.Default
     private FileAccessMode accessMode = FileAccessMode.PRIVATE;
 

@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "location_snapshots")
+@Table(name = "safety_event_actions")
+@org.hibernate.annotations.SQLRestriction("action_type = 'LOCATION_SNAPSHOT'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,10 +19,10 @@ public class LocationSnapshot {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "location_snapshot_id", updatable = false, nullable = false)
+    @Column(name = "safety_event_action_id", updatable = false, nullable = false)
     private UUID locationSnapshotId;
 
-    @Column(nullable = false)
+    @Column(name = "owner_user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "context_type", length = 50)
@@ -48,4 +49,17 @@ public class LocationSnapshot {
 
     @Column(name = "consent_status", length = 20)
     private String consentStatus;
+
+    @Builder.Default
+    @Column(name = "action_type", nullable = false, updatable = false)
+    private String actionType = "LOCATION_SNAPSHOT";
+
+    @Column(name = "idempotency_key", nullable = false, updatable = false)
+    private String idempotencyKey;
+
+    @PrePersist
+    void prepareCanonicalAction() {
+        actionType = "LOCATION_SNAPSHOT";
+        if (idempotencyKey == null) idempotencyKey = "location:" + UUID.randomUUID();
+    }
 }

@@ -48,7 +48,7 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
                 expertUserId, "06" + phoneSuffix);
         UUID expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
                 expertProfileId, expertUserId);
         UUID conversationId = UUID.randomUUID();
@@ -66,7 +66,7 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
 
         // Preconditions done — now revoke.
         jdbcTemplate.update(
-                "UPDATE expert_profiles SET verification_status = 'SUSPENDED' WHERE user_id = ?", expertUserId);
+                "UPDATE professional_profiles SET verification_status = 'SUSPENDED' WHERE user_id = ?", expertUserId);
 
         // Step 1 — Mother tries to send a new message: must be blocked, nothing persisted, no notification.
         SendDirectMessageRequest request = new SendDirectMessageRequest();

@@ -25,7 +25,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
@@ -104,10 +104,6 @@ carebridge:
     call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}
     firebase-event-retention-hours: ${DIRECTCHAT_FIREBASE_EVENT_RETENTION_HOURS:24}
 
-  consultation-request:
-    expiry-hours: ${CONSULTATION_REQUEST_EXPIRY_HOURS:48}
-    expiry-job-delay-ms: ${CONSULTATION_REQUEST_EXPIRY_JOB_DELAY_MS:60000}
-
   storage:
     provider: ${FILE_STORAGE_PROVIDER:cloudinary}
     private-provider: ${PRIVATE_FILE_STORAGE_PROVIDER:r2}
@@ -130,9 +126,6 @@ carebridge:
     detection-limit: ${COMPREFACE_DETECTION_LIMIT:2}
     connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
-
-  notification:
-    consultation-request-outbox-delay-ms: ${CONSULTATION_REQUEST_OUTBOX_DELAY_MS:5000}
 
 ai:
   triage-service:

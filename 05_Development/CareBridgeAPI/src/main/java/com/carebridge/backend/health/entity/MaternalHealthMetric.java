@@ -10,7 +10,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "maternal_health_metrics")
+@Table(name = "maternal_observations")
+@org.hibernate.annotations.SQLRestriction("legacy_source = 'MATERNAL_METRIC'")
 @Getter
 @Setter
 @Builder
@@ -20,26 +21,26 @@ public class MaternalHealthMetric {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "metric_id", updatable = false, nullable = false)
+    @Column(name = "observation_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "journey_id", nullable = false)
+    @Column(name = "mother_journey_id", nullable = false)
     private UUID journeyId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "metric_type", nullable = false, length = 50)
+    @Column(name = "observation_type", nullable = false, length = 60)
     private MetricType metricType;
 
-    @Column(name = "value_numeric", precision = 10, scale = 2)
+    @Column(name = "numeric_value")
     private BigDecimal valueNumeric;
 
-    @Column(name = "value_secondary", precision = 10, scale = 2)
+    @Column(name = "secondary_numeric_value")
     private BigDecimal valueSecondary;
 
     @Column(name = "unit", length = 30)
     private String unit;
 
-    @Column(name = "measured_at", nullable = false)
+    @Column(name = "observed_at", nullable = false)
     private Instant measuredAt;
 
     @Enumerated(EnumType.STRING)
@@ -49,12 +50,12 @@ public class MaternalHealthMetric {
     @Column(name = "source_reference_id")
     private UUID sourceReferenceId;
 
-    @Column(name = "note", columnDefinition = "text")
+    @Column(name = "text_value", columnDefinition = "text")
     private String note;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "record_status", nullable = false, length = 20)
     private MetricStatus status = MetricStatus.ACTIVE;
 
     @CreationTimestamp
@@ -64,4 +65,28 @@ public class MaternalHealthMetric {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Builder.Default
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    private String payloadJson = "{}";
+
+    @Builder.Default
+    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
+    private String schemaVersion = "1";
+
+    @Builder.Default
+    @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
+    private String legacySource = "MATERNAL_METRIC";
+
+    @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
+    private String legacyId;
+
+    @PrePersist
+    void prepareCanonicalObservation() {
+        legacyId = id.toString();
+        if (sourceType == null) {
+            sourceType = DataSource.MANUAL;
+        }
+    }
 }

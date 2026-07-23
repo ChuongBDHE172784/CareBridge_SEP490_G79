@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Maps to the existing notification_preferences table in V1 schema.
+ * Compatibility value object backed by the canonical account settings document.
  *
  * <p>V1 schema columns: preference_id, user_id, notification_type,
  * email_enabled, in_app_enabled, push_enabled, quiet_hours_start,
@@ -16,8 +16,6 @@ import java.util.UUID;
  *
  * <p>UC-10 exposes push_enabled as the primary "enabled" flag per notification type.
  */
-@Entity
-@Table(name = "notification_preferences")
 @Getter
 @Setter
 @Builder

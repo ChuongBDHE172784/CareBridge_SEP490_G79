@@ -59,7 +59,7 @@ class NotificationViewServiceTest {
         Page<NotificationRecord> page = new PageImpl<>(List.of(record));
         Pageable pageable = PageRequest.of(0, 20);
 
-        when(notificationRecordRepository.findByUserId(eq(USER_ID), eq(pageable))).thenReturn(page);
+        when(notificationRecordRepository.findVisibleByUserId(eq(USER_ID), eq(pageable))).thenReturn(page);
 
         // When
         Page<NotificationRecordResponse> result = service.getMyNotifications(USER_ID, null, pageable, null);
@@ -67,9 +67,10 @@ class NotificationViewServiceTest {
         // Then
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).userId()).isEqualTo(USER_ID);
+        assertThat(result.getContent().get(0).isRead()).isFalse();
 
         // Ownership: query is always scoped to USER_ID — no call with other userId
-        verify(notificationRecordRepository).findByUserId(eq(USER_ID), any(Pageable.class));
+        verify(notificationRecordRepository).findVisibleByUserId(eq(USER_ID), any(Pageable.class));
     }
 
     @Test
@@ -80,7 +81,8 @@ class NotificationViewServiceTest {
         Page<NotificationRecord> page = new PageImpl<>(List.of(record));
         Pageable pageable = PageRequest.of(0, 20);
 
-        when(notificationRecordRepository.findByUserIdAndType(eq(USER_ID), eq(NotificationType.REMINDER), eq(pageable)))
+        when(notificationRecordRepository.findVisibleByUserIdAndType(
+                eq(USER_ID), eq(NotificationType.REMINDER), eq(pageable)))
                 .thenReturn(page);
 
         // When
@@ -88,7 +90,7 @@ class NotificationViewServiceTest {
 
         // Then
         assertThat(result.getContent()).hasSize(1);
-        verify(notificationRecordRepository).findByUserIdAndType(
+        verify(notificationRecordRepository).findVisibleByUserIdAndType(
                 eq(USER_ID), eq(NotificationType.REMINDER), any(Pageable.class));
     }
 
@@ -96,7 +98,7 @@ class NotificationViewServiceTest {
     @DisplayName("NOTIF-TC-011-003: getMyNotifications empty page — returns empty content")
     void getMyNotifications_noNotifications_returnsEmptyPage() {
         // Given
-        when(notificationRecordRepository.findByUserId(eq(USER_ID), any(Pageable.class)))
+        when(notificationRecordRepository.findVisibleByUserId(eq(USER_ID), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
         // When

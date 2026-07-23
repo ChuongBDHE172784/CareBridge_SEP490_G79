@@ -89,7 +89,7 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 Long.class,
                 motherId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_profiles where owner_user_id = ?",
+                "select count(*) from care_subjects where owner_user_id = ? and subject_type = 'BABY'",
                 Long.class,
                 motherId)).isZero();
         assertThat(logRepository.count()).isEqualTo(1L);

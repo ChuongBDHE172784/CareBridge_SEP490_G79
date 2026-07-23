@@ -246,6 +246,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 : JourneyTransitionType.OUTCOME_RECORDED;
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(journeyId)
+                .ownerUserId(ownerId)
                 .eventType(eventType)
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())
@@ -336,6 +337,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
+                .ownerUserId(callerId)
                 .eventType(JourneyTransitionType.CREATED)
                 .toStage(saved.getJourneyType())
                 .changes(changes)
@@ -499,6 +501,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 notesChanged);
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
+                .ownerUserId(ownerId)
                 .eventType(eventType)
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())

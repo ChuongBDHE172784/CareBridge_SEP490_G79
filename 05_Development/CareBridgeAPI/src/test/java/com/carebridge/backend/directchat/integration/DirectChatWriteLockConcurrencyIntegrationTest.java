@@ -201,8 +201,8 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
         seedUser(motherId, "Lock Mother", "MOTHER");
         seedUser(expertUserId, "Lock Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);

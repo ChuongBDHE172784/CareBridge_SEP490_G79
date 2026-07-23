@@ -46,7 +46,12 @@ class TriageResult {
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
     final sessionId = json['sessionId']?.toString() ?? '';
-    final status = json['status']?.toString() ?? '';
+    final rawStatus = json['status']?.toString() ?? '';
+    final status = switch (rawStatus) {
+      'ASK_MORE' => 'NEED_MORE_INFO',
+      'TRIAGE_COMPLETE' => 'COMPLETED',
+      _ => rawStatus,
+    };
     final riskLevel = json['riskLevel']?.toString();
     if (sessionId.isEmpty || status.isEmpty) {
       throw const FormatException('Invalid triage result identity');
@@ -111,12 +116,12 @@ class TriageClaim {
   });
 
   factory TriageClaim.fromJson(Map<String, dynamic> json) => TriageClaim(
-        claimId: json['claimId']?.toString() ?? '',
-        text: json['text']?.toString() ?? '',
-        evidenceIds: (json['evidenceIds'] as List<dynamic>? ?? const [])
-            .map((value) => value.toString())
-            .toList(),
-      );
+    claimId: json['claimId']?.toString() ?? '',
+    text: json['text']?.toString() ?? '',
+    evidenceIds: (json['evidenceIds'] as List<dynamic>? ?? const [])
+        .map((value) => value.toString())
+        .toList(),
+  );
 }
 
 class TriageCitation {

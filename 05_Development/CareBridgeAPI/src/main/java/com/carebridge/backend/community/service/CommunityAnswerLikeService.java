@@ -8,7 +8,7 @@ public interface CommunityAnswerLikeService {
 
     /**
      * Toggles like state: adds like if not liked, removes if already liked.
-     * Atomically updates denormalized like_count on community_answers.
+     * Atomically updates the answer's denormalized like_count on canonical community content.
      * @throws com.carebridge.backend.community.exception.AnswerNotFoundException when answer not found
      */
     LikeToggleResponse toggleLike(UUID userId, UUID answerId);

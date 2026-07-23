@@ -20,4 +20,10 @@ public class SafetyConfigRequest {
 
     @NotNull
     private Boolean emergencyAutoAlert;
+
+    /** Additive for old clients; omitted values retain the stored/default countdown. */
+    private Integer countdownSeconds;
+
+    /** OS permission attestation. Consent is checked independently server-side. */
+    private Boolean sensorPermissionGranted;
 }

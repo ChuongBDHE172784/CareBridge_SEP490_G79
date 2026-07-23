@@ -60,17 +60,19 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @BeforeEach
     void seedUsers() {
+        jdbcTemplate.update("INSERT INTO persons(person_id,display_name) VALUES (?, 'Mother Test'), (?, 'Expert Test')",
+                MOTHER_ID, EXPERT_USER_ID);
         jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Mother Test', '0900000001', 'MOTHER', true, false, now(), now())",
-                MOTHER_ID);
+                "INSERT INTO users (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
+                        + "VALUES (?, ?, 'Mother Test', '0900000001', 'MOTHER', true, false, now(), now())",
+                MOTHER_ID, MOTHER_ID);
         jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Expert Test', '0900000002', 'EXPERT', true, false, now(), now())",
-                EXPERT_USER_ID);
+                "INSERT INTO users (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
+                        + "VALUES (?, ?, 'Expert Test', '0900000002', 'EXPERT', true, false, now(), now())",
+                EXPERT_USER_ID, EXPERT_USER_ID);
         expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
                 expertProfileId, EXPERT_USER_ID);
 
@@ -90,41 +92,46 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
         UUID conversationId = conversationRepository
                 .findByMotherUserIdAndExpertUserId(MOTHER_ID, EXPERT_USER_ID).orElseThrow().getId();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM audit_logs WHERE action = 'DIRECT_CONVERSATION_OPENED'", Integer.class))
+                "SELECT COUNT(*) FROM audit_events WHERE event_category = 'DIRECT_CONVERSATION_OPENED'", Integer.class))
                 .isGreaterThanOrEqualTo(1);
 
         // Step 2 — NOT NULL violation on client_message_id (BR-DCC-005 siết DDL)
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO direct_messages (message_id, conversation_id, sender_user_id, message_type, message_body, created_at) "
-                        + "VALUES (gen_random_uuid(), ?, ?, 'TEXT', 'hi', now())",
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,sender_user_id,message_type,message_body,original_created_at) "
+                        + "VALUES (gen_random_uuid(),'direct_messages',gen_random_uuid()::text,?,?,?,'TEXT','hi',now())",
+                MOTHER_ID,
                 conversationId, MOTHER_ID))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Step 3 — CHECK violation on empty message_body
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO direct_messages (message_id, conversation_id, sender_user_id, client_message_id, message_type, message_body, created_at) "
-                        + "VALUES (gen_random_uuid(), ?, ?, gen_random_uuid(), 'TEXT', '   ', now())",
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,sender_user_id,client_message_id,message_type,message_body,original_created_at) "
+                        + "VALUES (gen_random_uuid(),'direct_messages',gen_random_uuid()::text,?,?,?,gen_random_uuid(),'TEXT','   ',now())",
+                MOTHER_ID,
                 conversationId, MOTHER_ID))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Step 4 — CHECK violation on message_type != TEXT (BR-DCC-016)
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO direct_messages (message_id, conversation_id, sender_user_id, client_message_id, message_type, message_body, created_at) "
-                        + "VALUES (gen_random_uuid(), ?, ?, gen_random_uuid(), 'FILE', 'a file', now())",
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,sender_user_id,client_message_id,message_type,message_body,original_created_at) "
+                        + "VALUES (gen_random_uuid(),'direct_messages',gen_random_uuid()::text,?,?,?,gen_random_uuid(),'FILE','a file',now())",
+                MOTHER_ID,
                 conversationId, MOTHER_ID))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Step 5 — CHECK violation on bogus call_status
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO conversation_calls (call_id, conversation_id, initiated_by_user_id, call_type, call_status, zego_room_id, initiated_at, created_at) "
-                        + "VALUES (gen_random_uuid(), ?, ?, 'VOICE', 'BOGUS', 'room', now(), now())",
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,initiated_by_user_id,call_type,call_status,zego_room_id,initiated_at,original_created_at) "
+                        + "VALUES (gen_random_uuid(),'conversation_calls',gen_random_uuid()::text,?,?,?,'VOICE','BOGUS','room',now(),now())",
+                MOTHER_ID,
                 conversationId, MOTHER_ID))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Step 6 — CHECK violation: ENDED requires answered_at (chk_conversation_calls_ended_requires_answered)
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO conversation_calls (call_id, conversation_id, initiated_by_user_id, call_type, call_status, zego_room_id, initiated_at, created_at) "
-                        + "VALUES (gen_random_uuid(), ?, ?, 'VOICE', 'ENDED', 'room', now(), now())",
+                "INSERT INTO archived_realtime_records (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,initiated_by_user_id,call_type,call_status,zego_room_id,initiated_at,ended_at,original_created_at) "
+                        + "VALUES (gen_random_uuid(),'conversation_calls',gen_random_uuid()::text,?,?,?,'VOICE','ENDED','room',now(),now(),now())",
+                MOTHER_ID,
                 conversationId, MOTHER_ID))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
@@ -138,7 +145,7 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                 conversationId, MOTHER_ID, UUID.fromString(clientMessageId))).isPresent();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM audit_logs WHERE action = 'DIRECT_MESSAGE_SENT'", Integer.class))
+                "SELECT COUNT(*) FROM audit_events WHERE event_category = 'DIRECT_MESSAGE_SENT'", Integer.class))
                 .isGreaterThanOrEqualTo(1);
 
         // Step 8 — initiate -> answer -> end call lifecycle; assert duration computed server-side
@@ -210,7 +217,7 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
                         .with(csrf()).with(user2()))
                 .andExpect(status().isOk());
 
-        jdbcTemplate.update("UPDATE expert_profiles SET verification_status = 'PENDING' WHERE expert_profile_id = ?",
+        jdbcTemplate.update("UPDATE professional_profiles SET verification_status = 'PENDING' WHERE professional_profile_id = ?",
                 expertProfileId);
         mockMvc.perform(get("/api/v1/direct-conversations/" + conversationId + "/timeline"))
                 .andExpect(status().isOk());
@@ -242,7 +249,8 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private long countMessages(UUID conversationId) {
         Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM direct_messages WHERE conversation_id = ?", Long.class, conversationId);
+                "SELECT COUNT(*) FROM archived_realtime_records WHERE legacy_table='direct_messages' AND conversation_id = ?",
+                Long.class, conversationId);
         return count == null ? 0 : count;
     }
 
