@@ -1,7 +1,10 @@
 package com.carebridge.backend.content.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -15,6 +18,10 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
@@ -39,12 +46,47 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     @Autowired private ChecklistTemplateRepository checklistTemplateRepository;
     @Autowired private ChecklistItemRepository checklistItemRepository;
     @Autowired private UserChecklistItemRepository userChecklistItemRepository;
+    @Autowired private MotherJourneyRepository motherJourneyRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private AuditService auditService;
 
     private static final String BASE_URL = "/api/v1/admin/checklist-templates";
+
+    @Test
+    void publicListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
+        ChecklistTemplate approvedPregnancy = checklistTemplateRepository.saveAndFlush(
+                template("Public approved pregnancy", ContentStage.PREGNANCY, ContentStatus.APPROVED));
+        ChecklistTemplate approvedPostpartum = checklistTemplateRepository.saveAndFlush(
+                template("Public approved postpartum", ContentStage.POSTPARTUM, ContentStatus.APPROVED));
+        ChecklistTemplate draft = checklistTemplateRepository.saveAndFlush(
+                template("Hidden draft", ContentStage.PREGNANCY, ContentStatus.DRAFT));
+        ChecklistTemplate pending = checklistTemplateRepository.saveAndFlush(
+                template("Hidden pending", ContentStage.PREGNANCY, ContentStatus.PENDING_REVIEW));
+        ChecklistTemplate archived = checklistTemplateRepository.saveAndFlush(
+                template("Hidden archived", ContentStage.PREGNANCY, ContentStatus.ARCHIVED));
+
+        checklistItemRepository.saveAllAndFlush(List.of(
+                item(approvedPregnancy, "Visible pregnancy item", 1),
+                item(approvedPostpartum, "Visible postpartum item", 1),
+                item(draft, "Hidden draft item", 1),
+                item(pending, "Hidden pending item", 1),
+                item(archived, "Hidden archived item", 1)));
+
+        mockMvc.perform(get("/api/v1/content/checklists"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[*].name", containsInAnyOrder(
+                        "Public approved pregnancy", "Public approved postpartum")));
+
+        mockMvc.perform(get("/api/v1/content/checklists")
+                        .param("stage", "PREGNANCY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Public approved pregnancy"))
+                .andExpect(jsonPath("$.data[0].items[0].itemText").value("Visible pregnancy item"));
+    }
 
     // CHKTPL-TC-INT-001
     @Test
@@ -123,15 +165,23 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     void archive_doesNotBreakDownstreamUserChecklistItems() throws Exception {
         String contentAdminToken = seedUser("chk.downstream.admin@test.com", Role.CONTENT_ADMIN);
         String motherToken = seedUser("chk.downstream.mother@test.com", Role.MOTHER);
+        User mother = userRepository.findByEmailIgnoreCase("chk.downstream.mother@test.com").orElseThrow();
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(mother.getId())
+                .journeyType(JourneyType.PREGNANCY)
+                .status(JourneyStatus.ACTIVE)
+                .build());
 
-        ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(draftTemplate("Import source"));
+        ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
+                template("Import source", ContentStage.PREGNANCY, ContentStatus.APPROVED));
         ChecklistItem templateItem = checklistItemRepository.saveAndFlush(item(template, "Mục nhập khẩu", 1));
 
         // MOTHER imports the template item into her personal checklist (real UC-50 endpoint)
         mockMvc.perform(post("/api/v1/user-checklist-items/import").with(csrf())
                         .header("Authorization", "Bearer " + motherToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateItemIds\":[\"" + templateItem.getId() + "\"]}"))
+                        .content("{\"journeyId\":\"" + journey.getId()
+                                + "\",\"templateItemIds\":[\"" + templateItem.getId() + "\"]}"))
                 .andExpect(status().isCreated());
 
         List<UserChecklistItem> imported = userChecklistItemRepository.findByOwnerFiltered(
@@ -157,10 +207,14 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private ChecklistTemplate draftTemplate(String name) {
+        return template(name, ContentStage.PREGNANCY, ContentStatus.DRAFT);
+    }
+
+    private ChecklistTemplate template(String name, ContentStage stage, ContentStatus status) {
         return ChecklistTemplate.builder()
                 .name(name)
-                .stage(ContentStage.PREGNANCY)
-                .status(ContentStatus.DRAFT)
+                .stage(stage)
+                .status(status)
                 .description("Mô tả kiểm thử")
                 .build();
     }

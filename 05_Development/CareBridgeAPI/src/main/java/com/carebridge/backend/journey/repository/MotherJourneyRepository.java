@@ -45,6 +45,10 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
 
     boolean existsByIdAndOwnerUserId(UUID id, UUID ownerUserId);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    Optional<MotherJourney> findByIdAndOwnerUserIdAndStatus(
+            UUID id, UUID ownerUserId, JourneyStatus status);
+
     /** Returns the most recently created ACTIVE journey for the user (LIMIT 1). */
     Optional<MotherJourney> findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(UUID ownerUserId,
                                                                                 JourneyStatus status);
