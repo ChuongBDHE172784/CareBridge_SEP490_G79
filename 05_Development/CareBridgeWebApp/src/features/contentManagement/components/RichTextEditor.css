@@ -57,10 +57,8 @@
   margin: 0 0 0.75em;
 }
 
-.rich-text-editor-content img {
-  max-width: 100%;
-  border-radius: 8px;
-}
+/* img rules (max-width, resize presets, align) live in ../richContentBody.css, shared with
+   ContentDetailPage.tsx via the `rich-content-body` class — see that file's header comment. */
 
 .rich-text-editor-content blockquote {
   border-left: 3px solid var(--outline-variant, #cac4d0);

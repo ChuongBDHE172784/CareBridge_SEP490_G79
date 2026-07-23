@@ -55,6 +55,13 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
     // UC-113: impact report — published content reach (count only, no view/impression column exists)
     long countByPublishedAtIsNotNull();
 
+    // ContentImageOrphanCleanup_TDS.md ADR-CLEAN-001: deliberately NOT filtered by status — a
+    // PUBLIC content image referenced by ARCHIVED content must still count as "referenced" (the
+    // row is never hard-deleted, so its images must not be purged either — ADR-RTE-007 addendum,
+    // ContentRichTextEditor_TDS.md).
+    @Query("SELECT COUNT(c) > 0 FROM ContentItem c WHERE c.body LIKE CONCAT('%', :publicId, '%')")
+    boolean existsByBodyContaining(@Param("publicId") String publicId);
+
     @Query("SELECT c FROM ContentItem c WHERE " +
            "c.status = :status AND " +
            "(:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +

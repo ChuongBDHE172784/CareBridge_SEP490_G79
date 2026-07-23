@@ -119,6 +119,43 @@ class HtmlContentSanitizerTest {
         assertNull(sanitizer.sanitize(null));
     }
 
+    // RTE-TC-017: data-width-pct chỉ chấp nhận enum 25/50/75/100 (ADR-RTE-008)
+    @Test
+    void sanitize_imageWidthPct_allowedEnumKept_disallowedValueStripped() {
+        String allowed = sanitizer.sanitize(
+                "<img data-width-pct=\"50\" src=\"https://res.cloudinary.com/demo/x.jpg\">");
+        assertTrue(allowed.contains("data-width-pct=\"50\""));
+
+        String disallowed = sanitizer.sanitize(
+                "<img data-width-pct=\"33\" src=\"https://res.cloudinary.com/demo/x.jpg\">");
+        assertFalse(disallowed.contains("data-width-pct"));
+    }
+
+    // RTE-TC-018: data-align chỉ chấp nhận enum left/center/right (ADR-RTE-008)
+    @Test
+    void sanitize_imageAlign_allowedEnumKept_disallowedValueStripped() {
+        String allowed = sanitizer.sanitize(
+                "<img data-align=\"left\" src=\"https://res.cloudinary.com/demo/x.jpg\">");
+        assertTrue(allowed.contains("data-align=\"left\""));
+
+        String disallowed = sanitizer.sanitize(
+                "<img data-align=\"justify\" src=\"https://res.cloudinary.com/demo/x.jpg\">");
+        assertFalse(disallowed.contains("data-align"));
+    }
+
+    // RTE-TC-019: text-align trong style được giữ; property khác (float) trong cùng style vẫn bị loại (ADR-RTE-009)
+    @Test
+    void sanitize_textAlignStyle_kept_otherPropertyInSameStyleStillStripped() {
+        String kept = sanitizer.sanitize("<p style=\"text-align:center\">x</p>");
+        assertTrue(kept.toLowerCase().contains("text-align"));
+        assertTrue(kept.toLowerCase().contains("center"));
+
+        String mixed = sanitizer.sanitize("<p style=\"text-align:center;float:left\">x</p>");
+        String style = extractStyleAttribute(mixed);
+        assertTrue(style.toLowerCase().contains("text-align"));
+        assertFalse(style.toLowerCase().contains("float"));
+    }
+
     // Không so khớp chuỗi cứng cho style — parse attribute trước khi assert (per Test-Spec §4 RTE-TC-006 note)
     private static String extractStyleAttribute(String html) {
         int start = html.indexOf("style=\"");
