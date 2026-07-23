@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useEffectEvent, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, RotateCcw, AlertCircle, Smartphone } from 'lucide-react';
 import { verifyOtp, resendOtp } from '../services/authApi';
@@ -21,9 +21,7 @@ export default function OtpPage() {
  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
  const otpInputRef = useRef<HTMLInputElement | null>(null);
 
- // ── Ref để handler luôn có giá trị mới nhất (tránh stale closure) ──
- const autoSubmitRef = useRef<(code: string) => void>(() => {});
- autoSubmitRef.current = (code: string) => {
+ const autoSubmit = useCallback((code: string) => {
   if (!code || !state?.identifier || isSubmitting) return;
   setServerError(null);
   setIsSubmitting(true);
@@ -41,13 +39,18 @@ export default function OtpPage() {
     setServerError(e.response?.data?.message ?? 'Mã OTP không đúng hoặc đã hết hạn.');
    })
    .finally(() => setIsSubmitting(false));
- };
+ }, [isSubmitting, navigate, state?.identifier]);
+
+ const autoSubmitFromOtpEvent = useEffectEvent((code: string) => {
+  autoSubmit(code);
+ });
 
  // ── Web OTP API: auto-fill từ SMS ──
  useEffect(() => {
   if (!('OTPCredential' in window)) return;
   const input = otpInputRef.current;
   if (!input || !state?.identifier) return;
+  let autoSubmitTimer: ReturnType<typeof setTimeout> | undefined;
 
   const handler = (event: Event) => {
    const code = (event as OtpCredentialEvent).credential?.code;
@@ -55,13 +58,16 @@ export default function OtpPage() {
     event.preventDefault();
     setDigits(code.split(''));
     setAutoFilled(true);
-    setTimeout(() => autoSubmitRef.current(code), 300);
+    if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
+    autoSubmitTimer = setTimeout(() => autoSubmitFromOtpEvent(code), 300);
    }
   };
 
   input.addEventListener('otpcredentialreceived', handler as EventListener);
-  return () => input.removeEventListener('otpcredentialreceived', handler as EventListener);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return () => {
+   input.removeEventListener('otpcredentialreceived', handler as EventListener);
+   if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
+  };
  }, [state?.identifier]);
 
  useEffect(() => {
@@ -104,7 +110,7 @@ export default function OtpPage() {
    setServerError('Vui lòng nhập đầy đủ 6 chữ số OTP.');
    return;
   }
-  autoSubmitRef.current(otp);
+  autoSubmit(otp);
  };
 
  const handleResend = async () => {

@@ -28,16 +28,16 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
 
     @Modifying
     @Query(value = """
-            INSERT INTO user_checklist_items (
-                user_checklist_item_id,
+            INSERT INTO preparation_checklist_items (
+                checklist_item_id,
                 owner_user_id,
-                journey_id,
+                mother_journey_id,
                 baby_id,
-                template_item_id,
-                item_text,
+                template_entry_id,
+                title,
                 category,
-                is_completed,
-                item_order,
+                status,
+                display_order,
                 created_at,
                 updated_at
             ) VALUES (
@@ -48,17 +48,17 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
                 :templateItemId,
                 :itemText,
                 'GENERAL',
-                false,
+                'OPEN',
                 :itemOrder,
                 now(),
                 now()
             )
             ON CONFLICT (
                 owner_user_id,
-                journey_id,
+                mother_journey_id,
                 baby_id,
-                template_item_id
-            ) WHERE template_item_id IS NOT NULL
+                template_entry_id
+            ) WHERE template_entry_id IS NOT NULL
             DO NOTHING
             """, nativeQuery = true)
     int insertImportedIfAbsent(
@@ -72,11 +72,11 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
 
     @Query(value = """
             SELECT *
-            FROM user_checklist_items
+            FROM preparation_checklist_items
             WHERE owner_user_id = :ownerUserId
-              AND journey_id = :journeyId
+              AND mother_journey_id = :journeyId
               AND baby_id IS NOT DISTINCT FROM :babyId
-              AND template_item_id = :templateItemId
+              AND template_entry_id = :templateItemId
             """, nativeQuery = true)
     Optional<UserChecklistItem> findImportedByExactScope(
             @Param("ownerUserId") UUID ownerUserId,

@@ -133,7 +133,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
         ContentStatus previousStatus = template.getStatus();
         // ADR-CHK-002: soft-delete only — checklist_items are NOT touched, so UC-50's
-        // user_checklist_items (FK'd to checklist_items) is never affected by an archive.
+        // Canonical preparation_checklist_items remain stable when a template is archived.
         template.setStatus(ContentStatus.ARCHIVED);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
