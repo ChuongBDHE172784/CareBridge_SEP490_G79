@@ -84,6 +84,9 @@ test_backend:
   stage: test
   image: eclipse-temurin:21-jdk
   services: [{name: "docker:27.5.1-dind", alias: docker}]
+  timeout: 30 minutes
+  variables:
+    SPRING_APPLICATION_JSON: '{"logging":{"level":{"root":"WARN","org.hibernate.SQL":"OFF","org.hibernate.type.descriptor.sql":"OFF","org.springframework.orm":"WARN","com.carebridge.backend":"WARN"}}}'
   rules: *backend_rules
   script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B test"]
   artifacts:
