@@ -191,6 +191,7 @@ class CareCalendarServiceImplTest {
     void getCalendar_noReminderDataInResponse_onlyCareTasksReturned() {
         stubHappyPath(GROUP_CG_001, ACC_001);
         CareTask task = makeTask(GROUP_CG_001, JULY_TASK_DUE_AT);
+        task.setId(UUID.randomUUID());
         when(taskRepository.findByCareGroupIdAndDueAtBetween(GROUP_CG_001, RANGE_START, RANGE_END))
                 .thenReturn(List.of(task));
 

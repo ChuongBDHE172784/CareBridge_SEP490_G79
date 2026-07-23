@@ -1,19 +1,16 @@
 package com.carebridge.backend.security.integration;
 
-import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.OtpVerificationRepository;
-import com.carebridge.backend.security.repository.RefreshTokenRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.service.AuthService;
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
 import com.carebridge.backend.security.util.TokenUtils;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
-import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -21,13 +18,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -60,31 +54,9 @@ class OtpRaceConditionIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private AuthService authService;
     @Autowired private UserRepository userRepository;
     @Autowired private OtpVerificationRepository otpVerificationRepository;
-    @Autowired private RefreshTokenRepository refreshTokenRepository;
-    @Autowired private UserSessionRepository userSessionRepository;
-    @Autowired private JdbcTemplate jdbcTemplate;
 
     @MockitoBean private EmailService emailService;
     @MockitoBean private SmsService smsService;
-
-    @BeforeEach
-    void clean() {
-        wipe();
-    }
-
-    @AfterEach
-    void cleanup() {
-        wipe();
-    }
-
-    private void wipe() {
-        refreshTokenRepository.deleteAll();
-        userSessionRepository.deleteAll();
-        otpVerificationRepository.deleteAll();
-        userRepository.findAll().forEach(user ->
-                CanonicalAuditFixture.deleteByActor(jdbcTemplate, user.getId()));
-        userRepository.deleteAll();
-    }
 
     @Test
     void concurrentVerify_preservesIntegrity_andActivatesAccountExactlyOnce() throws Exception {
@@ -142,14 +114,14 @@ class OtpRaceConditionIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(successes).isBetween(1L, 2L);
 
         // Integrity: exactly one user, ACTIVE — no half-activated / duplicate state.
-        List<User> users = userRepository.findAll();
-        assertThat(users).hasSize(1);
-        User after = users.get(0);
+        User after = userRepository.findByEmail(EMAIL).orElseThrow();
         assertThat(after.isEnabled()).isTrue();
         assertThat(after.getAccountStatus()).isEqualTo("ACTIVE");
 
         // Integrity: exactly one OTP row, consumed (used_at set), no pending row remains.
-        List<OtpVerification> otps = otpVerificationRepository.findAll();
+        List<OtpVerification> otps = otpVerificationRepository.findAll().stream()
+                .filter(otp -> otp.getUser() != null && otp.getUser().getId().equals(user.getId()))
+                .toList();
         assertThat(otps).hasSize(1);
         assertThat(otps.get(0).getUsedAt()).isNotNull();
     }
