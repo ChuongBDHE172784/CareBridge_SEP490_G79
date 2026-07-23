@@ -57,6 +57,16 @@ class ContentDetail {
     version: json['version'] as int? ?? 1,
     publishedAt: json['publishedAt'] as String?,
   );
+
+  /// Image sources are intentionally derived from the server-sanitized body.
+  /// The public list contract has no image field, while the detail contract is
+  /// the canonical representation of rich article and FAQ content.
+  List<String> get imageUrls => RegExp(
+    r'''<img\b[^>]*\ssrc\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
+    caseSensitive: false,
+  ).allMatches(body).map((match) => match.group(1) ?? match.group(2)!).toList(
+    growable: false,
+  );
 }
 
 class ChecklistTemplate {

@@ -6,10 +6,42 @@ import 'package:untitled/features/community/widgets/verified_content_body.dart';
 // produces HTML; this screen must render it as formatted widgets, not raw tag text
 // (ADR-RTE-006).
 void main() {
+  testWidgets('renders HTML tags as formatted widgets, not raw tag text', (
+    tester,
+  ) async {
+    const html = '<p>Xin chào <b>mẹ bầu</b></p>';
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: VerifiedContentBody(html: html)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The literal raw-HTML string must never appear as rendered text.
+    expect(find.text(html), findsNothing);
+    expect(find.textContaining('<p>'), findsNothing);
+    expect(find.textContaining('<b>'), findsNothing);
+
+    // The actual words are still shown, split by flutter_html into RichText spans
+    // (bold text becomes a separate InlineSpan, so "Xin chào" and "mẹ bầu" won't
+    // necessarily be found via find.text on the same node — search rendered spans
+    // instead).
+    final richTextFinder = find.byType(RichText);
+    expect(richTextFinder, findsWidgets);
+    final renderedText = tester
+        .widgetList<RichText>(richTextFinder)
+        .map((w) => w.text.toPlainText())
+        .join(' ');
+    expect(renderedText, contains('Xin chào'));
+    expect(renderedText, contains('mẹ bầu'));
+  });
+
   testWidgets(
-    'renders HTML tags as formatted widgets, not raw tag text',
+    'renders an <img> tag as an actual Image widget, not literal text',
     (tester) async {
-      const html = '<p>Xin chào <b>mẹ bầu</b></p>';
+      const html =
+          '<p>Ảnh minh hoạ: <img src="https://res.cloudinary.com/demo/x.jpg"></p>';
 
       await tester.pumpWidget(
         const MaterialApp(
@@ -18,38 +50,34 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The literal raw-HTML string must never appear as rendered text.
-      expect(find.text(html), findsNothing);
-      expect(find.textContaining('<p>'), findsNothing);
-      expect(find.textContaining('<b>'), findsNothing);
-
-      // The actual words are still shown, split by flutter_html into RichText spans
-      // (bold text becomes a separate InlineSpan, so "Xin chào" and "mẹ bầu" won't
-      // necessarily be found via find.text on the same node — search rendered spans
-      // instead).
-      final richTextFinder = find.byType(RichText);
-      expect(richTextFinder, findsWidgets);
-      final renderedText = tester
-          .widgetList<RichText>(richTextFinder)
-          .map((w) => w.text.toPlainText())
-          .join(' ');
-      expect(renderedText, contains('Xin chào'));
-      expect(renderedText, contains('mẹ bầu'));
+      expect(find.textContaining('<img'), findsNothing);
+      expect(find.byType(Image), findsWidgets);
     },
   );
 
-  testWidgets('renders an <img> tag as an actual Image widget, not literal text', (
+  testWidgets('resolves a relative rich-content image URL against the API', (
     tester,
   ) async {
-    const html =
-        '<p>Ảnh minh hoạ: <img src="https://res.cloudinary.com/demo/x.jpg"></p>';
+    const html = '<img src="/api/v1/files/article-image.png">';
 
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: VerifiedContentBody(html: html))),
+    expect(
+      resolveVerifiedContentImageUrls(html),
+      '<img src="http://localhost:8080/api/v1/files/article-image.png">',
     );
-    await tester.pumpAndSettle();
+  });
 
-    expect(find.textContaining('<img'), findsNothing);
-    expect(find.byType(Image), findsWidgets);
+  testWidgets('preserves protocol-relative image URLs', (tester) async {
+    const html = '<img src="//cdn.example.com/article-image.png">';
+
+    expect(resolveVerifiedContentImageUrls(html), html);
+  });
+
+  testWidgets('resolves a path-relative image URL against the API', (
+    tester,
+  ) async {
+    expect(
+      resolveVerifiedContentImageUrl('uploads/article-image.png'),
+      'http://localhost:8080/uploads/article-image.png',
+    );
   });
 }

@@ -3,6 +3,7 @@ import '../models/community_model.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
 import '../services/content_service.dart';
+import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
@@ -40,12 +41,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── State ──
   bool _loading = true;
+  String? _loadError;
   int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ, 3=Checklist
   int _selectedStageIndex = 1; // 0=Prep, 1=Pregnancy, 2=Postpartum, 3=BabyCare
   List<CommunityTopic> _topics = [];
   List<ContentListItem> _articles = [];
   List<ContentListItem> _faqs = [];
   List<ChecklistTemplate> _checklists = [];
+  String _searchKeyword = '';
+  String? _selectedTopicId;
+  String? _featuredImageUrl;
+  String? _featuredImageContentId;
 
   static const _typeLabels = ['Tất cả', 'Bài viết', 'FAQ', 'Checklist'];
   static const _stageLabels = ['Chuẩn bị', 'Thai kỳ', 'Sau sinh', 'Chăm bé'];
@@ -85,24 +91,42 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
+  List<ContentListItem> _filterContent(List<ContentListItem> items) {
+    final keyword = _searchKeyword.trim().toLowerCase();
+    return items
+        .where((item) {
+          final matchesTopic =
+              _selectedTopicId == null || item.topicId == _selectedTopicId;
+          final matchesKeyword =
+              keyword.isEmpty || item.title.toLowerCase().contains(keyword);
+          return matchesTopic && matchesKeyword;
+        })
+        .toList(growable: false);
+  }
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     final stage = _stageValues[_selectedStageIndex];
     try {
       final results = await Future.wait([
         _communityService.getTopics(),
-        _contentService.getContent(type: 'ARTICLE', stage: stage),
-        _contentService.getContent(type: 'FAQ', stage: stage),
+        _contentService.getContent(type: 'ARTICLE', stage: stage, size: 100),
+        _contentService.getContent(type: 'FAQ', stage: stage, size: 100),
         _contentService.getChecklists(stage: stage),
       ]);
       if (mounted) {
+        final articles = results[1] as List<ContentListItem>;
         setState(() {
           _topics = results[0] as List<CommunityTopic>;
-          _articles = results[1] as List<ContentListItem>;
+          _articles = articles;
           _faqs = results[2] as List<ContentListItem>;
           _checklists = results[3] as List<ChecklistTemplate>;
           _loading = false;
         });
+        _loadFeaturedImage(articles);
       }
     } catch (_) {
       if (mounted) {
@@ -112,6 +136,37 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _faqs = [];
           _checklists = [];
           _loading = false;
+          _loadError = 'Không tải được nội dung. Vui lòng thử lại.';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadFeaturedImage(List<ContentListItem> articles) async {
+    if (articles.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _featuredImageUrl = null;
+          _featuredImageContentId = null;
+        });
+      }
+      return;
+    }
+    try {
+      final detail = await _contentService.getContentDetail(articles.first.id);
+      if (mounted &&
+          _articles.isNotEmpty &&
+          _articles.first.id == articles.first.id) {
+        setState(() {
+          _featuredImageUrl = detail.imageUrls.firstOrNull;
+          _featuredImageContentId = articles.first.id;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _featuredImageUrl = null;
+          _featuredImageContentId = null;
         });
       }
     }
@@ -139,10 +194,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                     child: CircularProgressIndicator(color: _primaryContainer),
                   ),
                 )
+              else if (_loadError != null)
+                SliverFillRemaining(child: _buildLoadError())
               else ...[
                 // Show sections based on selected type
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 1)
                   SliverToBoxAdapter(child: _buildFeaturedArticle()),
+                if (_selectedTypeIndex == 1)
+                  SliverToBoxAdapter(child: _buildArticleList()),
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 2)
                   SliverToBoxAdapter(child: _buildFaqSection()),
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 3)
@@ -152,6 +211,31 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: _onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _load, child: const Text('Thử lại')),
+          ],
         ),
       ),
     );
@@ -387,9 +471,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                 ),
-                onSubmitted: (keyword) {
-                  // TODO: trigger search with _contentService.searchContent
-                },
+                onChanged: (keyword) =>
+                    setState(() => _searchKeyword = keyword),
               ),
             ),
             const SizedBox(width: 16),
@@ -412,7 +495,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           final icon = _topicIcons[t.icon] ?? Icons.topic;
           return GestureDetector(
             onTap: () {
-              // TODO: filter content by topic
+              setState(() {
+                _selectedTopicId = _selectedTopicId == t.id ? null : t.id;
+              });
             },
             child: Column(
               children: [
@@ -444,8 +529,16 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── Featured article section ("Gợi ý hôm nay") ──
   Widget _buildFeaturedArticle() {
-    if (_articles.isEmpty) return const SizedBox.shrink();
-    final article = _articles.first;
+    final articles = _filterContent(_articles);
+    if (articles.isEmpty) {
+      return _selectedTypeIndex == 1
+          ? const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Center(child: Text('Không có bài viết phù hợp.')),
+            )
+          : const SizedBox.shrink();
+    }
+    final article = articles.first;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -464,9 +557,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  // TODO: navigate to full article list
-                },
+                onTap: () => setState(() => _selectedTypeIndex = 1),
                 child: const Text(
                   'Xem tất cả',
                   style: TextStyle(
@@ -495,7 +586,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Hero image placeholder
                 Stack(
                   children: [
                     Container(
@@ -514,13 +604,36 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           ],
                         ),
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image,
-                          size: 48,
-                          color: _primaryContainer,
-                        ),
-                      ),
+                      child:
+                          _featuredImageUrl == null ||
+                              _featuredImageContentId != article.id
+                          ? const Center(
+                              child: Icon(
+                                Icons.article_outlined,
+                                size: 48,
+                                color: _primaryContainer,
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(16),
+                              ),
+                              child: Image.network(
+                                resolveVerifiedContentImageUrl(
+                                  _featuredImageUrl!,
+                                ),
+                                width: double.infinity,
+                                height: 176,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 40,
+                                    color: _primaryContainer,
+                                  ),
+                                ),
+                              ),
+                            ),
                     ),
                     // "Đã kiểm duyệt" badge
                     Positioned(
@@ -643,9 +756,46 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
+  Widget _buildArticleList() {
+    final articles = _filterContent(_articles).skip(1).toList(growable: false);
+    if (articles.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bài viết khác',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...articles.map(
+            (article) => Card(
+              child: ListTile(
+                leading: const Icon(Icons.article_outlined, color: _primary),
+                title: Text(
+                  article.title,
+                  style: const TextStyle(fontFamily: 'Lexend'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openContentDetail(article.id),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── FAQ section ──
   Widget _buildFaqSection() {
-    if (_faqs.isEmpty && _selectedTypeIndex == 2) {
+    final faqs = _filterContent(_faqs);
+    if (faqs.isEmpty && _selectedTypeIndex == 2) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Center(
@@ -660,7 +810,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         ),
       );
     }
-    if (_faqs.isEmpty) return const SizedBox.shrink();
+    if (faqs.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -690,9 +840,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               ],
             ),
             child: Column(
-              children: List.generate(_faqs.length.clamp(0, 5), (i) {
-                final faq = _faqs[i];
-                final isLast = i == _faqs.length.clamp(0, 5) - 1;
+              children: List.generate(faqs.length, (i) {
+                final faq = faqs[i];
+                final isLast = i == faqs.length - 1;
                 return Column(
                   children: [
                     InkWell(
