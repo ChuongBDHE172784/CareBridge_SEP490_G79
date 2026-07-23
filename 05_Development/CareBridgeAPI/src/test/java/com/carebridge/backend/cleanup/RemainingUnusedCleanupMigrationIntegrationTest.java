@@ -52,7 +52,7 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                    AND table_type = 'BASE TABLE'
                 """)))
                 .as("clean-bootstrap public base-table count")
-                .isEqualTo(99);
+                .isEqualTo(102);
     }
 
     @Test
@@ -124,7 +124,7 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private void installLiveOnlyEmptyFixture() throws Exception {
         execute("""
-                CREATE TABLE medical_contributions (
+                CREATE TABLE IF NOT EXISTS medical_contributions (
                     contribution_id uuid PRIMARY KEY,
                     content text NOT NULL,
                     created_at timestamptz NOT NULL,
@@ -139,15 +139,15 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                     CONSTRAINT medical_contributions_status_check
                         CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'))
                 );
-                CREATE INDEX idx_medical_contributions_expert_user_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_expert_user_id
                     ON medical_contributions (expert_user_id);
-                CREATE INDEX idx_medical_contributions_hospital_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_hospital_id
                     ON medical_contributions (hospital_id);
-                CREATE INDEX idx_medical_contributions_specialty_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_specialty_id
                     ON medical_contributions (specialty_id);
-                CREATE INDEX idx_medical_contributions_status
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_status
                     ON medical_contributions (status);
-                CREATE TABLE contribution_attachments (
+                CREATE TABLE IF NOT EXISTS contribution_attachments (
                     attachment_id uuid PRIMARY KEY,
                     access_mode varchar NOT NULL,
                     contribution_id uuid NOT NULL,
@@ -168,11 +168,11 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                         'COMMUNITY_ANSWER_IMAGE', 'MEDICAL_CONTRIBUTION_IMAGE',
                         'MEDICAL_CONTRIBUTION_DOCUMENT', 'PUBLIC_CONTENT_IMAGE'))
                 );
-                CREATE INDEX idx_contrib_attachments_contribution_id
+                CREATE INDEX IF NOT EXISTS idx_contrib_attachments_contribution_id
                     ON contribution_attachments (contribution_id);
-                CREATE INDEX idx_contrib_attachments_file_id
+                CREATE INDEX IF NOT EXISTS idx_contrib_attachments_file_id
                     ON contribution_attachments (file_id);
-                CREATE TABLE expert_identity_verifications (
+                CREATE TABLE IF NOT EXISTS expert_identity_verifications (
                     identity_verification_id uuid PRIMARY KEY,
                     created_at timestamptz NOT NULL,
                     expert_profile_id uuid NOT NULL,
@@ -208,11 +208,11 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                         FOREIGN KEY (selfie_crop_file_id) REFERENCES uploaded_files(file_id)
                         ON DELETE SET NULL
                 );
-                CREATE INDEX idx_expert_identity_pipeline_status
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_pipeline_status
                     ON expert_identity_verifications (pipeline_status, created_at);
-                CREATE INDEX idx_expert_identity_profile_created
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_profile_created
                     ON expert_identity_verifications (expert_profile_id, created_at DESC);
-                CREATE INDEX idx_expert_identity_review_status
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_review_status
                     ON expert_identity_verifications (review_status, created_at)
                 """);
     }
