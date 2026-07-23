@@ -20,10 +20,12 @@ import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ class ReportIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private ContentReportRepository contentReportRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     @Test
     void createReport_fullStack_persistsPendingReportToDb() throws Exception {
@@ -72,9 +75,12 @@ class ReportIntegrationTest extends AbstractPostgresIntegrationTest {
                 .type(TopicType.TOPIC)
                 .parentId(category.getId())
                 .build());
+        UUID authorId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, authorId, "Reported content author", null, "MOTHER");
         CommunityQuestion targetQuestion = questionRepository.save(CommunityQuestion.builder()
                 .topicId(topic.getId())
-                .authorId(UUID.randomUUID())
+                .authorId(authorId)
                 .title("Câu hỏi bị báo cáo")
                 .body("Nội dung")
                 .stage(PregnancyStage.PREGNANCY)

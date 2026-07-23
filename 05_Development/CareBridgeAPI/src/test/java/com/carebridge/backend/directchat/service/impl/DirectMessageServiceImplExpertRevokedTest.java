@@ -12,6 +12,7 @@ import com.carebridge.backend.directchat.service.IDirectMessageService;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -38,14 +39,10 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
         String phoneSuffix = String.valueOf(System.nanoTime()).substring(3, 11);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Mother Revoked', ?, 'MOTHER', true, false, now(), now())",
-                motherId, "07" + phoneSuffix);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Expert Revoked', ?, 'EXPERT', true, false, now(), now())",
-                expertUserId, "06" + phoneSuffix);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Mother Revoked", "07" + phoneSuffix, "MOTHER");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, expertUserId, "Expert Revoked", "06" + phoneSuffix, "EXPERT");
         UUID expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
                 "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
@@ -53,16 +50,20 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
                 expertProfileId, expertUserId);
         UUID conversationId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO direct_conversations (conversation_id, mother_user_id, expert_user_id, status, created_at, last_activity_at) "
-                        + "VALUES (?, ?, ?, 'ACTIVE', now(), now())",
-                conversationId, motherId, expertUserId);
+                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, mother_user_id, "
+                        + "expert_user_id, status, original_created_at, last_activity_at) "
+                        + "VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())",
+                conversationId, conversationId.toString(), motherId, expertUserId);
         UUID priorMessageId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO direct_messages (message_id, conversation_id, sender_user_id, client_message_id, "
-                        + "message_type, message_body, created_at) VALUES (?, ?, ?, ?, 'TEXT', 'Old history', now())",
-                priorMessageId, conversationId, expertUserId, UUID.randomUUID());
+                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, conversation_id, "
+                        + "sender_user_id, client_message_id, message_type, message_body, original_created_at) "
+                        + "VALUES (?, 'direct_messages', ?, ?, ?, ?, 'TEXT', 'Old history', now())",
+                priorMessageId, priorMessageId.toString(), conversationId, expertUserId, UUID.randomUUID());
         jdbcTemplate.update(
-                "UPDATE direct_conversations SET last_activity_at = now() WHERE conversation_id = ?", conversationId);
+                "UPDATE archived_realtime_records SET last_activity_at = now() "
+                        + "WHERE legacy_table='direct_conversations' AND archive_id = ?",
+                conversationId);
 
         // Preconditions done — now revoke.
         jdbcTemplate.update(
@@ -77,7 +78,9 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
                         ex -> assertThat(ex.getCode()).isEqualTo("DCC-010"));
 
         Integer messageCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM direct_messages WHERE conversation_id = ?", Integer.class, conversationId);
+                "SELECT COUNT(*) FROM archived_realtime_records "
+                        + "WHERE legacy_table='direct_messages' AND conversation_id = ?",
+                Integer.class, conversationId);
         assertThat(messageCount).isEqualTo(1); // only the pre-existing history message, no new insert
         Integer notificationCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM notification_records WHERE metadata->>'conversationId' = ?",

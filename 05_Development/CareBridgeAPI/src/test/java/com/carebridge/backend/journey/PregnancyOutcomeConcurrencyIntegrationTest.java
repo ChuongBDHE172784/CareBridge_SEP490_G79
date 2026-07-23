@@ -6,6 +6,7 @@ import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,7 @@ class PregnancyOutcomeConcurrencyIntegrationTest extends AbstractPostgresIntegra
 
     @BeforeEach
     void seedCommittedPregnancy() {
-        jdbcTemplate.update("DELETE FROM public.audit_logs WHERE actor_user_id = ?", OWNER_ID);
+        CanonicalAuditFixture.deleteByActor(jdbcTemplate, OWNER_ID);
         deleteCanonicalEvents();
         jdbcTemplate.update("DELETE FROM public.mother_journeys WHERE journey_id = ?", JOURNEY_ID);
         jdbcTemplate.update("""

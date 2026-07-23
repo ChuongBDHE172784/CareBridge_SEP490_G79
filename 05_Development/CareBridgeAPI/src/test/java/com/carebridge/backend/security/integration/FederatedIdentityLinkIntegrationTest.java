@@ -74,8 +74,9 @@ class FederatedIdentityLinkIntegrationTest extends AbstractPostgresIntegrationTe
                  where user_id = ? and provider = 'GOOGLE'
                 """, Integer.class, user.getId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
-                select count(*) from audit_logs
-                 where actor_user_id = ? and action = 'FEDERATED_IDENTITY_LINKED'
+                select count(*) from audit_events
+                 where event_origin = 'AUDIT_LOG'
+                   and actor_user_id = ? and event_category = 'FEDERATED_IDENTITY_LINKED'
                 """, Integer.class, user.getId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                 select count(*) from auth_sessions where user_id = ?

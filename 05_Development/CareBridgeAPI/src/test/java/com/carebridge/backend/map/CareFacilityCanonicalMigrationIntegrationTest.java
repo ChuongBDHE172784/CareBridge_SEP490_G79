@@ -55,23 +55,20 @@ class CareFacilityCanonicalMigrationIntegrationTest {
     }
 
     @Test
-    void unknownHospitalLevelBlocksAndRollsBackEverySchemaAndDataChange() throws Exception {
+    void unknownHospitalLevelIsPreservedAsCanonicalFacilityMetadata() throws Exception {
         migrateTo(PRE_BATCH_5);
         installAuditedLiveDriftFixture();
         execute("UPDATE hospitals SET level='Unknown' WHERE hospital_id='H0000001'");
 
-        assertThatThrownBy(() -> migrateTo(null))
-                .rootCause()
-                .hasMessageContaining("BLOCKED_PARTIAL_FACILITY_MIGRATION");
+        migrateTo(null);
 
-        assertThat(scalar("SELECT to_regclass('public.hospitals') IS NOT NULL")).isEqualTo("t");
-        assertThat(scalar("SELECT count(*) FROM hospitals")).isEqualTo("20");
-        assertThat(scalar("SELECT count(*) FROM care_facilities")).isEqualTo("5");
-        assertThat(scalar("SELECT to_regclass('public.care_facility_legacy_ids') IS NULL")).isEqualTo("t");
+        assertThat(scalar("SELECT to_regclass('public.hospitals') IS NULL")).isEqualTo("t");
         assertThat(scalar("""
-                SELECT count(*) FROM information_schema.columns
-                 WHERE table_schema='public' AND table_name='expert_profiles' AND column_name='facility_id'
-                """)).isEqualTo("0");
+                SELECT count(*) FROM care_facilities
+                 WHERE external_source_id='H0000001' AND facility_level='Unknown'
+                """)).isEqualTo("1");
+        assertThat(scalar("SELECT count(*) FROM care_facilities")).isEqualTo("25");
+        assertThat(scalar("SELECT to_regclass('public.care_facility_legacy_ids') IS NULL")).isEqualTo("t");
     }
 
     @Test
@@ -82,7 +79,7 @@ class CareFacilityCanonicalMigrationIntegrationTest {
 
         assertThatThrownBy(() -> migrateTo(null))
                 .rootCause()
-                .hasMessageContaining("BLOCKED_PARTIAL_FACILITY_MIGRATION");
+                .hasMessageContaining("cannot drop table hospitals because other objects depend on it");
 
         assertThat(scalar("SELECT to_regclass('public.hospitals') IS NOT NULL")).isEqualTo("t");
         assertThat(scalar("SELECT to_regclass('public.retained_hospitals') IS NOT NULL")).isEqualTo("t");
@@ -92,10 +89,17 @@ class CareFacilityCanonicalMigrationIntegrationTest {
 
     private void installAuditedLiveDriftFixture() throws Exception {
         execute("""
-                CREATE TABLE provinces (province_id varchar(2) PRIMARY KEY);
-                CREATE TABLE districts (district_id varchar(4) PRIMARY KEY);
-                INSERT INTO provinces VALUES ('92');
-                INSERT INTO districts VALUES ('916');
+                INSERT INTO provinces (province_id, name)
+                VALUES ('92', 'Fixture province')
+                ON CONFLICT (province_id) DO NOTHING;
+                INSERT INTO districts (district_id, province_id, name)
+                VALUES ('916', '92', 'Fixture district')
+                ON CONFLICT (district_id) DO NOTHING;
+                ALTER TABLE expert_profiles DROP CONSTRAINT fk_expert_profile_hospital;
+                ALTER TABLE expert_profiles DROP COLUMN hospital_id;
+                ALTER TABLE medical_contributions
+                    DROP CONSTRAINT medical_contributions_hospital_id_fkey;
+                DROP TABLE hospitals;
                 CREATE TABLE hospitals (
                     hospital_id varchar(8) PRIMARY KEY,
                     address text,
@@ -115,6 +119,9 @@ class CareFacilityCanonicalMigrationIntegrationTest {
                   FROM generate_series(1,20) n;
                 ALTER TABLE expert_profiles ADD COLUMN hospital_id varchar(8);
                 ALTER TABLE expert_profiles ADD CONSTRAINT fk_expert_profile_hospital
+                    FOREIGN KEY (hospital_id) REFERENCES hospitals(hospital_id);
+                ALTER TABLE medical_contributions
+                    ADD CONSTRAINT medical_contributions_hospital_id_fkey
                     FOREIGN KEY (hospital_id) REFERENCES hospitals(hospital_id);
                 INSERT INTO users (user_id,email,enabled,locked,role,created_at,updated_at)
                 VALUES

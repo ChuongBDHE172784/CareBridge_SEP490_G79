@@ -7,6 +7,7 @@ import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationRecordStatus;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +40,8 @@ class NotificationRecordWriterConcurrencyIntegrationTest extends AbstractPostgre
         UUID recipientId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
         String phoneSuffix = String.valueOf(System.nanoTime()).substring(3, 11);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Concurrency Recipient', ?, 'EXPERT', true, false, now(), now())",
-                recipientId, "05" + phoneSuffix);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, recipientId, "Concurrency Recipient", "05" + phoneSuffix, "EXPERT");
 
         NotificationRecord candidateA = candidate(recipientId, messageId, "from A");
         NotificationRecord candidateB = candidate(recipientId, messageId, "from B");
@@ -96,10 +95,8 @@ class NotificationRecordWriterConcurrencyIntegrationTest extends AbstractPostgre
         UUID recipientId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
         String phoneSuffix = String.valueOf(System.nanoTime()).substring(3, 11);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Lease Recipient', ?, 'EXPERT', true, false, now(), now())",
-                recipientId, "04" + phoneSuffix);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, recipientId, "Lease Recipient", "04" + phoneSuffix, "EXPERT");
 
         NotificationRecord oldPending = NotificationRecord.builder()
                 .id(UUID.randomUUID())
