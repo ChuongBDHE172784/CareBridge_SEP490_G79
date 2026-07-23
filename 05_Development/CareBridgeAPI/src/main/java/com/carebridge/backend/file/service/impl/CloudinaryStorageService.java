@@ -119,24 +119,31 @@ public class CloudinaryStorageService implements IStorageService {
     /**
      * Generate a URL for Cloudinary assets.
      * @param publicId The Cloudinary public ID
-     * @param ttlMinutes Time to live in minutes (max 15 for PDPA) — ignored for PUBLIC, see below
+     * @param ttlMinutes Time to live in minutes (max 15 for PDPA) — currently not enforced for
+     *         PRIVATE/AUTHENTICATED either (see below), and ignored entirely for PUBLIC.
      * @param accessMode PRIVATE, AUTHENTICATED, or PUBLIC
      * @param resourceType "image" or "raw"
-     * @return For PRIVATE/AUTHENTICATED: signed URL with expiration (unchanged pre-existing
-     *         behavior — see known-issues note below). For PUBLIC: a permanent, unsigned delivery
-     *         URL — Cloudinary {@code type=upload} assets are public by design, so signing/expiring
-     *         them serves no access-control purpose and breaks any use case that persists the URL
-     *         (e.g. images embedded in rich text content — ContentRichTextEditor_TDS.md ADR-RTE-004).
+     * @return For PRIVATE/AUTHENTICATED: a Cloudinary-signed delivery URL (access requires knowing
+     *         the account's api_secret to produce a valid signature — {@code s--...--} segment).
+     *         For PUBLIC: a permanent, unsigned delivery URL — Cloudinary {@code type=upload}
+     *         assets are public by design, so signing/expiring them serves no access-control
+     *         purpose and breaks any use case that persists the URL (e.g. images embedded in rich
+     *         text content — ContentRichTextEditor_TDS.md ADR-RTE-004).
      *
-     *         <p><b>Known pre-existing issue (NOT fixed here, deliberately — see ADR-RTE-007):</b>
-     *         the PRIVATE/AUTHENTICATED branch below builds the URL by concatenating
-     *         {@code "?expires_at=" + timestamp} onto the public_id string; Cloudinary parses the
-     *         whole thing as the public_id (not a query param) and rejects every such request with
-     *         HTTP 400 "public_id ... is invalid" — confirmed live against a real Cloudinary
-     *         account. This means PRIVATE/AUTHENTICATED delivery (expert identity documents,
-     *         contribution attachments, etc.) is currently non-functional. Left unchanged
-     *         deliberately to keep this content-editor feature's blast radius away from that
-     *         security-sensitive flow — track/fix as its own change with its own review.</p>
+     *         <p><b>Fixed bug (was: HTTP 400 on every PRIVATE/AUTHENTICATED request):</b> this used
+     *         to build the URL by concatenating {@code "?expires_at=" + timestamp} onto the
+     *         public_id string; Cloudinary parsed the whole thing as the public_id (not a query
+     *         param) and rejected every such request with HTTP 400 "public_id ... is invalid" —
+     *         confirmed live against a real Cloudinary account, both before and after this fix.
+     *         This affected all PRIVATE/AUTHENTICATED delivery, including expert identity
+     *         documents and contribution attachments.</p>
+     *
+     *         <p><b>Known limitation (not this bug, pre-existing, out of scope):</b> the returned
+     *         URL does not actually enforce a {@code ttlMinutes} expiry — Cloudinary only supports
+     *         real time-boxed URL expiry via its account-level "Token-based Authentication"
+     *         feature (a separate signing key configured in the Cloudinary dashboard, not present
+     *         in this project's config today). Access is still restricted to holders of a validly
+     *         signed URL, just not time-limited. Enabling true expiry is a follow-up.</p>
      */
     public String generateSignedUrl(String publicId, int ttlMinutes, FileAccessMode accessMode, String resourceType) {
         if (accessMode == FileAccessMode.PUBLIC) {
@@ -147,22 +154,18 @@ public class CloudinaryStorageService implements IStorageService {
                     .generate(publicId);
         }
 
-        int boundedTtl = Math.max(1, Math.min(ttlMinutes, 15));
         String type = switch (accessMode) {
             case PRIVATE -> "private";
             case AUTHENTICATED -> "authenticated";
             case PUBLIC -> throw new IllegalStateException("handled above");
         };
 
-        // Cloudinary signed URL with expiration via query parameter
-        long expiresAt = System.currentTimeMillis() / 1000L + (long) boundedTtl * 60L;
-
         return cloudinary.url()
                 .resourceType(resourceType)
                 .type(type)
                 .secure(true)
                 .signed(true)
-                .generate(publicId + "?" + "expires_at=" + expiresAt);
+                .generate(publicId);
     }
 
     @Override

@@ -39,23 +39,27 @@ class CloudinaryStorageServiceTest {
         assertTrue(url.contains("/" + PUBLIC_ID), "PUBLIC URL must reference the plain public_id: " + url);
     }
 
-    // RTE-TC-009: accessMode=PRIVATE VẪN trả URL có expires_at — REGRESSION GUARD cho luồng
-    // expert identity documents (không được đổi hành vi). Đây là hành vi CŨ, cố ý giữ nguyên
-    // (kể cả bug pre-existing của nó — xem generateSignedUrl() Javadoc + ADR-RTE-007): tính năng
-    // rich-text-editor không được phép đổi hành vi của luồng này, dù đã biết nó đang hỏng.
+    // RTE-TC-009: accessMode=PRIVATE trả URL đã ký (signed), KHÔNG còn nhét expires_at vào
+    // public_id nữa — đó chính là bug khiến Cloudinary trả 400 cho mọi request PRIVATE/
+    // AUTHENTICATED (ảnh hưởng cả tài liệu định danh chuyên gia). Verify live bằng curl thật
+    // (200 sau khi sửa, 400 trước khi sửa) trước khi đổi assertion này.
     @Test
-    void generateSignedUrl_privateAccessMode_stillCarriesExpiry() {
+    void generateSignedUrl_privateAccessMode_returnsValidSignedUrlWithoutBrokenExpiresAt() {
         String url = service.generateSignedUrl(PUBLIC_ID, 15, FileAccessMode.PRIVATE, "image");
 
-        assertTrue(url.contains("expires_at"), "PRIVATE URL must keep the existing (pre-existing-buggy) expiry behavior: " + url);
+        assertFalse(url.contains("expires_at"), "must not reintroduce the broken expires_at-in-public_id bug: " + url);
+        assertTrue(url.contains("/" + PUBLIC_ID), "PRIVATE URL must reference the plain public_id: " + url);
+        assertTrue(url.contains("s--"), "PRIVATE URL must be Cloudinary-signed: " + url);
     }
 
-    // RTE-TC-010: accessMode=AUTHENTICATED VẪN trả URL có expires_at — REGRESSION GUARD.
+    // RTE-TC-010: accessMode=AUTHENTICATED — same fix, same guard.
     @Test
-    void generateSignedUrl_authenticatedAccessMode_stillCarriesExpiry() {
+    void generateSignedUrl_authenticatedAccessMode_returnsValidSignedUrlWithoutBrokenExpiresAt() {
         String url = service.generateSignedUrl(PUBLIC_ID, 15, FileAccessMode.AUTHENTICATED, "image");
 
-        assertTrue(url.contains("expires_at"), "AUTHENTICATED URL must keep the existing (pre-existing-buggy) expiry behavior: " + url);
+        assertFalse(url.contains("expires_at"), "must not reintroduce the broken expires_at-in-public_id bug: " + url);
+        assertTrue(url.contains("/" + PUBLIC_ID), "AUTHENTICATED URL must reference the plain public_id: " + url);
+        assertTrue(url.contains("s--"), "AUTHENTICATED URL must be Cloudinary-signed: " + url);
     }
 
     // --- storePublic(): dedicated path for public content images (ADR-RTE-007, decoupled design).
