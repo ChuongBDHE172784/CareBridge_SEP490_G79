@@ -218,7 +218,11 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
 
         assertThat(journeyRepository.countByOwnerUserIdAndStatus(
                 JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isEqualTo(1L);
-        assertThat(transitionRepository.count()).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM public.mother_journey_events e
+                JOIN public.mother_journeys j ON j.journey_id = e.mother_journey_id
+                WHERE j.owner_user_id = ? AND e.legacy_source = 'JOURNEY_TRANSITION'
+                """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isEqualTo(1L);
     }
 
     @Test
