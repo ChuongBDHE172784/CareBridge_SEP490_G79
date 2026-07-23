@@ -5,6 +5,7 @@ import com.cloudinary.utils.ObjectUtils;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.service.IStorageService;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ public class CloudinaryStorageService implements IStorageService {
     // Thread-local holder: stores the upload result from the most recent upload in this call-chain
     private final ThreadLocal<UploadResult> lastUpload = new ThreadLocal<>();
 
+    @Autowired
     public CloudinaryStorageService(
             @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
             @Value("${CLOUDINARY_API_KEY:}") String apiKey,
@@ -26,6 +28,11 @@ public class CloudinaryStorageService implements IStorageService {
                 "api_secret", apiSecret,
                 "secure", true
         ));
+    }
+
+    /** Test-only seam: inject a (mock) Cloudinary client directly. */
+    CloudinaryStorageService(Cloudinary cloudinary) {
+        this.cloudinary = cloudinary;
     }
 
     @Override
@@ -68,6 +75,35 @@ public class CloudinaryStorageService implements IStorageService {
         }
     }
 
+    /**
+     * Store as a Cloudinary PUBLIC (type=upload) asset — always, regardless of MIME type.
+     * Deliberately separate from {@link #store}: {@code store()} is shared by every existing
+     * caller (expert identity documents, contribution attachments, generic uploads) and is left
+     * byte-for-byte unchanged so this feature cannot affect those flows. Only callers that
+     * explicitly want a permanent public image (content_items body images, ADR-RTE-004) use this
+     * method. See ContentRichTextEditor_TDS.md ADR-RTE-007 (decoupled design).
+     */
+    public void storePublic(String key, byte[] data, String mimeType) {
+        try {
+            String resourceType = getResourceType(mimeType);
+
+            Map<?, ?> result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
+                    "folder", "carebridge",
+                    "resource_type", resourceType,
+                    "type", "upload"
+            ));
+
+            String publicId = (String) result.get("public_id");
+            if (publicId == null) {
+                throw new StorageException("Cloudinary response missing public_id");
+            }
+
+            lastUpload.set(new UploadResult(publicId, resourceType, FileAccessMode.PUBLIC));
+        } catch (Exception e) {
+            throw new StorageException("Cloudinary upload failed: " + e.getMessage(), e);
+        }
+    }
+
     @Override
     public String generatePresignedUrl(String key, int ttlMinutes) {
         // Parse canonical key: "publicId|resourceType|accessMode"
@@ -81,19 +117,41 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     /**
-     * Generate a signed URL for Cloudinary assets.
+     * Generate a URL for Cloudinary assets.
      * @param publicId The Cloudinary public ID
-     * @param ttlMinutes Time to live in minutes (max 15 for PDPA)
+     * @param ttlMinutes Time to live in minutes (max 15 for PDPA) — ignored for PUBLIC, see below
      * @param accessMode PRIVATE, AUTHENTICATED, or PUBLIC
      * @param resourceType "image" or "raw"
-     * @return Signed URL with expiration
+     * @return For PRIVATE/AUTHENTICATED: signed URL with expiration (unchanged pre-existing
+     *         behavior — see known-issues note below). For PUBLIC: a permanent, unsigned delivery
+     *         URL — Cloudinary {@code type=upload} assets are public by design, so signing/expiring
+     *         them serves no access-control purpose and breaks any use case that persists the URL
+     *         (e.g. images embedded in rich text content — ContentRichTextEditor_TDS.md ADR-RTE-004).
+     *
+     *         <p><b>Known pre-existing issue (NOT fixed here, deliberately — see ADR-RTE-007):</b>
+     *         the PRIVATE/AUTHENTICATED branch below builds the URL by concatenating
+     *         {@code "?expires_at=" + timestamp} onto the public_id string; Cloudinary parses the
+     *         whole thing as the public_id (not a query param) and rejects every such request with
+     *         HTTP 400 "public_id ... is invalid" — confirmed live against a real Cloudinary
+     *         account. This means PRIVATE/AUTHENTICATED delivery (expert identity documents,
+     *         contribution attachments, etc.) is currently non-functional. Left unchanged
+     *         deliberately to keep this content-editor feature's blast radius away from that
+     *         security-sensitive flow — track/fix as its own change with its own review.</p>
      */
     public String generateSignedUrl(String publicId, int ttlMinutes, FileAccessMode accessMode, String resourceType) {
+        if (accessMode == FileAccessMode.PUBLIC) {
+            return cloudinary.url()
+                    .resourceType(resourceType)
+                    .type("upload")
+                    .secure(true)
+                    .generate(publicId);
+        }
+
         int boundedTtl = Math.max(1, Math.min(ttlMinutes, 15));
         String type = switch (accessMode) {
             case PRIVATE -> "private";
             case AUTHENTICATED -> "authenticated";
-            case PUBLIC -> "upload";
+            case PUBLIC -> throw new IllegalStateException("handled above");
         };
 
         // Cloudinary signed URL with expiration via query parameter
@@ -113,7 +171,7 @@ public class CloudinaryStorageService implements IStorageService {
         if (parsed != null) {
             try {
                 cloudinary.uploader().destroy(parsed.publicId,
-                        ObjectUtils.asMap("resource_type", parsed.resourceType, "type", parsed.accessMode.name().toLowerCase()));
+                        ObjectUtils.asMap("resource_type", parsed.resourceType, "type", cloudinaryDeleteType(parsed.accessMode)));
             } catch (Exception ignored) {
                 // soft-delete: don't fail the DB transaction
             }
@@ -135,10 +193,21 @@ public class CloudinaryStorageService implements IStorageService {
     public void delete(String publicId, String resourceType, FileAccessMode accessMode) {
         try {
             cloudinary.uploader().destroy(publicId,
-                    ObjectUtils.asMap("resource_type", resourceType, "type", accessMode.name().toLowerCase()));
+                    ObjectUtils.asMap("resource_type", resourceType, "type", cloudinaryDeleteType(accessMode)));
         } catch (Exception ignored) {
             // soft-delete: don't fail the DB transaction
         }
+    }
+
+    /**
+     * Maps accessMode to the Cloudinary `type` param expected by the destroy API. Only PUBLIC
+     * differs from {@code accessMode.name().toLowerCase()} ("upload" vs "public") — PRIVATE/
+     * AUTHENTICATED deletes are byte-identical to the original mapping, so this is safe to use
+     * unconditionally without affecting the existing (non-public) delete flows. Needed because
+     * {@link #storePublic} is the first caller that can actually produce a PUBLIC-accessMode key.
+     */
+    private static String cloudinaryDeleteType(FileAccessMode accessMode) {
+        return accessMode == FileAccessMode.PUBLIC ? "upload" : accessMode.name().toLowerCase();
     }
 
     private String getResourceType(String mimeType) {

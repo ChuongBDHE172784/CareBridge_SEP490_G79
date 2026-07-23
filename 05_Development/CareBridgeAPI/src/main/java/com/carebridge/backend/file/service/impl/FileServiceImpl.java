@@ -218,7 +218,14 @@ public class FileServiceImpl implements IFileService {
         IStorageService storageService = storageFor(provider);
         String persistedStorageKey;
         try {
-            storageService.store(storageKey, file.getBytes(), mimeType);
+            // PUBLIC images use a dedicated storePublic() path so this can never change behavior
+            // for the shared store() used by expert identity / contribution / generic uploads
+            // (ADR-RTE-007, decoupled design — ContentRichTextEditor_TDS.md).
+            if (accessMode == FileAccessMode.PUBLIC) {
+                storageService.storePublic(storageKey, file.getBytes(), mimeType);
+            } else {
+                storageService.store(storageKey, file.getBytes(), mimeType);
+            }
             persistedStorageKey = storageService.persistedKey(storageKey);
         } catch (IOException e) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-004",

@@ -6,6 +6,17 @@ public interface IStorageService {
     void store(String key, byte[] data, String mimeType);
 
     /**
+     * Store raw bytes as a permanent PUBLIC asset (Cloudinary type=upload). Deliberately separate
+     * from {@link #store} so this narrow use case (public content images, ADR-RTE-004/007) cannot
+     * change behavior for any existing caller of {@link #store}. Not supported by every provider —
+     * default throws; only {@code CloudinaryStorageService} overrides it.
+     */
+    default void storePublic(String key, byte[] data, String mimeType) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + " does not support storePublic()");
+    }
+
+    /**
      * Return the immutable value that must be persisted after {@link #store}.
      * Private object stores keep the requested key. Legacy providers may return
      * their provider URL for backward compatibility.

@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent } from '../services/contentApi';
+import { fetchStaffContentDetail, updateContent, uploadContentImage } from '../services/contentApi';
 import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
+import RichTextEditor from '../components/RichTextEditor';
 
 export default function EditContentPage() {
   const { id } = useParams<{ id: string }>();
@@ -165,11 +166,10 @@ export default function EditContentPage() {
                 <h2 className="text-base font-bold text-on-surface m-0">Nội dung chi tiết</h2>
               </div>
             </div>
-            <textarea
+            <RichTextEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={14}
-              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface-container-low text-sm text-on-surface font-sans resize-none"
+              onChange={setBody}
+              onImageUpload={uploadContentImage}
             />
             <input value={sourceTitle} onChange={e => setSourceTitle(e.target.value)} placeholder="Nguồn tham khảo đã xác thực" className="w-full mt-4 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
             <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="Liên kết nguồn" className="w-full mt-3 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />

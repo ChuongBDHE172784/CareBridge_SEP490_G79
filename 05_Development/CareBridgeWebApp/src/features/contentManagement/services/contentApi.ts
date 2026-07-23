@@ -154,6 +154,26 @@ export async function decideChecklistTemplate(
   return res.data.data;
 }
 
+/**
+ * Uploads an image for embedding in article/FAQ rich text content. Reuses the generic
+ * file-upload endpoint (ADR-RTE-003) with purpose=PUBLIC_CONTENT_IMAGE, accessMode=PUBLIC —
+ * the backend returns a permanent, non-expiring Cloudinary URL for this combination
+ * (ADR-RTE-004), unlike the 15-minute presigned URLs used elsewhere for private files.
+ */
+export async function uploadContentImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('kind', 'IMAGE');
+  form.append('purpose', 'PUBLIC_CONTENT_IMAGE');
+  form.append('accessMode', 'PUBLIC');
+  const res = await apiClient.post<ApiResponse<{ presignedUrl: string }>>(
+    '/api/v1/files/upload/with-purpose',
+    form,
+    { headers: { 'Content-Type': undefined } },
+  );
+  return res.data.data.presignedUrl;
+}
+
 export interface CreateContentResult {
   id: string;
   type: ContentType;

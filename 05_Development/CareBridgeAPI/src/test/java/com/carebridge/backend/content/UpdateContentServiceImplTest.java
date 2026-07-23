@@ -3,6 +3,8 @@ package com.carebridge.backend.content;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,11 +20,13 @@ import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
+import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.AdminContentServiceImpl;
 import java.security.Principal;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,8 +51,18 @@ class UpdateContentServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private HtmlContentSanitizer htmlContentSanitizer;
+
     @InjectMocks
     private AdminContentServiceImpl adminContentService;
+
+    // Sanitizer behavior itself is covered by HtmlContentSanitizerTest / RTE-TC-007 — here it's
+    // stubbed as identity so pre-existing assertions on body content stay meaningful.
+    @BeforeEach
+    void stubSanitizerAsIdentity() {
+        lenient().when(htmlContentSanitizer.sanitize(anyString())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     private static final UUID ADMIN_ID = UUID.fromString("f1400000-0000-0000-0000-0000000000ad");
     private static final UUID C1 = UUID.fromString("f1500000-0000-0000-0000-000000000001");
@@ -206,5 +220,23 @@ class UpdateContentServiceImplTest {
 
         assertEquals("CNT-012", ex.getCode());
         verify(contentRepository, never()).save(any());
+    }
+
+    // RTE-TC-007: updateContent() gọi sanitizer đúng 1 lần, entity lưu dùng OUTPUT của sanitizer
+    // chứ không phải input thô — xem ContentRichTextEditor_Test-Spec.md
+    @Test
+    void updateContent_bodySanitized_savedEntityUsesSanitizerOutputNotRawInput() {
+        ContentItem existing = makeItem(C1, "A", ContentStage.PREGNANCY, ContentType.ARTICLE, 2);
+        when(contentRepository.findById(C1)).thenReturn(Optional.of(existing));
+        when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any())).thenReturn(Optional.empty());
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+        String sanitizedBody = "<p>an toàn</p>";
+        when(htmlContentSanitizer.sanitize("updated body")).thenReturn(sanitizedBody);
+
+        UpdateContentRequest request = makeRequest("A updated", ContentStage.PREGNANCY, ContentStatus.DRAFT);
+        UpdateContentResponse response = adminContentService.updateContent(C1, request, principal);
+
+        verify(htmlContentSanitizer).sanitize("updated body");
+        assertEquals(sanitizedBody, response.body());
     }
 }

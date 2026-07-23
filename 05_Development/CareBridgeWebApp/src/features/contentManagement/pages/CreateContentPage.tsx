@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { createContent, fetchTopics, updateContent } from '../services/contentApi';
+import { createContent, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
 import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
 import { TYPE_LABELS, STAGE_LABELS } from '../models/content';
+import RichTextEditor, { isRichTextEmpty } from '../components/RichTextEditor';
 
 export default function CreateContentPage() {
   const navigate = useNavigate();
@@ -26,10 +27,10 @@ export default function CreateContentPage() {
     fetchTopics().then(setTopics).catch(() => setTopics([]));
   }, []);
 
-  const isValid = title.trim().length > 0 && body.trim().length > 0 && type !== '' && stage !== '';
+  const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && type !== '' && stage !== '';
 
   const submit = useCallback(async (sendForApproval: boolean) => {
-    if (title.trim().length === 0 || body.trim().length === 0 || type === '' || stage === '') return;
+    if (title.trim().length === 0 || isRichTextEmpty(body) || type === '' || stage === '') return;
     setSubmitting(sendForApproval ? 'submit' : 'draft');
     setError('');
     try {
@@ -186,12 +187,11 @@ export default function CreateContentPage() {
           <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
             Nội dung chi tiết <span className="text-error">*</span>
           </label>
-          <textarea
+          <RichTextEditor
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={setBody}
+            onImageUpload={uploadContentImage}
             placeholder="Bắt đầu viết nội dung ở đây..."
-            rows={10}
-            className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none"
           />
         </div>
 

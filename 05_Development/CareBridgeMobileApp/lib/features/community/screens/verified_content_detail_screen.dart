@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/content_model.dart';
 import '../services/content_service.dart';
+import '../widgets/verified_content_body.dart';
 
 /// CB-181 — View Verified Content Detail (UC-225)
 /// Displays the full body of a curated article or FAQ answer.
@@ -245,15 +246,8 @@ class _VerifiedContentDetailScreenState
             const SizedBox(height: 16),
             const Divider(height: 1, color: Color(0xFFD6C2BD)),
             const SizedBox(height: 16),
-            // Body
-            Text(
-              content.body,
-              style: const TextStyle(
-                fontSize: 15,
-                color: _onSurface,
-                height: 1.6,
-              ),
-            ),
+            // Body — see VerifiedContentBody for why this isn't a plain Text().
+            VerifiedContentBody(html: content.body, color: _onSurface),
             const SizedBox(height: 20),
             // Disclaimer
             Container(

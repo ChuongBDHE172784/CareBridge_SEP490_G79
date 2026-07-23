@@ -170,10 +170,14 @@ class FileServiceImplTest {
                 });
 
         verify(cloudinaryStorageService, never()).store(any(), any(), any());
+        verify(cloudinaryStorageService, never()).storePublic(any(), any(), any());
         verify(r2StorageService, never()).store(any(), any(), any());
     }
 
-    // FILE-TC-002c: uploadPublicFile() accepts images
+    // FILE-TC-002c: uploadPublicFile() accepts images and routes to storePublic() — a dedicated
+    // path separate from the shared store() used by expert identity / contribution / generic
+    // uploads (ADR-RTE-007, decoupled design — ContentRichTextEditor_TDS.md). Regression guard:
+    // PUBLIC images must never fall back to the shared store(), which cannot express PUBLIC intent.
     @Test
     void uploadPublicFile_acceptsJpeg() {
         when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
@@ -184,7 +188,8 @@ class FileServiceImplTest {
 
         assertThat(resp.getFileId()).isEqualTo(FILE_ID);
         assertThat(resp.getPresignedUrl()).isNotBlank();
-        verify(cloudinaryStorageService).store(anyString(), any(), eq("image/jpeg"));
+        verify(cloudinaryStorageService).storePublic(anyString(), any(), eq("image/jpeg"));
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
         verify(r2StorageService, never()).store(any(), any(), any());
     }
 
