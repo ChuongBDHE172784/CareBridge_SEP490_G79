@@ -18,6 +18,9 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
     private static final String EXPECTED_PASSWORD = "carebridge.hermetic.datasource.password";
     private static final String EXPECTED_DATABASE_NAME = "carebridge.hermetic.datasource.database-name";
     private static final String EXPECTED_SCHEMA = "carebridge.hermetic.datasource.schema";
+    private static final String TESTCONTAINERS_HOST_OVERRIDE = "TESTCONTAINERS_HOST_OVERRIDE";
+    private static final String DOCKER_HOST = "DOCKER_HOST";
+    private static final String GITLAB_CI = "GITLAB_CI";
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
 
     @Override
@@ -47,7 +50,7 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
         requireMatching(
                 environment, "spring.datasource.password", expectedPassword, "HERMETIC_PASSWORD_MISMATCH");
 
-        validateJdbcUrl(effectiveUrl, expectedDatabaseName);
+        validateJdbcUrl(environment, effectiveUrl, expectedDatabaseName);
         validateHermeticSchema(expectedSchema);
         requireMatching(
                 environment, "spring.datasource.hikari.schema", expectedSchema, "HERMETIC_SCHEMA_MISMATCH");
@@ -77,7 +80,10 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
         }
     }
 
-    private static void validateJdbcUrl(String jdbcUrl, String expectedDatabaseName) {
+    private static void validateJdbcUrl(
+            ConfigurableEnvironment environment,
+            String jdbcUrl,
+            String expectedDatabaseName) {
         if (!jdbcUrl.startsWith("jdbc:postgresql://")) {
             fail("HERMETIC_DATASOURCE_MALFORMED");
         }
@@ -105,7 +111,8 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
         if (normalizedHost.startsWith("[") && normalizedHost.endsWith("]")) {
             normalizedHost = normalizedHost.substring(1, normalizedHost.length() - 1);
         }
-        if (!LOOPBACK_HOSTS.contains(normalizedHost)) {
+        if (!LOOPBACK_HOSTS.contains(normalizedHost)
+                && !isTrustedTestcontainersHost(environment, normalizedHost)) {
             fail("HERMETIC_DATASOURCE_REMOTE");
         }
 
@@ -117,6 +124,59 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
             fail("HERMETIC_DATABASE_NAME_MISMATCH");
         }
         validateTestIdentifier(databaseName, "HERMETIC_DATABASE_NAME_UNSAFE");
+    }
+
+    private static boolean isTrustedTestcontainersHost(
+            ConfigurableEnvironment environment,
+            String datasourceHost) {
+        if (!environment.getProperty(GITLAB_CI, Boolean.class, false)) {
+            return false;
+        }
+
+        String hostOverride = normalizeConfiguredHost(
+                environment.getProperty(TESTCONTAINERS_HOST_OVERRIDE));
+        if (datasourceHost.equals(hostOverride)) {
+            return true;
+        }
+        return datasourceHost.equals(hostFromDockerEndpoint(environment.getProperty(DOCKER_HOST)));
+    }
+
+    private static String normalizeConfiguredHost(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        if (normalized.isBlank()
+                || normalized.contains("/")
+                || normalized.contains("@")
+                || normalized.contains("?")
+                || normalized.contains("#")) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private static String hostFromDockerEndpoint(String dockerHost) {
+        if (dockerHost == null || dockerHost.isBlank()) {
+            return null;
+        }
+        try {
+            URI uri = new URI(dockerHost.trim());
+            String scheme = uri.getScheme();
+            if (scheme == null
+                    || !(scheme.equalsIgnoreCase("tcp")
+                    || scheme.equalsIgnoreCase("http")
+                    || scheme.equalsIgnoreCase("https"))
+                    || uri.getUserInfo() != null) {
+                return null;
+            }
+            return normalizeConfiguredHost(uri.getHost());
+        } catch (URISyntaxException ex) {
+            return null;
+        }
     }
 
     private static void validateTestIdentifier(String value, String failureCode) {
