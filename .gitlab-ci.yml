@@ -88,9 +88,10 @@ test_backend:
   variables:
     SPRING_APPLICATION_JSON: '{"logging":{"level":{"root":"WARN","org.hibernate.SQL":"OFF","org.hibernate.type.descriptor.sql":"OFF","org.springframework.orm":"WARN","com.carebridge.backend":"WARN"}}}'
   rules: *backend_rules
-  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B test"]
+  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -Dmaven.test.redirectTestOutputToFile=true test"]
   artifacts:
     when: always
+    paths: ["05_Development/CareBridgeAPI/target/surefire-reports/"]
     reports: {junit: "05_Development/CareBridgeAPI/target/surefire-reports/TEST-*.xml"}
 test_web:
   stage: test
