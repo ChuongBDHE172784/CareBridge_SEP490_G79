@@ -3,6 +3,7 @@ package com.carebridge.backend.community.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -23,7 +24,7 @@ public class CommunityAnswer {
     @Column(name = "content_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "parent_content_id", nullable = false)
+    @Column(name = "parent_content_id")
     private UUID questionId;
 
     // ADR-COM-004: authorId from JWT — matches users.id (UUID)
@@ -35,11 +36,14 @@ public class CommunityAnswer {
 
     // ADR-COM-005: only set by Moderator/System, never from request body
     @Column(name = "is_expert_labeled", nullable = false)
+    @ColumnDefault("false")
     @Builder.Default
     private boolean expertLabeled = false;
 
     @Column(name = "is_personal_experience", nullable = false)
-    private boolean personalExperience;
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean personalExperience = false;
 
     // ADR-COM-006: always PENDING on creation
     @Enumerated(EnumType.STRING)

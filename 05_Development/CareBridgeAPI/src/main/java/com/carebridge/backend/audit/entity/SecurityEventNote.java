@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -29,13 +30,13 @@ public class SecurityEventNote {
     @Column(name = "audit_event_id", updatable = false, nullable = false)
     private UUID noteId;
 
-    @Column(name = "security_event_id", nullable = false)
+    @Column(name = "security_event_id")
     private Long eventId;
 
-    @Column(name = "actor_user_id", nullable = false)
+    @Column(name = "actor_user_id")
     private UUID authorId;
 
-    @Column(name = "note_text", nullable = false, columnDefinition = "text")
+    @Column(name = "note_text", columnDefinition = "text")
     private String noteText;
 
     @Builder.Default
@@ -45,4 +46,12 @@ public class SecurityEventNote {
     @CreationTimestamp
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @PrePersist
+    void validateInvestigationNote() {
+        if (eventId == null || authorId == null || noteText == null || noteText.isBlank()) {
+            throw new IllegalStateException(
+                    "Security investigation notes require event, author, and note text");
+        }
+    }
 }

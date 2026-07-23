@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "care_subjects")
+@org.hibernate.annotations.SQLRestriction("subject_type = 'BABY'")
 @Getter
 @Setter
 @Builder

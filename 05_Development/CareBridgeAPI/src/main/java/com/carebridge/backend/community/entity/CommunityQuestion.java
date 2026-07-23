@@ -3,6 +3,7 @@ package com.carebridge.backend.community.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -24,20 +25,20 @@ public class CommunityQuestion {
     @Column(name = "content_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "topic_id", nullable = false)
+    @Column(name = "topic_id")
     private UUID topicId;
 
     @Column(name = "author_user_id", nullable = false)
     private java.util.UUID authorId;
 
-    @Column(name = "title", nullable = false, length = 255)
+    @Column(name = "title", length = 255)
     private String title;
 
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "stage", nullable = false, length = 30)
+    @Column(name = "stage", length = 30)
     private PregnancyStage stage;
 
     @Column(name = "pregnancy_week")
@@ -47,10 +48,11 @@ public class CommunityQuestion {
     private Short babyAgeMonths;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "urgency", nullable = false, length = 20)
+    @Column(name = "urgency", length = 20)
     private UrgencyLevel urgency;
 
     @Column(name = "is_anonymous", nullable = false)
+    @ColumnDefault("false")
     @Builder.Default
     private boolean anonymous = false;
 
@@ -60,10 +62,12 @@ public class CommunityQuestion {
     private QuestionStatus status = QuestionStatus.PENDING;
 
     @Column(name = "like_count", nullable = false)
+    @ColumnDefault("0")
     @Builder.Default
     private int likeCount = 0;
 
     @Column(name = "answer_count", nullable = false)
+    @ColumnDefault("0")
     @Builder.Default
     private int answerCount = 0;
 

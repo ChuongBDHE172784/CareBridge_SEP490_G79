@@ -6,6 +6,7 @@ import com.carebridge.backend.journey.entity.MotherJourney;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
@@ -15,6 +16,40 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UUID> {
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO care_subjects (
+                care_subject_id, person_id, owner_user_id, subject_type,
+                nickname, status, created_at, updated_at)
+            SELECT :subjectId, u.person_id, u.user_id, 'MOTHER',
+                   p.display_name, 'ACTIVE', now(), now()
+              FROM users u
+              JOIN persons p ON p.person_id = u.person_id
+             WHERE u.user_id = :ownerUserId
+            ON CONFLICT DO NOTHING
+            """, nativeQuery = true)
+    int ensureMotherCareSubject(
+            @Param("subjectId") UUID subjectId,
+            @Param("ownerUserId") UUID ownerUserId);
+
+    @Query(value = """
+            SELECT care_subject_id FROM care_subjects
+             WHERE owner_user_id = :ownerUserId AND subject_type = 'MOTHER'
+               AND mother_journey_id IS NULL
+             ORDER BY created_at DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    UUID findMotherCareSubjectId(@Param("ownerUserId") UUID ownerUserId);
+
+    @Modifying
+    @Query(value = """
+            UPDATE care_subjects SET mother_journey_id = :journeyId, updated_at = now()
+             WHERE care_subject_id = :subjectId AND mother_journey_id IS NULL
+            """, nativeQuery = true)
+    int linkMotherCareSubject(
+            @Param("subjectId") UUID subjectId,
+            @Param("journeyId") UUID journeyId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from MotherJourney j where j.id = :journeyId")
