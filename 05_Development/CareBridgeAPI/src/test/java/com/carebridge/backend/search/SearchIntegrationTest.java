@@ -44,7 +44,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
-    private String seedUserAndGetToken() {
+    private User seedUser() {
         User user = userRepository.save(User.builder()
                 .email(EMAIL)
                 .role(Role.MOTHER)
@@ -55,7 +55,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
                 .phoneVerified(false)
                 .accountStatus("ACTIVE")
                 .build());
-        return jwtTokenProvider.generateAccessToken(user);
+        return user;
     }
 
     private CommunityTopic seedTopicUnderCategory(String name) {
@@ -77,13 +77,14 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     // SEARCH-TC-013-010: page=0 and page=1 return distinct, correctly-paginated results
     @Test
     void search_pagination_returnsDistinctPagesWithCorrectTotals() throws Exception {
-        String token = seedUserAndGetToken();
+        User author = seedUser();
+        String token = jwtTokenProvider.generateAccessToken(author);
         CommunityTopic topic = seedTopicUnderCategory("Dinh dưỡng thai kỳ");
 
         for (int i = 0; i < 25; i++) {
             questionRepository.save(CommunityQuestion.builder()
                     .topicId(topic.getId())
-                    .authorId(UUID.randomUUID())
+                    .authorId(author.getId())
                     .title("dinh dưỡng thai kỳ " + i)
                     .body("Nội dung câu hỏi số " + i)
                     .stage(PregnancyStage.PREGNANCY)
@@ -128,11 +129,12 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     // SEARCH-TC-013-009: SQL injection attempt in q — must not error or drop data
     @Test
     void search_sqlInjectionAttempt_isHandledSafely() throws Exception {
-        String token = seedUserAndGetToken();
+        User author = seedUser();
+        String token = jwtTokenProvider.generateAccessToken(author);
         CommunityTopic topic = seedTopicUnderCategory("Safety topic");
         questionRepository.save(CommunityQuestion.builder()
                 .topicId(topic.getId())
-                .authorId(UUID.randomUUID())
+                .authorId(author.getId())
                 .title("Câu hỏi an toàn")
                 .body("Nội dung")
                 .stage(PregnancyStage.PREGNANCY)

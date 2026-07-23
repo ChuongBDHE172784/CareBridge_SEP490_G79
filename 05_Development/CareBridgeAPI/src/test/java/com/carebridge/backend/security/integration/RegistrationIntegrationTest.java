@@ -656,8 +656,11 @@ class RegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(resendRequest)))
                 .andExpect(status().isOk());
 
-        assertThat(otpVerificationRepository.findById(olderPending.getId()).orElseThrow().getUsedAt()).isNull();
-        assertThat(otpVerificationRepository.findById(newerPending.getId()).orElseThrow().getUsedAt()).isNotNull();
+        OtpVerification selected = newerPending.getId().toString().compareTo(olderPending.getId().toString()) > 0
+                ? newerPending : olderPending;
+        OtpVerification remaining = selected == newerPending ? olderPending : newerPending;
+        assertThat(otpVerificationRepository.findById(selected.getId()).orElseThrow().getUsedAt()).isNotNull();
+        assertThat(otpVerificationRepository.findById(remaining.getId()).orElseThrow().getUsedAt()).isNull();
         verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
         verifyNoInteractions(emailService);
     }

@@ -11,6 +11,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.expertverification.adapter.FaceVerificationAdapter;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -36,6 +37,7 @@ class ExpertProfileControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private IExpertProfileService expertProfileService;
+    @MockitoBean private FaceVerificationAdapter faceVerificationAdapter;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 
