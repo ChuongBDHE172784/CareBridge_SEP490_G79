@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * AUTH-007" is not enforced by the current lock-free design; the number of successes is
  * recorded but only bounded to 1..2.)
  */
+@Isolated
 class OtpRaceConditionIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String EMAIL = "int.race@test.com";

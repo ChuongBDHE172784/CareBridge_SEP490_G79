@@ -41,10 +41,12 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Real PostgreSQL coverage for Story 6.4 recovery invariants and idempotency. */
+@Isolated
 class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final LocalDate RECOVERY_START = LocalDate.of(2026, 7, 1);
