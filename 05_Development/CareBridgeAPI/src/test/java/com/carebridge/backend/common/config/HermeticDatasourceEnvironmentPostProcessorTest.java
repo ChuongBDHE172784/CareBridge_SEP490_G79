@@ -275,6 +275,7 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
 
     private StandardEnvironment hermeticEnvironment(Map<String, Object> overrides) {
         Map<String, Object> properties = new HashMap<>();
+        properties.put("GITLAB_CI", false);
         properties.put("spring.profiles.active", "hermetic");
         properties.put("carebridge.datasource-guard.enabled", true);
         properties.put("carebridge.dotenv.enabled", false);
