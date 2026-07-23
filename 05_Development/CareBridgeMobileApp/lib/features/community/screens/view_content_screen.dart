@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../checklist/models/user_checklist_item_model.dart';
+import '../../checklist/screens/preparation_checklist_screen.dart';
+import '../../checklist/services/user_checklist_service.dart';
+import '../../journey/models/journey_model.dart';
+import '../../journey/screens/mother_journey_screen.dart';
+import '../../journey/services/journey_service.dart';
 import '../models/community_model.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
@@ -37,17 +43,28 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   final _contentService = ContentService.instance;
   final _communityService = CommunityService.instance;
+  final _journeyService = JourneyService();
+  final _userChecklistService = UserChecklistService.instance;
   final _searchController = TextEditingController();
 
   // ── State ──
   bool _loading = true;
   String? _loadError;
+  bool _journeyLoadFailed = false;
+  bool _articleLoadFailed = false;
+  bool _faqLoadFailed = false;
+  bool _checklistLoadFailed = false;
+  bool _userChecklistLoadFailed = false;
+  int _loadGeneration = 0;
   int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ, 3=Checklist
-  int _selectedStageIndex = 1; // 0=Prep, 1=Pregnancy, 2=Postpartum, 3=BabyCare
+  int _selectedStageIndex = -1;
+  JourneyDashboard? _dashboard;
   List<CommunityTopic> _topics = [];
   List<ContentListItem> _articles = [];
   List<ContentListItem> _faqs = [];
   List<ChecklistTemplate> _checklists = [];
+  List<UserChecklistItem> _userChecklistItems = [];
+  final Set<String> _importingChecklistIds = {};
   String _searchKeyword = '';
   String? _selectedTopicId;
   String? _featuredImageUrl;
@@ -74,7 +91,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _load(syncStageToJourney: true);
   }
 
   @override
@@ -104,42 +121,92 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         .toList(growable: false);
   }
 
-  Future<void> _load() async {
+  Future<(T?, bool)> _capture<T>(Future<T> request) async {
+    try {
+      return (await request, false);
+    } catch (_) {
+      return (null, true);
+    }
+  }
+
+  Future<void> _load({bool syncStageToJourney = false}) async {
+    final generation = ++_loadGeneration;
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _loadError = null;
     });
-    final stage = _stageValues[_selectedStageIndex];
     try {
-      final results = await Future.wait([
-        _communityService.getTopics(),
-        _contentService.getContent(type: 'ARTICLE', stage: stage, size: 100),
-        _contentService.getContent(type: 'FAQ', stage: stage, size: 100),
+      JourneyDashboard? dashboard;
+      var journeyLoadFailed = false;
+      try {
+        dashboard = await _journeyService.getDashboard();
+      } catch (_) {
+        journeyLoadFailed = true;
+      }
+      if (!mounted || generation != _loadGeneration) return;
+      final journeyStageIndex = dashboard == null
+          ? -1
+          : _stageIndexForDashboard(dashboard);
+      final stageIndex = syncStageToJourney || _selectedStageIndex < 0
+          ? journeyStageIndex
+          : _selectedStageIndex;
+      final stage = stageIndex >= 0 ? _stageValues[stageIndex] : null;
+      final topicsFuture = _capture(_communityService.getTopics());
+      final articlesFuture = _capture(
+        _contentService.getAllContent(type: 'ARTICLE', stage: stage),
+      );
+      final faqsFuture = _capture(
+        _contentService.getAllContent(type: 'FAQ', stage: stage),
+      );
+      final checklistsFuture = _capture(
         _contentService.getChecklists(stage: stage),
-      ]);
-      if (mounted) {
-        final articles = results[1] as List<ContentListItem>;
+      );
+      final journeyId = dashboard?.journeyId;
+      final userItemsFuture = journeyId == null || journeyId.isEmpty
+          ? Future.value((<UserChecklistItem>[], false))
+          : _capture(_userChecklistService.listItems(journeyId: journeyId));
+      final topicsResult = await topicsFuture;
+      final articlesResult = await articlesFuture;
+      final faqsResult = await faqsFuture;
+      final checklistsResult = await checklistsFuture;
+      final userItemsResult = await userItemsFuture;
+      if (mounted && generation == _loadGeneration) {
+        final articles = articlesResult.$1 ?? <ContentListItem>[];
         setState(() {
-          _topics = results[0] as List<CommunityTopic>;
+          _dashboard = dashboard;
+          _journeyLoadFailed = journeyLoadFailed;
+          _selectedStageIndex = stageIndex;
+          _topics = topicsResult.$1 ?? <CommunityTopic>[];
           _articles = articles;
-          _faqs = results[2] as List<ContentListItem>;
-          _checklists = results[3] as List<ChecklistTemplate>;
+          _faqs = faqsResult.$1 ?? <ContentListItem>[];
+          _checklists = checklistsResult.$1 ?? <ChecklistTemplate>[];
+          _userChecklistItems = userItemsResult.$1 ?? <UserChecklistItem>[];
+          _articleLoadFailed = articlesResult.$2;
+          _faqLoadFailed = faqsResult.$2;
+          _checklistLoadFailed = checklistsResult.$2;
+          _userChecklistLoadFailed = userItemsResult.$2;
           _loading = false;
         });
         _loadFeaturedImage(articles);
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _topics = [];
           _articles = [];
           _faqs = [];
           _checklists = [];
+          _userChecklistItems = [];
           _loading = false;
           _loadError = 'Không tải được nội dung. Vui lòng thử lại.';
         });
       }
     }
+  }
+
+  int _stageIndexForDashboard(JourneyDashboard dashboard) {
+    return contentStageIndexForJourneyType(dashboard.journeyType);
   }
 
   Future<void> _loadFeaturedImage(List<ContentListItem> articles) async {
@@ -241,6 +308,26 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
+  Widget _buildSectionLoadError(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: _onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(
+              'Không tải được $label. Vui lòng thử lại.',
+              textAlign: TextAlign.center,
+            ),
+            TextButton(onPressed: _load, child: const Text('Thử lại')),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── App bar ──
   Widget _buildAppBar() {
     return Padding(
@@ -279,67 +366,90 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── Personal context strip ──
   Widget _buildContextStrip() {
+    final dashboard = _dashboard;
+    final statusLabel = _journeyLoadFailed
+        ? 'Không tải được hành trình · Chạm để thử lại'
+        : dashboard == null
+        ? 'Đang tải hành trình...'
+        : !dashboard.hasActiveJourney
+        ? 'Chưa thiết lập hành trình'
+        : dashboard.isPregnancy && dashboard.displayPregnancyWeek != null
+        ? '${dashboard.phaseLabel} · Tuần ${dashboard.displayPregnancyWeek}'
+        : dashboard.phaseLabel;
+    final statusIcon = dashboard?.isPregnancy == true
+        ? Icons.pregnant_woman
+        : dashboard?.isPostpartum == true
+        ? Icons.favorite_outline
+        : Icons.timeline;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6F1EC),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            // Pregnant icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: _primaryContainer,
-                shape: BoxShape.circle,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MotherJourneyScreen()),
+          );
+          if (mounted) await _load(syncStageToJourney: true);
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F1EC),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: _primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(statusIcon, color: Colors.white, size: 26),
               ),
-              child: const Icon(
-                Icons.pregnant_woman,
-                color: Colors.white,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Trạng thái hiện tại',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _onSurfaceVariant,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Trạng thái hiện tại',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Thai kỳ · Tuần 24',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _onSurface,
+                    const SizedBox(height: 2),
+                    Text(
+                      statusLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _surfaceContainerHigh, width: 1),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _surfaceContainerHigh, width: 1),
+                ),
+                child: const Icon(
+                  Icons.edit_calendar,
+                  size: 20,
+                  color: _primary,
+                ),
               ),
-              child: const Icon(Icons.edit_calendar, size: 20, color: _primary),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -529,6 +639,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── Featured article section ("Gợi ý hôm nay") ──
   Widget _buildFeaturedArticle() {
+    if (_articleLoadFailed) return _buildSectionLoadError('bài viết');
     final articles = _filterContent(_articles);
     if (articles.isEmpty) {
       return _selectedTypeIndex == 1
@@ -686,7 +797,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              _stageLabels[_selectedStageIndex].toUpperCase(),
+                              _stageLabelFromValue(article.stage),
                               style: const TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 10,
@@ -794,6 +905,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── FAQ section ──
   Widget _buildFaqSection() {
+    if (_faqLoadFailed) {
+      return _buildSectionLoadError('FAQ');
+    }
     final faqs = _filterContent(_faqs);
     if (faqs.isEmpty && _selectedTypeIndex == 2) {
       return const Padding(
@@ -904,7 +1018,198 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   // ── Checklist section ──
+  Set<String> get _importedTemplateItemIds => _userChecklistItems
+      .map((item) => item.templateItemId)
+      .whereType<String>()
+      .toSet();
+
+  Future<void> _openChecklistTemplate(ChecklistTemplate template) async {
+    if (_importingChecklistIds.isNotEmpty) return;
+    final importedIds = _importedTemplateItemIds;
+    final missingItems = template.items
+        .where((item) => !importedIds.contains(item.id))
+        .toList(growable: false);
+    final rawJourneyId = _dashboard?.journeyId;
+    final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
+        ? null
+        : rawJourneyId;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _canvas,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                template.name,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              if (template.description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  template.description,
+                  style: const TextStyle(color: _onSurfaceVariant),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: template.items.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, index) {
+                    final item = template.items[index];
+                    final imported = importedIds.contains(item.id);
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        imported ? Icons.check_circle : Icons.circle_outlined,
+                        color: imported ? _primary : _onSurfaceVariant,
+                      ),
+                      title: Text(item.itemText),
+                      subtitle: item.isRequired ? const Text('Bắt buộc') : null,
+                    );
+                  },
+                ),
+              ),
+              if (journeyId == null) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Hãy thiết lập hành trình trước khi thêm checklist.',
+                  style: TextStyle(color: _error),
+                ),
+              ] else if (_userChecklistLoadFailed) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Không thể kiểm tra checklist hiện tại. Hãy thử tải lại trước khi thêm để tránh trùng mục.',
+                  style: TextStyle(color: _error),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: journeyId == null || _userChecklistLoadFailed
+                      ? null
+                      : () => Navigator.pop(
+                          sheetContext,
+                          missingItems.isEmpty ? 'open' : 'import',
+                        ),
+                  icon: Icon(
+                    missingItems.isEmpty
+                        ? Icons.checklist_rtl
+                        : Icons.playlist_add,
+                  ),
+                  label: Text(
+                    missingItems.isEmpty
+                        ? 'Mở checklist của tôi'
+                        : 'Thêm ${missingItems.length} mục vào checklist',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    if (action == 'import') {
+      await _importChecklistTemplate(template);
+    } else {
+      await _openMyChecklist();
+    }
+  }
+
+  Future<void> _importChecklistTemplate(ChecklistTemplate template) async {
+    final rawJourneyId = _dashboard?.journeyId;
+    final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
+        ? null
+        : rawJourneyId;
+    if (journeyId == null || _importingChecklistIds.isNotEmpty) {
+      return;
+    }
+    final importedIds = _importedTemplateItemIds;
+    final missingIds = template.items
+        .map((item) => item.id)
+        .where((id) => !importedIds.contains(id))
+        .toList(growable: false);
+    if (missingIds.isEmpty) {
+      await _openMyChecklist();
+      return;
+    }
+
+    setState(() => _importingChecklistIds.add(template.id));
+    var importSucceeded = false;
+    try {
+      final imported = await _userChecklistService.importFromTemplate(
+        templateItemIds: missingIds,
+        journeyId: journeyId,
+      );
+      if (!mounted) return;
+      setState(
+        () => _userChecklistItems = [..._userChecklistItems, ...imported],
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã thêm ${imported.length} mục vào checklist.'),
+        ),
+      );
+      importSucceeded = true;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
+          backgroundColor: _error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _importingChecklistIds.remove(template.id));
+    }
+    if (importSucceeded && mounted) await _openMyChecklist();
+  }
+
+  Future<void> _openMyChecklist() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            PreparationChecklistScreen(journeyId: _dashboard?.journeyId),
+      ),
+    );
+    if (mounted && _dashboard?.journeyId != null) {
+      try {
+        final items = await _userChecklistService.listItems(
+          journeyId: _dashboard!.journeyId,
+        );
+        if (mounted) setState(() => _userChecklistItems = items);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Không thể làm mới checklist. Dữ liệu hiện tại được giữ nguyên.',
+            ),
+            backgroundColor: _error,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildChecklistSection() {
+    if (_checklistLoadFailed) {
+      return _buildSectionLoadError('checklist');
+    }
     if (_checklists.isEmpty && _selectedTypeIndex == 3) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -940,115 +1245,121 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           ..._checklists.map(
             (cl) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: const Border(
-                    left: BorderSide(color: _primaryContainer, width: 4),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0x0F5A463F),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => _openChecklistTemplate(cl),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: const Border(
+                      left: BorderSide(color: _primaryContainer, width: 4),
                     ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _stageLabelFromValue(cl.stage),
-                                    style: const TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: _primary,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${cl.items.length} mục cần chuẩn bị',
-                                  style: const TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 12,
-                                    color: _onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              cl.name,
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: _onSurface,
-                              ),
-                            ),
-                            if (cl.description.isNotEmpty) ...[
-                              const SizedBox(height: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0x0F5A463F),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Row(
                                 children: [
-                                  const Icon(
-                                    Icons.verified_user,
-                                    size: 14,
-                                    color: _onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
                                     child: Text(
-                                      cl.description,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      _stageLabelFromValue(cl.stage),
                                       style: const TextStyle(
                                         fontFamily: 'Lexend',
-                                        fontSize: 12,
-                                        color: _onSurfaceVariant,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: _primary,
+                                        letterSpacing: 0.5,
                                       ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${cl.items.where((item) => _importedTemplateItemIds.contains(item.id)).length}/${cl.items.length} mục đã thêm',
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 12,
+                                      color: _onSurfaceVariant,
                                     ),
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                cl.name,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: _onSurface,
+                                ),
+                              ),
+                              if (cl.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.verified_user,
+                                      size: 14,
+                                      color: _onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        cl.description,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 12,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: _secondaryContainer,
-                          shape: BoxShape.circle,
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: _secondaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _importingChecklistIds.contains(cl.id)
+                                ? Icons.hourglass_top
+                                : Icons.chevron_right,
+                            size: 22,
+                            color: _primary,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.checklist,
-                          size: 22,
-                          color: _primary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

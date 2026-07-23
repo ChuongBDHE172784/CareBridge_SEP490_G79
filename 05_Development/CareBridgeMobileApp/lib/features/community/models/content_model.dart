@@ -26,6 +26,21 @@ class ContentListItem {
       );
 }
 
+int contentStageIndexForJourneyType(String? journeyType) {
+  switch (journeyType) {
+    case 'PRE_PREGNANCY':
+      return 0;
+    case 'PREGNANCY':
+      return 1;
+    case 'POSTPARTUM':
+      return 2;
+    case 'BABY_CARE':
+      return 3;
+    default:
+      return -1;
+  }
+}
+
 class ContentDetail {
   final String id;
   final String type;
@@ -61,12 +76,14 @@ class ContentDetail {
   /// Image sources are intentionally derived from the server-sanitized body.
   /// The public list contract has no image field, while the detail contract is
   /// the canonical representation of rich article and FAQ content.
-  List<String> get imageUrls => RegExp(
-    r'''<img\b[^>]*\ssrc\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
-    caseSensitive: false,
-  ).allMatches(body).map((match) => match.group(1) ?? match.group(2)!).toList(
-    growable: false,
-  );
+  List<String> get imageUrls =>
+      RegExp(
+            r'''<img\b[^>]*\ssrc\s*=\s*(?:["']([^"']+)["']|([^\s>]+))''',
+            caseSensitive: false,
+          )
+          .allMatches(body)
+          .map((match) => match.group(1) ?? match.group(2)!)
+          .toList(growable: false);
 }
 
 class ChecklistTemplate {

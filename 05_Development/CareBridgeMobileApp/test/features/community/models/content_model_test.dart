@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/community/models/content_model.dart';
 
 void main() {
+  test('maps real journey lifecycle types to content stage tabs', () {
+    expect(contentStageIndexForJourneyType('PRE_PREGNANCY'), 0);
+    expect(contentStageIndexForJourneyType('PREGNANCY'), 1);
+    expect(contentStageIndexForJourneyType('POSTPARTUM'), 2);
+    expect(contentStageIndexForJourneyType('BABY_CARE'), 3);
+    expect(contentStageIndexForJourneyType(null), -1);
+  });
+
   test('extracts image sources from the server-sanitized content body', () {
     final content = ContentDetail.fromJson({
       'id': 'content-1',

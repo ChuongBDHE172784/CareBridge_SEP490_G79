@@ -4,7 +4,9 @@ import '../models/user_checklist_item_model.dart';
 import '../services/user_checklist_service.dart';
 
 class PreparationChecklistScreen extends StatefulWidget {
-  const PreparationChecklistScreen({super.key});
+  const PreparationChecklistScreen({super.key, this.journeyId});
+
+  final String? journeyId;
 
   @override
   State<PreparationChecklistScreen> createState() =>
@@ -48,7 +50,7 @@ class _PreparationChecklistScreenState
       _errorText = null;
     });
     try {
-      final items = await _service.listItems();
+      final items = await _service.listItems(journeyId: widget.journeyId);
       if (!mounted) return;
       setState(() {
         _items = items;
@@ -71,6 +73,7 @@ class _PreparationChecklistScreenState
       final created = await _service.addItem(
         itemText: text,
         category: _selectedCategory,
+        journeyId: widget.journeyId,
         itemOrder: _items.length + 1,
       );
       if (!mounted) return;
