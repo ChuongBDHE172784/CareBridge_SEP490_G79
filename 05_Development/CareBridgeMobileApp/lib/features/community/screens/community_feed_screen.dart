@@ -300,11 +300,22 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(color: _surfaceContainer, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: _surfaceContainer,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.bookmark_outline, color: _onSurfaceVariant, size: 22),
+              icon: const Icon(
+                Icons.bookmark_outline,
+                color: _onSurfaceVariant,
+                size: 22,
+              ),
               tooltip: 'Bài viết đã lưu',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookmarkedQuestionsScreen())),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const BookmarkedQuestionsScreen(),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -561,19 +572,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 height: 1.3,
               ),
             ),
-            const SizedBox(height: 8),
-            // Body preview (3 lines)
-            Text(
-              _mockBodyForItem(item),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: _onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
             // Expert answer badge
             if (item.hasExpertAnswer) ...[
               const SizedBox(height: 12),
@@ -604,22 +602,12 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Bác sĩ Nhi khoa đã trả lời',
+                            'Đã có chuyên gia trả lời',
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: _onSurface,
-                            ),
-                          ),
-                          Text(
-                            '"Mẹ đừng quá lo lắng, giai đoạn...',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 12,
-                              color: _onSurfaceVariant.withAlpha(178),
                             ),
                           ),
                         ],
@@ -729,18 +717,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         ),
       ),
     );
-  }
-
-  // Provides a mock body for items that don't carry body text
-  String _mockBodyForItem(CommunityFeedItem item) {
-    switch (item.id) {
-      case 'p1':
-        return 'Chào các mẹ, bé nhà mình được 6 tháng rưỡi rồi, mình bắt đầu cho bé ăn dặm kiểu Nhật nhưng bé có vẻ không hợp tác, hay nhè ra...';
-      case 'p2':
-        return 'Mình thấy nhiều mẹ hỏi về bỉm cho bé da nhạy cảm nên ngồi lên review chút về dòng...';
-      default:
-        return item.title;
-    }
   }
 
   // ── FAB — UC-54: create new question ──

@@ -56,4 +56,19 @@ class UserChecklistService {
     );
     return UserChecklistItem.fromJson(data['data'] as Map<String, dynamic>);
   }
+
+  Future<List<UserChecklistItem>> importFromTemplate({
+    required List<String> templateItemIds,
+    required String journeyId,
+  }) async {
+    if (templateItemIds.isEmpty) return const [];
+    final data = await apiPost('/api/v1/user-checklist-items/import', {
+      'journeyId': journeyId,
+      'templateItemIds': templateItemIds,
+    });
+    return (data['data'] as List? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(UserChecklistItem.fromJson)
+        .toList(growable: false);
+  }
 }

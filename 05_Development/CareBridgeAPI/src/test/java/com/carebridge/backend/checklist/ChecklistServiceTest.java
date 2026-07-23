@@ -1,6 +1,8 @@
 package com.carebridge.backend.checklist;
 
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.checklist.dto.AddChecklistItemRequest;
 import com.carebridge.backend.checklist.dto.ImportFromTemplateRequest;
 import com.carebridge.backend.checklist.dto.UpdateChecklistItemRequest;
@@ -11,7 +13,13 @@ import com.carebridge.backend.checklist.service.impl.UserChecklistItemServiceImp
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.content.entity.ChecklistItem;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,7 +35,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChecklistServiceTest {
@@ -36,9 +44,15 @@ class ChecklistServiceTest {
     static final UUID OTHER_ID    = UUID.fromString("00000000-0000-0000-0000-000000000002");
     static final UUID ITEM_ID     = UUID.fromString("cccccccc-0000-0000-0000-000000000001");
     static final UUID TEMPLATE_ID = UUID.fromString("dddddddd-0000-0000-0000-000000000001");
+    static final UUID CHECKLIST_TEMPLATE_ID = UUID.fromString("dddddddd-0000-0000-0000-000000000002");
+    static final UUID JOURNEY_ID  = UUID.fromString("eeeeeeee-0000-0000-0000-000000000001");
+    static final UUID BABY_ID     = UUID.fromString("ffffffff-0000-0000-0000-000000000001");
 
     @Mock private UserChecklistItemRepository checklistRepository;
     @Mock private ChecklistItemRepository templateItemRepository;
+    @Mock private ChecklistTemplateRepository templateRepository;
+    @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private BabyProfileRepository babyRepository;
     @Mock private AuditService auditService;
     @InjectMocks private UserChecklistItemServiceImpl service;
 
@@ -58,12 +72,34 @@ class ChecklistServiceTest {
         return UserChecklistItem.builder()
                 .id(ITEM_ID)
                 .ownerUserId(OWNER_ID)
+                .journeyId(JOURNEY_ID)
                 .templateItemId(TEMPLATE_ID)
                 .itemText("Register at hospital")
                 .category(ChecklistCategory.PAPERWORK)
                 .completed(false)
                 .itemOrder(2)
                 .createdAt(Instant.now())
+                .build();
+    }
+
+    private MotherJourney makeJourney(UUID ownerId, JourneyStatus status) {
+        return MotherJourney.builder()
+                .id(JOURNEY_ID)
+                .ownerUserId(ownerId)
+                .status(status)
+                .build();
+    }
+
+    private ChecklistItem makeSourceTemplateItem(ContentStatus status) {
+        ChecklistTemplate template = ChecklistTemplate.builder()
+                .id(CHECKLIST_TEMPLATE_ID)
+                .status(status)
+                .build();
+        return ChecklistItem.builder()
+                .id(TEMPLATE_ID)
+                .template(template)
+                .itemText("Register at hospital")
+                .order(1)
                 .build();
     }
 
@@ -84,15 +120,23 @@ class ChecklistServiceTest {
     // CHECKLIST-TC-002: importFromTemplate → returns list of imported items
     @Test
     void importFromTemplate_returnsResponses() {
-        var templateItem = ChecklistItem.builder()
-                .id(TEMPLATE_ID)
-                .itemText("Register at hospital")
-                .order(1)
-                .build();
-        when(templateItemRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(templateItem));
-        when(checklistRepository.save(any())).thenReturn(makeTemplateItem());
+        var templateItem = makeSourceTemplateItem(ContentStatus.APPROVED);
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(makeJourney(OWNER_ID, JourneyStatus.ACTIVE)));
+        when(templateItemRepository.findByIdAndTemplate_Status(TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(templateItem));
+        when(templateRepository.findByIdAndStatus(CHECKLIST_TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(templateItem.getTemplate()));
+        when(checklistRepository.insertImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+                eq("Register at hospital"), eq(1)))
+                .thenReturn(1);
+        when(checklistRepository.findImportedByExactScope(
+                OWNER_ID, JOURNEY_ID, null, TEMPLATE_ID))
+                .thenReturn(Optional.of(makeTemplateItem()));
 
-        var request = new ImportFromTemplateRequest(null, null, List.of(TEMPLATE_ID));
+        var request = new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID));
         var result = service.importFromTemplate(request, OWNER_ID);
 
         assertThat(result).isNotEmpty();
@@ -152,5 +196,129 @@ class ChecklistServiceTest {
 
         assertThatThrownBy(() -> service.deleteItem(ITEM_ID, OTHER_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void importFromTemplate_foreignJourney_rejectsBeforeAnyWrite() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        var request = new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID));
+
+        assertThatThrownBy(() -> service.importFromTemplate(request, OWNER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(templateItemRepository);
+        verifyNoInteractions(checklistRepository);
+    }
+
+    @Test
+    void importFromTemplate_inactiveJourney_rejectsBeforeAnyWrite() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        var request = new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID));
+
+        assertThatThrownBy(() -> service.importFromTemplate(request, OWNER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(templateItemRepository);
+        verifyNoInteractions(checklistRepository);
+    }
+
+    @Test
+    void importFromTemplate_unrelatedBaby_rejectsBeforeAnyWrite() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(makeJourney(OWNER_ID, JourneyStatus.ACTIVE)));
+        when(babyRepository.findByIdAndOwnerUserIdAndRelatedJourneyIdAndStatusAndActiveTrue(
+                BABY_ID, OWNER_ID, JOURNEY_ID, BabyProfileStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        var request = new ImportFromTemplateRequest(JOURNEY_ID, BABY_ID, List.of(TEMPLATE_ID));
+
+        assertThatThrownBy(() -> service.importFromTemplate(request, OWNER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(templateItemRepository);
+        verifyNoInteractions(checklistRepository);
+    }
+
+    @Test
+    void importFromTemplate_unapprovedSource_rejectsBeforeAnyWrite() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(makeJourney(OWNER_ID, JourneyStatus.ACTIVE)));
+        when(templateItemRepository.findByIdAndTemplate_Status(TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.empty());
+
+        var request = new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID));
+
+        assertThatThrownBy(() -> service.importFromTemplate(request, OWNER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(checklistRepository);
+    }
+
+    @Test
+    void importFromTemplate_duplicateRequestIds_createsAndAuditsOnlyOnce() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(makeJourney(OWNER_ID, JourneyStatus.ACTIVE)));
+        when(templateItemRepository.findByIdAndTemplate_Status(TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(makeSourceTemplateItem(ContentStatus.APPROVED)));
+        when(templateRepository.findByIdAndStatus(CHECKLIST_TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(ChecklistTemplate.builder()
+                        .id(CHECKLIST_TEMPLATE_ID)
+                        .status(ContentStatus.APPROVED)
+                        .build()));
+        when(checklistRepository.insertImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+                eq("Register at hospital"), eq(1)))
+                .thenReturn(1);
+        when(checklistRepository.findImportedByExactScope(
+                OWNER_ID, JOURNEY_ID, null, TEMPLATE_ID))
+                .thenReturn(Optional.of(makeTemplateItem()));
+
+        var request = new ImportFromTemplateRequest(
+                JOURNEY_ID, null, List.of(TEMPLATE_ID, TEMPLATE_ID));
+
+        var result = service.importFromTemplate(request, OWNER_ID);
+
+        assertThat(result).hasSize(1);
+        verify(checklistRepository, times(1)).insertImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+                eq("Register at hospital"), eq(1));
+        verify(auditService, times(1)).log(
+                eq(com.carebridge.backend.audit.entity.AuditAction.CHECKLIST_ITEM_ADDED),
+                eq(OWNER_ID), eq("UserChecklistItem"), any(), eq("imported"));
+    }
+
+    @Test
+    void importFromTemplate_retryReturnsExistingWithoutDuplicateAudit() {
+        when(journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                JOURNEY_ID, OWNER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(makeJourney(OWNER_ID, JourneyStatus.ACTIVE)));
+        when(templateItemRepository.findByIdAndTemplate_Status(TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(makeSourceTemplateItem(ContentStatus.APPROVED)));
+        when(templateRepository.findByIdAndStatus(CHECKLIST_TEMPLATE_ID, ContentStatus.APPROVED))
+                .thenReturn(Optional.of(ChecklistTemplate.builder()
+                        .id(CHECKLIST_TEMPLATE_ID)
+                        .status(ContentStatus.APPROVED)
+                        .build()));
+        when(checklistRepository.insertImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+                eq("Register at hospital"), eq(1)))
+                .thenReturn(0);
+        when(checklistRepository.findImportedByExactScope(
+                OWNER_ID, JOURNEY_ID, null, TEMPLATE_ID))
+                .thenReturn(Optional.of(makeTemplateItem()));
+
+        var result = service.importFromTemplate(
+                new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID)),
+                OWNER_ID);
+
+        assertThat(result).singleElement()
+                .extracting(response -> response.itemId())
+                .isEqualTo(ITEM_ID);
+        verifyNoInteractions(auditService);
     }
 }

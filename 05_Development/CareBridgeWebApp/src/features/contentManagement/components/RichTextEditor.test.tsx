@@ -86,6 +86,55 @@ describe('RichTextEditor', () => {
       expect(lastHtml).toContain('src="https://res.cloudinary.com/demo/x.jpg"');
     });
   });
+
+  // RTE-TC-020: chèn ảnh -> ảnh tự động được chọn -> bấm nút kích thước/căn ảnh -> đúng data-* attrs
+  it('an inserted image is auto-selected, and size/align buttons set data-width-pct/data-align', async () => {
+    const onChange = vi.fn();
+    const onImageUpload = vi.fn().mockResolvedValue('https://res.cloudinary.com/demo/x.jpg');
+    const user = userEvent.setup();
+    render(
+      <RichTextEditor value="" onChange={onChange} onImageUpload={onImageUpload} />,
+    );
+
+    const file = new File(['fake-bytes'], 'photo.png', { type: 'image/png' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fireEvent.change(fileInput);
+
+    await waitFor(() => expect(onImageUpload).toHaveBeenCalledWith(file));
+
+    await user.click(await screen.findByRole('button', { name: 'Kích thước ảnh 50%' }));
+    await user.click(screen.getByRole('button', { name: 'Căn ảnh Trái' }));
+
+    await waitFor(() => {
+      const lastHtml = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(lastHtml).toBeDefined();
+      expect(lastHtml).toContain('data-width-pct="50"');
+      expect(lastHtml).toContain('data-align="left"');
+    });
+  });
+
+  // RTE-TC-021: căn lề văn bản sinh đúng style; active state đúng theo vị trí con trỏ
+  it('clicking a text-align button sets text-align style and marks it active', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RichTextEditor value="" onChange={onChange} onImageUpload={vi.fn()} />,
+    );
+
+    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    await user.type(editable, 'Xin chao');
+    await user.click(screen.getByRole('button', { name: 'Căn giữa' }));
+
+    await waitFor(() => {
+      const lastHtml = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(lastHtml).toBeDefined();
+      expect(lastHtml).toContain('text-align: center');
+    });
+    // No jest-dom matchers configured in this project's Vitest setup — assert className directly.
+    expect(screen.getByRole('button', { name: 'Căn giữa' }).className).toContain('is-active');
+    expect(screen.getByRole('button', { name: 'Căn trái' }).className).not.toContain('is-active');
+  });
 });
 
 describe('isRichTextEmpty', () => {

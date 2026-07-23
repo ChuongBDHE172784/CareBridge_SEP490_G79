@@ -79,8 +79,8 @@ public class ContentServiceImpl implements ContentService {
     @Transactional(readOnly = true)
     public List<ChecklistTemplateResponse> getChecklists(ContentStage stage) {
         List<ChecklistTemplate> templates = (stage == null)
-                ? checklistTemplateRepository.findAll()
-                : checklistTemplateRepository.findByStage(stage);
+                ? checklistTemplateRepository.findByStatus(ContentStatus.APPROVED)
+                : checklistTemplateRepository.findByStageAndStatus(stage, ContentStatus.APPROVED);
 
         return templates.stream()
                 .map(template -> {

@@ -23,6 +23,10 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
 
     Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    Optional<BabyProfile> findByIdAndOwnerUserIdAndRelatedJourneyIdAndStatusAndActiveTrue(
+            UUID id, UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner")
     Optional<BabyProfile> findOwnedByIdForUpdate(@Param("id") UUID id, @Param("owner") UUID owner);

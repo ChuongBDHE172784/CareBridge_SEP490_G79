@@ -4,6 +4,7 @@ import { fetchStaffContentDetail, updateContent, archiveContent } from '../servi
 import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
+import '../richContentBody.css';
 
 
 /* ------------------------------------------------------------------ */
@@ -180,7 +181,7 @@ export default function ContentDetailPage() {
 
             {/* Body content */}
             <div
-              className="text-[15px] leading-7 text-on-surface"
+              className="rich-content-body text-[15px] leading-7 text-on-surface"
               dangerouslySetInnerHTML={{ __html: detail.body }}
             />
           </div>
