@@ -19,7 +19,7 @@ final class WarnSuspendAccountTestFactory {
     static final UUID SUSPENDED_USER_ID = UUID.fromString("bb000000-0000-0000-0000-000000000002");
     static final UUID LAPSED_USER_ID = UUID.fromString("bb000000-0000-0000-0000-000000000003");
 
-    static final Instant T0 = Instant.parse("2026-07-01T10:00:00Z");
+    static final Instant T0 = Instant.now();
     static final Instant FUTURE_EXPIRY = T0.plus(14, ChronoUnit.DAYS);
     static final Instant PAST_EXPIRY = T0.minus(1, ChronoUnit.DAYS);
 
