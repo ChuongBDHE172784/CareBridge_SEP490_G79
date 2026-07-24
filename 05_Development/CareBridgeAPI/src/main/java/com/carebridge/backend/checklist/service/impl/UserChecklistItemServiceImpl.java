@@ -112,25 +112,27 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
             if (template == null || template.getItemText() == null || template.getItemText().isBlank()) {
                 throw unavailableTemplateItem();
             }
-            int inserted = checklistRepository.insertImportedIfAbsent(
-                    UUID.randomUUID(),
-                    userId,
-                    resolvedJourneyId,
-                    resolvedBabyId,
-                    templateItemId,
-                    template.getItemText(),
-                    template.getOrder() != null ? template.getOrder() : 0);
-
-            UserChecklistItem persisted = checklistRepository.findImportedByExactScope(
-                            userId, resolvedJourneyId, resolvedBabyId, templateItemId)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Imported checklist item could not be resolved"));
-
-            if (resolvedBabyId != null && persisted.getJourneyId() != null) {
-                // Historical baby imports carried both scope IDs. The owned baby row is locked
-                // before this point, so normalizing the reused snapshot is serialized and keeps
-                // the current baby-only persistence/response contract without creating a copy.
-                persisted.setJourneyId(null);
+            int inserted;
+            UserChecklistItem persisted;
+            if (resolvedBabyId != null) {
+                inserted = checklistRepository.insertBabyImportedIfAbsent(
+                        UUID.randomUUID(), userId, resolvedBabyId, templateItemId,
+                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
+                persisted = checklistRepository.findBabyImportedByExactScope(
+                                userId, resolvedBabyId, templateItemId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Imported baby checklist item could not be resolved"));
+                if (persisted.getJourneyId() != null) {
+                    persisted.setJourneyId(null);
+                }
+            } else {
+                inserted = checklistRepository.insertJourneyImportedIfAbsent(
+                        UUID.randomUUID(), userId, resolvedJourneyId, templateItemId,
+                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
+                persisted = checklistRepository.findJourneyImportedByExactScope(
+                                userId, resolvedJourneyId, templateItemId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Imported journey checklist item could not be resolved"));
             }
 
             if (inserted == 1) {

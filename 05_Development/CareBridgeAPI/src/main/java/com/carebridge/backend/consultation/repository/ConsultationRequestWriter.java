@@ -19,7 +19,7 @@ public class ConsultationRequestWriter {
     public InsertResult insertIfAbsent(ConsultationRequest candidate) {
         List<UUID> insertedIds = jdbcTemplate.query(
                 """
-                INSERT INTO consultation_requests (
+                INSERT INTO expert_consultation_requests (
                     id, requester_user_id, expert_profile_id, client_request_id,
                     topic, description, preferred_window_start, preferred_window_end,
                     status, reject_reason, direct_conversation_id, responded_at,

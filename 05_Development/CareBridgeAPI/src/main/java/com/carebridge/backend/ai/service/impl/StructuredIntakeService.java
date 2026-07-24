@@ -46,11 +46,13 @@ public class StructuredIntakeService implements IStructuredIntakeService {
         if (event.riskLevel() == RiskLevel.RED) {
             try {
                 StructuredIntakeData data = StructuredIntakeData.builder()
+                        .id(event.sessionId())
                         .sessionId(event.sessionId())
                         .symptomList("[]")
                         .durationDays(null)
                         .intensity(null)
                         .emergencyFlag(true)
+                        .emergency(true)
                         .extractedAt(Instant.now())
                         .createdBy("SYSTEM")
                         .build();
@@ -78,11 +80,13 @@ public class StructuredIntakeService implements IStructuredIntakeService {
             // C2 (UC131): no raw symptom text — symptomList stored as structured JSON only
             // C5 (UC131): createdBy="SYSTEM"
             StructuredIntakeData data = StructuredIntakeData.builder()
+                    .id(event.sessionId())
                     .sessionId(event.sessionId())
                     .symptomList(result.symptomListJson())
                     .durationDays(result.durationDays())
                     .intensity(result.intensity())
                     .emergencyFlag(result.emergencyFlag())
+                    .emergency(false)
                     .extractedAt(Instant.now())
                     .createdBy("SYSTEM")
                     .build();

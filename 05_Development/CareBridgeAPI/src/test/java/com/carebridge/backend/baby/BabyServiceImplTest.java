@@ -107,6 +107,22 @@ class BabyServiceImplTest {
         assertThat(resp.getId()).isEqualTo(PROFILE_ID);
     }
 
+    @Test
+    void getBabyProfile_delegatedViewerUsesViewerActiveSelection() {
+        UUID ownerId = UUID.randomUUID();
+        BabyProfile profile = savedProfile(PROFILE_ID);
+        profile.setOwnerUserId(ownerId);
+        when(babyRepository.findById(PROFILE_ID)).thenReturn(Optional.of(profile));
+        when(accessPolicy.canView(profile, CALLER_ID)).thenReturn(true);
+        when(babyRepository.findActiveBabyId(CALLER_ID)).thenReturn(Optional.of(PROFILE_ID));
+
+        BabyProfileDetailResponse response = babyService.getBabyProfile(PROFILE_ID, CALLER_ID);
+
+        assertThat(response.getActive()).isTrue();
+        verify(babyRepository).findActiveBabyId(CALLER_ID);
+        verify(babyRepository, never()).findActiveBabyId(ownerId);
+    }
+
     // BABY-TC-005: View — ARCHIVED profile still returns 200 (BR-BABY-011)
     @Test
     void getBabyProfile_archivedProfile_returns200NotException() {
@@ -149,13 +165,12 @@ class BabyServiceImplTest {
         BabyProfile profile = savedProfile(PROFILE_ID);
         when(babyRepository.findById(PROFILE_ID)).thenReturn(Optional.of(profile));
         when(accessPolicy.canManage(profile, CALLER_ID)).thenReturn(true);
-        when(babyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         BabyProfileDetailResponse response = babyService.switchActiveBabyProfile(PROFILE_ID, CALLER_ID);
 
         assertThat(response.getActive()).isTrue();
-        verify(babyRepository).updateActiveByOwnerUserId(CALLER_ID, false);
-        verify(babyRepository).save(argThat(BabyProfile::getActive));
+        verify(babyRepository).setActiveBaby(CALLER_ID, PROFILE_ID);
+        verify(babyRepository, never()).save(any());
         verify(auditService).log(any(), eq(CALLER_ID), eq("BabyProfile"), eq(PROFILE_ID.toString()), eq("active"));
     }
 }

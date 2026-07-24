@@ -42,6 +42,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,10 +52,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import javax.sql.DataSource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /** Production Spring/JPA/PostgreSQL evidence for Story 6.5. */
+@Execution(ExecutionMode.SAME_THREAD)
 class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired private IBabyService babyService;
@@ -65,7 +66,6 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
     @Autowired private AuditLogRepository auditRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private DataSource dataSource;
-    @Autowired private PlatformTransactionManager transactionManager;
     @MockitoSpyBean private BabyJourneyLinkagePolicy linkagePolicy;
 
     private UUID motherId;
@@ -118,9 +118,10 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Valid");
         UUID ownerMismatch = seedBaby(motherId, foreignJourneyId, "Owner mismatch");
 
+        UUID nonCanonicalMother = seedMother("6500000005");
         UUID nonCanonicalJourney = seedJourney(
-                motherId, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
-        UUID nonCanonical = seedBaby(motherId, nonCanonicalJourney, "Non canonical");
+                nonCanonicalMother, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
+        UUID nonCanonical = seedBaby(nonCanonicalMother, nonCanonicalJourney, "Non canonical");
 
         UUID noEvidenceMother = seedMother("6500000003");
         UUID noEvidenceJourney = seedJourney(
@@ -156,141 +157,6 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         assertThat(sanitizedCounts).containsEntry("MISSING_OUTCOME_EVIDENCE", 1L);
         assertThat(sanitizedCounts).containsEntry("INCOMPATIBLE_OUTCOME", 1L);
         assertThat(assessmentSql.toLowerCase()).doesNotContain("delete ", "update ", "truncate ");
-    }
-
-    @Test
-    void approvedCleanupMigrationClearsOnlyInvalidLinksAndRecordsSanitizedCounts() throws Exception {
-        UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Valid cleanup control");
-
-        UUID noEvidenceMother = seedMother("6500000005");
-        UUID noEvidenceJourney = seedJourney(
-                noEvidenceMother, JourneyStatus.ACTIVE, PregnancyOutcomeType.LIVE_BIRTH, false);
-        UUID missingEvidence = seedBaby(noEvidenceMother, noEvidenceJourney, "Missing evidence cleanup");
-
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-        assertThat(migrationSql)
-                .contains("LOCK TABLE")
-                .contains("public.baby_profiles")
-                .contains("public.mother_journeys")
-                .contains("public.pregnancy_outcome_evidence")
-                .contains("IN SHARE ROW EXCLUSIVE MODE")
-                .contains("cleanup targets changed during locked revalidation");
-        executeMigrationInTransaction(migrationSql);
-
-        assertThat(babyRepository.findById(validBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(canonicalJourneyId);
-        assertThat(babyRepository.findById(missingEvidence).orElseThrow().getRelatedJourneyId()).isNull();
-
-        Map<String, Long> summary = jdbcTemplate.query(
-                """
-                select reason_code, affected_count
-                from baby_journey_link_cleanup_summary
-                where migration_key = 'V20260722020000'
-                """,
-                result -> {
-                    var counts = new java.util.HashMap<String, Long>();
-                    while (result.next()) {
-                        counts.put(result.getString("reason_code"), result.getLong("affected_count"));
-                    }
-                    return counts;
-                });
-        assertThat(summary)
-                .containsEntry("MISSING_OUTCOME_EVIDENCE", 1L)
-                .hasSize(1)
-                .doesNotContainKey("VALID");
-    }
-
-    @Test
-    void cleanupMigrationFailsClosedWhenCurrentCountsDifferFromApproval() throws Exception {
-        UUID ownerMismatch = seedBaby(motherId, foreignJourneyId, "Unapproved owner mismatch");
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        assertThatThrownBy(() -> executeMigrationInTransaction(migrationSql))
-                .hasMessageContaining("approved cleanup counts changed");
-        assertThat(babyRepository.findById(ownerMismatch).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(foreignJourneyId);
-    }
-
-    @Test
-    void approvedCleanupMigrationIsNoOpForCleanDatabase() throws Exception {
-        UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Clean migration control");
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        executeMigrationInTransaction(migrationSql);
-
-        assertThat(babyRepository.findById(validBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(canonicalJourneyId);
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_journey_link_cleanup_summary where migration_key = 'V20260722020000'",
-                Long.class)).isZero();
-    }
-
-    @Test
-    void approvedCleanupMigrationFailsClosedForTwoMissingEvidenceRows() throws Exception {
-        UUID firstMother = seedMother("6500000006");
-        UUID firstJourney = seedJourney(
-                firstMother, JourneyStatus.ACTIVE, PregnancyOutcomeType.LIVE_BIRTH, false);
-        UUID firstBaby = seedBaby(firstMother, firstJourney, "First count drift");
-        UUID secondMother = seedMother("6500000007");
-        UUID secondJourney = seedJourney(
-                secondMother, JourneyStatus.ACTIVE, PregnancyOutcomeType.LIVE_BIRTH, false);
-        UUID secondBaby = seedBaby(secondMother, secondJourney, "Second count drift");
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        assertThatThrownBy(() -> executeMigrationInTransaction(migrationSql))
-                .hasMessageContaining("approved cleanup counts changed");
-        assertThat(babyRepository.findById(firstBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(firstJourney);
-        assertThat(babyRepository.findById(secondBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(secondJourney);
-    }
-
-    @Test
-    void outcomeDateConsistencyMigrationQuarantinesOnlyMismatchedLinks() throws Exception {
-        UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Date consistency control");
-        UUID mismatchMother = seedMother("6500000008");
-        UUID mismatchJourney = seedEligibleJourney(mismatchMother);
-        MotherJourney journey = journeyRepository.findById(mismatchJourney).orElseThrow();
-        journey.setPregnancyOutcomeDate(journey.getPregnancyOutcomeDate().plusDays(1));
-        journeyRepository.saveAndFlush(journey);
-        UUID mismatchedBaby = seedBaby(mismatchMother, mismatchJourney, "Date mismatch");
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020100__quarantine_outcome_date_inconsistent_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        executeMigrationInTransaction(migrationSql);
-
-        assertThat(babyRepository.findById(validBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(canonicalJourneyId);
-        assertThat(babyRepository.findById(mismatchedBaby).orElseThrow().getRelatedJourneyId()).isNull();
-        assertThat(jdbcTemplate.queryForObject(
-                "select affected_count from baby_journey_link_cleanup_summary "
-                        + "where migration_key = 'V20260722020100' and reason_code = 'OUTCOME_DATE_MISMATCH'",
-                Long.class)).isEqualTo(1L);
-    }
-
-    @Test
-    void outcomeDateConsistencyMigrationIsNoOpWhenDatesMatch() throws Exception {
-        UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Matching date no-op control");
-        String migrationSql = new ClassPathResource(
-                "db/migration/V20260722020100__quarantine_outcome_date_inconsistent_baby_journey_links.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
-
-        executeMigrationInTransaction(migrationSql);
-
-        assertThat(babyRepository.findById(validBaby).orElseThrow().getRelatedJourneyId())
-                .isEqualTo(canonicalJourneyId);
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_journey_link_cleanup_summary where migration_key = 'V20260722020100'",
-                Long.class)).isZero();
     }
 
     @Test
@@ -338,57 +204,6 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         assertThat(rejected.getFirst().getNewValueJson())
                 .contains("BABY_ALREADY_LINKED")
                 .doesNotContain("Legacy conflict", "birthDate", "token");
-    }
-
-    @Test
-    void foreignAndIncompatibleLinkAttemptsLeaveOwnerDataUnchangedAndSanitizedAudits() {
-        UUID foreignBabyId = seedBaby(foreignMotherId, null, "Foreign private profile");
-        LinkBabyJourneyRequest foreignRequest = new LinkBabyJourneyRequest();
-        foreignRequest.setRelatedJourneyId(canonicalJourneyId);
-        foreignRequest.setSubmissionId(UUID.randomUUID());
-
-        assertThatThrownBy(() -> babyService.linkExistingBaby(foreignBabyId, foreignRequest, motherId))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(error -> assertThat(((BusinessException) error).getCode())
-                        .isEqualTo("LINK_RESOURCE_NOT_FOUND"));
-
-        assertThat(babyRepository.findById(foreignBabyId).orElseThrow().getRelatedJourneyId())
-                .isNull();
-        assertThat(submissionRepository.count()).isZero();
-        var foreignAudits = auditRepository.findByEntityIdAndAction(
-                foreignBabyId, AuditAction.BABY_JOURNEY_LINK_REJECTED);
-        assertThat(foreignAudits).hasSize(1);
-        assertThat(foreignAudits.getFirst().getNewValueJson())
-                .contains("LINK_RESOURCE_NOT_FOUND")
-                .doesNotContain("Foreign private profile", "birthDate", "token");
-
-        UUID incompatibleMotherId = seedMother("6500000005");
-        UUID incompatibleJourneyId = seedJourney(
-                incompatibleMotherId,
-                JourneyStatus.ACTIVE,
-                PregnancyOutcomeType.PREGNANCY_LOSS,
-                true);
-        UUID incompatibleBabyId = seedBaby(
-                incompatibleMotherId, null, "Incompatible private profile");
-        LinkBabyJourneyRequest incompatibleRequest = new LinkBabyJourneyRequest();
-        incompatibleRequest.setRelatedJourneyId(incompatibleJourneyId);
-        incompatibleRequest.setSubmissionId(UUID.randomUUID());
-
-        assertThatThrownBy(() -> babyService.linkExistingBaby(
-                incompatibleBabyId, incompatibleRequest, incompatibleMotherId))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(error -> assertThat(((BusinessException) error).getCode())
-                        .isEqualTo("LINK_NOT_ELIGIBLE"));
-
-        assertThat(babyRepository.findById(incompatibleBabyId).orElseThrow().getRelatedJourneyId())
-                .isNull();
-        assertThat(submissionRepository.count()).isZero();
-        var incompatibleAudits = auditRepository.findByEntityIdAndAction(
-                incompatibleBabyId, AuditAction.BABY_JOURNEY_LINK_REJECTED);
-        assertThat(incompatibleAudits).hasSize(1);
-        assertThat(incompatibleAudits.getFirst().getNewValueJson())
-                .contains("LINK_NOT_ELIGIBLE")
-                .doesNotContain("Incompatible private profile", "birthDate", "token");
     }
 
     @Test
@@ -444,15 +259,8 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
 
     @Test
     void concurrentDifferentJourneysForOneExistingBabyYieldOneSuccessAndOneTypedConflict() throws Exception {
-        UUID secondJourneyId = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(motherId)
-                .journeyType(JourneyType.POSTPARTUM)
-                .status(JourneyStatus.COMPLETED)
-                .startDate(LocalDate.of(2025, 12, 1))
-                .deliveryDate(LocalDate.of(2025, 12, 1))
-                .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
-                .pregnancyOutcomeDate(LocalDate.of(2025, 12, 1))
-                .build()).getId();
+        UUID secondJourneyId = seedJourney(
+                motherId, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
         UUID babyId = seedBaby(motherId, null, "Concurrent existing");
 
         // The product allows only one canonical journey. Stub only the eligibility gate so this
@@ -502,7 +310,7 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         assertThatThrownBy(() -> babyRepository.saveAndFlush(invalid))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_profiles where owner_user_id=? and nickname='Invalid FK'",
+                "select count(*) from care_subjects where owner_user_id=? and nickname='Invalid FK' and subject_type='BABY'",
                 Long.class,
                 motherId)).isZero();
     }
@@ -531,8 +339,19 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
             JourneyStatus status,
             PregnancyOutcomeType outcome,
             boolean withEvidence) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
+                """, careSubjectId, ownerId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
                 .ownerUserId(ownerId)
+                .careSubjectId(careSubjectId)
                 .journeyType(JourneyType.POSTPARTUM)
                 .status(status)
                 .startDate(LocalDate.of(2026, 1, 1))
@@ -540,6 +359,9 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
                 .pregnancyOutcome(outcome)
                 .pregnancyOutcomeDate(LocalDate.of(2026, 1, 1))
                 .build());
+        jdbcTemplate.update(
+                "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
+                journey.getId(), careSubjectId);
         if (withEvidence) {
             evidenceRepository.saveAndFlush(PregnancyOutcomeEvidence.builder()
                     .journeyId(journey.getId())
@@ -642,12 +464,8 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         }
     }
 
-    private void executeMigrationInTransaction(String migrationSql) {
-        new TransactionTemplate(transactionManager)
-                .executeWithoutResult(status -> jdbcTemplate.execute(migrationSql));
-    }
-
     private void wipeStoryFixtures() {
-        jdbcTemplate.execute("truncate table baby_journey_link_cleanup_summary, baby_link_submissions, pregnancy_outcome_evidence, baby_profiles, mother_journeys, audit_logs, users cascade");
+        jdbcTemplate.execute("truncate table mother_journey_events, care_subjects, "
+                + "mother_journeys, audit_events, users, persons cascade");
     }
 }

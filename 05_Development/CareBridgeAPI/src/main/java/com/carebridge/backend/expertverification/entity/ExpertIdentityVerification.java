@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "expert_identity_verifications")
+@Table(name = "expert_credentials")
 @Getter
 @Setter
 @Builder
@@ -21,42 +21,45 @@ public class ExpertIdentityVerification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "identity_verification_id", updatable = false, nullable = false)
+    @Column(name = "credential_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "expert_profile_id", nullable = false)
+    @Column(name = "professional_profile_id", nullable = false)
     private UUID expertProfileId;
 
-    @Column(name = "selfie_file_id", nullable = false)
+    @Builder.Default
+    @Column(name = "credential_type", nullable = false, length = 50)
+    private String credentialType = "IDENTITY_DOCUMENT";
+
+    @Transient
     private UUID selfieFileId;
 
-    @Column(name = "identity_front_file_id", nullable = false)
+    @Transient
     private UUID identityFrontFileId;
 
-    @Column(name = "identity_back_file_id", nullable = false)
+    @Transient
     private UUID identityBackFileId;
 
-    @Column(name = "face_provider", nullable = false, length = 30)
+    @Transient
     private String faceProvider;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "face_status", nullable = false, length = 40)
+    @Transient
     private FaceVerificationStatus faceStatus;
 
-    @Column(name = "face_similarity", precision = 7, scale = 6)
+    @Transient
     private BigDecimal faceSimilarity;
 
-    @Column(name = "face_threshold", precision = 7, scale = 6)
+    @Transient
     private BigDecimal faceThreshold;
 
-    @Column(name = "provider_error_code", length = 100)
+    @Transient
     private String providerErrorCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 40)
     private IdentityReviewStatus reviewStatus;
 
-    @Column(name = "review_reason", columnDefinition = "text")
+    @Column(name = "review_note", columnDefinition = "text")
     private String reviewReason;
 
     @Column(name = "reviewed_by")
@@ -73,24 +76,24 @@ public class ExpertIdentityVerification {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "selfie_crop_file_id")
+    @Transient
     private UUID selfieCropFileId;
 
-    @Column(name = "id_card_crop_file_id")
+    @Transient
     private UUID idCardCropFileId;
 
-    @Column(name = "detection_selfie_status", length = 40)
+    @Transient
     private String detectionSelfieStatus;
 
-    @Column(name = "detection_id_card_status", length = 40)
+    @Transient
     private String detectionIdCardStatus;
 
-    @Column(name = "pipeline_error_code", length = 100)
+    @Transient
     private String pipelineErrorCode;
 
-    @Column(name = "pipeline_status", length = 40)
+    @Transient
     private String pipelineStatus;
 
-    @Column(name = "processed_at")
+    @Transient
     private Instant processedAt;
 }

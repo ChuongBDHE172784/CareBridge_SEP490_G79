@@ -15,9 +15,11 @@ import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.family.service.ICareTaskService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -38,6 +40,7 @@ class CareTaskAssignmentIntegrationTest extends AbstractPostgresIntegrationTest 
     @Autowired private CareGroupMemberRepository memberRepository;
     @Autowired private CareTaskRepository careTaskRepository;
     @Autowired private ICareTaskService careTaskService;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private UUID groupId;
     private UUID ownerId;
@@ -47,6 +50,10 @@ class CareTaskAssignmentIntegrationTest extends AbstractPostgresIntegrationTest 
     void setUp() {
         ownerId   = UUID.randomUUID();
         assigneeId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, ownerId, "Task owner", null, "MOTHER");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, assigneeId, "Task assignee", null, "FAMILY");
 
         // Seed care group
         CareGroup group = groupRepository.save(CareGroup.builder()

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-const partnerLinks = [['dashboard', 'Tổng quan'], ['account_circle', 'Hồ sơ'], ['medical_services', 'Dịch vụ'], ['campaign', 'Chiến dịch'], ['trending_up', 'Hiệu quả']];
+const partnerLinks = [['dashboard', 'Tổng quan'], ['account_circle', 'Hồ sơ']];
 const adminLinks = [['dashboard', 'Tổng quan'], ['group', 'Người dùng'], ['handshake', 'Đối tác'], ['article', 'Nội dung'], ['security', 'An toàn']];
 
 export function PortalShell({ title, children, admin = false }: { title: string; children: ReactNode; admin?: boolean }) {

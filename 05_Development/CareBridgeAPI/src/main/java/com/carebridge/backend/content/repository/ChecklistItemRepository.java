@@ -16,10 +16,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, UUID> {
 
-    List<ChecklistItem> findByTemplate_IdOrderByOrder(UUID templateId);
+    @Query("select i from ChecklistItem i where i.template.id=:templateId and i.isActive=true " +
+            "order by case when i.order is null then 1 else 0 end, i.order, i.id")
+    List<ChecklistItem> findByTemplate_IdOrderByOrder(@Param("templateId") UUID templateId);
+
+    @Query("select i from ChecklistItem i where i.template.id=:templateId " +
+            "order by case when i.order is null then 1 else 0 end, i.order, i.id")
+    List<ChecklistItem> findAllByTemplateIdOrderByOrder(@Param("templateId") UUID templateId);
 
     @Query("select i from ChecklistItem i join fetch i.template t " +
-            "where t.id in :templateIds and t.status=:status " +
+            "where t.id in :templateIds and t.status=:status and i.isActive=true " +
             "order by t.id, case when i.order is null then 1 else 0 end, i.order, i.id")
     List<ChecklistItem> findAllByApprovedTemplateIds(
             @Param("templateIds") Set<UUID> templateIds,
@@ -27,13 +33,13 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, UU
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from ChecklistItem i join fetch i.template t " +
-            "where i.id in :ids and t.status=:status and t.stage=:stage order by i.id")
+            "where i.id in :ids and i.isActive=true and t.status=:status and t.stage=:stage order by i.id")
     List<ChecklistItem> findAllAvailableByIdInForUpdate(
             @Param("ids") List<UUID> ids,
             @Param("status") ChecklistTemplateStatus status,
             @Param("stage") ContentStage stage);
 
     @Query("select i.template.id as templateId, count(i.id) as itemCount from ChecklistItem i " +
-            "where i.template.id in :templateIds group by i.template.id")
+            "where i.template.id in :templateIds and i.isActive=true group by i.template.id")
     List<TemplateItemCount> countByTemplateIds(@Param("templateIds") Set<UUID> templateIds);
 }

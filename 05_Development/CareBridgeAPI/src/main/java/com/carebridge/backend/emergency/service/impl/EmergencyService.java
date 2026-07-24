@@ -5,15 +5,12 @@ import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.dto.response.EmergencySessionResponse;
 import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.entity.EmergencySession;
-import com.carebridge.backend.emergency.entity.EmergencyNotificationOutbox;
 import com.carebridge.backend.emergency.entity.FamilyAlertLog;
-import com.carebridge.backend.emergency.entity.TriageEmergencyEscalation;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
-import com.carebridge.backend.emergency.repository.EmergencyNotificationOutboxRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
-import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationRepository;
+import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.IEmergencyService;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
@@ -40,9 +37,8 @@ public class EmergencyService implements IEmergencyService {
     private static final Logger log = LoggerFactory.getLogger(EmergencyService.class);
 
     private final IEmergencySessionRepository emergencySessionRepository;
-    private final TriageEmergencyEscalationRepository triageEmergencyEscalationRepository;
-    private final EmergencyNotificationOutboxRepository emergencyNotificationOutboxRepository;
     private final IIntakeSessionRepository intakeSessionRepository;
+    private final TriageEmergencyEscalationLinkRepository triageEscalationLinkRepository;
     private final IFamilyAlertLogRepository familyAlertLogRepository;
     private final FamilyMemberPort familyMemberPort;
     private final LocationConsentPort locationConsentPort;
@@ -66,7 +62,6 @@ public class EmergencyService implements IEmergencyService {
                             .createdBy(userId)
                             .build();
                     EmergencySession saved = emergencySessionRepository.save(session);
-                    recordNotificationOutbox(saved);
                     // UC62 C5: publish event after save
                     eventPublisher.publishEvent(new EmergencySessionOpened(
                             UUID.randomUUID(), saved.getId(), userId,
@@ -82,21 +77,14 @@ public class EmergencyService implements IEmergencyService {
         requireCompletedRedIntake(intakeSessionId, userId);
         emergencySessionRepository.acquireUserLock(userId);
 
-        TriageEmergencyEscalation existingLink = triageEmergencyEscalationRepository
-                .findByIntakeSessionId(intakeSessionId)
+        EmergencySession existingLink = triageEscalationLinkRepository
+                .findEmergencySessionId(intakeSessionId, userId)
+                .flatMap(emergencySessionRepository::findById)
+                .filter(session -> session.getUserId().equals(userId))
                 .orElse(null);
         if (existingLink != null) {
-            if (!userId.equals(existingLink.getUserId())) {
-                throw new EmergencyException(HttpStatus.CONFLICT, "EMERG-005",
-                        "Triage escalation ownership conflict");
-            }
-            EmergencySession linkedSession = emergencySessionRepository
-                    .findById(existingLink.getEmergencySessionId())
-                    .filter(session -> userId.equals(session.getUserId()))
-                    .orElseThrow(() -> new EmergencyException(HttpStatus.CONFLICT, "EMERG-005",
-                            "Triage escalation target is unavailable"));
             log.info("Triage emergency escalation outcome=REPLAYED");
-            return toResponse(linkedSession);
+            return toResponse(existingLink);
         }
 
         var activeSession = emergencySessionRepository.findActiveByUserId(userId);
@@ -104,39 +92,35 @@ public class EmergencyService implements IEmergencyService {
         EmergencySession session = activeSession.orElseGet(() -> {
                     EmergencySession created = EmergencySession.builder()
                             .userId(userId)
+                            .sourceEventId(intakeSessionId)
                             .status(EmergencyStatus.ACTIVE)
                             .triggerSource("AUTO_TRIAGE")
                             .createdAt(Instant.now())
                             .createdBy(userId)
                             .build();
-                    EmergencySession saved = emergencySessionRepository.save(created);
-                    recordNotificationOutbox(saved);
+                    EmergencySession saved = emergencySessionRepository.saveAndFlush(created);
                     eventPublisher.publishEvent(new EmergencySessionOpened(
                             UUID.randomUUID(), saved.getId(), userId,
                             "AUTO_TRIAGE", null, null, saved.getCreatedAt()));
                     return saved;
                 });
 
-        triageEmergencyEscalationRepository.save(TriageEmergencyEscalation.builder()
-                .intakeSessionId(intakeSessionId)
-                .emergencySessionId(session.getId())
-                .userId(userId)
-                .triggeredAt(Instant.now())
-                .build());
+        if (session.getSourceEventId() == null) {
+            session.setSourceEventId(intakeSessionId);
+            session = emergencySessionRepository.save(session);
+        }
+
+        UUID canonicalSessionId = triageEscalationLinkRepository.linkIfAbsent(
+                intakeSessionId, session.getId(), userId, Instant.now());
+        if (!canonicalSessionId.equals(session.getId())) {
+            session = emergencySessionRepository.findById(canonicalSessionId)
+                    .filter(candidate -> candidate.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Canonical triage escalation references an unavailable emergency session"));
+        }
         log.info("Triage emergency escalation outcome={}",
                 createdNewSession ? "CREATED" : "REUSED");
         return toResponse(session);
-    }
-
-    private void recordNotificationOutbox(EmergencySession session) {
-        Instant now = Instant.now();
-        emergencyNotificationOutboxRepository.save(EmergencyNotificationOutbox.builder()
-                .emergencySessionId(session.getId())
-                .status(EmergencyNotificationOutbox.PENDING)
-                .attemptCount(0)
-                .nextAttemptAt(now)
-                .createdAt(now)
-                .build());
     }
 
     private void requireCompletedRedIntake(UUID intakeSessionId, UUID userId) {
@@ -162,20 +146,18 @@ public class EmergencyService implements IEmergencyService {
     @Override
     public EmergencySessionResponse resolveSession(UUID sessionId, UUID userId) {
         emergencySessionRepository.acquireUserLock(userId);
-        EmergencySession session = emergencySessionRepository.findById(sessionId)
+        EmergencySession session = emergencySessionRepository.findByIdForUpdate(sessionId)
                 .filter(s -> s.getUserId().equals(userId))
                 .orElseThrow(() -> new EmergencyException(HttpStatus.NOT_FOUND, "EMERG-003",
                         "Emergency session not found: " + sessionId));
         session.setStatus(EmergencyStatus.RESOLVED);
-        session.setResolvedAt(Instant.now());
-        emergencyNotificationOutboxRepository.findForUpdate(sessionId).ifPresent(outbox -> {
-            if (EmergencyNotificationOutbox.PENDING.equals(outbox.getStatus())) {
-                outbox.setStatus(EmergencyNotificationOutbox.SUPPRESSED);
-                outbox.setLastErrorCode("EMERGENCY_NOT_ACTIVE");
-                outbox.setClaimToken(null);
-                outbox.setTerminalAt(Instant.now());
-            }
-        });
+        Instant resolvedAt = Instant.now();
+        session.setResolvedAt(resolvedAt);
+        if (!"SENT".equals(session.getAlertStatus())) {
+            session.setAlertStatus("SUPPRESSED");
+            session.setAlertLeaseExpiresAt(null);
+            session.setAlertUpdatedAt(resolvedAt);
+        }
         return toResponse(emergencySessionRepository.save(session));
     }
 

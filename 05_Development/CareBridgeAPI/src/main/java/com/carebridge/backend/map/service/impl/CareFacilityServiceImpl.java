@@ -26,40 +26,51 @@ import java.util.UUID;
 @Slf4j
 public class CareFacilityServiceImpl implements ICareFacilityService {
 
+    private static final int MAX_NEARBY_RADIUS_METERS = 50_000;
+
     private final TrackAsiaClient trackAsiaClient;
     private final CareFacilityRepository facilityRepository;
 
     @Override
     public List<FacilityResponse> getAllFacilities() {
-        return List.of();
+        return facilityRepository.findByActiveTrueOrderByNameAsc().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
     public FacilityResponse getFacilityById(UUID id) {
-        CareFacility facility = facilityRepository.findById(id)
+        CareFacility facility = facilityRepository.findByFacilityIdAndActiveTrue(id)
                 .orElseThrow(() -> new MapException(HttpStatus.NOT_FOUND, "MAP-002", "Facility not found"));
         return toResponse(facility);
     }
 
     @Override
-    public NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type) {
+    public NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type,
+                                       String provinceId, String districtId) {
         int radius = radiusMeters != null ? radiusMeters : 5000;
+        validateNearbyInput(lat, lng, radius);
+        String normalizedType = normalizeFilter(type);
 
-        // Try TrackAsia first
-        try {
-            JsonNode root = trackAsiaClient.searchNearby(lat.doubleValue(), lng.doubleValue(), radius, type);
-            if (root != null) {
-                List<FacilityResponse> results = parseTrackAsiaResults(root);
-                if (!results.isEmpty()) {
-                    return new NearbyResponse(results, results.size());
+        // External results do not carry canonical geography IDs, so they cannot
+        // safely satisfy province/district filters.
+        if (provinceId == null && districtId == null) {
+            try {
+                JsonNode root = trackAsiaClient.searchNearby(lat.doubleValue(), lng.doubleValue(), radius, normalizedType);
+                if (root != null) {
+                    List<FacilityResponse> results = parseTrackAsiaResults(root);
+                    if (!results.isEmpty()) {
+                        return new NearbyResponse(results, results.size());
+                    }
                 }
+            } catch (Exception e) {
+                log.error("[CareFacility] TrackAsia search failed: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("[CareFacility] TrackAsia search failed: {}", e.getMessage());
         }
 
         // Fallback: DB-verified facilities
-        List<CareFacility> dbResults = facilityRepository.findNearby(lat, lng, radius);
+        List<CareFacility> dbResults = facilityRepository.findNearby(
+                lat, lng, radius, normalizedType, provinceId, districtId);
         List<FacilityResponse> verified = new ArrayList<>();
         for (CareFacility f : dbResults) {
             verified.add(toResponse(f));
@@ -75,42 +86,49 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
         }
 
         for (JsonNode feature : features) {
-            JsonNode poi = feature.get("poi");
-            JsonNode props = poi != null && poi.isObject() ? poi.get("properties") : null;
-            if (props == null) continue;
+            try {
+                JsonNode poi = feature.get("poi");
+                JsonNode props = poi != null && poi.isObject() ? poi.get("properties") : null;
+                if (props == null || !props.isObject()) continue;
 
-            String name = safeText(props, "name");
-            String address = safeText(props, "address");
-            String phone = safeText(props, "tel");
-            String category = safeText(props, "category");
-
-            BigDecimal fLat = null, fLng = null;
-            JsonNode geom = feature.get("geometry");
-            if (geom != null && geom.isObject()) {
-                JsonNode coords = geom.get("coordinates");
-                if (coords != null && coords.isArray() && coords.size() >= 2) {
-                    fLng = BigDecimal.valueOf(coords.get(0).asDouble());
-                    fLat = BigDecimal.valueOf(coords.get(1).asDouble());
+                JsonNode geom = feature.get("geometry");
+                JsonNode coords = geom != null && geom.isObject() ? geom.get("coordinates") : null;
+                if (coords == null || !coords.isArray() || coords.size() < 2
+                        || !coords.get(0).isNumber() || !coords.get(1).isNumber()) {
+                    continue;
                 }
-            }
+                double longitude = coords.get(0).doubleValue();
+                double latitude = coords.get(1).doubleValue();
+                if (!Double.isFinite(latitude) || !Double.isFinite(longitude)
+                        || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                    continue;
+                }
+                BigDecimal fLat = BigDecimal.valueOf(latitude);
+                BigDecimal fLng = BigDecimal.valueOf(longitude);
 
-            int distanceM = 0;
-            JsonNode distMeta = feature.get("properties");
-            if (distMeta != null && distMeta.has("distance")) {
-                distanceM = distMeta.get("distance").asInt();
-            }
+                int distanceM = 0;
+                JsonNode distMeta = feature.get("properties");
+                if (distMeta != null && distMeta.has("distance")) {
+                    distanceM = Math.max(0, distMeta.get("distance").asInt());
+                }
 
-            results.add(FacilityResponse.builder()
-                    .name(name)
-                    .address(address)
-                    .phone(phone)
-                    .facilityType(category)
-                    .latitude(fLat)
-                    .longitude(fLng)
-                    .sourceType("TRACKASIA")
-                    .verificationStatus("UNVERIFIED")
-                    .distanceMeters(distanceM > 0 ? distanceM : null)
-                    .build());
+                results.add(FacilityResponse.builder()
+                        .name(safeText(props, "name"))
+                        .address(safeText(props, "address"))
+                        .phone(safeText(props, "tel"))
+                        .facilityType(safeText(props, "category"))
+                        .latitude(fLat)
+                        .longitude(fLng)
+                        .sourceType("TRACKASIA")
+                        .externalSourceId(safeText(feature, "id"))
+                        .verificationStatus("UNVERIFIED")
+                        .active(true)
+                        .searchable(true)
+                        .distanceMeters(distanceM > 0 ? distanceM : null)
+                        .build());
+            } catch (RuntimeException malformedFeature) {
+                log.warn("[CareFacility] Ignoring malformed TrackAsia feature");
+            }
         }
         return results;
     }
@@ -172,14 +190,40 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
                 .partnerId(f.getPartnerId())
                 .name(f.getName())
                 .facilityType(f.getFacilityType())
+                .facilityLevel(f.getFacilityLevel())
+                .ownershipType(f.getOwnershipType())
                 .address(f.getAddress())
+                .provinceId(f.getProvinceId())
+                .districtId(f.getDistrictId())
                 .latitude(f.getLatitude())
                 .longitude(f.getLongitude())
                 .phone(f.getPhone())
                 .openingHoursJson(f.getOpeningHoursJson())
                 .sourceType(f.getSourceType() != null ? f.getSourceType() : "MANUAL")
+                .externalSourceId(f.getExternalSourceId())
                 .verificationStatus(f.getVerificationStatus() != null ? f.getVerificationStatus().name() : "UNVERIFIED")
+                .active(f.getActive())
+                .searchable(f.getSearchable())
                 .build();
+    }
+
+    private static String normalizeFilter(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static void validateNearbyInput(BigDecimal latitude, BigDecimal longitude, int radiusMeters) {
+        if (latitude == null || latitude.compareTo(BigDecimal.valueOf(-90)) < 0
+                || latitude.compareTo(BigDecimal.valueOf(90)) > 0) {
+            throw new MapException(HttpStatus.BAD_REQUEST, "MAP-005", "Latitude must be between -90 and 90");
+        }
+        if (longitude == null || longitude.compareTo(BigDecimal.valueOf(-180)) < 0
+                || longitude.compareTo(BigDecimal.valueOf(180)) > 0) {
+            throw new MapException(HttpStatus.BAD_REQUEST, "MAP-006", "Longitude must be between -180 and 180");
+        }
+        if (radiusMeters <= 0 || radiusMeters > MAX_NEARBY_RADIUS_METERS) {
+            throw new MapException(HttpStatus.BAD_REQUEST, "MAP-007",
+                    "Radius must be between 1 and " + MAX_NEARBY_RADIUS_METERS + " meters");
+        }
     }
 
     private static String safeText(JsonNode node, String field) {

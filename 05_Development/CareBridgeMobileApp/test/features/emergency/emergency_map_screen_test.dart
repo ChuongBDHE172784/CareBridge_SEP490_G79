@@ -3,7 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:untitled/core/auth/auth_state.dart';
+import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_restore_coordinator.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_store.dart';
+import 'package:untitled/features/aiTriage/services/triage_service.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
 import 'package:untitled/features/emergency/screens/emergency_map_screen.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
@@ -53,6 +58,28 @@ class _QueuedEmergencyService extends _RecordingEmergencyService {
     final request = Completer<EmergencySession?>();
     requests.add(request);
     return request.future;
+  }
+}
+
+class _StubContinuationCoordinator
+    extends TriageContinuationRestoreCoordinator {
+  _StubContinuationCoordinator(this.decisions, {this.error})
+    : assert(decisions.isNotEmpty),
+      super(store: SecureTriageContinuationStore(), gateway: TriageService());
+
+  final List<TriageContinuationDecision> decisions;
+  final Object? error;
+  int calls = 0;
+
+  @override
+  Future<TriageContinuationDecision> restoreForUser(
+    String userId, {
+    bool resumeRedEmergency = true,
+  }) async {
+    calls++;
+    if (error != null) throw error!;
+    final index = calls <= decisions.length ? calls - 1 : decisions.length - 1;
+    return decisions[index];
   }
 }
 
@@ -153,6 +180,168 @@ void main() {
     );
   });
 
+  testWidgets('production 115 launcher false result shows manual fallback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          triageHandoff: true,
+          stage: 'POSTPARTUM',
+          locationConsentProbe: () async => false,
+          uriLauncher: (_) async => false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('emergency-maternal-call-115')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Hãy tự gọi 115 hoặc nhờ người bên cạnh gọi giúp'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('production 115 launcher exception shows manual fallback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          triageHandoff: true,
+          stage: 'POSTPARTUM',
+          locationConsentProbe: () async => false,
+          uriLauncher: (_) => Future<bool>.error(StateError('no dialer')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('emergency-maternal-call-115')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Hãy tự gọi 115 hoặc nhờ người bên cạnh gọi giúp'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('continuation exit exposes retry then restores safe dashboard', (
+    tester,
+  ) async {
+    final coordinator = _StubContinuationCoordinator(const [
+      TriageContinuationDecision(
+        destination: TriageContinuationDestination.none,
+        continuationToken: 'continuation-token',
+        generation: 0,
+        isRecoverable: true,
+        requiresRetry: true,
+      ),
+      TriageContinuationDecision(
+        destination: TriageContinuationDestination.safeDashboard,
+        continuationToken: null,
+        generation: null,
+      ),
+    ]);
+    final router = GoRouter(
+      initialLocation: '/emergency',
+      routes: [
+        GoRoute(
+          path: '/emergency',
+          builder: (_, _) => EmergencyMapScreen(
+            emergencyService: _RecordingEmergencyService(),
+            continuationCoordinator: coordinator,
+            existingSession: const EmergencySession(
+              sessionId: 'triage-session',
+              userId: 'mother',
+              status: 'ACTIVE',
+              triggerSource: 'AI_TRIAGE',
+            ),
+            stage: 'POSTPARTUM',
+            locationConsentProbe: () async => false,
+          ),
+        ),
+        GoRoute(
+          path: '/mother-home',
+          builder: (_, _) => const Scaffold(body: Text('safe-dashboard')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Quay lại'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('emergency-continuation-exit-error')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('emergency-continuation-exit-retry')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('safe-dashboard'), findsOneWidget);
+    expect(coordinator.calls, 2);
+  });
+
+  testWidgets(
+    'continuation exception offers safe dashboard without acknowledgement',
+    (tester) async {
+      final coordinator = _StubContinuationCoordinator(const [
+        TriageContinuationDecision.none(),
+      ], error: StateError('offline'));
+      final router = GoRouter(
+        initialLocation: '/emergency',
+        routes: [
+          GoRoute(
+            path: '/emergency',
+            builder: (_, _) => EmergencyMapScreen(
+              emergencyService: _RecordingEmergencyService(),
+              continuationCoordinator: coordinator,
+              existingSession: const EmergencySession(
+                sessionId: 'triage-session',
+                userId: 'mother',
+                status: 'ACTIVE',
+                triggerSource: 'AI_TRIAGE',
+              ),
+              stage: 'POSTPARTUM',
+              locationConsentProbe: () async => false,
+            ),
+          ),
+          GoRoute(
+            path: '/mother-home',
+            builder: (_, _) => const Scaffold(body: Text('safe-dashboard')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Quay lại'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('emergency-continuation-exit-error')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('emergency-continuation-safe-dashboard')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('safe-dashboard'), findsOneWidget);
+      expect(coordinator.calls, 1);
+    },
+  );
+
   testWidgets('failed restored triage load never POSTs MANUAL and can retry', (
     tester,
   ) async {
@@ -194,7 +383,7 @@ void main() {
     expect(service.openCalls, 1);
   });
 
-  testWidgets('manual open failure never reports a notification success', (
+  testWidgets('manual open failure shows explicit failure without success', (
     tester,
   ) async {
     final service = _RecordingEmergencyService()
@@ -211,10 +400,10 @@ void main() {
 
     expect(service.openCalls, 2);
     expect(find.textContaining('đang được xử lý'), findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text('Không thể gửi báo động. Hãy thử lại.'), findsOneWidget);
   });
 
-  testWidgets('stale active-session response cannot overwrite newer ACTIVE', (
+  testWidgets('triage active-session reconciliation is single-flight', (
     tester,
   ) async {
     final service = _QueuedEmergencyService();
@@ -230,11 +419,12 @@ void main() {
     await tester.pump();
     expect(service.requests, hasLength(1));
 
-    await tester.tap(find.byKey(const Key('emergency-family-alert')));
-    await tester.pump();
-    expect(service.requests, hasLength(2));
+    final actionWhileLoading = tester.widget<OutlinedButton>(
+      find.byKey(const Key('family-alert')),
+    );
+    expect(actionWhileLoading.onPressed, isNull);
 
-    service.requests[1].complete(
+    service.requests.single.complete(
       const EmergencySession(
         sessionId: 'new-active',
         userId: 'mother',
@@ -242,8 +432,6 @@ void main() {
         triggerSource: 'AI_TRIAGE',
       ),
     );
-    await tester.pump();
-    service.requests[0].complete(null);
     await tester.pumpAndSettle();
 
     expect(service.openCalls, 0);
@@ -290,11 +478,15 @@ void main() {
           triggerSource: 'AI_TRIAGE',
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byKey(const Key('emergency-session-retry')), findsOneWidget);
-      expect(find.textContaining('Phiên đăng nhập'), findsOneWidget);
+      expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
       expect(service.openCalls, 0);
+      final action = tester.widget<OutlinedButton>(
+        find.byKey(const Key('family-alert')),
+      );
+      expect(action.onPressed, isNull);
     },
   );
 
@@ -335,15 +527,19 @@ void main() {
           triggerSource: 'AI_TRIAGE',
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byKey(const Key('emergency-session-retry')), findsOneWidget);
-      expect(find.textContaining('Phiên đăng nhập'), findsOneWidget);
+      expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
       expect(find.byType(SnackBar), findsNothing);
+      final action = tester.widget<OutlinedButton>(
+        find.byKey(const Key('family-alert')),
+      );
+      expect(action.onPressed, isNull);
     },
   );
 
-  testWidgets('newer retry cannot leave family-alert action locked', (
+  testWidgets('single-flight retry unlocks family-alert action on completion', (
     tester,
   ) async {
     final service = _QueuedEmergencyService();
@@ -362,11 +558,18 @@ void main() {
 
     await tester.tap(find.byKey(const Key('emergency-family-alert')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('emergency-session-retry')));
-    await tester.pump();
-    expect(service.requests, hasLength(3));
+    expect(service.requests, hasLength(2));
 
-    service.requests[2].complete(
+    final actionWhileLoading = tester.widget<OutlinedButton>(
+      find.byKey(const Key('family-alert')),
+    );
+    final retryWhileLoading = tester.widget<TextButton>(
+      find.byKey(const Key('emergency-session-retry')),
+    );
+    expect(actionWhileLoading.onPressed, isNull);
+    expect(retryWhileLoading.onPressed, isNull);
+
+    service.requests[1].complete(
       const EmergencySession(
         sessionId: 'new-active',
         userId: 'mother',
@@ -374,14 +577,14 @@ void main() {
         triggerSource: 'AI_TRIAGE',
       ),
     );
-    service.requests[1].complete(null);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     final action = tester.widget<OutlinedButton>(
-      find.byKey(const Key('emergency-family-alert')),
+      find.byKey(const Key('family-alert')),
     );
     expect(action.onPressed, isNotNull);
+    expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
   });
 
   testWidgets('pediatric triage load failure is visible and retryable', (

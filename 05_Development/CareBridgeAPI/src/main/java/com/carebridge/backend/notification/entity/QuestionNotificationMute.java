@@ -18,10 +18,11 @@ import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(
-        name = "question_notification_mutes",
+        name = "community_interactions",
         uniqueConstraints = @UniqueConstraint(
                 name = "question_notification_mutes_user_question_unique",
-                columnNames = {"user_id", "question_id"}))
+                columnNames = {"actor_user_id", "interaction_type", "content_id"}))
+@org.hibernate.annotations.SQLRestriction("interaction_type = 'MUTE' AND target_content_type = 'QUESTION'")
 @Getter
 @Setter
 @Builder
@@ -31,16 +32,24 @@ public class QuestionNotificationMute {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "interaction_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "actor_user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "question_id", nullable = false)
+    @Column(name = "content_id", nullable = false)
     private UUID questionId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Builder.Default
+    @Column(name = "interaction_type", nullable = false, updatable = false)
+    private String interactionType = "MUTE";
+
+    @Builder.Default
+    @Column(name = "target_content_type", nullable = false, updatable = false)
+    private String targetContentType = "QUESTION";
 }

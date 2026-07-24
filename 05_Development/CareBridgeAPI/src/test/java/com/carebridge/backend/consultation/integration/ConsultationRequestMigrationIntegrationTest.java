@@ -24,7 +24,7 @@ class ConsultationRequestMigrationIntegrationTest extends AbstractPostgresIntegr
                 """
                 SELECT column_name
                 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = 'consultation_requests'
+                WHERE table_schema = 'public' AND table_name = 'expert_consultation_requests'
                 ORDER BY ordinal_position
                 """,
                 String.class);
@@ -51,28 +51,29 @@ class ConsultationRequestMigrationIntegrationTest extends AbstractPostgresIntegr
                 """
                 SELECT conname
                 FROM pg_constraint
-                WHERE conrelid = 'public.consultation_requests'::regclass
+                WHERE conrelid = 'public.expert_consultation_requests'::regclass
                 """,
                 String.class);
         assertThat(constraints).contains(
-                "consultation_requests_client_request_id_key",
-                "chk_consultation_requests_status",
-                "chk_consultation_requests_window",
-                "chk_consultation_requests_responded_fields",
-                "chk_consultation_requests_expires_after_created");
+                "expert_consultation_requests_owner_client_uk",
+                "expert_consultation_requests_status_ck",
+                "expert_consultation_requests_window_ck",
+                "expert_consultation_requests_responded_ck",
+                "expert_consultation_requests_expiry_ck",
+                "expert_consultation_requests_direct_conversation_archive_fk");
 
         List<String> indexes = jdbcTemplate.queryForList(
                 """
                 SELECT indexname
                 FROM pg_indexes
                 WHERE schemaname = 'public'
-                  AND tablename IN ('consultation_requests', 'notification_records')
+                  AND tablename = 'expert_consultation_requests'
                 """,
                 String.class);
         assertThat(indexes).contains(
-                "idx_consultation_requests_expert_status_created",
-                "idx_consultation_requests_requester_status_created",
-                "idx_consultation_requests_expiry",
-                "uq_notification_records_consultation_request");
+                "expert_consultation_requests_expert_status_ix",
+                "expert_consultation_requests_owner_status_ix",
+                "expert_consultation_requests_expiry_ix",
+                "expert_consultation_requests_integrity_uk");
     }
 }

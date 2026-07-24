@@ -173,4 +173,20 @@ void main() {
       '/consultation-requests/123e4567-e89b-42d3-a456-426614174000',
     );
   });
+
+  test('typed notification routing rejects a malformed reference id', () {
+    final malformed = NotificationRecord(
+      id: 'notification-2',
+      userId: 'user-1',
+      type: 'CONSULTATION',
+      title: 'Yêu cầu tư vấn mới',
+      body: 'Bạn có một yêu cầu tư vấn mới',
+      referenceId: '../admin',
+      referenceType: 'CONSULTATION_REQUEST',
+      status: 'SENT',
+      createdAt: DateTime.utc(2026, 7, 16),
+    );
+
+    expect(resolveNotificationRoute(malformed), isNull);
+  });
 }

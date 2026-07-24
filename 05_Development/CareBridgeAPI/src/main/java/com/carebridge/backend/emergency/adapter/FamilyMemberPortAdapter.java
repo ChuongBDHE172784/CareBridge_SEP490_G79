@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
+import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +25,11 @@ public class FamilyMemberPortAdapter implements FamilyMemberPort {
 
     @Override
     public List<String> getFamilyFcmTokens(UUID userId) {
+        return getFamilyAlertRecipients(userId).stream().map(AlertRecipientEndpoint::token).toList();
+    }
+
+    @Override
+    public List<AlertRecipientEndpoint> getFamilyAlertRecipients(UUID userId) {
         List<CareGroup> groups = careGroupRepository.findByOwnerUserIdAndStatus(userId, CareGroupStatus.ACTIVE);
 
         return groups.stream()
@@ -32,8 +38,8 @@ public class FamilyMemberPortAdapter implements FamilyMemberPort {
                         .stream())
                 .map(CareGroupMember::getUserId)
                 .distinct()
-                .flatMap(memberId -> deviceTokenRepository.findByUserIdAndActiveTrue(memberId).stream())
-                .map(com.carebridge.backend.notification.entity.DeviceToken::getToken)
+                .flatMap(memberId -> deviceTokenRepository.findByUserIdAndActiveTrue(memberId).stream()
+                        .map(token -> new AlertRecipientEndpoint(memberId, token.getId(), token.getToken())))
                 .distinct()
                 .toList();
     }

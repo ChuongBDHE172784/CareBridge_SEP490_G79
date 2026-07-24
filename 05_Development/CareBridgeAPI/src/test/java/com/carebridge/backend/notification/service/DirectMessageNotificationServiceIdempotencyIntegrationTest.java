@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,14 +41,10 @@ class DirectMessageNotificationServiceIdempotencyIntegrationTest extends Abstrac
         UUID messageId = UUID.randomUUID();
         String phoneSuffix = String.valueOf(System.nanoTime()).substring(3, 11);
 
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Idempotency Recipient', ?, 'EXPERT', true, false, now(), now())",
-                recipientId, "05" + phoneSuffix);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Idempotency Sender', ?, 'MOTHER', true, false, now(), now())",
-                senderId, "04" + phoneSuffix);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, recipientId, "Idempotency Recipient", "05" + phoneSuffix, "EXPERT");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, senderId, "Idempotency Sender", "04" + phoneSuffix, "MOTHER");
         jdbcTemplate.update(
                 "INSERT INTO device_tokens (id, user_id, token, platform, active, created_at, updated_at) "
                         + "VALUES (?, ?, 'idempotency-token', 'ANDROID', true, now(), now())",

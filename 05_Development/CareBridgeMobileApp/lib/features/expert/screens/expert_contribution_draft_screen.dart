@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 
 import '../models/contribution_model.dart';
 import '../services/expert_contribution_service.dart';
-import '../widgets/contribution_status_chip.dart';
 
 class ExpertContributionDraftScreen extends StatefulWidget {
   const ExpertContributionDraftScreen({super.key, this.contributionId});
@@ -88,13 +87,15 @@ class _ExpertContributionDraftScreenState
       _hospitalId = c.hospitalId;
       if (c.attachments != null) {
         for (final att in c.attachments!) {
-          _attachments.add(AttachmentRequest(
-            fileId: att.fileId,
-            kind: att.kind,
-            purpose: att.purpose,
-            accessMode: att.accessMode,
-            displayOrder: att.displayOrder,
-          ));
+          _attachments.add(
+            AttachmentRequest(
+              fileId: att.fileId,
+              kind: att.kind,
+              purpose: att.purpose,
+              accessMode: att.accessMode,
+              displayOrder: att.displayOrder,
+            ),
+          );
           if (att.presignedUrl != null && att.originalName != null) {
             _filePreviews[att.fileId] = _FilePreview(
               fileName: att.originalName!,
@@ -140,7 +141,8 @@ class _ExpertContributionDraftScreenState
   }
 
   Future<void> _uploadFile(String path, String name, String kind) async {
-    final fileId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${_attachments.length}';
+    final fileId =
+        'temp_${DateTime.now().millisecondsSinceEpoch}_${_attachments.length}';
     setState(() {
       _uploadingFileIds.add(fileId);
       _filePreviews[fileId] = _FilePreview(
@@ -168,13 +170,15 @@ class _ExpertContributionDraftScreenState
         accessMode: accessMode,
       );
 
-      _attachments.add(AttachmentRequest(
-        fileId: uploadedFileId,
-        kind: kind,
-        purpose: purpose,
-        accessMode: accessMode,
-        displayOrder: _attachments.length,
-      ));
+      _attachments.add(
+        AttachmentRequest(
+          fileId: uploadedFileId,
+          kind: kind,
+          purpose: purpose,
+          accessMode: accessMode,
+          displayOrder: _attachments.length,
+        ),
+      );
 
       if (mounted) {
         setState(() {
@@ -199,7 +203,8 @@ class _ExpertContributionDraftScreenState
   }
 
   Future<void> _uploadBytes(List<int> bytes, String name, String kind) async {
-    final fileId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${_attachments.length}';
+    final fileId =
+        'temp_${DateTime.now().millisecondsSinceEpoch}_${_attachments.length}';
     setState(() {
       _uploadingFileIds.add(fileId);
       _filePreviews[fileId] = _FilePreview(
@@ -226,13 +231,15 @@ class _ExpertContributionDraftScreenState
         accessMode: accessMode,
       );
 
-      _attachments.add(AttachmentRequest(
-        fileId: uploadedFileId,
-        kind: kind,
-        purpose: purpose,
-        accessMode: accessMode,
-        displayOrder: _attachments.length,
-      ));
+      _attachments.add(
+        AttachmentRequest(
+          fileId: uploadedFileId,
+          kind: kind,
+          purpose: purpose,
+          accessMode: accessMode,
+          displayOrder: _attachments.length,
+        ),
+      );
 
       if (mounted) {
         setState(() {
@@ -292,7 +299,9 @@ class _ExpertContributionDraftScreenState
     setState(() {
       _attachments.removeWhere((a) => a.fileId == fileId);
       final preview = _filePreviews.remove(fileId);
-      if (preview != null && preview.previewUrl.isNotEmpty && preview.previewUrl.startsWith('file://')) {
+      if (preview != null &&
+          preview.previewUrl.isNotEmpty &&
+          preview.previewUrl.startsWith('file://')) {
         // Clean up local file if needed
       }
     });
@@ -327,27 +336,32 @@ class _ExpertContributionDraftScreenState
         hospitalId: _hospitalId?.isNotEmpty == true ? _hospitalId : null,
         attachments: _attachments.isNotEmpty
             ? _attachments
-                .asMap()
-                .entries
-                .map((e) => AttachmentRequest(
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => AttachmentRequest(
                       fileId: e.value.fileId,
                       kind: e.value.kind,
                       purpose: e.value.purpose,
                       accessMode: e.value.accessMode,
                       displayOrder: e.key,
-                    ))
-                .toList()
+                    ),
+                  )
+                  .toList()
             : null,
       );
 
       if (_isEditing) {
-        await _service.updateContribution(widget.contributionId!, UpdateContributionRequest(
-          title: request.title,
-          content: request.content,
-          specialtyId: request.specialtyId,
-          hospitalId: request.hospitalId,
-          attachments: request.attachments,
-        ));
+        await _service.updateContribution(
+          widget.contributionId!,
+          UpdateContributionRequest(
+            title: request.title,
+            content: request.content,
+            specialtyId: request.specialtyId,
+            hospitalId: request.hospitalId,
+            attachments: request.attachments,
+          ),
+        );
       } else {
         await _service.createContribution(request);
       }
@@ -434,9 +448,13 @@ class _ExpertContributionDraftScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing
-            ? (_saving || _error != null ? 'Chỉnh sửa bài viết' : 'Chỉnh sửa bài viết')
-            : 'Tạo bài viết mới'),
+        title: Text(
+          _isEditing
+              ? (_saving || _error != null
+                    ? 'Chỉnh sửa bài viết'
+                    : 'Chỉnh sửa bài viết')
+              : 'Tạo bài viết mới',
+        ),
         backgroundColor: cs.surface,
         elevation: 0,
       ),
@@ -467,16 +485,20 @@ class _ExpertContributionDraftScreenState
                       ),
 
                     // Basic Info
-                    Text('Thông tin cơ bản',
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      'Thông tin cơ bản',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
                         labelText: 'Tiêu đề *',
-                        hintText: 'VD: Hướng dẫn chăm sóc sơ sinh đối với mẹ lần đầu',
+                        hintText:
+                            'VD: Hướng dẫn chăm sóc sơ sinh đối với mẹ lần đầu',
                         border: OutlineInputBorder(),
                       ),
                       maxLength: 255,
@@ -490,7 +512,8 @@ class _ExpertContributionDraftScreenState
                       controller: _contentController,
                       decoration: const InputDecoration(
                         labelText: 'Nội dung *',
-                        hintText: 'Viết nội dung chi tiết bài viết y khoa tại đây...',
+                        hintText:
+                            'Viết nội dung chi tiết bài viết y khoa tại đây...',
                         border: OutlineInputBorder(),
                         alignLabelWithHint: true,
                       ),
@@ -512,8 +535,8 @@ class _ExpertContributionDraftScreenState
                               hintText: 'VD: OBG, PED...',
                               border: OutlineInputBorder(),
                             ),
-                            onChanged: (v) => _specialtyId =
-                                v.isEmpty ? null : v,
+                            onChanged: (v) =>
+                                _specialtyId = v.isEmpty ? null : v,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -538,7 +561,8 @@ class _ExpertContributionDraftScreenState
                     _UploadZone(
                       kind: 'IMAGE',
                       title: 'Vùng tải ảnh',
-                      subtitle: 'JPG, PNG, WebP, HEIC, GIF · ≤ 20MB · Upload lên Cloudinary',
+                      subtitle:
+                          'JPG, PNG, WebP, HEIC, GIF · ≤ 20MB · Upload lên Cloudinary',
                       icon: Icons.image_outlined,
                       color: Colors.blue,
                       attachments: _attachments
@@ -556,7 +580,8 @@ class _ExpertContributionDraftScreenState
                     _UploadZone(
                       kind: 'DOCUMENT',
                       title: 'Vùng tải tài liệu',
-                      subtitle: 'PDF, DOC, DOCX · ≤ 20MB · Private (R2, 15-min presigned URL)',
+                      subtitle:
+                          'PDF, DOC, DOCX · ≤ 20MB · Private (R2, 15-min presigned URL)',
                       icon: Icons.description_outlined,
                       color: Colors.orange,
                       attachments: _attachments
@@ -687,7 +712,9 @@ class _UploadZone extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.05),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             child: Row(
               children: [
@@ -697,15 +724,19 @@ class _UploadZone extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                          )),
-                      Text(subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          )),
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -744,7 +775,9 @@ class _UploadZone extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (kind == 'IMAGE' && preview != null && preview.previewUrl.isNotEmpty)
+                        if (kind == 'IMAGE' &&
+                            preview != null &&
+                            preview.previewUrl.isNotEmpty)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Image.network(
@@ -752,15 +785,15 @@ class _UploadZone extends StatelessWidget {
                               width: 64,
                               height: 64,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _buildDocIcon(cs),
+                              errorBuilder: (_, _, _) => _buildDocIcon(cs),
                             ),
                           )
                         else
                           _buildDocIcon(cs),
                         const SizedBox(height: 6),
                         Text(
-                          preview?.fileName ?? '${kind.toLowerCase()} ${attachments.indexOf(att) + 1}',
+                          preview?.fileName ??
+                              '${kind.toLowerCase()} ${attachments.indexOf(att) + 1}',
                           style: theme.textTheme.labelSmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -805,8 +838,11 @@ class _UploadZone extends StatelessWidget {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(color == Colors.blue ? Icons.image : Icons.description,
-          color: color, size: 32),
+      child: Icon(
+        color == Colors.blue ? Icons.image : Icons.description,
+        color: color,
+        size: 32,
+      ),
     );
   }
 }

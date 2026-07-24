@@ -4,6 +4,8 @@ import com.carebridge.backend.masterdata.dto.response.*;
 import com.carebridge.backend.masterdata.entity.*;
 import com.carebridge.backend.masterdata.repository.*;
 import com.carebridge.backend.masterdata.service.IMasterDataService;
+import com.carebridge.backend.map.entity.CareFacility;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,31 +19,27 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MasterDataServiceImpl implements IMasterDataService {
 
-    private final ProvinceRepository provinceRepository;
-    private final DistrictRepository districtRepository;
+    private final AdministrativeAreaRepository administrativeAreaRepository;
     private final SpecialtyRepository specialtyRepository;
-    private final HospitalRepository hospitalRepository;
+    private final CareFacilityRepository careFacilityRepository;
 
     @Override
     public List<ProvinceResponse> getProvinces() {
-        return provinceRepository.findByIsActiveTrueOrderByName().stream()
+        return administrativeAreaRepository.findByAreaTypeOrderByNameAsc("PROVINCE").stream()
                 .map(p -> ProvinceResponse.builder()
-                        .provinceId(p.getProvinceId())
+                        .provinceId(p.getLegacyCode())
                         .name(p.getName())
-                        .nameEn(p.getNameEn())
-                        .region(p.getRegion())
                         .build())
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<DistrictResponse> getDistrictsByProvince(String provinceId) {
-        return districtRepository.findByProvinceIdAndIsActiveTrueOrderByName(provinceId).stream()
+        return administrativeAreaRepository.findDistrictsByProvinceCode(provinceId).stream()
                 .map(d -> DistrictResponse.builder()
-                        .districtId(d.getDistrictId())
-                        .provinceId(d.getProvinceId())
+                        .districtId(d.getLegacyCode())
+                        .provinceId(provinceId)
                         .name(d.getName())
-                        .nameEn(d.getNameEn())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -50,38 +48,39 @@ public class MasterDataServiceImpl implements IMasterDataService {
     public List<SpecialtyResponse> getSpecialties() {
         return specialtyRepository.findByIsActiveTrueOrderByName().stream()
                 .map(s -> SpecialtyResponse.builder()
-                        .specialtyId(s.getSpecialtyId())
+                        .specialtyId(s.getSpecialtyId().toString())
                         .name(s.getName())
                         .description(s.getDescription())
-                        .category(s.getCategory())
+                        .category(s.getCode())
                         .build())
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<HospitalResponse> getHospitals(String provinceId, String districtId, String query) {
-        List<Hospital> hospitals;
+        List<CareFacility> hospitals;
         if (provinceId == null) {
-            hospitals = hospitalRepository.findByIsActiveTrueOrderByName();
+            hospitals = careFacilityRepository.findByActiveTrueOrderByNameAsc();
         } else if (districtId == null) {
             if (query == null || query.isBlank()) {
-                hospitals = hospitalRepository.findByProvinceIdAndIsActiveTrueOrderByName(provinceId);
+                hospitals = careFacilityRepository.findByProvinceIdAndActiveTrueOrderByNameAsc(provinceId);
             } else {
-                hospitals = hospitalRepository.searchInProvince(provinceId, query);
+                hospitals = careFacilityRepository.searchActiveInProvince(provinceId, query);
             }
         } else {
-            hospitals = hospitalRepository.findByProvinceIdAndDistrictIdAndIsActiveTrueOrderByName(provinceId, districtId);
+            hospitals = careFacilityRepository
+                    .findByProvinceIdAndDistrictIdAndActiveTrueOrderByNameAsc(provinceId, districtId);
         }
 
         return hospitals.stream()
                 .map(h -> HospitalResponse.builder()
-                        .hospitalId(h.getHospitalId())
+                        .hospitalId(h.getFacilityId().toString())
                         .name(h.getName())
                         .provinceId(h.getProvinceId())
                         .districtId(h.getDistrictId())
                         .address(h.getAddress())
-                        .level(h.getLevel())
-                        .type(h.getType())
+                        .level(h.getFacilityLevel())
+                        .type(h.getFacilityType())
                         .phone(h.getPhone())
                         .build())
                 .collect(Collectors.toList());
@@ -89,15 +88,24 @@ public class MasterDataServiceImpl implements IMasterDataService {
 
     @Override
     public Optional<HospitalResponse> getHospitalById(String hospitalId) {
-        return hospitalRepository.findById(hospitalId).map(h -> HospitalResponse.builder()
-                .hospitalId(h.getHospitalId())
+        return findActiveFacility(hospitalId).map(h -> HospitalResponse.builder()
+                .hospitalId(h.getFacilityId().toString())
                 .name(h.getName())
                 .provinceId(h.getProvinceId())
                 .districtId(h.getDistrictId())
                 .address(h.getAddress())
-                .level(h.getLevel())
-                .type(h.getType())
+                .level(h.getFacilityLevel())
+                .type(h.getFacilityType())
                 .phone(h.getPhone())
                 .build());
+    }
+
+    private Optional<CareFacility> findActiveFacility(String identifier) {
+        try {
+            return careFacilityRepository.findByFacilityIdAndActiveTrue(
+                    java.util.UUID.fromString(identifier));
+        } catch (IllegalArgumentException ignored) {
+            return careFacilityRepository.findByExternalSourceIdAndActiveTrue(identifier);
+        }
     }
 }

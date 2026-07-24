@@ -18,7 +18,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "exercise_sessions")
+@Table(name = "maternal_exercise_sessions")
 @Getter
 @Setter
 @Builder
@@ -30,16 +30,16 @@ public class ExerciseSession {
     @Column(name = "exercise_session_id", nullable = false)
     private UUID exerciseSessionId;
 
-    @Column(name = "exercise_id", nullable = false)
+    @Column(name = "exercise_template_id", nullable = false)
     private UUID exerciseId;
 
-    @Column(name = "journey_id")
+    @Column(name = "mother_journey_id")
     private UUID journeyId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "owner_user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "safety_check_id")
+    @Column(name = "safety_observation_id")
     private UUID safetyCheckId;
 
     @Column(name = "started_at", nullable = false)
@@ -65,8 +65,9 @@ public class ExerciseSession {
     private Integer warningCount;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "summary_json", columnDefinition = "jsonb")
-    private String summaryJson;
+    @Column(name = "summary_jsonb", nullable = false, columnDefinition = "jsonb")
+    @Builder.Default
+    private String summaryJson = "{}";
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;

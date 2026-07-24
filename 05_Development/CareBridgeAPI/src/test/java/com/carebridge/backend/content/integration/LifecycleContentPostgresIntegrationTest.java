@@ -28,6 +28,7 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import jakarta.persistence.EntityManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,16 +73,29 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     void setUp() {
         wipeStoryFixtures();
         motherId = UUID.randomUUID();
-        jdbcTemplate.update(
-                "insert into users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "values (?, 'Story 69 Lifecycle Mother', ?, 'MOTHER', true, false, now(), now())",
-                motherId, uniquePhone());
-        journeyId = journeyRepository.saveAndFlush(MotherJourney.builder()
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Story 69 Lifecycle Mother", uniquePhone(), "MOTHER");
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                select ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  from users u join persons p on p.person_id = u.person_id
+                 where u.user_id = ?
+                """, careSubjectId, motherId);
+        MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
                 .ownerUserId(motherId)
+                .careSubjectId(careSubjectId)
                 .journeyType(JourneyType.PRE_PREGNANCY)
                 .status(JourneyStatus.ACTIVE)
                 .startDate(LocalDate.of(2026, 1, 1))
-                .build()).getId();
+                .build());
+        journeyId = journey.getId();
+        jdbcTemplate.update(
+                "update care_subjects set mother_journey_id=? where care_subject_id=?",
+                journeyId, careSubjectId);
     }
 
     @AfterEach
@@ -139,7 +153,9 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
         }
 
         Set<String> persistedStatuses = jdbcTemplate.queryForList(
-                        "select distinct status from checklist_templates order by status", String.class)
+                        "select distinct content_status from care_item_templates "
+                                + "where entry_type='TEMPLATE_ROOT' order by content_status",
+                        String.class)
                 .stream().collect(Collectors.toSet());
         Set<String> allowedStatuses = Arrays.stream(ChecklistTemplateStatus.values())
                 .map(Enum::name).collect(Collectors.toSet());
@@ -148,18 +164,20 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
 
         var statusColumn = jdbcTemplate.queryForMap(
                 "select data_type, character_maximum_length from information_schema.columns "
-                        + "where table_schema='public' and table_name='checklist_templates' and column_name='status'");
+                        + "where table_schema='public' and table_name='care_item_templates' "
+                        + "and column_name='content_status'");
         assertThat(statusColumn.get("data_type")).isEqualTo("character varying");
         assertThat(((Number) statusColumn.get("character_maximum_length")).intValue()).isEqualTo(20);
         assertThat(jdbcTemplate.queryForObject(
-                        "select count(*) from pg_constraint where conrelid='public.checklist_templates'::regclass "
-                                + "and contype='c' and pg_get_constraintdef(oid) ilike '%status%'",
+                        "select count(*) from pg_constraint where conrelid='public.care_item_templates'::regclass "
+                                + "and contype='c' and pg_get_constraintdef(oid) ilike '%content_status%'",
                         Long.class))
                 .isZero();
 
         List<String> cardinality = jdbcTemplate.query(
-                "select stage || '|' || status || '|' || count(*) from checklist_templates "
-                        + "group by stage, status order by stage, status",
+                "select stage || '|' || content_status || '|' || count(*) "
+                        + "from care_item_templates where entry_type='TEMPLATE_ROOT' "
+                        + "group by stage, content_status order by stage, content_status",
                 (row, index) -> row.getString(1));
 
         assertThat(cardinality).hasSize(5);
@@ -213,7 +231,7 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
         ChecklistTemplate approvedOtherStage = seedTemplate(
                 "Approved POST", ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED);
         seedChecklistItem(approvedA, "A first", 1);
-        seedChecklistItem(approvedA, "A null-last", null);
+        seedChecklistItem(approvedA, "A highest-order", Integer.MAX_VALUE);
         seedChecklistItem(approvedB, "B only", 3);
         seedChecklistItem(approvedOtherStage, "Wrong stage", 1);
         entityManager.clear();
@@ -245,12 +263,8 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
                     .hasSize(2);
             assertThat(requestSql.stream()
                     .map(statement -> statement.toLowerCase().replaceAll("\\s+", " "))
-                    .filter(statement -> statement.contains("from checklist_templates")))
-                    .hasSize(1);
-            assertThat(requestSql.stream()
-                    .map(statement -> statement.toLowerCase().replaceAll("\\s+", " "))
-                    .filter(statement -> statement.contains("from checklist_items")))
-                    .hasSize(1);
+                    .filter(statement -> statement.contains("from care_item_templates")))
+                    .hasSize(2);
         } finally {
             sqlLogger.detachAppender(sqlAppender);
             sqlLogger.setLevel(previousLevel);
@@ -271,7 +285,8 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
                 .findFirst().orElseThrow();
         assertThat(approvedARow.path("items")).hasSize(2);
         assertThat(approvedARow.path("items").get(0).path("order").asInt()).isEqualTo(1);
-        assertThat(approvedARow.path("items").get(1).path("order").isNull()).isTrue();
+        assertThat(approvedARow.path("items").get(1).path("order").asInt())
+                .isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
@@ -595,8 +610,9 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
 
     private void wipeStoryFixtures() {
         jdbcTemplate.execute(
-                "truncate table user_checklist_items, checklist_items, checklist_templates, "
-                        + "content_sources, content_items, baby_profiles, mother_journeys, audit_logs, users cascade");
+                "truncate table preparation_checklist_items, care_item_templates, "
+                        + "content_item_sources, content_items, mother_journey_events, "
+                        + "care_subjects, mother_journeys, audit_events, users, persons cascade");
     }
 
 }

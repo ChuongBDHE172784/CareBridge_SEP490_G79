@@ -30,28 +30,29 @@ public class JourneyTimelineService implements IJourneyTimelineService {
         }
         List<JourneyTimelineItemResponse> items = jdbcTemplate.query("""
                 WITH timeline AS (
-                    SELECT 'LIFECYCLE_TRANSITION'::text AS item_type,
-                           transition_id AS item_id, effective_at AS occurred_at,
-                           recorded_at, event_type::text, from_stage::text, to_stage::text,
-                           NULL::text AS risk_level, NULL::text AS stage,
-                           NULL::uuid AS source_intake_id, NULL::uuid AS source_emergency_id,
-                           NULL::text AS origin_action
-                    FROM mother_journey_transitions WHERE journey_id = ?
-                    UNION ALL
-                    SELECT 'SAFETY_OUTCOME', outcome_id, occurred_at, recorded_at,
-                           NULL, NULL, NULL, risk_level, stage, intake_session_id,
-                           emergency_session_id, origin_action
-                    FROM lifecycle_safety_outcomes WHERE journey_id = ?
+                    SELECT CASE WHEN event_type = 'SAFETY_OUTCOME'
+                                THEN 'SAFETY_OUTCOME' ELSE 'LIFECYCLE_TRANSITION' END AS item_type,
+                           event_id AS item_id, effective_at AS occurred_at, recorded_at,
+                           event_type::text, from_stage::text, to_stage::text,
+                           risk_level,
+                           stage,
+                           triage_session_id AS source_intake_id,
+                           emergency_session_id AS source_emergency_id,
+                           origin_action
+                    FROM mother_journey_events
+                    WHERE mother_journey_id = ?
+                      AND (legacy_source = 'JOURNEY_TRANSITION' OR event_type = 'SAFETY_OUTCOME')
                 )
                 SELECT * FROM timeline
                 ORDER BY occurred_at DESC, recorded_at DESC, item_id DESC
                 LIMIT ? OFFSET ?
-                """, (rs, row) -> mapItem(rs), journeyId, journeyId,
+                """, (rs, row) -> mapItem(rs), journeyId,
                 pageable.getPageSize(), pageable.getOffset());
         Long total = jdbcTemplate.queryForObject("""
-                SELECT (SELECT count(*) FROM mother_journey_transitions WHERE journey_id = ?)
-                     + (SELECT count(*) FROM lifecycle_safety_outcomes WHERE journey_id = ?)
-                """, Long.class, journeyId, journeyId);
+                SELECT count(*) FROM mother_journey_events
+                WHERE mother_journey_id = ?
+                  AND (legacy_source = 'JOURNEY_TRANSITION' OR event_type = 'SAFETY_OUTCOME')
+                """, Long.class, journeyId);
         long count = total == null ? 0 : total;
         int totalPages = count == 0 ? 0
                 : (int) ((count + pageable.getPageSize() - 1) / pageable.getPageSize());

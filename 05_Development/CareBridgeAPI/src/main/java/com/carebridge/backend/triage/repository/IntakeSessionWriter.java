@@ -20,8 +20,8 @@ public class IntakeSessionWriter {
     public InsertResult insertConversationIfAbsent(IntakeSession candidate) {
         List<UUID> insertedIds = jdbcTemplate.query(
                 """
-                INSERT INTO intake_sessions (
-                    id, user_id, baby_profile_id, mother_profile_id, stage,
+                INSERT INTO triage_sessions (
+                    triage_session_id, user_id, baby_profile_id, mother_profile_id, stage,
                     client_request_id, journey_id, origin_dashboard, origin_reference_id,
                     continuation_token, continuation_expires_at, symptoms, status,
                     created_at, created_by
@@ -29,9 +29,9 @@ public class IntakeSessionWriter {
                 ON CONFLICT (user_id, client_request_id)
                     WHERE client_request_id IS NOT NULL
                     DO NOTHING
-                RETURNING id
+                RETURNING triage_session_id
                 """,
-                (rs, rowNum) -> rs.getObject("id", UUID.class),
+                (rs, rowNum) -> rs.getObject("triage_session_id", UUID.class),
                 candidate.getId(),
                 candidate.getUserId(),
                 candidate.getBabyProfileId(),

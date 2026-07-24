@@ -2,7 +2,7 @@ package com.carebridge.backend.journey.service;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
-import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationRepository;
+import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.journey.entity.LifecycleSafetyOutcome;
 import com.carebridge.backend.journey.repository.LifecycleSafetyOutcomeInsertRepository;
 import com.carebridge.backend.triage.OriginAction;
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeProjector {
     private final IIntakeSessionRepository intakeSessionRepository;
-    private final TriageEmergencyEscalationRepository escalationRepository;
+    private final TriageEmergencyEscalationLinkRepository triageEscalationLinkRepository;
     private final LifecycleSafetyOutcomeInsertRepository insertRepository;
     private final AuditService auditService;
     private final LifecycleSafetyMetrics metrics;
@@ -38,8 +38,8 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
             }
             UUID emergencyId = null;
             if (intake.getRiskLevel() == RiskLevel.RED) {
-                emergencyId = escalationRepository.findByIntakeSessionId(intakeSessionId)
-                        .map(link -> link.getEmergencySessionId())
+                emergencyId = triageEscalationLinkRepository
+                        .findEmergencySessionId(intakeSessionId, ownerUserId)
                         .orElse(null);
             }
             LifecycleSafetyOutcome outcome = LifecycleSafetyOutcome.builder()
@@ -58,7 +58,7 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
                     .build();
             UUID createdId = insertRepository.insertIfAbsent(outcome);
             if (createdId != null) {
-                auditService.log(AuditAction.AI_TRIAGE, ownerUserId, "LifecycleSafetyOutcome",
+                auditService.log(AuditAction.AI_TRIAGE, ownerUserId, "MotherJourneyEvent",
                         createdId.toString(), Map.of(
                                 "event", "SAFETY_OUTCOME_PROJECTED",
                                 "riskLevel", intake.getRiskLevel().name(),

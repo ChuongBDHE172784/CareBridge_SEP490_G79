@@ -58,8 +58,18 @@ class IntakeFlowResponse {
 
   factory IntakeFlowResponse.fromJson(Map<String, dynamic> json) {
     final resultJson = json['triageResult'];
-    final sessionId = json['intakeSessionId']?.toString() ?? '';
-    final stage = json['stage']?.toString() ?? 'INFANT';
+    final sessionId =
+        json['intakeSessionId']?.toString() ??
+        (resultJson is Map<String, dynamic>
+            ? resultJson['sessionId']?.toString()
+            : null) ??
+        '';
+    final stage =
+        json['stage']?.toString() ??
+        (resultJson is Map<String, dynamic>
+            ? resultJson['stage']?.toString()
+            : null) ??
+        'INFANT';
     if (!TriageResult.supportedStages.contains(stage)) {
       throw const FormatException('Invalid intake flow stage');
     }
@@ -74,16 +84,21 @@ class IntakeFlowResponse {
     }
     TriageResult? result;
     if (resultJson is Map<String, dynamic>) {
-      final nestedStage = resultJson['stage']?.toString();
-      if (nestedStage != null && nestedStage != stage) {
-        throw const FormatException('Triage result stage mismatch');
+      final isLegacyNestedResult =
+          resultJson.containsKey('status') ||
+          resultJson.containsKey('triageStatus');
+      if (!isLegacyNestedResult) {
+        final nestedStage = resultJson['stage']?.toString();
+        if (nestedStage != null && nestedStage != stage) {
+          throw const FormatException('Triage result stage mismatch');
+        }
+        _rejectNestedMismatch(
+          resultJson,
+          key: 'sessionId',
+          authoritativeValue: sessionId,
+          message: 'Triage result session mismatch',
+        );
       }
-      _rejectNestedMismatch(
-        resultJson,
-        key: 'sessionId',
-        authoritativeValue: sessionId,
-        message: 'Triage result session mismatch',
-      );
       for (final binding in const {
         'journeyId': 'Triage result journey mismatch',
         'originDashboard': 'Triage result origin dashboard mismatch',
@@ -96,14 +111,19 @@ class IntakeFlowResponse {
           message: binding.value,
         );
       }
+      final envelopeStatus = json['status']?.toString();
+      final resultStatus = envelopeStatus == 'TRIAGE_COMPLETE'
+          ? 'COMPLETED'
+          : envelopeStatus ?? resultJson['status']?.toString();
       final patched = <String, dynamic>{
         ...resultJson,
         'sessionId': sessionId,
-        'status': json['status'] == 'TRIAGE_COMPLETE'
-            ? 'COMPLETED'
-            : json['status'],
-        'triageStatus': json['status'],
         'stage': stage,
+        'status': resultStatus,
+        'triageStatus':
+            envelopeStatus ??
+            resultJson['triageStatus']?.toString() ??
+            resultJson['status']?.toString(),
         'journeyId': json['journeyId'],
         'originDashboard': json['originDashboard'],
         'originReferenceId': json['originReferenceId'],

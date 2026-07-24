@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 
 /**
  * Delegates to the existing {@link FcmService}. Note: FcmService itself is a
@@ -36,5 +37,14 @@ public class FcmNotificationPortAdapter implements FcmNotificationPort {
             throw new IllegalStateException("FCM reported no successful emergency deliveries");
         }
         log.info("FCM batch dispatched to {} token(s), {} reported sent", fcmTokens.size(), sent);
+    }
+
+    @Override
+    public FcmDeliveryResult send(String fcmToken, Map<String, String> payload) {
+        String title = "Cảnh báo khẩn cấp từ CareBridge";
+        String body = "MANUAL".equals(payload.get("triggerSource"))
+                ? "Người thân của bạn vừa kích hoạt chế độ khẩn cấp. Vui lòng kiểm tra ngay."
+                : "Hệ thống phát hiện dấu hiệu khẩn cấp cho người thân của bạn. Vui lòng kiểm tra ngay.";
+        return fcmService.sendWithRetry(fcmToken, title, body, payload, 3);
     }
 }

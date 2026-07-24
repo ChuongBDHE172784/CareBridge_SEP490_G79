@@ -6,16 +6,19 @@ import com.carebridge.backend.triage.TriageStage;
 import com.carebridge.backend.triage.OriginDashboard;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "intake_sessions")
+@Table(name = "triage_sessions")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class IntakeSession {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "triage_session_id")
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
@@ -64,11 +67,14 @@ public class IntakeSession {
     @Column(name = "risk_level", length = 10)
     private RiskLevel riskLevel;
 
+    @Column(name = "emergency", nullable = false)
+    private boolean emergency;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private IntakeStatus status;
 
-    @Column(name = "disclaimer", columnDefinition = "TEXT")
+    @Column(name = "disclaimer_text", columnDefinition = "TEXT")
     private String disclaimer;
 
     @Column(name = "created_at", nullable = false)
@@ -76,6 +82,18 @@ public class IntakeSession {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "result_jsonb", nullable = false, columnDefinition = "jsonb")
+    @Builder.Default
+    private String resultJson = "{}";
+
+    @Column(name = "schema_version", nullable = false, length = 30)
+    @Builder.Default
+    private String schemaVersion = "1";
+
+    @Column(name = "content_hash", length = 128)
+    private String contentHash;
 
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;

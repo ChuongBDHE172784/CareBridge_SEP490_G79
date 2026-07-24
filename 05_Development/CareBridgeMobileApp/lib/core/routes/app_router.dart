@@ -121,10 +121,7 @@ class _InvalidRouteScreen extends StatelessWidget {
     body: Center(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Text(
-          'Liên kết nhật ký không hợp lệ.',
-          textAlign: TextAlign.center,
-        ),
+        child: Text('Liên kết không hợp lệ.', textAlign: TextAlign.center),
       ),
     ),
   );
@@ -152,9 +149,6 @@ class _UnsupportedRoleHome extends StatelessWidget {
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-final RegExp _uuidPattern = RegExp(
-  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-);
 
 @visibleForTesting
 String? resolveAppRedirect({
@@ -417,9 +411,11 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/consultation-requests/:requestId',
-      builder: (context, state) => ConsultationRequestDetailScreen(
-        requestId: state.pathParameters['requestId'] ?? '',
-      ),
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId'];
+        if (!_isUuid(requestId)) return const _InvalidRouteScreen();
+        return ConsultationRequestDetailScreen(requestId: requestId!);
+      },
     ),
     GoRoute(
       path: '/reminders/all',
@@ -720,8 +716,7 @@ final GoRouter appRouter = GoRouter(
       path: '/triage/expert-handoff',
       builder: (context, state) {
         final intakeSessionId = state.extra;
-        if (intakeSessionId is! String ||
-            !_uuidPattern.hasMatch(intakeSessionId)) {
+        if (intakeSessionId is! String || !_isUuid(intakeSessionId)) {
           return const _InvalidRouteScreen();
         }
         return TriageExpertHandoffScreen(intakeSessionId: intakeSessionId);

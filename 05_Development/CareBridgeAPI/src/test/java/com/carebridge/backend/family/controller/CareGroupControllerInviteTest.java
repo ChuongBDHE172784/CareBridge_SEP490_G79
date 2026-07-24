@@ -73,7 +73,7 @@ class CareGroupControllerInviteTest {
     // ── TC-010: Malformed phone format ────────────────────────────────────────
 
     @Test
-    @WithMockUser(roles = "MOTHER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000011", roles = "MOTHER")
     void inviteFamilyMember_malformedPhone_returns400() throws Exception {
         mockMvc.perform(post(BASE_URL)
                         .with(csrf())

@@ -157,7 +157,7 @@ class AuthServiceRegisterTest {
         when(otpRepoMock.save(any(OtpVerification.class))).thenAnswer(inv -> {
             OtpVerification o = inv.getArgument(0);
             if (o.getId() == null) {
-                o.setId(42L);
+                o.setId(UUID.fromString("00000000-0000-0000-0000-000000000042"));
             }
             return o;
         });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listMyContributions, checkContributionEligibility, deleteContribution, type PaginatedContributionResponse, type ContributionResponse, type ContributionStatus } from '../services/expertApi';
 
@@ -25,21 +25,16 @@ export default function ContributionListPage() {
   const [totalElements, setTotalElements] = useState(0);
   const size = 10;
 
-  useEffect(() => {
-    loadEligibility();
-    loadContributions();
-  }, [page]);
-
-  async function loadEligibility() {
+  const loadEligibility = useCallback(async () => {
     try {
       const e = await checkContributionEligibility();
       setEligible(e);
     } catch {
       setEligible(false);
     }
-  }
+  }, []);
 
-  async function loadContributions() {
+  const loadContributions = useCallback(async () => {
     setLoading(true);
     try {
       const res: PaginatedContributionResponse = await listMyContributions({ page, size });
@@ -51,14 +46,19 @@ export default function ContributionListPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [page]);
+
+  useEffect(() => {
+    void loadEligibility();
+    void loadContributions();
+  }, [loadContributions, loadEligibility]);
 
   async function handleDelete(id: string) {
     if (!window.confirm('Xóa bản nháp này? Không thể hoàn tác.')) return;
     try {
       await deleteContribution(id);
       loadContributions();
-    } catch (err) {
+    } catch {
       alert('Xóa thất bại');
     }
   }

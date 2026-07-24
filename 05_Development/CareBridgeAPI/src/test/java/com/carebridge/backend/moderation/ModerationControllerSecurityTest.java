@@ -79,7 +79,7 @@ class ModerationControllerSecurityTest {
     @Test
     @WithMockUser(username = "1", roles = "MODERATOR")
     void getQueue_sqlInjectionInTargetType_shouldReturn400() throws Exception {
-        mockMvc.perform(get(QUEUE_URL + "?targetType=QUESTION'; DROP TABLE content_reports;--"))
+        mockMvc.perform(get(QUEUE_URL + "?targetType=QUESTION'; DROP TABLE moderation_cases;--"))
                 .andExpect(status().isBadRequest());
     }
 

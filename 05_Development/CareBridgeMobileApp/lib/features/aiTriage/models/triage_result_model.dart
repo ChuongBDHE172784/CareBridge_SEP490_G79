@@ -64,7 +64,12 @@ class TriageResult {
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
     final sessionId = json['sessionId']?.toString() ?? '';
-    final status = json['status']?.toString() ?? '';
+    final rawStatus = json['status']?.toString() ?? '';
+    final status = switch (rawStatus) {
+      'ASK_MORE' => 'NEED_MORE_INFO',
+      'TRIAGE_COMPLETE' => 'COMPLETED',
+      _ => rawStatus,
+    };
     final riskLevel = json['riskLevel']?.toString();
     final stage = json['stage']?.toString() ?? 'INFANT';
     if (sessionId.isEmpty || status.isEmpty) {

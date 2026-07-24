@@ -32,7 +32,7 @@ public interface ConsultationRequestRepository extends JpaRepository<Consultatio
             UUID expertProfileId, ConsultationRequestStatus status);
 
     @Query(
-            value = "select user_id from expert_profiles where expert_profile_id = :expertProfileId",
+            value = "select user_id from professional_profiles where professional_profile_id = :expertProfileId",
             nativeQuery = true)
     Optional<UUID> findAssignedExpertUserId(
             @Param("expertProfileId") UUID expertProfileId);

@@ -108,6 +108,8 @@ tools/
 !05_Development/CareBridgeWebApp/scripts/run-federated-emulator-e2e.ps1
 !05_Development/CareBridgeAITriageService/scripts/
 !05_Development/CareBridgeAITriageService/scripts/test_gemini_connection.py
+!06_Testing/CareBridgeAIEvaluation/scripts/
+!06_Testing/CareBridgeAIEvaluation/scripts/*.py
 
 # Generated document artifacts
 ~$*

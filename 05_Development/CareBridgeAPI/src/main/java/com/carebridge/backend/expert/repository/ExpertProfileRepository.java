@@ -52,9 +52,9 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
 
  // ADR-MEDI-001 mục 1-2 — real pagination (Pageable actually applied, unlike
  // findVerifiedPublic/findVerifiedBySpecialty above) + optional case-insensitive text search
- // across users.full_name / expert_profiles.professional_title / expert_profiles.workplace.
+ // across users.full_name / professional_profiles.professional_title / professional_profiles.workplace.
  @Query(value = """
-     SELECT ep.* FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
+     SELECT ep.* FROM professional_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
        AND ep.trust_status = 'ACTIVE'
        AND u.enabled = true
@@ -64,10 +64,10 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
-     ORDER BY ep.rating_avg DESC NULLS LAST, ep.expert_profile_id ASC
+     ORDER BY ep.rating_avg DESC NULLS LAST, ep.professional_profile_id ASC
      """,
      countQuery = """
-     SELECT COUNT(*) FROM expert_profiles ep JOIN users u ON u.user_id = ep.user_id
+     SELECT COUNT(*) FROM professional_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
        AND ep.trust_status = 'ACTIVE'
        AND u.enabled = true

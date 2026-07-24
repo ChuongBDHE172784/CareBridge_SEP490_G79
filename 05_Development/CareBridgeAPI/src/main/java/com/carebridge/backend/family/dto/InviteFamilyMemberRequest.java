@@ -1,5 +1,6 @@
 package com.carebridge.backend.family.dto;
 
+import com.carebridge.backend.common.validation.VietnamesePhoneNumber;
 import com.carebridge.backend.family.entity.InviteChannel;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -14,5 +15,6 @@ public class InviteFamilyMemberRequest {
     @NotNull
     private InviteChannel channel;
 
+    @VietnamesePhoneNumber
     private String phone;
 }

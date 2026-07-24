@@ -17,5 +17,12 @@ public record NotificationRecordResponse(
     String status,
     Instant createdAt,
     Instant sentAt,
+    boolean isRead,
+    Instant readAt,
+    String channel,
+    String fcmMessageId,
+    int attemptCount,
+    Instant failedAt,
+    Instant updatedAt,
     Map<String, String> metadata
 ) {}

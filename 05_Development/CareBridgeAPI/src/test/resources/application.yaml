@@ -25,6 +25,10 @@ logging:
     com.carebridge.backend: DEBUG
 
 carebridge:
+  zego:
+    app-id: 1
+    server-secret: synthetic-test-secret
+    token-ttl-seconds: 3600
   storage:
     private-provider: cloudinary
   security:

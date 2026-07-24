@@ -18,7 +18,13 @@ public class SafetyEventResponse {
     private BigDecimal userLatitude;
     private BigDecimal userLongitude;
     private Instant detectedAt;
+    private Instant clientDetectedAt;
     private String status;
     private Instant resolvedAt;
     private String notes;
+    private Instant countdownDeadlineAt;
+    private String responseType;
+    private String responseReason;
+    private Instant respondedAt;
+    private UUID emergencySessionId;
 }

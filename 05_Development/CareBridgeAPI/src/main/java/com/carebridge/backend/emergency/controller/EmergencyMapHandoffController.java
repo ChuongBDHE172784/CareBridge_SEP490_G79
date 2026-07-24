@@ -34,8 +34,13 @@ public class EmergencyMapHandoffController {
 
     @GetMapping("/{handoffId}")
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'SYSTEM_ADMIN')")
-    public ResponseEntity<ApiResponse<EmergencyHandoffResponse>> getHandoff(@PathVariable UUID handoffId) {
-        return ResponseEntity.ok(ApiResponse.success(emergencyMapHandoffService.getHandoff(handoffId)));
+    public ResponseEntity<ApiResponse<EmergencyHandoffResponse>> getHandoff(
+            Principal principal,
+            @PathVariable UUID handoffId) {
+        UUID callerId = SecurityUtils.requireCurrentUserId(principal);
+        boolean systemAdmin = SecurityUtils.hasRole("SYSTEM_ADMIN");
+        return ResponseEntity.ok(ApiResponse.success(
+                emergencyMapHandoffService.getHandoff(handoffId, callerId, systemAdmin)));
     }
 
     @GetMapping("/me")

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -125,16 +126,16 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 FROM pg_indexes
                 WHERE schemaname = 'public'
                   AND indexname IN (
-                    'uq_consultation_requests_integrity',
-                    'uq_consent_grants_integrity',
-                    'uq_intake_handoff_integrity')
+                    'expert_consultation_requests_integrity_uk',
+                    'data_permissions_handoff_integrity_uk',
+                    'triage_sessions_handoff_integrity_uk')
                 ORDER BY indexname
                 """,
                 String.class);
         assertThat(indexes).containsExactlyInAnyOrder(
-                "uq_consultation_requests_integrity",
-                "uq_consent_grants_integrity",
-                "uq_intake_handoff_integrity");
+                "expert_consultation_requests_integrity_uk",
+                "data_permissions_handoff_integrity_uk",
+                "triage_sessions_handoff_integrity_uk");
     }
 
     @Test
@@ -251,7 +252,7 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
     }
 
     @Test
-    void preStoryDatabaseValidatesExistingChecksumsThenAppliesOnlyStory68() throws SQLException {
+    void preStoryDatabaseValidatesExistingChecksumsThenAppliesStory68Objects() throws SQLException {
         try (PostgreSQLContainer preStory = new PostgreSQLContainer("postgres:16-alpine")) {
             preStory.start();
 
@@ -272,8 +273,10 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
             assertThatCode(checksumValidation::validate).doesNotThrowAnyException();
 
             Flyway currentFlyway = flywayFor(preStory, false);
-            assertThat(currentFlyway.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(currentFlyway.migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(migrationCount(preStory, "20260722231950")).isEqualTo(1);
             assertThat(migrationCount(preStory, "20260723090000")).isEqualTo(1);
+            assertThat(story68ObjectCount(preStory)).isEqualTo(5);
         }
     }
 
@@ -315,7 +318,7 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 "triage_stage",
                 "risk_level",
                 "intake_status",
-                "REFERENCES intake_sessions(id, user_id, journey_id, origin_dashboard, "
+                "REFERENCES triage_sessions(triage_session_id, user_id, journey_id, origin_dashboard, "
                         + "origin_reference_id, stage, risk_level, status)");
     }
 
@@ -468,6 +471,7 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
         UUID expertUserId = UUID.randomUUID();
         UUID expertProfileId = UUID.randomUUID();
         UUID journeyId = UUID.randomUUID();
+        UUID careSubjectId = UUID.randomUUID();
         UUID intakeId = UUID.randomUUID();
         UUID requestId = UUID.randomUUID();
         UUID idempotencyKey = UUID.randomUUID();
@@ -476,16 +480,34 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
         seedUser(expertUserId, "Schema Expert", "EXPERT");
         jdbcTemplate.update(
                 """
-                INSERT INTO mother_journeys
-                    (journey_id, owner_user_id, journey_type, status, created_at, updated_at)
-                VALUES (?, ?, 'PREGNANCY', 'ACTIVE', now(), now())
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
                 """,
-                journeyId,
+                careSubjectId,
                 ownerId);
         jdbcTemplate.update(
                 """
-                INSERT INTO intake_sessions
-                    (id, user_id, symptoms, risk_level, status, created_by, stage,
+                INSERT INTO mother_journeys
+                    (journey_id, care_subject_id, owner_user_id, journey_type,
+                     status, created_at, updated_at)
+                VALUES (?, ?, ?, 'PREGNANCY', 'ACTIVE', now(), now())
+                """,
+                journeyId,
+                careSubjectId,
+                ownerId);
+        jdbcTemplate.update(
+                "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
+                journeyId,
+                careSubjectId);
+        jdbcTemplate.update(
+                """
+                INSERT INTO triage_sessions
+                    (triage_session_id, user_id, symptoms, risk_level, status, created_by, stage,
                      journey_id, origin_dashboard, origin_reference_id,
                      continuation_token, continuation_expires_at, created_at, completed_at)
                 VALUES (?, ?, 'synthetic fixture', 'YELLOW', 'COMPLETED', ?, 'PREGNANCY',
@@ -499,8 +521,8 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 UUID.randomUUID());
         jdbcTemplate.update(
                 """
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Maternal health', 'APPROVED', 'ACTIVE', now(), now())
                 """,
@@ -508,7 +530,7 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 expertUserId);
         jdbcTemplate.update(
                 """
-                INSERT INTO consultation_requests
+                INSERT INTO expert_consultation_requests
                     (id, requester_user_id, expert_profile_id, client_request_id,
                      topic, description, status, expires_at, created_at, updated_at)
                 VALUES (?, ?, ?, ?, 'Triage follow-up', 'Consented triage follow-up',
@@ -520,13 +542,14 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 idempotencyKey);
         Long consentId = jdbcTemplate.queryForObject(
                 """
-                INSERT INTO consent_grants
-                    (user_id, data_type, purpose, recipient, scope_text, policy_version,
-                     evidence_key, consent_given_at, expiry_at, version, created_at, updated_at)
-                VALUES (?, 'EXPERT_SHARED_DATA', 'SHARE', ?, 'YELLOW triage context',
-                        'YELLOW_EXPERT_CONTEXT_V1', ?, now(), now() + interval '30 days',
-                        1, now(), now())
-                RETURNING id
+                INSERT INTO data_permissions
+                    (permission_kind, owner_user_id, scope_type, purpose, recipient,
+                     scope_text, policy_version, evidence_key, granted_at, expires_at,
+                     status, version_number, created_at, updated_at)
+                VALUES ('CONSENT_GRANT', ?, 'EXPERT_SHARED_DATA', 'SHARE', ?,
+                        'YELLOW triage context', 'YELLOW_EXPERT_CONTEXT_V1', ?, now(),
+                        now() + interval '30 days', 'ACTIVE', 1, now(), now())
+                RETURNING legacy_consent_id
                 """,
                 Long.class,
                 ownerId,
@@ -598,12 +621,12 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
     private UUID seedEvidenceSource(String domain) {
         return jdbcTemplate.queryForObject(
                 """
-                INSERT INTO evidence_sources
+                INSERT INTO knowledge_sources
                     (domain, base_url, organization, category, status, discovery_mode,
                      applicable_stages, reviewed_at, created_at, updated_at)
                 VALUES (?, ?, 'Synthetic authority', 'OTHER', 'APPROVED', 'MANUAL_ADMIN_ADD',
                         'PREGNANCY', now(), now(), now())
-                RETURNING id
+                RETURNING knowledge_source_id
                 """,
                 UUID.class,
                 domain,
@@ -611,15 +634,7 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
     }
 
     private void seedUser(UUID id, String name, String role) {
-        jdbcTemplate.update(
-                """
-                INSERT INTO users
-                    (user_id, full_name, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, true, false, now(), now())
-                """,
-                id,
-                name,
-                role);
+        CanonicalUserFixture.insertUser(jdbcTemplate, id, name, null, role);
     }
 
     private static Flyway flywayFor(PostgreSQLContainer container, boolean stopBeforeStory68) {
@@ -628,9 +643,8 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .outOfOrder(true);
-        if (stopBeforeStory68) {
-            configuration.target(MigrationVersion.fromVersion("20260722210000"));
-        }
+        configuration.target(MigrationVersion.fromVersion(
+                stopBeforeStory68 ? "20260722231900" : "20260723090000"));
         return configuration.load();
     }
 
@@ -641,6 +655,29 @@ class TriageExpertHandoffSchemaRedPostgresTest extends AbstractPostgresIntegrati
                 var statement = connection.prepareStatement(
                         "SELECT count(*) FROM flyway_schema_history WHERE version = ?")) {
             statement.setString(1, version);
+            try (var result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private static int story68ObjectCount(PostgreSQLContainer container) throws SQLException {
+        try (var connection = DriverManager.getConnection(
+                        container.getJdbcUrl(), container.getUsername(), container.getPassword());
+                var statement = connection.prepareStatement(
+                        """
+                        SELECT count(*)
+                          FROM pg_class object
+                          JOIN pg_namespace namespace ON namespace.oid = object.relnamespace
+                         WHERE namespace.nspname = 'public'
+                           AND object.relname IN (
+                               'consultation_context_shares',
+                               'consultation_context_citations',
+                               'uq_consultation_requests_integrity',
+                               'uq_consent_grants_integrity',
+                               'uq_intake_handoff_integrity')
+                        """)) {
             try (var result = statement.executeQuery()) {
                 result.next();
                 return result.getInt(1);

@@ -12,9 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * UC-243 (CB-CONTENT-IMP-011) — Content Admin CRUD for {@code checklist_templates}/{@code checklist_items}.
- * Reuses existing entities; downstream consumer is UC-50 (importFromTemplate) — archive must never
- * delete rows, only flip status (ADR-CHK-002).
+ * UC-243 (CB-CONTENT-IMP-011) — Content Admin CRUD for canonical template roots and checklist
+ * entries in {@code care_item_templates}. Downstream consumer is UC-50 (importFromTemplate) —
+ * archive must never delete rows, only flip status (ADR-CHK-002).
  */
 public interface AdminChecklistTemplateService {
 

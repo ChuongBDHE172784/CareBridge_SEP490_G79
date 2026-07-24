@@ -77,8 +77,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     final requestAccountId = AuthState.instance.userId;
     setState(() => _startingChat = true);
     try {
-      // UC-144D find-or-create — reuses the existing conversation if Mother already
-      // messaged this Expert before (BR-DCC-002), never creates a duplicate.
       final conversation = await DirectChatService.instance
           .findOrCreateConversation(widget.expertProfileId);
       if (!mounted ||
@@ -87,14 +85,14 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         return;
       }
       context.push('/direct-chat/${conversation.conversationId}');
-    } catch (e) {
+    } catch (error) {
       if (!mounted ||
           generation != _generation ||
           AuthState.instance.userId != requestAccountId) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể mở cuộc trò chuyện: $e')),
+        SnackBar(content: Text('Không thể mở cuộc trò chuyện: $error')),
       );
     } finally {
       if (mounted &&
@@ -113,6 +111,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         backgroundColor: _surface,
         elevation: 0.5,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: _primary),
           onPressed: () => Navigator.of(context).maybePop(),
         ),

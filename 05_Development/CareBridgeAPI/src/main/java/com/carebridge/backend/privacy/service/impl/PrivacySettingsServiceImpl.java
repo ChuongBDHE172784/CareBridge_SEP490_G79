@@ -10,6 +10,7 @@ import com.carebridge.backend.privacy.entity.PrivacySettings;
 import com.carebridge.backend.privacy.repository.PrivacySettingsRepository;
 import com.carebridge.backend.privacy.service.PrivacySettingsService;
 import java.security.Principal;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,13 +24,13 @@ public class PrivacySettingsServiceImpl implements PrivacySettingsService {
     private final AuditService auditService;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PrivacySettingsResponse getSettings(UUID userId, Principal principal) {
         UUID requesterId = SecurityUtils.requireCurrentUserId(principal);
         authorizeOwner(requesterId, userId);
 
         PrivacySettings settings = getOrCreateDefault(userId);
-        auditService.log(AuditAction.PRIVACY_SETTINGS_ACCESSED, userId, "privacy_settings", userId.toString(), null);
+        auditService.log(AuditAction.PRIVACY_SETTINGS_ACCESSED, userId, "PrivacySettings", userId.toString(), null);
         return toResponse(settings);
     }
 
@@ -39,7 +40,7 @@ public class PrivacySettingsServiceImpl implements PrivacySettingsService {
         UUID requesterId = SecurityUtils.requireCurrentUserId(principal);
         authorizeOwner(requesterId, userId);
 
-        PrivacySettings settings = getOrCreateDefault(userId);
+        PrivacySettings settings = getOrCreateDefaultForUpdate(userId);
 
         boolean analyticsConsentWithdrawn = settings.isAnalyticsConsent()
                 && request.analyticsConsent() != null
@@ -58,19 +59,30 @@ public class PrivacySettingsServiceImpl implements PrivacySettingsService {
             settings.setDataExportOptOut(request.dataExportOptOut());
         }
 
-        PrivacySettings saved = privacySettingsRepository.save(settings);
+        privacySettingsRepository.patchFields(
+                userId,
+                request.profileVisibility(),
+                request.locationSharingEnabled(),
+                request.analyticsConsent(),
+                request.dataExportOptOut());
+        settings.setUpdatedAt(Instant.now());
 
         if (analyticsConsentWithdrawn) {
-            auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "privacy_settings",
+            auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "PrivacySettings",
                     "analytics_consent_withdrawn", null);
         }
 
-        auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "privacy_settings", userId.toString(), request);
-        return toResponse(saved);
+        auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "PrivacySettings", userId.toString(), request);
+        return toResponse(settings);
     }
 
     private PrivacySettings getOrCreateDefault(UUID userId) {
         return privacySettingsRepository.findByUserId(userId)
+                .orElseGet(() -> privacySettingsRepository.save(PrivacySettings.defaultSettings(userId)));
+    }
+
+    private PrivacySettings getOrCreateDefaultForUpdate(UUID userId) {
+        return privacySettingsRepository.findByUserIdForUpdate(userId)
                 .orElseGet(() -> privacySettingsRepository.save(PrivacySettings.defaultSettings(userId)));
     }
 

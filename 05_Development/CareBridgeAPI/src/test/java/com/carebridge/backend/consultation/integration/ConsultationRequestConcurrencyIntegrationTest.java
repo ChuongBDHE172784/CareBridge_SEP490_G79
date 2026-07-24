@@ -10,8 +10,9 @@ import com.carebridge.backend.consultation.service.IConsultationRequestService;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
-import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
+import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -124,7 +125,7 @@ class ConsultationRequestConcurrencyIntegrationTest extends AbstractPostgresInte
 
         assertThat(countRequests(fixture.motherId(), clientRequestId)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT status FROM consultation_requests WHERE requester_user_id=? AND client_request_id=?",
+                "SELECT status FROM expert_consultation_requests WHERE requester_user_id=? AND client_request_id=?",
                 String.class, fixture.motherId(), clientRequestId)).isEqualTo("PENDING");
         assertThat(expertProfileRepository.findById(fixture.expertProfileId()).orElseThrow().getTrustStatus())
                 .isEqualTo(TrustStatus.REVOKED);
@@ -163,19 +164,13 @@ class ConsultationRequestConcurrencyIntegrationTest extends AbstractPostgresInte
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
         UUID expertProfileId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Concurrency Mother", uniquePhone(), "MOTHER");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, expertUserId, "Concurrency Expert", uniquePhone(), "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, 'Concurrency Mother', ?, 'MOTHER', true, false, now(), now())
-                """, motherId, uniquePhone());
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, 'Concurrency Expert', ?, 'EXPERT', true, false, now(), now())
-                """, expertUserId, uniquePhone());
-        jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
@@ -194,7 +189,7 @@ class ConsultationRequestConcurrencyIntegrationTest extends AbstractPostgresInte
 
     private int countRequests(UUID motherId, UUID clientRequestId) {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM consultation_requests WHERE requester_user_id=? AND client_request_id=?",
+                "SELECT COUNT(*) FROM expert_consultation_requests WHERE requester_user_id=? AND client_request_id=?",
                 Integer.class, motherId, clientRequestId);
     }
 

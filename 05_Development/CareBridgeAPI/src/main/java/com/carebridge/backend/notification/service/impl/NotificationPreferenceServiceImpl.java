@@ -14,13 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * UC-10: Manages notification preferences using the V1 notification_preferences table.
+ * UC-10: Manages notification preferences in canonical account settings.
  *
  * <p>The table stores one row per (user_id, notification_type) with separate
  * boolean flags for each delivery channel (push_enabled, email_enabled, in_app_enabled).
@@ -74,26 +73,12 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                 userId, request.preferences().size());
 
         for (NotificationPreferenceItemDto item : request.preferences()) {
-            // Upsert: find existing row or create a new one
-            NotificationPreference pref = preferenceRepository
-                    .findByUserIdAndNotificationType(userId, item.notificationType())
-                    .orElseGet(() -> NotificationPreference.builder()
-                            .userId(userId)
-                            .notificationType(item.notificationType())
-                            .build());
-
-            if (item.pushEnabled() != null) {
-                pref.setPushEnabled(item.pushEnabled());
-            }
-            if (item.emailEnabled() != null) {
-                pref.setEmailEnabled(item.emailEnabled());
-            }
-            if (item.inAppEnabled() != null) {
-                pref.setInAppEnabled(item.inAppEnabled());
-            }
-            pref.setUpdatedAt(Instant.now());
-
-            preferenceRepository.save(pref);
+            preferenceRepository.patchChannels(
+                    userId,
+                    item.notificationType(),
+                    item.pushEnabled(),
+                    item.emailEnabled(),
+                    item.inAppEnabled());
         }
 
         // Reload to return the full current state

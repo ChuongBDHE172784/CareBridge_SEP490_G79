@@ -19,6 +19,7 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -52,10 +53,8 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
     void setUp() {
         wipeStoryFixtures();
         motherId = UUID.randomUUID();
-        jdbcTemplate.update(
-                "insert into users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "values (?, 'Story 69 Race Mother', ?, 'MOTHER', true, false, now(), now())",
-                motherId, uniquePhone());
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Story 69 Race Mother", uniquePhone(), "MOTHER");
     }
 
     @AfterEach
@@ -66,12 +65,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
     @Test
     void uc82_69_int_003_journeyTransitionSerializesBeforeImportAndLeavesNoPartialEffects()
             throws Exception {
-        UUID journeyId = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(motherId)
-                .journeyType(JourneyType.PREGNANCY)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 1, 1))
-                .build()).getId();
+        UUID journeyId = seedJourney(JourneyType.PREGNANCY);
         UUID itemId = seedItem(ContentStage.PREGNANCY, "Pregnancy item");
         CountDownLatch lockHeld = new CountDownLatch(1);
         CountDownLatch releaseLock = new CountDownLatch(1);
@@ -119,6 +113,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 .status(BabyProfileStatus.ACTIVE)
                 .active(true)
                 .build()).getId();
+        setActiveBaby(babyId);
         UUID itemId = seedItem(ContentStage.BABY_CARE, "Baby care item");
         CountDownLatch lockHeld = new CountDownLatch(1);
         CountDownLatch releaseLock = new CountDownLatch(1);
@@ -127,12 +122,14 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
         try (var executor = Executors.newFixedThreadPool(2)) {
             var invalidation = executor.submit(() -> transaction().executeWithoutResult(status -> {
                 jdbcTemplate.queryForObject(
-                        "select baby_id from baby_profiles where baby_id=? for update",
+                        "select care_subject_id from care_subjects "
+                                + "where care_subject_id=? and subject_type='BABY' for update",
                         UUID.class, babyId);
                 lockHeld.countDown();
                 await(releaseLock);
                 jdbcTemplate.update(
-                        "update baby_profiles set status='ARCHIVED', is_active=false, updated_at=now() where baby_id=?",
+                        "update care_subjects set status='ARCHIVED', updated_at=now() "
+                                + "where care_subject_id=? and subject_type='BABY'",
                         babyId);
             }));
             assertThat(lockHeld.await(10, TimeUnit.SECONDS)).isTrue();
@@ -143,7 +140,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
             });
             try {
                 assertThat(importStarted.await(10, TimeUnit.SECONDS)).isTrue();
-                assertThat(awaitBlockedQuery("baby_profiles"))
+                assertThat(awaitBlockedQuery("care_subjects"))
                         .as("PostgreSQL must report the owned ACTIVE baby SELECT FOR UPDATE waiting on a row lock")
                         .isTrue();
             } finally {
@@ -159,12 +156,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
     @Test
     void legacyBabyImportSerializesConcurrentReimportWithoutCreatingNormalizedDuplicate()
             throws Exception {
-        UUID journeyId = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(motherId)
-                .journeyType(JourneyType.POSTPARTUM)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 1, 1))
-                .build()).getId();
+        UUID journeyId = seedJourney(JourneyType.POSTPARTUM);
         UUID babyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
                 .ownerUserId(motherId)
                 .relatedJourneyId(journeyId)
@@ -173,22 +165,23 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 .status(BabyProfileStatus.ACTIVE)
                 .active(true)
                 .build()).getId();
+        setActiveBaby(babyId);
         UUID itemId = seedItem(ContentStage.BABY_CARE, "Legacy baby care item");
         UUID legacyRowId = UUID.randomUUID();
         jdbcTemplate.update("""
-                insert into user_checklist_items (
-                    user_checklist_item_id,
+                insert into preparation_checklist_items (
+                    checklist_item_id,
                     owner_user_id,
-                    journey_id,
+                    mother_journey_id,
                     baby_id,
-                    template_item_id,
-                    item_text,
+                    template_entry_id,
+                    title,
                     category,
-                    is_completed,
-                    item_order,
+                    status,
+                    display_order,
                     created_at,
                     updated_at
-                ) values (?, ?, ?, ?, ?, 'Legacy baby care item', 'GENERAL', false, 1, now(), now())
+                ) values (?, ?, ?, ?, ?, 'Legacy baby care item', 'GENERAL', 'OPEN', 1, now(), now())
                 """, legacyRowId, motherId, journeyId, babyId, itemId);
 
         CountDownLatch ready = new CountDownLatch(2);
@@ -222,19 +215,20 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
 
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*)
-                from user_checklist_items
+                from preparation_checklist_items
                 where owner_user_id = ?
                   and baby_id = ?
-                  and template_item_id = ?
+                  and template_entry_id = ?
                 """, Long.class, motherId, babyId, itemId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*)
-                from user_checklist_items
-                where user_checklist_item_id = ?
-                  and journey_id is null
+                from preparation_checklist_items
+                where checklist_item_id = ?
+                  and mother_journey_id is null
                 """, Long.class, legacyRowId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from audit_logs where actor_user_id=? and action='CHECKLIST_ITEM_ADDED'",
+                "select count(*) from audit_events where actor_user_id=? "
+                        + "and event_category='CHECKLIST_ITEM_ADDED' and event_origin='AUDIT_LOG'",
                 Long.class, motherId)).isZero();
     }
 
@@ -279,15 +273,41 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 .build()).getId();
     }
 
+    private UUID seedJourney(JourneyType journeyType) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                select ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  from users u join persons p on p.person_id = u.person_id
+                 where u.user_id = ?
+                """, careSubjectId, motherId);
+        MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(motherId)
+                .careSubjectId(careSubjectId)
+                .journeyType(journeyType)
+                .status(JourneyStatus.ACTIVE)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .build());
+        jdbcTemplate.update(
+                "update care_subjects set mother_journey_id=? where care_subject_id=?",
+                journey.getId(), careSubjectId);
+        return journey.getId();
+    }
+
     private TransactionTemplate transaction() {
         return new TransactionTemplate(transactionManager);
     }
 
     private void assertNoImportSideEffects() {
-        assertThat(jdbcTemplate.queryForObject("select count(*) from user_checklist_items", Long.class))
+        assertThat(jdbcTemplate.queryForObject(
+                        "select count(*) from preparation_checklist_items", Long.class))
                 .isZero();
         assertThat(jdbcTemplate.queryForObject(
-                        "select count(*) from audit_logs where actor_user_id=? and action='CHECKLIST_ITEM_ADDED'",
+                        "select count(*) from audit_events where actor_user_id=? "
+                                + "and event_category='CHECKLIST_ITEM_ADDED' and event_origin='AUDIT_LOG'",
                         Long.class, motherId))
                 .isZero();
     }
@@ -307,9 +327,17 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
         return "08" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000L));
     }
 
+    private void setActiveBaby(UUID babyId) {
+        assertThat(jdbcTemplate.update(
+                "update users set settings_jsonb=jsonb_set(coalesce(settings_jsonb,'{}'::jsonb), "
+                        + "'{activeBabyId}', to_jsonb(cast(? as text)), true) where user_id=?",
+                babyId.toString(), motherId)).isOne();
+    }
+
     private void wipeStoryFixtures() {
         jdbcTemplate.execute(
-                "truncate table user_checklist_items, checklist_items, checklist_templates, "
-                        + "baby_profiles, mother_journeys, audit_logs, users cascade");
+                "truncate table preparation_checklist_items, care_item_templates, "
+                        + "mother_journey_events, care_subjects, mother_journeys, "
+                        + "audit_events, users, persons cascade");
     }
 }

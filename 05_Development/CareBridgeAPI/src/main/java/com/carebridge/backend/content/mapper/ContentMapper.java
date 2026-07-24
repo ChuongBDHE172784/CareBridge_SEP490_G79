@@ -81,7 +81,10 @@ public class ContentMapper {
                 .publishedAt(item.getPublishedAt())
                 .updatedAt(updatedAt)
                 .createdAt(item.getCreatedAt())
-                .sources(item.getSources().stream().map(s -> new com.carebridge.backend.content.dto.response.ContentSourceResponse(s.getTitle(), s.getUrl(), s.getPublisher())).toList())
+                .sources(item.getSources() == null ? List.of() : item.getSources().stream()
+                        .map(s -> new com.carebridge.backend.content.dto.response.ContentSourceResponse(
+                                s.getTitle(), s.getUrl(), s.getPublisher()))
+                        .toList())
                 .contentStale(contentStale)
                 .build();
     }

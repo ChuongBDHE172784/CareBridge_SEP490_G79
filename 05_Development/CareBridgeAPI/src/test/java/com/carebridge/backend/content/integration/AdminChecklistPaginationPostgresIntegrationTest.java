@@ -20,7 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** PostgreSQL regressions for deterministic admin checklist pagination and legacy null rows. */
+/** PostgreSQL regressions for deterministic admin checklist pagination and nullable stage rows. */
 class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final UUID LOWER_ID =
@@ -39,7 +39,7 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate.execute("truncate table checklist_items, checklist_templates cascade");
+        jdbcTemplate.execute("truncate table care_item_templates cascade");
         insert(LOWER_ID, "Equal timestamp lower id", "PREGNANCY", "APPROVED", SAME_UPDATED_AT);
         insert(HIGHER_ID, "Equal timestamp higher id", "PREGNANCY", "APPROVED", SAME_UPDATED_AT);
         insert(NULL_APPROVED_ID, "Legacy null approved", null, "APPROVED", null);
@@ -48,7 +48,7 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
 
     @AfterEach
     void cleanUp() {
-        jdbcTemplate.execute("truncate table checklist_items, checklist_templates cascade");
+        jdbcTemplate.execute("truncate table care_item_templates cascade");
     }
 
     @Test
@@ -62,7 +62,7 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
     }
 
     @Test
-    void r69_008_adminApiSerializesLegacyNullStageAndUpdatedAt() throws Exception {
+    void r69_008_adminApiSerializesCanonicalNullStageAndTimestamp() throws Exception {
         mockMvc.perform(get("/api/v1/admin/content/checklists")
                         .with(user("69000000-0000-0000-0000-000000000001")
                                 .roles("CONTENT_ADMIN"))
@@ -73,8 +73,7 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
                 .andExpect(jsonPath("$.data[0].id").value(NULL_APPROVED_ID.toString()))
                 .andExpect(jsonPath("$.data[0].stage").value(
                         org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.data[0].updatedAt").value(
-                        org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$.data[0].updatedAt").isNotEmpty());
     }
 
     private void assertAdjacentPages(ChecklistTemplateStatus status, UUID[] expectedIds) {
@@ -91,9 +90,12 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
 
     private void insert(UUID id, String name, String stage, String status, Instant updatedAt) {
         jdbcTemplate.update(
-                "insert into checklist_templates "
-                        + "(checklist_template_id, created_at, name, stage, status, updated_at, "
-                        + "version_no, description) values (?, now(), ?, ?, ?, ?, 1, 'R69 regression')",
+                "insert into care_item_templates "
+                        + "(template_id, entry_type, created_at, title, stage, content_status, "
+                        + "updated_at, version, description) values "
+                        + "(?, 'TEMPLATE_ROOT', now(), ?, ?, ?, "
+                        + "coalesce(?, timestamp with time zone '1970-01-01 00:00:00+00'), "
+                        + "1, 'R69 regression')",
                 id, name, stage, status,
                 updatedAt == null ? null : Timestamp.from(updatedAt));
     }

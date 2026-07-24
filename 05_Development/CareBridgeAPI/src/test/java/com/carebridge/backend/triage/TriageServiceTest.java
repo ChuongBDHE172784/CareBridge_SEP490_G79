@@ -19,6 +19,7 @@ import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.repository.IntakeSessionWriter;
+import com.carebridge.backend.triage.repository.TriageSessionEvidenceWriter;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
@@ -59,6 +60,7 @@ class TriageServiceTest {
     @Mock private TriageGraphService triageGraphService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private LifecycleConsentValidator lifecycleConsentValidator;
+    @Mock private TriageSessionEvidenceWriter triageSessionEvidenceWriter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
@@ -118,10 +120,54 @@ class TriageServiceTest {
                 TriageTestFactory.makeRunIntakeRequest(), USER_ID);
 
         assertThat(result.getRiskLevel()).isEqualTo("RED");
+        ArgumentCaptor<IntakeSession> sessionCaptor = ArgumentCaptor.forClass(IntakeSession.class);
+        verify(intakeSessionRepository, atLeastOnce()).save(sessionCaptor.capture());
+        IntakeSession canonical = sessionCaptor.getAllValues().getLast();
+        assertThat(canonical.isEmergency()).isTrue();
+        assertThat(canonical.getResultJson()).contains("\"riskLevel\":\"RED\"");
+        assertThat(canonical.getSchemaVersion()).isNotBlank();
+        assertThat(canonical.getContentHash()).hasSize(64);
         InOrder order = inOrder(eventPublisher);
         order.verify(eventPublisher).publishEvent(any(EmergencyEscalationTriggered.class));
         order.verify(eventPublisher).publishEvent(any(IntakeSessionCompleted.class));
         verify(eventPublisher, times(1)).publishEvent(any(EmergencyEscalationTriggered.class));
+    }
+
+    @Test
+    void runIntake_completedResult_shouldWriteOnlyValidatedEvidenceSnapshot() {
+        when(childTriageAiClient.triageChild(any())).thenReturn("""
+                {"status":"COMPLETED","riskLevel":"RED","stage":"INFANT",
+                 "emergencyActionRequired":true,"recommendationCode":"SEEK_EMERGENCY_CARE",
+                 "matchedRules":["RED_BREATHING_DISTRESS"],"responseSchemaVersion":"2.0",
+                 "citations":[{"sourceId":"WHO_1","title":"WHO danger signs",
+                   "organization":"WHO","url":"https://who.int/health-topics/child-health",
+                   "domain":"who.int","excerpt":"danger signs","sourceVersion":"1",
+                   "lastReviewed":"2026-07-10","section":"Danger signs",
+                   "matchedSymptoms":[],"matchedRules":["RED_BREATHING_DISTRESS"],
+                   "sourceStatus":"APPROVED","retrievedAt":"2026-07-10T00:00:00Z",
+                   "retrievalMode":"LOCAL"}],
+                 "claims":[{"claimId":"CLAIM-1","text":"Seek emergency care",
+                   "evidenceIds":["WHO_1"]}]}
+                """);
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession session = invocation.getArgument(0);
+            if (session.getId() == null) {
+                session.setId(UUID.randomUUID());
+            }
+            return session;
+        });
+        TriageService service = service();
+        ReflectionTestUtils.setField(
+                service, "triageSessionEvidenceWriter", triageSessionEvidenceWriter);
+
+        service.runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+
+        verify(triageSessionEvidenceWriter).writeValidated(
+                any(UUID.class),
+                argThat(citations -> citations.size() == 1
+                        && "WHO_1".equals(citations.getFirst().get("sourceId"))),
+                argThat(claims -> claims.size() == 1
+                        && "CLAIM-1".equals(claims.getFirst().get("claimId"))));
     }
 
     @Test

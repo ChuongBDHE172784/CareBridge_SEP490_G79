@@ -6,6 +6,7 @@ import com.carebridge.backend.consultation.event.ConsultationRequestDomainEvent;
 import com.carebridge.backend.consultation.service.IConsultationRequestService;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,8 +51,8 @@ class ConsultationRequestExpiryIntegrationTest extends AbstractPostgresIntegrati
         seedUser(motherId, "Expiry Mother", "MOTHER");
         seedUser(expertUserId, "Expiry Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
@@ -62,7 +63,7 @@ class ConsultationRequestExpiryIntegrationTest extends AbstractPostgresIntegrati
             Fixture fixture, String status, String expiryOffset, boolean responded) {
         UUID id = UUID.randomUUID();
         jdbcTemplate.update("""
-                INSERT INTO consultation_requests
+                INSERT INTO expert_consultation_requests
                     (id, requester_user_id, expert_profile_id, client_request_id,
                      topic, description, status, responded_at, responded_by,
                      expires_at, created_at, updated_at)
@@ -84,21 +85,17 @@ class ConsultationRequestExpiryIntegrationTest extends AbstractPostgresIntegrati
     }
 
     private void seedUser(UUID id, String name, String role) {
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, true, false, now(), now())
-                """, id, name, uniquePhone(), role);
+        CanonicalUserFixture.insertUser(jdbcTemplate, id, name, uniquePhone(), role);
     }
 
     private String status(UUID id) {
         return jdbcTemplate.queryForObject(
-                "SELECT status FROM consultation_requests WHERE id=?", String.class, id);
+                "SELECT status FROM expert_consultation_requests WHERE id=?", String.class, id);
     }
 
     private java.time.Instant respondedAt(UUID id) {
         return jdbcTemplate.queryForObject(
-                "SELECT responded_at FROM consultation_requests WHERE id=?",
+                "SELECT responded_at FROM expert_consultation_requests WHERE id=?",
                 java.time.Instant.class,
                 id);
     }

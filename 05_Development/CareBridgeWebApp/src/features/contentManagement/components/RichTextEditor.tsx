@@ -30,16 +30,6 @@ const TEXT_ALIGN_OPTIONS: { value: string; label: string; icon: string }[] = [
   { value: 'justify', label: 'Căn đều', icon: 'format_align_justify' },
 ];
 
-/**
- * Rich text HTML always contains wrapper markup even when the user hasn't typed anything
- * (e.g. an empty editor is "<p></p>"), so a plain `.trim().length > 0` check on the raw HTML
- * (as the old plain-textarea `body` field used) would incorrectly treat empty content as valid.
- */
-export function isRichTextEmpty(html: string): boolean {
-  if (html.includes('<img')) return false;
-  return html.replace(/<[^>]*>/g, '').trim().length === 0;
-}
-
 interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -86,7 +76,6 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     if (value !== editor.getHTML()) {
       editor.commands.setContent(value, { emitUpdate: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
   if (!editor) return null;

@@ -111,9 +111,9 @@ import org.springframework.transaction.annotation.Transactional;
  * their own accepted family member, plus two admin-approved experts). Note:
  * "mother2@carebridge.dev" is skipped - it already exists as a teammate's manual test
  * account in the shared dev database, so seeding continues from mother3/mother4:
- *   mother3@carebridge.dev / mother4@carebridge.dev   -> MOTHER  (own mother_journeys + baby_profiles rows)
+ *   mother3@carebridge.dev / mother4@carebridge.dev   -> MOTHER  (own mother journeys + care subjects)
  *   family2@carebridge.dev / family3@carebridge.dev   -> FAMILY  (ACCEPTED care_group_members of mother3/mother4's group)
- *   expert2@carebridge.dev / expert3@carebridge.dev   -> EXPERT  (expert_profiles APPROVED + expert_credentials APPROVED + availability slot)
+ *   expert2@carebridge.dev / expert3@carebridge.dev   -> EXPERT  (professional profile APPROVED + expert credentials APPROVED + availability slot)
  *
  * OTP: dev uses MockEmailService logs; supabase uses configured SMTP.
  */
@@ -589,13 +589,13 @@ public class DevDataSeeder implements ApplicationRunner {
         if (!existing.isEmpty()) {
             BabyProfile baby = existing.get(0);
             jdbcTemplate.update(
-                "UPDATE baby_profiles SET is_active = false WHERE owner_user_id = ? AND baby_id <> ?",
+                "UPDATE care_subjects SET status = 'INACTIVE' WHERE owner_user_id = ? AND care_subject_id <> ? AND subject_type = 'BABY'",
                 mother.getId(), baby.getId());
             baby.setActive(true);
             if (baby.getBirthWeightKg() == null) baby.setBirthWeightKg(new BigDecimal("3.40"));
             if (baby.getBirthLengthCm() == null) baby.setBirthLengthCm(new BigDecimal("50.0"));
             // saveAndFlush: seedBabyJourneyViewData writes child rows via raw jdbcTemplate right
-            // after this returns, which needs the baby_profiles row to already be visible in the
+            // after this returns, which needs the care_subjects row to already be visible in the
             // DB (Hibernate write-behind alone would leave it queued, tripping the FK constraint).
             return babyProfileRepository.saveAndFlush(baby);
         }
@@ -666,12 +666,12 @@ public class DevDataSeeder implements ApplicationRunner {
                                 Instant occurredAt, BigDecimal quantity, String unit, String note) {
         Timestamp timestamp = Timestamp.from(occurredAt);
         jdbcTemplate.update("""
-            INSERT INTO baby_daily_logs
-                (baby_log_id, baby_id, log_type, started_at, quantity, unit, note,
+            INSERT INTO care_logs
+                (care_log_id, care_subject_id, log_type, started_at, quantity, unit, note,
                  recorded_by, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
-            ON CONFLICT (baby_log_id) DO UPDATE SET
-                baby_id = EXCLUDED.baby_id,
+            ON CONFLICT (care_log_id) DO UPDATE SET
+                care_subject_id = EXCLUDED.care_subject_id,
                 log_type = EXCLUDED.log_type,
                 started_at = EXCLUDED.started_at,
                 quantity = EXCLUDED.quantity,

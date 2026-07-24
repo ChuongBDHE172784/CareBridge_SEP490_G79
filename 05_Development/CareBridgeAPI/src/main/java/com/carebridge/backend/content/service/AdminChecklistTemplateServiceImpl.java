@@ -18,7 +18,11 @@ import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -101,18 +105,11 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         template.setStatus(request.status());
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
-        // null = client did not edit items, leave untouched; non-null (incl. []) = full replace.
-        // ChecklistItem has no back-reference collection on ChecklistTemplate to reassign in place
-        // (unlike ContentItem.sources, an @ElementCollection) — replace via repository delete+insert.
+        // null leaves entries untouched; a non-null list is the complete active set. Existing
+        // rows are reconciled in place so imported personal checklist foreign keys remain valid.
         List<ChecklistItem> currentItems;
         if (request.items() != null) {
-            List<ChecklistItem> existing = checklistItemRepository.findByTemplate_IdOrderByOrder(id);
-            if (!existing.isEmpty()) {
-                checklistItemRepository.deleteAll(existing);
-            }
-            currentItems = request.items().isEmpty()
-                    ? List.of()
-                    : checklistItemRepository.saveAll(toEntities(request.items(), saved));
+            currentItems = reconcileItems(request.items(), saved);
         } else {
             currentItems = checklistItemRepository.findByTemplate_IdOrderByOrder(id);
         }
@@ -138,8 +135,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
 
         ChecklistTemplateStatus previousStatus = template.getStatus();
-        // ADR-CHK-002: soft-delete only — checklist_items are NOT touched, so UC-50's
-        // user_checklist_items (FK'd to checklist_items) is never affected by an archive.
+        // ADR-CHK-002: soft-delete only. Canonical template entries and imported personal
+        // preparation_checklist_items remain stable when a template is archived.
         template.setStatus(ChecklistTemplateStatus.ARCHIVED);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
@@ -164,8 +161,49 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                     .itemText(item.itemText())
                     .order(item.order())
                     .isRequired(item.isRequired())
+                    .isActive(true)
                     .build());
         }
         return entities;
+    }
+
+    private List<ChecklistItem> reconcileItems(
+            List<ChecklistItemRequest> requestedItems, ChecklistTemplate template) {
+        List<ChecklistItem> existingItems =
+                checklistItemRepository.findAllByTemplateIdOrderByOrder(template.getId());
+        Map<UUID, ChecklistItem> existingById = new HashMap<>();
+        for (ChecklistItem existing : existingItems) {
+            existingById.put(existing.getId(), existing);
+        }
+
+        Set<UUID> requestedIds = new HashSet<>();
+        for (ChecklistItemRequest requested : requestedItems) {
+            if (requested.id() != null
+                    && (!requestedIds.add(requested.id()) || !existingById.containsKey(requested.id()))) {
+                throw ContentException.checklistTemplateItemReferenceInvalid();
+            }
+        }
+
+        existingItems.forEach(item -> item.setIsActive(false));
+        List<ChecklistItem> activeItems = new ArrayList<>();
+        List<ChecklistItem> itemsToSave = new ArrayList<>(existingItems);
+        for (ChecklistItemRequest requested : requestedItems) {
+            ChecklistItem item;
+            if (requested.id() == null) {
+                item = ChecklistItem.builder().template(template).build();
+                itemsToSave.add(item);
+            } else {
+                item = existingById.get(requested.id());
+            }
+            item.setItemText(requested.itemText());
+            item.setOrder(requested.order());
+            item.setIsRequired(requested.isRequired());
+            item.setIsActive(true);
+            activeItems.add(item);
+        }
+        if (!itemsToSave.isEmpty()) {
+            checklistItemRepository.saveAll(itemsToSave);
+        }
+        return activeItems;
     }
 }

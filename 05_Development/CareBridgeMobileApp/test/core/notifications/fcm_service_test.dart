@@ -42,6 +42,23 @@ void main() {
     expect(route, '/emergency/alert/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
   });
 
+  test('valid foreground emergency is handled immediately', () {
+    expect(
+      FcmService.shouldOpenForegroundEmergency({
+        'type': 'EMERGENCY_ALERT',
+        'sessionId': 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      }),
+      isTrue,
+    );
+    expect(
+      FcmService.shouldOpenForegroundEmergency({
+        'type': 'EMERGENCY_ALERT',
+        'sessionId': 'not-a-uuid',
+      }),
+      isFalse,
+    );
+  });
+
   test('malformed route identifiers are rejected', () {
     expect(
       FcmService.resolveTapRoute({
@@ -59,5 +76,30 @@ void main() {
   test('unknown type resolves to no route', () {
     final route = FcmService.resolveTapRoute({'type': 'SOMETHING_ELSE'});
     expect(route, isNull);
+  });
+
+  test('malformed consultation request identifier is rejected', () {
+    expect(
+      FcmService.resolveTapRoute({
+        'type': 'CONSULTATION_REQUEST',
+        'requestId': '../admin',
+      }),
+      isNull,
+    );
+  });
+
+  test('cold-start route waits for readiness and flushes exactly once', () {
+    final service = FcmService();
+    final navigated = <String>[];
+    service.queueRouteForTesting('/emergency/alert/session');
+
+    service.flushPendingRoute();
+    expect(service.pendingRouteForTesting, isNotNull);
+
+    service.markNavigationReady(navigate: navigated.add);
+    service.markNavigationReady(navigate: navigated.add);
+
+    expect(navigated, ['/emergency/alert/session']);
+    expect(service.pendingRouteForTesting, isNull);
   });
 }

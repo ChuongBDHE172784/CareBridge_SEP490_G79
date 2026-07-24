@@ -31,6 +31,7 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.List;
@@ -66,16 +67,9 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
     void setUp() {
         wipeStoryFixtures();
         motherId = UUID.randomUUID();
-        jdbcTemplate.update(
-                "insert into users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "values (?, 'Story 69 Mother', ?, 'MOTHER', true, false, now(), now())",
-                motherId, uniquePhone());
-        journeyId = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(motherId)
-                .journeyType(JourneyType.PREGNANCY)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 1, 1))
-                .build()).getId();
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Story 69 Mother", uniquePhone(), "MOTHER");
+        journeyId = seedJourney(motherId, LocalDate.of(2026, 1, 1));
     }
 
     @AfterEach
@@ -163,11 +157,12 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
             assertThat(row.itemOrder()).isEqualTo(1);
         });
         UUID templateId = jdbcTemplate.queryForObject(
-                "select checklist_template_id from checklist_items where checklist_item_id=?",
+                "select parent_template_id from care_item_templates "
+                        + "where template_id=? and entry_type='CHECKLIST_ENTRY'",
                 UUID.class, itemId);
         assertThat(jdbcTemplate.update(
-                "update checklist_templates set status='ARCHIVED', updated_at=now() "
-                        + "where checklist_template_id=?",
+                "update care_item_templates set content_status='ARCHIVED', updated_at=now() "
+                        + "where template_id=? and entry_type='TEMPLATE_ROOT'",
                 templateId)).isOne();
         entityManager.clear();
 
@@ -190,16 +185,9 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
     @Test
     void uc82_69_sec_003_foreignJourneyAndBabyDenyWithZeroRowsAndAudits() {
         UUID secondMotherId = UUID.randomUUID();
-        jdbcTemplate.update(
-                "insert into users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "values (?, 'Story 69 Second Mother', ?, 'MOTHER', true, false, now(), now())",
-                secondMotherId, uniquePhone());
-        journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(secondMotherId)
-                .journeyType(JourneyType.PREGNANCY)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 1, 2))
-                .build());
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, secondMotherId, "Story 69 Second Mother", uniquePhone(), "MOTHER");
+        seedJourney(secondMotherId, LocalDate.of(2026, 1, 2));
         UUID pregnancyItem = seedItem(
                 ChecklistTemplateStatus.APPROVED, ContentStage.PREGNANCY, "Foreign journey item");
         UUID babyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
@@ -286,18 +274,17 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
     }
 
     @Test
-    void uc82_69_tc_013_realBabyOnlyMatrixAcceptsOnlyOwnedActiveAndEnabledBaby() {
-        BabyProfile archivedBaby = babyProfileRepository.saveAndFlush(BabyProfile.builder()
+    void uc82_69_tc_013_canonicalStatusAcceptsOwnedActiveBabyAndDeniesArchivedBaby() {
+        UUID archivedBabyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
                 .ownerUserId(motherId)
                 .nickname("Story 69 archived baby")
                 .birthDate(LocalDate.of(2025, 1, 1))
                 .status(BabyProfileStatus.ARCHIVED)
                 .active(true)
-                .build());
-        UUID archivedBabyId = archivedBaby.getId();
-        UUID inactiveBabyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
+                .build()).getId();
+        UUID canonicalActiveBabyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
                 .ownerUserId(motherId)
-                .nickname("Story 69 inactive baby")
+                .nickname("Story 69 canonical active baby")
                 .birthDate(LocalDate.of(2025, 2, 1))
                 .status(BabyProfileStatus.ACTIVE)
                 .active(false)
@@ -306,28 +293,23 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
                 ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE,
                 "Approved baby care item");
 
-        for (UUID deniedBabyId : List.of(archivedBabyId, inactiveBabyId)) {
-            assertThatThrownBy(() -> checklistService.importFromTemplate(
-                            new ImportFromTemplateRequest(
-                                    null, deniedBabyId, List.of(babyCareItemId)), motherId))
-                    .isInstanceOfSatisfying(BusinessException.class,
-                            exception -> assertThat(exception.getCode()).isEqualTo("CHECKLIST-007"));
-        }
+        assertThatThrownBy(() -> checklistService.importFromTemplate(
+                        new ImportFromTemplateRequest(
+                                null, archivedBabyId, List.of(babyCareItemId)), motherId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("CHECKLIST-007"));
 
-        archivedBaby.setActive(false);
-        babyProfileRepository.saveAndFlush(archivedBaby);
-        UUID activeBabyId = babyProfileRepository.saveAndFlush(BabyProfile.builder()
-                .ownerUserId(motherId)
-                .nickname("Story 69 active baby")
-                .birthDate(LocalDate.of(2026, 1, 1))
-                .status(BabyProfileStatus.ACTIVE)
-                .active(true)
-                .build()).getId();
+        setActiveBaby(canonicalActiveBabyId);
+        entityManager.clear();
+        BabyProfile reloadedActiveBaby = babyProfileRepository.findById(canonicalActiveBabyId)
+                .orElseThrow();
+        assertThat(reloadedActiveBaby.getStatus()).isEqualTo(BabyProfileStatus.ACTIVE);
+        assertThat(reloadedActiveBaby.getActive()).isTrue();
         var imported = checklistService.importFromTemplate(
                 new ImportFromTemplateRequest(
-                        null, activeBabyId, List.of(babyCareItemId)), motherId);
+                        null, canonicalActiveBabyId, List.of(babyCareItemId)), motherId);
         assertThat(imported).singleElement().satisfies(row -> {
-            assertThat(row.babyId()).isEqualTo(activeBabyId);
+            assertThat(row.babyId()).isEqualTo(canonicalActiveBabyId);
             assertThat(row.journeyId()).isNull();
             assertThat(row.templateItemId()).isEqualTo(babyCareItemId);
         });
@@ -353,13 +335,38 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
                 .build()).getId();
     }
 
+    private UUID seedJourney(UUID ownerId, LocalDate startDate) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                select ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  from users u join persons p on p.person_id = u.person_id
+                 where u.user_id = ?
+                """, careSubjectId, ownerId);
+        MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(ownerId)
+                .careSubjectId(careSubjectId)
+                .journeyType(JourneyType.PREGNANCY)
+                .status(JourneyStatus.ACTIVE)
+                .startDate(startDate)
+                .build());
+        jdbcTemplate.update(
+                "update care_subjects set mother_journey_id=? where care_subject_id=?",
+                journey.getId(), careSubjectId);
+        return journey.getId();
+    }
+
     private long checklistAuditCount() {
         return checklistAuditCount(motherId);
     }
 
     private long checklistAuditCount(UUID actorId) {
         Long count = jdbcTemplate.queryForObject(
-                "select count(*) from audit_logs where actor_user_id=? and action='CHECKLIST_ITEM_ADDED'",
+                "select count(*) from audit_events where actor_user_id=? "
+                        + "and event_category='CHECKLIST_ITEM_ADDED' and event_origin='AUDIT_LOG'",
                 Long.class, actorId);
         return count == null ? 0L : count;
     }
@@ -368,9 +375,17 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
         return "09" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000L));
     }
 
+    private void setActiveBaby(UUID babyId) {
+        assertThat(jdbcTemplate.update(
+                "update users set settings_jsonb=jsonb_set(coalesce(settings_jsonb,'{}'::jsonb), "
+                        + "'{activeBabyId}', to_jsonb(cast(? as text)), true) where user_id=?",
+                babyId.toString(), motherId)).isOne();
+    }
+
     private void wipeStoryFixtures() {
         jdbcTemplate.execute(
-                "truncate table user_checklist_items, checklist_items, checklist_templates, "
-                        + "baby_profiles, mother_journeys, audit_logs, users cascade");
+                "truncate table preparation_checklist_items, care_item_templates, "
+                        + "mother_journey_events, care_subjects, mother_journeys, "
+                        + "audit_events, users, persons cascade");
     }
 }

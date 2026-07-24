@@ -27,9 +27,9 @@ import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.notification.service.IConsultationRequestNotificationService;
 import com.carebridge.backend.security.entity.User;
-import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.OriginDashboard;
 import com.carebridge.backend.triage.RiskLevel;
@@ -191,15 +191,16 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
         try (Connection locker = dataSource.getConnection();
                 ExecutorService executor = Executors.newSingleThreadExecutor()) {
             locker.setAutoCommit(false);
-            lockRow(locker, "SELECT id FROM intake_sessions WHERE id = ? FOR UPDATE", fixture.intake().getId());
+            lockRow(locker, "SELECT triage_session_id FROM triage_sessions "
+                    + "WHERE triage_session_id = ? FOR UPDATE", fixture.intake().getId());
 
             Future<HandoffCreateResponse> handoff = executor.submit(() -> handoffService.create(
                     fixture.intake().getId(),
                     handoffRequest(key, fixture.expert().getExpertProfileId()),
                     fixture.mother().getId()));
-            awaitBlockedQuery("intake_sessions");
-            update(locker, "UPDATE expert_profiles SET trust_status = 'REVOKED' "
-                    + "WHERE expert_profile_id = ?", fixture.expert().getExpertProfileId());
+            awaitBlockedQuery("triage_sessions");
+            update(locker, "UPDATE professional_profiles SET trust_status = 'REVOKED' "
+                    + "WHERE professional_profile_id = ?", fixture.expert().getExpertProfileId());
             locker.commit();
 
             assertHandoffFailure(handoff, "HANDOFF-004");
@@ -218,16 +219,17 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
             locker.setAutoCommit(false);
             lockRow(
                     locker,
-                    "SELECT id FROM evidence_sources WHERE id = ? FOR UPDATE",
+                    "SELECT knowledge_source_id FROM knowledge_sources "
+                            + "WHERE knowledge_source_id = ? FOR UPDATE",
                     fixture.evidenceSource().getId());
 
             Future<HandoffCreateResponse> handoff = executor.submit(() -> handoffService.create(
                     fixture.intake().getId(),
                     handoffRequest(key, fixture.expert().getExpertProfileId()),
                     fixture.mother().getId()));
-            awaitBlockedQuery("evidence_sources");
-            update(locker, "UPDATE evidence_sources SET status = 'DEPRECATED', updated_at = now() "
-                    + "WHERE id = ?", fixture.evidenceSource().getId());
+            awaitBlockedQuery("knowledge_sources");
+            update(locker, "UPDATE knowledge_sources SET status = 'DEPRECATED', updated_at = now() "
+                    + "WHERE knowledge_source_id = ?", fixture.evidenceSource().getId());
             locker.commit();
 
             HandoffCreateResponse response = handoff.get(10, TimeUnit.SECONDS);
@@ -239,36 +241,15 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
     }
 
     private Fixture seedFixture(boolean withCitation) {
-        User mother = userRepository.save(User.builder()
-                .phone(uniquePhone())
-                .name("Story 6.8 race Mother")
-                .role(Role.MOTHER)
-                .emailVerified(false)
-                .phoneVerified(false)
-                .enabled(true)
-                .locked(false)
-                .build());
-        User expertUser = userRepository.save(User.builder()
-                .phone(uniquePhone())
-                .name("Story 6.8 race Expert")
-                .role(Role.EXPERT)
-                .emailVerified(false)
-                .phoneVerified(false)
-                .enabled(true)
-                .locked(false)
-                .build());
+        User mother = seedUser("Story 6.8 race Mother", "MOTHER");
+        User expertUser = seedUser("Story 6.8 race Expert", "EXPERT");
         ExpertProfile expert = expertProfileRepository.save(ExpertProfile.builder()
                 .userId(expertUser.getId())
                 .specialty("Maternal health")
                 .verificationStatus(VerificationStatus.APPROVED)
                 .trustStatus(TrustStatus.ACTIVE)
                 .build());
-        MotherJourney journey = motherJourneyRepository.save(MotherJourney.builder()
-                .ownerUserId(mother.getId())
-                .journeyType(JourneyType.POSTPARTUM)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 7, 1))
-                .build());
+        MotherJourney journey = seedJourney(mother.getId());
         IntakeSession intake = createIntake(mother.getId(), journey.getId());
         EvidenceSource evidence = withCitation ? seedEvidenceSource() : null;
         List<Map<String, Object>> citations = evidence == null
@@ -277,6 +258,36 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
         when(triageService.getResult(intake.getId(), mother.getId())).thenReturn(
                 triageResult(intake, citations));
         return new Fixture(mother, expertUser, expert, journey, intake, evidence);
+    }
+
+    private User seedUser(String name, String role) {
+        UUID userId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(jdbcTemplate, userId, name, uniquePhone(), role);
+        return userRepository.findById(userId).orElseThrow();
+    }
+
+    private MotherJourney seedJourney(UUID ownerId) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
+                """, careSubjectId, ownerId);
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(ownerId)
+                .careSubjectId(careSubjectId)
+                .journeyType(JourneyType.POSTPARTUM)
+                .status(JourneyStatus.ACTIVE)
+                .startDate(LocalDate.of(2026, 7, 1))
+                .build());
+        jdbcTemplate.update(
+                "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
+                journey.getId(), careSubjectId);
+        return journey;
     }
 
     private IntakeSession seedAdditionalIntake(Fixture fixture) {
@@ -339,9 +350,9 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
 
     private void assertAggregateCounts(
             UUID ownerId, long requests, long consents, long contexts, long citations) {
-        assertThat(count("consultation_requests", "requester_user_id", ownerId))
+        assertThat(count("expert_consultation_requests", "requester_user_id", ownerId))
                 .isEqualTo(requests);
-        assertThat(count("consent_grants", "user_id", ownerId)).isEqualTo(consents);
+        assertThat(count("data_permissions", "owner_user_id", ownerId)).isEqualTo(consents);
         assertThat(count("consultation_context_shares", "owner_user_id", ownerId))
                 .isEqualTo(contexts);
         Long citationCount = jdbcTemplate.queryForObject(

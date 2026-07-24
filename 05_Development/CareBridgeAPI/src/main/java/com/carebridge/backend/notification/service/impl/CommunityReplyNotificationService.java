@@ -131,6 +131,13 @@ public class CommunityReplyNotificationService implements ICommunityReplyNotific
                 record.getStatus().name(),
                 record.getCreatedAt(),
                 record.getSentAt(),
+                record.isRead(),
+                record.getReadAt(),
+                record.getChannel(),
+                record.getFcmMessageId(),
+                record.getAttemptCount(),
+                record.getFailedAt(),
+                record.getUpdatedAt(),
                 record.getMetadata()
         );
     }

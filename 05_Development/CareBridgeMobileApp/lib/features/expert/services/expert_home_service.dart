@@ -20,7 +20,6 @@ class ExpertHomeService {
   Future<ExpertHomeSnapshot> loadSnapshot() async {
     ExpertHomeProfile profile = const ExpertHomeProfile();
     var online = false;
-    var consultationCount = 0;
     var requestCount = 0;
     var questionCount = 0;
     ExpertConsultation? nextConsultation;
@@ -96,7 +95,6 @@ class ExpertHomeService {
     return ExpertHomeSnapshot(
       profile: profile,
       online: online,
-      consultationCount: consultationCount,
       requestCount: requestCount,
       questionCount: questionCount,
       nextConsultation: nextConsultation,
@@ -120,7 +118,6 @@ class ExpertHomeService {
 class ExpertHomeSnapshot {
   final ExpertHomeProfile profile;
   final bool online;
-  final int consultationCount;
   final int requestCount;
   final int questionCount;
   final ExpertConsultation? nextConsultation;
@@ -129,10 +126,9 @@ class ExpertHomeSnapshot {
   const ExpertHomeSnapshot({
     required this.profile,
     required this.online,
-    required this.consultationCount,
-    required this.requestCount,
+    this.requestCount = 0,
     required this.questionCount,
-    required this.nextConsultation,
+    this.nextConsultation,
     required this.supportRequests,
   });
 }

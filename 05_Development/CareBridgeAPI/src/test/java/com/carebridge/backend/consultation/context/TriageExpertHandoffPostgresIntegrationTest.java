@@ -18,9 +18,9 @@ import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
-import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.OriginDashboard;
 import com.carebridge.backend.triage.RiskLevel;
@@ -57,36 +57,15 @@ class TriageExpertHandoffPostgresIntegrationTest extends AbstractPostgresIntegra
     @Test
     @Transactional
     void createReplayAndParticipantReadKeepOneCommittedAggregatePerKey() {
-        User mother = userRepository.save(User.builder()
-                .phone(uniquePhone())
-                .name("Story 6.8 Mother")
-                .role(Role.MOTHER)
-                .emailVerified(false)
-                .phoneVerified(false)
-                .enabled(true)
-                .locked(false)
-                .build());
-        User expertUser = userRepository.save(User.builder()
-                .phone(uniquePhone())
-                .name("Story 6.8 Expert")
-                .role(Role.EXPERT)
-                .emailVerified(false)
-                .phoneVerified(false)
-                .enabled(true)
-                .locked(false)
-                .build());
+        User mother = seedUser("Story 6.8 Mother", "MOTHER");
+        User expertUser = seedUser("Story 6.8 Expert", "EXPERT");
         ExpertProfile expert = expertProfileRepository.save(ExpertProfile.builder()
                 .userId(expertUser.getId())
                 .specialty("Maternal health")
                 .verificationStatus(VerificationStatus.APPROVED)
                 .trustStatus(TrustStatus.ACTIVE)
                 .build());
-        MotherJourney journey = motherJourneyRepository.save(MotherJourney.builder()
-                .ownerUserId(mother.getId())
-                .journeyType(JourneyType.POSTPARTUM)
-                .status(JourneyStatus.ACTIVE)
-                .startDate(LocalDate.of(2026, 7, 1))
-                .build());
+        MotherJourney journey = seedJourney(mother.getId());
         IntakeSession intake = intakeRepository.save(IntakeSession.builder()
                 .userId(mother.getId())
                 .stage(TriageStage.POSTPARTUM)
@@ -127,16 +106,18 @@ class TriageExpertHandoffPostgresIntegrationTest extends AbstractPostgresIntegra
         assertThat(replayed.consultationRequestId()).isEqualTo(created.consultationRequestId());
         assertThat(replayed.sharedAt()).isEqualTo(created.sharedAt());
         assertThat(expertView.context().riskSummary()).isEqualTo("Reviewed minimum context");
-        assertThat(count("consultation_requests", "requester_user_id", mother.getId())).isOne();
-        assertThat(count("consent_grants", "user_id", mother.getId())).isOne();
+        assertThat(count("expert_consultation_requests", "requester_user_id", mother.getId())).isOne();
+        assertThat(count("data_permissions", "owner_user_id", mother.getId())).isOne();
         assertThat(count("consultation_context_shares", "owner_user_id", mother.getId())).isOne();
         assertThat(countCitationsForRequest(created.consultationRequestId())).isZero();
         entityManager.flush();
         List<String> featureAudits = jdbcTemplate.queryForList(
                 """
-                SELECT new_value_json::text
-                FROM audit_logs
-                WHERE actor_user_id = ? AND entity_type = 'TRIAGE_EXPERT_HANDOFF'
+                SELECT after_payload_jsonb::text
+                FROM audit_events
+                WHERE actor_user_id = ?
+                  AND resource_type = 'TRIAGE_EXPERT_HANDOFF'
+                  AND event_origin = 'AUDIT_LOG'
                 """,
                 String.class,
                 mother.getId());
@@ -147,6 +128,36 @@ class TriageExpertHandoffPostgresIntegrationTest extends AbstractPostgresIntegra
                     assertThat(details).doesNotContain(
                             "Reviewed minimum context", "riskSummary", "citations", "symptoms");
                 });
+    }
+
+    private User seedUser(String name, String role) {
+        UUID userId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(jdbcTemplate, userId, name, uniquePhone(), role);
+        return userRepository.findById(userId).orElseThrow();
+    }
+
+    private MotherJourney seedJourney(UUID ownerId) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
+                """, careSubjectId, ownerId);
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(ownerId)
+                .careSubjectId(careSubjectId)
+                .journeyType(JourneyType.POSTPARTUM)
+                .status(JourneyStatus.ACTIVE)
+                .startDate(LocalDate.of(2026, 7, 1))
+                .build());
+        jdbcTemplate.update(
+                "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
+                journey.getId(), careSubjectId);
+        return journey;
     }
 
     private long count(String table, String ownerColumn, UUID ownerId) {

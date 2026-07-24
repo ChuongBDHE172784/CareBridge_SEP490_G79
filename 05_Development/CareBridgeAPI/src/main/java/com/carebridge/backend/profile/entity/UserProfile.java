@@ -19,7 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "user_profiles")
+@Table(name = "persons")
 @Getter
 @Setter
 @Builder
@@ -29,10 +29,10 @@ public class UserProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "profile_id", updatable = false, nullable = false)
+    @Column(name = "person_id", updatable = false, nullable = false)
     private UUID profileId;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    @jakarta.persistence.Transient
     private UUID userId;
 
     @Size(max = 500)

@@ -19,7 +19,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "auth_challenges")
 @Getter
 @Setter
 @Builder
@@ -29,14 +29,14 @@ public class PasswordResetToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "challenge_id", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
+    @Column(name = "challenge_hash", nullable = false, length = 255)
     private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)
@@ -46,10 +46,25 @@ public class PasswordResetToken {
     private Instant usedAt;
 
     @Builder.Default
-    @Column(name = "attempt_count", nullable = false)
+    @Column(name = "attempts", nullable = false)
     private int attemptCount = 0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Builder.Default
+    @Column(name = "challenge_type", nullable = false, length = 40, updatable = false)
+    private String challengeType = "PASSWORD_RESET";
+
+    @Builder.Default
+    @Column(name = "status", nullable = false, length = 30)
+    private String status = "PENDING";
+
+    @jakarta.persistence.PrePersist
+    @jakarta.persistence.PreUpdate
+    void canonicalState() {
+        status = usedAt != null ? "USED" :
+                expiresAt != null && !expiresAt.isAfter(Instant.now()) ? "EXPIRED" : "PENDING";
+    }
 }

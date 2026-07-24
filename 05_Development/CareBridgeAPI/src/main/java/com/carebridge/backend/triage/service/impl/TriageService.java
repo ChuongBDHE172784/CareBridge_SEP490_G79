@@ -22,6 +22,7 @@ import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.repository.IntakeSessionWriter;
+import com.carebridge.backend.triage.repository.TriageSessionEvidenceWriter;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.LifecycleBinding;
 import com.carebridge.backend.triage.service.LifecycleIntakeBindingService;
@@ -45,6 +46,9 @@ import java.time.Instant;
 import java.net.URI;
 import java.net.http.HttpTimeoutException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -90,6 +94,9 @@ public class TriageService implements ITriageService {
 
     @Autowired
     private IntakeSessionWriter intakeSessionWriter;
+
+    @Autowired(required = false)
+    private TriageSessionEvidenceWriter triageSessionEvidenceWriter;
 
     @Autowired
     public TriageService(
@@ -410,9 +417,11 @@ public class TriageService implements ITriageService {
             boolean needsMore = "NEED_MORE_INFO".equals(triageStatus);
             session.setStatus(needsMore ? IntakeStatus.NEED_MORE_INFO : IntakeStatus.COMPLETED);
             session.setCompletedAt(needsMore ? null : Instant.now());
+            applyCanonicalSnapshot(session, aiResponse);
             session = intakeSessionRepository.save(session);
 
             if (session.getStatus() == IntakeStatus.COMPLETED && session.getRiskLevel() != null) {
+                persistValidatedEvidence(session);
                 publishCompletionEvents(session, userId);
             }
 
@@ -712,9 +721,47 @@ public class TriageService implements ITriageService {
         }
         session.setStatus(complete ? IntakeStatus.COMPLETED : IntakeStatus.NEED_MORE_INFO);
         session.setCompletedAt(complete ? Instant.now() : null);
+        applyCanonicalSnapshot(session, session.getRawAiResponse());
         intakeSessionRepository.save(session);
         if (complete && session.getRiskLevel() != null) {
+            persistValidatedEvidence(session);
             publishCompletionEvents(session, userId);
+        }
+    }
+
+    private void applyCanonicalSnapshot(IntakeSession session, String responseJson) {
+        try {
+            JsonNode root = objectMapper.readTree(responseJson);
+            String canonical = objectMapper.writeValueAsString(root);
+            JsonNode result = root.path("triageResult").isObject()
+                    ? root.path("triageResult") : root;
+            String responseSchemaVersion = result.path("responseSchemaVersion").asText(null);
+            session.setResultJson(canonical);
+            session.setSchemaVersion(responseSchemaVersion == null
+                    || responseSchemaVersion.isBlank() ? "1" : responseSchemaVersion);
+            session.setContentHash(sha256(canonical));
+            session.setEmergency(session.getRiskLevel() == RiskLevel.RED);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Unable to persist canonical triage snapshot", exception);
+        }
+    }
+
+    private void persistValidatedEvidence(IntakeSession session) {
+        if (triageSessionEvidenceWriter == null) {
+            return;
+        }
+        List<Map<String, Object>> citations = readValidatedCitations(session);
+        List<Map<String, Object>> claims = readValidatedClaims(session, citations);
+        triageSessionEvidenceWriter.writeValidated(session.getId(), citations, claims);
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 

@@ -103,13 +103,13 @@ class PrivacySettingsServiceTest {
         UpdatePrivacySettingsRequest request = new UpdatePrivacySettingsRequest(
                 ProfileVisibility.PUBLIC, true, true, false);
 
-        when(privacySettingsRepository.findByUserId(userId)).thenReturn(Optional.of(settings));
-        when(privacySettingsRepository.save(any(PrivacySettings.class))).thenReturn(settings);
+        when(privacySettingsRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(settings));
 
         PrivacySettingsResponse response = service.updateSettings(userId, request, principal);
 
         assertThat(response).isNotNull();
-        verify(privacySettingsRepository).save(settings);
+        verify(privacySettingsRepository).patchFields(
+                userId, ProfileVisibility.PUBLIC, true, true, false);
         verify(auditService, atLeastOnce()).log(eq(AuditAction.PRIVACY_SETTINGS_UPDATED), eq(userId), any(), any(), any());
     }
 
@@ -124,7 +124,7 @@ class PrivacySettingsServiceTest {
                 .isInstanceOf(AuthorizationException.class)
                 .hasMessageContaining("Access denied");
 
-        verify(privacySettingsRepository, never()).findByUserId(any());
+        verifyNoInteractions(privacySettingsRepository);
     }
 
     @Test
@@ -140,7 +140,7 @@ class PrivacySettingsServiceTest {
                 .isInstanceOf(AuthorizationException.class)
                 .hasMessageContaining("Access denied");
 
-        verify(privacySettingsRepository, never()).findByUserId(any());
+        verifyNoInteractions(privacySettingsRepository);
     }
 
     @Test
@@ -163,8 +163,7 @@ class PrivacySettingsServiceTest {
         UpdatePrivacySettingsRequest request = new UpdatePrivacySettingsRequest(
                 null, null, false, null);
 
-        when(privacySettingsRepository.findByUserId(userId)).thenReturn(Optional.of(settings));
-        when(privacySettingsRepository.save(any(PrivacySettings.class))).thenReturn(settings);
+        when(privacySettingsRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(settings));
 
         service.updateSettings(userId, request, principal);
 
@@ -186,17 +185,15 @@ class PrivacySettingsServiceTest {
         UpdatePrivacySettingsRequest request = new UpdatePrivacySettingsRequest(
                 ProfileVisibility.PRIVATE, null, null, null);
 
-        when(privacySettingsRepository.findByUserId(userId)).thenReturn(Optional.of(settings));
-        when(privacySettingsRepository.save(any(PrivacySettings.class))).thenReturn(settings);
+        when(privacySettingsRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(settings));
 
         service.updateSettings(userId, request, principal);
 
         // locationSharingEnabled, analyticsConsent, dataExportOptOut should stay as original
-        ArgumentCaptor<PrivacySettings> captor = ArgumentCaptor.forClass(PrivacySettings.class);
-        verify(privacySettingsRepository).save(captor.capture());
-        PrivacySettings saved = captor.getValue();
-        assertThat(saved.getProfileVisibility()).isEqualTo(ProfileVisibility.PRIVATE);
-        assertThat(saved.isLocationSharingEnabled()).isFalse();
-        assertThat(saved.isAnalyticsConsent()).isFalse();
+        verify(privacySettingsRepository).patchFields(
+                userId, ProfileVisibility.PRIVATE, null, null, null);
+        assertThat(settings.getProfileVisibility()).isEqualTo(ProfileVisibility.PRIVATE);
+        assertThat(settings.isLocationSharingEnabled()).isFalse();
+        assertThat(settings.isAnalyticsConsent()).isFalse();
     }
 }

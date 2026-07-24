@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "token_blacklist")
+@Table(name = "auth_revocations")
 @Getter
 @Setter
 @Builder
@@ -25,6 +25,7 @@ public class TokenBlacklist {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "revocation_id")
     private UUID id;
 
     @Column(name = "token_hash", nullable = false, unique = true, length = 255)
@@ -38,4 +39,10 @@ public class TokenBlacklist {
 
     @Column(name = "reason", length = 100)
     private String reason; // "session_revoke", "logout", "admin_action"
+
+    @jakarta.persistence.PrePersist
+    void canonicalDefaults() {
+        if (revokedAt == null) revokedAt = Instant.now();
+        if (reason == null || reason.isBlank()) reason = "TOKEN_REVOKED";
+    }
 }

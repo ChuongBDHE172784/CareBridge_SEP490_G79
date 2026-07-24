@@ -10,6 +10,7 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -90,7 +91,9 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     void acceptLockFirstCommitsBeforeTrustMutationContinues() throws Exception {
         Fixture fixture = seedFixture();
         int bookingsBefore = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM consultation_bookings", Integer.class);
+                "SELECT COUNT(*) FROM archived_consultation_records "
+                        + "WHERE legacy_table = 'consultation_bookings'",
+                Integer.class);
         acceptBarrier.enable();
         Future<?> accept = executor.submit(
                 () -> service.accept(fixture.requestId(), fixture.expertUserId()));
@@ -114,7 +117,9 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
         assertThat(requestStatus(fixture.requestId())).isEqualTo("ACCEPTED");
         assertThat(conversationCount(fixture)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM consultation_bookings", Integer.class))
+                        "SELECT COUNT(*) FROM archived_consultation_records "
+                                + "WHERE legacy_table = 'consultation_bookings'",
+                        Integer.class))
                 .isEqualTo(bookingsBefore);
         assertThat(expertProfileRepository
                         .findById(fixture.expertProfileId())
@@ -184,13 +189,13 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
         seedUser(motherId, "Accept Mother", "MOTHER");
         seedUser(expertUserId, "Accept Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
         jdbcTemplate.update("""
-                INSERT INTO consultation_requests
+                INSERT INTO expert_consultation_requests
                     (id, requester_user_id, expert_profile_id, client_request_id,
                      topic, description, status, expires_at, created_at, updated_at)
                 VALUES (?, ?, ?, ?, 'Nutrition', 'Description', 'PENDING',
@@ -200,16 +205,12 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     }
 
     private void seedUser(UUID id, String name, String role) {
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, true, false, now(), now())
-                """, id, name, uniquePhone(), role);
+        CanonicalUserFixture.insertUser(jdbcTemplate, id, name, uniquePhone(), role);
     }
 
     private String requestStatus(UUID requestId) {
         return jdbcTemplate.queryForObject(
-                "SELECT status FROM consultation_requests WHERE id=?",
+                "SELECT status FROM expert_consultation_requests WHERE id=?",
                 String.class,
                 requestId);
     }
@@ -217,8 +218,9 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     private int conversationCount(Fixture fixture) {
         return jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM direct_conversations
-                 WHERE mother_user_id=? AND expert_user_id=?
+                SELECT COUNT(*) FROM archived_realtime_records
+                 WHERE legacy_table = 'direct_conversations'
+                   AND mother_user_id=? AND expert_user_id=?
                 """,
                 Integer.class,
                 fixture.motherId(),

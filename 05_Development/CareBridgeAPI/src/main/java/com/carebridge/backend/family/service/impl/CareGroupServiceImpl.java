@@ -362,6 +362,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-061",
                         "The group owner cannot be removed");
             }
+            if (target.getInviteStatus() != InviteStatus.ACCEPTED) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-060",
+                        "Only an accepted member can be removed");
+            }
 
             UUID memberId = target.getId();
             UUID targetUserUuid = target.getUserId();

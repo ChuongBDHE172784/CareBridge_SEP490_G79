@@ -70,7 +70,10 @@ class _ExpertContributionListScreenState
 
   Future<void> _loadPage(int page) async {
     try {
-      final result = await _service.listMyContributions(page: page, size: _pageSize);
+      final result = await _service.listMyContributions(
+        page: page,
+        size: _pageSize,
+      );
       if (mounted) {
         setState(() {
           if (page == 0) {
@@ -85,9 +88,9 @@ class _ExpertContributionListScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải danh sách: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải danh sách: $e')));
       }
     }
   }
@@ -129,15 +132,15 @@ class _ExpertContributionListScreenState
       await _service.deleteContribution(id);
       if (mounted) {
         setState(() => _contributions.removeWhere((c) => c.id == id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa bản nháp')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã xóa bản nháp')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xóa thất bại: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Xóa thất bại: $e')));
       }
     }
   }
@@ -197,14 +200,16 @@ class _ExpertContributionListScreenState
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.lock_outline,
-                                      size: 16, color: Colors.amber),
+                                  const Icon(
+                                    Icons.lock_outline,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Chưa đủ điều kiện',
-                                    style: theme.textTheme.labelMedium?.copyWith(
-                                      color: Colors.amber[800],
-                                    ),
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(color: Colors.amber[800]),
                                   ),
                                 ],
                               ),
@@ -227,7 +232,9 @@ class _ExpertContributionListScreenState
                               Icon(
                                 Icons.article_outlined,
                                 size: 64,
-                                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                                color: cs.onSurfaceVariant.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -268,9 +275,9 @@ class _ExpertContributionListScreenState
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       sliver: SliverList.separated(
-                        itemCount: _contributions.length +
-                            (_loadingMore ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemCount:
+                            _contributions.length + (_loadingMore ? 1 : 0),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           if (index >= _contributions.length) {
                             return const Center(
@@ -283,8 +290,8 @@ class _ExpertContributionListScreenState
                           final c = _contributions[index];
                           return _ContributionCard(
                             contribution: c,
-                            onTap: () => context.push(
-                                '/expert/contributions/${c.id}'),
+                            onTap: () =>
+                                context.push('/expert/contributions/${c.id}'),
                             onDelete: c.status == 'DRAFT'
                                 ? () => _deleteContribution(c.id)
                                 : null,
@@ -325,7 +332,8 @@ class _ExpertContributionListScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('Gửi duyệt bài viết?'),
         content: const Text(
-            'Sau khi gửi, bạn sẽ không thể chỉnh sửa cho đến khi được duyệt hoặc từ chối.'),
+          'Sau khi gửi, bạn sẽ không thể chỉnh sửa cho đến khi được duyệt hoặc từ chối.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -345,15 +353,16 @@ class _ExpertContributionListScreenState
       await _service.submitContribution(id);
       if (mounted) {
         await _loadInitial();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã gửi duyệt thành công')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gửi duyệt thất bại: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gửi duyệt thất bại: $e')));
       }
     }
   }
@@ -461,10 +470,15 @@ class _ContributionCard extends StatelessWidget {
                       if (onDelete != null)
                         TextButton.icon(
                           onPressed: onDelete,
-                          icon: const Icon(Icons.delete_outline,
-                              size: 16, color: Colors.red),
-                          label: Text('Xóa',
-                              style: TextStyle(color: Colors.red)),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: Colors.red,
+                          ),
+                          label: Text(
+                            'Xóa',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                     ],
                   ),

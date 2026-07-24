@@ -13,21 +13,37 @@ public class LifecycleSafetyOutcomeInsertRepository {
     private final JdbcTemplate jdbcTemplate;
 
     public UUID insertIfAbsent(LifecycleSafetyOutcome outcome) {
-        return jdbcTemplate.query("""
-                INSERT INTO lifecycle_safety_outcomes (
-                    outcome_id, owner_user_id, journey_id, intake_session_id,
-                    emergency_session_id, risk_level, stage, origin_dashboard,
-                    origin_reference_id, origin_action, occurred_at, recorded_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (intake_session_id) DO NOTHING
-                RETURNING outcome_id
+        int inserted = jdbcTemplate.update("""
+                INSERT INTO mother_journey_events (
+                    event_id, mother_journey_id, owner_user_id, event_type,
+                    event_payload_jsonb, schema_version, actor_user_id,
+                    effective_at, recorded_at, legacy_source, legacy_id,
+                    triage_session_id, emergency_session_id, risk_level, stage,
+                    origin_dashboard, origin_reference_id, origin_action)
+                VALUES (?, ?, ?, 'SAFETY_OUTCOME',
+                    jsonb_build_object(
+                        'intakeSessionId', CAST(? AS text),
+                        'emergencySessionId', CAST(? AS text),
+                        'riskLevel', ?,
+                        'stage', ?,
+                        'originDashboard', ?,
+                        'originReferenceId', CAST(? AS text),
+                        'originAction', ?),
+                    '1', ?, ?, ?, 'SAFETY_OUTCOME', CAST(? AS text),
+                    ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (legacy_source, legacy_id) DO NOTHING
                 """,
-                resultSet -> resultSet.next() ? resultSet.getObject(1, UUID.class) : null,
-                outcome.getId(), outcome.getOwnerUserId(), outcome.getJourneyId(),
+                outcome.getId(), outcome.getJourneyId(), outcome.getOwnerUserId(),
                 outcome.getIntakeSessionId(), outcome.getEmergencySessionId(),
                 outcome.getRiskLevel().name(), outcome.getStage().name(),
                 outcome.getOriginDashboard().name(), outcome.getOriginReferenceId(),
-                outcome.getOriginAction().name(), Timestamp.from(outcome.getOccurredAt()),
-                Timestamp.from(outcome.getRecordedAt()));
+                outcome.getOriginAction().name(), outcome.getOwnerUserId(),
+                Timestamp.from(outcome.getOccurredAt()), Timestamp.from(outcome.getRecordedAt()),
+                outcome.getIntakeSessionId(),
+                outcome.getIntakeSessionId(), outcome.getEmergencySessionId(),
+                outcome.getRiskLevel().name(), outcome.getStage().name(),
+                outcome.getOriginDashboard().name(), outcome.getOriginReferenceId(),
+                outcome.getOriginAction().name());
+        return inserted == 1 ? outcome.getId() : null;
     }
 }

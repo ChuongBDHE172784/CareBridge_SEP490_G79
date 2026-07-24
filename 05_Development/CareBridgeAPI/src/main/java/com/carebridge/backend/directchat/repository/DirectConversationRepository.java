@@ -35,18 +35,18 @@ public interface DirectConversationRepository extends JpaRepository<DirectConver
     @Modifying
     @Transactional
     @Query(value = """
-            UPDATE direct_conversations
+            UPDATE archived_realtime_records
             SET mother_last_read_at = GREATEST(COALESCE(mother_last_read_at, '-infinity'::timestamptz), :cursorAt)
-            WHERE conversation_id = :id AND mother_user_id = :currentUserId
+            WHERE archive_id = :id AND legacy_table='direct_conversations' AND mother_user_id = :currentUserId
             """, nativeQuery = true)
     int markMotherRead(@Param("id") UUID id, @Param("currentUserId") UUID currentUserId, @Param("cursorAt") Instant cursorAt);
 
     @Modifying
     @Transactional
     @Query(value = """
-            UPDATE direct_conversations
+            UPDATE archived_realtime_records
             SET expert_last_read_at = GREATEST(COALESCE(expert_last_read_at, '-infinity'::timestamptz), :cursorAt)
-            WHERE conversation_id = :id AND expert_user_id = :currentUserId
+            WHERE archive_id = :id AND legacy_table='direct_conversations' AND expert_user_id = :currentUserId
             """, nativeQuery = true)
     int markExpertRead(@Param("id") UUID id, @Param("currentUserId") UUID currentUserId, @Param("cursorAt") Instant cursorAt);
 }

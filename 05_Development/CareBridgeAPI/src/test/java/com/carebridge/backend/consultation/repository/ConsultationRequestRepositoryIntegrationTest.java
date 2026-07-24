@@ -6,6 +6,7 @@ import com.carebridge.backend.consultation.entity.ConsultationRequest;
 import com.carebridge.backend.consultation.entity.ConsultationRequestStatus;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -28,12 +29,12 @@ class ConsultationRequestRepositoryIntegrationTest
         seedUser(motherId, "MOTHER");
         seedUser(expertUserId, "EXPERT");
         jdbcTemplate.update("""
-                insert into expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status,
+                insert into professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status,
                      trust_status, created_at, updated_at)
                 values (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
-        String injection = "'; DROP TABLE consultation_requests; --";
+        String injection = "'; DROP TABLE expert_consultation_requests; --";
         Instant now = Instant.now();
         ConsultationRequest request = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
@@ -54,17 +55,14 @@ class ConsultationRequestRepositoryIntegrationTest
         assertThat(stored.getTopic()).isEqualTo(injection);
         assertThat(stored.getDescription()).isEqualTo(injection);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from consultation_requests where id = ?",
+                "select count(*) from expert_consultation_requests where id = ?",
                 Integer.class,
                 request.getId())).isEqualTo(1);
     }
 
     private void seedUser(UUID id, String role) {
-        jdbcTemplate.update("""
-                insert into users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                values (?, 'Repository Test User', ?, ?, true, false, now(), now())
-                """, id, uniquePhone(), role);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, id, "Repository Test User", uniquePhone(), role);
     }
 
     private static String uniquePhone() {

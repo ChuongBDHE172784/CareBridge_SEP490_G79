@@ -81,14 +81,19 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
             double rating) {
         UUID userId = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
+        String phone = uniquePhone();
+        jdbcTemplate.update("""
+                INSERT INTO persons(person_id, display_name, phone_number, created_at, updated_at)
+                VALUES (?, ?, ?, now(), now())
+                """, userId, name, phone);
         jdbcTemplate.update("""
                 INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, 'EXPERT', true, false, now(), now())
-                """, userId, name, uniquePhone());
+                    (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'EXPERT', true, false, now(), now())
+                """, userId, userId, name, phone);
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      rating_avg, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, now(), now())
                 """, profileId, userId, specialty, verificationStatus, trustStatus, rating);
@@ -107,7 +112,8 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
         jdbcTemplate.update(
                 "UPDATE users SET enabled = ?, locked = ?, suspended_until = "
                         + suspendedUntil
-                        + " WHERE user_id = (SELECT user_id FROM expert_profiles WHERE expert_profile_id = ?)",
+                        + " WHERE user_id = (SELECT user_id FROM professional_profiles "
+                        + "WHERE professional_profile_id = ?)",
                 enabled,
                 locked,
                 profileId);

@@ -2,48 +2,141 @@ package com.carebridge.backend.notification.repository;
 
 import com.carebridge.backend.notification.entity.NotificationPreference;
 import com.carebridge.backend.notification.entity.NotificationType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
+/** Persists notification preferences inside the canonical users.settings_jsonb document. */
 @Repository
-public interface NotificationPreferenceRepository extends JpaRepository<NotificationPreference, UUID> {
+@RequiredArgsConstructor
+public class NotificationPreferenceRepository {
+    private static final String KEY = "notifications";
+    private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
-    /**
-     * Find all preferences for a given user.
-     */
-    List<NotificationPreference> findByUserId(UUID userId);
+    public List<NotificationPreference> findByUserId(UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return List.of();
+        Map<String, Object> values = section(user);
+        List<NotificationPreference> result = new ArrayList<>();
+        values.forEach((type, value) -> {
+            if (value instanceof Map<?, ?> channels) {
+                toPreference(userId, type, channels).ifPresent(result::add);
+            }
+        });
+        return result;
+    }
 
-    /**
-     * Find preference for a specific user and notification type.
-     */
-    Optional<NotificationPreference> findByUserIdAndNotificationType(UUID userId, NotificationType notificationType);
+    public Optional<NotificationPreference> findByUserIdAndNotificationType(UUID userId, NotificationType type) {
+        return findByUserId(userId).stream().filter(p -> p.getNotificationType() == type).findFirst();
+    }
 
-    /**
-     * Delete all preferences for a user (used when account is deleted).
-     */
-    void deleteByUserId(UUID userId);
+    public NotificationPreference save(NotificationPreference preference) {
+        patchChannels(
+                preference.getUserId(),
+                preference.getNotificationType(),
+                preference.getPushEnabled(),
+                preference.getEmailEnabled(),
+                preference.getInAppEnabled());
+        if (preference.getPreferenceId() == null) preference.setPreferenceId(UUID.randomUUID());
+        if (preference.getCreatedAt() == null) preference.setCreatedAt(Instant.now());
+        preference.setUpdatedAt(Instant.now());
+        return preference;
+    }
 
-    /**
-     * Check if push notifications are enabled for a user and type.
-     * Used by UC-158 / UC-159 / UC-160 / UC-161 preference gate.
-     *
-     * @return true if a preference row exists with push_enabled = true,
-     *         or if NO row exists (default = enabled).
-     */
-    @Query("""
-            SELECT CASE
-                WHEN COUNT(p) = 0 THEN true
-                ELSE MAX(CASE WHEN p.pushEnabled = true THEN 1 ELSE 0 END) = 1
-            END
-            FROM NotificationPreference p
-            WHERE p.userId = :userId AND p.notificationType = :type
-            """)
-    boolean isPushEnabled(@Param("userId") UUID userId, @Param("type") NotificationType type);
+    public void patchChannels(
+            UUID userId,
+            NotificationType type,
+            Boolean pushEnabled,
+            Boolean emailEnabled,
+            Boolean inAppEnabled) {
+        int updated = jdbcTemplate.update("""
+                UPDATE users
+                   SET settings_jsonb = jsonb_set(
+                       jsonb_set(
+                           CASE WHEN jsonb_typeof(settings_jsonb) = 'object'
+                                THEN settings_jsonb ELSE '{}'::jsonb END,
+                           '{notifications}',
+                           CASE WHEN jsonb_typeof(settings_jsonb -> 'notifications') = 'object'
+                                THEN settings_jsonb -> 'notifications' ELSE '{}'::jsonb END,
+                           true
+                       ),
+                       ARRAY['notifications', CAST(? AS text)],
+                       CASE WHEN jsonb_typeof(
+                                    (CASE WHEN jsonb_typeof(settings_jsonb -> 'notifications') = 'object'
+                                          THEN settings_jsonb -> 'notifications' ELSE '{}'::jsonb END)
+                                    -> CAST(? AS text)
+                                ) = 'object'
+                            THEN (CASE WHEN jsonb_typeof(settings_jsonb -> 'notifications') = 'object'
+                                      THEN settings_jsonb -> 'notifications' ELSE '{}'::jsonb END)
+                                 -> CAST(? AS text)
+                            ELSE '{}'::jsonb END
+                       || jsonb_strip_nulls(jsonb_build_object(
+                           'pushEnabled', CAST(? AS boolean),
+                           'emailEnabled', CAST(? AS boolean),
+                           'inAppEnabled', CAST(? AS boolean)
+                       )),
+                       true
+                   ),
+                       updated_at = now()
+                 WHERE user_id = ?
+                """,
+                type.name(), type.name(), type.name(),
+                pushEnabled, emailEnabled, inAppEnabled, userId);
+        if (updated != 1) {
+            throw new NoSuchElementException("User not found: " + userId);
+        }
+    }
+
+    public void deleteByUserId(UUID userId) {
+        jdbcTemplate.update("""
+                UPDATE users
+                   SET settings_jsonb =
+                       (CASE WHEN jsonb_typeof(settings_jsonb) = 'object'
+                             THEN settings_jsonb ELSE '{}'::jsonb END) - 'notifications',
+                       updated_at = now()
+                 WHERE user_id = ?
+                """, userId);
+    }
+
+    public boolean isPushEnabled(UUID userId, NotificationType type) {
+        return findByUserIdAndNotificationType(userId, type)
+                .map(p -> Boolean.TRUE.equals(p.getPushEnabled())).orElse(true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> section(User user) {
+        Object value = user.getSettings() == null ? null : user.getSettings().get(KEY);
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+    }
+
+    private Optional<NotificationPreference> toPreference(
+            UUID userId, String type, Map<?, ?> channels) {
+        try {
+            return Optional.of(NotificationPreference.builder()
+                    .preferenceId(UUID.nameUUIDFromBytes((userId + ":" + type).getBytes()))
+                    .userId(userId)
+                    .notificationType(NotificationType.valueOf(type))
+                    .pushEnabled(flag(channels, "pushEnabled"))
+                    .emailEnabled(flag(channels, "emailEnabled"))
+                    .inAppEnabled(flag(channels, "inAppEnabled"))
+                    .build());
+        } catch (IllegalArgumentException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private boolean flag(Map<?, ?> values, String key) {
+        Object value = values.get(key);
+        return value == null || Boolean.parseBoolean(value.toString());
+    }
 }

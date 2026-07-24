@@ -33,6 +33,7 @@ import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.AdminChecklistTemplateServiceImpl;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -108,29 +109,73 @@ class AdminChecklistTemplateServiceImplTest {
 
     // CHKTPL-TC-004 — regression guard for the immutable-list bug (Logic Issue L3)
     @Test
-    void update_replaceItems_deletesOldAndSavesNew() {
+    void update_reconcilesExistingIdsAndSoftDeactivatesOmittedItems() {
         ChecklistTemplate template = makeTemplate();
         ChecklistItem old1 = makeItem(template, 1);
+        old1.setIsActive(false);
         ChecklistItem old2 = makeItem(template, 2);
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of(old1, old2));
+        when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(old1, old2));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
                 "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
-                List.of(new ChecklistItemRequest("Mục 1", 1, true),
+                List.of(new ChecklistItemRequest(old1.getId(), "Mục 1", 1, true),
                         new ChecklistItemRequest("Mục 2", 2, false),
                         new ChecklistItemRequest("Mục 3", 3, true)));
 
         AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
 
-        verify(checklistItemRepository).deleteAll(List.of(old1, old2));
+        verify(checklistItemRepository, never()).deleteAll(anyList());
         ArgumentCaptor<List<ChecklistItem>> captor = ArgumentCaptor.forClass(List.class);
         verify(checklistItemRepository).saveAll(captor.capture());
-        assertEquals(3, captor.getValue().size());
+        assertEquals(4, captor.getValue().size());
+        assertEquals(old1.getId(), response.getItems().getFirst().getId());
+        assertTrue(old1.getIsActive());
+        assertEquals(false, old2.getIsActive());
         assertEquals(3, response.getItems().size());
         verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_UPDATED), eq(ADMIN_ID), eq("ChecklistTemplate"), any(), any());
+    }
+
+    @Test
+    void update_duplicateExistingItemId_rejectsRequest() {
+        ChecklistTemplate template = makeTemplate();
+        ChecklistItem existing = makeItem(template, 1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(existing));
+        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
+                "Updated", "Updated", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
+                List.of(
+                        new ChecklistItemRequest(existing.getId(), "First", 1, true),
+                        new ChecklistItemRequest(existing.getId(), "Duplicate", 2, true)));
+
+        ContentException error = assertThrows(
+                ContentException.class, () -> service.update(TEMPLATE_ID, request, ADMIN_ID));
+
+        assertEquals("CHKTPL-009", error.getCode());
+        verify(checklistItemRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void update_itemIdFromAnotherTemplate_rejectsRequest() {
+        ChecklistTemplate template = makeTemplate();
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of());
+        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
+                "Updated", "Updated", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
+                List.of(new ChecklistItemRequest(UUID.randomUUID(), "Foreign", 1, true)));
+
+        ContentException error = assertThrows(
+                ContentException.class, () -> service.update(TEMPLATE_ID, request, ADMIN_ID));
+
+        assertEquals("CHKTPL-009", error.getCode());
+        verify(checklistItemRepository, never()).saveAll(anyList());
     }
 
     // CHKTPL-TC-005

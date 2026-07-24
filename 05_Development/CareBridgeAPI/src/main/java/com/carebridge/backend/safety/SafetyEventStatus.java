@@ -4,5 +4,7 @@ public enum SafetyEventStatus {
     OPEN,
     CONFIRMED_SAFE,
     FALSE_POSITIVE,
+    TIMED_OUT,
+    ESCALATION_REQUESTED,
     EMERGENCY_ALERT_SENT
 }

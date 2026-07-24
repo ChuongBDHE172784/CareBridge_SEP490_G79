@@ -156,16 +156,15 @@ class ChecklistImportBoundaryTest {
                 List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE))
                 .thenReturn(List.of(item));
         UUID persistedId = UUID.randomUUID();
-        when(checklistRepository.insertImportedIfAbsent(
+        when(checklistRepository.insertBabyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(userId),
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(babyId),
                 org.mockito.ArgumentMatchers.eq(itemId),
                 org.mockito.ArgumentMatchers.eq("Baby care database text"),
                 org.mockito.ArgumentMatchers.eq(6)))
                 .thenReturn(1);
-        when(checklistRepository.findImportedByExactScope(userId, null, babyId, itemId))
+        when(checklistRepository.findBabyImportedByExactScope(userId, babyId, itemId))
                 .thenReturn(Optional.of(UserChecklistItem.builder()
                         .id(persistedId)
                         .ownerUserId(userId)
@@ -195,9 +194,8 @@ class ChecklistImportBoundaryTest {
     }
 
     @Test
-    void legacyBabyImportReusesSnapshotAndReturnsNormalizedBabyOnlyScope() {
+    void babyImportReusesCanonicalBabyOnlySnapshot() {
         UUID userId = UUID.randomUUID();
-        UUID legacyJourneyId = UUID.randomUUID();
         UUID babyId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
         BabyProfile baby = BabyProfile.builder()
@@ -220,7 +218,6 @@ class ChecklistImportBoundaryTest {
         UserChecklistItem legacySnapshot = UserChecklistItem.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(userId)
-                .journeyId(legacyJourneyId)
                 .babyId(babyId)
                 .templateItemId(itemId)
                 .itemText("Legacy database text")
@@ -232,16 +229,15 @@ class ChecklistImportBoundaryTest {
         when(templateItemRepository.findAllAvailableByIdInForUpdate(
                 List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE))
                 .thenReturn(List.of(item));
-        when(checklistRepository.insertImportedIfAbsent(
+        when(checklistRepository.insertBabyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(userId),
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(babyId),
                 org.mockito.ArgumentMatchers.eq(itemId),
                 org.mockito.ArgumentMatchers.eq("Legacy database text"),
                 org.mockito.ArgumentMatchers.eq(4)))
                 .thenReturn(0);
-        when(checklistRepository.findImportedByExactScope(userId, null, babyId, itemId))
+        when(checklistRepository.findBabyImportedByExactScope(userId, babyId, itemId))
                 .thenReturn(Optional.of(legacySnapshot));
 
         var result = service.importFromTemplate(
@@ -311,7 +307,7 @@ class ChecklistImportBoundaryTest {
                 .isFalse();
 
         int validation = source.indexOf("findAllAvailableByIdInForUpdate");
-        int firstSave = source.indexOf("checklistRepository.insertImportedIfAbsent");
+        int firstSave = source.indexOf("checklistRepository.insertBabyImportedIfAbsent");
         assertThat(validation)
                 .as("TC-010/INT-001: complete validation must precede the first write")
                 .isGreaterThanOrEqualTo(0);
@@ -365,20 +361,19 @@ class ChecklistImportBoundaryTest {
                 ContentStage.PREGNANCY)).thenReturn(List.of(itemA, itemB));
         UUID savedBId = UUID.fromString("69000000-0000-0000-0000-000000000105");
         UUID savedAId = UUID.fromString("69000000-0000-0000-0000-000000000106");
-        when(checklistRepository.insertImportedIfAbsent(
+        when(checklistRepository.insertJourneyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(userId),
                 org.mockito.ArgumentMatchers.eq(journeyId),
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(1);
-        when(checklistRepository.findImportedByExactScope(userId, journeyId, null, itemBId))
+        when(checklistRepository.findJourneyImportedByExactScope(userId, journeyId, itemBId))
                 .thenReturn(Optional.of(UserChecklistItem.builder()
                         .id(savedBId).ownerUserId(userId).journeyId(journeyId)
                         .templateItemId(itemBId).itemText("Database B").itemOrder(4).build()));
-        when(checklistRepository.findImportedByExactScope(userId, journeyId, null, itemAId))
+        when(checklistRepository.findJourneyImportedByExactScope(userId, journeyId, itemAId))
                 .thenReturn(Optional.of(UserChecklistItem.builder()
                         .id(savedAId).ownerUserId(userId).journeyId(journeyId)
                         .templateItemId(itemAId).itemText("Database A").itemOrder(17).build()));
@@ -387,19 +382,17 @@ class ChecklistImportBoundaryTest {
                 new ImportFromTemplateRequest(null, null, List.of(itemBId, itemAId, itemBId)), userId);
 
         var persistenceOrder = org.mockito.Mockito.inOrder(checklistRepository);
-        persistenceOrder.verify(checklistRepository).insertImportedIfAbsent(
+        persistenceOrder.verify(checklistRepository).insertJourneyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(userId),
                 org.mockito.ArgumentMatchers.eq(journeyId),
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(itemBId),
                 org.mockito.ArgumentMatchers.eq("Database B"),
                 org.mockito.ArgumentMatchers.eq(4));
-        persistenceOrder.verify(checklistRepository).insertImportedIfAbsent(
+        persistenceOrder.verify(checklistRepository).insertJourneyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(userId),
                 org.mockito.ArgumentMatchers.eq(journeyId),
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(itemAId),
                 org.mockito.ArgumentMatchers.eq("Database A"),
                 org.mockito.ArgumentMatchers.eq(17));

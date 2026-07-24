@@ -92,20 +92,18 @@ class StructuredIntakeServiceTest {
                 UUID.randomUUID(), SESSION_ID, USER_ID, RiskLevel.RED, Instant.now());
         when(structuredIntakeDataRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
         when(structuredIntakeDataRepository.save(any(StructuredIntakeData.class)))
-                .thenAnswer(invocation -> {
-                    StructuredIntakeData data = invocation.getArgument(0);
-                    data.setId(UUID.randomUUID());
-                    return data;
-                });
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         structuredIntakeService.extract(redEvent);
 
         verifyNoInteractions(geminiExtractionClient);
         ArgumentCaptor<StructuredIntakeData> captor = ArgumentCaptor.forClass(StructuredIntakeData.class);
         verify(structuredIntakeDataRepository).save(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(SESSION_ID);
         assertThat(captor.getValue().getSessionId()).isEqualTo(SESSION_ID);
         assertThat(captor.getValue().getSymptomList()).isEqualTo("[]");
         assertThat(captor.getValue().isEmergencyFlag()).isTrue();
+        assertThat(captor.getValue().isEmergency()).isTrue();
         assertThat(captor.getValue().getDurationDays()).isNull();
         assertThat(captor.getValue().getIntensity()).isNull();
         verify(eventPublisher).publishEvent(any(StructuredIntakeExtracted.class));

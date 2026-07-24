@@ -1,6 +1,8 @@
 package com.carebridge.backend.security.filter;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,12 +25,17 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -43,7 +50,7 @@ import org.springframework.test.web.servlet.MockMvc;
  *  F-AS-05  No Bearer token                → 401 (filter no-ops, entry point fires)
  */
 @WebMvcTest(
-        value = ContentController.class,
+        value = {ContentController.class, RoleProbeController.class},
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
 @Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
@@ -81,10 +88,14 @@ class JwtAuthenticationFilterAccountStateTest {
     }
 
     private User buildUser(boolean enabled, boolean locked) {
+        return buildUser(enabled, locked, Role.MOTHER);
+    }
+
+    private User buildUser(boolean enabled, boolean locked, Role role) {
         return User.builder()
                 .enabled(enabled)
                 .locked(locked)
-                .role(Role.MOTHER)
+                .role(role)
                 .phone("0900000001")
                 .build();
     }
@@ -165,5 +176,98 @@ class JwtAuthenticationFilterAccountStateTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("SESSION_REVOKED"))
                 .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void staleTokenRoleDiffersFromDatabase_shouldUseCurrentDatabaseAuthority() throws Exception {
+        when(jwtTokenProvider.getAuthorities(FAKE_TOKEN))
+                .thenReturn(List.of(new SimpleGrantedAuthority("ROLE_MOTHER")));
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(buildUser(true, false, Role.FAMILY)));
+
+        mockMvc.perform(get("/test/role/family").header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/test/role/mother").header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isForbidden());
+
+        verify(jwtTokenProvider, never()).getAuthorities(FAKE_TOKEN);
+    }
+
+    @Test
+    void stalePrivilegedTokenWithUnassignedDatabaseRole_shouldHaveNoRoleAuthority()
+            throws Exception {
+        when(jwtTokenProvider.getAuthorities(FAKE_TOKEN))
+                .thenReturn(List.of(new SimpleGrantedAuthority("ROLE_FAMILY")));
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(buildUser(true, false, null)));
+
+        mockMvc.perform(get("/test/role/family").header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isForbidden());
+
+        verify(jwtTokenProvider, never()).getAuthorities(FAKE_TOKEN);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Role.class)
+    void everyCanonicalDatabaseRoleGetsOnlyItsOwnAuthority(Role databaseRole) throws Exception {
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(buildUser(true, false, databaseRole)));
+
+        String allowedPath = "/test/role/" + databaseRole.name().toLowerCase().replace('_', '-');
+        Role deniedRole = databaseRole == Role.MOTHER ? Role.FAMILY : Role.MOTHER;
+        String deniedPath = "/test/role/" + deniedRole.name().toLowerCase().replace('_', '-');
+
+        mockMvc.perform(get(allowedPath).header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(deniedPath).header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
+                .andExpect(status().isForbidden());
+
+        verify(jwtTokenProvider, never()).getAuthorities(FAKE_TOKEN);
+    }
+}
+
+@RestController
+class RoleProbeController {
+
+    @GetMapping("/test/role/family")
+    @PreAuthorize("hasRole('FAMILY')")
+    String familyOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/mother")
+    @PreAuthorize("hasRole('MOTHER')")
+    String motherOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/expert")
+    @PreAuthorize("hasRole('EXPERT')")
+    String expertOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/moderator")
+    @PreAuthorize("hasRole('MODERATOR')")
+    String moderatorOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/content-admin")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
+    String contentAdminOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/system-admin")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    String systemAdminOnly() {
+        return "ok";
+    }
+
+    @GetMapping("/test/role/partner")
+    @PreAuthorize("hasRole('PARTNER')")
+    String partnerOnly() {
+        return "ok";
     }
 }

@@ -185,18 +185,19 @@ class CareCalendarServiceImplTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("FAM-003"));
     }
 
-    // ── FAM-UC74-TC-015: Response contains only care_tasks, no reminders ─────
+    // FAM-UC74-TC-015: response contains only canonical family tasks.
 
     @Test
     void getCalendar_noReminderDataInResponse_onlyCareTasksReturned() {
         stubHappyPath(GROUP_CG_001, ACC_001);
         CareTask task = makeTask(GROUP_CG_001, JULY_TASK_DUE_AT);
+        task.setId(UUID.randomUUID());
         when(taskRepository.findByCareGroupIdAndDueAtBetween(GROUP_CG_001, RANGE_START, RANGE_END))
                 .thenReturn(List.of(task));
 
         SharedCareCalendarResponse response = service.getCalendar(GROUP_CG_001, ACC_001, RANGE_START, RANGE_END);
 
-        // All items must have a taskId (from care_tasks table); no reminder-specific fields
+        // All items must have a taskId from family_tasks; no reminder-specific fields.
         assertThat(response.getItems()).allSatisfy(item -> {
             assertThat(item.getTaskId()).isNotNull();
             assertThat(item.getTitle()).isNotBlank();

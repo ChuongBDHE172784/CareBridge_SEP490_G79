@@ -17,9 +17,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "checklist_templates")
+@Table(name = "care_item_templates")
+@SQLRestriction("entry_type = 'TEMPLATE_ROOT'")
 @Getter
 @Setter
 @Builder
@@ -29,10 +31,10 @@ public class ChecklistTemplate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "checklist_template_id", updatable = false, nullable = false)
+    @Column(name = "template_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "name", length = 200)
+    @Column(name = "title", length = 500)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -41,12 +43,16 @@ public class ChecklistTemplate {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "content_status", nullable = false, length = 20)
     private ChecklistTemplateStatus status = ChecklistTemplateStatus.DRAFT;
 
     @Builder.Default
-    @Column(name = "version_no", nullable = false)
+    @Column(name = "version", nullable = false)
     private Integer versionNo = 1;
+
+    @Builder.Default
+    @Column(name = "entry_type", nullable = false, length = 30)
+    private String entryType = "TEMPLATE_ROOT";
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

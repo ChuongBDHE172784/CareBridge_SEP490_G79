@@ -138,7 +138,14 @@ def _build_intake_response(
     force_cautious = bool(
         not red_flag
         and reached_question_limit(round_number)
-        and (questions or intake.stage in MATERNAL_STAGES)
+        and (
+            questions
+            or intake.stage in MATERNAL_STAGES
+            or (
+                intake.stage in {"INFANT", "TODDLER"}
+                and not normalized_details
+            )
+        )
     )
     triage_result = run_triage(
         intake,

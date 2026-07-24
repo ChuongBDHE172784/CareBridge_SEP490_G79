@@ -101,11 +101,11 @@ class ChecklistServiceTest {
         when(templateItemRepository.findAllAvailableByIdInForUpdate(
                 List.of(TEMPLATE_ID), ChecklistTemplateStatus.APPROVED, ContentStage.PRE_PREGNANCY))
                 .thenReturn(List.of(makeSourceTemplateItem()));
-        when(checklistRepository.insertImportedIfAbsent(
-                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+        when(checklistRepository.insertJourneyImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), eq(TEMPLATE_ID),
                 eq("Register at hospital"), eq(1)))
                 .thenReturn(inserted);
-        when(checklistRepository.findImportedByExactScope(OWNER_ID, JOURNEY_ID, null, TEMPLATE_ID))
+        when(checklistRepository.findJourneyImportedByExactScope(OWNER_ID, JOURNEY_ID, TEMPLATE_ID))
                 .thenReturn(Optional.of(makeTemplateItem()));
     }
 
@@ -239,8 +239,8 @@ class ChecklistServiceTest {
                 new ImportFromTemplateRequest(JOURNEY_ID, null, List.of(TEMPLATE_ID, TEMPLATE_ID)), OWNER_ID);
 
         assertThat(result).hasSize(1);
-        verify(checklistRepository, times(1)).insertImportedIfAbsent(
-                any(), eq(OWNER_ID), eq(JOURNEY_ID), isNull(), eq(TEMPLATE_ID),
+        verify(checklistRepository, times(1)).insertJourneyImportedIfAbsent(
+                any(), eq(OWNER_ID), eq(JOURNEY_ID), eq(TEMPLATE_ID),
                 eq("Register at hospital"), eq(1));
         verify(auditService, times(1)).log(
                 eq(AuditAction.CHECKLIST_ITEM_ADDED), eq(OWNER_ID),
