@@ -11,4 +11,5 @@ public interface IMasterDataService {
     List<SpecialtyResponse> getSpecialties();
     List<HospitalResponse> getHospitals(String provinceId, String districtId, String query);
     Optional<HospitalResponse> getHospitalById(String hospitalId);
+    List<WardResponse> getWardsByDistrict(String districtId);
 }

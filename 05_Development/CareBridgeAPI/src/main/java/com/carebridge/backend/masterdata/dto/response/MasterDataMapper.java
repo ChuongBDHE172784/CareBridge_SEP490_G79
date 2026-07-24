@@ -4,6 +4,7 @@ import com.carebridge.backend.masterdata.entity.District;
 import com.carebridge.backend.masterdata.entity.Hospital;
 import com.carebridge.backend.masterdata.entity.Province;
 import com.carebridge.backend.masterdata.entity.Specialty;
+import com.carebridge.backend.masterdata.entity.Ward;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -50,6 +51,17 @@ public class MasterDataMapper {
    .level(entity.getLevel())
    .type(entity.getType())
    .phone(entity.getPhone())
+   .build();
+ }
+
+ public WardResponse toWardResponse(Ward entity) {
+  if (entity == null) return null;
+  return WardResponse.builder()
+   .wardId(entity.getWardId())
+   .districtId(entity.getDistrictId())
+   .provinceId(entity.getProvinceId())
+   .name(entity.getName())
+   .nameEn(entity.getNameEn())
    .build();
  }
 }

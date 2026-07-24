@@ -45,4 +45,10 @@ public class MasterDataController {
     public ResponseEntity<ApiResponse<HospitalResponse>> getHospital(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success(service.getHospitalById(id).orElseThrow()));
     }
+
+    @GetMapping("/wards")
+    public ResponseEntity<ApiResponse<List<WardResponse>>> getWards(
+            @RequestParam String districtId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getWardsByDistrict(districtId)));
+    }
 }
