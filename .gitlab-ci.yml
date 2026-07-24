@@ -158,26 +158,52 @@ test_ai_evaluation_galileo:
 
 semgrep_sast:
   stage: security
-  image: returntocorp/semgrep:1.123.0
+  image:
+    name: semgrep/semgrep:1.123.0
+    entrypoint: [""]
+  dependencies: []
+  variables:
+    GIT_DEPTH: "0"
   rules: *all_rules
-  script: ["semgrep scan --error --config p/default --config .semgrep.yml --gitlab-sast --output semgrep-report.json"]
+  script:
+    - |
+      baseline_ref=""
+      if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then
+        baseline_ref="$CI_MERGE_REQUEST_DIFF_BASE_SHA"
+      elif [ -n "${CI_COMMIT_BEFORE_SHA:-}" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        baseline_ref="$CI_COMMIT_BEFORE_SHA"
+      elif git rev-parse "${CI_COMMIT_SHA}^" >/dev/null 2>&1; then
+        baseline_ref="${CI_COMMIT_SHA}^"
+      fi
+
+      if [ -n "$baseline_ref" ]; then
+        semgrep scan --oss-only --jobs 2 --error --baseline-commit "$baseline_ref" --config p/default --config .semgrep.yml --gitlab-sast-output semgrep-report.json .
+      else
+        semgrep scan --oss-only --jobs 2 --error --config p/default --config .semgrep.yml --gitlab-sast-output semgrep-report.json .
+      fi
   artifacts:
     when: always
     reports: {sast: semgrep-report.json}
 trivy_fs:
   stage: security
-  image: aquasec/trivy:0.59.1
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  dependencies: []
   rules: *all_rules
   script:
-    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --format template --template '@contrib/gitlab.tpl' --output trivy-fs-report.json .
-    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity CRITICAL --exit-code 1 .
+    - trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --format template --template '@/contrib/gitlab.tpl' --output trivy-fs-report.json .
+    - trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity CRITICAL --exit-code 1 .
   artifacts: {when: always, paths: [trivy-fs-report.json]}
 trivy_fs_high_advisory:
   stage: security
-  image: aquasec/trivy:0.59.1
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  dependencies: []
   rules: *all_rules
   allow_failure: true
-  script: ["trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
+  script: ["trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
 
 ai_evaluation_security:
   stage: security
