@@ -6,9 +6,11 @@ import com.carebridge.backend.family.entity.CareTask;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -28,6 +30,7 @@ class CareTaskRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
 
     @Autowired private CareGroupRepository groupRepository;
     @Autowired private CareTaskRepository careTaskRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private UUID group1Id;
     private UUID group2Id;
@@ -35,6 +38,8 @@ class CareTaskRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
 
     @BeforeEach
     void setUp() {
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_001, "Calendar owner", null, "MOTHER");
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_002, "Calendar member", null, "FAMILY");
         // Create two groups
         CareGroup group1 = groupRepository.save(CareGroup.builder()
                 .ownerUserId(ACC_001)

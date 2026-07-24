@@ -18,7 +18,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "device_measurements")
+@Table(name = "health_observations")
 @Getter
 @Setter
 @Builder
@@ -28,13 +28,13 @@ public class DeviceMeasurement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "device_measurement_id", updatable = false, nullable = false)
+    @Column(name = "health_observation_id", updatable = false, nullable = false)
     private UUID deviceMeasurementId;
 
-    @Column(name = "connection_id", nullable = false)
+    @Column(name = "device_connection_id", nullable = false)
     private UUID connectionId;
 
-    @Column(name = "measurement_type", nullable = false, length = 50)
+    @Column(name = "observation_type", nullable = false, length = 50)
     private String measurementType;
 
     @Column(name = "value_numeric", precision = 10, scale = 2)
@@ -46,7 +46,7 @@ public class DeviceMeasurement {
     @Column(name = "unit", length = 30)
     private String unit;
 
-    @Column(name = "measured_at", nullable = false)
+    @Column(name = "observed_at", nullable = false)
     private Instant measuredAt;
 
     @Column(name = "source_record_id")
@@ -55,7 +55,7 @@ public class DeviceMeasurement {
     @Column(name = "quality_label", length = 30)
     private String qualityLabel;
 
-    @Column(name = "raw_metadata_json", columnDefinition = "jsonb")
+    @Column(name = "raw_payload_jsonb", columnDefinition = "jsonb")
     private String rawMetadataJson;
 
     @CreationTimestamp

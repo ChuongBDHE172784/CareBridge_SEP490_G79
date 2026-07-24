@@ -29,7 +29,7 @@ public class PrivacySettingsServiceImpl implements PrivacySettingsService {
         authorizeOwner(requesterId, userId);
 
         PrivacySettings settings = getOrCreateDefault(userId);
-        auditService.log(AuditAction.PRIVACY_SETTINGS_ACCESSED, userId, "privacy_settings", userId.toString(), null);
+        auditService.log(AuditAction.PRIVACY_SETTINGS_ACCESSED, userId, "PrivacySettings", userId.toString(), null);
         return toResponse(settings);
     }
 
@@ -61,11 +61,11 @@ public class PrivacySettingsServiceImpl implements PrivacySettingsService {
         PrivacySettings saved = privacySettingsRepository.save(settings);
 
         if (analyticsConsentWithdrawn) {
-            auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "privacy_settings",
+            auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "PrivacySettings",
                     "analytics_consent_withdrawn", null);
         }
 
-        auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "privacy_settings", userId.toString(), request);
+        auditService.log(AuditAction.PRIVACY_SETTINGS_UPDATED, userId, "PrivacySettings", userId.toString(), request);
         return toResponse(saved);
     }
 

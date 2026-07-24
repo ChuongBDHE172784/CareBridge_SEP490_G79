@@ -17,6 +17,11 @@ String get _baseUrl {
   return 'http://localhost:8080';
 }
 
+/// Base URL shared by API-backed media rendered outside the HTTP client.
+/// Rich HTML images may contain relative paths; Flutter web must resolve them
+/// against the API server rather than the Flutter development server.
+String get apiBaseUrl => _baseUrl;
+
 Map<String, String> _headers({String? token}) {
   final effective = token ?? AuthState.instance.accessToken;
   final headers = <String, String>{'Content-Type': 'application/json'};

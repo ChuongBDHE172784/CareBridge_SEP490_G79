@@ -78,7 +78,7 @@ public class BabyController {
 
     // UC32: Update baby profile
     @PutMapping("/{babyId}")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<UpdateBabyProfileResponse>> updateBabyProfile(
             @PathVariable UUID babyId,
             @Valid @RequestBody UpdateBabyProfileRequest request,
@@ -90,7 +90,7 @@ public class BabyController {
 
     // UC33: Archive baby profile
     @PostMapping("/{babyId}/archive")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY_MEMBER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ArchiveBabyProfileResponse>> archiveBabyProfile(
             @PathVariable UUID babyId,
             Principal principal) {

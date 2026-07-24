@@ -4,7 +4,7 @@
 | Field              | Value                                                      |
 | ------------------ | ---------------------------------------------------------- |
 | **Document ID**    | `CB-CONTENT-IMP-012`                                       |
-| **Version**        | `1.0`                                                      |
+| **Version**        | `1.1` — v1.0 (ADR-RTE-001..007) Approved và implement xong; **v1.1 (ADR-RTE-008, ADR-RTE-009) Approved và implement xong 2026-07-23** |
 | **Date**           | `2026-07-23`                                               |
 | **Status**         | `Approved`                                                 |
 | **Document Owner** | `HuyND`                                                    |
@@ -27,6 +27,8 @@
 | 2026-07-23 | AI Agent — Claude | **Sửa lại kết luận trước đó — không chính xác.** Sau khi user tự cập nhật `.env` với Cloudinary credential hợp lệ và yêu cầu tiếp tục QA, live test phát hiện luồng ảnh **vẫn hỏng hoàn toàn** (không phải do thiếu credential như báo cáo trước). Root cause thật: 2 bug trong `CloudinaryStorageService` — `store()` bỏ qua accessMode caller truyền vào; `generateSignedUrl()` tạo URL không hợp lệ cho PRIVATE/AUTHENTICATED khiến Cloudinary trả 400 cho **mọi** request loại đó, kể cả ảnh xác thực danh tính chuyên gia. Đã trình bày rõ 2 bug + phương án sửa gộp chung cho user, nhận "tiến hành", implement + test GREEN. |
 | 2026-07-23 | AI Agent — Claude | **User hỏi lại: "không tách riêng với luồng chuyên gia được à" — thiết kế lại hoàn toàn (ADR-RTE-007 bản cuối).** Revert toàn bộ phần sửa gộp chung (`store()` không còn nhận `accessMode`, `generateSignedUrl()` PRIVATE/AUTHENTICATED quay lại y hệt code cũ — verify bằng `git diff HEAD` = rỗng cho cả 2). Thêm method **mới, độc lập** `storePublic()` chỉ dùng cho ảnh nội dung PUBLIC; `FileServiceImpl` chỉ gọi `storePublic()` khi `accessMode==PUBLIC`, mọi trường hợp khác (toàn bộ luồng chuyên gia) không đổi. Hệ quả: bug ảnh PRIVATE/AUTHENTICATED (HTTP 400, ảnh hưởng CCCD/selfie chuyên gia) **cố ý không sửa**, vẫn còn nguyên — ghi rõ là follow-up cần TDS/Test-Spec riêng, không bundle vào tính năng này. Cập nhật lại test (`CloudinaryStorageServiceTest.java`: bỏ 3 test target `store(accessMode)` không còn tồn tại, thêm 1 test cho `storePublic()`; `FileServiceImplTest.java`: `uploadPublicFile_acceptsJpeg` verify gọi `storePublic()` thay vì `store()`). Verify lại toàn bộ: `./mvnw test` đầy đủ — 204 Errors + 9 Failures giống hệt baseline (0 regression mới). Verify sống 2 lần trên browser+backend+Cloudinary thật: (1) upload trực tiếp qua API, (2) tạo bài viết → xem ở `ContentDetailPage` (trang người đọc, `dangerouslySetInnerHTML`) → ảnh render đúng (`naturalWidth`/`naturalHeight` khớp file gốc, `complete: true`). Dọn dẹp toàn bộ dữ liệu/file test tạo trong quá trình QA. Xem ADR-RTE-007 (đã viết lại hoàn toàn) và §15. |
 | 2026-07-23 | AI Agent — Claude | **User phản hồi lại quyết định "cố ý không sửa" ở trên: "so không sửa đi, lại còn cố ý không sửa" — sửa bug #2 (PRIVATE/AUTHENTICATED 400) như một fix riêng, nhanh, không TDS/Test-Spec (theo AskUserQuestion, user chọn tuỳ chọn này).** Root cause: `generate(publicId + "?" + "expires_at=" + expiresAt)` khiến Cloudinary hiểu toàn chuỗi là public_id → 400. Fix: bỏ đoạn concat, dùng `generate(publicId)` với `signed(true)` (không đổi). Verify sống trên Cloudinary thật bằng script Java throwaway (đúng jar SDK của project): URL cũ → HTTP 400, URL mới → HTTP 200; dọn asset test. Cập nhật 2 test `CloudinaryStorageServiceTest` (RTE-TC-009/010) từ "assert vẫn còn bug" sang "assert URL hợp lệ, không có `expires_at`, có chữ ký". `./mvnw test -Dtest="com.carebridge.backend.file.**"` → 50/50 GREEN, `BUILD SUCCESS`. Known limitation ghi nhận, chưa làm: không có expiry thời gian thực (cần Cloudinary "Token-based Authentication" ở cấp tài khoản). Xem ADR-RTE-007 Addendum và §15. |
+| 2026-07-23 | AI Agent — Claude | **User báo 3 lỗi/gap mới qua QA thủ công: (1) ảnh không bị xoá trên Cloudinary khi "xoá" bản ghi, (2) không resize/căn được vị trí ảnh — ảnh to đè lên văn bản, (3) văn bản không căn lề được.** Điều tra: (1) nút "Xóa" thực ra chỉ gọi `archiveContent()` (soft-delete, `ContentStatus.ARCHIVED`) — `AdminContentServiceImpl.hideContent()` không hề đụng tới file/Cloudinary, và toàn bộ `content` module **không có hard-delete nào** — nên đây không đơn thuần là bug mà là câu hỏi thiết kế (xoá ảnh ngay lúc archive sẽ phá vĩnh viễn ảnh của 1 bản ghi vẫn còn xem lại được qua audit). (2)+(3) `RichTextEditor.tsx` dùng `@tiptap/extension-image` gốc (không resize/align) và không có `TextAlign`; `HtmlContentSanitizer` đã allowlist sẵn `width`/`height` số nguyên trên `img` (chưa từng dùng) nhưng chưa allowlist `text-align`/căn ảnh. Phần "ảnh đè văn bản" tách riêng: do `ContentDetailPage.tsx` thiếu CSS `img{max-width:100%}` (khác `RichTextEditor.css` đã có sẵn) — **đây là bug CSS thuần, đã sửa ngay trong phiên này**, không cần gate. Đã hỏi lại user qua AskUserQuestion cho 2 việc còn lại: (1) chọn xây **cơ chế dọn ảnh mồ côi riêng (batch job)** thay vì xoá ngay lúc archive — do archive không hard-delete nên phải GC dựa trên tham chiếu thật trong `content_items.body`, không thể gắn vào action "xoá"; (2) chọn làm **đầy đủ TDS/Test-Spec trước khi code** cho resize+align (đúng implement-flow.md, vì đây là tính năng mới thật, chạm cả frontend lẫn `HtmlContentSanitizer`). **Thêm ADR-RTE-008 (resize/align ảnh — node attribute enum, không mở CSS tự do) và ADR-RTE-009 (căn lề văn bản — tái dùng `TEXT_STYLE_SCHEMA` có sẵn, thêm `@tiptap/extension-text-align` đã verify tồn tại đúng version `3.28.0`) — cả 2 đang `Proposed`, CHƯA code.** Việc dọn ảnh mồ côi tách thành tài liệu riêng: `04_Implement/ContentImageOrphanCleanup/`. |
+| 2026-07-23 | AI Agent — Claude | **User duyệt: "chọn đáp án bạn cảm thấy tốt nhất, không phức tạp quá, rồi bắt đầu code đi" — implement ADR-RTE-008/009 xong theo TDD Red→Green.** Đổi Status 2 ADR sang `Accepted`. Implement: `HtmlContentSanitizer` thêm `WIDTH_PCT_ENUM`/`ALIGN_ENUM` (2 attribute policy enum, cùng pattern `CLOUDINARY_ONLY_SRC` có sẵn) + `text-align` vào `TEXT_STYLE_SCHEMA`; `imageWithLayout.ts` (mới, `Image.extend()` thêm node attr `widthPct`/`align`); cài `@tiptap/extension-text-align@3.28.0`; toolbar resize (25/50/75/100%) + căn ảnh (trái/giữa/phải, chỉ hiện khi `editor.isActive('image')`) + căn lề văn bản (luôn hiện) trong `RichTextEditor.tsx`. **Phát hiện + sửa 1 bug thật ngoài dự kiến ban đầu:** Tiptap v3's `useEditor` mặc định KHÔNG re-render component khi editor transaction xảy ra (breaking change so với v2) — nếu thiếu `shouldRerenderOnTransaction: true`, toolbar resize/align (và cả bold/italic/heading có sẵn từ trước) sẽ không bao giờ cập nhật trạng thái active sau lần render đầu tiên. Đã thêm flag này vào `useEditor()`. Tạo `richContentBody.css` (mới) dùng CHUNG giữa `RichTextEditor.tsx` và `ContentDetailPage.tsx` — thay cho cách vá CSS một-lần trước đó (Tailwind arbitrary-variant chỉ ở `ContentDetailPage.tsx`) — đúng đúng lo ngại đã tự ghi trong §5.2.1 ADR-RTE-008 về rủi ro lệch CSS giữa 2 nơi render (chính loại lỗi vừa sửa cho `max-width`). Verify: `HtmlContentSanitizerTest` 13/13 GREEN (3 test mới, RED xác nhận thật trước — 13 run/3 fail), `RichTextEditor.test.tsx` 9/9 GREEN (2 test mới). `./mvnw test` toàn repo: baseline sạch qua `git stash` so sánh (2394/9/120) → sau khi thêm code (2406/9/121) — chênh lệch đúng bằng 11 test mới GREEN + 1 integration test mới (`ContentRepositoryIntegrationTest`, cho ADR-CLEAN — xem tài liệu riêng) bị chặn bởi gap môi trường Docker pre-existing, không phải regression. **Live QA đầy đủ trên browser+backend+Cloudinary+DB thật** (chrome-devtools MCP, không mock): tạo bài viết → chèn ảnh thật → resize 50% + căn trái + căn giữa văn bản → lưu → đọc lại trực tiếp từ server (không phải state client) xác nhận `body` lưu đúng `data-width-pct="50" data-align="left"` và `style="text-align:center"`, không có attribute/property lạ nào lọt sanitizer → mở lại ở `ContentDetailPage` xác nhận `getComputedStyle`: `width:250px`, `float:left`, `text-align:center` đúng như thiết kế → xác nhận content cũ (không có data-* attrs) vẫn render bình thường, không bị ảnh hưởng. Dọn dẹp toàn bộ: xoá content/file test khỏi DB, xoá ảnh test khỏi Cloudinary thật, xoá file test cục bộ, dừng 2 dev server — `git status --short` sạch. Xem Test-Spec §4 (cuối mục Test Case Specification) để biết chi tiết đầy đủ live QA. |
 
 ---
 
@@ -70,6 +72,8 @@ Người dùng yêu cầu: nâng cấp phần "Nội dung chi tiết" ở `/cont
 | BR-RTE-SEC-001 | Business Rule | HTML từ editor phải được sanitize trước khi lưu DB                                | `HtmlContentSanitizer` (mới)                             | ADR-RTE-005   |
 | BR-RTE-URL-001 | Business Rule | URL ảnh public nhúng trong content phải bền vững (không hết hạn)                  | `CloudinaryStorageService.generateSignedUrl()`           | ADR-RTE-004   |
 | US-RTE-003     | User Story    | Người dùng mobile đọc bài viết/FAQ thấy định dạng đúng, không thấy thẻ HTML thô   | `verified_content_detail_screen.dart` (flutter_html)     | ADR-RTE-006   |
+| US-RTE-004     | User Story    | Content Admin chỉnh kích thước + vị trí ảnh đã chèn (không đè lên văn bản)        | `RichTextEditor.tsx` (Image node attrs), `HtmlContentSanitizer` | ADR-RTE-008   |
+| US-RTE-005     | User Story    | Content Admin căn lề đoạn văn (trái/giữa/phải/đều)                                | `RichTextEditor.tsx` (`@tiptap/extension-text-align`), `HtmlContentSanitizer` | ADR-RTE-009 |
 
 ---
 
@@ -247,9 +251,86 @@ Ngay sau khi ADR-RTE-007 hoàn tất, user xem lại và phản hồi: "so khôn
 
 **Fix:** `CloudinaryStorageService.generateSignedUrl()` nhánh PRIVATE/AUTHENTICATED — bỏ đoạn `generate(publicId + "?" + "expires_at=" + expiresAt)` (nguyên nhân gốc: Cloudinary SDK hiểu toàn bộ chuỗi là public_id, không phải query param), thay bằng `generate(publicId)` với `signed(true)` (không đổi). Verify **sống, trước và sau fix, trên tài khoản Cloudinary thật** bằng script Java throwaway dùng đúng SDK/jar của project (upload `type=authenticated` thật → build cả 2 URL cũ/mới → `curl` trực tiếp): URL cũ → `HTTP 400`; URL mới → `HTTP 200`. Dọn asset test trên Cloudinary sau khi verify xong.
 
-**Known limitation còn lại (không phải bug, ngoài phạm vi code):** URL không còn thực sự "hết hạn" theo `ttlMinutes` — truy cập chỉ còn bị giới hạn bởi chữ ký (phải biết `api_secret` mới tạo được URL hợp lệ), không bị giới hạn thời gian. Muốn có expiry thời gian thực cần bật tính năng "Token-based Authentication" ở cấp tài khoản Cloudinary (một signing key cấu hình trong dashboard Cloudinary, hiện chưa có trong `.env`/config của project) — đây là follow-up account-level, không phải code, ghi nhận nhưng chưa làm.
+**Known limitation còn lại (không phải bug, ngoài phạm vi code):** URL không còn thực sự "hết hạn" theo `ttlMinutes` — truy cập chỉ còn bị giới hạn bởi chữ ký (phải biết `api_secret` mới tạo được URL hợp lệ), không bị giới hạn thời gian. Muốn có expiry thời gian thực cần bật tính năng "Token-based Authentication" ở cấp tài khoản Cloudinary (một signing key cấu hình trong dashboard Cloudinary, hiện chưa có trong `.env`/config của project) — đây là follow-up account-level, không phải code.
+
+**Quyết định của user (2026-07-23):** sau khi được giải thích rủi ro (URL đã ký nhưng không hết hạn = nếu URL bị lộ — log, lịch sử trình duyệt, screenshot, forward nhầm — thì người cầm URL xem được ảnh CCCD/selfie đó vĩnh viễn, kể cả sau khi hồ sơ chuyên gia bị từ chối/khoá), user chọn **tạm chấp nhận mức bảo vệ hiện tại** (chỉ ký, không giới hạn thời gian) thay vì bật Token-based Authentication ngay. Đây là quyết định có chủ đích, đã cân nhắc trade-off, không phải bỏ sót — ghi lại để không bị hiểu nhầm là gap chưa xử lý trong lần review sau. Có thể mở lại bất cứ lúc nào nếu cần.
 
 **Test:** `CloudinaryStorageServiceTest.java` — 2 test `generateSignedUrl_privateAccessMode_*`/`generateSignedUrl_authenticatedAccessMode_*` đổi từ "assert VẪN còn bug (expires_at có mặt)" sang "assert URL hợp lệ, không còn expires_at, có chữ ký (`s--`)". Toàn bộ suite `file` module: 50/50 GREEN (`./mvnw test -Dtest="com.carebridge.backend.file.**"` → `BUILD SUCCESS`).
+
+---
+
+### ADR-RTE-008 — Resize + căn chỉnh vị trí ảnh trong editor: node attribute có allowlist enum, KHÔNG mở CSS style tự do
+
+| Field        | Value                                                                 |
+| ------------ | ---------------------------------------------------------------------- |
+| **Status**   | `Accepted` — user: "chọn đáp án bạn cảm thấy tốt nhất, không phức tạp quá" (2026-07-23) → chọn Phương án A (preset size + align, không drag-resize, không dependency mới)     |
+| **Deciders** | `HuyND`                                                                |
+| **Date**     | `2026-07-23`                                                           |
+
+#### Bối cảnh
+User báo lỗi qua QA thủ công (không phải giả định): sau khi chèn ảnh trong editor, không có cách nào chỉnh kích thước hay vị trí ảnh; ảnh quá khổ còn đè lên văn bản ở trang xem chi tiết. Đã tách vấn đề thành 2 phần khác nhau:
+1. **Tràn/đè văn bản ở trang xem (`ContentDetailPage`)** — nguyên nhân: `RichTextEditor.css` đã có `img { max-width:100% }` cho khung soạn thảo (dòng 60-63), nhưng trang xem chi tiết (`ContentDetailPage.tsx`) render `dangerouslySetInnerHTML` mà không có rule CSS nào cho `img` cả. Đây là bug CSS thuần, không phải tính năng mới — **đã sửa ngay trong phiên này** (`className` của wrapper div thêm `[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg`), không thuộc phạm vi ADR này.
+2. **Không resize/căn vị trí được** — đây mới là tính năng mới thật, cần ADR này.
+
+`@tiptap/extension-image` (đang dùng, v3.28.0) không có UI resize/align sẵn — chỉ render `<img src alt title>`. `HtmlContentSanitizer` (ADR-RTE-005) hiện đã cho phép attribute `width`/`height` dạng số nguyên trên `<img>` (`HtmlContentSanitizer.java:46`, regex `\d{1,4}`) nhưng **chưa từng có caller nào dùng** — khả năng đã được thêm sẵn đón đầu nhưng chưa hoàn thiện UI. Style/CSS trên `<img>` (`float`, `margin`, `width` dạng %) **hoàn toàn chưa được allowlist**.
+
+#### Các phương án đã xem xét
+| Phương án | Mô tả | Ưu điểm | Nhược điểm |
+| --------- | ----- | ------- | ---------- |
+| A (chọn) | Toolbar 2 nhóm nút khi ảnh đang được chọn: **Kích thước** (25%/50%/75%/100%, preset — không kéo-thả tự do) + **Căn ảnh** (trái/giữa/phải). Lưu bằng 2 attribute enum trên node `image`: `data-width-pct` (`"25"\|"50"\|"75"\|"100"`), `data-align` (`"left"\|"center"\|"right"`). CSS diễn giải (`img[data-align="left"]{float:left;...}`) nằm trong `RichTextEditor.css`/stylesheet của app — HTML lưu trong DB **không chứa CSS tự do**, chỉ chứa 2 attribute dạng enum. Không thêm npm dependency (tự viết `Image.extend({...})`, ~40-60 dòng). | An toàn nhất cho sanitizer (chỉ cần allowlist enum, không mở CSS); nhỏ gọn, đúng "smallest scoped change"; giải quyết đúng pain point ("không chỉnh được size/vị trí") | Không có UI kéo-thả tự do như Word thật — chỉ 4 mức size cố định |
+| B | Drag-to-resize bằng custom NodeView (pointer handlers, tính lại width theo px khi kéo) | UX gần Word nhất | Nhiều code hơn hẳn (NodeView + pointer events + aspect-ratio), rủi ro bug UI cao hơn, cần lưu width dạng số px → phải mở lại allowlist `width` (đã có sẵn, không cần đổi) nhưng khó validate an toàn hơn enum |
+| C | Thêm npm package cộng đồng (vd. `tiptap-extension-resize-image`) | Nhanh nhất để có drag-resize | Dependency mới cần duyệt riêng (CLAUDE.md); chưa verify độ tin cậy/bảo trì — đúng rủi ro mà ADR-RTE-002 đã tránh khi chọn `TextStyleKit` chính thức thay vì package cộng đồng cho font-size |
+
+#### Quyết định (đề xuất — chờ duyệt)
+Chọn **Phương án A**. Không mở `allowStyling()`/`CssSchema` cho `img` — giữ nguyên tinh thần ADR-RTE-005 (allowlist càng hẹp càng an toàn cho stored-HTML). Sanitizer thêm đúng 2 dòng, theo cùng pattern `CLOUDINARY_ONLY_SRC` đã có (custom `AttributePolicy` match enum cố định, không phải regex tự do):
+
+```java
+// HtmlContentSanitizer.java — thêm (không đổi gì khác)
+private static final AttributePolicy WIDTH_PCT_ENUM =
+        (el, attr, v) -> Set.of("25", "50", "75", "100").contains(v) ? v : null;
+private static final AttributePolicy ALIGN_ENUM =
+        (el, attr, v) -> Set.of("left", "center", "right").contains(v) ? v : null;
+// .allowAttributes("data-width-pct").matching(WIDTH_PCT_ENUM).onElements("img")
+// .allowAttributes("data-align").matching(ALIGN_ENUM).onElements("img")
+```
+
+Frontend: `Image.extend({ addAttributes() { return { ...this.parent?.(), widthPct: {default: null, renderHTML: a => a.widthPct ? {'data-width-pct': a.widthPct} : {}, parseHTML: el => el.getAttribute('data-width-pct')}, align: {...tương tự 'data-align'} } } })`. Toolbar: 2 cụm nút chỉ hiện/enable khi `editor.isActive('image')` — bấm gọi `editor.chain().focus().updateAttributes('image', {widthPct: '50'}).run()`.
+
+#### Hệ quả
+**Tích cực:** giải quyết đúng pain point, sanitizer risk thấp nhất có thể (enum, không phải CSS tự do), không thêm dependency.
+**Trade-off:** không có resize tự do (kéo-thả) — nếu sau này cần, đó là Phương án B, ADR riêng.
+**Cần verify khi implement:** ảnh cũ đã lưu trước ADR này (không có `data-width-pct`/`data-align`) phải fallback đúng — mặc định `width:100%` (khớp hành vi hiện tại `max-width:100%`), không được vỡ layout ảnh cũ.
+
+---
+
+### ADR-RTE-009 — Căn lề văn bản (trái/giữa/phải/đều) — tái sử dụng đúng cơ chế `TEXT_STYLE_SCHEMA` đã có
+
+| Field        | Value                                                             |
+| ------------ | -------------------------------------------------------------------- |
+| **Status**   | `Accepted` — user: "chọn đáp án bạn cảm thấy tốt nhất" (2026-07-23) → duyệt thêm `@tiptap/extension-text-align`     |
+| **Deciders** | `HuyND`                                                            |
+| **Date**     | `2026-07-23`                                                       |
+
+#### Bối cảnh
+Editor hiện không có tính năng căn lề đoạn văn (trái/phải/giữa/đều) — `StarterKit` không bao gồm sẵn (khác với `Underline`, đã có sẵn từ ADR-RTE-002 addendum). `TEXT_STYLE_SCHEMA` (`HtmlContentSanitizer.java:23-24`) hiện chỉ allowlist `color, font-size, font-family` qua `CssSchema.withProperties(...)`.
+
+#### Quyết định (đề xuất — chờ duyệt)
+Thêm `@tiptap/extension-text-align` — **đã verify tồn tại thật trên npm, đúng version `3.28.0` khớp chính xác với `@tiptap/starter-kit`/`@tiptap/react` đang cài** (`npm view @tiptap/extension-text-align versions` → có `3.28.0`), là package chính thức của Tiptap (cùng team/repo với `starter-kit`/`extension-image` đã dùng — tiếp tục đúng tinh thần ADR-RTE-002: ưu tiên package chính thức hơn cộng đồng chưa kiểm chứng). Cấu hình `TextAlign.configure({ types: ['paragraph', 'heading'] })`, mặc định `left`. Cơ chế: extension set `style="text-align: center"` (v.v.) trực tiếp trên `<p>`/`<h1-3>` — **cùng cơ chế style-based y hệt** `color`/`font-size`/`font-family` hiện có (không phải attribute như ADR-RTE-008, vì đây là hành vi mặc định của package chính thức, không tự viết).
+
+Backend: thêm đúng 1 property vào schema có sẵn — không tạo policy mới, không đổi cấu trúc:
+```java
+// HtmlContentSanitizer.java
+private static final CssSchema TEXT_STYLE_SCHEMA =
+        CssSchema.withProperties(List.of("color", "font-size", "font-family", "text-align"));
+```
+OWASP sanitizer tự validate giá trị hợp lệ theo property (`text-align` chỉ nhận `left|right|center|justify|...` theo schema chuẩn của thư viện) — cùng mức an toàn đã chấp nhận cho 3 property hiện có, không mở thêm bề mặt tấn công CSS injection nào khác.
+
+Toolbar: 4 nút (trái/giữa/phải/đều), active state theo `editor.isActive({textAlign: 'left'})` v.v., gọi `editor.chain().focus().setTextAlign('center').run()`.
+
+#### Hệ quả
+**Tích cực:** giải quyết đúng pain point; thay đổi backend tối thiểu (1 dòng, tái dùng cơ chế đã duyệt ở ADR-RTE-005); không có custom sanitizer code mới cần review kỹ.
+**Trade-off:** 1 dependency npm mới — cần duyệt theo CLAUDE.md, giống các lần trước (`TextStyleKit`, `flutter_html`).
+**Cần verify khi implement:** nội dung cũ (trước ADR này) không có `text-align` trong `style` — mặc định trình duyệt là `left`, không cần migration dữ liệu.
 
 ---
 
@@ -331,6 +412,52 @@ export async function uploadContentImage(file: File): Promise<{ url: string }> {
 ```
 
 > **Lưu ý implement:** `UploadFileResponse.presignedUrl` là tên field DTO có sẵn (không đổi tên — tránh breaking change cho các consumer khác của cùng DTO như `expertApi.ts`). Giá trị của nó chỉ *thực sự* bền vững cho ảnh upload với `accessMode=PUBLIC` sau khi ADR-RTE-004 được áp dụng; với `PRIVATE`/`AUTHENTICATED` nó vẫn là URL 15 phút như cũ — không đổi hợp đồng cho các consumer đó.
+
+### 5.2.1 Frontend Web — bổ sung ADR-RTE-008 (resize/align ảnh) + ADR-RTE-009 (căn lề văn bản) — CHƯA implement
+
+```
+src/features/contentManagement/components/
+├── RichTextEditor.tsx          // SỬA — thêm toolbar resize/align ảnh + căn lề văn bản
+├── RichTextEditor.css          // SỬA — CSS diễn giải data-width-pct/data-align
+└── imageWithLayout.ts          // MỚI — Image.extend() thêm 2 node attr (ADR-RTE-008)
+
+// imageWithLayout.ts
+import Image from '@tiptap/extension-image';
+export const ImageWithLayout = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      widthPct: {
+        default: null,
+        parseHTML: el => el.getAttribute('data-width-pct'),
+        renderHTML: attrs => attrs.widthPct ? { 'data-width-pct': attrs.widthPct } : {},
+      },
+      align: {
+        default: null,
+        parseHTML: el => el.getAttribute('data-align'),
+        renderHTML: attrs => attrs.align ? { 'data-align': attrs.align } : {},
+      },
+    };
+  },
+});
+
+// RichTextEditor.tsx — extensions: thay Image bằng ImageWithLayout,
+// thêm TextAlign.configure({ types: ['paragraph', 'heading'] })
+// Toolbar mới (chỉ hiện/enable khi editor.isActive('image')):
+//   [25%] [50%] [75%] [100%]  ->  updateAttributes('image', { widthPct: '50' })
+//   [trái] [giữa] [phải]      ->  updateAttributes('image', { align: 'left' })
+// Toolbar mới (luôn hiện, giống Bold/Italic):
+//   [trái] [giữa] [phải] [đều] -> setTextAlign('center')
+
+// RichTextEditor.css — thêm (ADR-RTE-008, CSS diễn giải, KHÔNG lưu trong DB)
+// .rich-text-editor-content img[data-align="left"]  { float: left;  margin: 4px 16px 8px 0; }
+// .rich-text-editor-content img[data-align="right"] { float: right; margin: 4px 0 8px 16px; }
+// .rich-text-editor-content img[data-align="center"]{ display: block; margin: 8px auto; float: none; }
+// .rich-text-editor-content img[data-width-pct="25"] { width: 25%; height: auto; }
+// ... 50/75/100 tương tự — ảnh không có data-width-pct giữ hành vi cũ (max-width:100%)
+```
+
+**Đồng bộ với `ContentDetailPage.tsx`:** CSS diễn giải `data-width-pct`/`data-align` phải nhân bản sang wrapper `[&_img]:...` đã sửa trong phiên này (hoặc chuyển sang 1 file CSS scoped dùng chung cho cả editor lẫn trang xem) — nếu không, ảnh căn trái/phải/resize đúng trong editor nhưng lại render sai (mất float/width) ở trang xem chi tiết, lặp lại đúng loại lỗi vừa sửa (CSS thiếu ở 1 trong 2 nơi render). **Bắt buộc verify cả 2 nơi khi implement**, không chỉ verify trong editor.
 
 ### 5.3. Mobile — thay đổi
 
@@ -541,5 +668,12 @@ Dữ liệu `content_items.body` đã lưu dưới dạng HTML sau khi tính nă
   - 2 bài viết test đã tạo trong phiên QA trước đã được archive lại; các bài viết test tạo trong các phiên verify-fix sau đó đã bị xoá khỏi DB (không phải archive, vì tạo ra chỉ để verify bug, không có giá trị lưu vết) — không để rác trong danh sách nội dung.
   - **Kiểm tra regression cho nội dung cũ (mobile):** đổi `VerifiedContentBody` từ `Text(content.body)` sang `Html(data: content.body)` có rủi ro lý thuyết là nội dung cũ dạng plain-text với `\n` xuống dòng sẽ bị HTML gộp khoảng trắng, mất định dạng đoạn. Đã truy vấn trực tiếp bảng `content_items` (DB dev cục bộ, 25 dòng hiện có) để xác minh thực tế: `SELECT body LIKE '%<%>%' AS looks_like_html, position(chr(10) in body) > 0 AS has_newline FROM content_items` — toàn bộ 23 bản ghi nội dung cũ (seed trước tính năng này) là câu đơn, không `\n`, không `&`, không khoảng trắng kép → render qua `Html()` cho kết quả giống hệt `Text()`, xác nhận **không có regression trên dữ liệu hiện có**. Rủi ro vẫn còn về mặt lý thuyết nếu một môi trường khác (staging/production) có nội dung cũ nhiều đoạn dùng `\n` — khuyến nghị chạy lại truy vấn này trên DB đó trước khi rollout, hoặc thêm bước migrate `\n\n` → `<p>...</p>` nếu phát hiện có.
 - **Không regression:** backend (`file`, `content`, `expertverification`, `expert` modules — chỉ còn lỗi môi trường Testcontainers pre-existing, xem CHANGELOG Test-Spec), web (28/28), mobile (259/259). Đã xác minh riêng: không regression trên nội dung cũ ở mobile (xem mục QA thủ công phía trên).
+- **ADR-RTE-008/009 (resize/align ảnh + căn lề văn bản) — implement xong 2026-07-23, TDD Red→Green + live QA đầy đủ:**
+  - Backend: `HtmlContentSanitizer` thêm `WIDTH_PCT_ENUM`/`ALIGN_ENUM` (enum cố định, không mở CSS) + `text-align` vào `TEXT_STYLE_SCHEMA` có sẵn. 3 test mới GREEN (`HtmlContentSanitizerTest`: 13/13).
+  - Web: `imageWithLayout.ts` (mới), `@tiptap/extension-text-align@3.28.0` (mới, đã verify version khớp), toolbar resize/căn ảnh/căn lề trong `RichTextEditor.tsx`. 2 test mới GREEN (`RichTextEditor.test.tsx`: 9/9).
+  - **Bug thật phát hiện ngoài dự kiến, đã sửa:** Tiptap v3's `useEditor` mặc định không re-render component theo transaction (khác v2) — thêm `shouldRerenderOnTransaction: true`, nếu không toolbar (kể cả bold/italic/heading có từ ADR-RTE-002) không cập nhật active state.
+  - `richContentBody.css` (mới) — CSS dùng chung giữa editor và `ContentDetailPage.tsx`, thay cho cách vá một-lần trước đó — chủ động phòng đúng loại lỗi lệch-CSS-giữa-2-nơi-render đã gặp trước đây trong tài liệu này.
+  - **Live QA đầu-cuối trên browser+backend+Cloudinary+DB thật** (không mock): tạo bài viết → chèn ảnh thật → resize 50% + căn trái + căn giữa văn bản → lưu → đọc trực tiếp từ server xác nhận `body` = `<p style="text-align:center">...</p><img ... data-width-pct="50" data-align="left" /><p></p>` (sanitizer giữ đúng, không lọt property lạ) → mở `ContentDetailPage` xác nhận `getComputedStyle`: `width:250px`, `float:left`, `text-align:center` → xác nhận content cũ (không có data-* attrs) không bị ảnh hưởng. Dọn dẹp toàn bộ dữ liệu/file/asset Cloudinary test sau QA.
+  - `./mvnw test` toàn repo: baseline sạch qua `git stash` (2394/9/120) → sau khi thêm code (2406/9/121) — chênh lệch = 11 test mới GREEN + 1 integration test mới bị chặn bởi Docker không khả dụng trong môi trường này (pre-existing gap, không phải regression từ thay đổi này).
 
-*Tài liệu này đã hoàn thành implementation — Status: Approved, bao gồm ADR-RTE-007 (thiết kế tách riêng cuối cùng, theo yêu cầu user) và Addendum của nó (bug #2 PRIVATE/AUTHENTICATED đã được sửa cùng ngày, theo yêu cầu tường minh tiếp theo của user). Việc còn lại (không thuộc phạm vi code của tính năng này): (1) URL PRIVATE/AUTHENTICATED không có expiry thời gian thực (chỉ giới hạn bởi chữ ký, không giới hạn thời gian) — cần bật "Token-based Authentication" ở cấp tài khoản Cloudinary (follow-up account-level, không phải code), chưa làm; (2) sửa gap môi trường Testcontainers (`expert_profiles.display_name` thiếu migration) để chạy được `ContentBodySanitizeIntegrationTest`/`RTE-TC-015`/`RTE-TC-016` tự động — pre-existing, ngoài phạm vi tài liệu này.*
+*Tài liệu này đã hoàn thành implementation — Status: Approved, bao gồm ADR-RTE-007 (thiết kế tách riêng cuối cùng, theo yêu cầu user) và Addendum của nó (bug #2 PRIVATE/AUTHENTICATED đã được sửa cùng ngày, theo yêu cầu tường minh tiếp theo của user), và ADR-RTE-008/009 (resize/align ảnh + căn lề văn bản, implement xong cùng ngày). Việc còn lại (không thuộc phạm vi code của tính năng này): (1) URL PRIVATE/AUTHENTICATED không có expiry thời gian thực (chỉ giới hạn bởi chữ ký, không giới hạn thời gian) — cần bật "Token-based Authentication" ở cấp tài khoản Cloudinary (follow-up account-level, không phải code), chưa làm; (2) sửa gap môi trường Testcontainers/Docker (`expert_profiles.display_name` thiếu migration, hoặc Docker không khả dụng tuỳ máy) để chạy được các integration test tự động — pre-existing, ngoài phạm vi tài liệu này.*

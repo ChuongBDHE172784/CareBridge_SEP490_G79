@@ -1,1 +1,0 @@
-package com.carebridge.backend.partner.dto.request;import com.carebridge.backend.partner.entity.ContentDecision;import jakarta.validation.constraints.NotNull;public record ContentDecisionRequest(@NotNull ContentDecision decision,String reason){}

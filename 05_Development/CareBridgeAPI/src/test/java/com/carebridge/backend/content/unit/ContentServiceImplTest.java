@@ -77,10 +77,15 @@ class ContentServiceImplTest {
     }
 
     private ChecklistTemplate makeChecklistTemplate(ContentStage stage) {
+        return makeChecklistTemplate(stage, ContentStatus.APPROVED);
+    }
+
+    private ChecklistTemplate makeChecklistTemplate(ContentStage stage, ContentStatus status) {
         return ChecklistTemplate.builder()
                 .id(UUID.randomUUID())
                 .name("Test Checklist")
                 .stage(stage)
+                .status(status)
                 .description("Test description")
                 .createdAt(Instant.now())
                 .build();
@@ -164,7 +169,8 @@ class ContentServiceImplTest {
         ChecklistItem item2 = makeChecklistItem(template, 2);
         ChecklistItem item3 = makeChecklistItem(template, 3);
 
-        when(checklistTemplateRepository.findByStage(ContentStage.PREGNANCY))
+        when(checklistTemplateRepository.findByStageAndStatus(
+                ContentStage.PREGNANCY, ContentStatus.APPROVED))
                 .thenReturn(List.of(template));
         // DB ORDER BY item_order returns already-sorted list
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
@@ -183,7 +189,8 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_withNullStage_returnsAllTemplates() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.PREGNANCY);
-        when(checklistTemplateRepository.findAll()).thenReturn(List.of(template));
+        when(checklistTemplateRepository.findByStatus(ContentStatus.APPROVED))
+                .thenReturn(List.of(template));
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
                 .thenReturn(List.of());
 
@@ -195,7 +202,8 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_templateWithNoItems_returnsEmptyItemList() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.POSTPARTUM);
-        when(checklistTemplateRepository.findByStage(ContentStage.POSTPARTUM))
+        when(checklistTemplateRepository.findByStageAndStatus(
+                ContentStage.POSTPARTUM, ContentStatus.APPROVED))
                 .thenReturn(List.of(template));
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
                 .thenReturn(List.of());
@@ -203,5 +211,38 @@ class ContentServiceImplTest {
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(ContentStage.POSTPARTUM);
 
         assertThat(result.get(0).getItems()).isNotNull().isEmpty();
+    }
+
+    @Test
+    void getChecklists_withStage_returnsOnlyApprovedTemplates() {
+        ChecklistTemplate approved = makeChecklistTemplate(ContentStage.PREGNANCY, ContentStatus.APPROVED);
+        ChecklistTemplate draft = makeChecklistTemplate(ContentStage.PREGNANCY, ContentStatus.DRAFT);
+        when(checklistTemplateRepository.findByStageAndStatus(
+                ContentStage.PREGNANCY, ContentStatus.APPROVED))
+                .thenReturn(List.of(approved));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(approved.getId()))
+                .thenReturn(List.of());
+
+        List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(ContentStage.PREGNANCY);
+
+        assertThat(result)
+                .extracting(ChecklistTemplateResponse::getId)
+                .containsExactly(approved.getId());
+    }
+
+    @Test
+    void getChecklists_withoutStage_returnsOnlyApprovedTemplates() {
+        ChecklistTemplate approved = makeChecklistTemplate(ContentStage.POSTPARTUM, ContentStatus.APPROVED);
+        ChecklistTemplate archived = makeChecklistTemplate(ContentStage.POSTPARTUM, ContentStatus.ARCHIVED);
+        when(checklistTemplateRepository.findByStatus(ContentStatus.APPROVED))
+                .thenReturn(List.of(approved));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(approved.getId()))
+                .thenReturn(List.of());
+
+        List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(null);
+
+        assertThat(result)
+                .extracting(ChecklistTemplateResponse::getId)
+                .containsExactly(approved.getId());
     }
 }

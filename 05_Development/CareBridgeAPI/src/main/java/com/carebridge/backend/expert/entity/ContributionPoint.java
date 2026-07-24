@@ -8,10 +8,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "contribution_points", schema = "public",
-        uniqueConstraints = {
-            @UniqueConstraint(name = "uk_contribution_points_user_source", columnNames = {"user_id", "source_type", "source_id"})
-        })
+@Table(name = "expert_contribution_events", schema = "public")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +18,7 @@ public class ContributionPoint {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "point_record_id", nullable = false, updatable = false)
+    @Column(name = "contribution_event_id", nullable = false, updatable = false)
     private UUID pointRecordId;
 
     @Column(name = "points", nullable = false)
@@ -30,7 +27,7 @@ public class ContributionPoint {
     @Column(name = "reason", length = 255)
     private String reason;
 
-    @Column(name = "recorded_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime recordedAt;
 
@@ -40,6 +37,6 @@ public class ContributionPoint {
     @Column(name = "source_type", length = 40)
     private String sourceType;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "actor_user_id", nullable = false)
     private UUID userId;
 }

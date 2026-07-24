@@ -15,8 +15,9 @@ import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
-import com.carebridge.backend.masterdata.repository.HospitalRepository;
 import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
+import com.carebridge.backend.map.entity.CareFacility;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
@@ -49,7 +50,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final ExpertCredentialRepository credentialRepository;
 	private final AuditService auditService;
 	private final SpecialtyRepository specialtyRepository;
-	private final HospitalRepository hospitalRepository;
+	private final CareFacilityRepository careFacilityRepository;
 
 	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
@@ -68,8 +69,9 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			UserInfo info = resolveUserInfo(userId);
 			return expertProfileMapper.toResponse(existing.get(), info.displayName(), info.avatarUrl());
 		}
-		normalizeMasterData(request);
+		UUID facilityId = normalizeMasterData(request);
 		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
+		profile.setFacilityId(facilityId);
 		ExpertProfile saved = expertProfileRepository.save(profile);
 		UserInfo info = resolveUserInfo(userId);
 		return expertProfileMapper.toResponse(saved, info.displayName(), info.avatarUrl());
@@ -90,8 +92,11 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-002", "Expert profile not found"));
-		normalizeMasterData(request);
+		UUID facilityId = normalizeMasterData(request);
 		expertProfileMapper.updateEntity(profile, request);
+		if (request.getHospitalId() != null) {
+			profile.setFacilityId(facilityId);
+		}
 		ExpertProfile saved = expertProfileRepository.save(profile);
 		UserInfo info = resolveUserInfo(userId);
 		return expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl());
@@ -120,7 +125,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			profile.getVerificationStatus(),
 			profile.getVerifiedAt(),
 			profile.getVerifiedBy(),
-			profile.getVerificationRejectionReason(),
+			findLatestRejectionReason(profile.getExpertProfileId()),
 			canRenew,
 			nextStep
 		);
@@ -143,7 +148,6 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		profile.setVerificationStatus(VerificationStatus.PENDING);
 		profile.setVerifiedAt(null);
 		profile.setVerifiedBy(null);
-		profile.setVerificationRejectionReason(null);
 		expertProfileRepository.save(profile);
 	}
 
@@ -166,34 +170,54 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		return (s == null || s.isBlank()) ? null : s.trim();
 	}
 
-	private void normalizeMasterData(CreateExpertProfileRequest request) {
-		var specialty = specialtyRepository.findById(request.getSpecialtyId())
+	private UUID normalizeMasterData(CreateExpertProfileRequest request) {
+		var specialty = specialtyRepository.findByIdentifier(request.getSpecialtyId())
 			.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
 			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
 				"EXPERT-SPECIALTY-INVALID", "Chuyên khoa không hợp lệ hoặc đã ngừng sử dụng"));
-		var hospital = hospitalRepository.findById(request.getHospitalId())
-			.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+		var hospital = findActiveFacility(request.getHospitalId())
 			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
 				"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
 		request.setSpecialty(specialty.getName());
 		request.setWorkplace(hospital.getName());
+		return hospital.getFacilityId();
 	}
 
-	private void normalizeMasterData(UpdateExpertProfileRequest request) {
+	private UUID normalizeMasterData(UpdateExpertProfileRequest request) {
+		UUID facilityId = null;
 		if (request.getSpecialtyId() != null) {
-			var specialty = specialtyRepository.findById(request.getSpecialtyId())
+			var specialty = specialtyRepository.findByIdentifier(request.getSpecialtyId())
 				.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
 				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
 					"EXPERT-SPECIALTY-INVALID", "Chuyên khoa không hợp lệ hoặc đã ngừng sử dụng"));
 			request.setSpecialty(specialty.getName());
 		}
 		if (request.getHospitalId() != null) {
-			var hospital = hospitalRepository.findById(request.getHospitalId())
-				.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+			var hospital = findActiveFacility(request.getHospitalId())
 				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
 					"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
 			request.setWorkplace(hospital.getName());
+			facilityId = hospital.getFacilityId();
 		}
+		return facilityId;
+	}
+
+	private java.util.Optional<CareFacility> findActiveFacility(String identifier) {
+		try {
+			return careFacilityRepository.findByFacilityIdAndActiveTrue(UUID.fromString(identifier));
+		} catch (IllegalArgumentException ignored) {
+			return careFacilityRepository.findByExternalSourceIdAndActiveTrue(identifier);
+		}
+	}
+
+	private String findLatestRejectionReason(UUID expertProfileId) {
+		if (expertProfileId == null) {
+			return null;
+		}
+		return credentialRepository.findFirstByExpertProfileIdAndReviewStatusOrderByReviewedAtDescCreatedAtDesc(
+				expertProfileId, ReviewStatus.REJECTED)
+			.map(com.carebridge.backend.expertverification.entity.ExpertCredential::getReviewNote)
+			.orElse(null);
 	}
 
 	@Override
@@ -258,7 +282,6 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		profile.setVerificationStatus(VerificationStatus.APPROVED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
-		profile.setVerificationRejectionReason(null);
 		expertProfileRepository.save(profile);
 		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
 			"ExpertProfile", expertProfileId.toString(),
@@ -276,14 +299,12 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-REJECTION-REASON-REQUIRED",
 				"An actionable rejection reason is required");
 		}
-		if (profile.getVerificationStatus() == VerificationStatus.REJECTED
-				&& reason.trim().equals(profile.getVerificationRejectionReason())) {
+		if (profile.getVerificationStatus() == VerificationStatus.REJECTED) {
 			return;
 		}
 		profile.setVerificationStatus(VerificationStatus.REJECTED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
-		profile.setVerificationRejectionReason(reason.trim());
 		expertProfileRepository.save(profile);
 		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
 			"ExpertProfile", expertProfileId.toString(),

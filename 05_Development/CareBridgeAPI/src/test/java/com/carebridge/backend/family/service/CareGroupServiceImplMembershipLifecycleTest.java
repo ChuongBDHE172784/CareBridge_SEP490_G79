@@ -171,18 +171,16 @@ class CareGroupServiceImplMembershipLifecycleTest {
     }
 
     @Test
-    void removeMember_ownerRemovesAcceptedNonOwner_setsRevokedAndAudits() {
+    void removeMember_ownerRemovesAcceptedNonOwner_deletesAndAudits() {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember target = member(MEMBER_ID, GroupMemberRole.MEMBER, InviteStatus.ACCEPTED);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.of(target));
-        when(memberRepository.save(target)).thenReturn(target);
 
         RemoveMemberResponse response = service.removeMember(GROUP_ID, MEMBER_ID, OWNER_ID);
 
-        assertThat(target.getInviteStatus()).isEqualTo(InviteStatus.REVOKED);
-        assertThat(response.getInviteStatus()).isEqualTo("REVOKED");
+        assertThat(response.getInviteStatus()).isEqualTo("REMOVED");
+        verify(memberRepository).delete(target);
+        verify(taskRepository).reassignIncompleteTasks(GROUP_ID, MEMBER_ID, OWNER_ID);
         verify(auditService).log(eq(AuditAction.CARE_GROUP_MEMBER_REMOVED), eq(OWNER_ID),
                 eq("CareGroup"), eq(GROUP_ID.toString()), contains(MEMBER_ID.toString()));
     }
@@ -207,8 +205,6 @@ class CareGroupServiceImplMembershipLifecycleTest {
     @Test
     void removeMember_targetNotFound_throwsFam059() {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.empty());
 
         assertBusinessException(
@@ -264,11 +260,8 @@ class CareGroupServiceImplMembershipLifecycleTest {
     @Test
     void removeMember_usesMemberRemovedAuditActionNotInviteOrLeaveActions() {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember target = member(MEMBER_ID, GroupMemberRole.MEMBER, InviteStatus.ACCEPTED);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.of(target));
-        when(memberRepository.save(target)).thenReturn(target);
 
         service.removeMember(GROUP_ID, MEMBER_ID, OWNER_ID);
 
@@ -279,17 +272,14 @@ class CareGroupServiceImplMembershipLifecycleTest {
     }
 
     @Test
-    void removeMember_doesNotReassignTasks() {
+    void removeMember_reassignsIncompleteTasksToOwner() {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember target = member(MEMBER_ID, GroupMemberRole.MEMBER, InviteStatus.ACCEPTED);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.of(target));
-        when(memberRepository.save(target)).thenReturn(target);
 
         service.removeMember(GROUP_ID, MEMBER_ID, OWNER_ID);
 
-        verifyNoInteractions(taskRepository);
+        verify(taskRepository).reassignIncompleteTasks(GROUP_ID, MEMBER_ID, OWNER_ID);
     }
 
     @Test
@@ -306,9 +296,7 @@ class CareGroupServiceImplMembershipLifecycleTest {
     @Test
     void removeMember_targetOwnerWithNonAcceptedStatus_stillThrowsFam061BeforeStatusGuard() {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember inconsistentOwnerTarget = member(MEMBER_ID, GroupMemberRole.OWNER, InviteStatus.PENDING);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.of(inconsistentOwnerTarget));
 
         assertBusinessException(
@@ -530,9 +518,7 @@ class CareGroupServiceImplMembershipLifecycleTest {
 
     private void assertRemoveMemberNonAcceptedTargetRejected(InviteStatus targetStatus) {
         stubGroup();
-        CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember target = member(MEMBER_ID, GroupMemberRole.MEMBER, targetStatus);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(Optional.of(target));
 
         assertBusinessException(

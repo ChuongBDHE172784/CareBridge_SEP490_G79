@@ -90,7 +90,7 @@ class AuthServiceVerifyOtpTest {
 
     private OtpVerification registerOtp(User user, String rawCode, Instant expiresAt, int attempts) {
         return OtpVerification.builder()
-                .id(1L)
+                .id(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .user(user)
                 .phone(PHONE)
                 .codeHash(TokenUtils.hashSha256(rawCode))

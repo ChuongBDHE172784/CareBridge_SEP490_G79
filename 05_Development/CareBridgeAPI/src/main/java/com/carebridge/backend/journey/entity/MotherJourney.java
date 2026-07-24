@@ -26,6 +26,9 @@ public class MotherJourney {
     @Column(name = "owner_user_id", nullable = false)
     private UUID ownerUserId;
 
+    @Column(name = "care_subject_id", nullable = false)
+    private UUID careSubjectId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "journey_type", nullable = false, length = 20)
     private JourneyType journeyType;

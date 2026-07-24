@@ -23,7 +23,7 @@ public class FileDeletePolicyImpl implements FileDeletePolicy {
             throw new AccessDeniedBusinessException("Only the file owner can delete it");
         }
 
-        // Rule 2 (ADR-FILE-007): Binding guard — no deletion while referenced by health_record_files
+        // Rule 2 (ADR-FILE-007): no deletion while referenced by health_record_attachments.
         if (!healthRecordFileRepository.findByFileId(file.getId()).isEmpty()) {
             throw new BusinessException(HttpStatus.CONFLICT, "FILE-409",
                     "File is bound to a health record and cannot be deleted");

@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
-import Image from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import { ImageWithLayout } from './imageWithLayout';
+import '../richContentBody.css';
 import './RichTextEditor.css';
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '32px'];
@@ -12,16 +14,21 @@ const FONT_FAMILIES = [
   { label: 'Sans-serif', value: 'Arial, sans-serif' },
   { label: 'Monospace', value: '"Courier New", monospace' },
 ];
-
-/**
- * Rich text HTML always contains wrapper markup even when the user hasn't typed anything
- * (e.g. an empty editor is "<p></p>"), so a plain `.trim().length > 0` check on the raw HTML
- * (as the old plain-textarea `body` field used) would incorrectly treat empty content as valid.
- */
-export function isRichTextEmpty(html: string): boolean {
-  if (html.includes('<img')) return false;
-  return html.replace(/<[^>]*>/g, '').trim().length === 0;
-}
+// ADR-RTE-008: preset sizes only (no freeform drag-resize) — smallest scoped change, no new
+// npm dependency. Values match HtmlContentSanitizer.java WIDTH_PCT_ENUM exactly.
+const IMAGE_WIDTH_PRESETS = ['25', '50', '75', '100'];
+const IMAGE_ALIGN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'left', label: 'Trái' },
+  { value: 'center', label: 'Giữa' },
+  { value: 'right', label: 'Phải' },
+];
+// ADR-RTE-009
+const TEXT_ALIGN_OPTIONS: { value: string; label: string; icon: string }[] = [
+  { value: 'left', label: 'Căn trái', icon: 'format_align_left' },
+  { value: 'center', label: 'Căn giữa', icon: 'format_align_center' },
+  { value: 'right', label: 'Căn phải', icon: 'format_align_right' },
+  { value: 'justify', label: 'Căn đều', icon: 'format_align_justify' },
+];
 
 interface RichTextEditorProps {
   value: string;
@@ -43,13 +50,21 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
       // allows color/font-size/font-family, so exposing more here would silently vanish
       // on save.
       TextStyleKit.configure({ backgroundColor: false, lineHeight: false }),
-      Image,
+      ImageWithLayout,
+      // ADR-RTE-009: style-based, same mechanism as color/font-size/font-family above.
+      TextAlign.configure({ types: ['paragraph', 'heading'] }),
     ],
     content: value,
+    // Tiptap v3 default: useEditor no longer re-renders the component on every transaction
+    // (selection change, formatting toggle, etc.) — without this, toolbar active-state
+    // highlighting (bold/italic/heading/font-size, and the image resize/align toolbar which
+    // only appears once a selection is a NodeSelection on an image) would never update after
+    // the initial render, since node-selection changes alone don't call onUpdate/onChange.
+    shouldRerenderOnTransaction: true,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: 'rich-text-editor-content',
+        class: 'rich-text-editor-content rich-content-body',
       },
     },
   });
@@ -61,7 +76,6 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     if (value !== editor.getHTML()) {
       editor.commands.setContent(value, { emitUpdate: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
   if (!editor) return null;
@@ -74,6 +88,21 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     if (!file) return;
     const url = await onImageUpload(file);
     editor.chain().focus().setImage({ src: url }).run();
+    // Select the newly-inserted image node immediately so the resize/align toolbar (ADR-RTE-008)
+    // is usable right away, without requiring a separate click on the image first. Insertion can
+    // shift/split surrounding nodes (e.g. the editor's initial empty paragraph), so locate the
+    // node we just inserted by matching its src rather than assuming a pre-computed position.
+    let imagePos: number | null = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (imagePos === null && node.type.name === 'image' && node.attrs.src === url) {
+        imagePos = pos;
+        return false;
+      }
+      return true;
+    });
+    if (imagePos !== null) {
+      editor.commands.setNodeSelection(imagePos);
+    }
   };
 
   return (
@@ -172,6 +201,21 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
 
         <span className="rich-text-toolbar-divider" />
 
+        {TEXT_ALIGN_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign(opt.value).run()}
+            className={`rich-text-toolbar-btn ${editor.isActive({ textAlign: opt.value }) ? 'is-active' : ''}`}
+            aria-label={opt.label}
+            title={opt.label}
+          >
+            <span className="material-symbols-outlined text-lg">{opt.icon}</span>
+          </button>
+        ))}
+
+        <span className="rich-text-toolbar-divider" />
+
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -218,6 +262,36 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
           className="hidden"
           onChange={handleFileSelected}
         />
+
+        {editor.isActive('image') && (
+          <>
+            <span className="rich-text-toolbar-divider" />
+            {IMAGE_WIDTH_PRESETS.map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                onClick={() => editor.chain().focus().updateAttributes('image', { widthPct: pct }).run()}
+                className={`rich-text-toolbar-btn ${editor.getAttributes('image').widthPct === pct ? 'is-active' : ''}`}
+                aria-label={`Kích thước ảnh ${pct}%`}
+                title={`${pct}%`}
+              >
+                {pct}%
+              </button>
+            ))}
+            {IMAGE_ALIGN_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => editor.chain().focus().updateAttributes('image', { align: opt.value }).run()}
+                className={`rich-text-toolbar-btn ${editor.getAttributes('image').align === opt.value ? 'is-active' : ''}`}
+                aria-label={`Căn ảnh ${opt.label}`}
+                title={`Căn ảnh ${opt.label}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       <EditorContent editor={editor} placeholder={placeholder} />

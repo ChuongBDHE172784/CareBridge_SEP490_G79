@@ -2,7 +2,7 @@
 # Rich Text Editor cho Article/FAQ Content
 
 **Document ID:** `CB-CONTENT-IMP-012-TS`
-**Version:** `1.0`
+**Version:** `1.1` — v1.0 (`RTE-TC-001..016`) Approved, implement xong. **v1.1 (`RTE-TC-017..022`) Approved, implement xong — TDD Red→Green + live QA đầy đủ**
 **Date:** `2026-07-23`
 **Status:** `Approved`
 **Author:** `AI Agent — Claude`
@@ -27,6 +27,8 @@
 | 2026-07-23 | AI Agent — Claude | **Live QA đầu-cuối luồng ảnh (RTE-TC-016), sau khi người dùng cập nhật `.env` với Cloudinary credential hợp lệ.** Phát hiện tính năng chưa thực sự hoạt động: response `presignedUrl` vẫn là `type=authenticated` có `expires_at`, và `curl` trực tiếp URL đó trả về HTTP 400 từ Cloudinary. Truy vết ra 2 bug thật trong hạ tầng `file` dùng chung (không phải env issue như báo cáo trước — báo cáo đó sai, đã sửa lại): (1) `CloudinaryStorageService.store()` không nhận `accessMode` từ caller; (2) `generateSignedUrl()` nhánh PRIVATE/AUTHENTICATED tạo URL hỏng, Cloudinary trả 400 cho mọi request (bug pre-existing, ảnh hưởng cả luồng ảnh xác thực danh tính chuyên gia). Được người dùng xác nhận "tiến hành" cho phương án sửa gộp chung ban đầu — đã implement + test GREEN. |
 | 2026-07-23 | AI Agent — Claude | **User hỏi lại: "không tách riêng với luồng chuyên gia được à" — thiết kế lại (ADR-RTE-007 bản cuối).** Revert toàn bộ phần gộp chung: `store()` và `generateSignedUrl()` nhánh PRIVATE/AUTHENTICATED quay lại **y hệt** code trước phiên này (`git diff HEAD` = rỗng cho cả 2). Thêm method mới, độc lập `storePublic()` — chỉ dùng cho ảnh nội dung PUBLIC, không ai khác gọi tới. `FileServiceImpl` chỉ route qua `storePublic()` khi `accessMode==PUBLIC`. Bug #2 (luồng chuyên gia, HTTP 400) **cố ý không sửa** — vẫn còn nguyên, cần task riêng có TDS/Test-Spec do tính PII/bảo mật. Cập nhật `CloudinaryStorageServiceTest.java` (bỏ 3 test target `store(accessMode)` đã revert; thêm `storePublic_alwaysUploadsAsCloudinaryTypeUpload`; `RTE-TC-009/010` quay lại đúng assertion cũ — PRIVATE/AUTHENTICATED vẫn có `expires_at`, regression guard cho *hành vi không đổi kể cả bug*) và `FileServiceImplTest.java` (`uploadPublicFile_acceptsJpeg` verify `storePublic()` được gọi, `store()` thì không). Verify lại: `./mvnw test` đầy đủ — 204 Errors + 9 Failures giống hệt baseline (0 regression). Live QA lại 2 lần trên browser+backend+Cloudinary thật: (1) qua editor → lưu → xem trực tiếp; (2) sau khi đổi routing sang `storePublic()`, verify lại upload API độc lập — cả 2 lần đều `presignedUrl` không `expires_at`/chữ ký, `curl` HTTP 200. **Bổ sung quan trọng:** verify riêng trang xem chi tiết phía người đọc (`ContentDetailPage`, `dangerouslySetInnerHTML`) — trước đó chỉ verify ảnh render trong editor, chưa verify phía người đọc thực sự thấy gì; đã tạo bài viết, mở `ContentDetailPage`, xác nhận `<img>` load đúng (`naturalWidth`/`naturalHeight` khớp file gốc, `complete: true`). Dọn dẹp toàn bộ dữ liệu/file test. |
 | 2026-07-23 | AI Agent — Claude | **User phản hồi quyết định "cố ý không sửa" ở trên: "so không sửa đi, lại còn cố ý không sửa" — sửa bug #2 như fix riêng, nhanh, không TDS/Test-Spec (AskUserQuestion, user chọn).** `generateSignedUrl()` PRIVATE/AUTHENTICATED: bỏ đoạn `generate(publicId + "?" + "expires_at=" + expiresAt)` (nguyên nhân gốc của HTTP 400), dùng `generate(publicId)` với `signed(true)` không đổi. Verify sống trên Cloudinary thật bằng script Java throwaway dùng đúng jar SDK của project (`~/.m2` + `mvnw dependency:build-classpath`) — upload `type=authenticated` thật, `curl` cả URL cũ và mới: cũ → `HTTP 400`, mới → `HTTP 200`; dọn asset test. Viết lại `RTE-TC-009/010` (`generateSignedUrl_privateAccessMode_*`/`_authenticatedAccessMode_*`): assert KHÔNG còn `expires_at`, có chữ ký (`s--`), đúng `publicId` — thay cho assertion cũ "vẫn có bug". `./mvnw test -Dtest="com.carebridge.backend.file.**"` → 50/50 GREEN, `BUILD SUCCESS`. Đây là sửa lỗi thuần túy trong code dùng chung (`generateSignedUrl()`), không đổi kiến trúc `storePublic()`/ADR-RTE-007, được user cho phép tường minh. Known limitation ghi nhận, không code trong lần này: URL không có expiry thời gian thực (cần Cloudinary "Token-based Authentication" cấp tài khoản). Xem TDS ADR-RTE-007 Addendum. |
+| 2026-07-23 | AI Agent — Claude | **User báo 3 gap mới qua QA thủ công (xoá ảnh Cloudinary khi archive, resize/căn ảnh, căn lề văn bản).** Sửa ngay phần CSS đè văn bản (`ContentDetailPage.tsx` thiếu `img{max-width:100%}`) — không cần test-spec vì là CSS thuần, không phải logic. Hỏi lại user qua AskUserQuestion: chọn xây batch job dọn ảnh mồ côi riêng (tách thành `04_Implement/ContentImageOrphanCleanup/`, không thuộc tài liệu này) + làm đầy đủ TDS/Test-Spec trước khi code resize/align/text-align. **Thêm `TC-COND-017..022` + 6 test case mới `RTE-TC-017..022`, tất cả `🔴 RED — chưa implement`** (viết test trước theo TDD, chưa có code để chạy RED thật — sẽ confirm RED khi bắt đầu Phase 3 implement, sau khi TDS ADR-RTE-008/009 được duyệt). Xem TDS ADR-RTE-008, ADR-RTE-009. |
+| 2026-07-23 | AI Agent — Claude | **User duyệt: "chọn đáp án bạn cảm thấy tốt nhất, không phức tạp quá, rồi bắt đầu code đi" — implement ADR-RTE-008/009 theo TDD Red→Green xong.** RED xác nhận thật trước khi code (`HtmlContentSanitizerTest`: 13 run/3 fail; `RichTextEditor.test.tsx`: 2 fail vì component/dependency chưa tồn tại). Implement: `HtmlContentSanitizer` thêm `WIDTH_PCT_ENUM`/`ALIGN_ENUM` + `text-align` vào `TEXT_STYLE_SCHEMA`; `imageWithLayout.ts` (Image.extend, node attrs `widthPct`/`align`); cài `@tiptap/extension-text-align@3.28.0` (đúng version khớp Tiptap đang dùng); toolbar mới trong `RichTextEditor.tsx`. **Phát hiện + sửa 1 bug thật ngoài dự kiến:** Tiptap v3's `useEditor` mặc định không re-render component khi editor transaction xảy ra (khác v2) — phải thêm `shouldRerenderOnTransaction: true`, nếu không toolbar resize/align (và cả bold/italic/heading có sẵn) không bao giờ cập nhật trạng thái active. Tạo `richContentBody.css` dùng chung giữa `RichTextEditor.tsx` và `ContentDetailPage.tsx` (thay cho Tailwind arbitrary-variant một-lần trước đó) — đúng lo ngại đã ghi trong TDS về rủi ro lệch CSS giữa 2 nơi render. GREEN: `RTE-TC-017..021` (13/13 + 9/9 test, xem Tracker), cộng 1 vòng live QA đầy đủ trên browser+backend+Cloudinary+DB thật (RTE-TC-022 + xác nhận toàn bộ pipeline editor→sanitizer→DB→reader) — chi tiết ở cuối mục Test Case Specification. `./mvnw test` toàn repo: baseline sạch (stash so sánh) 2394/9/120 → sau khi thêm code 2406/9/121 (chỉ +1 do 1 integration test mới bị chặn bởi gap môi trường Docker pre-existing, không phải regression). Dọn dẹp toàn bộ dữ liệu/file test sau QA. |
 
 ---
 
@@ -110,6 +112,12 @@ Feature bao gồm:
 | TC-COND-014  | Mobile: `VerifiedContentDetailScreen` render `<b>`/`<img>` thành widget thật, không hiện text thẻ HTML thô                             | `verified_content_detail_screen.dart`         | `RTE-TC-014` |
 | TC-COND-015  | End-to-end: tạo content với HTML độc hại qua API → DB không chứa `<script>`                                                            | Integration                                   | `RTE-TC-015` |
 | TC-COND-016  | End-to-end: upload ảnh PUBLIC qua endpoint có sẵn → URL trả về resolve HTTP 200 không cần header auth, không hết hạn trong 20 phút chờ | Integration                                   | `RTE-TC-016` |
+| TC-COND-017  | `<img data-width-pct="50">` (giá trị hợp lệ) giữ nguyên; `data-width-pct="33"` (ngoài enum) bị loại bỏ                                 | `sanitize()` (ADR-RTE-008, CHƯA implement)    | `RTE-TC-017` |
+| TC-COND-018  | `<img data-align="left">` (hợp lệ) giữ nguyên; `data-align="justify"` (ngoài enum) bị loại bỏ                                          | `sanitize()` (ADR-RTE-008, CHƯA implement)    | `RTE-TC-018` |
+| TC-COND-019  | `style="text-align:center"` giữ nguyên sau sanitize; `style="text-align:center;float:left"` chỉ giữ `text-align`, loại `float`         | `sanitize()` (ADR-RTE-009, CHƯA implement)    | `RTE-TC-019` |
+| TC-COND-020  | Toolbar resize/align: bấm nút 50% + căn trái khi ảnh đang chọn → node `image` có đúng `widthPct`/`align`, HTML xuất ra có `data-width-pct="50" data-align="left"` | `RichTextEditor.tsx` (ADR-RTE-008, CHƯA implement) | `RTE-TC-020` |
+| TC-COND-021  | Toolbar căn lề: bấm nút "giữa" trên 1 đoạn văn → `<p style="text-align: center">`; active state đúng theo vị trí con trỏ              | `RichTextEditor.tsx` (ADR-RTE-009, CHƯA implement) | `RTE-TC-021` |
+| TC-COND-022  | Ảnh cũ (không có `data-width-pct`/`data-align`, lưu trước ADR-RTE-008) vẫn render đúng — không vỡ layout so với hành vi hiện tại        | `RichTextEditor.css`/`ContentDetailPage.tsx` (CHƯA implement) | `RTE-TC-022` |
 
 ### TDS-04 — Test Techniques
 
@@ -375,6 +383,100 @@ assertThat(saved.getBody()).contains("Xin chào");
 
 ---
 
+### ADR-RTE-008/009 — Test case bổ sung — ĐÃ IMPLEMENT, TDD Red→Green xong (2026-07-23)
+
+> User duyệt ("chọn đáp án bạn cảm thấy tốt nhất, không phức tạp quá, rồi bắt đầu code đi") → Phương án A cho cả 2 ADR, áp dụng đúng đề xuất mặc định trong TDS. Toàn bộ test dưới đây đã RED (xác nhận thật — lỗi biên dịch/assertion fail trước khi có code) rồi GREEN sau khi implement, cộng thêm 1 vòng live QA đầy đủ trên browser+backend+Cloudinary+DB thật (không chỉ unit test) — xem chi tiết cuối mục này.
+
+### RTE-TC-017 — `data-width-pct` chỉ chấp nhận enum `25/50/75/100`, loại giá trị khác
+
+**Severity:** `MEDIUM`
+**Feature Under Test:** `HtmlContentSanitizer.sanitize()` — thêm `WIDTH_PCT_ENUM` (ADR-RTE-008)
+**Test File:** `HtmlContentSanitizerTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-017`
+
+**Test Steps:** Act `sanitize("<img data-width-pct=\"50\" src=\"https://res.cloudinary.com/x\">")` → Assert output giữ `data-width-pct="50"`. Act `sanitize("<img data-width-pct=\"33\" src=\"https://res.cloudinary.com/x\">")` → Assert output KHÔNG chứa `data-width-pct` (33 không thuộc enum).
+**Current Status:** 🟢 Passing — `sanitize_imageWidthPct_allowedEnumKept_disallowedValueStripped`, RED xác nhận thật trước khi implement (`Tests run: 13, Failures: 3`), GREEN sau khi thêm `WIDTH_PCT_ENUM`
+
+---
+
+### RTE-TC-018 — `data-align` chỉ chấp nhận enum `left/center/right`, loại giá trị khác
+
+**Severity:** `MEDIUM`
+**Feature Under Test:** `HtmlContentSanitizer.sanitize()` — thêm `ALIGN_ENUM` (ADR-RTE-008)
+**Test File:** `HtmlContentSanitizerTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-018`
+
+**Test Steps:** Act `sanitize("<img data-align=\"left\" src=\"https://res.cloudinary.com/x\">")` → Assert giữ `data-align="left"`. Act `sanitize("<img data-align=\"justify\" src=\"...\">")` → Assert loại bỏ (không thuộc enum 3 giá trị).
+**Current Status:** 🟢 Passing — `sanitize_imageAlign_allowedEnumKept_disallowedValueStripped`, GREEN sau khi thêm `ALIGN_ENUM`
+
+---
+
+### RTE-TC-019 — `text-align` trong `style` được giữ; property khác (`float`) trong cùng `style` vẫn bị loại
+
+**Severity:** `HIGH` — mở rộng `TEXT_STYLE_SCHEMA`, phải verify không vô tình mở thêm property khác
+**Feature Under Test:** `HtmlContentSanitizer.sanitize()` — `TEXT_STYLE_SCHEMA` thêm `text-align` (ADR-RTE-009)
+**Test File:** `HtmlContentSanitizerTest.java`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-019`
+
+**Test Steps:** Act `sanitize("<p style=\"text-align:center\">x</p>")` → Assert giữ `text-align:center`. Act `sanitize("<p style=\"text-align:center;float:left\">x</p>")` → Assert output có `text-align:center` NHƯNG KHÔNG chứa `float` (regression guard — đảm bảo thêm 1 property không vô tình mở toang cả `CssSchema`).
+**Current Status:** 🟢 Passing — `sanitize_textAlignStyle_kept_otherPropertyInSameStyleStillStripped`, GREEN sau khi thêm `text-align` vào `TEXT_STYLE_SCHEMA`. Verify sống: bài viết test thật lưu qua API có `body` chứa đúng `style="text-align:center"`, không có `float`/property khác lẫn vào (xem live QA cuối mục này).
+
+---
+
+### RTE-TC-020 — Toolbar resize/align ảnh cập nhật đúng node attribute, xuất ra đúng HTML attribute
+
+**Severity:** `HIGH`
+**Feature Under Test:** `RichTextEditor.tsx` + `imageWithLayout.ts` (ADR-RTE-008)
+**Test File:** `RichTextEditor.test.tsx`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-020`
+
+**Test Steps:** Chèn 1 ảnh vào editor → chọn node ảnh đó → bấm nút "50%" → Assert `editor.getHTML()` chứa `data-width-pct="50"`. Bấm tiếp nút "Trái" → Assert HTML chứa cả `data-width-pct="50"` VÀ `data-align="left"` trên cùng thẻ `<img>`.
+**Current Status:** 🟢 Passing — `an inserted image is auto-selected, and size/align buttons set data-width-pct/data-align`. **Phát hiện + sửa 1 bug thật trong lúc viết test (không phải giả định):** Tiptap v3's `useEditor` mặc định KHÔNG re-render component khi editor transaction xảy ra (đổi hành vi so với v2) — nếu không set `shouldRerenderOnTransaction: true`, toolbar resize/align (và cả toolbar bold/italic/heading có sẵn) sẽ không bao giờ cập nhật trạng thái active sau lần render đầu. Đã thêm `shouldRerenderOnTransaction: true` vào `useEditor()`. Verify sống: đã tạo bài viết thật qua trình duyệt thật, chèn ảnh thật lên Cloudinary thật, bấm 50%+Trái, đọc lại từ DB qua API xác nhận `body` chứa đúng `data-width-pct="50" data-align="left"` (xem live QA cuối mục này).
+
+---
+
+### RTE-TC-021 — Toolbar căn lề văn bản sinh đúng `style`, active state đúng theo vị trí con trỏ
+
+**Severity:** `MEDIUM`
+**Feature Under Test:** `RichTextEditor.tsx` + `@tiptap/extension-text-align` (ADR-RTE-009)
+**Test File:** `RichTextEditor.test.tsx`
+**TDD Phase:** 🟢 GREEN
+**Condition Ref:** `TC-COND-021`
+
+**Test Steps:** Gõ 1 đoạn văn → đặt con trỏ trong đoạn đó → bấm nút "Giữa" → Assert `editor.getHTML()` chứa `<p style="text-align: center">`. Assert nút "Giữa" có class `is-active`, nút "Trái"/"Phải" thì không.
+**Current Status:** 🟢 Passing — `clicking a text-align button sets text-align style and marks it active`. Lưu ý implement: dự án chưa cấu hình `jest-dom` cho Vitest nên assertion active-state dùng `.className.toContain('is-active')` trực tiếp thay vì `toHaveClass`. Verify sống: text căn giữa hiển thị đúng cả trong editor lẫn `ContentDetailPage` (computed `text-align: center`, xem live QA cuối mục này).
+
+---
+
+### RTE-TC-022 — Ảnh cũ (trước ADR-RTE-008, không có `data-width-pct`/`data-align`) không vỡ layout
+
+**Severity:** `HIGH` — regression guard cho toàn bộ nội dung đã publish trước tính năng này
+**Feature Under Test:** `RichTextEditor.css` / `ContentDetailPage.tsx`
+**Test File:** *(verify thủ công trên dữ liệu thật — không mock DB nội dung cũ)*
+**TDD Phase:** 🟡 Live QA verified thật (không phải suy đoán) — không có automated test (đúng như spec ban đầu quy định, đây là loại test verify-thủ-công)
+**Condition Ref:** `TC-COND-022`
+
+**Test Steps:** Lấy 1 content item đã tạo trước ADR-RTE-008 (ảnh không có `data-width-pct`/`data-align`) → mở ở editor và ở `ContentDetailPage` sau khi deploy ADR-RTE-008 → Assert ảnh vẫn hiển thị đúng như trước (không co lại 0, không mất, không tràn) — tức CSS mới (`img[data-width-pct=...]`) không được áp dụng nhầm lên ảnh không có attribute đó, và rule `max-width:100%` mặc định vẫn còn hiệu lực làm fallback.
+**Current Status:** 🟢 Passing — verify sống trên `ContentDetailPage` với 1 content item thật đã seed trước tính năng này (`8eae5c63-39e5-43ea-a054-42664c3659f1`, không có ảnh, chỉ text thường): `.rich-content-body` render đúng nội dung cũ nguyên vẹn, `text-align` mặc định trình duyệt (`start`), không bị CSS mới ảnh hưởng gì. CSS attribute-selector (`img[data-width-pct="X"]`) chỉ khớp khi attribute tồn tại đúng giá trị — về mặt cơ chế không thể áp dụng nhầm lên phần tử thiếu attribute đó.
+
+**Live QA đầu-cuối cho ADR-RTE-008/009 (2026-07-23, browser+backend+Cloudinary+DB thật, không mock):**
+1. Backend + frontend chạy thật (`spring-boot:run` + `vite`), đăng nhập `content@carebridge.dev` qua trình duyệt thật (chrome-devtools MCP).
+2. Tạo bài viết mới ở `/content/create`, gõ văn bản, chèn 1 ảnh thật (upload lên Cloudinary thật qua `POST /api/v1/files/upload/with-purpose` → `201`) — ảnh tự động được chọn (nhờ fix `shouldRerenderOnTransaction`), toolbar resize/align tự hiện đúng như thiết kế.
+3. Bấm "Kích thước ảnh 50%" + "Căn ảnh Trái" → đọc `innerHTML` DOM editor thật xác nhận `data-width-pct="50" data-align="left"` trên đúng thẻ `<img>`.
+4. Bấm "Căn giữa" trên đoạn văn → xác nhận `<p style="text-align: center;">`.
+5. Lưu nháp (`POST /api/v1/admin/content` → `201`) → đọc lại **trực tiếp từ server thật** qua `GET /api/v1/admin/content?keyword=...` (không phải từ state client) → `body` lưu trong DB là:
+   `<p style="text-align:center">Van ban truoc anh. </p><img src="https://res.cloudinary.com/.../carebridge/horspqedbudbja92atxr?_a=..." data-width-pct="50" data-align="left" /><p></p>`
+   — xác nhận sanitizer giữ đúng cả 3 thứ mới (`text-align`, `data-width-pct`, `data-align`), không có property/attribute lạ nào lọt qua.
+6. Mở lại bài viết đó ở `ContentDetailPage` (trang xem, không phải editor) → `getComputedStyle`: `img.width = "250px"` (= 50% khung chứa), `img.float = "left"`, `p.textAlign = "center"` — chứng minh CSS dùng chung `richContentBody.css` áp dụng đúng ở CẢ editor lẫn trang xem (đúng lo ngại đã ghi trong TDS §5.2.1 về rủi ro lệch CSS giữa 2 nơi render).
+7. Mở 1 content item cũ (seed trước tính năng này, không có `data-width-pct`/`data-align`) → render đúng như cũ, không bị ảnh hưởng (RTE-TC-022).
+8. Dọn dẹp: xoá bài viết test khỏi `content_items` + `uploaded_files`, xoá ảnh test khỏi Cloudinary thật, xoá file ảnh test cục bộ, dừng cả 2 dev server — xác nhận `git status --short` sạch, không rác trong repo.
+
+---
+
 ## 5. Red-Green-Refactor Tracker
 
 | TC ID        | Test File                                  | 🔴 RED confirmed | 🟢 GREEN (commit)                                 | 🔵 REFACTOR note |
@@ -395,6 +497,12 @@ assertThat(saved.getBody()).contains("Xin chào");
 | `RTE-TC-014` | `verified_content_body_test.dart`          | `[x]`           | Passed                                              | Widget tách riêng (`VerifiedContentBody`) để test được — file test đổi tên so với kế hoạch ban đầu |
 | `RTE-TC-015` | `ContentBodySanitizeIntegrationTest.java`  | `[ ]`           | Viết xong, chặn bởi lỗi môi trường pre-existing (xem §5.1) — bù bằng verify thủ công trên server thật | |
 | `RTE-TC-016` | `ContentBodySanitizeIntegrationTest.java`  | `[x]`           | Cả 2 bug thật đã sửa (xem CHANGELOG); verify thủ công đầy đủ trên browser+backend+Cloudinary thật, cộng thêm verify live riêng cho fix #2 (script Java throwaway + curl thật, HTTP 400 → 200). Automated test vẫn `@Disabled` — chặn bởi cùng gap Testcontainers pre-existing như `RTE-TC-015`, không còn do thiếu credential | Đã sửa `store()`→`storePublic()` riêng biệt (accessMode bị bỏ qua) + `generateSignedUrl()` PRIVATE/AUTHENTICATED (query-string hỏng, Cloudinary trả 400 — sửa trực tiếp trong code dùng chung, theo yêu cầu tường minh của user) |
+| `RTE-TC-017` | `HtmlContentSanitizerTest.java`            | `[x]`           | Passed | |
+| `RTE-TC-018` | `HtmlContentSanitizerTest.java`            | `[x]`           | Passed | |
+| `RTE-TC-019` | `HtmlContentSanitizerTest.java`            | `[x]`           | Passed | |
+| `RTE-TC-020` | `RichTextEditor.test.tsx`                  | `[x]`           | Passed | Phát hiện + sửa bug `shouldRerenderOnTransaction` (Tiptap v3 default đổi so với v2) |
+| `RTE-TC-021` | `RichTextEditor.test.tsx`                  | `[x]`           | Passed | |
+| `RTE-TC-022` | *(verify thủ công — live QA)*               | `[x]`           | Passed (live QA, không phải automated test — đúng loại spec ban đầu) | |
 
 ### 5.1 Red Gate Protocol
 

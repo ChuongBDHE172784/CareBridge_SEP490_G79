@@ -15,5 +15,8 @@ public class SafetyConfigResponse {
     private boolean fallDetectionEnabled;
     private String sensitivityLevel;
     private boolean emergencyAutoAlert;
+    private int countdownSeconds;
+    private boolean sensorPermissionGranted;
+    private Instant sensorPermissionRecordedAt;
     private Instant updatedAt;
 }

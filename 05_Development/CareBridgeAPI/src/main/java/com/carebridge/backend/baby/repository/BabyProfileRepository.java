@@ -23,6 +23,10 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
 
     Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    Optional<BabyProfile> findByIdAndOwnerUserIdAndRelatedJourneyIdAndStatusAndActiveTrue(
+            UUID id, UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner")
     Optional<BabyProfile> findOwnedByIdForUpdate(@Param("id") UUID id, @Param("owner") UUID owner);
@@ -31,6 +35,6 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
             UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE BabyProfile b SET b.active = :active WHERE b.ownerUserId = :ownerUserId")
-    int updateActiveByOwnerUserId(@Param("ownerUserId") UUID ownerUserId, @Param("active") Boolean active);
+    @Query(value = "UPDATE users SET settings_jsonb=jsonb_set(coalesce(settings_jsonb,'{}'::jsonb),'{activeBabyId}',to_jsonb(cast(:babyId as text)),true) WHERE user_id=:ownerUserId", nativeQuery = true)
+    int setActiveBaby(@Param("ownerUserId") UUID ownerUserId, @Param("babyId") UUID babyId);
 }

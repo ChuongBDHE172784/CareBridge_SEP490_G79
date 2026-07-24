@@ -193,6 +193,13 @@ public class NotificationServiceImpl implements NotificationService {
                 r.getStatus().name(),
                 r.getCreatedAt(),
                 r.getSentAt(),
+                r.isRead(),
+                r.getReadAt(),
+                r.getChannel(),
+                r.getFcmMessageId(),
+                r.getAttemptCount(),
+                r.getFailedAt(),
+                r.getUpdatedAt(),
                 r.getMetadata()
         );
     }

@@ -708,7 +708,7 @@ public class AuthServiceImpl implements AuthService {
         if (session.isRevoked()) {
             throw new RevokedSessionException("Session has been revoked");
         }
-        if (session.getStatus() == null || !"active".equals(session.getStatus())) {
+        if (session.getStatus() == null || !"ACTIVE".equalsIgnoreCase(session.getStatus())) {
             throw new InvalidRefreshTokenException("Session is not active");
         }
         if (session.getExpiresAt() != null && !session.getExpiresAt().isAfter(now)) {
@@ -763,7 +763,7 @@ public class AuthServiceImpl implements AuthService {
             sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
                     .ifPresent(session -> {
                         session.setRevoked(true);
-                        session.setStatus("logged_out");
+                        session.setStatus("REVOKED");
                         session.setUpdatedAt(Instant.now());
                         sessionRepository.save(session);
                     });
@@ -790,7 +790,7 @@ public class AuthServiceImpl implements AuthService {
             sessionRepository.findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(userId)
                     .forEach(session -> {
                         session.setRevoked(true);
-                        session.setStatus("logged_out");
+                        session.setStatus("REVOKED");
                         session.setUpdatedAt(Instant.now());
                         sessionRepository.save(session);
                     });

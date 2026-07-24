@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "moderation_actions")
+@Table(name = "moderation_events")
 @Getter
 @Setter
 @Builder
@@ -27,10 +27,10 @@ public class ModerationAction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "moderation_action_id", updatable = false, nullable = false, columnDefinition = "uuid")
+    @Column(name = "moderation_event_id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "report_id", columnDefinition = "uuid")
+    @Column(name = "moderation_case_id", columnDefinition = "uuid")
     private UUID reportId;
 
     @Column(name = "target_id", columnDefinition = "uuid")

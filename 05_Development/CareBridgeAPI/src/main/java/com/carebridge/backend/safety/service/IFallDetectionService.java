@@ -14,4 +14,5 @@ public interface IFallDetectionService {
     SafetyEventResponse confirmSafetyCheck(UUID userId, UUID eventId, String note);
     SafetyEventResponse reportFalsePositive(UUID userId, UUID eventId, String note);
     void sendEmergencyAlert(UUID userId, UUID eventId);
+    void processExpiredCountdowns();
 }

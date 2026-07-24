@@ -182,8 +182,7 @@ class ModerateContentServiceImplTest {
     // MOD-TC-103: LOCK a QUESTION (with reason) → status LOCKED
     @Test
     void moderateContent_lockQuestion_updatesStatusToLocked() {
-        CommunityQuestion question = makeQuestion(q -> q.setStatus(QuestionStatus.APPROVED));
-        when(communityQuestionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(communityQuestionRepository.lockIfApproved(QUESTION_ID)).thenReturn(1);
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ModerateContentRequest request = makeRequest(QUESTION_ID, ReportTargetType.QUESTION,
@@ -192,9 +191,7 @@ class ModerateContentServiceImplTest {
         ModerateContentResponse response = moderationService.moderateContent(request, principal);
 
         assertThat(response.resultingStatus()).isEqualTo("LOCKED");
-        ArgumentCaptor<CommunityQuestion> questionCaptor = ArgumentCaptor.forClass(CommunityQuestion.class);
-        verify(communityQuestionRepository).save(questionCaptor.capture());
-        assertThat(questionCaptor.getValue().getStatus()).isEqualTo(QuestionStatus.LOCKED);
+        verify(communityQuestionRepository).lockIfApproved(QUESTION_ID);
     }
 
     // MOD-TC-104: APPROVE/HIDE an ANSWER → status tương ứng

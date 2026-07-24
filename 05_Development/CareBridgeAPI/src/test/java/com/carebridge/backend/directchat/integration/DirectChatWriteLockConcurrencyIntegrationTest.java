@@ -13,6 +13,7 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -201,38 +202,37 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
         seedUser(motherId, "Lock Mother", "MOTHER");
         seedUser(expertUserId, "Lock Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
         if (withConversation) {
             jdbcTemplate.update("""
-                    INSERT INTO direct_conversations
-                        (conversation_id, mother_user_id, expert_user_id, status,
-                         created_at, last_activity_at)
-                    VALUES (?, ?, ?, 'ACTIVE', now(), now())
-                    """, conversationId, motherId, expertUserId);
+                    INSERT INTO archived_realtime_records
+                        (archive_id, legacy_table, legacy_id, mother_user_id, expert_user_id,
+                         status, original_created_at, last_activity_at)
+                    VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())
+                    """, conversationId, conversationId.toString(), motherId, expertUserId);
         }
         return new Fixture(motherId, expertUserId, expertProfileId, conversationId);
     }
 
     private void seedUser(UUID id, String name, String role) {
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, true, false, now(), now())
-                """, id, name, uniquePhone(), role);
+        CanonicalUserFixture.insertUser(jdbcTemplate, id, name, uniquePhone(), role);
     }
 
     private int count(String table, Fixture fixture) {
         String sql = switch (table) {
             case "direct_conversations" ->
-                    "SELECT COUNT(*) FROM direct_conversations WHERE mother_user_id=? AND expert_user_id=?";
+                    "SELECT COUNT(*) FROM archived_realtime_records "
+                            + "WHERE legacy_table='direct_conversations' AND mother_user_id=? AND expert_user_id=?";
             case "direct_messages" ->
-                    "SELECT COUNT(*) FROM direct_messages WHERE conversation_id=?";
+                    "SELECT COUNT(*) FROM archived_realtime_records "
+                            + "WHERE legacy_table='direct_messages' AND conversation_id=?";
             case "conversation_calls" ->
-                    "SELECT COUNT(*) FROM conversation_calls WHERE conversation_id=?";
+                    "SELECT COUNT(*) FROM archived_realtime_records "
+                            + "WHERE legacy_table='conversation_calls' AND conversation_id=?";
             default -> throw new IllegalArgumentException(table);
         };
         if ("direct_conversations".equals(table)) {

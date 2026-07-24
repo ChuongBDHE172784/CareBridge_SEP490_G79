@@ -19,6 +19,9 @@ public interface ExpertCredentialRepository extends JpaRepository<ExpertCredenti
 
 	List<ExpertCredential> findByExpertProfileIdAndReviewStatus(UUID expertProfileId, ReviewStatus reviewStatus);
 
+	Optional<ExpertCredential> findFirstByExpertProfileIdAndReviewStatusOrderByReviewedAtDescCreatedAtDesc(
+		UUID expertProfileId, ReviewStatus reviewStatus);
+
 	List<ExpertCredential> findByReviewStatus(ReviewStatus reviewStatus);
 
 	Optional<ExpertCredential> findByCredentialId(UUID credentialId);

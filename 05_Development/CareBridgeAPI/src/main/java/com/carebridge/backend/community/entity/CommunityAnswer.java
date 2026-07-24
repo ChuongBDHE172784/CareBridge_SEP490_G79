@@ -3,30 +3,32 @@ package com.carebridge.backend.community.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "community_answers", indexes = {
-    @Index(name = "idx_community_answers_question_id", columnList = "question_id"),
-    @Index(name = "idx_community_answers_author_id", columnList = "author_id"),
-    @Index(name = "idx_community_answers_status", columnList = "status")
+@Table(name = "community_content", indexes = {
+    @Index(name = "community_content_parent_ix", columnList = "parent_content_id"),
+    @Index(name = "community_content_author_ix", columnList = "author_user_id"),
+    @Index(name = "community_content_status_ix", columnList = "moderation_status")
 })
+@org.hibernate.annotations.SQLRestriction("content_type = 'ANSWER'")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CommunityAnswer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "content_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "question_id", nullable = false)
+    @Column(name = "parent_content_id")
     private UUID questionId;
 
     // ADR-COM-004: authorId from JWT — matches users.id (UUID)
-    @Column(name = "author_id", nullable = false)
+    @Column(name = "author_user_id", nullable = false)
     private UUID authorId;
 
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
@@ -34,15 +36,18 @@ public class CommunityAnswer {
 
     // ADR-COM-005: only set by Moderator/System, never from request body
     @Column(name = "is_expert_labeled", nullable = false)
+    @ColumnDefault("false")
     @Builder.Default
     private boolean expertLabeled = false;
 
     @Column(name = "is_personal_experience", nullable = false)
-    private boolean personalExperience;
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean personalExperience = false;
 
     // ADR-COM-006: always PENDING on creation
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "moderation_status", nullable = false, length = 30)
     @Builder.Default
     private AnswerStatus status = AnswerStatus.PENDING;
 
@@ -57,4 +62,8 @@ public class CommunityAnswer {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Builder.Default
+    @Column(name = "content_type", nullable = false, updatable = false, length = 20)
+    private String contentType = "ANSWER";
 }

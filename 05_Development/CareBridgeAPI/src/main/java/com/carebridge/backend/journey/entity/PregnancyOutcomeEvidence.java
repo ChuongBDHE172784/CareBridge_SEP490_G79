@@ -10,10 +10,11 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "pregnancy_outcome_evidence",
+        name = "mother_journey_events",
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_pregnancy_outcome_submission",
-                columnNames = {"journey_id", "submission_id"}))
+                columnNames = {"mother_journey_id", "submission_id", "legacy_source"}))
+@org.hibernate.annotations.SQLRestriction("legacy_source = 'PREGNANCY_OUTCOME'")
 @Getter
 @Setter
 @Builder
@@ -23,10 +24,10 @@ public class PregnancyOutcomeEvidence {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "evidence_id", updatable = false, nullable = false)
+    @Column(name = "event_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "journey_id", nullable = false, updatable = false)
+    @Column(name = "mother_journey_id", nullable = false, updatable = false)
     private UUID journeyId;
 
     @Column(name = "owner_user_id", nullable = false, updatable = false)
@@ -43,7 +44,7 @@ public class PregnancyOutcomeEvidence {
     private LocalDate outcomeDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false, updatable = false, length = 30)
+    @Column(name = "event_source", nullable = false, updatable = false, length = 30)
     private JourneyDateSource source;
 
     @Column(name = "actor_user_id", nullable = false, updatable = false)
@@ -73,6 +74,31 @@ public class PregnancyOutcomeEvidence {
 
     @Column(name = "correction", nullable = false, updatable = false)
     private boolean correction;
+
+    @Builder.Default
+    @Column(name = "event_type", nullable = false, updatable = false, length = 60)
+    private String eventType = "PREGNANCY_OUTCOME_EVIDENCE";
+
+    @Builder.Default
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "event_payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    private String payloadJson = "{}";
+
+    @Builder.Default
+    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
+    private String schemaVersion = "1";
+
+    @Builder.Default
+    @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
+    private String legacySource = "PREGNANCY_OUTCOME";
+
+    @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
+    private String legacyId;
+
+    @PrePersist
+    void prepareCanonicalEvent() {
+        legacyId = id.toString();
+    }
 
     @PreUpdate
     @PreRemove

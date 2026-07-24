@@ -62,6 +62,7 @@ public class StructuredIntakeService implements IStructuredIntakeService {
             // C2 (UC131): no raw symptom text — symptomList stored as structured JSON only
             // C5 (UC131): createdBy="SYSTEM"
             StructuredIntakeData data = StructuredIntakeData.builder()
+                    .id(event.sessionId())
                     .sessionId(event.sessionId())
                     .symptomList(result.symptomListJson())
                     .durationDays(result.durationDays())

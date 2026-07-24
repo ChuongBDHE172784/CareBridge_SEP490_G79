@@ -1,0 +1,36 @@
+/**
+ * Shared CSS for rendering content_items.body HTML — used by BOTH the RichTextEditor (while
+ * composing) and ContentDetailPage (reader view). Deliberately a single shared file: keeping
+ * these rules in two places already caused one real bug this session (ContentDetailPage was
+ * missing the base img max-width rule that RichTextEditor.css had) — see
+ * ContentRichTextEditor_TDS.md ADR-RTE-008 §5.2.1 note. Apply the `rich-content-body` class to
+ * any element that renders this HTML.
+ */
+
+.rich-content-body img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* ADR-RTE-008: image resize presets */
+.rich-content-body img[data-width-pct="25"] { width: 25%; height: auto; }
+.rich-content-body img[data-width-pct="50"] { width: 50%; height: auto; }
+.rich-content-body img[data-width-pct="75"] { width: 75%; height: auto; }
+.rich-content-body img[data-width-pct="100"] { width: 100%; height: auto; }
+
+/* ADR-RTE-008: image alignment — text wraps around left/right-aligned images */
+.rich-content-body img[data-align="left"] {
+  float: left;
+  margin: 4px 16px 8px 0;
+}
+
+.rich-content-body img[data-align="right"] {
+  float: right;
+  margin: 4px 0 8px 16px;
+}
+
+.rich-content-body img[data-align="center"] {
+  display: block;
+  float: none;
+  margin: 8px auto;
+}

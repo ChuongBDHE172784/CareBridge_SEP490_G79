@@ -46,6 +46,25 @@ validate_backend:
   image: eclipse-temurin:21-jdk
   rules: *backend_rules
   script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -DskipTests compile"]
+database_gate0_audit:
+  stage: validate
+  image: eclipse-temurin:21-jdk
+  services: [{name: "docker:27.5.1-dind", alias: docker}]
+  timeout: 20 minutes
+  environment: {name: gate0-audit, action: verify}
+  rules:
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $GATE0_ENABLED == "true" && $GATE0_DB_URL && $GATE0_DB_USERNAME && $GATE0_DB_PASSWORD'
+      when: manual
+      allow_failure: true
+    - when: never
+  script:
+    - test -n "$GATE0_DB_URL" && test -n "$GATE0_DB_USERNAME" && test -n "$GATE0_DB_PASSWORD"
+    - cd 05_Development/CareBridgeAPI
+    - ./mvnw -B -Dtest=FlywayMigrationChainTest,DatabaseGate0IntegrationTest,DatabaseGate0ManifestTest -Dgate0.enabled=true test
+  artifacts:
+    when: always
+    paths: ["05_Development/CareBridgeAPI/target/gate0/"]
+    reports: {junit: "05_Development/CareBridgeAPI/target/surefire-reports/TEST-*.xml"}
 validate_web:
   stage: validate
   image: node:22-alpine
@@ -65,10 +84,14 @@ test_backend:
   stage: test
   image: eclipse-temurin:21-jdk
   services: [{name: "docker:27.5.1-dind", alias: docker}]
+  timeout: 30 minutes
+  variables:
+    SPRING_APPLICATION_JSON: '{"logging":{"level":{"root":"WARN","org.hibernate.SQL":"OFF","org.hibernate.type.descriptor.sql":"OFF","org.springframework.orm":"WARN","com.carebridge.backend":"WARN"}}}'
   rules: *backend_rules
-  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B test"]
+  script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -Dmaven.test.redirectTestOutputToFile=true test"]
   artifacts:
     when: always
+    paths: ["05_Development/CareBridgeAPI/target/surefire-reports/"]
     reports: {junit: "05_Development/CareBridgeAPI/target/surefire-reports/TEST-*.xml"}
 test_web:
   stage: test
@@ -135,26 +158,52 @@ test_ai_evaluation_galileo:
 
 semgrep_sast:
   stage: security
-  image: returntocorp/semgrep:1.123.0
+  image:
+    name: semgrep/semgrep:1.123.0
+    entrypoint: [""]
+  dependencies: []
+  variables:
+    GIT_DEPTH: "0"
   rules: *all_rules
-  script: ["semgrep scan --error --config p/default --config .semgrep.yml --gitlab-sast --output semgrep-report.json"]
+  script:
+    - |
+      baseline_ref=""
+      if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then
+        baseline_ref="$CI_MERGE_REQUEST_DIFF_BASE_SHA"
+      elif [ -n "${CI_COMMIT_BEFORE_SHA:-}" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        baseline_ref="$CI_COMMIT_BEFORE_SHA"
+      elif git rev-parse "${CI_COMMIT_SHA}^" >/dev/null 2>&1; then
+        baseline_ref="${CI_COMMIT_SHA}^"
+      fi
+
+      if [ -n "$baseline_ref" ]; then
+        semgrep scan --oss-only --jobs 2 --error --baseline-commit "$baseline_ref" --config p/default --config .semgrep.yml --gitlab-sast-output semgrep-report.json .
+      else
+        semgrep scan --oss-only --jobs 2 --error --config p/default --config .semgrep.yml --gitlab-sast-output semgrep-report.json .
+      fi
   artifacts:
     when: always
     reports: {sast: semgrep-report.json}
 trivy_fs:
   stage: security
-  image: aquasec/trivy:0.59.1
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  dependencies: []
   rules: *all_rules
   script:
-    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --format template --template '@contrib/gitlab.tpl' --output trivy-fs-report.json .
-    - trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity CRITICAL --exit-code 1 .
+    - trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --format template --template '@/contrib/gitlab.tpl' --output trivy-fs-report.json .
+    - trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity CRITICAL --exit-code 1 .
   artifacts: {when: always, paths: [trivy-fs-report.json]}
 trivy_fs_high_advisory:
   stage: security
-  image: aquasec/trivy:0.59.1
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  dependencies: []
   rules: *all_rules
   allow_failure: true
-  script: ["trivy fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
+  script: ["trivy --timeout 10m fs --ignorefile .trivyignore --scanners vuln,secret,misconfig --severity HIGH --exit-code 1 ."]
 
 ai_evaluation_security:
   stage: security
@@ -187,7 +236,12 @@ build_backend_image:
   variables: {IMAGE: "$BACKEND_IMAGE", CONTEXT: 05_Development/CareBridgeAPI, ARCHIVE: backend-image.tar}
 build_web_image:
   extends: .docker_build
-  rules: *web_rules
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+      variables: {VITE_API_URL: "https://api.example.invalid"}
   variables: {IMAGE: "$WEB_IMAGE", CONTEXT: 05_Development/CareBridgeWebApp, ARCHIVE: web-image.tar}
   before_script: ["test -n \"$VITE_API_URL\" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }"]
 build_ai_evaluation_image:
@@ -209,7 +263,9 @@ scan_ai_evaluation_image:
 
 .image_scan:
   stage: publish
-  image: aquasec/trivy:0.59.1
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
   script: ["trivy image --input $ARCHIVE --ignorefile .trivyignore --severity CRITICAL --exit-code 1"]
 scan_backend_image:
   extends: .image_scan

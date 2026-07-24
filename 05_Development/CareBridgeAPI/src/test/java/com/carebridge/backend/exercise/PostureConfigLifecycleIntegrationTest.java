@@ -149,7 +149,9 @@ class PostureConfigLifecycleIntegrationTest extends AbstractPostgresIntegrationT
     private long activeCountFor(UUID exerciseId) {
         entityManager.flush();
         Long count = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM posture_analysis_configs WHERE exercise_id = ? AND status = 'ACTIVE'",
+                "SELECT count(*) FROM care_item_templates "
+                        + "WHERE entry_type = 'POSTURE_CONFIG' "
+                        + "AND parent_template_id = ? AND template_status = 'ACTIVE'",
                 Long.class, exerciseId);
         return count == null ? 0 : count;
     }
@@ -178,12 +180,18 @@ class PostureConfigLifecycleIntegrationTest extends AbstractPostgresIntegrationT
     // PAC-TC-THRESH-007 — DB CHECK constraint survives a raw bypass attempt
     @Test
     void rawInsert_outOfRangeConfidenceThreshold_rejectedByCheckConstraint() {
+        User admin = saveSystemAdmin("int.admin.uc186.threshold@test.com");
+        PregnancyExercise exercise = savePostureExercise(admin.getId());
+        entityManager.flush();
+
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO posture_analysis_configs "
-                        + "(posture_config_id, exercise_id, configured_by, analysis_mode, "
-                        + "confidence_threshold, effective_from, status) "
-                        + "VALUES (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), "
-                        + "'RULE_BASED', 2.0, now(), 'ACTIVE')"))
+                "INSERT INTO care_item_templates "
+                        + "(template_id, parent_template_id, entry_type, title, is_active, version, "
+                        + "configuration_jsonb, configuration_hash, configured_by, analysis_mode, "
+                        + "confidence_threshold, effective_from, template_status, created_at, updated_at) "
+                        + "VALUES (gen_random_uuid(), ?, 'POSTURE_CONFIG', 'Invalid threshold fixture', true, 1, "
+                        + "'{}'::jsonb, 'fixture', ?, 'RULE_BASED', 2.0, now(), 'ACTIVE', now(), now())",
+                exercise.getExerciseId(), admin.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

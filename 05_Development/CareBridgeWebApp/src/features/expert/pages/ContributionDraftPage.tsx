@@ -8,7 +8,7 @@ export default function ContributionDraftPage() {
   const isEditing = Boolean(id);
 
   const [eligible, setEligible] = useState(false);
-  const [loading, setLoading] = useState(!isEditing);
+  const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [submitMode, setSubmitMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,60 +25,63 @@ export default function ContributionDraftPage() {
   const [filePreviews, setFilePreviews] = useState<Map<string, { file: File; preview: string }>>(new Map());
 
   useEffect(() => {
-    loadEligibility();
-    loadMasterData();
-    if (isEditing) loadContribution();
-  }, [id]);
+    let cancelled = false;
 
-  async function loadEligibility() {
-    try {
-      const e = await checkContributionEligibility();
-      setEligible(e);
-    } catch {
-      setEligible(false);
-    }
-  }
-
-  async function loadMasterData() {
-    // In production, fetch from master data API
-    // For now, we'll use the input fields for specialtyId/hospitalId as strings
-  }
-
-  async function loadContribution() {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const c = await getContribution(id);
-      setTitle(c.title);
-      setContent(c.content);
-      setSpecialtyId(c.specialtyId);
-      setHospitalId(c.hospitalId);
-      if (c.attachments) {
-        setAttachments(c.attachments.map(a => ({
-          fileId: a.fileId,
-          kind: a.kind,
-          purpose: a.purpose,
-          accessMode: a.accessMode,
-          displayOrder: a.displayOrder,
-        })));
-        // Load previews for existing attachments
-        for (const att of c.attachments) {
-          const origName = att.originalName;
-          const presignedUrl = att.presignedUrl;
-          if (origName && presignedUrl) {
-            setFilePreviews(prev => new Map(prev).set(att.fileId, {
-              file: new File([], origName, { type: att.mimeType }),
-              preview: presignedUrl
-            }));
-          }
-        }
+    async function loadEligibility() {
+      try {
+        const eligibility = await checkContributionEligibility();
+        if (!cancelled) setEligible(eligibility);
+      } catch {
+        if (!cancelled) setEligible(false);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải bài viết');
-    } finally {
-      setLoading(false);
     }
-  }
+
+    async function loadContribution() {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const contribution = await getContribution(id);
+        if (cancelled) return;
+        setTitle(contribution.title);
+        setContent(contribution.content);
+        setSpecialtyId(contribution.specialtyId);
+        setHospitalId(contribution.hospitalId);
+        if (contribution.attachments) {
+          setAttachments(contribution.attachments.map(attachment => ({
+            fileId: attachment.fileId,
+            kind: attachment.kind,
+            purpose: attachment.purpose,
+            accessMode: attachment.accessMode,
+            displayOrder: attachment.displayOrder,
+          })));
+          const loadedPreviews = new Map<string, { file: File; preview: string }>();
+          for (const attachment of contribution.attachments) {
+            const originalName = attachment.originalName;
+            const presignedUrl = attachment.presignedUrl;
+            if (originalName && presignedUrl) {
+              loadedPreviews.set(attachment.fileId, {
+                file: new File([], originalName, { type: attachment.mimeType }),
+                preview: presignedUrl,
+              });
+            }
+          }
+          setFilePreviews(loadedPreviews);
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const apiError = err as { response?: { data?: { message?: string } } };
+        setError(apiError.response?.data?.message || 'Không thể tải bài viết');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadEligibility();
+    void loadContribution();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   async function handleFileUpload(file: File, kind: 'IMAGE' | 'DOCUMENT'): Promise<string> {
     const fileId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -367,29 +370,46 @@ interface FileDropZoneProps {
 
 function FileDropZone({ kind, attachments, previews, uploading, onFileSelect, onRemove }: FileDropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const isDragActive = useRef(false);
+  const dragDepth = useRef(0);
+  const [isDragActive, setIsDragActive] = useState(false);
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      isDragActive.current = true;
-    } else if (e.type === 'dragleave') {
-      isDragActive.current = false;
-    }
+    dragDepth.current += 1;
+    setIsDragActive(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    isDragActive.current = false;
+    dragDepth.current = 0;
+    setIsDragActive(false);
     if (e.dataTransfer.files.length > 0) {
       onFileSelect({ target: { files: e.dataTransfer.files } } as any, kind);
     }
   };
 
   return (
-    <div className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${isDragActive.current ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
+    <div
+      className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300'}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -409,8 +429,6 @@ function FileDropZone({ kind, attachments, previews, uploading, onFileSelect, on
           {kind === 'IMAGE' ? 'Hỗ trợ: JPG, PNG, WebP, HEIC, GIF' : 'Hỗ trợ: PDF, DOC, DOCX'} · Tối đa 20MB/file
         </p>
       </div>
-
-      <div onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop} />
 
       {attachments.length > 0 && (
         <div className="mt-4 space-y-2">

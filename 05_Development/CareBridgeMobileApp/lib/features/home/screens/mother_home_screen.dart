@@ -8,6 +8,7 @@ import '../../notification/screens/notification_center_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../community/screens/community_feed_screen.dart';
+import '../../community/screens/view_content_screen.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
@@ -280,6 +281,14 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const MotherExerciseScreen()),
           ),
+        ),
+        const SizedBox(width: 12),
+        _QuickAction(
+          icon: Icons.menu_book_outlined,
+          label: 'Nội dung & FAQ',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ViewContentScreen())),
         ),
       ],
     );

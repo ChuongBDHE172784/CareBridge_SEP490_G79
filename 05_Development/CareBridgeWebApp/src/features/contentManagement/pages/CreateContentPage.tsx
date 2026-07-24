@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createContent, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
 import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
 import { TYPE_LABELS, STAGE_LABELS } from '../models/content';
-import RichTextEditor, { isRichTextEmpty } from '../components/RichTextEditor';
+import RichTextEditor from '../components/RichTextEditor';
+import { isRichTextEmpty } from '../components/richTextUtils';
 
 export default function CreateContentPage() {
   const navigate = useNavigate();

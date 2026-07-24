@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * UC-10: Manages notification preferences using the V1 notification_preferences table.
+ * UC-10: Manages notification preferences in canonical account settings.
  *
  * <p>The table stores one row per (user_id, notification_type) with separate
  * boolean flags for each delivery channel (push_enabled, email_enabled, in_app_enabled).

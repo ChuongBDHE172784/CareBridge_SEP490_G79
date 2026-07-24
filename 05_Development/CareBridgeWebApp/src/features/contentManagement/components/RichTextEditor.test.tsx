@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RichTextEditor, { isRichTextEmpty } from './RichTextEditor';
+import RichTextEditor from './RichTextEditor';
+import { isRichTextEmpty } from './richTextUtils';
 
 // Vitest doesn't auto-run Testing Library's cleanup between tests the way Jest's
 // testEnvironment integration does — without this, each test's render() piles up in the
@@ -86,6 +87,55 @@ describe('RichTextEditor', () => {
       expect(lastHtml).toContain('src="https://res.cloudinary.com/demo/x.jpg"');
     });
   });
+
+  // RTE-TC-020: chèn ảnh -> ảnh tự động được chọn -> bấm nút kích thước/căn ảnh -> đúng data-* attrs
+  it('an inserted image is auto-selected, and size/align buttons set data-width-pct/data-align', async () => {
+    const onChange = vi.fn();
+    const onImageUpload = vi.fn().mockResolvedValue('https://res.cloudinary.com/demo/x.jpg');
+    const user = userEvent.setup();
+    render(
+      <RichTextEditor value="" onChange={onChange} onImageUpload={onImageUpload} />,
+    );
+
+    const file = new File(['fake-bytes'], 'photo.png', { type: 'image/png' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', { value: [file] });
+    fireEvent.change(fileInput);
+
+    await waitFor(() => expect(onImageUpload).toHaveBeenCalledWith(file));
+
+    await user.click(await screen.findByRole('button', { name: 'Kích thước ảnh 50%' }));
+    await user.click(screen.getByRole('button', { name: 'Căn ảnh Trái' }));
+
+    await waitFor(() => {
+      const lastHtml = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(lastHtml).toBeDefined();
+      expect(lastHtml).toContain('data-width-pct="50"');
+      expect(lastHtml).toContain('data-align="left"');
+    });
+  });
+
+  // RTE-TC-021: căn lề văn bản sinh đúng style; active state đúng theo vị trí con trỏ
+  it('clicking a text-align button sets text-align style and marks it active', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RichTextEditor value="" onChange={onChange} onImageUpload={vi.fn()} />,
+    );
+
+    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    await user.type(editable, 'Xin chao');
+    await user.click(screen.getByRole('button', { name: 'Căn giữa' }));
+
+    await waitFor(() => {
+      const lastHtml = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(lastHtml).toBeDefined();
+      expect(lastHtml).toContain('text-align: center');
+    });
+    // No jest-dom matchers configured in this project's Vitest setup — assert className directly.
+    expect(screen.getByRole('button', { name: 'Căn giữa' }).className).toContain('is-active');
+    expect(screen.getByRole('button', { name: 'Căn trái' }).className).not.toContain('is-active');
+  });
 });
 
 describe('isRichTextEmpty', () => {
@@ -97,11 +147,19 @@ describe('isRichTextEmpty', () => {
     expect(isRichTextEmpty('<p>   </p>')).toBe(true);
   });
 
+  it('treats non-breaking-space entities as empty', () => {
+    expect(isRichTextEmpty('<p>&nbsp;&#160;&#xA0;</p>')).toBe(true);
+  });
+
   it('treats real text as non-empty', () => {
     expect(isRichTextEmpty('<p>Xin chào</p>')).toBe(false);
   });
 
   it('treats an image-only body as non-empty', () => {
     expect(isRichTextEmpty('<p><img src="https://res.cloudinary.com/x.jpg"></p>')).toBe(false);
+  });
+
+  it('recognizes an uppercase image tag as content', () => {
+    expect(isRichTextEmpty('<p><IMG src="https://res.cloudinary.com/x.jpg"></p>')).toBe(false);
   });
 });

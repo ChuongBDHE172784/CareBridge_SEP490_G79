@@ -154,7 +154,7 @@ class BabyServiceImplTest {
         BabyProfileDetailResponse response = babyService.switchActiveBabyProfile(PROFILE_ID, CALLER_ID);
 
         assertThat(response.getActive()).isTrue();
-        verify(babyRepository).updateActiveByOwnerUserId(CALLER_ID, false);
+        verify(babyRepository).setActiveBaby(CALLER_ID, PROFILE_ID);
         verify(babyRepository).save(argThat(BabyProfile::getActive));
         verify(auditService).log(any(), eq(CALLER_ID), eq("BabyProfile"), eq(PROFILE_ID.toString()), eq("active"));
     }

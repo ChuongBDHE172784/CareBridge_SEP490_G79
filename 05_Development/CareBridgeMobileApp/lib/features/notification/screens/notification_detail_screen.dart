@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
-import '../routing/consultation_notification_routing.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
   final NotificationRecord notification;
@@ -194,14 +192,7 @@ class NotificationDetailScreen extends StatelessWidget {
           width: double.infinity,
           height: 52,
           child: FilledButton(
-            onPressed: () {
-              final route = resolveNotificationRoute(notification);
-              if (route != null) {
-                context.push(route);
-              } else {
-                Navigator.of(context).pop();
-              }
-            },
+            onPressed: () => Navigator.of(context).pop(),
             style: FilledButton.styleFrom(
               backgroundColor: _primaryContainer,
               foregroundColor: Colors.white,

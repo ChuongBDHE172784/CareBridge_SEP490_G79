@@ -105,7 +105,7 @@ class ModerateContentControllerSecurityTest {
     @Test
     @WithMockUser(username = "aaaaaaaa-0000-0000-0000-000000000001", roles = "MODERATOR")
     void moderateContent_sqlInjectionInReason_handledAsLiteralText() throws Exception {
-        String maliciousReason = "x'; DROP TABLE moderation_actions;--";
+        String maliciousReason = "x'; DROP TABLE moderation_events;--";
         when(moderationService.moderateContent(any(), any())).thenReturn(new ModerateContentResponse(
                 UUID.randomUUID(), QUESTION_ID, ReportTargetType.QUESTION, ModerationActionType.HIDE,
                 UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001"), maliciousReason, Instant.now(), "HIDDEN"));

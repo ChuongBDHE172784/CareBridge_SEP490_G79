@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>The production {@code /login} endpoint issues an OTP challenge first; the token-issuing
  * path is {@code /login-direct}. This exercises that path end-to-end against a seeded ACTIVE
- * user and asserts both the {@code refresh_tokens} and {@code user_sessions} rows plus the
+ * user and asserts the canonical authentication session plus the
  * JWT subject/authorities. (Role authority is the real {@code ROLE_MOTHER}, not the Test-Spec's
  * idealized bare {@code MOTHER}.)
  */
@@ -83,13 +83,13 @@ class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
         JsonNode data = objectMapper.readTree(body).get("data");
         String accessToken = data.get("accessToken").asText();
 
-        // refresh_tokens: one active row, SHA-256 hex hash (64 chars)
+        // Canonical session facade: one active token hash (64 chars)
         List<RefreshToken> tokens = refreshTokenRepository.findByUser_IdAndRevokedFalse(user.getId());
         assertThat(tokens).hasSize(1);
         assertThat(tokens.get(0).isRevoked()).isFalse();
         assertThat(tokens.get(0).getTokenHash()).hasSize(64);
 
-        // user_sessions: one active session row, SHA-256 hex hash (64 chars)
+        // auth_sessions: one active session row, SHA-256 hex hash (64 chars)
         List<UserSession> sessions =
                 sessionRepository.findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(user.getId());
         assertThat(sessions).hasSize(1);
