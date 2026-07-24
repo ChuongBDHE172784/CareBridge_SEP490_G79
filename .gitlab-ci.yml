@@ -236,7 +236,12 @@ build_backend_image:
   variables: {IMAGE: "$BACKEND_IMAGE", CONTEXT: 05_Development/CareBridgeAPI, ARCHIVE: backend-image.tar}
 build_web_image:
   extends: .docker_build
-  rules: *web_rules
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+      variables: {VITE_API_URL: "https://api.example.invalid"}
   variables: {IMAGE: "$WEB_IMAGE", CONTEXT: 05_Development/CareBridgeWebApp, ARCHIVE: web-image.tar}
   before_script: ["test -n \"$VITE_API_URL\" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }"]
 build_ai_evaluation_image:

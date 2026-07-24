@@ -11,7 +11,7 @@ WORKDIR /opt/carebridge/evaluator
 COPY . /opt/carebridge/evaluator
 COPY --from=ai-service . /opt/carebridge/ai-service
 
-RUN python -m pip install --no-cache-dir /opt/carebridge/evaluator \
+RUN python -m pip install --no-cache-dir -e /opt/carebridge/evaluator \
     && python -m pip install --no-cache-dir -r /opt/carebridge/ai-service/requirements.txt \
     && groupadd --system evaluator \
     && useradd --system --gid evaluator --home-dir /home/evaluator --create-home evaluator \
