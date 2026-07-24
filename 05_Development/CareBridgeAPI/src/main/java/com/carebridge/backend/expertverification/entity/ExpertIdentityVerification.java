@@ -3,63 +3,61 @@ package com.carebridge.backend.expertverification.entity;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
 import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 
 @Entity
-@Table(name = "expert_credentials")
+@Table(name = "expert_identity_verifications")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ExpertIdentityVerification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "credential_id", updatable = false, nullable = false)
+    @Column(name = "identity_verification_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "professional_profile_id", nullable = false)
     private UUID expertProfileId;
 
-    @Builder.Default
-    @Column(name = "credential_type", nullable = false, length = 50)
-    private String credentialType = "IDENTITY_DOCUMENT";
-
-    @Transient
+    @Column(name = "selfie_file_id", nullable = false)
     private UUID selfieFileId;
 
-    @Transient
+    @Column(name = "identity_front_file_id", nullable = false)
     private UUID identityFrontFileId;
 
-    @Transient
+    @Column(name = "identity_back_file_id", nullable = false)
     private UUID identityBackFileId;
 
-    @Transient
-    private String faceProvider;
+    @Column(name = "face_provider", nullable = false, length = 30)
+    @Builder.Default
+    private String faceProvider = "COMPREFACE";
 
-    @Transient
-    private FaceVerificationStatus faceStatus;
+    @Column(name = "face_status", nullable = false, length = 40)
+    @Builder.Default
+    private String faceStatus = FaceVerificationStatus.DISABLED.name();
 
-    @Transient
+    @Column(name = "face_similarity", precision = 7, scale = 6)
     private BigDecimal faceSimilarity;
 
-    @Transient
+    @Column(name = "face_threshold", precision = 7, scale = 6)
     private BigDecimal faceThreshold;
 
-    @Transient
+    @Column(name = "provider_error_code", length = 100)
     private String providerErrorCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 40)
     private IdentityReviewStatus reviewStatus;
 
-    @Column(name = "review_note", columnDefinition = "text")
+    @Column(name = "review_reason", columnDefinition = "text")
     private String reviewReason;
 
     @Column(name = "reviewed_by")
@@ -76,24 +74,24 @@ public class ExpertIdentityVerification {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Transient
+    @Column(name = "selfie_crop_file_id")
     private UUID selfieCropFileId;
 
-    @Transient
+    @Column(name = "id_card_crop_file_id")
     private UUID idCardCropFileId;
 
-    @Transient
+    @Column(name = "detection_selfie_status", length = 40)
     private String detectionSelfieStatus;
 
-    @Transient
+    @Column(name = "detection_id_card_status", length = 40)
     private String detectionIdCardStatus;
 
-    @Transient
+    @Column(name = "pipeline_error_code", length = 100)
     private String pipelineErrorCode;
 
-    @Transient
+    @Column(name = "pipeline_status", length = 40)
     private String pipelineStatus;
 
-    @Transient
+    @Column(name = "processed_at")
     private Instant processedAt;
 }

@@ -106,7 +106,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                             .identityFrontFileId(frontUpload.getFileId())
                             .identityBackFileId(backUpload.getFileId())
                             .faceProvider("COMPREFACE")
-                            .faceStatus(FaceVerificationStatus.DISABLED)
+                            .faceStatus(FaceVerificationStatus.DISABLED.name())
                             .reviewStatus(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED)
                             .reviewReason("Pending CompreFace pipeline processing")
                             .detectionSelfieStatus("PENDING")
@@ -183,7 +183,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
             attempt.setSelfieCropFileId(selfieCropFileId);
             attempt.setIdCardCropFileId(idCardCropFileId);
-            attempt.setFaceStatus(faceResult.status());
+            attempt.setFaceStatus(faceResult.status().name());
             attempt.setFaceSimilarity(faceResult.similarity());
             attempt.setFaceThreshold(faceResult.threshold());
             attempt.setProviderErrorCode(faceResult.providerErrorCode());
@@ -366,7 +366,9 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 .identityBackFileId(entity.getIdentityBackFileId())
                 .selfieCropFileId(entity.getSelfieCropFileId())
                 .idCardCropFileId(entity.getIdCardCropFileId())
-                .faceStatus(entity.getFaceStatus())
+                .faceStatus(entity.getFaceStatus() != null
+                ? FaceVerificationStatus.valueOf(entity.getFaceStatus())
+                : FaceVerificationStatus.DISABLED)
                 .faceSimilarity(entity.getFaceSimilarity())
                 .faceThreshold(entity.getFaceThreshold())
                 .providerErrorCode(entity.getProviderErrorCode())

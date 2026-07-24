@@ -14,22 +14,16 @@ import jakarta.persistence.LockModeType;
 public interface ExpertIdentityVerificationRepository
         extends JpaRepository<ExpertIdentityVerification, UUID> {
 
-    Optional<ExpertIdentityVerification>
-            findFirstByExpertProfileIdAndCredentialTypeOrderByCreatedAtDesc(
-                    UUID expertProfileId, String credentialType);
+    List<ExpertIdentityVerification> findByExpertProfileIdOrderByCreatedAtDesc(
+            UUID expertProfileId);
 
     default Optional<ExpertIdentityVerification> findFirstByExpertProfileIdOrderByCreatedAtDesc(
             UUID expertProfileId) {
-        return findFirstByExpertProfileIdAndCredentialTypeOrderByCreatedAtDesc(
-                expertProfileId, "IDENTITY_DOCUMENT");
+        List<ExpertIdentityVerification> results = findByExpertProfileIdOrderByCreatedAtDesc(
+                expertProfileId);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    @Query("""
-        SELECT attempt FROM ExpertIdentityVerification attempt
-         WHERE attempt.credentialType = 'IDENTITY_DOCUMENT'
-           AND attempt.reviewStatus IN :statuses
-         ORDER BY attempt.createdAt
-        """)
     List<ExpertIdentityVerification> findByReviewStatusInOrderByCreatedAtAsc(
             @Param("statuses") List<IdentityReviewStatus> statuses);
 
