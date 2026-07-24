@@ -3,6 +3,7 @@ package com.carebridge.backend.content.mapper;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
@@ -91,6 +92,20 @@ public class ContentMapper {
                 .map(this::toChecklistItemResponse)
                 .toList();
         return ChecklistTemplateResponse.builder()
+                .id(template.getId())
+                .name(template.getName())
+                .stage(template.getStage())
+                .description(template.getDescription())
+                .items(itemResponses)
+                .build();
+    }
+
+    public AdminChecklistTemplateDetailResponse toAdminChecklistTemplateDetailResponse(
+            ChecklistTemplate template, List<ChecklistItem> items) {
+        List<ChecklistItemResponse> itemResponses = items.stream()
+                .map(this::toChecklistItemResponse)
+                .toList();
+        return AdminChecklistTemplateDetailResponse.builder()
                 .id(template.getId())
                 .name(template.getName())
                 .stage(template.getStage())

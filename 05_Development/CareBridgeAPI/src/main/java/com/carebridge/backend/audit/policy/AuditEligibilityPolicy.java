@@ -50,6 +50,7 @@ public class AuditEligibilityPolicy {
             AuditAction.DIRECT_CALL_ACCESS_DENIED,
             AuditAction.DIRECT_CALL_MISSED_BY_TIMEOUT,
             AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
+            AuditAction.CHECKLIST_ITEM_ADDED,
             AuditAction.VIEW_AUDIT_LOG);
 
     public boolean shouldAudit(AuditAction action) {

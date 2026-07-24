@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,6 +86,9 @@ class ConsultationRequestServiceImplLifecycleTest {
         when(repository.findById(REQUEST_ID)).thenReturn(Optional.of(pending), Optional.of(accepted));
         when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID))
                 .thenReturn(Optional.of(expert));
+        User expertAccount = User.builder().id(EXPERT_USER_ID).enabled(true).locked(false).build();
+        when(userRepository.findByIdForUpdate(EXPERT_USER_ID))
+                .thenReturn(Optional.of(expertAccount));
         when(directConversationService.findOrCreate(MOTHER_ID, EXPERT_PROFILE_ID))
                 .thenReturn(new FindOrCreateConversationResult(
                         new DirectConversationResponse(
@@ -105,6 +109,7 @@ class ConsultationRequestServiceImplLifecycleTest {
         assertThat(response.getStatus()).isEqualTo("ACCEPTED");
         assertThat(response.getDirectConversationId()).isEqualTo(CONVERSATION_ID);
         verify(expertProfileRepository).findByIdForUpdate(EXPERT_PROFILE_ID);
+        verify(policy).assertExpertStillEligibleForConsultation(expert, expertAccount, NOW);
         verify(directConversationService).findOrCreate(MOTHER_ID, EXPERT_PROFILE_ID);
         verify(eventPublisher).publishEvent(any(ConsultationRequestDomainEvent.class));
     }
@@ -119,6 +124,34 @@ class ConsultationRequestServiceImplLifecycleTest {
 
         assertThatThrownBy(() -> service.accept(REQUEST_ID, EXPERT_USER_ID))
                 .isInstanceOfSatisfying(ConsultationRequestException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo("CONREQ-004"));
+
+        verify(directConversationService, never()).findOrCreate(any(), any());
+        verify(repository, never()).tryTransition(any(), any(), any(), any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(ConsultationRequestDomainEvent.class));
+    }
+
+    @Test
+    void acceptStopsBeforeSideEffectsWhenExpertAccountIsDisabled() {
+        ConsultationRequest pending = request(ConsultationRequestStatus.PENDING, null);
+        ExpertProfile expert = expert(VerificationStatus.APPROVED, TrustStatus.ACTIVE);
+        User disabledAccount = User.builder()
+                .id(EXPERT_USER_ID)
+                .enabled(false)
+                .locked(false)
+                .build();
+        when(repository.findById(REQUEST_ID)).thenReturn(Optional.of(pending));
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID))
+                .thenReturn(Optional.of(expert));
+        when(userRepository.findByIdForUpdate(EXPERT_USER_ID))
+                .thenReturn(Optional.of(disabledAccount));
+        doThrow(ConsultationRequestException.expertNoLongerEligible())
+                .when(policy)
+                .assertExpertStillEligibleForConsultation(expert, disabledAccount, NOW);
+
+        assertThatThrownBy(() -> service.accept(REQUEST_ID, EXPERT_USER_ID))
+                .isInstanceOfSatisfying(
+                        ConsultationRequestException.class,
                         ex -> assertThat(ex.getCode()).isEqualTo("CONREQ-004"));
 
         verify(directConversationService, never()).findOrCreate(any(), any());

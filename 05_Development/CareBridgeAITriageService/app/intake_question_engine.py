@@ -114,6 +114,19 @@ def merge_answers(intake: ChildTriageRequest, new_answers: dict[str, object]) ->
 
 
 def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
+    if intake.stage == "POSTPARTUM":
+        missing: list[str] = []
+        if not intake.symptomList and _empty(intake.parentFreeText):
+            missing.append("parentFreeText")
+        if _empty(intake.duration):
+            missing.append("duration")
+        if _empty(intake.breathingStatus):
+            missing.append("breathingStatus")
+        if _empty(intake.consciousnessStatus):
+            missing.append("consciousnessStatus")
+        if intake.seizure is None:
+            missing.append("seizure")
+        return missing[:MAX_QUESTIONS_PER_ROUND]
     if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
         missing: list[str] = []
         if not intake.symptomList and _empty(intake.parentFreeText):
@@ -150,6 +163,38 @@ def determine_missing_information(intake: ChildTriageRequest) -> list[str]:
 
 
 def ask_followup_questions(intake: ChildTriageRequest) -> list[IntakeQuestion]:
+    if intake.stage == "POSTPARTUM":
+        bank = {
+            "parentFreeText": IntakeQuestion(
+                questionKey="parentFreeText",
+                text="Bạn đang gặp dấu hiệu nào trong quá trình hồi phục sau sinh?",
+                answerType="TEXT",
+            ),
+            "duration": IntakeQuestion(
+                questionKey="duration",
+                text="Dấu hiệu đã xuất hiện bao lâu và có tăng nhanh không?",
+                answerType="TEXT",
+            ),
+            "breathingStatus": IntakeQuestion(
+                questionKey="breathingStatus",
+                text="Bạn có khó thở hoặc tím tái không?",
+                answerType="SINGLE_CHOICE",
+                options=["Không", "Khó thở", "Tím tái", "Không chắc"],
+            ),
+            "consciousnessStatus": IntakeQuestion(
+                questionKey="consciousnessStatus",
+                text="Bạn có lơ mơ, ngất hoặc khó giữ tỉnh táo không?",
+                answerType="SINGLE_CHOICE",
+                options=["Tỉnh táo", "Lơ mơ", "Ngất", "Khó giữ tỉnh táo", "Không chắc"],
+            ),
+            "seizure": IntakeQuestion(
+                questionKey="seizure",
+                text="Bạn có bị co giật không?",
+                answerType="BOOLEAN",
+                options=["Không", "Có", "Không chắc"],
+            ),
+        }
+        return [bank[key] for key in determine_missing_information(intake) if key in bank]
     if intake.stage in {"PRECONCEPTION", "PREGNANCY"}:
         bank = {
             "parentFreeText": IntakeQuestion(

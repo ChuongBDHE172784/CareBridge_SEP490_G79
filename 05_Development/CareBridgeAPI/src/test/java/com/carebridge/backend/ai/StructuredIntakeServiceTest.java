@@ -1,6 +1,7 @@
 package com.carebridge.backend.ai;
 
 import com.carebridge.backend.ai.entity.StructuredIntakeData;
+import com.carebridge.backend.ai.event.EmergencyEscalationTriggered;
 import com.carebridge.backend.ai.event.StructuredIntakeExtracted;
 import com.carebridge.backend.ai.repository.IStructuredIntakeDataRepository;
 import com.carebridge.backend.ai.service.GeminiExtractionClient;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -19,6 +21,8 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 @ExtendWith(MockitoExtension.class)
 class StructuredIntakeServiceTest {
@@ -80,5 +84,45 @@ class StructuredIntakeServiceTest {
 
         verify(structuredIntakeDataRepository).save(any(StructuredIntakeData.class));
         verify(eventPublisher).publishEvent(any(StructuredIntakeExtracted.class));
+    }
+
+    @Test
+    void extract_redCompletion_shouldPersistDeterministicMinimumWithoutSecondAiOrEmergencyDecision() {
+        IntakeSessionCompleted redEvent = new IntakeSessionCompleted(
+                UUID.randomUUID(), SESSION_ID, USER_ID, RiskLevel.RED, Instant.now());
+        when(structuredIntakeDataRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(structuredIntakeDataRepository.save(any(StructuredIntakeData.class)))
+                .thenAnswer(invocation -> {
+                    StructuredIntakeData data = invocation.getArgument(0);
+                    data.setId(UUID.randomUUID());
+                    return data;
+                });
+
+        structuredIntakeService.extract(redEvent);
+
+        verifyNoInteractions(geminiExtractionClient);
+        ArgumentCaptor<StructuredIntakeData> captor = ArgumentCaptor.forClass(StructuredIntakeData.class);
+        verify(structuredIntakeDataRepository).save(captor.capture());
+        assertThat(captor.getValue().getSessionId()).isEqualTo(SESSION_ID);
+        assertThat(captor.getValue().getSymptomList()).isEqualTo("[]");
+        assertThat(captor.getValue().isEmergencyFlag()).isTrue();
+        assertThat(captor.getValue().getDurationDays()).isNull();
+        assertThat(captor.getValue().getIntensity()).isNull();
+        verify(eventPublisher).publishEvent(any(StructuredIntakeExtracted.class));
+        verify(eventPublisher, never()).publishEvent(any(EmergencyEscalationTriggered.class));
+    }
+
+    @Test
+    void extract_redMarkerPersistenceFailure_shouldNotBlockAuthoritativeEmergencyFlow() {
+        IntakeSessionCompleted redEvent = new IntakeSessionCompleted(
+                UUID.randomUUID(), SESSION_ID, USER_ID, RiskLevel.RED, Instant.now());
+        when(structuredIntakeDataRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(structuredIntakeDataRepository.save(any(StructuredIntakeData.class)))
+                .thenThrow(new IllegalStateException("synthetic persistence failure"));
+
+        assertThatCode(() -> structuredIntakeService.extract(redEvent)).doesNotThrowAnyException();
+
+        verifyNoInteractions(geminiExtractionClient);
+        verify(eventPublisher, never()).publishEvent(any(EmergencyEscalationTriggered.class));
     }
 }

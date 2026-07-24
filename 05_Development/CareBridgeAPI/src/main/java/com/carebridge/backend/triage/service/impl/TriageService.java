@@ -1,5 +1,6 @@
 package com.carebridge.backend.triage.service.impl;
 
+import com.carebridge.backend.ai.event.EmergencyEscalationTriggered;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.TriageStage;
@@ -20,7 +21,10 @@ import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
+import com.carebridge.backend.triage.repository.IntakeSessionWriter;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
+import com.carebridge.backend.triage.service.LifecycleBinding;
+import com.carebridge.backend.triage.service.LifecycleIntakeBindingService;
 import com.carebridge.backend.triage.service.EvidenceSourceService;
 import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
@@ -46,6 +50,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -55,6 +60,20 @@ import java.util.stream.Collectors;
 public class TriageService implements ITriageService {
 
     private static final Logger log = LoggerFactory.getLogger(TriageService.class);
+    private static final Set<String> CONVERSATION_RESPONSE_FIELDS = Set.of(
+            "status",
+            "intakeSessionId",
+            "stage",
+            "mergedIntake",
+            "normalizedSymptomDetails",
+            "assistantMessage",
+            "questions",
+            "round",
+            "triageResult");
+    private static final Set<String> CONVERSATION_RESPONSE_METADATA_FIELDS = Set.of(
+            "assistantProvider",
+            "assistantFallbackUsed",
+            "conversationSummary");
 
     private final IIntakeSessionRepository intakeSessionRepository;
     private final ChildTriageAiClient childTriageAiClient;
@@ -65,6 +84,12 @@ public class TriageService implements ITriageService {
     private final TriageFallbackMetrics triageFallbackMetrics;
     private final TriageStageLegacyDefaultMetrics triageStageLegacyDefaultMetrics;
     private final Consumer<UUID> postpartumEligibilityCheck;
+
+    @Autowired(required = false)
+    private LifecycleIntakeBindingService lifecycleBindingService;
+
+    @Autowired
+    private IntakeSessionWriter intakeSessionWriter;
 
     @Autowired
     public TriageService(
@@ -218,15 +243,19 @@ public class TriageService implements ITriageService {
                 request.getBabyProfileId(), request.getMotherProfileId(), userId);
         ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
+        LifecycleBinding requestedBinding = bindLifecycle(request, stage, userId);
         String clientRequestId = normalizeClientRequestId(request.getClientRequestId());
         IntakeSession existing = clientRequestId == null ? null : intakeSessionRepository
                 .findByUserIdAndClientRequestId(userId, clientRequestId).orElse(null);
         if (existing != null && existing.getRawAiResponse() != null) {
-            return toConversationResponse(readJsonObject(existing.getRawAiResponse()));
+            validateStartReplay(existing, requestedBinding, stage,
+                    request.getBabyProfileId(), request.getMotherProfileId());
+            return toConversationResponse(readJsonObject(existing.getRawAiResponse()), existing);
         }
         IntakeSession session = existing;
         if (session == null) {
             session = IntakeSession.builder()
+                    .id(UUID.randomUUID())
                     .userId(userId)
                     .clientRequestId(clientRequestId)
                     .stage(stage)
@@ -237,7 +266,29 @@ public class TriageService implements ITriageService {
                     .createdAt(Instant.now())
                     .createdBy(userId)
                     .build();
-            session = intakeSessionRepository.save(session);
+            applyBinding(session, requestedBinding);
+            boolean databaseArbitrated = clientRequestId != null && intakeSessionWriter != null;
+            boolean created = true;
+            if (databaseArbitrated) {
+                created = intakeSessionWriter.insertConversationIfAbsent(session).created();
+                session = intakeSessionRepository.findByUserIdAndClientRequestId(userId, clientRequestId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Idempotency conflict winner was not visible"));
+            } else {
+                session = intakeSessionRepository.save(session);
+            }
+            if (!created) {
+                validateStartReplay(session, requestedBinding, stage,
+                        request.getBabyProfileId(), request.getMotherProfileId());
+                if (session.getRawAiResponse() != null) {
+                    return toConversationResponse(readJsonObject(session.getRawAiResponse()), session);
+                }
+            } else if (requestedBinding != null) {
+                lifecycleBindingService.recordCreated();
+            }
+        } else {
+            validateStartReplay(session, requestedBinding, stage,
+                    request.getBabyProfileId(), request.getMotherProfileId());
         }
         Map<String, Object> canonicalRequest = new LinkedHashMap<>();
         canonicalRequest.put("initialText", request.getInitialText());
@@ -251,15 +302,15 @@ public class TriageService implements ITriageService {
             envelope = readJsonObject(childTriageAiClient.startIntake(canonicalRequest));
         } catch (Exception exception) {
             triageFallbackMetrics.record(fallbackReason(exception), "conversation_start");
-            log.warn("AI triage conversation start unavailable for session [{}], using Java fallback: {}",
-                    session.getId(), exception.getClass().getSimpleName());
+            log.warn("AI triage conversation start unavailable; using Java fallback reason={}",
+                    exception.getClass().getSimpleName());
             envelope = fallbackConversation(canonicalRequest, true);
         }
         envelope = ensureSafeEnvelope(envelope, canonicalRequest, true);
         envelope.put("intakeSessionId", session.getId().toString());
         envelope.put("stage", session.getStage().name());
         persistConversationEnvelope(session, envelope, userId);
-        return toConversationResponse(envelope);
+        return toConversationResponse(envelope, session);
     }
 
     @Override
@@ -288,7 +339,7 @@ public class TriageService implements ITriageService {
 
         if (session.getStatus() == IntakeStatus.COMPLETED) {
             if (answersAlreadyApplied(canonical)) {
-                return toConversationResponse(previous);
+                return toConversationResponse(previous, session);
             }
             throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-008", "Intake session is already completed");
         }
@@ -297,7 +348,7 @@ public class TriageService implements ITriageService {
         }
 
         if (answersAlreadyApplied(canonical)) {
-            return toConversationResponse(previous);
+            return toConversationResponse(previous, session);
         }
 
         java.util.Set<String> allowedQuestionKeys = outstandingQuestionKeys(previous);
@@ -312,15 +363,15 @@ public class TriageService implements ITriageService {
             envelope = readJsonObject(childTriageAiClient.continueIntake(canonical));
         } catch (Exception exception) {
             triageFallbackMetrics.record(fallbackReason(exception), "conversation_continue");
-            log.warn("AI triage conversation continue unavailable for session [{}], using Java fallback: {}",
-                    session.getId(), exception.getClass().getSimpleName());
+            log.warn("AI triage conversation continue unavailable; using Java fallback reason={}",
+                    exception.getClass().getSimpleName());
             envelope = fallbackConversation(canonical, false);
         }
         envelope = ensureSafeEnvelope(envelope, canonical, false);
         envelope.put("intakeSessionId", session.getId().toString());
         envelope.put("stage", stage.name());
         persistConversationEnvelope(session, envelope, userId);
-        return toConversationResponse(envelope);
+        return toConversationResponse(envelope, session);
     }
 
     @Override
@@ -340,11 +391,10 @@ public class TriageService implements ITriageService {
                 .createdBy(userId)
                 .build();
         session = intakeSessionRepository.save(session);
-        UUID sessionId = session.getId();
-        log.info("Processing intake for session [{}]", sessionId);
+        log.info("Triage intake processing started flow=ONE_SHOT");
 
         try {
-            String aiResponse = triageWithAiServiceOrFallback(request, sessionId);
+            String aiResponse = triageWithAiServiceOrFallback(request);
             JsonNode result = objectMapper.readTree(aiResponse);
             String triageStatus = result.path("status").asText(null);
             String riskLevel = result.path("riskLevel").isMissingNode() || result.path("riskLevel").isNull()
@@ -363,15 +413,12 @@ public class TriageService implements ITriageService {
             session = intakeSessionRepository.save(session);
 
             if (session.getStatus() == IntakeStatus.COMPLETED && session.getRiskLevel() != null) {
-                eventPublisher.publishEvent(new IntakeSessionCompleted(
-                        UUID.randomUUID(), session.getId(), userId,
-                        session.getRiskLevel(), session.getCompletedAt()));
+                publishCompletionEvents(session, userId);
             }
 
-            log.info("Intake completed for session [{}] status=[{}] riskLevel=[{}]",
-                    sessionId, session.getStatus(), session.getRiskLevel());
+            log.info("Triage intake processing completed status={}", session.getStatus());
         } catch (Exception e) {
-            log.warn("Triage graph failed for session [{}]: {}", sessionId, e.getClass().getSimpleName());
+            log.warn("Triage intake processing failed reason={}", e.getClass().getSimpleName());
             session.setStatus(IntakeStatus.FAILED);
             intakeSessionRepository.save(session);
             eventPublisher.publishEvent(new IntakeSessionFailed(
@@ -383,24 +430,46 @@ public class TriageService implements ITriageService {
         return toResponse(session);
     }
 
-    private String triageWithAiServiceOrFallback(RunIntakeRequest request, UUID sessionId) throws JsonProcessingException {
+    private String triageWithAiServiceOrFallback(RunIntakeRequest request) throws JsonProcessingException {
         try {
             String response = childTriageAiClient.triageChild(request);
-            String risk = objectMapper.readTree(response).path("riskLevel").asText(null);
-            if (!isPersistableRiskLevel(risk) && !"NEED_MORE_INFO".equals(risk)) {
-                throw new IllegalStateException("AI triage returned invalid risk contract");
-            }
-            return response;
+            return validateAndCanonicalizeOneShotResponse(response, request.getStage());
         } catch (Exception e) {
             triageFallbackMetrics.record(fallbackReason(e), "one_shot");
-            log.warn("AI triage service unavailable for session [{}], falling back to Java rule engine: {}",
-                    sessionId, e.getClass().getSimpleName());
+            log.warn("AI triage service unavailable or unsafe; using Java fallback reason={}",
+                    e.getClass().getSimpleName());
             ChildTriageResult graphResult = triageGraphService.run(request);
             Map<String, Object> result = objectMapper.convertValue(
                     graphResult, new TypeReference<Map<String, Object>>() {});
             addJavaFallbackMetadata(result);
+            result.put("stage", request.getStage().name());
             return objectMapper.writeValueAsString(result);
         }
+    }
+
+    private String validateAndCanonicalizeOneShotResponse(String response, TriageStage canonicalStage)
+            throws JsonProcessingException {
+        Map<String, Object> result = readJsonObject(response);
+        requireNoExplicitStageMismatch(result.get("stage"), canonicalStage, "result");
+
+        String risk = nonBlank(result.get("riskLevel"));
+        String status = nonBlank(result.get("status"));
+        if (status == null) {
+            status = "NEED_MORE_INFO".equals(risk) ? "NEED_MORE_INFO" : "COMPLETED";
+        }
+        boolean needsMore = "NEED_MORE_INFO".equals(status);
+        boolean validNeedMore = needsMore && (risk == null || "NEED_MORE_INFO".equals(risk));
+        boolean validCompleted = "COMPLETED".equals(status) && isPersistableRiskLevel(risk);
+        if (!validNeedMore && !validCompleted) {
+            throw new IllegalStateException("AI triage returned invalid status/risk contract");
+        }
+        if ("RED".equals(risk) && !hasCanonicalRedContract(result)) {
+            throw new IllegalStateException("AI triage returned unsafe RED contract");
+        }
+
+        result.put("status", status);
+        result.put("stage", canonicalStage.name());
+        return objectMapper.writeValueAsString(result);
     }
 
     private TriageFallbackMetrics.Reason fallbackReason(Exception exception) {
@@ -436,6 +505,7 @@ public class TriageService implements ITriageService {
             evidenceWarning = "Nguồn bằng chứng không hợp lệ đã bị loại; rủi ro vẫn do bộ quy tắc quyết định.";
         }
 
+        boolean exposeContinuation = hasActiveTerminalContinuation(session);
         return TriageResultResponse.builder()
                 .sessionId(session.getId())
                 .stage(sessionStage(session).name())
@@ -467,6 +537,11 @@ public class TriageService implements ITriageService {
                 .status(session.getStatus().name())
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
+                .journeyId(session.getJourneyId())
+                .originDashboard(session.getOriginDashboard() == null ? null : session.getOriginDashboard().name())
+                .originReferenceId(session.getOriginReferenceId())
+                .continuationToken(exposeContinuation ? session.getContinuationToken() : null)
+                .continuationExpiresAt(exposeContinuation ? session.getContinuationExpiresAt() : null)
                 .build();
     }
 
@@ -480,6 +555,7 @@ public class TriageService implements ITriageService {
     }
 
     private IntakeSessionResponse toResponse(IntakeSession session) {
+        boolean exposeContinuation = hasActiveTerminalContinuation(session);
         return IntakeSessionResponse.builder()
                 .sessionId(session.getId())
                 .stage(sessionStage(session).name())
@@ -488,7 +564,21 @@ public class TriageService implements ITriageService {
                 .disclaimer(session.getDisclaimer())
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
+                .journeyId(session.getJourneyId())
+                .originDashboard(session.getOriginDashboard() == null ? null : session.getOriginDashboard().name())
+                .originReferenceId(session.getOriginReferenceId())
+                .continuationToken(exposeContinuation ? session.getContinuationToken() : null)
+                .continuationExpiresAt(exposeContinuation ? session.getContinuationExpiresAt() : null)
                 .build();
+    }
+
+    private boolean hasActiveTerminalContinuation(IntakeSession session) {
+        return session.getStatus() == IntakeStatus.COMPLETED
+                && session.getRiskLevel() != null
+                && session.getContinuationToken() != null
+                && session.getContinuationAcknowledgedAt() == null
+                && session.getContinuationExpiresAt() != null
+                && session.getContinuationExpiresAt().isAfter(Instant.now());
     }
 
     /**
@@ -614,13 +704,29 @@ public class TriageService implements ITriageService {
         session.setRiskLevel(isPersistableRiskLevel(risk) ? RiskLevel.valueOf(risk) : null);
         session.setDisclaimer(result.get("disclaimer") == null ? null : String.valueOf(result.get("disclaimer")));
         boolean complete = "TRIAGE_COMPLETE".equals(flowStatus);
+        if (complete && session.getJourneyId() != null) {
+            if (lifecycleBindingService == null) {
+                throw new IllegalStateException("Lifecycle intake binding service is unavailable");
+            }
+            lifecycleBindingService.renewForTerminal(session);
+        }
         session.setStatus(complete ? IntakeStatus.COMPLETED : IntakeStatus.NEED_MORE_INFO);
         session.setCompletedAt(complete ? Instant.now() : null);
         intakeSessionRepository.save(session);
         if (complete && session.getRiskLevel() != null) {
-            eventPublisher.publishEvent(new IntakeSessionCompleted(
-                    UUID.randomUUID(), session.getId(), userId, session.getRiskLevel(), session.getCompletedAt()));
+            publishCompletionEvents(session, userId);
         }
+    }
+
+    private void publishCompletionEvents(IntakeSession session, UUID userId) {
+        if (session.getRiskLevel() == RiskLevel.RED) {
+            eventPublisher.publishEvent(new EmergencyEscalationTriggered(
+                    UUID.randomUUID(), session.getId(), userId,
+                    "AUTO_TRIAGE", session.getCompletedAt()));
+        }
+        eventPublisher.publishEvent(new IntakeSessionCompleted(
+                UUID.randomUUID(), session.getId(), userId,
+                session.getRiskLevel(), session.getCompletedAt()));
     }
 
     @SuppressWarnings("unchecked")
@@ -644,6 +750,7 @@ public class TriageService implements ITriageService {
         String fallbackRisk = result.get("riskLevel") == null ? null : String.valueOf(result.get("riskLevel"));
         result.putIfAbsent("recommendationCode", TriageRecommendationCode.forRisk(fallbackRisk));
         Map<String, Object> envelope = new LinkedHashMap<>();
+        TriageStage stage = intake.getStage() == null ? TriageStage.INFANT : intake.getStage();
         boolean needMore = "NEED_MORE_INFO".equals(result.get("status"));
         boolean questionLimitReached = number(request.get("round"), 1) >= 3;
         if (needMore && questionLimitReached) {
@@ -655,8 +762,17 @@ public class TriageService implements ITriageService {
             result.put("matchedRules", List.of("YELLOW_INCOMPLETE_INFORMATION"));
             result.put("recommendationCode", "CONTACT_HEALTHCARE_PROVIDER");
             result.put("warning", "Thông tin chưa đầy đủ, kết quả được phân loại thận trọng.");
+            if (stage == TriageStage.PRECONCEPTION || stage == TriageStage.PREGNANCY) {
+                result.put("summary", "Thông tin hiện có chưa đầy đủ; kết quả được phân loại thận trọng.");
+                result.put("possibleConcern",
+                        "Dấu hiệu hiện tại cần được nhân viên y tế đánh giá thêm.");
+                result.put("recommendedAction",
+                        "Liên hệ nhân viên y tế để được đánh giá và theo dõi. Gọi 115 nếu xuất hiện dấu hiệu nguy hiểm.");
+                result.put("disclaimer",
+                        "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế nhân viên y tế.");
+            }
         }
-        TriageStage stage = intake.getStage() == null ? TriageStage.INFANT : intake.getStage();
+        result.put("stage", stage.name());
         sanitizeMergedIntake(current, result, stage);
         envelope.put("status", needMore ? "ASK_MORE" : "TRIAGE_COMPLETE");
         envelope.put("intakeSessionId", request.get("intakeSessionId"));
@@ -674,6 +790,9 @@ public class TriageService implements ITriageService {
     private List<Map<String, Object>> fallbackQuestions(RunIntakeRequest intake) {
         if (intake.getStage() == TriageStage.POSTPARTUM) {
             return postpartumFallbackQuestions(intake);
+        }
+        if (intake.getStage() != null && intake.getStage().isMaternal()) {
+            return maternalFallbackQuestions(intake);
         }
         List<Map<String, Object>> questions = new ArrayList<>();
         if (intake.getChildAgeMonths() == null) {
@@ -708,6 +827,39 @@ public class TriageService implements ITriageService {
             questions.add(fallbackQuestion(
                     "parentFreeText",
                     "Bạn hãy mô tả cụ thể hơn dấu hiệu đang quan sát được ở bé và triệu chứng đã kéo dài bao lâu.",
+                    "TEXT",
+                    List.of()));
+        }
+        return questions.stream().limit(3).toList();
+    }
+
+    private List<Map<String, Object>> maternalFallbackQuestions(RunIntakeRequest intake) {
+        List<Map<String, Object>> questions = new ArrayList<>();
+        if (intake.getDuration() == null || intake.getDuration().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "duration",
+                    "Dấu hiệu đã xuất hiện bao lâu và có tăng nhanh không?",
+                    "TEXT",
+                    List.of()));
+        }
+        if (intake.getBreathingStatus() == null || intake.getBreathingStatus().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "breathingStatus",
+                    "Bạn có khó thở, không thở được hoặc tím tái không?",
+                    "SINGLE_CHOICE",
+                    List.of("Không", "Khó thở", "Không thở được", "Tím tái", "Không chắc")));
+        }
+        if (intake.getConsciousnessStatus() == null || intake.getConsciousnessStatus().isBlank()) {
+            questions.add(fallbackQuestion(
+                    "consciousnessStatus",
+                    "Bạn có lơ mơ, ngất hoặc khó giữ tỉnh táo không?",
+                    "SINGLE_CHOICE",
+                    List.of("Tỉnh táo", "Lơ mơ", "Ngất", "Khó giữ tỉnh táo", "Không chắc")));
+        }
+        if (questions.isEmpty()) {
+            questions.add(fallbackQuestion(
+                    "parentFreeText",
+                    "Vui lòng mô tả thêm dấu hiệu sức khỏe bạn đang gặp.",
                     "TEXT",
                     List.of()));
         }
@@ -800,7 +952,7 @@ public class TriageService implements ITriageService {
         } else {
             intake.put("motherProfileId", motherProfileId == null ? null : motherProfileId.toString());
             intake.remove("babyProfileId");
-            if (stage == TriageStage.POSTPARTUM) {
+            if (stage.isMaternal()) {
                 removePediatricIntakeFields(intake);
             }
         }
@@ -867,8 +1019,14 @@ public class TriageService implements ITriageService {
             Map<String, Object> envelope, Map<String, Object> canonicalRequest, boolean start) {
         TriageStage stage = TriageStage.valueOf(String.valueOf(canonicalRequest.get("stage")));
         String status = String.valueOf(envelope.get("status"));
+        if (hasExplicitStageMismatch(envelope.get("stage"), stage)
+                || hasNestedStageMismatch(envelope.get("mergedIntake"), stage)) {
+            log.warn("AI conversation returned mismatched canonical stage; using Java fallback");
+            return fallbackConversation(canonicalRequest, start);
+        }
         if ("ASK_MORE".equals(status)) {
             boolean valid = envelope.get("mergedIntake") instanceof Map<?, ?>
+                    && envelope.get("triageResult") == null
                     && envelope.get("questions") instanceof List<?> questions && !questions.isEmpty()
                     && questions.stream().allMatch(this::isRenderableQuestion)
                     && questions.stream().allMatch(question -> isQuestionAllowedForStage(question, stage))
@@ -887,13 +1045,16 @@ public class TriageService implements ITriageService {
         Object resultValue = envelope.get("triageResult");
         Map<String, Object> result = resultValue instanceof Map<?, ?> map
                 ? objectMapper.convertValue(map, new TypeReference<Map<String, Object>>() {}) : null;
+        if (result != null && hasExplicitStageMismatch(result.get("stage"), stage)) {
+            log.warn("AI conversation returned mismatched result stage; using Java fallback");
+            return fallbackConversation(canonicalRequest, start);
+        }
         String risk = result == null || result.get("riskLevel") == null
                 ? null : String.valueOf(result.get("riskLevel"));
-        boolean redInvariant = !"RED".equals(risk)
-                || (Boolean.TRUE.equals(result.get("emergencyActionRequired"))
-                && "SEEK_EMERGENCY_CARE".equals(result.get("recommendationCode"))
-                && result.get("matchedRules") instanceof List<?> rules && !rules.isEmpty());
-        if (isPersistableRiskLevel(risk) && redInvariant) {
+        String resultStatus = result == null ? null : nonBlank(result.get("status"));
+        boolean terminalResult = resultStatus == null || "COMPLETED".equals(resultStatus);
+        if (isPersistableRiskLevel(risk) && terminalResult
+                && (!"RED".equals(risk) || hasCanonicalRedContract(result))) {
             sanitizeEnvelope(envelope, stage);
             return envelope;
         }
@@ -917,10 +1078,31 @@ public class TriageService implements ITriageService {
                 || !((List<?>) question.get("options")).isEmpty();
     }
 
+    private boolean hasCanonicalRedContract(Map<String, Object> result) {
+        return Boolean.TRUE.equals(result.get("emergencyActionRequired"))
+                && "SEEK_EMERGENCY_CARE".equals(result.get("recommendationCode"))
+                && result.get("matchedRules") instanceof List<?> rules && !rules.isEmpty();
+    }
+
+    private boolean hasNestedStageMismatch(Object value, TriageStage canonicalStage) {
+        return value instanceof Map<?, ?> map && hasExplicitStageMismatch(map.get("stage"), canonicalStage);
+    }
+
+    private boolean hasExplicitStageMismatch(Object value, TriageStage canonicalStage) {
+        return value != null && !canonicalStage.name().equals(String.valueOf(value));
+    }
+
+    private void requireNoExplicitStageMismatch(Object value, TriageStage canonicalStage, String boundary) {
+        if (hasExplicitStageMismatch(value, canonicalStage)) {
+            throw new IllegalStateException("AI triage returned mismatched " + boundary + " stage");
+        }
+    }
+
     private boolean isQuestionAllowedForStage(Object value, TriageStage stage) {
-        if (stage != TriageStage.POSTPARTUM || !(value instanceof Map<?, ?> question)) {
+        if (!stage.isMaternal()) {
             return true;
         }
+        if (!(value instanceof Map<?, ?> question)) return false;
         String questionKey = nonBlank(question.get("questionKey"));
         return questionKey != null && java.util.Set.of(
                 "duration",
@@ -1103,6 +1285,7 @@ public class TriageService implements ITriageService {
 
     @SuppressWarnings("unchecked")
     private void sanitizeEnvelope(Map<String, Object> envelope, TriageStage stage) {
+        envelope.put("stage", stage.name());
         Object intakeValue = envelope.get("mergedIntake");
         Object resultValue = envelope.get("triageResult");
         Map<String, Object> result = resultValue instanceof Map<?, ?> map
@@ -1113,12 +1296,16 @@ public class TriageService implements ITriageService {
             sanitizeMergedIntake(intake, result, stage);
             envelope.put("mergedIntake", intake);
         }
+        if (!result.isEmpty()) {
+            result.put("stage", stage.name());
+            envelope.put("triageResult", result);
+        }
     }
 
     private void sanitizeMergedIntake(
             Map<String, Object> intake, Map<String, Object> result, TriageStage stage) {
         intake.put("parentFreeText", null);
-        if (stage == TriageStage.POSTPARTUM) {
+        if (stage.isMaternal()) {
             removePediatricIntakeFields(intake);
         }
         Object normalized = result.get("normalizedSymptoms");
@@ -1153,7 +1340,73 @@ public class TriageService implements ITriageService {
         return value instanceof Number number ? number.intValue() : fallback;
     }
 
-    private IntakeConversationResponse toConversationResponse(Map<String, Object> envelope) {
-        return objectMapper.convertValue(envelope, IntakeConversationResponse.class);
+    private IntakeConversationResponse toConversationResponse(
+            Map<String, Object> envelope, IntakeSession session) {
+        Map<String, Object> responseFields = new LinkedHashMap<>(envelope);
+        responseFields.keySet().removeAll(CONVERSATION_RESPONSE_METADATA_FIELDS);
+        List<String> unknownFields = responseFields.keySet().stream()
+                .filter(field -> !CONVERSATION_RESPONSE_FIELDS.contains(field))
+                .sorted()
+                .toList();
+        if (!unknownFields.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Unrecognized conversation response field(s): " + unknownFields);
+        }
+        IntakeConversationResponse response = objectMapper.convertValue(
+                responseFields, IntakeConversationResponse.class);
+        if (session.getJourneyId() != null) {
+            response.setJourneyId(session.getJourneyId());
+            response.setOriginDashboard(session.getOriginDashboard());
+            response.setOriginReferenceId(session.getOriginReferenceId());
+            response.setOriginAction(com.carebridge.backend.triage.OriginAction.forDashboard(
+                    session.getOriginDashboard()));
+            boolean exposeContinuation = hasActiveTerminalContinuation(session);
+            response.setContinuationToken(exposeContinuation ? session.getContinuationToken() : null);
+            response.setContinuationExpiresAt(exposeContinuation ? session.getContinuationExpiresAt() : null);
+        }
+        return response;
+    }
+
+    private LifecycleBinding bindLifecycle(
+            StartIntakeConversationRequest request, TriageStage stage, UUID userId) {
+        boolean requested = request.getJourneyId() != null || request.getOriginDashboard() != null
+                || request.getOriginReferenceId() != null;
+        if (!requested) return null;
+        if (lifecycleBindingService == null) {
+            throw new IllegalStateException("Lifecycle intake binding service is unavailable");
+        }
+        return lifecycleBindingService.bindForStart(request, stage, userId);
+    }
+
+    private void validateReplay(IntakeSession session, LifecycleBinding requestedBinding) {
+        if (session.getJourneyId() == null && requestedBinding == null) return;
+        if (lifecycleBindingService == null) {
+            throw new IllegalStateException("Lifecycle intake binding service is unavailable");
+        }
+        lifecycleBindingService.validateReplay(session, requestedBinding);
+    }
+
+    private void validateStartReplay(
+            IntakeSession session,
+            LifecycleBinding requestedBinding,
+            TriageStage requestedStage,
+            UUID requestedBabyProfileId,
+            UUID requestedMotherProfileId) {
+        boolean sameIntent = sessionStage(session) == requestedStage
+                && java.util.Objects.equals(session.getBabyProfileId(), requestedBabyProfileId)
+                && java.util.Objects.equals(session.getMotherProfileId(), requestedMotherProfileId);
+        if (!sameIntent) {
+            throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-016", "Intake context conflict");
+        }
+        validateReplay(session, requestedBinding);
+    }
+
+    private void applyBinding(IntakeSession session, LifecycleBinding binding) {
+        if (binding == null) return;
+        session.setJourneyId(binding.journeyId());
+        session.setOriginDashboard(binding.originDashboard());
+        session.setOriginReferenceId(binding.originReferenceId());
+        session.setContinuationToken(binding.continuationToken());
+        session.setContinuationExpiresAt(binding.continuationExpiresAt());
     }
 }

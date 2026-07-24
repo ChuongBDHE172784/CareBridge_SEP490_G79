@@ -25,6 +25,8 @@ import '../../features/healthRecords/screens/postpartum_log_form_screen.dart';
 import '../../features/healthRecords/screens/postpartum_safety_help_screen.dart';
 import '../../features/healthRecords/models/postpartum_log_model.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
+import '../../features/emergency/models/emergency_session_model.dart';
+import '../../features/aiTriage/models/triage_result_model.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
 import '../../features/baby/screens/edit_baby_daily_log_screen.dart';
@@ -62,6 +64,8 @@ import '../../features/healthRecords/screens/growth_measurement_history_screen.d
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/aiTriage/models/triage_entry_context.dart';
+import '../../features/aiTriage/models/triage_continuation.dart';
+import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
@@ -88,6 +92,7 @@ import '../../features/directChat/screens/conversation_list_screen.dart';
 import '../../features/directChat/screens/direct_chat_screen.dart';
 import '../../features/consultation/screens/my_consultation_requests_screen.dart';
 import '../../features/consultation/screens/consultation_request_detail_screen.dart';
+import '../../features/consultation/screens/triage_expert_handoff_screen.dart';
 
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
@@ -147,6 +152,9 @@ class _UnsupportedRoleHome extends StatelessWidget {
 
 /// Global router key for context-less navigation if needed
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+final RegExp _uuidPattern = RegExp(
+  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);
 
 @visibleForTesting
 String? resolveAppRedirect({
@@ -277,7 +285,21 @@ final GoRouter appRouter = GoRouter(
       path: '/mother-home',
       builder: (context, state) {
         final tabParam = state.uri.queryParameters['tab'];
-        return HomeShell(initialIndex: int.tryParse(tabParam ?? '') ?? 0);
+        final triageReturn = state.uri.queryParameters['triageReturn'];
+        final arrival = state.extra is TriageContinuationArrival
+            ? state.extra as TriageContinuationArrival
+            : null;
+        final recoveryNotice = state.extra is TriageContinuationRecoveryNotice
+            ? state.extra as TriageContinuationRecoveryNotice
+            : null;
+        return HomeShell(
+          key: triageReturn == null
+              ? null
+              : ValueKey('mother-triage-return-$triageReturn'),
+          initialIndex: int.tryParse(tabParam ?? '') ?? 0,
+          continuationArrival: arrival,
+          continuationRecoveryNotice: recoveryNotice,
+        );
       },
     ),
     GoRoute(
@@ -496,7 +518,13 @@ final GoRouter appRouter = GoRouter(
       path: '/babies/detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return BabyProfileDetailScreen(babyId: id);
+        final arrival = state.extra is TriageContinuationArrival
+            ? state.extra as TriageContinuationArrival
+            : null;
+        return BabyProfileDetailScreen(
+          babyId: id,
+          continuationArrival: arrival,
+        );
       },
     ),
     GoRoute(
@@ -689,8 +717,35 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/triage/expert-handoff',
+      builder: (context, state) {
+        final intakeSessionId = state.extra;
+        if (intakeSessionId is! String ||
+            !_uuidPattern.hasMatch(intakeSessionId)) {
+          return const _InvalidRouteScreen();
+        }
+        return TriageExpertHandoffScreen(intakeSessionId: intakeSessionId);
+      },
+    ),
+    GoRoute(
       path: '/emergency/map',
-      builder: (context, state) => const EmergencyMapScreen(),
+      builder: (context, state) {
+        final extra = state.extra;
+        if (extra != null && extra is! EmergencySession) {
+          return const _InvalidRouteScreen();
+        }
+        final mode = state.uri.queryParameters['mode'];
+        final stage = state.uri.queryParameters['stage'] ?? 'INFANT';
+        if ((mode != null && mode != 'manual' && mode != 'triage') ||
+            !TriageResult.supportedStages.contains(stage)) {
+          return const _InvalidRouteScreen();
+        }
+        return EmergencyMapScreen(
+          existingSession: extra as EmergencySession?,
+          triageHandoff: mode == 'triage',
+          stage: stage,
+        );
+      },
     ),
     GoRoute(
       path: '/emergency/alert/:sessionId',

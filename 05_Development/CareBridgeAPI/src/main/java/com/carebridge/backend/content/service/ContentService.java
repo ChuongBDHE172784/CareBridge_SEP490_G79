@@ -6,6 +6,9 @@ import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
+import com.carebridge.backend.content.dto.response.LifecycleContentEnvelope;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateResponse;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
 import java.util.List;
 import java.util.UUID;
@@ -41,4 +44,15 @@ public interface ContentService {
      * Returns empty page (HTTP 200) when no results found — never 404 (C4).
      */
     Page<ContentSearchResponse> searchContent(ContentSearchRequest request, Pageable pageable);
+
+    LifecycleContentEnvelope<Page<ContentListResponse>> getLifecycleContents(
+            UUID ownerId, com.carebridge.backend.content.entity.ContentType type,
+            UUID topicId, Pageable pageable);
+
+    LifecycleContentEnvelope<List<ChecklistTemplateResponse>> getLifecycleChecklists(UUID ownerId);
+
+    LifecycleContentEnvelope<ContentDetailResponse> getLifecycleContentById(UUID ownerId, UUID id);
+
+    Page<AdminChecklistTemplateResponse> getAdminChecklists(
+            ContentStage stage, ChecklistTemplateStatus status, Pageable pageable);
 }

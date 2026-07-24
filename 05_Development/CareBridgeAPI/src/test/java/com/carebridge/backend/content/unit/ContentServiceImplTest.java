@@ -1,10 +1,12 @@
 package com.carebridge.backend.content.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.content.dto.request.ContentFilterRequest;
@@ -17,8 +19,10 @@ import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
+import com.carebridge.backend.content.policy.LifecycleContentStageResolver;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.repository.ContentRepository;
@@ -51,6 +55,9 @@ class ContentServiceImplTest {
     @Mock
     private ChecklistItemRepository checklistItemRepository;
 
+    @Mock
+    private LifecycleContentStageResolver lifecycleContentStageResolver;
+
     @Spy
     private ContentMapper contentMapper = new ContentMapper();
 
@@ -77,10 +84,10 @@ class ContentServiceImplTest {
     }
 
     private ChecklistTemplate makeChecklistTemplate(ContentStage stage) {
-        return makeChecklistTemplate(stage, ContentStatus.APPROVED);
+        return makeChecklistTemplate(stage, ChecklistTemplateStatus.APPROVED);
     }
 
-    private ChecklistTemplate makeChecklistTemplate(ContentStage stage, ContentStatus status) {
+    private ChecklistTemplate makeChecklistTemplate(ContentStage stage, ChecklistTemplateStatus status) {
         return ChecklistTemplate.builder()
                 .id(UUID.randomUUID())
                 .name("Test Checklist")
@@ -169,11 +176,12 @@ class ContentServiceImplTest {
         ChecklistItem item2 = makeChecklistItem(template, 2);
         ChecklistItem item3 = makeChecklistItem(template, 3);
 
-        when(checklistTemplateRepository.findByStageAndStatus(
-                ContentStage.PREGNANCY, ContentStatus.APPROVED))
+        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+                ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(template));
         // DB ORDER BY item_order returns already-sorted list
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
+        when(checklistItemRepository.findAllByApprovedTemplateIds(
+                java.util.Set.of(template.getId()), ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(item1, item2, item3));
 
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(ContentStage.PREGNANCY);
@@ -189,9 +197,10 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_withNullStage_returnsAllTemplates() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.PREGNANCY);
-        when(checklistTemplateRepository.findByStatus(ContentStatus.APPROVED))
-                .thenReturn(List.of(template));
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
+        when(checklistTemplateRepository.findByStatusOrderByUpdatedAtDesc(
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(template));
+        when(checklistItemRepository.findAllByApprovedTemplateIds(
+                java.util.Set.of(template.getId()), ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of());
 
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(null);
@@ -202,10 +211,11 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_templateWithNoItems_returnsEmptyItemList() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.POSTPARTUM);
-        when(checklistTemplateRepository.findByStageAndStatus(
-                ContentStage.POSTPARTUM, ContentStatus.APPROVED))
+        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+                ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(template));
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()))
+        when(checklistItemRepository.findAllByApprovedTemplateIds(
+                java.util.Set.of(template.getId()), ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of());
 
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(ContentStage.POSTPARTUM);
@@ -215,12 +225,13 @@ class ContentServiceImplTest {
 
     @Test
     void getChecklists_withStage_returnsOnlyApprovedTemplates() {
-        ChecklistTemplate approved = makeChecklistTemplate(ContentStage.PREGNANCY, ContentStatus.APPROVED);
-        ChecklistTemplate draft = makeChecklistTemplate(ContentStage.PREGNANCY, ContentStatus.DRAFT);
-        when(checklistTemplateRepository.findByStageAndStatus(
-                ContentStage.PREGNANCY, ContentStatus.APPROVED))
+        ChecklistTemplate approved = makeChecklistTemplate(
+                ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED);
+        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+                ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(approved));
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(approved.getId()))
+        when(checklistItemRepository.findAllByApprovedTemplateIds(
+                java.util.Set.of(approved.getId()), ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of());
 
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(ContentStage.PREGNANCY);
@@ -232,11 +243,13 @@ class ContentServiceImplTest {
 
     @Test
     void getChecklists_withoutStage_returnsOnlyApprovedTemplates() {
-        ChecklistTemplate approved = makeChecklistTemplate(ContentStage.POSTPARTUM, ContentStatus.APPROVED);
-        ChecklistTemplate archived = makeChecklistTemplate(ContentStage.POSTPARTUM, ContentStatus.ARCHIVED);
-        when(checklistTemplateRepository.findByStatus(ContentStatus.APPROVED))
+        ChecklistTemplate approved = makeChecklistTemplate(
+                ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED);
+        when(checklistTemplateRepository.findByStatusOrderByUpdatedAtDesc(
+                ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(approved));
-        when(checklistItemRepository.findByTemplate_IdOrderByOrder(approved.getId()))
+        when(checklistItemRepository.findAllByApprovedTemplateIds(
+                java.util.Set.of(approved.getId()), ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of());
 
         List<ChecklistTemplateResponse> result = contentServiceImpl.getChecklists(null);
@@ -244,5 +257,26 @@ class ContentServiceImplTest {
         assertThat(result)
                 .extracting(ChecklistTemplateResponse::getId)
                 .containsExactly(approved.getId());
+    }
+
+    @Test
+    void uc82_69_tc_016_allLifecycleOperationsFailBeforeAnyDataRepositoryLookup() {
+        UUID ownerId = UUID.fromString("69000000-0000-0000-0000-000000000301");
+        UUID contentId = UUID.fromString("69000000-0000-0000-0000-000000000302");
+        when(lifecycleContentStageResolver.resolve(ownerId))
+                .thenThrow(ContentException.lifecycleContextUnavailable());
+
+        assertThatThrownBy(() -> contentServiceImpl.getLifecycleContents(
+                        ownerId, ContentType.ARTICLE, null, PageRequest.of(0, 20)))
+                .isInstanceOfSatisfying(ContentException.class,
+                        error -> assertThat(error.getCode()).isEqualTo("CNT-013"));
+        assertThatThrownBy(() -> contentServiceImpl.getLifecycleChecklists(ownerId))
+                .isInstanceOfSatisfying(ContentException.class,
+                        error -> assertThat(error.getCode()).isEqualTo("CNT-013"));
+        assertThatThrownBy(() -> contentServiceImpl.getLifecycleContentById(ownerId, contentId))
+                .isInstanceOfSatisfying(ContentException.class,
+                        error -> assertThat(error.getCode()).isEqualTo("CNT-013"));
+
+        verifyNoInteractions(contentRepository, checklistTemplateRepository, checklistItemRepository);
     }
 }

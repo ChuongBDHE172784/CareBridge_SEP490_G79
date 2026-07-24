@@ -20,12 +20,12 @@ import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -74,9 +74,9 @@ class AdminChecklistTemplateServiceImplTest {
                 new ChecklistItemRequest("Siêu âm đo độ mờ da gáy", 1, true),
                 new ChecklistItemRequest("Xét nghiệm Double test", 2, true)));
 
-        ChecklistTemplateResponse response = service.create(request, ADMIN_ID);
+        AdminChecklistTemplateDetailResponse response = service.create(request, ADMIN_ID);
 
-        assertEquals(ContentStatus.DRAFT, response.getStatus());
+        assertEquals(ChecklistTemplateStatus.DRAFT, response.getStatus());
         assertEquals(2, response.getItems().size());
         verify(checklistItemRepository).saveAll(anyList());
         verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_CREATED), eq(ADMIN_ID), eq("ChecklistTemplate"), any(), any());
@@ -88,9 +88,9 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
                 .thenAnswer(inv -> { ChecklistTemplate t = inv.getArgument(0); t.setId(TEMPLATE_ID); return t; });
 
-        ChecklistTemplateResponse response = service.create(makeCreateRequest(List.of()), ADMIN_ID);
+        AdminChecklistTemplateDetailResponse response = service.create(makeCreateRequest(List.of()), ADMIN_ID);
 
-        assertEquals(ContentStatus.DRAFT, response.getStatus());
+        assertEquals(ChecklistTemplateStatus.DRAFT, response.getStatus());
         assertTrue(response.getItems().isEmpty());
         verify(checklistItemRepository, never()).saveAll(anyList());
     }
@@ -101,7 +101,7 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
                 .thenAnswer(inv -> { ChecklistTemplate t = inv.getArgument(0); t.setId(TEMPLATE_ID); return t; });
 
-        ChecklistTemplateResponse response = service.create(makeCreateRequest(null), ADMIN_ID);
+        AdminChecklistTemplateDetailResponse response = service.create(makeCreateRequest(null), ADMIN_ID);
 
         assertTrue(response.getItems().isEmpty());
     }
@@ -118,12 +118,12 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ContentStatus.DRAFT,
+                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
                 List.of(new ChecklistItemRequest("Mục 1", 1, true),
                         new ChecklistItemRequest("Mục 2", 2, false),
                         new ChecklistItemRequest("Mục 3", 3, true)));
 
-        ChecklistTemplateResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
+        AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
 
         verify(checklistItemRepository).deleteAll(List.of(old1, old2));
         ArgumentCaptor<List<ChecklistItem>> captor = ArgumentCaptor.forClass(List.class);
@@ -143,9 +143,9 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ContentStatus.DRAFT, null);
+                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT, null);
 
-        ChecklistTemplateResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
+        AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
 
         verify(checklistItemRepository, never()).deleteAll(anyList());
         verify(checklistItemRepository, never()).saveAll(anyList());
@@ -155,11 +155,11 @@ class AdminChecklistTemplateServiceImplTest {
     // update: current or target status outside DRAFT/PENDING_REVIEW -> CHKTPL-004
     @Test
     void update_currentStatusApproved_throwsChktpl004() {
-        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ContentStatus.APPROVED));
+        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.APPROVED));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
 
         UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả", ContentStage.PREGNANCY, ContentStatus.DRAFT, null);
+                "Tên mới", "Mô tả", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT, null);
 
         ContentException ex = assertThrows(ContentException.class,
                 () -> service.update(TEMPLATE_ID, request, ADMIN_ID));
@@ -177,7 +177,7 @@ class AdminChecklistTemplateServiceImplTest {
         HideChecklistTemplateResponse response = service.archive(
                 TEMPLATE_ID, new HideChecklistTemplateRequest("Nội dung lỗi thời"), ADMIN_ID);
 
-        assertEquals(ContentStatus.ARCHIVED, response.newStatus());
+        assertEquals(ChecklistTemplateStatus.ARCHIVED, response.newStatus());
         verify(checklistItemRepository, never()).deleteAll(anyList());
         verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_ARCHIVED), eq(ADMIN_ID), eq("ChecklistTemplate"), any(), any());
     }
@@ -198,7 +198,7 @@ class AdminChecklistTemplateServiceImplTest {
     // CHKTPL-TC-008
     @Test
     void archive_alreadyArchived_throwsChktpl006() {
-        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ContentStatus.ARCHIVED));
+        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.ARCHIVED));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
 
         ContentException ex = assertThrows(ContentException.class, () -> service.archive(

@@ -69,6 +69,7 @@ public class ContentItem {
 
     @ElementCollection
     @CollectionTable(name = "content_sources", joinColumns = @JoinColumn(name = "content_item_id"))
+    @Builder.Default
     private List<ContentSource> sources = new ArrayList<>();
 
     @Column(name = "published_at")

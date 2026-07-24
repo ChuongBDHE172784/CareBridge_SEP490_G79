@@ -31,6 +31,12 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
     @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner")
     Optional<BabyProfile> findOwnedByIdForUpdate(@Param("id") UUID id, @Param("owner") UUID owner);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner "
+            + "and b.status=com.carebridge.backend.baby.entity.BabyProfileStatus.ACTIVE and b.active=true")
+    Optional<BabyProfile> findOwnedActiveByIdForUpdate(
+            @Param("id") UUID id, @Param("owner") UUID owner);
+
     Page<BabyProfile> findByOwnerUserIdAndRelatedJourneyIdAndStatus(
             UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status, Pageable pageable);
 

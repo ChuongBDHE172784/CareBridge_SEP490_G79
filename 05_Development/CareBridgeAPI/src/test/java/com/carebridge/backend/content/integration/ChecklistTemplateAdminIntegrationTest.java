@@ -15,7 +15,7 @@ import com.carebridge.backend.checklist.entity.UserChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
@@ -57,15 +57,15 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     @Test
     void publicListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
         ChecklistTemplate approvedPregnancy = checklistTemplateRepository.saveAndFlush(
-                template("Public approved pregnancy", ContentStage.PREGNANCY, ContentStatus.APPROVED));
+                template("Public approved pregnancy", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
         ChecklistTemplate approvedPostpartum = checklistTemplateRepository.saveAndFlush(
-                template("Public approved postpartum", ContentStage.POSTPARTUM, ContentStatus.APPROVED));
+                template("Public approved postpartum", ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED));
         ChecklistTemplate draft = checklistTemplateRepository.saveAndFlush(
-                template("Hidden draft", ContentStage.PREGNANCY, ContentStatus.DRAFT));
+                template("Hidden draft", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT));
         ChecklistTemplate pending = checklistTemplateRepository.saveAndFlush(
-                template("Hidden pending", ContentStage.PREGNANCY, ContentStatus.PENDING_REVIEW));
+                template("Hidden pending", ContentStage.PREGNANCY, ChecklistTemplateStatus.PENDING_REVIEW));
         ChecklistTemplate archived = checklistTemplateRepository.saveAndFlush(
-                template("Hidden archived", ContentStage.PREGNANCY, ContentStatus.ARCHIVED));
+                template("Hidden archived", ContentStage.PREGNANCY, ChecklistTemplateStatus.ARCHIVED));
 
         checklistItemRepository.saveAllAndFlush(List.of(
                 item(approvedPregnancy, "Visible pregnancy item", 1),
@@ -110,7 +110,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .filter(t -> "Checklist khám thai tháng 3".equals(t.getName())).toList();
         assertThat(templates).hasSize(1);
         ChecklistTemplate saved = templates.get(0);
-        assertThat(saved.getStatus()).isEqualTo(ContentStatus.DRAFT);
+        assertThat(saved.getStatus()).isEqualTo(ChecklistTemplateStatus.DRAFT);
         List<ChecklistItem> items = checklistItemRepository.findByTemplate_IdOrderByOrder(saved.getId());
         assertThat(items).hasSize(2);
     }
@@ -156,7 +156,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .andExpect(status().isOk());
 
         ChecklistTemplate persisted = checklistTemplateRepository.findById(template.getId()).orElseThrow();
-        assertThat(persisted.getStatus()).isEqualTo(ContentStatus.ARCHIVED);
+        assertThat(persisted.getStatus()).isEqualTo(ChecklistTemplateStatus.ARCHIVED);
         assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
     }
 
@@ -173,7 +173,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .build());
 
         ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
-                template("Import source", ContentStage.PREGNANCY, ContentStatus.APPROVED));
+                template("Import source", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
         ChecklistItem templateItem = checklistItemRepository.saveAndFlush(item(template, "Mục nhập khẩu", 1));
 
         // MOTHER imports the template item into her personal checklist (real UC-50 endpoint)
@@ -207,10 +207,10 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private ChecklistTemplate draftTemplate(String name) {
-        return template(name, ContentStage.PREGNANCY, ContentStatus.DRAFT);
+        return template(name, ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT);
     }
 
-    private ChecklistTemplate template(String name, ContentStage stage, ContentStatus status) {
+    private ChecklistTemplate template(String name, ContentStage stage, ChecklistTemplateStatus status) {
         return ChecklistTemplate.builder()
                 .name(name)
                 .stage(stage)

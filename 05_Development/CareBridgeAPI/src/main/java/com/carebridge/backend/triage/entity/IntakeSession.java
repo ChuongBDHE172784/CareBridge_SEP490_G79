@@ -3,6 +3,7 @@ package com.carebridge.backend.triage.entity;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.TriageStage;
+import com.carebridge.backend.triage.OriginDashboard;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -33,6 +34,25 @@ public class IntakeSession {
 
     @Column(name = "client_request_id", length = 64)
     private String clientRequestId;
+
+    @Column(name = "journey_id")
+    private UUID journeyId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin_dashboard", length = 30)
+    private OriginDashboard originDashboard;
+
+    @Column(name = "origin_reference_id")
+    private UUID originReferenceId;
+
+    @Column(name = "continuation_token")
+    private UUID continuationToken;
+
+    @Column(name = "continuation_expires_at")
+    private Instant continuationExpiresAt;
+
+    @Column(name = "continuation_acknowledged_at")
+    private Instant continuationAcknowledgedAt;
 
     @Column(name = "symptoms", nullable = false, columnDefinition = "TEXT")
     private String symptoms;

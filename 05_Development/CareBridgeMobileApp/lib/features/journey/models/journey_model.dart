@@ -406,6 +406,98 @@ class JourneyTransition {
   }
 }
 
+class JourneyTimelineItem {
+  const JourneyTimelineItem({
+    required this.itemType,
+    required this.itemId,
+    required this.occurredAt,
+    required this.recordedAt,
+    this.eventType,
+    this.fromStage,
+    this.toStage,
+    this.reason,
+    this.riskLevel,
+    this.stage,
+    this.sourceIntakeId,
+    this.sourceEmergencyId,
+    this.originAction,
+  });
+
+  final String itemType;
+  final String itemId;
+  final DateTime occurredAt;
+  final DateTime recordedAt;
+  final String? eventType;
+  final String? fromStage;
+  final String? toStage;
+  final String? reason;
+  final String? riskLevel;
+  final String? stage;
+  final String? sourceIntakeId;
+  final String? sourceEmergencyId;
+  final String? originAction;
+
+  bool get isSafetyOutcome => itemType == 'SAFETY_OUTCOME';
+
+  factory JourneyTimelineItem.fromJson(Map<String, dynamic> json) {
+    final itemType = json['itemType']?.toString() ?? '';
+    final itemId = json['itemId']?.toString() ?? '';
+    final occurredAt = DateTime.tryParse(json['occurredAt']?.toString() ?? '');
+    final recordedAt = DateTime.tryParse(json['recordedAt']?.toString() ?? '');
+    if (!{'LIFECYCLE_TRANSITION', 'SAFETY_OUTCOME'}.contains(itemType) ||
+        itemId.isEmpty ||
+        occurredAt == null ||
+        recordedAt == null) {
+      throw const FormatException('Invalid journey timeline item');
+    }
+    return JourneyTimelineItem(
+      itemType: itemType,
+      itemId: itemId,
+      occurredAt: occurredAt,
+      recordedAt: recordedAt,
+      eventType: json['eventType']?.toString(),
+      fromStage: json['fromStage']?.toString(),
+      toStage: json['toStage']?.toString(),
+      reason: json['reason']?.toString(),
+      riskLevel: json['riskLevel']?.toString(),
+      stage: json['stage']?.toString(),
+      sourceIntakeId: json['sourceIntakeId']?.toString(),
+      sourceEmergencyId: json['sourceEmergencyId']?.toString(),
+      originAction: json['originAction']?.toString(),
+    );
+  }
+}
+
+class JourneyTimelinePage {
+  const JourneyTimelinePage({
+    required this.items,
+    required this.page,
+    required this.size,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<JourneyTimelineItem> items;
+  final int page;
+  final int size;
+  final int totalElements;
+  final int totalPages;
+
+  factory JourneyTimelinePage.fromJson(Map<String, dynamic> json) {
+    final items = (json['items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(JourneyTimelineItem.fromJson)
+        .toList(growable: false);
+    return JourneyTimelinePage(
+      items: List.unmodifiable(items),
+      page: (json['page'] as num?)?.toInt() ?? 0,
+      size: (json['size'] as num?)?.toInt() ?? items.length,
+      totalElements: (json['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
 enum PregnancyOutcome {
   ongoing,
   unknown,

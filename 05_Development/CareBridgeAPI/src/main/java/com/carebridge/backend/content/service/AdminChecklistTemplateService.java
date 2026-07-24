@@ -3,10 +3,10 @@ package com.carebridge.backend.content.service;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,13 +18,15 @@ import org.springframework.data.domain.Pageable;
  */
 public interface AdminChecklistTemplateService {
 
-    Page<ChecklistTemplateResponse> list(ContentStatus status, ContentStage stage, Pageable pageable);
+    Page<AdminChecklistTemplateDetailResponse> list(
+            ChecklistTemplateStatus status, ContentStage stage, Pageable pageable);
 
-    ChecklistTemplateResponse getById(UUID id);
+    AdminChecklistTemplateDetailResponse getById(UUID id);
 
-    ChecklistTemplateResponse create(CreateChecklistTemplateRequest request, UUID adminUserId);
+    AdminChecklistTemplateDetailResponse create(CreateChecklistTemplateRequest request, UUID adminUserId);
 
-    ChecklistTemplateResponse update(UUID id, UpdateChecklistTemplateRequest request, UUID adminUserId);
+    AdminChecklistTemplateDetailResponse update(
+            UUID id, UpdateChecklistTemplateRequest request, UUID adminUserId);
 
     HideChecklistTemplateResponse archive(UUID id, HideChecklistTemplateRequest request, UUID adminUserId);
 }

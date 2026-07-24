@@ -24,7 +24,7 @@ class _ProfileService extends DirectChatService {
         'professionalTitle': 'Bác sĩ',
         'specialty': 'Nhi khoa',
         'verificationStatus': 'APPROVED',
-        'isConsultationEligible': eligible,
+        'consultationEligible': eligible,
       };
 
   @override

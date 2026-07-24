@@ -6,8 +6,8 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.content.dto.request.ContentDecisionRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateDecisionResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentDecision;
-import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.security.Principal;
@@ -34,7 +34,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
                 .orElseThrow(ContentException::checklistTemplateNotFound);
 
-        if (template.getStatus() != ContentStatus.PENDING_REVIEW) {
+        if (template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateNotPendingReview();
         }
 
@@ -43,10 +43,10 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
             throw ContentException.checklistTemplateDecisionReasonRequired();
         }
 
-        ContentStatus previousStatus = template.getStatus();
-        ContentStatus newStatus = request.decision() == ContentDecision.APPROVE
-                ? ContentStatus.APPROVED
-                : ContentStatus.DRAFT;
+        ChecklistTemplateStatus previousStatus = template.getStatus();
+        ChecklistTemplateStatus newStatus = request.decision() == ContentDecision.APPROVE
+                ? ChecklistTemplateStatus.APPROVED
+                : ChecklistTemplateStatus.DRAFT;
         template.setStatus(newStatus);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 

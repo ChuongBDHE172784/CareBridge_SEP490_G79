@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/features/consultation/models/consultation_request.dart';
 import 'package:untitled/features/consultation/screens/consultation_request_detail_screen.dart';
 import 'package:untitled/features/consultation/screens/consultation_request_form_screen.dart';
@@ -108,8 +110,21 @@ ConsultationRequestDetail _detail({
 void main() {
   late ConsultationRequestService original;
 
-  setUp(() => original = ConsultationRequestService.instance);
-  tearDown(() => ConsultationRequestService.instance = original);
+  setUp(() async {
+    original = ConsultationRequestService.instance;
+    FlutterSecureStorage.setMockInitialValues({});
+    await AuthState.instance.clear();
+    await AuthState.instance.setTokens(
+      accessToken: 'synthetic-access',
+      refreshToken: 'synthetic-refresh',
+      userId: 'mother-a',
+      role: 'MOTHER',
+    );
+  });
+  tearDown(() async {
+    ConsultationRequestService.instance = original;
+    await AuthState.instance.clear();
+  });
 
   // CONREQ-FL-02
   testWidgets('form validates required topic and description before submit', (
@@ -232,6 +247,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Dinh dưỡng'), findsOneWidget);
     expect(fake.assignedStatuses, contains('PENDING'));
+  });
+
+  testWidgets('expert queue opens participant request detail', (tester) async {
+    final fake = _FakeConsultationRequestService()
+      ..page = ConsultationRequestPage(
+        items: [_summary()],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
+      );
+    ConsultationRequestService.instance = fake;
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const ExpertRequestQueueScreen()),
+        GoRoute(
+          path: '/consultation-requests/:id',
+          builder: (_, state) => Text(
+            'detail:${state.pathParameters['id']}',
+            textDirection: TextDirection.ltr,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('view-details-request-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('detail:request-1'), findsOneWidget);
   });
 
   // CONREQ-FL-07

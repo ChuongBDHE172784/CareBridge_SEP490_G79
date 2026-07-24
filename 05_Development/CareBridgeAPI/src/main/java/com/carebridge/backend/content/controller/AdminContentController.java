@@ -31,6 +31,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import com.carebridge.backend.content.exception.ContentException;
+import com.carebridge.backend.content.service.ContentService;
+import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateResponse;
+import com.carebridge.backend.common.response.PaginatedResponse;
 
 @RestController
 @RequestMapping("/api/v1/admin/content")
@@ -39,6 +44,20 @@ import com.carebridge.backend.content.exception.ContentException;
 public class AdminContentController {
 
     private final AdminContentService adminContentService;
+    private final ContentService contentService;
+
+    @GetMapping("/checklists")
+    public ResponseEntity<PaginatedResponse<AdminChecklistTemplateResponse>> getChecklists(
+            @RequestParam(required = false) ContentStage stage,
+            @RequestParam(required = false) ChecklistTemplateStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 50) {
+            throw ContentException.validationFailed("size", "must be between 1 and 50");
+        }
+        return ResponseEntity.ok(PaginatedResponse.of(
+                contentService.getAdminChecklists(stage, status, PageRequest.of(page, size))));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ContentDetailResponse>>> getContents(

@@ -2,9 +2,11 @@ package com.carebridge.backend.integration.gemini.service;
 
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
+import com.carebridge.backend.integration.gemini.dto.RagExecutionContext;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Always-active fallback that satisfies the RagService dependency when no
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
  * a Gemini API key.  GeminiRagServiceImpl is @Primary so it wins when both exist.
  */
 @Service
+@Profile("!test")
 public class FallbackRagServiceImpl implements RagService {
 
     static final String STANDARD_DISCLAIMER =
@@ -24,7 +27,7 @@ public class FallbackRagServiceImpl implements RagService {
             "Vui lòng tham khảo bác sĩ hoặc chuyên gia y tế của bạn.";
 
     @Override
-    public RagAnswerResponse generateAnswer(RagAnswerRequest request) {
+    public RagAnswerResponse generateAnswer(RagAnswerRequest request, RagExecutionContext context) {
         return RagAnswerResponse.builder()
                 .answer(CONSERVATIVE_FALLBACK)
                 .disclaimer(STANDARD_DISCLAIMER)

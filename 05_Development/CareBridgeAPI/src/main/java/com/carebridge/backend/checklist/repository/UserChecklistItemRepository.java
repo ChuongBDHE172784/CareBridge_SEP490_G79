@@ -40,7 +40,7 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
                 item_order,
                 created_at,
                 updated_at
-            ) VALUES (
+            ) SELECT
                 :id,
                 :ownerUserId,
                 :journeyId,
@@ -52,6 +52,19 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
                 :itemOrder,
                 now(),
                 now()
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM user_checklist_items existing
+                WHERE existing.owner_user_id = :ownerUserId
+                  AND existing.template_item_id = :templateItemId
+                  AND (
+                      (:babyId IS NOT NULL AND existing.baby_id = :babyId)
+                      OR (
+                          :babyId IS NULL
+                          AND existing.baby_id IS NULL
+                          AND existing.journey_id IS NOT DISTINCT FROM :journeyId
+                      )
+                  )
             )
             ON CONFLICT (
                 owner_user_id,
@@ -71,12 +84,23 @@ public interface UserChecklistItemRepository extends JpaRepository<UserChecklist
             @Param("itemOrder") int itemOrder);
 
     @Query(value = """
-            SELECT *
-            FROM user_checklist_items
-            WHERE owner_user_id = :ownerUserId
-              AND journey_id = :journeyId
-              AND baby_id IS NOT DISTINCT FROM :babyId
-              AND template_item_id = :templateItemId
+            SELECT imported.*
+            FROM user_checklist_items imported
+            WHERE imported.owner_user_id = :ownerUserId
+              AND imported.template_item_id = :templateItemId
+              AND (
+                  (:babyId IS NOT NULL AND imported.baby_id = :babyId)
+                  OR (
+                      :babyId IS NULL
+                      AND imported.baby_id IS NULL
+                      AND imported.journey_id IS NOT DISTINCT FROM :journeyId
+                  )
+              )
+            ORDER BY
+                CASE WHEN imported.journey_id IS NULL THEN 0 ELSE 1 END,
+                imported.created_at,
+                imported.user_checklist_item_id
+            LIMIT 1
             """, nativeQuery = true)
     Optional<UserChecklistItem> findImportedByExactScope(
             @Param("ownerUserId") UUID ownerUserId,

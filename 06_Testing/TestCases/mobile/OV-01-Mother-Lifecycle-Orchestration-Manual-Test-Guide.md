@@ -8,7 +8,7 @@
 | Phiên bản | 1.0 |
 | Ngày tạo | 2026-07-18 |
 | Trạng thái | Draft — sẵn sàng dùng làm acceptance suite |
-| Tình trạng triển khai | Stories 6.1–6.2 `DONE`; Stories 6.3–6.10 `BACKLOG` |
+| Tình trạng triển khai | Stories 6.1–6.8 `DONE`; Stories 6.9–6.10 `BACKLOG` |
 
 ## 1. Mục tiêu
 
@@ -28,14 +28,16 @@ Mục tiêu chính:
 
 ## 2. Cách hiểu trạng thái hiện tại
 
-`_bmad-output/implementation-artifacts/ov01-gap-tracking.yaml` là nguồn trạng thái hiện tại. Báo cáo investigation cũ chỉ là bằng chứng lịch sử.
+`_bmad-output/implementation-artifacts/sprint-status.yaml` là nguồn trạng thái triển khai hiện tại. `_bmad-output/implementation-artifacts/ov01-gap-tracking.yaml` giữ scope/traceability gốc của proposal và báo cáo investigation cũ chỉ là bằng chứng lịch sử.
 
-- `READY`: có thể chạy ngay trên build chứa Story 6.1.
+- `READY`: có thể chạy ngay trên build hiện tại nhưng chưa được ghi nhận như một execution PASS riêng.
+- `PASS`: đã thực thi và có evidence được tham chiếu trong bảng hoặc phần chi tiết.
 - `BLOCKED — STORY NOT IMPLEMENTED`: test là tiêu chí chấp nhận của Story backlog; chưa có màn hình/API không được ghi là defect.
+- `DEFERRED`: chủ động chuyển sang Story/gate sau theo ranh giới scope đã phê duyệt.
 - `FAIL`: Story đã được đánh dấu sẵn sàng nhưng hành vi thực tế khác kết quả mong đợi.
 - `NOT RUN`: chưa thực thi dù môi trường và Story đã sẵn sàng.
 
-Hiện tại có **5/34 ca READY** và **29/34 ca BLOCKED**. Full OV-01 quality gate đang `BLOCKED`, không phải `FAIL`.
+Hiện tại có **17/34 ca READY**, **13/34 ca PASS**, **3/34 ca BLOCKED** và **1/34 ca DEFERRED**. Full OV-01 quality gate vẫn `BLOCKED` bởi Story 6.10; riêng gate Stories 6.6–6.9 đã có manual evidence PASS, không có ca FAIL.
 
 ## 3. Phạm vi và ngoài phạm vi
 
@@ -139,7 +141,7 @@ Không đưa access token, refresh token, mật khẩu, OTP, email/số điện 
 | OV01-MAN-006 | Transition hợp lệ và append-only history | 6.1 | P1 | READY | `[điền]` |
 | OV01-MAN-007 | No-op/stale/illegal transition bị từ chối | 6.1 | P1 | READY | `[điền]` |
 | OV01-MAN-008 | Tài khoản khác không đọc/sửa journey | 6.1 | P0 | READY | `[điền]` |
-| OV01-MAN-009 | Preconception dashboard và vòng lặp “chưa” | 6.2/6.9 | P1 | DEFERRED | APPROVED WAIVER — execute with Story 6.9 |
+| OV01-MAN-009 | Preconception dashboard và vòng lặp “chưa” | 6.2/6.9 | P1 | PASS | Final round-3 JAR `B18DF006...C5A4F` / installed APK `7FC34F65...34A4D9`; not-yet, force-stop/cold-start, PRE UI and byte-identical DB invariant passed. Evidence: `final-round2-b18df006-7fc34f65-r3/`. |
 | OV01-MAN-010 | PRE xác nhận mang thai trên cùng journey | 6.1/6.2 | P1 | READY | PASS — physical device + PostgreSQL evidence |
 | OV01-MAN-011 | Dating thai kỳ từ LMP | 6.2/6.3 | P1 | READY | PASS — physical device + PostgreSQL evidence |
 | OV01-MAN-012 | EDD/unknown/revision bảo toàn provenance | 6.3 | P1 | READY | PASS — clinician EDD revision + automated unknown-date coverage |
@@ -148,20 +150,20 @@ Không đưa access token, refresh token, mật khẩu, OTP, email/số điện 
 | OV01-MAN-015 | Pregnancy loss vào recovery, không tạo baby | 6.3 | P0 | READY | PASS — physical device + PostgreSQL evidence |
 | OV01-MAN-016 | Vào postpartum trực tiếp với zero baby | 6.4 | P1 | READY | PASS — physical Android device + PostgreSQL evidence |
 | OV01-MAN-017 | Recovery độc lập dữ liệu baby | 6.4 | P1 | READY | PASS — physical Android device + PostgreSQL evidence |
-| OV01-MAN-018 | Hoãn tạo baby | 6.5 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-019 | Tạo và liên kết baby mới | 6.5 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-020 | Liên kết baby có sẵn cùng tài khoản | 6.5 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-021 | Liên kết nhiều baby | 6.5 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-022 | Chặn cross-account/incompatible baby | 6.5 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-023 | GREEN từ mọi active stage và trở về origin | 6.6/6.7 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-024 | YELLOW, verified expert và consent tối thiểu | 6.8 | P1 | BLOCKED | `[điền]` |
-| OV01-MAN-025 | RED gọi emergency xác định | 6.6 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-026 | RED lặp lại dùng một emergency session | 6.6 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-027 | AI unavailable dùng safe fallback | 6.6 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-028 | Safety outcome exactly-once và đúng origin | 6.7 | P0 | BLOCKED | `[điền]` |
-| OV01-MAN-029 | Chỉ dùng APPROVED content/checklist | 6.9 | P0 | BLOCKED | `[điền]` |
+| OV01-MAN-018 | Hoãn tạo baby | 6.5 | P1 | PASS | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-019 | Tạo và liên kết baby mới | 6.5 | P1 | PASS | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-020 | Liên kết baby có sẵn cùng tài khoản | 6.5 | P1 | PASS | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-021 | Liên kết nhiều baby | 6.5 | P1 | PASS | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-022 | Chặn cross-account/incompatible baby | 6.5 | P0 | PASS | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-023 | GREEN từ mọi active stage và trở về origin | 6.6/6.7 | P1 | PASS | Five production-origin Android GREEN round trips passed: PRECONCEPTION, PREGNANCY, POSTPARTUM returned to the exact Mother Journey; INFANT and TODDLER returned to the exact baby profile. Sanitized UI/PostgreSQL evidence: `_bmad-output/test-artifacts/story-6-7-manual/`. |
+| OV01-MAN-024 | YELLOW, verified expert và consent tối thiểu | 6.8 | P1 | PASS | Final Android 35 APK: verified-only discovery, explicit four-field consent, refusal/offline/eligibility-loss no-side-effect, stable-key exactly-once retry, minimal expert detail, account-switch/restart isolation, and GREEN/RED regression. Evidence: `_bmad-output/test-artifacts/story-6-8-manual/manual-run-summary.md`. |
+| OV01-MAN-025 | RED gọi emergency xác định | 6.6 | P0 | PASS | Android UI thật từ đủ năm production origin; evidence sanitized trong `story-6-6-manual/manual-run-summary.md` |
+| OV01-MAN-026 | RED lặp lại dùng một emergency session | 6.6 | P0 | PASS | CTA lặp + background/resume; snapshot DB trước/sau không tăng ACTIVE, association, outbox, attempt hoặc audit |
+| OV01-MAN-027 | AI unavailable dùng safe fallback | 6.6 | P0 | PASS | Python unavailable/recovery chạy từ đủ năm origin; fallback RED và retry không tạo side effect trùng |
+| OV01-MAN-028 | Safety outcome exactly-once và đúng origin | 6.7 | P0 | PASS | Android POSTPARTUM RED force-stop/relaunch reopened the authoritative emergency, returned to the exact origin, and preserved `1/1/1/1` intake/outcome/emergency/outbox cardinality. Sanitized evidence: `_bmad-output/test-artifacts/story-6-7-manual/`. |
+| OV01-MAN-029 | Chỉ dùng APPROVED content/checklist | 6.9 | P0 | PASS | Exact B18D/7FC: API/DB `55/55`, UI `5/5`; Round4 `Semantics/BinaryBinding/ClosedSet/AuthenticatedByteSnapshots=true`, `36/36`, 13 critical files. Tooling `76/76`, parser `7/7`, accepted-log scan `27/27` zero, independent review `15/15 APPROVE`. Evidence: `final-round2-b18df006-7fc34f65-r3/`. |
 | OV01-MAN-030 | Continue/complete/archive giữ history | 6.3/6.10 | P1 | DEFERRED | PASS phần continue của 6.3; complete/archive execute với Story 6.10 |
-| OV01-MAN-031 | Offline/retry không mất input hoặc ghi trùng | 6.2–6.10 | P1 | READY | PASS for Story 6.2 onboarding phase |
+| OV01-MAN-031 | Offline/retry không mất input hoặc ghi trùng | 6.2–6.10 | P1 | READY | PASS cho Story 6.2 onboarding và Story 6.7 safety-projection slice |
 | OV01-MAN-032 | Đổi tài khoản xóa cache chéo | 6.10 | P0 | BLOCKED | `[điền]` |
 | OV01-MAN-033 | TalkBack/font/risk cue accessibility | 6.10 | P1 | BLOCKED | `[điền]` |
 | OV01-MAN-034 | Không lộ token hoặc excessive health payload | 6.10 | P0 | BLOCKED | `[điền]` |
@@ -249,7 +251,7 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** `MOTHER_PRE`, reviewed content/checklist.  
 **Thực hiện:** Mở dashboard PRE → xem mục tiêu/checklist/nội dung → chọn “chưa/không” khi được hỏi tình trạng mang thai → đóng/mở lại app.  
 **Mong đợi:** vẫn ở PRE trên cùng lifecycle; không tạo PREG/baby; chỉ nội dung phù hợp PRE và đã duyệt được hiển thị; lựa chọn và dashboard được khôi phục đúng.  
-**Thực tế/evidence:** DEFERRED theo dependency waiver được Product/Tech Lead phê duyệt ngày 2026-07-19. Story 6.2 không triển khai hoặc ghi PASS giả cho reviewed checklist/content boundary và vòng lặp “chưa”; ca này được giữ trong OV-01 và phải thực thi trong Story 6.9.
+**Thực tế/evidence:** `PASS` ngày 2026-07-24 trên exact final JAR SHA-256 `B18DF0066E81EA896EA000E37F4661CD6DA9566DEE3B0749D8D4CBA5C06C5A4F` (`124081154` bytes) và installed APK SHA-256 `7FC34F65EAD4566D83D5BEDD4C6D186249A238727F08C4513E9896B56B34A4D9` (`226838368` bytes). Android hiển thị PRE journey, reviewed-content entry và snackbar “not yet”; force-stop làm app PID rỗng, cold-start khôi phục PRE home/journey. DB trước/sau byte-identical: `69000000-0000-0000-0000-000000000001|PRE_PREGNANCY|ACTIVE|0|1|0|0|1`. Evidence: `_bmad-output/test-artifacts/story-6-9-manual/final-round2-b18df006-7fc34f65-r3/`.
 
 ### OV01-MAN-010 — PRE xác nhận mang thai trên cùng journey
 
@@ -270,21 +272,21 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** `MOTHER_PREG`.  
 **Thực hiện:** Cập nhật bằng clinician EDD → kiểm tra dashboard/history; chạy biến thể không biết ngày; sau đó sửa ngày với reason mới.  
 **Mong đợi:** best available source được dùng; unknown không tạo ngày giả; mỗi revision tăng version và giữ giá trị/source/confidence/reason/effective time trước đó trong history; không còn trường dating stale của phương pháp cũ.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên physical device + PostgreSQL. Clinician EDD được sửa từ `2027-03-08` sang `2027-03-15`, journey version tăng và history giữ `DATES_CHANGED` với source `CLINICIAN_CONFIRMED`, confidence `CONFIRMED`, reason `DATE_CORRECTION`; biến thể unknown-date được bao phủ bởi regression tự động. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-012-review.png`, `ov01-man-012-db.txt`.
 
 ### OV01-MAN-013 — Thai kỳ đang tiếp diễn
 
 **Fixture:** `MOTHER_PREG`.  
 **Thực hiện:** Mở outcome/status → chọn “đang tiếp diễn” → quay lại dashboard → refresh và mở lại app.  
 **Mong đợi:** stage vẫn PREGNANCY; không tạo postpartum/baby; dashboard giữ dating hiện hành; không tạo transition không cần thiết hoặc duplicate event.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên physical device + PostgreSQL. Chọn thai kỳ đang tiếp diễn quay lại đúng pregnancy dashboard, giữ dating hiện hành và không tạo baby/transition thừa. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-013.png`, `ov01-man-013-dashboard.png`, `story63-after-ongoing.xml`.
 
 ### OV01-MAN-014 — Live birth chuyển sang postpartum
 
 **Fixture:** `MOTHER_PREG`, dữ liệu sinh synthetic.  
 **Thực hiện:** Chọn outcome live birth → nhập ngày/nguồn/reason → xác nhận → quan sát recovery và lời mời tạo/link baby.  
 **Mong đợi:** cùng canonical lifecycle chuyển sang POSTPARTUM; outcome provenance và history được giữ; baby vẫn là tùy chọn; từ chối/hoãn baby không chặn recovery; không duplicate transition khi bấm lặp.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** PASS trên physical device + PostgreSQL sau khi sửa propagation của outcome correction. Canonical journey chuyển PREGNANCY → POSTPARTUM, version `2`, outcome/date và transition history được giữ, bấm lặp không tạo duplicate, `baby_count=0` vẫn hợp lệ. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-014.png`, `ov01-man-014-pass.png`, `ov01-man-014-fixed.png`, `ov01-man-014-db.txt`.
 
 ### OV01-MAN-015 — Pregnancy loss vào recovery, không tạo baby
 
@@ -312,84 +314,84 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** `MOTHER_POST_ZERO`.  
 **Thực hiện:** Từ lời mời create/link baby chọn “để sau/không bây giờ” → tiếp tục recovery → mở lại app.  
 **Mong đợi:** quay đúng postpartum dashboard; Mother state và recovery data không đổi; lời mời có thể mở lại sau; không có baby/profile/link rỗng được tạo.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Thiết bị xác nhận tài khoản synthetic đủ điều kiện có ba hành động ngang hàng, chọn “Để sau” quay về recovery, và zero-baby ready state vẫn đúng sau force-stop/cold-start; không render baby/link rỗng. Việc mở lại lời mời và giữ zero-baby state qua simulated widget-tree rebuild được xác nhận bởi hai focused widget tests tương ứng. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m5-linkage-actions.xml`, `m5-later-return.xml`, `m5-cold-start-ready.xml` và `manual-run-summary.md`.
 
 ### OV01-MAN-019 — Tạo và liên kết baby mới
 
 **Fixture:** `MOTHER_POST_ZERO`, dữ liệu baby synthetic tối thiểu.  
 **Thực hiện:** Chọn tạo baby → nhập minimum required data → lưu → quay lại recovery và mở baby selector.  
 **Mong đợi:** đúng một baby profile thuộc Mother; liên kết tới journey đủ điều kiện; POSTPARTUM state/version không bị đổi ngoài audit liên kết đã duyệt; retry không tạo baby trùng.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Flow journey-scoped tạo dữ liệu tối thiểu và authoritative reload hiển thị đúng một baby liên kết. Aggregate-only read-only diagnostic xác nhận một active journey với version không đổi, một active/linked baby, một create submission và một accepted audit. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m5-linked-final.xml`, `m5-db-verification.md` và `manual-run-summary.md`.
 
 ### OV01-MAN-020 — Liên kết baby có sẵn cùng tài khoản
 
 **Fixture:** một baby eligible cùng owner nhưng chưa liên kết journey hiện tại.  
 **Thực hiện:** Chọn link existing → chọn baby → xác nhận → reload recovery/baby journey.  
 **Mong đợi:** liên kết thành công một lần; không sao chép profile; baby data giữ nguyên; Mother recovery không reset; audit ghi actor/source/link target.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Selector chỉ hiển thị candidate ACTIVE cùng owner và chưa liên kết; chọn Baby A tạo đúng một liên kết rồi authoritative refresh hiển thị Baby A một lần, không gọi switch-active legacy. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m6-candidates.xml`, `m6-one-linked.xml`; audit/command contract được xác nhận bởi bộ PostgreSQL và widget test Story 6.5.
 
 ### OV01-MAN-021 — Liên kết nhiều baby
 
 **Fixture:** `BABY_A`, `BABY_B` cùng owner và compatible.  
 **Thực hiện:** Liên kết lần lượt hai baby → chuyển selector A/B nhiều lần → quay lại recovery.  
 **Mong đợi:** cả hai liên kết tồn tại, không trùng; dữ liệu mỗi baby được cô lập; Mother vẫn chỉ có một POSTPARTUM active; late response không làm đổi baby đang chọn.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Baby A và Baby B tồn tại đúng một lần trong linked set; selector cuối có đúng một actionable semantics node cho mỗi baby, chọn Baby B vẫn được giữ sau authoritative refresh, và quay lại đúng postpartum recovery. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m6-two-linked.xml`, `m6-selector-final-a.xml`, `m6-selector-final-b-refresh.xml`, `m6-recovery-return.xml`.
 
 ### OV01-MAN-022 — Chặn cross-account hoặc incompatible baby
 
 **Fixture:** `FOREIGN_BABY` và một baby không tương thích stage/outcome.  
 **Thực hiện:** Dùng deep link/API test support đã duyệt để thử liên kết từng fixture; sau đó kiểm tra bằng owner thật.  
 **Mong đợi:** 403/404 hoặc business error trung lập; không lộ tên/ngày/notes của foreign baby; không tạo/sửa link; attempt được audit; owner thật vẫn thấy dữ liệu nguyên vẹn.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-21 bằng API test support trên PostgreSQL 16. Case `foreignAndIncompatibleLinkAttemptsLeaveOwnerDataUnchangedAndSanitizedAudits` xác nhận foreign trả `LINK_RESOURCE_NOT_FOUND`, pregnancy-loss/incompatible trả `LINK_NOT_ELIGIBLE`; không tạo submission/link, row owner không đổi và mỗi rejection có đúng một audit không chứa nickname, birth date hoặc token. Tổng hợp sanitized: `_bmad-output/test-artifacts/story-6-5-manual/manual-run-summary.md`.
 
 ### OV01-MAN-023 — GREEN từ mọi active stage và trở về origin
 
 **Fixture:** PRE, PREG, POST; baby-linked INFANT/TODDLER; và `TRIAGE_GREEN`.  
 **Thực hiện:** Từ từng Mother dashboard và từng baby journey INFANT/TODDLER mở safety triage → nhập GREEN phù hợp context → hoàn tất guidance/monitor → quay lại.  
 **Mong đợi:** cả năm safety context được gửi/đọc đúng; kết quả GREEN nhất quán và non-diagnostic; không tạo emergency/consultation; quay đúng Mother dashboard hoặc đúng baby/context ban đầu; dữ liệu giữa stage/baby không bị trộn.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-23 trên AVD Android 15/API 35 với APK build từ working tree cuối. Đã chạy lại đủ năm production origin: PRECONCEPTION, PREGNANCY, POSTPARTUM từ Mother Journey và INFANT/TODDLER từ đúng baby profile. Cả năm hoàn tất GREEN, quay về đúng typed origin, hiển thị confirmation tại destination và acknowledge continuation; hai pediatric request có top-level `babyProfileId` đúng. PostgreSQL latest-run matrix xác nhận mỗi stage có đúng một intake/projection, `acknowledged=true`, đúng journey/baby origin/action và zero emergency. Evidence sanitized: `_bmad-output/test-artifacts/story-6-7-manual/manual-run-summary.md`, `db-evidence.md`, các bộ `pre-queryfix-return.*`, `preg-queryfix-return.*`, `post-queryfix-return.*`, `infant-final-return.*`, `toddler-final-return.*`.
 
 ### OV01-MAN-024 — YELLOW, verified expert và consent tối thiểu
 
 **Fixture:** `TRIAGE_YELLOW`, expert verified/unverified, consent approve/deny.  
 **Thực hiện:** Hoàn tất YELLOW → kiểm tra danh sách expert → từ chối chia sẻ → chạy lại và đồng ý minimum context → đặt lịch/liên hệ.  
 **Mong đợi:** chỉ verified expert được đưa ra; từ chối consent không chia sẻ context và vẫn có hướng dẫn an toàn; đồng ý chỉ gửi trường tối thiểu đã hiển thị; có trace/source ID và reviewed citations; raw triage payload không bị sao chép quá mức; không còn doctor/clinic card, CTA hoặc danh tính placeholder.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-23 trên Android 35 AVD với APK cuối SHA-256 `2B1942FF374F959422A6B9817AEF36FACCA2988F0D3866CCABF3CC8BEB4B7066`. YELLOW từ production Mother Journey chỉ hiển thị expert `APPROVED`/eligible; expert `PENDING` không xuất hiện. Consent ban đầu chưa chọn, submit bị khóa, mô tả đúng bốn trường chia sẻ và mười loại dữ liệu bị loại trừ. Refusal, offline timeout khoảng 10.23 giây và mất eligibility đều không tạo side effect. Retry cùng stable key tạo đúng một request/consent/context-share/citation cho mỗi synthetic owner. Expert accepted queue mở được detail chỉ gồm YELLOW, PREGNANCY, sanitized risk summary và nguồn WHO đã duyệt. Late response + account switch và force-stop/relaunch không làm lộ context tài khoản trước. GREEN không có expert-handoff CTA và quay lại đúng journey; RED vẫn mở phiên hỗ trợ khẩn cấp 115. PostgreSQL cuối giữ cardinality `2/2/2/2` cho request/expert-consent/context-share/citation với `2` distinct idempotency keys. Evidence sanitized: `_bmad-output/test-artifacts/story-6-8-manual/manual-run-summary.md`, `db-evidence.md`, và các XML `final-*` được liệt kê trong biên bản.
 
 ### OV01-MAN-025 — RED gọi emergency xác định
 
 **Fixture:** PRE, PREG, POST; baby-linked INFANT/TODDLER; và `TRIAGE_RED`.  
 **Thực hiện:** Từ cả năm safety context gửi RED input → quan sát điều hướng/call-to-action → mở emergency session và quay lại khi an toàn.  
 **Mong đợi:** context Mother/baby chính xác; RED không chờ hoặc gọi một AI interpretation thứ hai; emergency được tạo/mở deterministically; copy khẩn cấp rõ ràng, không chẩn đoán; origin lifecycle/baby context được giữ; POSTPARTUM, INFANT và TODDLER hoạt động end-to-end.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-22 trên AVD Android 35 với APK build từ working tree cuối. Đã đăng nhập năm fixture account và thao tác từ đúng production origin: PRECONCEPTION/PREGNANCY/POSTPARTUM từ Mother Journey, INFANT/TODDLER từ baby profile nạp qua API thật. Mỗi CTA khóa stage, RED mở backend ACTIVE emergency, và back navigation trả về đúng typed origin trong current session. PostgreSQL xác nhận mọi RED intake tại checkpoint đều có association và mỗi owner chỉ dùng một linked emergency. Evidence sanitized: `_bmad-output/test-artifacts/story-6-6-manual/manual-run-summary.md`, `db-evidence.md`, cùng các bộ `pre-*valid`, `preg-*valid`, `post-*valid`, `infant-*`, `toddler-*` PNG/XML.
 
 ### OV01-MAN-026 — RED lặp lại dùng một emergency session
 
 **Fixture:** RED context đã có emergency session.  
 **Thực hiện:** Bấm lặp CTA, retry request, background/resume và gửi lại cùng source/idempotency context.  
 **Mong đợi:** chỉ một emergency session được create/reuse; response đều trỏ cùng session; không có duplicate notification/audit nghiệp vụ; trạng thái cuối nhất quán.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-22. Trên PREGNANCY RED screen đã mở CTA lặp, nhấn Home để background, bring-to-front để resume, rồi mở CTA lặp lại. Trước/sau PostgreSQL đều giữ `1 ACTIVE`, `1 linked emergency`, `1 outbox`, `attempt_count=1`, và `family_alert_log=0`. Giá trị zero là đúng với fixture không có family-contact/FCM recipient và không tăng sau replay/resume. Evidence sanitized: `preg-background.*`, `preg-resume.*`, `preg-repeat-cta.*`, `_bmad-output/test-artifacts/story-6-6-manual/db-evidence.md`.
 
 ### OV01-MAN-027 — AI unavailable dùng safe fallback
 
 **Fixture:** PRE, PREG, POST, baby-linked INFANT/TODDLER và failure injection được phê duyệt cho timeout/unavailable/malformed AI response.  
 **Thực hiện:** Từ mỗi Mother/baby safety context gọi triage trong lúc AI unavailable → quan sát guidance/escalation → retry sau khi dịch vụ phục hồi.  
 **Mong đợi:** app không crash/blank; fallback bảo thủ, rõ ràng, non-diagnostic và không hạ mức nguy cơ; context INFANT/TODDLER không bị quy về Mother; RED-like danger signs vẫn dẫn emergency deterministically; retry không tạo side effect trùng.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-22. Đã dừng process Python giữ port 8001 và xác nhận không còn listener, sau đó chạy từ đủ năm production origin. PRECONCEPTION, PREGNANCY, POSTPARTUM, INFANT và TODDLER đều hiển thị explicit safe-fallback copy, RED, emergency CTA và không crash/blank. Python được khởi động lại từ `.venv-story66`; `/health` trả HTTP 200, rồi cả năm origin được retry và trở lại normal RED copy. DB cuối chỉ tăng một intake association mỗi recovery retry; mỗi owner vẫn có đúng một ACTIVE/linked emergency, một outbox, `attempt_count=1` và không phát sinh recipient log. Evidence sanitized: `man027-outage-*-red.*`, `man027-recovery-*-red.*`, `manual-run-summary.md`, `db-evidence.md`.
 
 ### OV01-MAN-028 — Safety outcome exactly-once và đúng origin
 
 **Fixture:** một GREEN, YELLOW, RED; duplicate callback và app restart.  
 **Thực hiện:** Hoàn tất từng outcome → retry callback/projection → kill/reopen app → mở lifecycle timeline và tiếp tục.  
 **Mong đợi:** mỗi outcome có đúng một timeline projection chứa minimum data, source ID, risk, origin action; duplicate callback không tạo bản ghi mới; continuation token không lộ dữ liệu và đưa về đúng dashboard/state.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-23. YELLOW PRE process-death restore vẫn có đúng một outcome, zero emergency và acknowledge sau destination render. Với RED POSTPARTUM, Android mở emergency thật, force-stop/relaunch rồi khôi phục đúng authoritative emergency; back trả về đúng Postpartum Journey, timeline hiển thị RED confirmation và continuation được acknowledge. PostgreSQL trước/sau restart/return đều giữ đúng `1 intake`, `1 outcome`, `1 emergency association`, `1 distinct emergency session`, `1 outbox`; không có second POST/association/outbox. Không token value nào được xuất ra evidence. Evidence sanitized: `pre-yellow.png`, `pre-restored.*`, `post-red-emergency-before-restart.*`, `post-red-restarted-authoritative.*`, `post-red-final-return.*`, `manual-run-summary.md`, `db-evidence.md`.
 
 ### OV01-MAN-029 — Chỉ dùng APPROVED content/checklist
 
 **Fixture:** cùng stage có template `APPROVED`, `DRAFT`, `REJECTED`, `ARCHIVED`.  
 **Thực hiện:** Mở content/checklist từ PRE/PREG/POST; thử direct ID/deep link/API cho từng status; thử import/use template.  
 **Mong đợi:** chỉ APPROVED và đúng stage được đọc/dùng; các status còn lại bị từ chối cả khi biết ID; không lộ body/metadata nhạy cảm; content không tự chẩn đoán hoặc thay thế expert/emergency.  
-**Thực tế/evidence:** `[điền]`
+**Thực tế/evidence:** `PASS` ngày 2026-07-24 trên exact final JAR `B18DF006...C5A4F` và installed APK `7FC34F65...34A4D9`. Auth `3/3`, API/DB `45/45 + 10/10 = 55/55`, UI `5/5`; rejected ContentItem `0`, checklist rejected/denial `3/3`. Round4 template SHA-256 `7470FD151E7C2DB91B02497B3F291309855B7B4C44283D2F1EA9BCBE6504E419` trả `Semantics=true`, `BinaryBinding=true`, `ClosedSet=true`, `AuthenticatedByteSnapshots=true`, `36/36`, 13 critical files. Tooling `76/76`, parser `7/7`, accepted-log scan `27/27` zero; independent fixed-scope review `15/15 PASS — APPROVE`. Historical manifests: final4983 `32/32`, final122 `40/40`, round2 `41/41`; current `36/36`. Runtime shutdown PASS.
 
 ### OV01-MAN-030 — Continue, complete và archive giữ history
 
@@ -403,7 +405,7 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 **Fixture:** một form của mỗi phase và một safety projection test-safe.  
 **Thực hiện:** Nhập dữ liệu → tắt mạng trước submit → submit → background/foreground → bật mạng → retry; lặp với response đến muộn.  
 **Mong đợi:** input hợp lệ được giữ; thông báo offline/retry rõ ràng; không giả thành công; sau reconnect chỉ có một write/transition/link/session; late response không ghi đè state mới hơn.  
-**Thực tế/evidence:** PASS cho phase onboarding Story 6.2. Khi transport offline và khi server trả 5xx, goal/support vẫn được giữ và không báo thành công; cold-start phục hồi draft nhưng consent trở lại unchecked. Sau reconnect tới PostgreSQL, submit thành công và truy vấn DB xác nhận đúng một baseline revision cùng một consent evidence row, không ghi trùng. Evidence: `_bmad-output/test-artifacts/story-6-2-manual/ov01-man-031-offline.png`, `ov01-man-031-retry.png`, `ov01-man-031-resume.png`, `ov01-man-002-valid-submit-pg.png` và XML tương ứng.
+**Thực tế/evidence:** PASS cho phase onboarding Story 6.2 và lát cắt safety projection Story 6.7. Với Story 6.7, backend local đã được dừng sau khi nhập nhưng trước submit; Android hiển thị lỗi retry rõ ràng và giữ nguyên input synthetic. Sau khi khởi động lại cùng JAR/config, retry hoàn tất GREEN; PostgreSQL xác nhận failed attempt không tạo intake và request sau recovery chỉ có một intake/projection. Late account/request response được bao phủ bởi regression Flutter account-generation guard. Evidence: `_bmad-output/test-artifacts/story-6-7-manual/offline-error.png`, `offline-retry-success.png`, XML tương ứng, `manual-run-summary.md`, `db-evidence.md`; evidence Story 6.2 giữ nguyên tại `_bmad-output/test-artifacts/story-6-2-manual/`.
 
 ### OV01-MAN-032 — Đổi tài khoản xóa cache chéo
 
@@ -536,7 +538,8 @@ Một full OV-01 run chỉ được `PASS` khi:
 - `03_Design/ActivityDiagram/CareBridge-Main-Workflows.drawio` — trang OV-01.
 - `_bmad-output/planning-artifacts/epics.md` — Epic 6, Stories 6.1–6.10.
 - `_bmad-output/planning-artifacts/prd.md` — FR43–FR54.
-- `_bmad-output/implementation-artifacts/ov01-gap-tracking.yaml` — trạng thái triển khai hiện tại.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — trạng thái triển khai hiện tại.
+- `_bmad-output/implementation-artifacts/ov01-gap-tracking.yaml` — scope/traceability gốc của proposal OV-01.
 - `_bmad-output/implementation-artifacts/investigations/ov01-codebase-gap-investigation.md` — bằng chứng gap lịch sử.
 - `06_Testing/TestCases/mobile/MF-01-Story-6.1-Mobile-Manual-Test-Guide.md` — chi tiết regression mobile Story 6.1.
 - `06_Testing/TestCases/backend/MF-01-Story-6.1-Manual-Test-Guide.md` — contract/API canonical lifecycle.

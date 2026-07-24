@@ -137,6 +137,20 @@ class ContentSearchServiceTest {
         assertThat(keywordCaptor.getValue()).contains("\\_");
     }
 
+    @Test
+    void uc82_69_tc_021_quoteKeywordRemainsLiteralAndApprovedOnly() {
+        ArgumentCaptor<String> keywordCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<ContentStatus> statusCaptor = ArgumentCaptor.forClass(ContentStatus.class);
+        when(contentRepository.searchByFilters(
+                keywordCaptor.capture(), any(), any(), any(), statusCaptor.capture(), any()))
+                .thenReturn(Page.empty());
+
+        contentServiceImpl.searchContent(makeSearchRequest("  mother's care  "), PageRequest.of(0, 20));
+
+        assertThat(keywordCaptor.getValue()).isEqualTo("mother's care");
+        assertThat(statusCaptor.getValue()).isEqualTo(ContentStatus.APPROVED);
+    }
+
     // ── CNT224-TC-005: topicName null-safe when topicId is null ─────────────
     // Oracle: CB-CONTENT-IMP-002 §8.1 — topicName resolved; null if topicId null
     @Test

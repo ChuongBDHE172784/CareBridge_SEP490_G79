@@ -1,6 +1,6 @@
 <mxfile host="Electron" pages="7">
   <diagram id="wf-ov01-mother-lifecycle-orchestration" name="OV-01 Mother Lifecycle Orchestration Overview">
-    <mxGraphModel dx="2575" dy="1650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="4000" math="0" shadow="0">
+    <mxGraphModel dx="2575" dy="1565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="4000" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -330,7 +330,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="wf-mf02-mother-care-journey" name="MF-02 Mother Care Journey Workflow">
-    <mxGraphModel dx="1373" dy="880" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
+    <mxGraphModel dx="824" dy="501" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -373,7 +373,7 @@
         <mxCell id="dash" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="4. Show stage-aware dashboard from canonical journey state" vertex="1">
           <mxGeometry height="58" width="250" x="415" y="560" as="geometry" />
         </mxCell>
-        <mxCell id="metric" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="5. Log maternal indicators, symptoms, mood or recovery notes&#xa;Baby profile is not required" vertex="1">
+        <mxCell id="metric" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="5. Log maternal indicators, symptoms, mood or recovery notes" vertex="1">
           <mxGeometry height="58" width="250" x="95" y="650" as="geometry" />
         </mxCell>
         <mxCell id="rules" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" value="Warning sign or unsafe input?" vertex="1">

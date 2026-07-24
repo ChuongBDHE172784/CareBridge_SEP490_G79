@@ -2,6 +2,7 @@ package com.carebridge.backend.emergency;
 
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.service.FamilyAlertDeliveryOutcome;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.FcmNotificationPort;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
@@ -13,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class FamilyAlertServiceTest {
@@ -51,13 +56,40 @@ class FamilyAlertServiceTest {
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     @Test
+    void sendAlert_shouldCommitItsDeliveryLogBeforeOutboxTerminalTransition() throws Exception {
+        Transactional transactional = FamilyAlertService.class
+                .getMethod("sendAlert", EmergencySessionOpened.class)
+                .getAnnotation(Transactional.class);
+
+        org.assertj.core.api.Assertions.assertThat(transactional).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(transactional.propagation())
+                .isEqualTo(Propagation.REQUIRES_NEW);
+    }
+
+    @Test
     void sendAlert_alreadySent_shouldBeIdempotentNoOp() {
         // UC65 — idempotent: skip if alert already sent for session
         when(familyAlertLogRepository.existsBySessionId(SESSION_ID)).thenReturn(true);
 
-        familyAlertService.sendAlert(EmergencyTestFactory.makeEmergencySessionOpenedEvent());
+        FamilyAlertDeliveryOutcome outcome = familyAlertService.sendAlert(
+                EmergencyTestFactory.makeEmergencySessionOpenedEvent());
 
+        assertThat(outcome).isEqualTo(FamilyAlertDeliveryOutcome.ALREADY_SENT);
         verify(fcmNotificationPort, never()).sendBatch(anyList(), any());
+    }
+
+    @Test
+    void sendAlert_noRecipients_shouldBeIntentionalNoOp() {
+        when(familyAlertLogRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(familyMemberPort.getFamilyFcmTokens(USER_ID)).thenReturn(List.of());
+
+        FamilyAlertDeliveryOutcome outcome = familyAlertService.sendAlert(
+                EmergencyTestFactory.makeEmergencySessionOpenedEvent());
+
+        assertThat(outcome).isEqualTo(FamilyAlertDeliveryOutcome.NO_RECIPIENTS);
+        verify(fcmNotificationPort, never()).sendBatch(anyList(), any());
+        verify(smsFallbackPort, never()).sendFallback(any(), any(), any());
+        verify(familyAlertLogRepository, never()).save(any());
     }
 
     @Test
@@ -108,6 +140,25 @@ class FamilyAlertServiceTest {
 
         verify(smsFallbackPort).sendFallback(eq(USER_ID), eq(SESSION_ID), any());
         verify(familyAlertLogRepository).save(any());
+    }
+
+    @Test
+    void sendAlert_fcmAndSmsFailure_shouldThrowAndNotRecordDeliveredLog() {
+        when(familyAlertLogRepository.existsBySessionId(SESSION_ID)).thenReturn(false);
+        when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(true);
+        when(familyMemberPort.getFamilyFcmTokens(USER_ID)).thenReturn(List.of("token-001"));
+        doThrow(new RuntimeException("FCM unavailable"))
+                .when(fcmNotificationPort).sendBatch(anyList(), any());
+        doThrow(new IllegalStateException("SMS unavailable"))
+                .when(smsFallbackPort).sendFallback(eq(USER_ID), eq(SESSION_ID), any());
+
+        assertThatThrownBy(() -> familyAlertService.sendAlert(
+                        EmergencyTestFactory.makeEmergencySessionOpenedEvent()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("SMS unavailable");
+
+        verify(familyAlertLogRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

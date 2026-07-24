@@ -1,13 +1,13 @@
 package com.carebridge.backend.content.dto.response;
 
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import java.time.Instant;
 import java.util.UUID;
 
 public record HideChecklistTemplateResponse(
         UUID id,
-        ContentStatus previousStatus,
-        ContentStatus newStatus,
+        ChecklistTemplateStatus previousStatus,
+        ChecklistTemplateStatus newStatus,
         String reason,
         UUID hiddenByAdminId,
         Instant hiddenAt

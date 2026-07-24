@@ -26,7 +26,7 @@ public class SymptomNormalizer {
             Map.entry("cyanosis", List.of("tim tai", "moi tim", "da tim")),
             Map.entry("seizure", List.of("co giat", "seizure", "convulsion")),
             Map.entry("lethargy", List.of("li bi", "lo mo", "ngu ga")),
-            Map.entry("difficult_to_wake", List.of("kho danh thuc")),
+            Map.entry("difficult_to_wake", List.of("kho danh thuc", "kho giu tinh tao")),
             Map.entry("unable_to_drink", List.of("khong uong", "khong bu")),
             Map.entry("poor_feeding", List.of("bo bu", "uong kem", "an kem")),
             Map.entry("vomiting", List.of("non", "oi", "vomit", "vomiting")),

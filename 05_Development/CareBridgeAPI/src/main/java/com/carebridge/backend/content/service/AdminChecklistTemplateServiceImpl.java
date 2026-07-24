@@ -6,12 +6,12 @@ import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -38,14 +38,16 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ChecklistTemplateResponse> list(ContentStatus status, ContentStage stage, Pageable pageable) {
-        Page<ChecklistTemplate> templates = checklistTemplateRepository.findByAdminFilters(stage, status, pageable);
+    public Page<AdminChecklistTemplateDetailResponse> list(
+            ChecklistTemplateStatus status, ContentStage stage, Pageable pageable) {
+        Page<ChecklistTemplate> templates = checklistTemplateRepository
+                .findAdminByOptionalStageAndStatus(stage, status, pageable);
         return templates.map(this::toResponseWithItems);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ChecklistTemplateResponse getById(UUID id) {
+    public AdminChecklistTemplateDetailResponse getById(UUID id) {
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
                 .orElseThrow(ContentException::checklistTemplateNotFound);
         return toResponseWithItems(template);
@@ -53,12 +55,13 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
     @Override
     @Transactional
-    public ChecklistTemplateResponse create(CreateChecklistTemplateRequest request, UUID adminUserId) {
+    public AdminChecklistTemplateDetailResponse create(
+            CreateChecklistTemplateRequest request, UUID adminUserId) {
         ChecklistTemplate template = ChecklistTemplate.builder()
                 .name(request.name())
                 .description(request.description())
                 .stage(request.stage())
-                .status(ContentStatus.DRAFT)
+                .status(ChecklistTemplateStatus.DRAFT)
                 .build();
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
@@ -70,22 +73,25 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_CREATED, adminUserId,
                 "ChecklistTemplate", saved.getId().toString(), "created");
 
-        return contentMapper.toChecklistTemplateResponse(saved, savedItems);
+        return contentMapper.toAdminChecklistTemplateDetailResponse(saved, savedItems);
     }
 
     @Override
     @Transactional
-    public ChecklistTemplateResponse update(UUID id, UpdateChecklistTemplateRequest request, UUID adminUserId) {
+    public AdminChecklistTemplateDetailResponse update(
+            UUID id, UpdateChecklistTemplateRequest request, UUID adminUserId) {
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
                 .orElseThrow(ContentException::checklistTemplateNotFound);
 
         // Same separation-of-duties guard as ContentItem.updateContent (BR-CNT-006): a Content Admin
         // may only work a draft or submit it for review — publication is a System Admin decision
         // made exclusively through ChecklistTemplateApprovalService.decide().
-        if (template.getStatus() != ContentStatus.DRAFT && template.getStatus() != ContentStatus.PENDING_REVIEW) {
+        if (template.getStatus() != ChecklistTemplateStatus.DRAFT
+                && template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateInvalidStatusTransition();
         }
-        if (request.status() != ContentStatus.DRAFT && request.status() != ContentStatus.PENDING_REVIEW) {
+        if (request.status() != ChecklistTemplateStatus.DRAFT
+                && request.status() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateInvalidStatusTransition();
         }
 
@@ -114,7 +120,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_UPDATED, adminUserId,
                 "ChecklistTemplate", saved.getId().toString(), "updated");
 
-        return contentMapper.toChecklistTemplateResponse(saved, currentItems);
+        return contentMapper.toAdminChecklistTemplateDetailResponse(saved, currentItems);
     }
 
     @Override
@@ -124,17 +130,17 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .orElseThrow(ContentException::checklistTemplateNotFound);
 
         // ADR-CHK-002: idempotency guard — already ARCHIVED is rejected, not silently re-applied
-        if (template.getStatus() == ContentStatus.ARCHIVED) {
+        if (template.getStatus() == ChecklistTemplateStatus.ARCHIVED) {
             throw ContentException.checklistTemplateAlreadyArchived();
         }
         if (request.reason() == null || request.reason().isBlank()) {
             throw ContentException.checklistTemplateArchiveReasonRequired();
         }
 
-        ContentStatus previousStatus = template.getStatus();
+        ChecklistTemplateStatus previousStatus = template.getStatus();
         // ADR-CHK-002: soft-delete only — checklist_items are NOT touched, so UC-50's
         // user_checklist_items (FK'd to checklist_items) is never affected by an archive.
-        template.setStatus(ContentStatus.ARCHIVED);
+        template.setStatus(ChecklistTemplateStatus.ARCHIVED);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
         Instant archivedAt = Instant.now();
@@ -145,9 +151,9 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 saved.getId(), previousStatus, saved.getStatus(), request.reason(), adminUserId, archivedAt);
     }
 
-    private ChecklistTemplateResponse toResponseWithItems(ChecklistTemplate template) {
+    private AdminChecklistTemplateDetailResponse toResponseWithItems(ChecklistTemplate template) {
         List<ChecklistItem> items = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId());
-        return contentMapper.toChecklistTemplateResponse(template, items);
+        return contentMapper.toAdminChecklistTemplateDetailResponse(template, items);
     }
 
     private List<ChecklistItem> toEntities(List<ChecklistItemRequest> items, ChecklistTemplate template) {
