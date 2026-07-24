@@ -191,6 +191,12 @@ export interface HospitalResponse {
 	phone: string;
 }
 
+export interface WardResponse {
+	wardId: string;
+	name: string;
+	districtId: string;
+}
+
 export async function getProvinces(): Promise<ProvinceResponse[]> {
 	const { data } = await apiClient.get('/api/v1/master-data/provinces');
 	return data.data;
@@ -208,6 +214,11 @@ export async function getSpecialties(): Promise<SpecialtyResponse[]> {
 
 export async function getHospitals(params: { provinceId?: string; districtId?: string; q?: string }): Promise<HospitalResponse[]> {
 	const { data } = await apiClient.get('/api/v1/master-data/hospitals', { params });
+	return data.data;
+}
+
+export async function getWards(districtId: string): Promise<WardResponse[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/wards', { params: { districtId } });
 	return data.data;
 }
 

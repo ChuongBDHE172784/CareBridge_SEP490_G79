@@ -21,6 +21,7 @@ public class MasterDataServiceImpl implements IMasterDataService {
 
     private final AdministrativeAreaRepository administrativeAreaRepository;
     private final SpecialtyRepository specialtyRepository;
+    private final WardRepository wardRepository;
     private final CareFacilityRepository careFacilityRepository;
 
     @Override
@@ -98,6 +99,19 @@ public class MasterDataServiceImpl implements IMasterDataService {
                 .type(h.getFacilityType())
                 .phone(h.getPhone())
                 .build());
+    }
+
+    @Override
+    public List<WardResponse> getWardsByDistrict(String districtId) {
+        return wardRepository.findByDistrictIdAndIsActiveTrue(districtId).stream()
+                .map(w -> WardResponse.builder()
+                        .wardId(w.getWardId())
+                        .districtId(w.getDistrictId())
+                        .provinceId(w.getProvinceId())
+                        .name(w.getName())
+                        .nameEn(w.getNameEn())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private Optional<CareFacility> findActiveFacility(String identifier) {

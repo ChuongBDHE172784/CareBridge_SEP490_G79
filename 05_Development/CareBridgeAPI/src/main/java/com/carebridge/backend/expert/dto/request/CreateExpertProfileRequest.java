@@ -35,4 +35,6 @@ public class CreateExpertProfileRequest {
     private String consultationScope;
 
     private BigDecimal ratingAvg;
+
+    private Long consultationFeeVnd;
 }

@@ -938,7 +938,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String normalizePhone(String phone) {
-        return StringUtils.trimToNull(phone);
+        if (phone == null || phone.isBlank()) return null;
+        String compact = phone.replaceAll("[\\s().-]", "");
+        if (compact.startsWith("0")) return "+84" + compact.substring(1);
+        return compact.startsWith("+") ? compact : "+" + compact;
     }
 
     private String getRateLimitKey(User user) {

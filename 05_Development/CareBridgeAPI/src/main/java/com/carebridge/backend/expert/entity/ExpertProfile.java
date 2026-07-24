@@ -48,6 +48,9 @@ public class ExpertProfile {
     @Column(name = "consultation_scope", columnDefinition = "text")
     private String consultationScope;
 
+    @Column(name = "consultation_fee_vnd")
+    private Long consultationFeeVnd;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", nullable = false, length = 30)
     private VerificationStatus verificationStatus;

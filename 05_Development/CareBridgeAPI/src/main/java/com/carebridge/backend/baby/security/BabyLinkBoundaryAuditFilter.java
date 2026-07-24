@@ -11,7 +11,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -32,7 +31,7 @@ public class BabyLinkBoundaryAuditFilter extends OncePerRequestFilter {
     private static final Pattern LIST_PATH = Pattern.compile(
             "^/api/v1/journeys/([^/]+)/babies$");
 
-    private final ObjectProvider<BabyLinkRejectionAuditService> rejectionAuditServiceProvider;
+    private final BabyLinkRejectionAuditService rejectionAuditService;
 
     @Override
     protected void doFilterInternal(
@@ -48,8 +47,7 @@ public class BabyLinkBoundaryAuditFilter extends OncePerRequestFilter {
         }
         UUID actor = authenticatedActor();
         BoundaryAttempt attempt = classify(wrapped, response.getStatus());
-        BabyLinkRejectionAuditService rejectionAuditService = rejectionAuditServiceProvider.getIfAvailable();
-        if (actor != null && attempt != null && rejectionAuditService != null) {
+        if (actor != null && attempt != null) {
             try {
                 rejectionAuditService.record(actor, attempt.opaqueTarget(), attempt.reason());
             } catch (RuntimeException auditFailure) {

@@ -28,6 +28,7 @@ public class ExpertProfileResponse {
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;
+	private BigDecimal consultationFeeVnd;
 	private String avatarUrl;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
