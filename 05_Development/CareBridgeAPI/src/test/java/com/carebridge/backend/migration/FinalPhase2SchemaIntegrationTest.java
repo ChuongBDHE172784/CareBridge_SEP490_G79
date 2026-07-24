@@ -60,6 +60,53 @@ class FinalPhase2SchemaIntegrationTest {
         assertThat(extra).as("unexpected non-canonical tables")
                 .containsExactlyInAnyOrderElementsOf(APPROVED_RELEASE1_EXTENSIONS);
         assertThat(actual).hasSize(APPROVED_TARGET.size() + APPROVED_RELEASE1_EXTENSIONS.size());
+        assertThat(scalar("""
+                SELECT data_type
+                  FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name='professional_profiles'
+                   AND column_name='consultation_fee_vnd'
+                """)).isEqualTo("bigint");
+        assertThat(scalar("""
+                SELECT pg_get_constraintdef(oid)
+                  FROM pg_constraint
+                 WHERE conrelid='public.professional_profiles'::regclass
+                   AND conname='chk_professional_profiles_consultation_fee_vnd_nonnegative'
+                """)).contains("consultation_fee_vnd", ">= 0");
+        assertThat(scalar("""
+                SELECT count(*)::text
+                  FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name IN (
+                       'expert_credentials',
+                       'expert_availability',
+                       'expert_location_shares')
+                   AND column_name='expert_profile_id'
+                """)).isEqualTo("0");
+        assertThat(scalar("""
+                SELECT count(*)::text
+                  FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name IN (
+                       'expert_credentials',
+                       'expert_availability',
+                       'expert_location_shares')
+                   AND column_name='professional_profile_id'
+                   AND is_nullable='NO'
+                """)).isEqualTo("3");
+        assertThat(scalar("""
+                SELECT count(*)::text
+                  FROM pg_constraint
+                 WHERE conname IN (
+                       'expert_credentials_professional_profile_id_fkey',
+                       'expert_availability_professional_profile_id_fkey',
+                       'expert_location_shares_professional_profile_id_fkey')
+                   AND contype='f'
+                   AND convalidated
+                   AND confrelid='public.professional_profiles'::regclass
+                   AND pg_get_constraintdef(oid) LIKE
+                       'FOREIGN KEY (professional_profile_id)%'
+                """)).isEqualTo("3");
     }
 
     private List<String> tableNames() throws Exception {
@@ -77,6 +124,16 @@ class FinalPhase2SchemaIntegrationTest {
                 names.add(result.getString(1));
             }
             return names;
+        }
+    }
+
+    private String scalar(String sql) throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                var statement = connection.createStatement();
+                var result = statement.executeQuery(sql)) {
+            result.next();
+            return result.getString(1);
         }
     }
 }

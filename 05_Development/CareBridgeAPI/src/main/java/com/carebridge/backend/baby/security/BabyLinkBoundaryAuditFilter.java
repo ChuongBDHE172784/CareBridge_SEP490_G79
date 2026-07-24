@@ -13,14 +13,12 @@ import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 
 /** Audits linkage attempts rejected before a controller/service method can execute. */
-@Component
 @RequiredArgsConstructor
 public class BabyLinkBoundaryAuditFilter extends OncePerRequestFilter {
 

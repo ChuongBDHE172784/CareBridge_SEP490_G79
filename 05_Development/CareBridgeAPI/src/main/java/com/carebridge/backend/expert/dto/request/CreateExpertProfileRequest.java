@@ -1,7 +1,10 @@
 package com.carebridge.backend.expert.dto.request;
 
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.math.BigDecimal;
 
@@ -17,7 +20,7 @@ public class CreateExpertProfileRequest {
     private String specialtyId;
 
     @NotBlank
-    @Size(max = 8)
+    @Size(max = 36)
     private String hospitalId;
 
     @Size(max = 100)
@@ -26,6 +29,8 @@ public class CreateExpertProfileRequest {
     @Size(max = 150)
     private String professionalTitle;
 
+    @Min(0)
+    @Max(80)
     private Integer experienceYears;
 
     @Size(max = 200)
@@ -36,5 +41,6 @@ public class CreateExpertProfileRequest {
 
     private BigDecimal ratingAvg;
 
+    @PositiveOrZero
     private Long consultationFeeVnd;
 }

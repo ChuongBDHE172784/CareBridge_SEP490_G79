@@ -3,7 +3,6 @@ package com.carebridge.backend.expert.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.UUID;
 

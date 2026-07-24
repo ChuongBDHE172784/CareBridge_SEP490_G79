@@ -1,7 +1,6 @@
 package com.carebridge.backend.expertavailability.service;
 
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
-import com.carebridge.backend.expertavailability.dto.request.SetOnlineStatusRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;

@@ -17,30 +17,32 @@ import org.springframework.core.io.Resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class HermeticProfileConfigurationTest {
 
     @Test
-    void runtimeProfile_WithoutOverrides_UsesLocalDockerDatasourceDefaults() throws IOException {
+    void runtimeProfile_WithoutOverrides_RequiresExplicitDatasource() throws IOException {
         StandardEnvironment environment = loadConfiguration("application.yaml", Map.of());
 
-        assertThat(environment.getProperty("spring.datasource.url"))
-                .isEqualTo("jdbc:postgresql://localhost:5433/carebridge");
-        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("carebridge");
-        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("carebridge");
+        assertThatThrownBy(() -> processRuntimeDatasource(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage(RuntimeDatasourceEnvironmentPostProcessor.CONFIGURATION_MISSING);
     }
 
     @Test
-    void runtimeProfile_WithLegacySupabaseDatabaseVariables_IgnoresThem() throws IOException {
+    void runtimeProfile_WithLegacySupabaseDatabaseVariables_UsesExplicitFallback() throws IOException {
         StandardEnvironment environment = loadConfiguration("application.yaml", Map.of(
                 "SUPABASE_DB_URL", "jdbc:postgresql://remote.example.test:6543/postgres",
                 "SUPABASE_DB_USERNAME", "legacy-user",
                 "SUPABASE_DB_PASSWORD", "legacy-password"));
 
+        processRuntimeDatasource(environment);
+
         assertThat(environment.getProperty("spring.datasource.url"))
-                .isEqualTo("jdbc:postgresql://localhost:5433/carebridge");
-        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("carebridge");
-        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("carebridge");
+                .isEqualTo("jdbc:postgresql://remote.example.test:6543/postgres");
+        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("legacy-user");
+        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("legacy-password");
     }
 
     @Test
@@ -50,6 +52,8 @@ class HermeticProfileConfigurationTest {
                 "CAREBRIDGE_DB_USERNAME", "ci-user",
                 "CAREBRIDGE_DB_PASSWORD", "ci-password"));
 
+        processRuntimeDatasource(environment);
+
         assertThat(environment.getProperty("spring.datasource.url"))
                 .isEqualTo("jdbc:postgresql://127.0.0.1:5544/carebridge_ci");
         assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("ci-user");
@@ -57,21 +61,44 @@ class HermeticProfileConfigurationTest {
     }
 
     @Test
-    void hermeticProfile_WithoutOverrides_UsesSafeLocalTestDatasourceDefaults() throws IOException {
+    void runtimeProfile_WithCompleteDirectOverrides_PreservesTheCanonicalTuple()
+            throws IOException {
+        StandardEnvironment environment = loadConfiguration("application.yaml", Map.of(
+                "spring.datasource.url", "jdbc:h2:mem:direct-test",
+                "spring.datasource.username", "sa",
+                "spring.datasource.password", "direct-password"));
+
+        processRuntimeDatasource(environment);
+
+        assertThat(environment.getProperty("spring.datasource.url"))
+                .isEqualTo("jdbc:h2:mem:direct-test");
+        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("sa");
+        assertThat(environment.getProperty("spring.datasource.password"))
+                .isEqualTo("direct-password");
+    }
+
+    @Test
+    void localProfile_WithoutOverrides_UsesLoopbackDockerDatasourceDefaults() throws IOException {
+        StandardEnvironment environment = loadConfiguration("application-local.yaml", Map.of());
+        environment.setActiveProfiles("local");
+
+        assertThatCode(() -> processRuntimeDatasource(environment)).doesNotThrowAnyException();
+        assertThat(environment.getProperty("spring.datasource.url"))
+                .isEqualTo("jdbc:postgresql://localhost:5433/carebridge");
+        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("carebridge");
+        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("carebridge");
+    }
+
+    @Test
+    void hermeticProfile_WithoutOverrides_FailsClosed() throws IOException {
         StandardEnvironment environment = loadConfiguration("application-hermetic.yaml", Map.of());
         environment.setActiveProfiles("hermetic");
 
-        assertThat(environment.getProperty("spring.datasource.url"))
-                .isEqualTo("jdbc:postgresql://localhost:5433/carebridge_test");
-        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("carebridge");
-        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("carebridge");
-        assertThat(environment.getProperty("carebridge.hermetic.datasource.database-name"))
-                .isEqualTo("carebridge_test");
-        assertThat(environment.getProperty("spring.datasource.hikari.schema"))
-                .isEqualTo("carebridge_test");
-        assertThatCode(() -> new HermeticDatasourceEnvironmentPostProcessor()
+        assertThatCode(() -> processRuntimeDatasource(environment)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> new HermeticDatasourceEnvironmentPostProcessor()
                         .postProcessEnvironment(environment, new SpringApplication()))
-                .doesNotThrowAnyException();
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("HERMETIC_DATASOURCE_MISSING");
     }
 
     @Test
@@ -85,6 +112,7 @@ class HermeticProfileConfigurationTest {
                 "CAREBRIDGE_HERMETIC_DB_SCHEMA", "ci_test"));
         environment.setActiveProfiles("hermetic");
 
+        assertThatCode(() -> processRuntimeDatasource(environment)).doesNotThrowAnyException();
         assertThat(environment.getProperty("spring.datasource.url"))
                 .isEqualTo("jdbc:postgresql://127.0.0.1:5544/carebridge_ci_test");
         assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("ci-test-user");
@@ -106,7 +134,9 @@ class HermeticProfileConfigurationTest {
                 "carebridge.hermetic.datasource.password", "test-password",
                 "carebridge.hermetic.datasource.database-name", "carebridge_test",
                 "carebridge.hermetic.datasource.schema", "batch4_test"));
+        environment.setActiveProfiles("hermetic");
 
+        assertThatCode(() -> processRuntimeDatasource(environment)).doesNotThrowAnyException();
         assertThat(environment.getProperty("spring.datasource.url"))
                 .isEqualTo("jdbc:postgresql://127.0.0.1:5432/carebridge_test");
         assertThat(environment.getProperty("spring.datasource.username"))
@@ -127,20 +157,24 @@ class HermeticProfileConfigurationTest {
     }
 
     @Test
-    void springFactories_RegistersBothEnvironmentPostProcessors() throws IOException {
+    void springFactories_RegistersAllEnvironmentPostProcessors() throws IOException {
         String factories = new ClassPathResource("META-INF/spring.factories")
                 .getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(factories)
                 .contains(DotenvEnvironmentPostProcessor.class.getName())
+                .contains(RuntimeDatasourceEnvironmentPostProcessor.class.getName())
                 .contains(HermeticDatasourceEnvironmentPostProcessor.class.getName());
+    }
+
+    private void processRuntimeDatasource(StandardEnvironment environment) {
+        new RuntimeDatasourceEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
     }
 
     private StandardEnvironment loadConfiguration(String resource, Map<String, Object> overrides)
             throws IOException {
-        Resource configurationResource = "application.yaml".equals(resource)
-                ? new FileSystemResource("src/main/resources/application.yaml")
-                : new ClassPathResource(resource);
+        Resource configurationResource = new FileSystemResource("src/main/resources/" + resource);
         List<PropertySource<?>> loaded = new YamlPropertySourceLoader().load(
                 resource, configurationResource);
         StandardEnvironment environment = new StandardEnvironment();

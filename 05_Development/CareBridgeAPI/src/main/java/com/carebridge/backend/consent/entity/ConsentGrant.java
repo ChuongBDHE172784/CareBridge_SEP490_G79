@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,6 +33,10 @@ public class ConsentGrant {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "legacy_consent_id")
     private Long id;
+
+    @Builder.Default
+    @Column(name = "permission_id", nullable = false, updatable = false)
+    private UUID permissionId = UUID.randomUUID();
 
     @Column(name = "owner_user_id", nullable = false)
     private java.util.UUID userId;
@@ -87,8 +92,18 @@ public class ConsentGrant {
     @Column(name = "permission_kind", nullable = false, updatable = false)
     private String permissionKind = "CONSENT_GRANT";
 
+    @Builder.Default
+    @Column(nullable = false, length = 20)
+    private String status = "ACTIVE";
+
     @PrePersist
     void prepareCanonicalPermission() {
+        if (permissionId == null) {
+            permissionId = UUID.randomUUID();
+        }
         permissionKind = "CONSENT_GRANT";
+        if (status == null || status.isBlank()) {
+            status = "ACTIVE";
+        }
     }
 }

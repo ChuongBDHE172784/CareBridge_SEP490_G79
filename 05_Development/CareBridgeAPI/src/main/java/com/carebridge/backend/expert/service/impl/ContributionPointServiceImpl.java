@@ -8,16 +8,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ContributionPointServiceImpl implements IContributionPointService {
+
+private static final String UNSPECIFIED_SOURCE_TYPE = "UNSPECIFIED";
 
 private final ContributionPointRepository repository;
 
@@ -91,11 +92,16 @@ cp.getRecordedAt()
 @Override
 public Map<String, Integer> getBreakdownBySourceType(UUID userId) {
 if (userId == null) return Map.of();
-return repository.findAll().stream()
-.filter(cp -> cp.getUserId().equals(userId))
-.collect(Collectors.groupingBy(
-ContributionPoint::getSourceType,
-Collectors.summingInt(ContributionPoint::getPoints)
-));
+Map<String, Integer> breakdown = new TreeMap<>();
+for (ContributionPointRepository.SourceTypeTotal row
+        : repository.sumPointsGroupedBySourceType(userId)) {
+String sourceType = row.getSourceType();
+String key = sourceType == null || sourceType.isBlank()
+        ? UNSPECIFIED_SOURCE_TYPE
+        : sourceType;
+long total = row.getTotalPoints() == null ? 0L : row.getTotalPoints();
+breakdown.merge(key, Math.toIntExact(total), (left, right) -> Math.addExact(left, right));
+}
+return breakdown;
 }
 }

@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.identity.admin.dto.request.CreateStaffAccountRequest;
 import com.carebridge.backend.identity.admin.dto.response.StaffAccountResponse;
 import com.carebridge.backend.identity.admin.service.AdminStaffService;
@@ -50,16 +51,17 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     public StaffAccountResponse createStaffAccount(UUID callerUserId, CreateStaffAccountRequest request) {
         assertStaffRole(request.getRole());
+        String phone = VietnamesePhoneNumbers.normalizeToE164(request.getPhone());
 
         if (userRepository.existsByEmail(request.getEmail()) ||
-                (request.getPhone() != null && userRepository.existsByPhone(request.getPhone()))) {
+                (phone != null && userRepository.existsByPhone(phone))) {
             throw new BusinessException(HttpStatus.CONFLICT, "IAM-115-002", "Email or phone already registered");
         }
 
         String tempPassword = generateTempPassword();
         User user = User.builder()
                 .email(request.getEmail())
-                .phone(request.getPhone())
+                .phone(phone)
                 .name(request.getName())
                 .role(request.getRole())
                 .passwordHash(passwordEncoder.encode(tempPassword))

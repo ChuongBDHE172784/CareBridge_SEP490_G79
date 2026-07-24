@@ -129,13 +129,14 @@ class RegistrationIntegrationTest {
     @Test
     void register_WithValidPhone_ShouldCreateUserAndReturnSuccess() throws Exception {
         // Given
-        String phone = "+84901234567";
+        String inputPhone = "0901234567";
+        String canonicalPhone = "+84901234567";
         String password = "MyP@ssw0rd123";
 
         RegisterRequest request = new RegisterRequest();
         request.setName("Test User");
         request.setEmail(null);
-        request.setPhone(phone);
+        request.setPhone(inputPhone);
         request.setPassword(password);
         request.setRole(Role.EXPERT);
 
@@ -148,9 +149,10 @@ class RegistrationIntegrationTest {
                 .andExpect(jsonPath("$.data.userId").exists());
 
         // Verify user was created
-        Optional<User> userOpt = userRepository.findByPhone(phone);
+        Optional<User> userOpt = userRepository.findByPhone(canonicalPhone);
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
+        assertThat(user.getPhone()).isEqualTo(canonicalPhone);
         assertThat(user.isEnabled()).isFalse();
         assertThat(user.getRole()).isEqualTo(Role.EXPERT);
     }
@@ -225,7 +227,7 @@ class RegistrationIntegrationTest {
         RegisterRequest request = new RegisterRequest();
         request.setName("Test User");
         request.setEmail(null);
-        request.setPhone("0901234567"); // Not E.164
+        request.setPhone("+84123456789"); // Invalid Vietnamese mobile prefix
         request.setPassword("MyP@ssw0rd123");
         request.setRole(Role.MOTHER);
 
