@@ -32,4 +32,6 @@ public class UpdateExpertProfileRequest {
     private String consultationScope;
 
     private BigDecimal ratingAvg;
+
+    private Long consultationFeeVnd;
 }

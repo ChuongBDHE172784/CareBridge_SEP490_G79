@@ -4,6 +4,7 @@ import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
+import com.carebridge.backend.expertavailability.dto.request.SetOnlineStatusRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -98,5 +101,23 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
     public void stopLocationShare(UUID expertProfileId) {
         locationShareRepository.findTopByExpertProfileIdOrderByCreatedAtDesc(expertProfileId)
                 .ifPresent(locationShareRepository::delete);
+    }
+
+    @Override
+    public LocationShareResponse setOnlineStatus(UUID expertProfileId, Boolean online) {
+        var profile = expertProfileRepository.findById(expertProfileId)
+                .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+        if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+            throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-010", "Expert profile not verified");
+        }
+        var latest = locationShareRepository
+                .findTopByExpertProfileIdOrderByCreatedAtDesc(expertProfileId)
+                .orElse(null);
+        if (latest == null) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-013", "Share location first before setting online status");
+        }
+        latest.setAvailabilityStatus(online ? "ONLINE" : "OFFLINE");
+        var saved = locationShareRepository.save(latest);
+        return locationShareMapper.toResponse(saved);
     }
 }

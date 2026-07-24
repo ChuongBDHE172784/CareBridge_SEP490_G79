@@ -9,13 +9,13 @@ import {
   verifyFace,
   getProvinces,
   getDistricts,
+  getWards,
   getSpecialties,
-  getHospitals,
   type ExpertOnboardingResponse,
   type ProvinceResponse,
   type DistrictResponse,
+  type WardResponse,
   type SpecialtyResponse,
-  type HospitalResponse,
 } from '../services/expertApi';
 
 const IMAGE_LIMIT = 5 * 1024 * 1024;
@@ -105,14 +105,15 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
     experienceYears: '',
     provinceId: '',
     districtId: '',
-    hospitalId: '',
+    wardId: '',
+    hospitalName: '',
     consultationScope: '',
   });
   const [options, setOptions] = useState({
     provinces: [] as ProvinceResponse[],
     districts: [] as DistrictResponse[],
+    wards: [] as WardResponse[],
     specialties: [] as SpecialtyResponse[],
-    hospitals: [] as HospitalResponse[],
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,34 +133,28 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
   useEffect(() => {
     if (form.provinceId) {
       const requestedProvince = form.provinceId;
-      Promise.all([
-        getDistricts(requestedProvince),
-        getHospitals({ provinceId: requestedProvince }),
-      ]).then(([districts, hospitals]) => {
+      getDistricts(requestedProvince).then(districts => {
         setForm(current => {
           if (current.provinceId !== requestedProvince) return current;
-          setOptions(prev => ({ ...prev, districts, hospitals }));
+          setOptions(prev => ({ ...prev, districts, wards: [] }));
           return current;
         });
-      }).catch(() => setError('Không thể tải địa điểm công tác.'));
+      }).catch(() => setError('Không thể tải danh sách huyện.'));
     } else {
-      setOptions(prev => ({ ...prev, districts: [], hospitals: [] }));
+      setOptions(prev => ({ ...prev, districts: [], wards: [] }));
     }
   }, [form.provinceId]);
 
   useEffect(() => {
-    if (!form.provinceId) return;
+    if (!form.provinceId || !form.districtId) return;
     const requestedDistrict = form.districtId;
-    getHospitals({
-      provinceId: form.provinceId,
-      districtId: requestedDistrict || undefined,
-    }).then(hospitals => {
+    getWards(requestedDistrict).then(wards => {
       setForm(current => {
         if (current.districtId !== requestedDistrict) return current;
-        setOptions(prev => ({ ...prev, hospitals }));
+        setOptions(prev => ({ ...prev, wards }));
         return current;
       });
-    }).catch(() => setError('Không thể tải danh sách cơ sở y tế.'));
+    }).catch(() => setError('Không thể tải danh sách phường/xã.'));
   }, [form.districtId, form.provinceId]);
 
   const update =
@@ -170,9 +165,9 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
         const next = { ...prev, [key]: val };
         if (key === 'provinceId') {
           next.districtId = '';
-          next.hospitalId = '';
+          next.wardId = '';
         }
-        if (key === 'districtId') next.hospitalId = '';
+        if (key === 'districtId') next.wardId = '';
         return next;
       });
     };
@@ -185,7 +180,7 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
       await createMyProfile({
         specialtyId: form.specialtyId,
         professionalTitle: form.professionalTitle.trim(),
-        hospitalId: form.hospitalId,
+        hospitalId: form.wardId, // Use wardId as hospitalId field is repurposed for ward
         consultationScope: form.consultationScope.trim(),
         experienceYears: form.experienceYears ? Number(form.experienceYears) : undefined,
       });
@@ -218,7 +213,7 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
 
         <div className="sm:col-span-2 grid gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-200">
           <p className="text-xs font-bold uppercase text-gray-500">Địa điểm công tác</p>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <label className="grid gap-2 text-sm font-medium">
               Tỉnh/Thành phố *
               <select required value={form.provinceId} onChange={update('provinceId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none focus:border-primary">
@@ -242,13 +237,19 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
               </select>
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Bệnh viện/Cơ sở y tế *
-              <select required value={form.hospitalId} onChange={update('hospitalId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none focus:border-primary disabled:bg-gray-100">
-                <option value="">-- Chọn cơ sở --</option>
-                {options.hospitals.map(h => (
-                  <option key={h.hospitalId} value={h.hospitalId}>{h.name}</option>
+              Phường/Xã
+              <select value={form.wardId} onChange={update('wardId')} disabled={!form.districtId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none focus:border-primary disabled:bg-gray-100">
+                <option value="">-- Chọn Phường/Xã --</option>
+                {options.wards.map(w => (
+                  <option key={w.wardId} value={w.wardId}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Bệnh viện/Cơ sở y tế *
+              <input required type="text" value={form.hospitalName} onChange={update('hospitalName')} placeholder="Nhập tên bệnh viện/cơ sở y tế" className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none focus:border-primary" />
             </label>
           </div>
         </div>

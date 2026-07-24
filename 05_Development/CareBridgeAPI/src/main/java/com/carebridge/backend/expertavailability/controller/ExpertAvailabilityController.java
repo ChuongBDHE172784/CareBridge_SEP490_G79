@@ -5,6 +5,7 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
+import com.carebridge.backend.expertavailability.dto.request.SetOnlineStatusRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;
@@ -24,61 +25,69 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ExpertAvailabilityController {
 
-    private final IExpertAvailabilityService availabilityService;
-    private final ExpertProfileRepository expertProfileRepository;
+private final IExpertAvailabilityService availabilityService;
+private final ExpertProfileRepository expertProfileRepository;
 
-    private UUID resolveExpertProfileId(UUID userId) {
-        return expertProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ExpertException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "EXPERT-004", "Expert profile not found"))
-                .getExpertProfileId();
-    }
+private UUID resolveExpertProfileId(UUID userId) {
+return expertProfileRepository.findByUserId(userId)
+.orElseThrow(() -> new ExpertException(
+org.springframework.http.HttpStatus.NOT_FOUND,
+"EXPERT-004", "Expert profile not found"))
+.getExpertProfileId();
+}
 
-    @PostMapping("/availability")
-    @PreAuthorize("hasRole('EXPERT')")
-    public ResponseEntity<ApiResponse<AvailabilityResponse>> createAvailability(
-            Principal principal,
-            @Valid @RequestBody CreateAvailabilityRequest request) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        UUID expertProfileId = resolveExpertProfileId(userId);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(availabilityService.createAvailability(expertProfileId, request)));
-    }
+@PostMapping("/availability")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<AvailabilityResponse>> createAvailability(
+Principal principal, @Valid @RequestBody CreateAvailabilityRequest request) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+return ResponseEntity.status(HttpStatus.CREATED)
+.body(ApiResponse.success(availabilityService.createAvailability(expertProfileId, request)));
+}
 
-    @GetMapping("/availability/me")
-    @PreAuthorize("hasRole('EXPERT')")
-    public ResponseEntity<ApiResponse<List<AvailabilityResponse>>> getMyAvailability(Principal principal) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        UUID expertProfileId = resolveExpertProfileId(userId);
-        return ResponseEntity.ok(ApiResponse.success(availabilityService.getMyAvailability(expertProfileId)));
-    }
+@GetMapping("/availability/me")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<List<AvailabilityResponse>>> getMyAvailability(Principal principal) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+return ResponseEntity.ok(ApiResponse.success(availabilityService.getMyAvailability(expertProfileId)));
+}
 
-    @DeleteMapping("/availability/{id}")
-    @PreAuthorize("hasRole('EXPERT')")
-    public ResponseEntity<ApiResponse<Void>> deleteAvailability(Principal principal, @PathVariable UUID id) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        UUID expertProfileId = resolveExpertProfileId(userId);
-        availabilityService.deleteAvailability(id, expertProfileId);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
+@DeleteMapping("/availability/{id}")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<Void>> deleteAvailability(Principal principal, @PathVariable UUID id) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+availabilityService.deleteAvailability(id, expertProfileId);
+return ResponseEntity.ok(ApiResponse.success(null));
+}
 
-    @PostMapping("/location/share")
-    @PreAuthorize("hasRole('EXPERT')")
-    public ResponseEntity<ApiResponse<LocationShareResponse>> shareLocation(
-            Principal principal,
-            @Valid @RequestBody ShareLocationRequest request) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        UUID expertProfileId = resolveExpertProfileId(userId);
-        return ResponseEntity.ok(ApiResponse.success(availabilityService.shareLocation(expertProfileId, request)));
-    }
+@PostMapping("/location/share")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<LocationShareResponse>> shareLocation(
+Principal principal, @Valid @RequestBody ShareLocationRequest request) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+return ResponseEntity.ok(ApiResponse.success(availabilityService.shareLocation(expertProfileId, request)));
+}
 
-    @DeleteMapping("/location/share")
-    @PreAuthorize("hasRole('EXPERT')")
-    public ResponseEntity<ApiResponse<Void>> stopLocationShare(Principal principal) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        UUID expertProfileId = resolveExpertProfileId(userId);
-        availabilityService.stopLocationShare(expertProfileId);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
+@PatchMapping("/online-status")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<LocationShareResponse>> setOnlineStatus(
+Principal principal, @Valid @RequestBody SetOnlineStatusRequest request) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+return ResponseEntity.ok(ApiResponse.success(
+availabilityService.setOnlineStatus(expertProfileId, request.getOnline())));
+}
+
+@DeleteMapping("/location/share")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<Void>> stopLocationShare(Principal principal) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+availabilityService.stopLocationShare(expertProfileId);
+return ResponseEntity.ok(ApiResponse.success(null));
+}
 }

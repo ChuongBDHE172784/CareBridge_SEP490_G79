@@ -1,6 +1,7 @@
 package com.carebridge.backend.expert.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface IContributionPointService {
@@ -19,4 +20,7 @@ public interface IContributionPointService {
 
     /** UC-69: Recent records for the authenticated user */
     List<com.carebridge.backend.expert.dto.response.ContributionPointResponse> getRecentPoints(UUID userId, int limit);
+
+    /** UC-69: Points breakdown by source type (e.g. CONTRIBUTION, ANSWER, CREDENTIAL) */
+    Map<String, Integer> getBreakdownBySourceType(UUID userId);
 }
