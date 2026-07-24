@@ -17,8 +17,10 @@ import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.journey.service.IJourneyService;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.security.rbac.Role;
@@ -32,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -45,6 +48,7 @@ public class JourneyServiceImpl implements IJourneyService {
     private final CareGroupRepository careGroupRepository;
     private final Clock clock;
     private final IJourneyTransitionService transitionService;
+    private final PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository;
 
     @Autowired
     public JourneyServiceImpl(
@@ -53,7 +57,8 @@ public class JourneyServiceImpl implements IJourneyService {
             AuditService auditService,
             CareGroupMemberRepository careGroupMemberRepository,
             CareGroupRepository careGroupRepository,
-            IJourneyTransitionService transitionService) {
+            IJourneyTransitionService transitionService,
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
         this(
                 journeyRepository,
                 userRepository,
@@ -61,7 +66,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupMemberRepository,
                 careGroupRepository,
                 Clock.systemDefaultZone(),
-                transitionService);
+                transitionService,
+                outcomeEvidenceRepository);
     }
 
     public JourneyServiceImpl(
@@ -77,6 +83,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupMemberRepository,
                 careGroupRepository,
                 Clock.systemDefaultZone(),
+                null,
                 null);
     }
 
@@ -94,6 +101,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupMemberRepository,
                 careGroupRepository,
                 clock,
+                null,
                 null);
     }
 
@@ -101,7 +109,7 @@ public class JourneyServiceImpl implements IJourneyService {
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService) {
-        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), null);
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), null, null);
     }
 
     public JourneyServiceImpl(
@@ -109,7 +117,7 @@ public class JourneyServiceImpl implements IJourneyService {
             UserRepository userRepository,
             AuditService auditService,
             Clock clock) {
-        this(journeyRepository, userRepository, auditService, null, null, clock, null);
+        this(journeyRepository, userRepository, auditService, null, null, clock, null, null);
     }
 
     public JourneyServiceImpl(
@@ -117,7 +125,16 @@ public class JourneyServiceImpl implements IJourneyService {
             UserRepository userRepository,
             AuditService auditService,
             IJourneyTransitionService transitionService) {
-        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), transitionService);
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), transitionService, null);
+    }
+
+    public JourneyServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            Clock clock,
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
+        this(journeyRepository, userRepository, auditService, null, null, clock, null, outcomeEvidenceRepository);
     }
 
     private JourneyServiceImpl(
@@ -127,7 +144,8 @@ public class JourneyServiceImpl implements IJourneyService {
             CareGroupMemberRepository careGroupMemberRepository,
             CareGroupRepository careGroupRepository,
             Clock clock,
-            IJourneyTransitionService transitionService) {
+            IJourneyTransitionService transitionService,
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
         this.journeyRepository = journeyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
@@ -135,6 +153,7 @@ public class JourneyServiceImpl implements IJourneyService {
         this.careGroupRepository = careGroupRepository;
         this.clock = clock;
         this.transitionService = transitionService;
+        this.outcomeEvidenceRepository = outcomeEvidenceRepository;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -359,6 +378,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 .dateConfidence(journey.getDateConfidence())
                 .pregnancyOutcome(journey.getPregnancyOutcome())
                 .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
+                .babyActionsEligible(isBabyActionsEligible(journey))
                 .build();
     }
 
@@ -373,6 +393,20 @@ public class JourneyServiceImpl implements IJourneyService {
             case BABY_CARE    -> DashboardStatus.BABY_CARE;
             case PRE_PREGNANCY -> DashboardStatus.PRE_PREGNANCY;
         };
+    }
+
+    private boolean isBabyActionsEligible(MotherJourney journey) {
+        if (outcomeEvidenceRepository == null
+                || journey.getJourneyType() != JourneyType.POSTPARTUM
+                || journey.getPregnancyOutcome() != PregnancyOutcomeType.LIVE_BIRTH) {
+            return false;
+        }
+        return outcomeEvidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId())
+                .filter(evidence -> journey.getOwnerUserId().equals(evidence.getOwnerUserId()))
+                .filter(evidence -> evidence.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH)
+                .filter(evidence -> Objects.equals(
+                        evidence.getOutcomeDate(), journey.getPregnancyOutcomeDate()))
+                .isPresent();
     }
 
     /** T1: weeks ≤ 13 | T2: weeks 14–26 | T3: weeks ≥ 27 */

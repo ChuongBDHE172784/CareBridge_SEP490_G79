@@ -23,6 +23,7 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.security.entity.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -79,6 +80,9 @@ class ConsultationRequestServiceImplCreateTest {
                 .thenReturn(Optional.empty(), Optional.empty());
         when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID))
                 .thenReturn(Optional.of(expert));
+        User account = eligibleExpertAccount();
+        when(userRepository.findByIdForUpdate(EXPERT_USER_ID))
+                .thenReturn(Optional.of(account));
         when(writer.insertIfAbsent(any()))
                 .thenReturn(new ConsultationRequestWriter.InsertResult(created.getId(), true));
         when(repository.findById(created.getId())).thenReturn(Optional.of(created));
@@ -90,6 +94,8 @@ class ConsultationRequestServiceImplCreateTest {
         assertThat(result.response().getStatus()).isEqualTo("PENDING");
         assertThat(result.response().getExpiresAt()).isEqualTo(NOW.plusSeconds(48L * 3600));
         verify(expertProfileRepository).findByIdForUpdate(EXPERT_PROFILE_ID);
+        verify(userRepository).findByIdForUpdate(EXPERT_USER_ID);
+        verify(policy).assertExpertEligibleForConsultation(expert, account, NOW);
         verify(writer).insertIfAbsent(any());
         verify(eventPublisher).publishEvent(any(ConsultationRequestDomainEvent.class));
     }
@@ -176,6 +182,14 @@ class ConsultationRequestServiceImplCreateTest {
                 .userId(EXPERT_USER_ID)
                 .verificationStatus(VerificationStatus.APPROVED)
                 .trustStatus(TrustStatus.ACTIVE)
+                .build();
+    }
+
+    private static User eligibleExpertAccount() {
+        return User.builder()
+                .id(EXPERT_USER_ID)
+                .enabled(true)
+                .locked(false)
                 .build();
     }
 }

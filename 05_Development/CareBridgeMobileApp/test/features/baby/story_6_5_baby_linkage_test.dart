@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui' show SemanticsAction, Tristate;
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:untitled/features/baby/models/baby_model.dart';
 import 'package:untitled/features/baby/screens/baby_journey_linkage_screen.dart';
 import 'package:untitled/features/baby/screens/add_baby_screen.dart';
@@ -7,8 +9,12 @@ import 'package:untitled/features/baby/services/baby_create_intent_store.dart';
 import 'package:untitled/features/baby/services/baby_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/core/auth/auth_state.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  tearDown(AuthState.instance.clearState);
+
   group('Story 6.5 contracts', () {
     test(
       'create intent is account scoped and survives a store rebuild',
@@ -82,6 +88,77 @@ void main() {
       expect(page.totalElements, 1);
     });
 
+    test(
+      'journey-scoped paginated read accepts the direct backend body',
+      () async {
+        final service = BabyService(
+          get: (_, {queryParams}) async => {
+            'success': true,
+            'data': [
+              {
+                'id': 'baby-1',
+                'nickname': 'An',
+                'birthDate': '2026-07-01',
+                'gender': 'UNKNOWN',
+                'active': true,
+                'relatedJourneyId': 'journey-1',
+              },
+            ],
+            'page': 0,
+            'size': 20,
+            'totalElements': 1,
+            'totalPages': 1,
+          },
+        );
+
+        final page = await service.listJourneyBabies('journey-1');
+
+        expect(page.items.single.relatedJourneyId, 'journey-1');
+        expect(page.totalElements, 1);
+      },
+    );
+
+    for (final malformedData in <Object?>[null, 'not-a-page', 7]) {
+      test('journey-scoped paginated read rejects malformed data: '
+          '${malformedData.runtimeType}', () async {
+        final service = BabyService(
+          get: (_, {queryParams}) async => {
+            'success': true,
+            'data': malformedData,
+            'page': 0,
+            'size': 20,
+            'totalElements': 0,
+            'totalPages': 0,
+          },
+        );
+
+        await expectLater(
+          service.listJourneyBabies('journey-1'),
+          throwsA(isA<FormatException>()),
+        );
+      });
+    }
+
+    test(
+      'journey-scoped paginated read rejects a body without data or items',
+      () async {
+        final service = BabyService(
+          get: (_, {queryParams}) async => {
+            'success': true,
+            'page': 0,
+            'size': 20,
+            'totalElements': 0,
+            'totalPages': 0,
+          },
+        );
+
+        await expectLater(
+          service.listJourneyBabies('journey-1'),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
+
     test('link existing uses dedicated endpoint and command', () async {
       String? path;
       Map<String, dynamic>? body;
@@ -90,14 +167,7 @@ void main() {
           path = value;
           body = payload;
           return {
-            'data': {
-              'id': 'baby-1',
-              'nickname': 'An',
-              'birthDate': '2026-07-01',
-              'gender': 'UNKNOWN',
-              'active': true,
-              'relatedJourneyId': 'journey-1',
-            },
+            'data': {'babyId': 'baby-1', 'relatedJourneyId': 'journey-1'},
           };
         },
       );
@@ -239,6 +309,36 @@ void main() {
       expect(service.listJourneyCalls, 0);
     });
 
+    testWidgets(
+      'malformed successful pagination response renders recoverable error',
+      (tester) async {
+        final service = BabyService(
+          get: (_, {queryParams}) async => {
+            'success': true,
+            'data': null,
+            'page': 0,
+            'size': 20,
+            'totalElements': 0,
+            'totalPages': 0,
+          },
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BabyJourneyLinkageScreen(
+              journeyId: 'journey-1',
+              service: service,
+              eligibilityCheck: (_) async => true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('linked-babies-empty')), findsNothing);
+        expect(find.textContaining('Không thể tải hồ sơ bé'), findsOneWidget);
+        expect(find.byKey(const Key('linked-babies-refresh')), findsOneWidget);
+      },
+    );
+
     testWidgets('direct create deep link also fails closed', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -350,6 +450,43 @@ void main() {
 
       expect(find.text('one'), findsOneWidget);
       expect(find.text('two'), findsOneWidget);
+      expect(
+        tester
+            .widget<ListTile>(find.byKey(const Key('linked-baby-selector-one')))
+            .selected,
+        isTrue,
+      );
+      final semantics = tester
+          .getSemantics(find.byKey(const Key('linked-baby-semantics-one')))
+          .getSemanticsData();
+      expect(semantics.label, 'one, đang chọn');
+      expect(semantics.flagsCollection.isButton, isTrue);
+      expect(semantics.flagsCollection.isSelected, Tristate.isTrue);
+      expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+
+      await tester.tap(find.byKey(const Key('linked-baby-selector-two')));
+      await tester.pump();
+      expect(
+        tester
+            .widget<ListTile>(find.byKey(const Key('linked-baby-selector-two')))
+            .selected,
+        isTrue,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const Key('linked-baby-selector-two')))
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+
+      await tester.tap(find.byKey(const Key('linked-babies-refresh')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ListTile>(find.byKey(const Key('linked-baby-selector-two')))
+            .selected,
+        isTrue,
+      );
 
       service.linked = [];
       await tester.tap(find.byKey(const Key('linked-babies-refresh')));
@@ -387,6 +524,128 @@ void main() {
       expect(service.switchCalls, 0);
       expect(find.text('available'), findsOneWidget);
       expect(service.listJourneyCalls, greaterThanOrEqualTo(2));
+    });
+
+    testWidgets('account switch dismisses a candidate sheet immediately', (
+      tester,
+    ) async {
+      await AuthState.instance.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'mother-a',
+        role: 'MOTHER',
+      );
+      final service = _FakeBabyService(all: [_baby('private-a', null)]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BabyJourneyLinkageScreen(
+            journeyId: 'journey-1',
+            service: service,
+            eligibilityCheck: (_) async => true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('baby-link-existing')));
+      await tester.pumpAndSettle();
+      expect(find.text('private-a'), findsOneWidget);
+
+      await AuthState.instance.setTokens(
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+        userId: 'mother-b',
+        role: 'MOTHER',
+      );
+      await tester.pump();
+      expect(
+        find.text('private-a'),
+        findsNothing,
+        reason:
+            'Old-account nickname must be cleared before sheet dismissal completes.',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('private-a'), findsNothing);
+      expect(service.linkCalls, 0);
+    });
+
+    testWidgets(
+      'account switch removes only its candidate sheet below a newer dialog',
+      (tester) async {
+        await AuthState.instance.setTokens(
+          accessToken: 'access-a',
+          refreshToken: 'refresh-a',
+          userId: 'mother-a',
+          role: 'MOTHER',
+        );
+        final navigatorKey = GlobalKey<NavigatorState>();
+        final service = _FakeBabyService(all: [_baby('private-a', null)]);
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: navigatorKey,
+            home: BabyJourneyLinkageScreen(
+              journeyId: 'journey-1',
+              service: service,
+              eligibilityCheck: (_) async => true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('baby-link-existing')));
+        await tester.pumpAndSettle();
+        expect(find.text('private-a'), findsOneWidget);
+
+        navigatorKey.currentState!.push<void>(
+          DialogRoute<void>(
+            context: navigatorKey.currentContext!,
+            builder: (_) => const AlertDialog(
+              key: Key('newer-account-dialog'),
+              title: Text('New account notice'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await AuthState.instance.setTokens(
+          accessToken: 'access-b',
+          refreshToken: 'refresh-b',
+          userId: 'mother-b',
+          role: 'MOTHER',
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('newer-account-dialog')),
+          findsOneWidget,
+          reason: 'Account cleanup must never pop a newer route.',
+        );
+        expect(find.text('private-a'), findsNothing);
+        expect(service.linkCalls, 0);
+      },
+    );
+
+    testWidgets('double tap opens only one candidate load lifecycle', (
+      tester,
+    ) async {
+      final service = _DelayedCandidateBabyService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BabyJourneyLinkageScreen(
+            journeyId: 'journey-1',
+            service: service,
+            eligibilityCheck: (_) async => true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('baby-link-existing')));
+      await tester.tap(find.byKey(const Key('baby-link-existing')));
+      await tester.pump();
+      expect(service.listCalls, 1);
+
+      service.candidates.complete(const []);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('late response cannot replace a newer journey linked set', (
@@ -495,7 +754,7 @@ class _FakeBabyService extends BabyService {
   Future<List<BabyProfile>> listBabyProfiles() async => all;
 
   @override
-  Future<BabyProfile> linkBabyToJourney({
+  Future<void> linkBabyToJourney({
     required String babyId,
     required String relatedJourneyId,
     required String submissionId,
@@ -503,7 +762,6 @@ class _FakeBabyService extends BabyService {
     linkCalls++;
     final linkedBaby = _baby(babyId, relatedJourneyId);
     linked = [linkedBaby];
-    return linkedBaby;
   }
 
   @override
@@ -562,13 +820,24 @@ class _RetryLinkService extends _FakeBabyService {
   final List<String> submissionIds = [];
 
   @override
-  Future<BabyProfile> linkBabyToJourney({
+  Future<void> linkBabyToJourney({
     required String babyId,
     required String relatedJourneyId,
     required String submissionId,
   }) async {
     submissionIds.add(submissionId);
     if (submissionIds.length == 1) throw Exception('ambiguous timeout');
-    return _baby(babyId, relatedJourneyId);
+    linked = [_baby(babyId, relatedJourneyId)];
+  }
+}
+
+class _DelayedCandidateBabyService extends _FakeBabyService {
+  final candidates = Completer<List<BabyProfile>>();
+  int listCalls = 0;
+
+  @override
+  Future<List<BabyProfile>> listBabyProfiles() {
+    listCalls++;
+    return candidates.future;
   }
 }

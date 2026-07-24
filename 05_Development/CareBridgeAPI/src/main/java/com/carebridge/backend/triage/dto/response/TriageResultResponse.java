@@ -38,4 +38,9 @@ public class TriageResultResponse {
     private String status;
     private Instant createdAt;
     private Instant completedAt;
+    private UUID journeyId;
+    private String originDashboard;
+    private UUID originReferenceId;
+    private UUID continuationToken;
+    private Instant continuationExpiresAt;
 }

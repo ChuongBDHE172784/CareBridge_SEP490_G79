@@ -12,6 +12,8 @@ import type {
   ContentStatus,
   ContentDecision,
   ContentSource,
+  AdminChecklistTemplate,
+  ChecklistTemplateStatus,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -92,6 +94,37 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
     `/api/v1/content/checklists${q}`,
   );
   return res.data.data;
+}
+
+export async function fetchAdminChecklists(params: {
+  stage?: ContentStage;
+  status?: ChecklistTemplateStatus;
+  page?: number;
+  size?: number;
+} = {}): Promise<PaginatedResponse<AdminChecklistTemplate>> {
+  const res = await apiClient.get<
+    ApiResponse<AdminChecklistTemplate[]> & {
+      page: number;
+      size: number;
+      totalElements: number;
+      totalPages: number;
+    }
+  >('/api/v1/admin/content/checklists', {
+    params: {
+      ...(params.stage ? { stage: params.stage } : {}),
+      ...(params.status ? { status: params.status } : {}),
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+    },
+  });
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    number: body.page ?? (params.page ?? 0),
+    size: body.size ?? (params.size ?? 10),
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+  };
 }
 
 export interface CreateContentResult {

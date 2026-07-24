@@ -35,7 +35,11 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
   int _generation = 0;
   String? _accountId;
   bool _linking = false;
+  bool _candidateSheetOpen = false;
+  ValueNotifier<List<BabyProfile>>? _candidateSheetBabies;
+  Route<dynamic>? _candidateSheetRoute;
   bool? _eligible;
+  String? _selectedBabyId;
   final Map<String, String> _pendingSubmissionIds = {};
 
   @override
@@ -49,12 +53,22 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
 
   void _handleAuthChanged() {
     if (AuthState.instance.userId == _accountId) return;
+    if (_candidateSheetOpen && mounted) {
+      _candidateSheetBabies?.value = const [];
+      final candidateSheetRoute = _candidateSheetRoute;
+      if (candidateSheetRoute != null && candidateSheetRoute.isActive) {
+        Navigator.of(context).removeRoute(candidateSheetRoute);
+      }
+      _candidateSheetOpen = false;
+      _candidateSheetRoute = null;
+    }
     _accountId = AuthState.instance.userId;
     _generation++;
     _pendingSubmissionIds.clear();
     if (mounted) {
       setState(() {
         _babies = const [];
+        _selectedBabyId = null;
         _loading = false;
         _linking = false;
         _error = null;
@@ -110,7 +124,13 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
         return;
       }
       setState(() {
-        _babies = babies.values.toList(growable: false);
+        final linkedBabies = babies.values.toList(growable: false);
+        _babies = linkedBabies;
+        _selectedBabyId = linkedBabies.any((baby) => baby.id == _selectedBabyId)
+            ? _selectedBabyId
+            : linkedBabies.isEmpty
+            ? null
+            : linkedBabies.first.id;
         _loading = false;
       });
     } catch (_) {
@@ -171,6 +191,7 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
   Future<void> _chooseExisting() async {
     if (_linking) return;
     final accountId = _accountId;
+    setState(() => _linking = true);
     try {
       final all = await _service.listBabyProfiles();
       if (!mounted || !_isCurrentAccount(accountId)) return;
@@ -179,19 +200,40 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
           // user's current selector state, not the profile lifecycle status.
           .where((baby) => baby.relatedJourneyId == null)
           .toList(growable: false);
-      final selected = await showModalBottomSheet<BabyProfile>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => _LinkExistingBabySheet(babies: available),
-      );
+      final candidateSheetBabies = ValueNotifier<List<BabyProfile>>(available);
+      _candidateSheetBabies = candidateSheetBabies;
+      _candidateSheetOpen = true;
+      final BabyProfile? selected;
+      try {
+        selected = await showModalBottomSheet<BabyProfile>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (sheetContext) {
+            if (identical(_candidateSheetBabies, candidateSheetBabies)) {
+              _candidateSheetRoute = ModalRoute.of(sheetContext);
+            }
+            return ValueListenableBuilder<List<BabyProfile>>(
+              valueListenable: candidateSheetBabies,
+              builder: (context, babies, _) =>
+                  _LinkExistingBabySheet(babies: babies),
+            );
+          },
+        );
+      } finally {
+        if (identical(_candidateSheetBabies, candidateSheetBabies)) {
+          _candidateSheetOpen = false;
+          _candidateSheetBabies = null;
+          _candidateSheetRoute = null;
+        }
+        candidateSheetBabies.dispose();
+      }
       if (selected == null || !mounted || !_isCurrentAccount(accountId)) return;
       final intentKey = '${selected.id}:${widget.journeyId}';
       final submissionId = _pendingSubmissionIds.putIfAbsent(
         intentKey,
         () => const Uuid().v4(),
       );
-      setState(() => _linking = true);
       await _service.linkBabyToJourney(
         babyId: selected.id,
         relatedJourneyId: widget.journeyId,
@@ -296,7 +338,15 @@ class BabyJourneyLinkageScreenState extends State<BabyJourneyLinkageScreen> {
               else if (_babies.isEmpty)
                 const _EmptyLinkedBabies()
               else
-                ..._babies.map((baby) => _BabyCard(baby: baby)),
+                ..._babies.map(
+                  (baby) => _BabyCard(
+                    baby: baby,
+                    selected: baby.id == _selectedBabyId,
+                    onSelected: () => setState(() {
+                      _selectedBabyId = baby.id;
+                    }),
+                  ),
+                ),
             ],
           ],
         ),
@@ -505,23 +555,55 @@ class _IneligibleBabyLinkage extends StatelessWidget {
 }
 
 class _BabyCard extends StatelessWidget {
-  const _BabyCard({required this.baby});
+  const _BabyCard({
+    required this.baby,
+    required this.selected,
+    required this.onSelected,
+  });
   final BabyProfile baby;
+  final bool selected;
+  final VoidCallback onSelected;
+
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(top: 12),
-    elevation: 0,
-    color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-    child: ListTile(
-      minTileHeight: 64,
-      leading: const CircleAvatar(
-        backgroundColor: Color(0xFFF2EAE4),
-        child: Icon(Icons.child_care, color: Color(0xFFC98C7B)),
+  Widget build(BuildContext context) => Semantics(
+    key: Key('linked-baby-semantics-${baby.id}'),
+    button: true,
+    selected: selected,
+    excludeSemantics: true,
+    onTap: onSelected,
+    label: '${baby.nickname}, ${selected ? 'đang chọn' : 'chưa chọn'}',
+    child: Card(
+      margin: const EdgeInsets.only(top: 12),
+      elevation: 0,
+      color: selected ? const Color(0xFFFADCD3) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: selected ? const Color(0xFFC98C7B) : Colors.transparent,
+          width: 2,
+        ),
       ),
-      title: Text(
-        baby.nickname,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      child: ListTile(
+        key: Key('linked-baby-selector-${baby.id}'),
+        minTileHeight: 64,
+        onTap: onSelected,
+        selected: selected,
+        selectedColor: const Color(0xFF5A463F),
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFF2EAE4),
+          child: Icon(Icons.child_care, color: Color(0xFFC98C7B)),
+        ),
+        title: Text(
+          baby.nickname,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        trailing: selected
+            ? const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF845143),
+                semanticLabel: 'Đang chọn',
+              )
+            : null,
       ),
     ),
   );

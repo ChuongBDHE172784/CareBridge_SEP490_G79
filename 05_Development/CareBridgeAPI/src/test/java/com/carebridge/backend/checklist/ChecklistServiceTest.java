@@ -12,6 +12,12 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
+import com.carebridge.backend.content.policy.LifecycleContentStageResolver;
+import com.carebridge.backend.content.policy.ResolvedLifecycleContext;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,6 +46,8 @@ class ChecklistServiceTest {
     @Mock private UserChecklistItemRepository checklistRepository;
     @Mock private ChecklistItemRepository templateItemRepository;
     @Mock private AuditService auditService;
+    @Mock private LifecycleContentStageResolver lifecycleContentStageResolver;
+    @Mock private BabyProfileRepository babyProfileRepository;
     @InjectMocks private UserChecklistItemServiceImpl service;
 
     private UserChecklistItem makeCustomItem() {
@@ -86,11 +94,18 @@ class ChecklistServiceTest {
     void importFromTemplate_returnsResponses() {
         var templateItem = ChecklistItem.builder()
                 .id(TEMPLATE_ID)
+                .template(ChecklistTemplate.builder().id(UUID.randomUUID())
+                        .stage(ContentStage.PRE_PREGNANCY)
+                        .status(ChecklistTemplateStatus.APPROVED).build())
                 .itemText("Register at hospital")
                 .order(1)
                 .build();
-        when(templateItemRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(templateItem));
-        when(checklistRepository.save(any())).thenReturn(makeTemplateItem());
+        when(lifecycleContentStageResolver.resolveForUpdate(OWNER_ID))
+                .thenReturn(new ResolvedLifecycleContext(UUID.randomUUID(), ContentStage.PRE_PREGNANCY));
+        when(templateItemRepository.findAllAvailableByIdInForUpdate(
+                List.of(TEMPLATE_ID), ChecklistTemplateStatus.APPROVED, ContentStage.PRE_PREGNANCY))
+                .thenReturn(List.of(templateItem));
+        when(checklistRepository.saveAll(any())).thenReturn(List.of(makeTemplateItem()));
 
         var request = new ImportFromTemplateRequest(null, null, List.of(TEMPLATE_ID));
         var result = service.importFromTemplate(request, OWNER_ID);

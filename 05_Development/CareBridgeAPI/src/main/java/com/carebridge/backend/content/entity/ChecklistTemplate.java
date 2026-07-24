@@ -42,7 +42,11 @@ public class ChecklistTemplate {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private ContentStatus status = ContentStatus.DRAFT;
+    private ChecklistTemplateStatus status = ChecklistTemplateStatus.DRAFT;
+
+    @Builder.Default
+    @Column(name = "version_no", nullable = false)
+    private Integer versionNo = 1;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

@@ -1,3 +1,75 @@
+enum ContentBrowseMode { generic, lifecycle }
+
+class LifecycleEnvelope<T> {
+  final String stage;
+  final T payload;
+
+  const LifecycleEnvelope({required this.stage, required this.payload});
+
+  factory LifecycleEnvelope.fromApiResponse(
+    Map<String, dynamic> json,
+    T Function(Object? payload) parsePayload,
+  ) {
+    final data = json['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Lifecycle response data is missing');
+    }
+    final stage = data['stage'];
+    if (stage is! String || !_canonicalMotherStages.contains(stage)) {
+      throw const FormatException('Lifecycle response stage is invalid');
+    }
+    return LifecycleEnvelope<T>(
+      stage: stage,
+      payload: parsePayload(data['payload']),
+    );
+  }
+}
+
+const _canonicalMotherStages = <String>{
+  'PRE_PREGNANCY',
+  'PREGNANCY',
+  'POSTPARTUM',
+};
+
+class PaginatedContent {
+  final List<ContentListItem> data;
+  final int page;
+  final int size;
+  final int totalElements;
+  final int totalPages;
+
+  const PaginatedContent({
+    required this.data,
+    required this.page,
+    required this.size,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  factory PaginatedContent.fromJson(Map<String, dynamic> json) {
+    final rows = json['data'];
+    if (rows is! List) {
+      throw const FormatException('Paginated content data is missing');
+    }
+    return PaginatedContent(
+      data: rows
+          .map(
+            (item) => ContentListItem.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(growable: false),
+      page: (json['page'] as num?)?.toInt() ?? 0,
+      size: (json['size'] as num?)?.toInt() ?? rows.length,
+      totalElements: (json['totalElements'] as num?)?.toInt() ?? rows.length,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  factory PaginatedContent.fromApiResponse(Map<String, dynamic> json) =>
+      PaginatedContent.fromJson(json);
+}
+
 class ContentListItem {
   final String id;
   final String type;

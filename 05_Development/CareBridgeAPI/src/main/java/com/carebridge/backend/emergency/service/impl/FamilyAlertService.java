@@ -5,6 +5,7 @@ import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.event.FamilyAlertSent;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
+import com.carebridge.backend.emergency.service.FamilyAlertDeliveryOutcome;
 import com.carebridge.backend.emergency.service.FcmNotificationPort;
 import com.carebridge.backend.emergency.service.IFamilyAlertService;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.HashMap;
@@ -36,18 +38,19 @@ public class FamilyAlertService implements IFamilyAlertService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public void sendAlert(EmergencySessionOpened event) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public FamilyAlertDeliveryOutcome sendAlert(EmergencySessionOpened event) {
         // UC65 C1: idempotent — skip if alert already sent for this session
         if (familyAlertLogRepository.existsBySessionId(event.sessionId())) {
-            log.info("Alert already sent for session [{}] — skipping", event.sessionId());
-            return;
+            log.info("Family alert delivery outcome=ALREADY_SENT");
+            return FamilyAlertDeliveryOutcome.ALREADY_SENT;
         }
 
         // UC65 C5: send to ALL family members
         List<String> fcmTokens = familyMemberPort.getFamilyFcmTokens(event.userId());
         if (fcmTokens.isEmpty()) {
-            log.info("No family members registered for user [{}]", event.userId());
-            return;
+            log.info("Family alert delivery outcome=NO_RECIPIENTS");
+            return FamilyAlertDeliveryOutcome.NO_RECIPIENTS;
         }
 
         // UC65 C2: include location ONLY if consent=true (PDPA)
@@ -71,7 +74,7 @@ public class FamilyAlertService implements IFamilyAlertService {
         try {
             fcmNotificationPort.sendBatch(fcmTokens, payload);
         } catch (Exception e) {
-            log.warn("FCM send failed for session [{}]: {}", event.sessionId(), e.getMessage());
+            log.warn("Family alert FCM delivery failed reason={}", e.getClass().getSimpleName());
             smsFallbackPort.sendFallback(event.userId(), event.sessionId(),
                     "Emergency alert fallback triggered. Please check CareBridge immediately.");
         }
@@ -88,5 +91,6 @@ public class FamilyAlertService implements IFamilyAlertService {
         eventPublisher.publishEvent(new FamilyAlertSent(
                 UUID.randomUUID(), event.sessionId(), event.userId(),
                 fcmTokens.size(), locationIncluded, Instant.now()));
+        return FamilyAlertDeliveryOutcome.DELIVERED;
     }
 }

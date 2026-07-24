@@ -13,6 +13,12 @@ import java.util.UUID;
 public interface IIntakeSessionRepository extends JpaRepository<IntakeSession, UUID> {
     Optional<IntakeSession> findByIdAndUserId(UUID id, UUID userId);
     Optional<IntakeSession> findByUserIdAndClientRequestId(UUID userId, String clientRequestId);
+    Optional<IntakeSession> findByUserIdAndContinuationToken(UUID userId, UUID continuationToken);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select session from IntakeSession session where session.userId = :userId and session.continuationToken = :token")
+    Optional<IntakeSession> findForUpdateByUserIdAndContinuationToken(
+            @Param("userId") UUID userId, @Param("token") UUID token);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select session from IntakeSession session where session.id = :id and session.userId = :userId")

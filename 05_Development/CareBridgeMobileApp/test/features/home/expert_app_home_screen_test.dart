@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
@@ -121,12 +122,8 @@ void main() {
       originalConsultation = ConsultationRequestService.instance;
       DirectChatService.instance = _FakeDirectChatService();
       ConsultationRequestService.instance = _FakeConsultationService();
-      // Not awaited: setTokens's internal secure-storage write hangs on the unmocked platform
-      // channel in this test environment. The synchronous role/userId assignment inside
-      // setTokens runs to completion before its first `await`, so this is already visible by
-      // the very next line — no pump needed.
-      // ignore: unawaited_futures
-      AuthState.instance.setTokens(
+      FlutterSecureStorage.setMockInitialValues({});
+      await AuthState.instance.setTokens(
         accessToken: 'test-access',
         refreshToken: 'test-refresh',
         userId: 'expert-1',

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/auth_state.dart';
+import '../../aiTriage/models/triage_continuation.dart';
+import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
+import '../../aiTriage/services/triage_continuation_store.dart';
+import '../../aiTriage/services/triage_service.dart';
 import '../../journey/services/journey_service.dart';
 import '../../journey/services/journey_onboarding_service.dart';
 
@@ -14,10 +18,12 @@ class AuthLandingScreen extends StatefulWidget {
     super.key,
     this.journeyService,
     this.onboardingService,
+    this.continuationCoordinator,
   });
 
   final JourneyService? journeyService;
   final JourneyOnboardingService? onboardingService;
+  final TriageContinuationRestoreCoordinator? continuationCoordinator;
 
   @override
   State<AuthLandingScreen> createState() => _AuthLandingScreenState();
@@ -26,6 +32,7 @@ class AuthLandingScreen extends StatefulWidget {
 class _AuthLandingScreenState extends State<AuthLandingScreen> {
   late final JourneyService _journeyService;
   late final JourneyOnboardingService _onboardingService;
+  late final TriageContinuationRestoreCoordinator _continuationCoordinator;
   bool _loading = true;
   String? _error;
 
@@ -34,6 +41,13 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
     super.initState();
     _journeyService = widget.journeyService ?? JourneyService();
     _onboardingService = widget.onboardingService ?? JourneyOnboardingService();
+    final continuationStore = SecureTriageContinuationStore();
+    _continuationCoordinator =
+        widget.continuationCoordinator ??
+        TriageContinuationRestoreCoordinator(
+          store: continuationStore,
+          gateway: TriageService(continuationStore: continuationStore),
+        );
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeAfterLogin());
   }
 
@@ -52,6 +66,13 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
 
     if (auth.role != 'MOTHER') {
       if (mounted) context.go('/');
+      return;
+    }
+
+    final userId = auth.userId;
+    if (userId != null &&
+        userId.isNotEmpty &&
+        await _restorePendingContinuation(userId)) {
       return;
     }
 
@@ -77,6 +98,74 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
             'Không thể kiểm tra hành trình hiện tại. Vui lòng thử lại để tránh tạo trùng dữ liệu.';
       });
     }
+  }
+
+  Future<bool> _restorePendingContinuation(String userId) async {
+    TriageContinuationDecision decision;
+    try {
+      decision = await _continuationCoordinator.restoreForUser(userId);
+    } catch (_) {
+      if (mounted && AuthState.instance.userId == userId) {
+        setState(() {
+          _loading = false;
+          _error =
+              'Chưa thể khôi phục kết quả kiểm tra an toàn. Vui lòng thử lại; dữ liệu tiếp tục vẫn được giữ an toàn.';
+        });
+      }
+      return true;
+    }
+    if (!mounted || AuthState.instance.userId != userId) return true;
+    if (decision.requiresRetry) {
+      setState(() {
+        _loading = false;
+        _error =
+            'Chưa thể khôi phục kết quả kiểm tra an toàn. Vui lòng thử lại; dữ liệu tiếp tục vẫn được giữ an toàn.';
+      });
+      return true;
+    }
+
+    final String? location = switch (decision.destination) {
+      TriageContinuationDestination.motherJourney => '/mother-home?tab=1',
+      TriageContinuationDestination.babyProfile
+          when decision.originReferenceId?.isNotEmpty == true =>
+        '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
+      TriageContinuationDestination.emergency =>
+        '/emergency/map?mode=triage&stage=${Uri.encodeComponent(decision.stage ?? 'INFANT')}',
+      TriageContinuationDestination.safeDashboard
+          when decision.continuationToken == null =>
+        '/mother-home',
+      TriageContinuationDestination.none => null,
+      _ => null,
+    };
+    if (location == null) {
+      if (decision.destination == TriageContinuationDestination.safeDashboard) {
+        setState(() {
+          _loading = false;
+          _error =
+              'Chưa thể khôi phục kết quả kiểm tra an toàn. Vui lòng thử lại; dữ liệu tiếp tục đã được giữ an toàn.';
+        });
+        return true;
+      }
+      return false;
+    }
+
+    context.go(
+      location,
+      extra:
+          decision.destination == TriageContinuationDestination.motherJourney ||
+              decision.destination == TriageContinuationDestination.babyProfile
+          ? TriageContinuationArrival(
+              userId: userId,
+              decision: decision,
+              coordinator: _continuationCoordinator,
+            )
+          : decision.destination ==
+                    TriageContinuationDestination.safeDashboard &&
+                decision.isRecoverable
+          ? const TriageContinuationRecoveryNotice()
+          : null,
+    );
+    return true;
   }
 
   @override

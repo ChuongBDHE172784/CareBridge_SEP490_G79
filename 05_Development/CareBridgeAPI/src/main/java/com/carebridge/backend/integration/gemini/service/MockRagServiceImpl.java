@@ -3,6 +3,7 @@ package com.carebridge.backend.integration.gemini.service;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
 import com.carebridge.backend.integration.gemini.dto.RagSource;
+import com.carebridge.backend.integration.gemini.dto.RagExecutionContext;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +33,7 @@ public class MockRagServiceImpl implements RagService {
             UUID.fromString("11111111-0000-0000-0000-000000000001");
 
     @Override
-    public RagAnswerResponse generateAnswer(RagAnswerRequest request) {
+    public RagAnswerResponse generateAnswer(RagAnswerRequest request, RagExecutionContext context) {
         String query = request.getQuery();
 
         // Simulate red-flag

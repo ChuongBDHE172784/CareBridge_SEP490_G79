@@ -126,8 +126,11 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                     toResponse(existing.get(), requesterUserId), false);
         }
 
-        policy.assertExpertEligibleForConsultation(lockedExpert);
         Instant now = clock.instant();
+        User lockedExpertAccount = userRepository
+                .findByIdForUpdate(lockedExpert.getUserId())
+                .orElseThrow(ConsultationRequestException::expertNotEligible);
+        policy.assertExpertEligibleForConsultation(lockedExpert, lockedExpertAccount, now);
         ConsultationRequest candidate = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
                 .requesterUserId(requesterUserId)
@@ -205,6 +208,10 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
         if (!lockedExpert.isEligibleForConsultation()) {
             throw ConsultationRequestException.expertNoLongerEligible();
         }
+        User lockedExpertAccount = userRepository.findByIdForUpdate(lockedExpert.getUserId())
+                .orElseThrow(ConsultationRequestException::expertNoLongerEligible);
+        policy.assertExpertStillEligibleForConsultation(
+                lockedExpert, lockedExpertAccount, clock.instant());
 
         UUID conversationId = directConversationService
                 .findOrCreate(request.getRequesterUserId(), request.getExpertProfileId())

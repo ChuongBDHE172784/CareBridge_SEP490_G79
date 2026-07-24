@@ -28,11 +28,28 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
                 seedExpert("Dr Pending OB", "Sản khoa", "PENDING", "ACTIVE", 4.8);
         UUID eligiblePediatric = seedExpert(
                 "Dr Eligible Pediatric", "Nhi khoa", "APPROVED", "ACTIVE", 4.7);
+        UUID disabledExpert = seedExpert(
+                "Dr Disabled Account", "Account Disabled", "APPROVED", "ACTIVE", 4.6);
+        UUID lockedExpert = seedExpert(
+                "Dr Locked Account", "Account Locked", "APPROVED", "ACTIVE", 4.5);
+        UUID suspendedExpert = seedExpert(
+                "Dr Suspended Account", "Account Suspended", "APPROVED", "ACTIVE", 4.4);
+        UUID suspensionEndedExpert = seedExpert(
+                "Dr Suspension Ended", "Account Restored", "APPROVED", "ACTIVE", 4.3);
+        setAccountState(disabledExpert, false, false, null);
+        setAccountState(lockedExpert, true, true, null);
+        setAccountState(suspendedExpert, true, false, "now() + interval '1 day'");
+        setAccountState(suspensionEndedExpert, true, false, "now() - interval '1 second'");
 
         assertThat(repository.findVerifiedPublic())
                 .extracting(profile -> profile.getExpertProfileId())
-                .contains(eligibleOb, eligiblePediatric)
-                .doesNotContain(suspendedOb, pendingOb);
+                .contains(eligibleOb, eligiblePediatric, suspensionEndedExpert)
+                .doesNotContain(
+                        suspendedOb,
+                        pendingOb,
+                        disabledExpert,
+                        lockedExpert,
+                        suspendedExpert);
         assertThat(repository.findVerifiedBySpecialty("Sản khoa"))
                 .extracting(profile -> profile.getExpertProfileId())
                 .contains(eligibleOb)
@@ -46,8 +63,14 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
                                 null, "Suspended", PageRequest.of(0, 20))
                         .getContent())
                 .isEmpty();
+        assertThat(repository.searchDirectory(
+                                null, "Account", PageRequest.of(0, 20))
+                        .getContent())
+                .extracting(profile -> profile.getExpertProfileId())
+                .doesNotContain(disabledExpert, lockedExpert, suspendedExpert);
         assertThat(repository.findApprovedSpecialties())
-                .contains("Sản khoa", "Nhi khoa");
+                .contains("Sản khoa", "Nhi khoa", "Account Restored")
+                .doesNotContain("Account Disabled", "Account Locked", "Account Suspended");
     }
 
     private UUID seedExpert(
@@ -74,5 +97,19 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
 
     private static String uniquePhone() {
         return "09" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000L));
+    }
+
+    private void setAccountState(
+            UUID profileId, boolean enabled, boolean locked, String suspendedUntilExpression) {
+        String suspendedUntil = suspendedUntilExpression == null
+                ? "NULL"
+                : suspendedUntilExpression;
+        jdbcTemplate.update(
+                "UPDATE users SET enabled = ?, locked = ?, suspended_until = "
+                        + suspendedUntil
+                        + " WHERE user_id = (SELECT user_id FROM expert_profiles WHERE expert_profile_id = ?)",
+                enabled,
+                locked,
+                profileId);
     }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../models/content_model.dart';
 import '../services/content_service.dart';
 
@@ -7,7 +8,15 @@ import '../services/content_service.dart';
 /// Reachable from VerifiedContentSearchScreen (UC-224) and ViewContentScreen (UC-82).
 class VerifiedContentDetailScreen extends StatefulWidget {
   final String contentId;
-  const VerifiedContentDetailScreen({super.key, required this.contentId});
+  final ContentBrowseMode mode;
+  final ContentService? contentService;
+
+  const VerifiedContentDetailScreen({
+    super.key,
+    required this.contentId,
+    this.mode = ContentBrowseMode.generic,
+    this.contentService,
+  });
 
   @override
   State<VerifiedContentDetailScreen> createState() =>
@@ -25,39 +34,96 @@ class _VerifiedContentDetailScreenState
   static const _outline = Color(0xFF84736F);
 
   ContentDetail? _content;
+  String? _resolvedStage;
   bool _loading = true;
   String? _error;
+  int _loadGeneration = 0;
+  String? _observedAccountId;
+
+  late ContentService _contentService;
 
   @override
   void initState() {
     super.initState();
+    _contentService = widget.contentService ?? ContentService.instance;
+    _observedAccountId = AuthState.instance.userId;
+    AuthState.instance.addListener(_onAccountChanged);
     _load();
   }
 
+  @override
+  void dispose() {
+    AuthState.instance.removeListener(_onAccountChanged);
+    super.dispose();
+  }
+
+  void _onAccountChanged() {
+    final accountId = AuthState.instance.userId;
+    if (accountId == _observedAccountId) return;
+    _observedAccountId = accountId;
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant VerifiedContentDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentId != widget.contentId ||
+        oldWidget.mode != widget.mode ||
+        oldWidget.contentService != widget.contentService) {
+      _contentService = widget.contentService ?? ContentService.instance;
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    final requestGeneration = ++_loadGeneration;
+    final accountId = AuthState.instance.userId;
     setState(() {
       _loading = true;
       _error = null;
+      _content = null;
+      _resolvedStage = null;
     });
     try {
-      final content = await ContentService.instance.getContentDetail(
-        widget.contentId,
-      );
-      if (mounted) {
+      late final ContentDetail content;
+      String? resolvedStage;
+      if (widget.mode == ContentBrowseMode.lifecycle) {
+        final envelope = await _contentService.getLifecycleContentDetail(
+          widget.contentId,
+        );
+        content = envelope.payload;
+        resolvedStage = envelope.stage;
+        if (envelope.stage != content.stage) {
+          throw const FormatException('Lifecycle detail stage mismatch');
+        }
+      } else {
+        content = await _contentService.getContentDetail(widget.contentId);
+      }
+      if (_canApply(requestGeneration, accountId)) {
         setState(() {
           _content = content;
+          _resolvedStage = resolvedStage;
           _loading = false;
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (_canApply(requestGeneration, accountId)) {
         setState(() {
-          _error = 'Không tải được nội dung. Vui lòng thử lại.';
+          _content = null;
+          _resolvedStage = null;
+          _error = widget.mode == ContentBrowseMode.lifecycle
+              ? 'Nội dung này không còn phù hợp với giai đoạn hiện tại. Vui lòng thử lại.'
+              : 'Không tải được nội dung. Vui lòng thử lại.';
           _loading = false;
         });
       }
     }
   }
+
+  bool _canApply(int requestGeneration, String? accountId) =>
+      mounted &&
+      requestGeneration == _loadGeneration &&
+      AuthState.instance.userId == accountId;
 
   String _stageLabel(String stage) {
     switch (stage) {
@@ -73,7 +139,7 @@ class _VerifiedContentDetailScreenState
         return 'Thai kỳ';
       case 'POSTPARTUM':
         return 'Sau sinh';
-      case 'PREPARATION':
+      case 'PRE_PREGNANCY':
         return 'Chuẩn bị';
       default:
         return stage;
@@ -131,6 +197,7 @@ class _VerifiedContentDetailScreenState
 
   Widget _buildError() {
     return Center(
+      key: const Key('lifecycle-content-detail-error'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -141,13 +208,23 @@ class _VerifiedContentDetailScreenState
             style: const TextStyle(color: _onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
+          Semantics(
+            button: true,
+            label: 'Thử tải lại nội dung',
+            child: ElevatedButton(
+              key: const Key('lifecycle-content-detail-retry'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              onPressed: _load,
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
             ),
-            onPressed: _load,
-            child: const Text('Thử lại'),
           ),
         ],
       ),
@@ -161,7 +238,7 @@ class _VerifiedContentDetailScreenState
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: _surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -205,6 +282,9 @@ class _VerifiedContentDetailScreenState
                 ),
                 if (content.stage.isNotEmpty)
                   Container(
+                    key: widget.mode == ContentBrowseMode.lifecycle
+                        ? const Key('lifecycle-content-detail-stage')
+                        : null,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 5,
@@ -214,7 +294,7 @@ class _VerifiedContentDetailScreenState
                       borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(
-                      _stageLabel(content.stage),
+                      _stageLabel(_resolvedStage ?? content.stage),
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -249,7 +329,7 @@ class _VerifiedContentDetailScreenState
             Text(
               content.body,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 color: _onSurface,
                 height: 1.6,
               ),
@@ -272,8 +352,7 @@ class _VerifiedContentDetailScreenState
                       'Nội dung mang tính chất tham khảo. Nếu dấu hiệu nặng lên, hãy liên hệ '
                       'cơ sở y tế phù hợp ngay lập tức.',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+                        fontSize: 16,
                         color: Color(0xFF6D5B00),
                         height: 1.4,
                       ),

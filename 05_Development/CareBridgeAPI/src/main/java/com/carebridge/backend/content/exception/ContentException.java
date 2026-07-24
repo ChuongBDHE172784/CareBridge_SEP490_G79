@@ -93,4 +93,11 @@ public class ContentException extends RuntimeException {
                 "Content Admin may only save a draft or submit it for review",
                 HttpStatus.CONFLICT);
     }
+
+    public static ContentException lifecycleContextUnavailable() {
+        return new ContentException(
+                "CNT-013",
+                "Lifecycle content context unavailable",
+                HttpStatus.CONFLICT);
+    }
 }

@@ -7,6 +7,11 @@ class AuthState extends ChangeNotifier {
   AuthState._({TokenStorage? storage})
     : _storage = storage ?? SecureTokenStorage();
 
+  @visibleForTesting
+  AuthState.forTesting({required TokenStorage storage}) : _storage = storage {
+    _isRestoring = false;
+  }
+
   static final AuthState instance = AuthState._();
 
   final TokenStorage _storage;
@@ -42,23 +47,19 @@ class AuthState extends ChangeNotifier {
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
-        debugPrint(
-          '[AuthState] init: access token valid → authenticated userId=$_userId role=$_role',
-        );
+        debugPrint('[AuthState] init: valid credentials restored');
       } else if (refresh != null) {
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
         _accessToken = 'expired';
-        debugPrint(
-          '[AuthState] init: access expired, refresh present → sentinel set userId=$_userId role=$_role',
-        );
+        debugPrint('[AuthState] init: refresh required');
       } else {
         debugPrint('[AuthState] init: no tokens → clearing, redirect to login');
         unawaited(_storage.clear());
       }
-    } catch (e) {
-      debugPrint('[AuthState] init: error → $e → clearing storage');
+    } catch (_) {
+      debugPrint('[AuthState] init: credential restore failed; clearing');
       unawaited(_storage.clear());
     } finally {
       _isRestoring = false;
@@ -73,29 +74,43 @@ class AuthState extends ChangeNotifier {
     required String userId,
     required String role,
   }) async {
-    debugPrint(
-      '[AuthState] setTokens: accessLen=${accessToken.length} tokenStart=${accessToken.substring(0, accessToken.length > 20 ? 20 : accessToken.length)}... userId=$userId role=$role',
-    );
+    debugPrint('[AuthState] setTokens: persisting authenticated session');
+    try {
+      await _storage.save(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        userId: userId,
+        role: role,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('[AuthState] setTokens: persistence failed; clearing session');
+      try {
+        await _storage.clear();
+      } catch (clearError) {
+        debugPrint(
+          '[AuthState] setTokens: durable rollback failed: '
+          '${clearError.runtimeType}',
+        );
+      }
+      _clearCredentialsInMemory();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     _userId = userId;
     _role = role;
     notifyListeners();
-    debugPrint(
-      '[AuthState] setTokens: notifyListeners done, about to save to storage',
-    );
-    await _storage.save(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      userId: userId,
-      role: role,
-    );
-    debugPrint('[AuthState] setTokens: storage.save completed');
+    debugPrint('[AuthState] setTokens: authenticated session published');
   }
 
   /// Clear in-memory state immediately (synchronous).
   /// Called by api_client on 401; storage clear is fire-and-forget.
   void clearState() {
+    _clearCredentialsInMemory();
+  }
+
+  void _clearCredentialsInMemory() {
     _accessToken = null;
     _refreshToken = null;
     _userId = null;

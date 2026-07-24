@@ -1,5 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../features/aiTriage/models/triage_continuation.dart';
+import '../../features/aiTriage/services/triage_continuation_store.dart';
+
 abstract class TokenStorage {
   Future<void> save({
     required String accessToken,
@@ -19,6 +22,7 @@ class SecureTokenStorage implements TokenStorage {
   static const _keyRefresh = 'cb_refresh_token';
   static const _keyUserId = 'cb_user_id';
   static const _keyRole = 'cb_role';
+  static final _triageContinuationStore = SecureTriageContinuationStore();
 
   @override
   Future<void> save({
@@ -27,17 +31,34 @@ class SecureTokenStorage implements TokenStorage {
     required String userId,
     required String role,
   }) async {
-    final previousUserId = await _store.read(key: _keyUserId);
-    if (previousUserId != null && previousUserId != userId) {
-      await _store.delete(key: _onboardingDraftKey(previousUserId));
-      await PostpartumDraftStorageCoordinator.invalidateUser(previousUserId);
+    try {
+      final previousUserId = await _store.read(key: _keyUserId);
+      if (previousUserId != null && previousUserId != userId) {
+        await _store.delete(key: _onboardingDraftKey(previousUserId));
+        await Future.wait([
+          PostpartumDraftStorageCoordinator.invalidateUser(previousUserId),
+          _triageContinuationStore.invalidateUser(previousUserId),
+        ]);
+      }
+
+      // userId is the commit marker. Readers never accept a partially-written
+      // credential bundle while an account switch is in progress.
+      await _store.delete(key: _keyUserId);
+      await Future.wait([
+        _store.write(key: _keyAccess, value: accessToken),
+        _store.write(key: _keyRefresh, value: refreshToken),
+        _store.write(key: _keyRole, value: role),
+      ]);
+      await _store.write(key: _keyUserId, value: userId);
+    } catch (error, stackTrace) {
+      try {
+        await _deleteCredentialKeys();
+      } catch (_) {
+        // Preserve the account cleanup/persistence failure that caused the
+        // rollback. AuthState performs another best-effort durable clear.
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
-    await Future.wait([
-      _store.write(key: _keyAccess, value: accessToken),
-      _store.write(key: _keyRefresh, value: refreshToken),
-      _store.write(key: _keyUserId, value: userId),
-      _store.write(key: _keyRole, value: role),
-    ]);
   }
 
   @override
@@ -48,6 +69,17 @@ class SecureTokenStorage implements TokenStorage {
       _store.read(key: _keyUserId),
       _store.read(key: _keyRole),
     ]);
+    if (results.any((value) => value == null || value.isEmpty)) {
+      if (results.any((value) => value != null)) {
+        await _deleteCredentialKeys();
+      }
+      return {
+        'accessToken': null,
+        'refreshToken': null,
+        'userId': null,
+        'role': null,
+      };
+    }
     return {
       'accessToken': results[0],
       'refreshToken': results[1],
@@ -59,20 +91,50 @@ class SecureTokenStorage implements TokenStorage {
   @override
   Future<void> clear() async {
     final userId = await _store.read(key: _keyUserId);
+    await _deleteCredentialKeys();
     if (userId != null) {
-      await PostpartumDraftStorageCoordinator.invalidateUser(userId);
+      await Future.wait([
+        PostpartumDraftStorageCoordinator.invalidateUser(userId),
+        _triageContinuationStore.invalidateUser(userId),
+        _store.delete(key: _onboardingDraftKey(userId)),
+      ]);
     }
-    await Future.wait([
-      _store.delete(key: _keyAccess),
-      _store.delete(key: _keyRefresh),
-      _store.delete(key: _keyUserId),
-      _store.delete(key: _keyRole),
-      if (userId != null) _store.delete(key: _onboardingDraftKey(userId)),
-    ]);
   }
 
   static String _onboardingDraftKey(String userId) =>
       'cb_journey_onboarding_draft_$userId';
+
+  static Future<void> _deleteCredentialKeys() => Future.wait([
+    _store.delete(key: _keyAccess),
+    _store.delete(key: _keyRefresh),
+    _store.delete(key: _keyUserId),
+    _store.delete(key: _keyRole),
+  ]);
+
+  int triageContinuationGenerationFor(String userId) =>
+      _triageContinuationStore.generationFor(userId);
+
+  Future<void> saveTriageContinuation({
+    required String userId,
+    required String token,
+    required String intakeSessionId,
+    required DateTime expiresAt,
+    int? generation,
+  }) => _triageContinuationStore.save(
+    userId: userId,
+    continuation: PendingTriageContinuation(
+      token: token,
+      intakeSessionId: intakeSessionId,
+      expiresAt: expiresAt,
+    ),
+    generation: generation ?? _triageContinuationStore.generationFor(userId),
+  );
+
+  Future<PendingTriageContinuation?> loadTriageContinuation(String userId) =>
+      _triageContinuationStore.read(userId);
+
+  Future<void> invalidateTriageContinuation(String userId) =>
+      _triageContinuationStore.invalidateUser(userId);
 }
 
 /// Serializes encrypted postpartum-draft operations per account.

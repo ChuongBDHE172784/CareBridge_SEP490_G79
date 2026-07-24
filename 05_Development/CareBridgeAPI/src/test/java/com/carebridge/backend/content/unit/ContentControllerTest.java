@@ -2,6 +2,7 @@ package com.carebridge.backend.content.unit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,6 +20,7 @@ import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.content.support.Story69TestFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -177,5 +179,50 @@ class ContentControllerTest {
 
         mockMvc.perform(get("/api/v1/content"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void uc82_69_tc_017_noConsumerTemplateDetailEndpointIsIntroduced() {
+        String source = Story69TestFactory.productionSource(
+                "com/carebridge/backend/content/controller/ContentController.java");
+        assertThat(source.contains("@GetMapping(\"/checklists/{templateId}\")")
+                        || source.contains("@GetMapping(\"/checklists/{id}\")"))
+                .as("TC-017: consumer template detail must remain unmapped")
+                .isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "USER")
+    void uc82_69_tc_017_templateDetailRequestUsesFrameworkNotFoundWithoutTemplateData()
+            throws Exception {
+        UUID templateId = UUID.fromString("69000000-0000-0000-0000-000000000401");
+        String body = mockMvc.perform(get("/api/v1/content/checklists/" + templateId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("RESOURCE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Resource not found"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body)
+                .doesNotContain("Synthetic private template", "itemText", "description",
+                        "NoResourceFoundException", "No static resource", "INTERNAL_ERROR");
+        verifyNoInteractions(contentService);
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "USER")
+    void unmatchedApiRouteReturnsTheSameNeutral404WithoutInternalResourceMetadata()
+            throws Exception {
+        String body = mockMvc.perform(get("/api/v1/unmatched-story-69-route"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("RESOURCE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Resource not found"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body)
+                .doesNotContain("NoResourceFoundException", "No static resource", "INTERNAL_ERROR");
+        verifyNoInteractions(contentService);
     }
 }

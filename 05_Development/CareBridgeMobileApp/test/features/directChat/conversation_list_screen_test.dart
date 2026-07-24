@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/core/auth/auth_state.dart';
@@ -55,8 +56,15 @@ Future<GoRouter> _pumpWithRouter(WidgetTester tester) async {
 void main() {
   late DirectChatService original;
 
-  setUp(() => original = DirectChatService.instance);
-  tearDown(() => DirectChatService.instance = original);
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+    AuthState.instance.clearState();
+    original = DirectChatService.instance;
+  });
+  tearDown(() {
+    AuthState.instance.clearState();
+    DirectChatService.instance = original;
+  });
 
   // MEDI-FL-07
   testWidgets(
@@ -93,8 +101,7 @@ void main() {
   testWidgets('MOTHER empty state shows the CTA to find an expert', (
     tester,
   ) async {
-    // ignore: unawaited_futures
-    AuthState.instance.setTokens(
+    await AuthState.instance.setTokens(
       accessToken: 'a',
       refreshToken: 'r',
       userId: 'mother-1',
@@ -116,8 +123,7 @@ void main() {
 
   // MEDI-FL-08 — EXPERT empty state
   testWidgets('EXPERT empty state has no CTA at all', (tester) async {
-    // ignore: unawaited_futures
-    AuthState.instance.setTokens(
+    await AuthState.instance.setTokens(
       accessToken: 'a',
       refreshToken: 'r',
       userId: 'expert-1',
@@ -136,8 +142,7 @@ void main() {
   testWidgets(
     'EXPERT row never labels its mother counterpart as an unavailable expert',
     (tester) async {
-      // ignore: unawaited_futures
-      AuthState.instance.setTokens(
+      await AuthState.instance.setTokens(
         accessToken: 'a',
         refreshToken: 'r',
         userId: 'expert-1',
