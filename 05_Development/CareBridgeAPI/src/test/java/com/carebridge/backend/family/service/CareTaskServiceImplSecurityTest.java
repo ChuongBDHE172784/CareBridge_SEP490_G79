@@ -56,7 +56,7 @@ class CareTaskServiceImplSecurityTest {
 
     @Test
     void assignFamilyTask_sqlInjectionInTitle_storedLiterallyNotExecuted() {
-        String maliciousTitle = "Buy diapers'; DROP TABLE care_tasks; --";
+        String maliciousTitle = "Buy diapers'; DROP TABLE family_tasks; --";
         String maliciousDesc  = "Size M'; DELETE FROM users WHERE '1'='1";
 
         CareGroup group = CareGroupTestFactory.makeCareGroup(g -> g.setId(GROUP_ID));

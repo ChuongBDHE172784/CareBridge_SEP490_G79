@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -14,7 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "pregnancy_exercises")
+@Table(name = "care_item_templates")
+@org.hibernate.annotations.SQLRestriction("entry_type = 'EXERCISE_TEMPLATE'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,7 +25,7 @@ import lombok.Setter;
 public class PregnancyExercise {
 
     @Id
-    @Column(name = "exercise_id", nullable = false)
+    @Column(name = "template_id", nullable = false)
     private UUID exerciseId;
 
     @Column(name = "created_by", nullable = false)
@@ -35,7 +38,7 @@ public class PregnancyExercise {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "trimester_scope", length = 50)
+    @Column(name = "stage", length = 30)
     private TrimesterScope trimesterScope;
 
     @Enumerated(EnumType.STRING)
@@ -58,10 +61,10 @@ public class PregnancyExercise {
     private Boolean supportsPostureAnalysis;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "template_status", nullable = false, length = 20)
     private ExerciseStatus status;
 
-    @Column(name = "version_no", nullable = false)
+    @Column(name = "version", nullable = false)
     private Integer versionNo;
 
     @Column(name = "created_at", nullable = false)
@@ -69,4 +72,47 @@ public class PregnancyExercise {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean active;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "configuration_jsonb", nullable = false, columnDefinition = "jsonb")
+    private String configurationJson = "{}";
+
+    @Column(name = "configuration_hash", nullable = false, length = 128)
+    private String configurationHash;
+
+    @Column(name = "effective_from")
+    private OffsetDateTime effectiveFrom;
+
+    @Column(name = "entry_type", nullable = false, updatable = false, length = 30)
+    private String entryType = "EXERCISE_TEMPLATE";
+
+    @PrePersist
+    @PreUpdate
+    void prepareCanonicalTemplate() {
+        active = status == ExerciseStatus.PUBLISHED;
+        if (effectiveFrom == null) {
+            effectiveFrom = createdAt;
+        }
+        String payload = String.format(
+                java.util.Locale.ROOT,
+                "{\"difficulty\":\"%s\",\"durationMinutes\":%s,\"supportsPostureAnalysis\":%s}",
+                difficultyLevel == null ? "" : difficultyLevel.name(),
+                durationMinutes == null ? "null" : durationMinutes,
+                Boolean.TRUE.equals(supportsPostureAnalysis));
+        configurationJson = payload;
+        configurationHash = sha256(payload);
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] bytes = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(bytes);
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is required", exception);
+        }
+    }
 }

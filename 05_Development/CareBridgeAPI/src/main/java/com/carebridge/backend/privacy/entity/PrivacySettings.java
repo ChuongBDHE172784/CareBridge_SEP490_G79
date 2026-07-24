@@ -18,8 +18,6 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Entity
-@Table(name = "privacy_settings")
 @Getter
 @Setter
 @Builder

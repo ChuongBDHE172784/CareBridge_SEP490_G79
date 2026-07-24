@@ -8,11 +8,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "health_memory_entries")
+@Table(name = "health_context_memories")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class HealthMemoryEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "memory_id")
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
@@ -32,7 +33,7 @@ public class HealthMemoryEntry {
     @Column(name = "summary_text", nullable = false, columnDefinition = "TEXT")
     private String summaryText;
 
-    @Column(name = "source_session_id")
+    @Column(name = "triage_session_id")
     private UUID sourceSessionId;
 
     @Column(name = "created_at", nullable = false)

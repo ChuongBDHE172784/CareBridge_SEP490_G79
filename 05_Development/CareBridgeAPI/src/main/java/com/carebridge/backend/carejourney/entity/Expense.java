@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "expenses")
+@Table(name = "expense_entries")
 @Getter
 @Setter
 @Builder
@@ -21,16 +21,16 @@ public class Expense {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "expense_id", updatable = false, nullable = false)
+    @Column(name = "expense_entry_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
     private UUID ownerUserId;
 
-    @Column(name = "journey_id")
+    @Column(name = "mother_journey_id")
     private UUID journeyId;
 
-    @Column(name = "baby_id")
+    @Column(name = "care_subject_id")
     private UUID babyId;
 
     @Enumerated(EnumType.STRING)

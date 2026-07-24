@@ -4,7 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -14,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "user_sessions")
+@Table(name = "auth_sessions")
 @Getter
 @Setter
 @Builder
@@ -35,35 +37,60 @@ public class UserSession {
     @Column(name = "device_name", length = 150)
     private String deviceName;
 
-    @Column(name = "ip_address", length = 64)
+    @Transient
     private String ipAddress;
 
-    @Column(name = "browser", length = 150)
+    @Transient
     private String browser;
 
-    @Column(name = "location", length = 200)
+    @Transient
     private String location;
 
-    @Column(name = "last_activity_at")
+    @Column(name = "last_used_at")
     private Instant lastActivityAt;
 
-    @Builder.Default
-    @Column(name = "is_current", nullable = false)
+    @Transient
     private boolean isCurrent = false;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Builder.Default
-    @Column(name = "revoked", nullable = false)
-    private boolean revoked = false;
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
+    @Transient
+    private boolean revoked;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "issued_at", nullable = false)
     private Instant createdAt;
 
-    @Column(name = "updated_at")
+    @Transient
     private Instant updatedAt;
+
+    @Column(name = "token_family_id", nullable = false)
+    private UUID tokenFamilyId;
+
+    @Column(name = "device_identifier", nullable = false, length = 255)
+    private String deviceIdentifier;
+
+    public boolean isRevoked() { return revoked || revokedAt != null || "REVOKED".equalsIgnoreCase(status); }
+    public void setRevoked(boolean revoked) {
+        this.revoked = revoked;
+        revokedAt = revoked ? Instant.now() : null;
+        if (revoked) status = "REVOKED";
+    }
+
+    @PrePersist
+    void canonicalDefaults() {
+        if (sessionId == null) sessionId = UUID.randomUUID();
+        if (tokenFamilyId == null) tokenFamilyId = sessionId;
+        if (deviceIdentifier == null || deviceIdentifier.isBlank()) {
+            deviceIdentifier = deviceName == null || deviceName.isBlank() ? sessionId.toString() : deviceName;
+        }
+        if (createdAt == null) createdAt = Instant.now();
+        if (status == null) status = "ACTIVE"; else status = status.toUpperCase();
+    }
 }

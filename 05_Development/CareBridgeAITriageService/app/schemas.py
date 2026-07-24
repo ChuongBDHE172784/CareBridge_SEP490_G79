@@ -6,7 +6,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 RiskLevel = Literal["GREEN", "YELLOW", "RED", "NEED_MORE_INFO"]
-TriageStage = Literal["PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER"]
+TriageStage = Literal["PRECONCEPTION", "PREGNANCY", "POSTPARTUM", "INFANT", "TODDLER"]
 
 
 class ChildTriageRequest(BaseModel):

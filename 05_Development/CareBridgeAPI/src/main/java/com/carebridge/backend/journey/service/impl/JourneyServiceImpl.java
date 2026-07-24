@@ -170,8 +170,10 @@ public class JourneyServiceImpl implements IJourneyService {
             estimatedDueDate = lastMenstrualDate.plusDays(280);
         }
 
+        UUID careSubjectId = ensureMotherCareSubject(callerId);
         MotherJourney journey = MotherJourney.builder()
                 .ownerUserId(callerId)
+                .careSubjectId(careSubjectId)
                 .journeyType(request.getJourneyType())
                 .startDate(request.getStartDate())
                 .lastMenstrualDate(lastMenstrualDate)
@@ -181,6 +183,7 @@ public class JourneyServiceImpl implements IJourneyService {
                 .build();
 
         MotherJourney saved = journeyRepository.saveAndFlush(journey);
+        journeyRepository.linkMotherCareSubject(careSubjectId, saved.getId());
 
         auditService.log(AuditAction.JOURNEY_CREATED, callerId,
                 "MotherJourney", saved.getId().toString(), "created");
@@ -195,6 +198,17 @@ public class JourneyServiceImpl implements IJourneyService {
                 .notes(saved.getNotes())
                 .createdAt(saved.getCreatedAt())
                 .build();
+    }
+
+    private UUID ensureMotherCareSubject(UUID ownerUserId) {
+        UUID existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        if (existing != null) {
+            return existing;
+        }
+        UUID candidate = UUID.randomUUID();
+        journeyRepository.ensureMotherCareSubject(candidate, ownerUserId);
+        existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        return existing == null ? candidate : existing;
     }
 
     // ─────────────────────────────────────────────────────────────

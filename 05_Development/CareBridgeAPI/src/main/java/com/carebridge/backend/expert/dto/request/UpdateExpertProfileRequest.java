@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Builder
 public class UpdateExpertProfileRequest {
 
-    @Size(max = 5)
+    @Size(max = 80)
     private String specialtyId;
 
     @Size(max = 8)

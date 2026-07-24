@@ -109,6 +109,8 @@ def deterministic_emergency_scan(state: TriageState) -> TriageState:
     state["matchedRules"] = matched_rules
     state["immediateRed"] = bool(red_flags)
     if red_flags:
+        state["questions"] = []
+        state["followupQuestions"] = []
         _set_risk(state, "RED")
     return state
 
@@ -146,6 +148,8 @@ def detect_normalized_red_flags(state: TriageState) -> TriageState:
     state["redFlags"] = red_flags
     state["matchedRules"] = matched_rules
     if red_flags:
+        state["questions"] = []
+        state["followupQuestions"] = []
         _set_risk(state, "RED")
     return state
 

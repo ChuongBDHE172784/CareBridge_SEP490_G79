@@ -14,10 +14,24 @@ import jakarta.persistence.LockModeType;
 public interface ExpertIdentityVerificationRepository
         extends JpaRepository<ExpertIdentityVerification, UUID> {
 
-    Optional<ExpertIdentityVerification> findFirstByExpertProfileIdOrderByCreatedAtDesc(UUID expertProfileId);
+    Optional<ExpertIdentityVerification>
+            findFirstByExpertProfileIdAndCredentialTypeOrderByCreatedAtDesc(
+                    UUID expertProfileId, String credentialType);
 
+    default Optional<ExpertIdentityVerification> findFirstByExpertProfileIdOrderByCreatedAtDesc(
+            UUID expertProfileId) {
+        return findFirstByExpertProfileIdAndCredentialTypeOrderByCreatedAtDesc(
+                expertProfileId, "IDENTITY_DOCUMENT");
+    }
+
+    @Query("""
+        SELECT attempt FROM ExpertIdentityVerification attempt
+         WHERE attempt.credentialType = 'IDENTITY_DOCUMENT'
+           AND attempt.reviewStatus IN :statuses
+         ORDER BY attempt.createdAt
+        """)
     List<ExpertIdentityVerification> findByReviewStatusInOrderByCreatedAtAsc(
-            List<IdentityReviewStatus> statuses);
+            @Param("statuses") List<IdentityReviewStatus> statuses);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT attempt FROM ExpertIdentityVerification attempt WHERE attempt.id = :id")

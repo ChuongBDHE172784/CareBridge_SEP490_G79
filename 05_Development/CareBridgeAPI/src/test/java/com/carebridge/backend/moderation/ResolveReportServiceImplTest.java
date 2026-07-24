@@ -227,7 +227,7 @@ class ResolveReportServiceImplTest {
         ContentReport report = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
                 ReportStatus.PENDING, r -> {});
         when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(report));
-        when(communityQuestionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(communityQuestionRepository.lockIfApproved(QUESTION_ID)).thenReturn(1);
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ResolveReportRequest request = new ResolveReportRequest(ResolutionOutcome.LOCK, "Tranh cãi kéo dài");

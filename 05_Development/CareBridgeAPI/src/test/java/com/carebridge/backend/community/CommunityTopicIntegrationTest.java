@@ -11,6 +11,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.repository.TopicQuestionCountProjection;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.util.List;
 import java.util.UUID;
 import java.sql.Connection;
@@ -168,7 +169,8 @@ class CommunityTopicIntegrationTest extends AbstractPostgresIntegrationTest {
         try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
              Statement statement = connection.createStatement()) {
             assertThat(queryStrings(statement,
-                    "SELECT topic_id::text FROM user_topic_follows ORDER BY topic_id"))
+                    "SELECT topic_id::text FROM community_interactions "
+                            + "WHERE interaction_type='FOLLOW' ORDER BY topic_id"))
                     .containsExactlyElementsOf(beforeTopicIds);
             assertThat(singleLong(statement,
                     "SELECT COUNT(*) FROM community_topics WHERE type='CATEGORY' AND parent_id IS NULL"))
@@ -222,9 +224,12 @@ class CommunityTopicIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     private CommunityQuestion makeQuestion(UUID topicId, QuestionStatus status) {
+        UUID authorId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, authorId, "Community test author", null, "MOTHER");
         return CommunityQuestion.builder()
                 .topicId(topicId)
-                .authorId(UUID.randomUUID())
+                .authorId(authorId)
                 .title("INT question")
                 .body("INT body")
                 .stage(com.carebridge.backend.community.entity.PregnancyStage.PREGNANCY)

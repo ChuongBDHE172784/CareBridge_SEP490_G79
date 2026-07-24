@@ -17,11 +17,23 @@ import org.springframework.core.env.StandardEnvironment;
 
 public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
-    private static final String PROPERTY_SOURCE_NAME = "carebridgeDotenv";
+    static final String PROPERTY_SOURCE_NAME = "carebridgeDotenv";
+
+    private final Path dotenvPath;
+
+    public DotenvEnvironmentPostProcessor() {
+        this(Path.of(".env"));
+    }
+
+    DotenvEnvironmentPostProcessor(Path dotenvPath) {
+        this.dotenvPath = dotenvPath;
+    }
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        Path dotenvPath = Path.of(".env");
+        if (!environment.getProperty("carebridge.dotenv.enabled", Boolean.class, true)) {
+            return;
+        }
         if (!Files.isRegularFile(dotenvPath)) {
             return;
         }
@@ -42,7 +54,7 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
 
     @Override
     public int getOrder() {
-        return Ordered.LOWEST_PRECEDENCE;
+        return Ordered.LOWEST_PRECEDENCE - 1;
     }
 
     static Map<String, Object> parseDotenv(Path dotenvPath) {

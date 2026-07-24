@@ -53,7 +53,7 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
                 .findActiveConfigByExerciseId(session.getExerciseId(), OffsetDateTime.now());
         if (configOpt.isEmpty()) {
             log.warn(
-                    "No active posture_analysis_config for exercise {} — falling back to RULE_BASED default",
+                    "No active posture template config for exercise {} — falling back to RULE_BASED default",
                     session.getExerciseId());
         }
         PostureAnalysisConfig config = configOpt.orElse(null);

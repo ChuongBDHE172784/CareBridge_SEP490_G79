@@ -32,6 +32,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -48,6 +49,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     @Autowired private UserChecklistItemRepository userChecklistItemRepository;
     @Autowired private MotherJourneyRepository motherJourneyRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private AuditService auditService;
@@ -55,7 +57,8 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     private static final String BASE_URL = "/api/v1/admin/checklist-templates";
 
     @Test
-    void publicListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
+    void authenticatedListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
+        String token = seedUser("chk.list@test.com", Role.MOTHER);
         ChecklistTemplate approvedPregnancy = checklistTemplateRepository.saveAndFlush(
                 template("Public approved pregnancy", ContentStage.PREGNANCY, ContentStatus.APPROVED));
         ChecklistTemplate approvedPostpartum = checklistTemplateRepository.saveAndFlush(
@@ -74,14 +77,16 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 item(pending, "Hidden pending item", 1),
                 item(archived, "Hidden archived item", 1)));
 
-        mockMvc.perform(get("/api/v1/content/checklists"))
+        mockMvc.perform(get("/api/v1/content/checklists")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(2)))
                 .andExpect(jsonPath("$.data[*].name", containsInAnyOrder(
                         "Public approved pregnancy", "Public approved postpartum")));
 
         mockMvc.perform(get("/api/v1/content/checklists")
-                        .param("stage", "PREGNANCY"))
+                        .param("stage", "PREGNANCY")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].name").value("Public approved pregnancy"))
@@ -160,14 +165,16 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
         assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
     }
 
-    // CHKTPL-TC-INT-004 — downstream safety: archive must not break UC-50's user_checklist_items
+    // CHKTPL-TC-INT-004 — archive must not break canonical preparation checklist items.
     @Test
     void archive_doesNotBreakDownstreamUserChecklistItems() throws Exception {
         String contentAdminToken = seedUser("chk.downstream.admin@test.com", Role.CONTENT_ADMIN);
         String motherToken = seedUser("chk.downstream.mother@test.com", Role.MOTHER);
         User mother = userRepository.findByEmailIgnoreCase("chk.downstream.mother@test.com").orElseThrow();
+        UUID careSubjectId = createMotherCareSubject(mother);
         MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
                 .ownerUserId(mother.getId())
+                .careSubjectId(careSubjectId)
                 .journeyType(JourneyType.PREGNANCY)
                 .status(JourneyStatus.ACTIVE)
                 .build());
@@ -240,5 +247,20 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .accountStatus("ACTIVE")
                 .build());
         return jwtTokenProvider.generateAccessToken(user);
+    }
+
+    private UUID createMotherCareSubject(User owner) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u
+                  JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
+                """, careSubjectId, owner.getId());
+        return careSubjectId;
     }
 }

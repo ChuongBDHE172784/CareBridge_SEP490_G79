@@ -1,2 +1,3 @@
 org.springframework.boot.EnvironmentPostProcessor=\
-com.carebridge.backend.common.config.DotenvEnvironmentPostProcessor
+com.carebridge.backend.common.config.DotenvEnvironmentPostProcessor,\
+com.carebridge.backend.common.config.HermeticDatasourceEnvironmentPostProcessor

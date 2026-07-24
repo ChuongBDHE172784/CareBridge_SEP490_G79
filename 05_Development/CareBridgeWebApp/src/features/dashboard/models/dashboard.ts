@@ -30,17 +30,6 @@ export interface CommunityDashboardResponse {
   generatedAt: string;
 }
 
-export interface ImpactReportResponse {
-  mothersServed: number;
-  consultationsDelivered: number;
-  activePartnerOrganizations: number;
-  publishedContentItems: number;
-  periodFrom: string | null;
-  periodTo: string | null;
-  generatedAt: string;
-  anonymizationNote: string;
-}
-
 export interface DashboardDateRange {
   from?: string;
   to?: string;

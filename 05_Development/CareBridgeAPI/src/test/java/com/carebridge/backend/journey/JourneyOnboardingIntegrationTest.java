@@ -9,6 +9,7 @@ import com.carebridge.backend.journey.entity.LifecycleGoal;
 import com.carebridge.backend.journey.entity.SupportPreference;
 import com.carebridge.backend.journey.service.IJourneyOnboardingService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -41,17 +42,23 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @BeforeEach
     void cleanAndSeedOwner() {
-        jdbcTemplate.update("DELETE FROM public.audit_logs WHERE actor_user_id = ?", OWNER_ID);
-        jdbcTemplate.update("DELETE FROM public.consent_grants WHERE user_id = ?", OWNER_ID);
+        CanonicalAuditFixture.deleteByActor(jdbcTemplate, OWNER_ID);
         jdbcTemplate.update(
-                "DELETE FROM public.mother_baseline_contexts WHERE owner_user_id = ?", OWNER_ID);
+                "DELETE FROM public.data_permissions WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ?",
+                OWNER_ID);
+        deleteCanonicalEvents(OWNER_ID);
+        jdbcTemplate.update("""
+                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
+                VALUES (?, 'Story 62 Mother', now(), now())
+                ON CONFLICT (person_id) DO NOTHING
+                """, OWNER_ID);
         jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, email, role, account_status, enabled, locked,
+                    user_id, person_id, email, role, account_status, enabled, locked,
                     must_change_password, created_at, updated_at
-                ) VALUES (?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
+                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
-                """, OWNER_ID, "story62.mother@test.carebridge.local");
+                """, OWNER_ID, OWNER_ID, "story62.mother@test.carebridge.local");
     }
 
     @Test
@@ -70,10 +77,12 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM consent_grants WHERE user_id = ? AND evidence_key = ?",
+                "SELECT count(*) FROM data_permissions WHERE permission_kind='CONSENT_GRANT' "
+                        + "AND owner_user_id = ? AND evidence_key = ?",
                 Long.class, OWNER_ID, SUBMISSION_ID)).isEqualTo(1L);
     }
 
@@ -88,14 +97,15 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
                 .isEqualTo("LIFECYCLE_CONSENT_REQUIRED");
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isZero();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM consent_grants WHERE user_id = ?",
+                "SELECT count(*) FROM data_permissions WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ?",
                 Long.class, OWNER_ID)).isZero();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM audit_logs WHERE actor_user_id = ? "
-                        + "AND action IN ('MOTHER_BASELINE_SUBMITTED', 'CONSENT_GRANTED')",
+                "SELECT count(*) FROM audit_events WHERE event_origin='AUDIT_LOG' AND actor_user_id = ? "
+                        + "AND event_category IN ('MOTHER_BASELINE_SUBMITTED', 'CONSENT_GRANTED')",
                 Long.class, OWNER_ID)).isZero();
     }
 
@@ -112,9 +122,9 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
                             hashtextextended(CAST(? AS text), 0))
                         """, Integer.class, OWNER_ID);
                 jdbcTemplate.update("""
-                        UPDATE consent_grants
-                           SET revoked_at = now(), revoked_by = user_id
-                         WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions
+                           SET revoked_at = now(), revoked_by = owner_user_id
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """, OWNER_ID, SUBMISSION_ID);
                 revocationUpdated.countDown();
                 try {
@@ -162,39 +172,52 @@ class JourneyOnboardingIntegrationTest extends AbstractPostgresIntegrationTest {
                 .extracting("code")
                 .isEqualTo("LIFECYCLE_CONSENT_INVALID");
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_baseline_contexts WHERE owner_user_id = ?",
+                "SELECT count(*) FROM mother_journey_events "
+                        + "WHERE owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE'",
                 Long.class, OWNER_ID)).isEqualTo(1L);
+    }
+
+    private void deleteCanonicalEvents(UUID ownerId) {
+        jdbcTemplate.execute(
+                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
+        try {
+            jdbcTemplate.update(
+                    "DELETE FROM public.mother_journey_events WHERE owner_user_id = ?", ownerId);
+        } finally {
+            jdbcTemplate.execute(
+                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
+        }
     }
 
     private static java.util.stream.Stream<Arguments> invalidPersistedConsentMutations() {
         return java.util.stream.Stream.of(
                 Arguments.of("expired", """
-                        UPDATE consent_grants SET expiry_at = now() - interval '1 second'
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET expires_at = now() - interval '1 second'
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("at exact expiry boundary", """
-                        UPDATE consent_grants SET expiry_at = now()
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET expires_at = now()
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("revoked", """
-                        UPDATE consent_grants SET revoked_at = now(), revoked_by = user_id
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET revoked_at = now(), revoked_by = owner_user_id
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("wrong purpose", """
-                        UPDATE consent_grants SET purpose = 'VIEW'
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET purpose = 'VIEW'
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("wrong scope", """
-                        UPDATE consent_grants SET scope_text = 'journey:other'
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET scope_text = 'journey:other'
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("wrong policy version", """
-                        UPDATE consent_grants SET policy_version = 'MOTHER_LIFECYCLE_V0'
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET policy_version = 'MOTHER_LIFECYCLE_V0'
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """),
                 Arguments.of("wrong data type", """
-                        UPDATE consent_grants SET data_type = 'HEALTH_RECORD'
-                        WHERE user_id = ? AND evidence_key = ?
+                        UPDATE data_permissions SET scope_type = 'HEALTH_RECORD'
+                         WHERE permission_kind='CONSENT_GRANT' AND owner_user_id = ? AND evidence_key = ?
                         """));
     }
 

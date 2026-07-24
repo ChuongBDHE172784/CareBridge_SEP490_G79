@@ -51,13 +51,22 @@ class IntakeFlowResponse {
     final sessionId = json['intakeSessionId']?.toString() ?? '';
     TriageResult? result;
     if (resultJson is Map<String, dynamic>) {
+      final envelopeStatus = json['status']?.toString();
+      final resultStatus = envelopeStatus == 'TRIAGE_COMPLETE'
+          ? 'COMPLETED'
+          : envelopeStatus ?? resultJson['status']?.toString();
       final patched = <String, dynamic>{
-        'sessionId': sessionId,
-        'status': json['status'] == 'TRIAGE_COMPLETE'
-            ? 'COMPLETED'
-            : json['status'],
-        'triageStatus': json['status'],
         ...resultJson,
+        'sessionId': sessionId,
+        'stage':
+            json['stage']?.toString() ??
+            resultJson['stage']?.toString() ??
+            'INFANT',
+        'status': resultStatus,
+        'triageStatus':
+            envelopeStatus ??
+            resultJson['triageStatus']?.toString() ??
+            resultJson['status']?.toString(),
       };
       result = TriageResult.fromJson(patched);
     }

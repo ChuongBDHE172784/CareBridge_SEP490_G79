@@ -7,6 +7,11 @@ import jakarta.persistence.LockModeType;
 import java.util.*;
 
 public interface BabyLinkSubmissionRepository extends JpaRepository<BabyLinkSubmission, UUID> {
+    @Override
+    @Query(value = "SELECT count(*) FROM mother_journey_events "
+            + "WHERE legacy_source = 'BABY_LINK'", nativeQuery = true)
+    long count();
+
     @Query(value="select 1 from pg_advisory_xact_lock(hashtextextended(:key, 65))", nativeQuery=true)
     Integer acquireTransactionLock(@Param("key") String key);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

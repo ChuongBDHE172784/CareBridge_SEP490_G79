@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.carebridge.backend.safety.exception.SafetyException;
+import org.springframework.http.HttpStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,21 @@ public class SafetyConfigService implements ISafetyConfigService {
         config.setFallDetectionEnabled(request.getFallDetectionEnabled());
         config.setSensitivityLevel(SensitivityLevel.valueOf(request.getSensitivityLevel()));
         config.setEmergencyAutoAlert(request.getEmergencyAutoAlert());
+        if (request.getCountdownSeconds() != null) {
+            if (request.getCountdownSeconds() != 15
+                    && request.getCountdownSeconds() != 30
+                    && request.getCountdownSeconds() != 60) {
+                throw new SafetyException(HttpStatus.BAD_REQUEST, "SAFETY-008",
+                        "countdownSeconds must be 15, 30, or 60");
+            }
+            config.setCountdownSeconds(request.getCountdownSeconds());
+        } else if (config.getCountdownSeconds() == 0) {
+            config.setCountdownSeconds(30);
+        }
+        if (request.getSensorPermissionGranted() != null) {
+            config.setSensorPermissionGranted(request.getSensorPermissionGranted());
+            config.setSensorPermissionRecordedAt(Instant.now());
+        }
         config.setUpdatedAt(Instant.now());
         config.setUpdatedBy(userId);
         SafetyMonitoringConfig saved = configRepository.save(config);
@@ -54,6 +71,8 @@ public class SafetyConfigService implements ISafetyConfigService {
                         .fallDetectionEnabled(false)
                         .sensitivityLevel("MEDIUM")
                         .emergencyAutoAlert(true)
+                        .countdownSeconds(30)
+                        .sensorPermissionGranted(false)
                         .build());
     }
 
@@ -64,6 +83,9 @@ public class SafetyConfigService implements ISafetyConfigService {
                 .fallDetectionEnabled(config.isFallDetectionEnabled())
                 .sensitivityLevel(config.getSensitivityLevel().name())
                 .emergencyAutoAlert(config.isEmergencyAutoAlert())
+                .countdownSeconds(config.getCountdownSeconds())
+                .sensorPermissionGranted(config.isSensorPermissionGranted())
+                .sensorPermissionRecordedAt(config.getSensorPermissionRecordedAt())
                 .updatedAt(config.getUpdatedAt())
                 .build();
     }

@@ -36,11 +36,11 @@ Self-registration is restricted by `AuthenticationPolicy.resolveSelfRegistration
 MOTHER, FAMILY, EXPERT, MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN, PARTNER
 ```
 
-**Spring authority prefix**: All roles are stored without the `ROLE_` prefix in the database `users.role` column and in JWT claims. Spring Security adds `ROLE_` automatically when calling `hasRole('X')`.
+**Spring authority prefix**: Roles are stored without the `ROLE_` prefix in the database `users.role` column. JWT role claims and Spring authorities use the `ROLE_*` form. `hasRole('X')` checks for that prefixed authority.
 
-**JWT claim**: The access token contains `"role": "MOTHER"` (no prefix). `JwtTokenProvider` maps this to `ROLE_MOTHER` for Spring Security.
+**JWT claim**: The access token keeps the compatible scalar claim form `"role": "ROLE_MOTHER"`. The claim remains valid token metadata, but request authorization is derived from the current `users.role` value after account and session validation. A stale claim can therefore never retain or elevate privileges after the database role changes.
 
-**Database**: `users.role` column stores the enum value directly (e.g., `MOTHER`). The `roles` and `user_roles` tables exist in the V1 schema for future RBAC expansion but are not yet used by the authorization layer.
+**Database**: Nullable `users.role` is the only Release 1 role persistence model and stores the enum value directly (e.g., `MOTHER`). Null is valid during onboarding and grants no role authority. The dormant V1 `roles` and `user_roles` tables were removed by the canonical-role migration; Release 1 does not support multi-role accounts.
 
 ---
 

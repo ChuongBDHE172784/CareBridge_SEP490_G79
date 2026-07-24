@@ -25,8 +25,8 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
                COALESCE(SUM(quantity), 0) AS totalQuantity,
                MAX(quantity) AS maxQuantity,
                MAX(unit) AS unit
-        FROM baby_daily_logs
-        WHERE baby_id = :babyId
+        FROM care_logs
+        WHERE care_subject_id = :babyId
           AND created_at >= :fromDate
           AND created_at <= :toDate
           AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
@@ -39,8 +39,8 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
     );
 
     @Query(value = """
-        SELECT note FROM baby_daily_logs
-        WHERE baby_id = :babyId
+        SELECT note FROM care_logs
+        WHERE care_subject_id = :babyId
           AND log_type = :logType
           AND created_at >= :fromDate
           AND created_at <= :toDate

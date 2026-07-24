@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "health_summaries")
+@Table(name = "health_records")
 @Getter
 @Setter
 @Builder
@@ -20,7 +20,7 @@ public class HealthSummary {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "summary_id", updatable = false, nullable = false)
+    @Column(name = "health_record_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
@@ -38,14 +38,26 @@ public class HealthSummary {
     @Column(name = "period_start")
     private LocalDate periodStart;
 
-    @Column(name = "period_end")
+    @Column(name = "record_date")
     private LocalDate periodEnd;
 
     @Column(name = "summary_json", columnDefinition = "jsonb")
     private String summaryJson;
 
-    @Column(name = "generated_by", length = 50)
+    @Column(name = "source_name", length = 200)
     private String generatedBy;
+
+    @Builder.Default
+    @Column(name = "record_type", nullable = false, length = 50)
+    private String recordType = "SUMMARY";
+
+    @Builder.Default
+    @Column(name = "title", nullable = false, length = 255)
+    private String title = "Health summary";
+
+    @Builder.Default
+    @Column(name = "source_type", length = 30)
+    private String sourceType = "SUMMARY";
 
     @Builder.Default
     @Column(name = "status", nullable = false, length = 20)

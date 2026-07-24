@@ -64,6 +64,7 @@ public class ExerciseSafetyCheckServiceImpl implements IExerciseSafetyCheckServi
 
         // 4. Persist and return.
         ExerciseSafetyCheck saved = safetyCheckRepository.save(check);
+        safetyCheckRepository.expandSafetyAnswers(saved.getSafetyCheckId());
         return ApiResponse.success(safetyCheckMapper.toResponse(saved));
     }
 

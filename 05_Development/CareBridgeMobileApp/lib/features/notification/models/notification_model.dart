@@ -50,6 +50,7 @@ class NotificationRecord {
   final String? referenceId;
   final String? referenceType;
   final String status;
+  final bool isRead;
   final DateTime createdAt;
   final DateTime? sentAt;
   final Map<String, dynamic>? metadata;
@@ -63,6 +64,7 @@ class NotificationRecord {
     this.referenceId,
     this.referenceType,
     required this.status,
+    this.isRead = false,
     required this.createdAt,
     this.sentAt,
     this.metadata,
@@ -78,6 +80,7 @@ class NotificationRecord {
       referenceId: json['referenceId'] as String?,
       referenceType: json['referenceType'] as String?,
       status: json['status'] as String? ?? 'SENT',
+      isRead: json['isRead'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       sentAt: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'] as String)
@@ -86,5 +89,5 @@ class NotificationRecord {
     );
   }
 
-  bool get isUnread => status != 'READ';
+  bool get isUnread => !isRead;
 }

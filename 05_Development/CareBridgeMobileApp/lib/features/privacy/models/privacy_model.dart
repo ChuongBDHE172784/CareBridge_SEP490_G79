@@ -94,7 +94,9 @@ class ConsentGrant {
     );
   }
 
-  bool get isActive => revokedAt == null;
+  bool get isActive =>
+      revokedAt == null &&
+      (expiryAt == null || expiryAt!.isAfter(DateTime.now().toUtc()));
 
   String get scopeLabel {
     switch (scope?.toUpperCase()) {

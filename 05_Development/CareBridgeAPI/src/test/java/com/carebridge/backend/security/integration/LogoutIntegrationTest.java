@@ -94,7 +94,7 @@ class LogoutIntegrationTest extends AbstractPostgresIntegrationTest {
         // DB assertion: the session row for this token is revoked
         String tokenHash = TokenUtils.hashSha256(refreshToken);
         Boolean revoked = jdbcTemplate.queryForObject(
-                "SELECT revoked FROM user_sessions WHERE refresh_token_hash = ?",
+                "SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE refresh_token_hash = ?",
                 Boolean.class, tokenHash);
         assertThat(revoked).isTrue();
     }

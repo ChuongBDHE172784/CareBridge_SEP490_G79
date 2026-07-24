@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RichTextEditor, { isRichTextEmpty } from './RichTextEditor';
+import RichTextEditor from './RichTextEditor';
+import { isRichTextEmpty } from './richTextUtils';
 
 // Vitest doesn't auto-run Testing Library's cleanup between tests the way Jest's
 // testEnvironment integration does — without this, each test's render() piles up in the
@@ -146,11 +147,19 @@ describe('isRichTextEmpty', () => {
     expect(isRichTextEmpty('<p>   </p>')).toBe(true);
   });
 
+  it('treats non-breaking-space entities as empty', () => {
+    expect(isRichTextEmpty('<p>&nbsp;&#160;&#xA0;</p>')).toBe(true);
+  });
+
   it('treats real text as non-empty', () => {
     expect(isRichTextEmpty('<p>Xin chào</p>')).toBe(false);
   });
 
   it('treats an image-only body as non-empty', () => {
     expect(isRichTextEmpty('<p><img src="https://res.cloudinary.com/x.jpg"></p>')).toBe(false);
+  });
+
+  it('recognizes an uppercase image tag as content', () => {
+    expect(isRichTextEmpty('<p><IMG src="https://res.cloudinary.com/x.jpg"></p>')).toBe(false);
   });
 });

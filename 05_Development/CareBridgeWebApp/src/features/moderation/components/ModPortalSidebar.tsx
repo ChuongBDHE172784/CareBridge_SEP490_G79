@@ -5,7 +5,7 @@ import { useAuth } from '../../../shared/auth/useAuth';
 // ModerationController (pending-content/reports/violations) is
 // @PreAuthorize("hasRole('MODERATOR')") on every endpoint on the backend — SYSTEM_ADMIN
 // is NOT accepted there, so it must not see those entries (it would 403 on data load).
-// RedFlagRuleController / CommunityDashboardController / ImpactReportController are the
+// RedFlagRuleController / CommunityDashboardController are the
 // reverse: SYSTEM_ADMIN-only on the backend, so MODERATOR must not see those entries.
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/moderator/dashboard', roles: ['SYSTEM_ADMIN'] },
@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports', roles: ['MODERATOR'] },
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations', roles: ['MODERATOR'] },
   { label: 'Quy tắc AI', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
-  { label: 'Tác động & vận hành', icon: 'insights', path: '/moderator/impact-report', roles: ['SYSTEM_ADMIN'] },
   { label: 'Cấu hình hệ thống', icon: 'tune', path: '/moderator/system-configuration', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 

@@ -8,25 +8,32 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "community_bookmarks", indexes = {
-    @Index(name = "idx_community_bookmarks_user", columnList = "user_id"),
-    @Index(name = "idx_community_bookmarks_question", columnList = "question_id")
+@Table(name = "community_interactions", indexes = {
+    @Index(name = "community_interactions_actor_ix", columnList = "actor_user_id"),
+    @Index(name = "community_interactions_content_ix", columnList = "content_id")
 })
+@org.hibernate.annotations.SQLRestriction("interaction_type = 'BOOKMARK' AND target_content_type = 'QUESTION'")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CommunityBookmark {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "interaction_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "actor_user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "question_id", nullable = false)
+    @Column(name = "content_id", nullable = false)
     private UUID questionId;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
+
+    @Builder.Default @Column(name = "interaction_type", nullable = false, updatable = false)
+    private String interactionType = "BOOKMARK";
+
+    @Builder.Default @Column(name = "target_content_type", nullable = false, updatable = false)
+    private String targetContentType = "QUESTION";
 }

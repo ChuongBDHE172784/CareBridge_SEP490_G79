@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/expert_question_queue_screen.dart';
-import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/services/expert_home_service.dart';
 
 class ExpertAppHomeScreen extends StatefulWidget {
@@ -54,10 +53,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       _snapshot = ExpertHomeSnapshot(
         profile: snapshot.profile,
         online: nextOnline,
-        consultationCount: snapshot.consultationCount,
-        requestCount: snapshot.requestCount,
         questionCount: snapshot.questionCount,
-        nextConsultation: snapshot.nextConsultation,
         supportRequests: snapshot.supportRequests,
       );
     });
@@ -99,8 +95,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   ),
                 )
               else ...[
-                _buildConsultationSection(snapshot),
-                const SizedBox(height: 28),
                 _buildMetricGrid(snapshot),
                 const SizedBox(height: 18),
                 _buildCommunityCard(),
@@ -178,203 +172,13 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     );
   }
 
-  Widget _buildConsultationSection(ExpertHomeSnapshot? snapshot) {
-    final consultation = snapshot?.nextConsultation;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Yêu cầu tư vấn gần nhất',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 27,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: _surfaceHigh,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                '${snapshot?.requestCount ?? 0} Đang chờ',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: _primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: _softShadow,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: const BoxDecoration(
-                  color: _surfaceHighest,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.assignment_outlined,
-                  color: _primary,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                consultation?.motherName ?? 'Không có lịch mới',
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: _onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                consultation?.topic ?? 'Lịch hôm nay trống',
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: _onSurfaceVariant,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (consultation != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _primaryContainer,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.schedule,
-                                  color: Colors.white,
-                                  size: 15,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  consultation.timeLabel,
-                                  style: const TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _primaryContainer,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(54),
-                              shape: const StadiumBorder(),
-                            ),
-                            onPressed: consultation == null
-                                ? null
-                                : _openConsultationRequests,
-                            child: const Text(
-                              'Xem yêu cầu',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: const BoxDecoration(
-                            color: _surfaceHighest,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.more_horiz, color: _primary),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildMetricGrid(ExpertHomeSnapshot? snapshot) {
-    return Row(
-      children: [
-        Expanded(
-          child: _MetricCard(
-            icon: Icons.mark_email_unread_outlined,
-            count: snapshot?.requestCount ?? 0,
-            title: 'Yêu cầu tư vấn',
-            subtitle: 'Đang chờ phản hồi',
-            onTap: _openConsultationRequests,
-          ),
-        ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: _MetricCard(
-            icon: Icons.forum_outlined,
-            count: snapshot?.questionCount ?? 0,
-            title: 'Hàng đợi Q&A',
-            subtitle: 'Chờ trả lời',
-            onTap: _openQuestions,
-          ),
-        ),
-      ],
+    return _MetricCard(
+      icon: Icons.forum_outlined,
+      count: snapshot?.questionCount ?? 0,
+      title: 'Hàng đợi Q&A',
+      subtitle: 'Chờ trả lời',
+      onTap: _openQuestions,
     );
   }
 
@@ -485,12 +289,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ExpertQuestionQueueScreen()),
     );
-  }
-
-  void _openConsultationRequests() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ExpertRequestsTabScreen()));
   }
 
   static List<BoxShadow> get _softShadow => [

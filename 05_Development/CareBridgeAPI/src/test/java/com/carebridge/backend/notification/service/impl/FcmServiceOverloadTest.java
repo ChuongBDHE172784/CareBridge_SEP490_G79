@@ -17,7 +17,7 @@ class FcmServiceOverloadTest {
                         "token",
                         "Title",
                         "Body",
-                        Map.of("type", "CONSULTATION_REQUEST", "requestId", "request-id"),
+                        Map.of("type", "MESSAGE", "conversationId", "conversation-id"),
                         1)
                 .success())
                 .isFalse();
@@ -29,7 +29,7 @@ class FcmServiceOverloadTest {
     @SuppressWarnings("unchecked")
     void firebaseImplementationCopiesAllDataIntoTheMessage() throws Exception {
         Map<String, String> data =
-                Map.of("type", "CONSULTATION_REQUEST", "requestId", "request-id");
+                Map.of("type", "MESSAGE", "conversationId", "conversation-id");
 
         Message message =
                 FirebaseFcmServiceImpl.buildDataMessage("token", "Title", "Body", data);

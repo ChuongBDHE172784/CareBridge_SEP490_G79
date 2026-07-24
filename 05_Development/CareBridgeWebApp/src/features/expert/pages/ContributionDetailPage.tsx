@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getContribution, type ContributionResponse, type ContributionStatus } from '../services/expertApi';
+import {
+  deleteContribution,
+  getContribution,
+  submitContribution,
+  type ContributionResponse,
+  type ContributionStatus,
+} from '../services/expertApi';
 
 const STATUS_LABELS: Record<ContributionStatus, string> = {
   DRAFT: 'Bản nháp',
@@ -28,28 +34,34 @@ export default function ContributionDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    loadContribution();
-  }, [id]);
+    let cancelled = false;
 
-  async function loadContribution() {
-    setLoading(true);
-    try {
-      const c = await getContribution(id!);
-      setContribution(c);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải bài viết');
-    } finally {
-      setLoading(false);
+    async function loadContribution() {
+      setLoading(true);
+      try {
+        const result = await getContribution(id!);
+        if (!cancelled) setContribution(result);
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const apiError = err as { response?: { data?: { message?: string } } };
+        setError(apiError.response?.data?.message || 'Không thể tải bài viết');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }
+
+    void loadContribution();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   async function handleSubmit() {
     if (!id || !window.confirm('Gửi bài viết này để duyệt?')) return;
     try {
-      await getContribution(id); // refresh to ensure valid state
-      await fetch(`/api/v1/contributions/${id}/submit`, { method: 'POST' });
+      await submitContribution(id);
       navigate(`/expert/contributions/${id}`);
-    } catch (err) {
+    } catch {
       alert('Gửi duyệt thất bại');
     }
   }
@@ -57,9 +69,9 @@ export default function ContributionDetailPage() {
   async function handleDelete() {
     if (!id || !window.confirm('Xóa vĩnh viễn bản nháp này? Không thể hoàn tác.')) return;
     try {
-      await fetch(`/api/v1/contributions/${id}`, { method: 'DELETE' });
+      await deleteContribution(id);
       navigate('/expert/contributions');
-    } catch (err) {
+    } catch {
       alert('Xóa thất bại');
     }
   }

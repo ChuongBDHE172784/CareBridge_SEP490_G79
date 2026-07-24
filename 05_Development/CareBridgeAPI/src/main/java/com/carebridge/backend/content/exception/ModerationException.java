@@ -155,14 +155,6 @@ public class ModerationException extends RuntimeException {
                 HttpStatus.BAD_REQUEST);
     }
 
-    // UC-113 (CB-MOD-IMP-007 §10)
-    public static ModerationException invalidImpactReportDateRange() {
-        return new ModerationException(
-                "MOD-022",
-                "Invalid date range: 'from' must not be after 'to'",
-                HttpStatus.BAD_REQUEST);
-    }
-
     // Pending Content Queue (CB-MOD-IMP-004 §9, ADR-006)
     public static ModerationException pendingContentTargetTypeUnsupported(ReportTargetType targetType) {
         return new ModerationException(

@@ -48,6 +48,7 @@ void main() async {
   runApp(CareBridgeApp(firebaseEnabled: firebaseReady));
   if (firebaseReady) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      FcmService.instance.markNavigationReady();
       unawaited(FcmService.instance.initTapHandling());
     });
   }

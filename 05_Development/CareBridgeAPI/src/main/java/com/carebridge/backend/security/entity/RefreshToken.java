@@ -17,8 +17,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-@Entity
-@Table(name = "refresh_tokens")
 @Getter
 @Setter
 @Builder

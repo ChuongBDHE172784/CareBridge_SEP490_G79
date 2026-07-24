@@ -8,15 +8,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "structured_intake_data")
+@Table(name = "triage_sessions")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class StructuredIntakeData {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "triage_session_id")
     private UUID id;
 
-    @Column(name = "session_id", nullable = false, unique = true)
+    @Column(name = "triage_session_id", nullable = false, insertable = false, updatable = false)
     private UUID sessionId;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -35,6 +35,6 @@ public class StructuredIntakeData {
     @Column(name = "extracted_at", nullable = false)
     private Instant extractedAt;
 
-    @Column(name = "created_by", nullable = false)
+    @Column(name = "structured_created_by", nullable = false)
     private String createdBy;
 }

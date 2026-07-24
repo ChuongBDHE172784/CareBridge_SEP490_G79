@@ -50,7 +50,7 @@ class NotificationRecordWriter {
     boolean claim(UUID id) {
         return jdbcTemplate.update("""
                 UPDATE notification_records
-                SET status = 'PROCESSING', processing_started_at = now()
+                SET status = 'PROCESSING', processing_started_at = now(), updated_at = now()
                 WHERE id = ? AND (status = 'PENDING'
                     OR (status = 'PROCESSING'
                         AND processing_started_at < now() - interval '1 minute'))
@@ -62,7 +62,7 @@ class NotificationRecordWriter {
         jdbcTemplate.update("""
                 UPDATE notification_records
                 SET status = ?, attempt_count = ?, fcm_message_id = ?, sent_at = ?, failed_at = ?,
-                    processing_started_at = NULL
+                    processing_started_at = NULL, updated_at = now()
                 WHERE id = ?
                 """, record.getStatus().name(), record.getAttemptCount(), record.getFcmMessageId(),
                 record.getSentAt() == null ? null : Timestamp.from(record.getSentAt()),
