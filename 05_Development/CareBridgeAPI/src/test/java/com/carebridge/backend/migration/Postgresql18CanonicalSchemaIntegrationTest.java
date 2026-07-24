@@ -29,6 +29,8 @@ class Postgresql18CanonicalSchemaIntegrationTest {
 
         assertThat(flyway.migrate().success).isTrue();
         assertThat(tableCount()).isEqualTo(70);
+        assertThat(legacyExpertProfileColumnCount()).isZero();
+        assertThat(canonicalProfessionalProfileColumnCount()).isEqualTo(3);
 
         validateJpaMappings();
     }
@@ -45,6 +47,35 @@ class Postgresql18CanonicalSchemaIntegrationTest {
                         """)) {
             assertThat(result.next()).isTrue();
             return result.getInt(1);
+        }
+    }
+
+    private int legacyExpertProfileColumnCount() throws Exception {
+        return profileColumnCount("expert_profile_id");
+    }
+
+    private int canonicalProfessionalProfileColumnCount() throws Exception {
+        return profileColumnCount("professional_profile_id");
+    }
+
+    private int profileColumnCount(String columnName) throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                var statement = connection.prepareStatement("""
+                        SELECT count(*)
+                          FROM information_schema.columns
+                         WHERE table_schema = 'public'
+                           AND table_name IN (
+                               'expert_credentials',
+                               'expert_availability',
+                               'expert_location_shares')
+                           AND column_name = ?
+                        """)) {
+            statement.setString(1, columnName);
+            try (var result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                return result.getInt(1);
+            }
         }
     }
 
